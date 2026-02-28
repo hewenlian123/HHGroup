@@ -1,32 +1,42 @@
-export const MOCK_PROJECTS = [
-  { id: "p1", name: "Luxury Villa A", status: "active" as const, budget: 2500000, spent: 1200000, updated: "2025-02-22" },
-  { id: "p2", name: "Residential Tower B", status: "active" as const, budget: 5000000, spent: 2100000, updated: "2025-02-21" },
-  { id: "p3", name: "Office Complex C", status: "pending" as const, budget: 8000000, spent: 0, updated: "2025-02-18" },
-  { id: "p4", name: "Renovation D", status: "completed" as const, budget: 800000, spent: 780000, updated: "2025-02-15" },
-];
+export type MockProjectStatus = "active" | "pending" | "completed";
+export interface MockProject {
+  id: string;
+  name: string;
+  status: MockProjectStatus;
+  budget: number;
+  spent: number;
+  updated: string;
+}
+export const MOCK_PROJECTS: MockProject[] = [];
 
 /** Optional per-project financial overrides (cash flow / cost breakdown). Used when present. */
 export const MOCK_PROJECT_FINANCIAL_OVERRIDES: Record<
   string,
   { incomeTotal: number; expenseTotal: number; laborCost: number; materialCost?: number; vendorCost?: number; otherCost?: number }
-> = {
-  p1: { incomeTotal: 10000, expenseTotal: 25000, laborCost: 8000 },
-};
+> = {};
 
-export const MOCK_RECENT_TRANSACTIONS = [
-  { id: "t1", date: "2025-02-22", project: "Luxury Villa A", type: "expense" as const, amount: -45000, note: "Materials" },
-  { id: "t2", date: "2025-02-21", project: "Luxury Villa A", type: "income" as const, amount: 500000, note: "Progress payment" },
-  { id: "t3", date: "2025-02-20", project: "Residential Tower B", type: "expense" as const, amount: -38000, note: "Steel" },
-  { id: "t4", date: "2025-02-18", project: "Luxury Villa A", type: "expense" as const, amount: -8200, note: "Payroll" },
-  { id: "t5", date: "2025-02-15", project: "Renovation D", type: "expense" as const, amount: -12000, note: "Equipment" },
-];
+export interface MockRecentTransaction {
+  id: string;
+  date: string;
+  project: string;
+  type: "expense" | "income";
+  amount: number;
+  note: string;
+}
+export const MOCK_RECENT_TRANSACTIONS: MockRecentTransaction[] = [];
 
-export const MOCK_PROJECT_LABOR = [
-  { id: "pl1", projectId: "p1", worker: "Zhang Wei", hours: 120, rate: 85, totalPaid: 10200, advance: 2000, remaining: 8200, status: "paid" as const },
-  { id: "pl2", projectId: "p1", worker: "Li Ming", hours: 80, rate: 72, totalPaid: 5760, advance: 0, remaining: 5760, status: "pending" as const },
-  { id: "pl3", projectId: "p2", worker: "Wang Fang", hours: 160, rate: 68, totalPaid: 10880, advance: 3000, remaining: 7880, status: "paid" as const },
-  { id: "pl4", projectId: "p2", worker: "Chen Hao", hours: 40, rate: 55, totalPaid: 2200, advance: 0, remaining: 2200, status: "pending" as const },
-];
+export interface MockProjectLaborRow {
+  id: string;
+  projectId: string;
+  worker: string;
+  hours: number;
+  rate: number;
+  totalPaid: number;
+  advance: number;
+  remaining: number;
+  status: "paid" | "pending";
+}
+export const MOCK_PROJECT_LABOR: MockProjectLaborRow[] = [];
 
 export interface Worker {
   id: string;
@@ -116,11 +126,7 @@ export interface LaborPayment {
   createdAt: string;
 }
 
-export const laborWorkers: Worker[] = [
-  { id: "lw1", name: "Zhang Wei", phone: "555-0101", trade: "Foreman", status: "active", halfDayRate: 400, notes: "Core team", createdAt: "2025-01-05" },
-  { id: "lw2", name: "Li Ming", phone: "555-0102", trade: "Carpenter", status: "active", halfDayRate: 350, createdAt: "2025-01-10" },
-  { id: "lw3", name: "Wang Fang", phone: "555-0103", trade: "Steel", status: "active", halfDayRate: 380, createdAt: "2025-01-15" },
-];
+export const laborWorkers: Worker[] = [];
 
 export const laborEntries: LaborEntry[] = [];
 /** Backward-compatible alias for old naming. */
@@ -128,13 +134,16 @@ export const laborShiftEntries = laborEntries;
 export const laborInvoices: LaborInvoice[] = [];
 export const laborPayments: LaborPayment[] = [];
 
-export const MOCK_PROJECT_TRANSACTIONS = [
-  { id: "pt1", projectId: "p1", date: "2025-02-22", type: "expense" as const, name: "Materials Co.", amount: -45000, note: "Steel & concrete" },
-  { id: "pt2", projectId: "p1", date: "2025-02-21", type: "income" as const, name: "Villa A Client", amount: 500000, note: "Progress payment" },
-  { id: "pt3", projectId: "p1", date: "2025-02-18", type: "expense" as const, name: "Zhang Wei", amount: -8200, note: "Payroll" },
-  { id: "pt4", projectId: "p1", date: "2025-02-15", type: "expense" as const, name: "Equipment Rent", amount: -12000, note: "February" },
-  { id: "pt5", projectId: "p2", date: "2025-02-20", type: "expense" as const, name: "Steel Supply", amount: -38000, note: "" },
-];
+export interface MockProjectTransactionRow {
+  id: string;
+  projectId: string;
+  date: string;
+  type: "expense" | "income";
+  name: string;
+  amount: number;
+  note: string;
+}
+export const MOCK_PROJECT_TRANSACTIONS: MockProjectTransactionRow[] = [];
 
 export const expenseCategories = [
   "Materials",
@@ -236,78 +245,7 @@ export function normalizeExpense(exp: Expense | (Expense & { projectId?: string 
 /** @deprecated Use Expense */
 export type ExpenseRecord = Expense;
 
-export const expenses: Expense[] = [
-  {
-    id: "ex1",
-    date: "2025-02-22",
-    vendorName: "Materials Co.",
-    paymentMethod: "ACH",
-    referenceNo: "INV-2201",
-    notes: "Net 30",
-    attachments: [],
-    lines: [{ id: "ex1-l1", projectId: "p1", category: "Materials", memo: "Steel & concrete delivery", amount: 45000 }],
-  },
-  {
-    id: "ex2",
-    date: "2025-02-21",
-    vendorName: "Zhang Wei",
-    paymentMethod: "Check",
-    referenceNo: "CHK-4401",
-    attachments: [],
-    lines: [{ id: "ex2-l1", projectId: "p1", category: "Labor", memo: "Payroll", amount: 8200 }],
-  },
-  {
-    id: "ex3",
-    date: "2025-02-20",
-    vendorName: "Steel Supply Inc.",
-    paymentMethod: "Card",
-    attachments: [],
-    lines: [{ id: "ex3-l1", projectId: "p2", category: "Materials", memo: "Structural steel", amount: 38000 }],
-  },
-  {
-    id: "ex4",
-    date: "2025-02-18",
-    vendorName: "City Permit Office",
-    paymentMethod: "Cash",
-    attachments: [],
-    lines: [{ id: "ex4-l1", projectId: null, category: "Permit", memo: "Building permit renewal", amount: 1200 }],
-  },
-  {
-    id: "ex5",
-    date: "2025-02-15",
-    vendorName: "Equipment Rentals",
-    paymentMethod: "ACH",
-    notes: "Monthly",
-    attachments: [],
-    lines: [{ id: "ex5-l1", projectId: "p1", category: "Equipment", memo: "Excavator Feb", amount: 12000 }],
-    linkedBankTxId: "bt7",
-  },
-  {
-    id: "ex6",
-    date: "2025-02-14",
-    vendorName: "Home Depot",
-    paymentMethod: "Card",
-    attachments: [],
-    lines: [
-      { id: "ex6-l1", projectId: "p1", category: "Materials", memo: "Lumber", amount: 700 },
-      { id: "ex6-l2", projectId: "p2", category: "Materials", memo: "Hardware", amount: 300 },
-      { id: "ex6-l3", projectId: null, category: "Other", memo: "Overhead supplies", amount: 200 },
-    ],
-  },
-  {
-    id: "ex7",
-    date: "2025-02-12",
-    vendorName: "Office Depot",
-    paymentMethod: "ACH",
-    referenceNo: "OD-8899",
-    attachments: [
-      { id: "ex7-a1", fileName: "receipt1.pdf", mimeType: "application/pdf", size: 120000, url: "blob:mock", createdAt: "2025-02-12" },
-      { id: "ex7-a2", fileName: "photo.jpg", mimeType: "image/jpeg", size: 240000, url: "blob:mock2", createdAt: "2025-02-12" },
-    ],
-    lines: [{ id: "ex7-l1", projectId: null, category: "Office", memo: "Printer paper", amount: 450 }],
-    linkedBankTxId: "bt10",
-  },
-];
+export const expenses: Expense[] = [];
 
 export type BankTransactionStatus = "unmatched" | "reconciled";
 
@@ -323,20 +261,7 @@ export interface BankTransaction {
   reconciledBy?: string;
 }
 
-export const bankTransactions: BankTransaction[] = [
-  { id: "bt1", date: "2025-02-22", description: "Home Depot", amount: -1200, status: "unmatched", createdAt: "2025-02-22" },
-  { id: "bt2", date: "2025-02-22", description: "Materials Co. INV-2201", amount: -45000, status: "unmatched", createdAt: "2025-02-22" },
-  { id: "bt3", date: "2025-02-21", description: "City Permit Office", amount: -1200, status: "unmatched", createdAt: "2025-02-21" },
-  { id: "bt4", date: "2025-02-21", description: "Payroll Zhang Wei", amount: -8200, status: "unmatched", createdAt: "2025-02-21" },
-  { id: "bt5", date: "2025-02-21", description: "Client deposit Villa A", amount: 500000, status: "reconciled", createdAt: "2025-02-21", reconciledAt: "2025-02-21", reconciledBy: "owner" },
-  { id: "bt6", date: "2025-02-20", description: "Steel Supply Inc.", amount: -38000, status: "unmatched", createdAt: "2025-02-20" },
-  { id: "bt7", date: "2025-02-18", description: "Equipment Rentals", amount: -12000, status: "reconciled", linkedExpenseId: "ex5", createdAt: "2025-02-18", reconciledAt: "2025-02-18", reconciledBy: "owner" },
-  { id: "bt8", date: "2025-02-15", description: "Office supplies", amount: -450, status: "unmatched", createdAt: "2025-02-15" },
-  { id: "bt9", date: "2025-02-14", description: "Wire transfer to savings", amount: -10000, status: "unmatched", createdAt: "2025-02-14" },
-  { id: "bt10", date: "2025-02-12", description: "Office Depot OD-8899", amount: -450, status: "reconciled", linkedExpenseId: "ex7", createdAt: "2025-02-12", reconciledAt: "2025-02-12", reconciledBy: "owner" },
-  { id: "bt11", date: "2025-02-10", description: "Contractor payment", amount: -25000, status: "unmatched", createdAt: "2025-02-10" },
-  { id: "bt12", date: "2025-02-08", description: "Progress payment received", amount: 200000, status: "unmatched", createdAt: "2025-02-08" },
-];
+export const bankTransactions: BankTransaction[] = [];
 
 export type InvoiceStatus = "Draft" | "Sent" | "Partially Paid" | "Paid" | "Void";
 
@@ -373,39 +298,9 @@ export interface InvoicePayment {
   status?: "Posted" | "Voided";
 }
 
-export const invoices: Invoice[] = [
-  {
-    id: "inv1",
-    invoiceNo: "INV-0001",
-    projectId: "p1",
-    clientName: "Villa A Client",
-    issueDate: "2025-02-01",
-    dueDate: "2025-03-01",
-    status: "Sent",
-    lineItems: [{ description: "Progress payment – Phase 1", qty: 1, unitPrice: 50000, amount: 50000 }],
-    subtotal: 50000,
-    total: 50000,
-  },
-  {
-    id: "inv2",
-    invoiceNo: "INV-0002",
-    projectId: "p2",
-    clientName: "Tower B Client",
-    issueDate: "2025-01-10",
-    dueDate: "2025-02-10",
-    status: "Sent",
-    lineItems: [{ description: "Progress payment – Structure", qty: 1, unitPrice: 30000, amount: 30000 }],
-    subtotal: 30000,
-    total: 30000,
-  },
-];
+export const invoices: Invoice[] = [];
 
-export const invoicePayments: InvoicePayment[] = [
-  { id: "pay-1", invoiceId: "inv1", date: "2025-02-05", amount: 10000, method: "ACH", status: "Posted" },
-  { id: "pay-2", invoiceId: "inv1", date: "2025-02-12", amount: 15000, method: "Wire", status: "Posted" },
-  { id: "pay-3", invoiceId: "inv2", date: "2025-02-14", amount: 5000, method: "Check", status: "Posted" },
-  { id: "pay-4", invoiceId: "inv2", date: "2025-02-15", amount: 3000, method: "ACH", status: "Voided" },
-];
+export const invoicePayments: InvoicePayment[] = [];
 
 export type CommitmentType = "PO" | "Subcontract" | "Other";
 export type CommitmentStatus = "Open" | "Closed";
@@ -422,71 +317,17 @@ export interface Commitment {
   attachments: ExpenseAttachment[];
 }
 
-export const commitments: Commitment[] = [
-  {
-    id: "cm1",
-    projectId: "p1",
-    date: "2025-02-20",
-    vendorName: "Materials Co.",
-    type: "PO",
-    amount: 25000,
-    status: "Open",
-    notes: "Steel package PO",
-    attachments: [
-      {
-        id: "cm1-a1",
-        fileName: "po-steel.png",
-        mimeType: "image/png",
-        size: 68,
-        url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO8Wf9kAAAAASUVORK5CYII=",
-        createdAt: "2025-02-20",
-      },
-    ],
-  },
-  {
-    id: "cm2",
-    projectId: "p1",
-    date: "2025-02-21",
-    vendorName: "ABC Subcontracting",
-    type: "Subcontract",
-    amount: 40000,
-    status: "Open",
-    notes: "Facade subcontract deposit commitment",
-    attachments: [],
-  },
-  {
-    id: "cm3",
-    projectId: "p1",
-    date: "2025-02-10",
-    vendorName: "Equipment Rentals",
-    type: "Other",
-    amount: 12000,
-    status: "Closed",
-    notes: "Converted to paid expense",
-    attachments: [],
-  },
-];
+export const commitments: Commitment[] = [];
 
-export const projectEstimates = [
-  {
-    projectId: "p1",
-    revenue: 2550000,
-    cost: 1110000,
-    materialsCost: 444000,
-    laborCost: 388500,
-    vendorCost: 166500,
-    otherCost: 111000,
-  },
-  {
-    projectId: "p2",
-    revenue: 5100000,
-    cost: 1910000,
-    materialsCost: 764000,
-    laborCost: 668500,
-    vendorCost: 286500,
-    otherCost: 191000,
-  },
-];
+export const projectEstimates: Array<{
+  projectId: string;
+  revenue: number;
+  cost: number;
+  materialsCost: number;
+  laborCost: number;
+  vendorCost: number;
+  otherCost: number;
+}> = [];
 
 export type EstimateStatus = "Draft" | "Sent" | "Approved" | "Converted";
 
@@ -541,17 +382,7 @@ export interface ProjectFromEstimate {
 }
 
 export const estimateSnapshots: EstimateSnapshot[] = [];
-export const projectsFromEstimates: ProjectFromEstimate[] = [
-  {
-    projectId: "p1",
-    sourceEstimateId: "est1",
-    sourceSnapshotId: "snap-p1",
-    sourceVersion: 1,
-    snapshotRevenue: 2_550_000,
-    snapshotBudgetCost: 2_000_000,
-    snapshotBudgetBreakdown: { materials: 800_000, labor: 700_000, vendor: 300_000, other: 200_000 },
-  },
-];
+export const projectsFromEstimates: ProjectFromEstimate[] = [];
 
 function nextSnapshotId(): string {
   return `snap-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -566,8 +397,6 @@ export const costCodeMaster = [
 ];
 
 export const estimateList: Array<{ id: string; number: string; client: string; project: string; status: EstimateStatus; updatedAt: string; total: number; approvedAt?: string }> = [
-  { id: "est1", number: "EST-0001", client: "Zhang Development", project: "Luxury Villa A", status: "Draft" as const, updatedAt: "2025-02-24", total: 23667 },
-  { id: "est2", number: "EST-0002", client: "Li Construction", project: "Residential Tower B", status: "Sent" as const, updatedAt: "2025-02-22", total: 127609 },
 ];
 
 export function createEstimate(payload: { clientName: string; projectName: string; address: string }): string {
@@ -797,21 +626,6 @@ export function deleteLineItem(estimateId: string, itemId: string): boolean {
   return true;
 }
 
-export const estimateItems = [
-  { id: "ei1", estimateId: "est1", costCode: "030000", desc: "Slab concrete", qty: 10, unit: "CY", unitCost: 180, markupPct: 0.15 },
-  { id: "ei2", estimateId: "est1", costCode: "030000", desc: "Footing concrete", qty: 8, unit: "CY", unitCost: 165, markupPct: 0.15 },
-  { id: "ei3", estimateId: "est1", costCode: "040000", desc: "Brick veneer", qty: 1200, unit: "SF", unitCost: 12, markupPct: 0.18 },
-  { id: "ei4", estimateId: "est2", costCode: "030000", desc: "Foundation concrete", qty: 45, unit: "CY", unitCost: 185, markupPct: 0.12 },
-  { id: "ei5", estimateId: "est2", costCode: "050000", desc: "Structural steel", qty: 22, unit: "TON", unitCost: 4200, markupPct: 0.10 },
-];
+export const estimateItems: EstimateDraftItem[] = [];
 
-export const estimateMeta: Record<string, { client: { name: string; phone: string; email: string; address: string }; project: { name: string; siteAddress: string } }> = {
-  est1: {
-    client: { name: "Zhang Development", phone: "+1 555-0101", email: "contact@zhangdev.com", address: "100 Business Park, Shanghai" },
-    project: { name: "Luxury Villa A", siteAddress: "88 Riverside Drive, Shanghai" },
-  },
-  est2: {
-    client: { name: "Li Construction", phone: "+1 555-0102", email: "info@liconstruction.com", address: "200 Tower Ave, Beijing" },
-    project: { name: "Residential Tower B", siteAddress: "50 Central Plaza, Beijing" },
-  },
-};
+export const estimateMeta: Record<string, { client: { name: string; phone: string; email: string; address: string }; project: { name: string; siteAddress: string } }> = {};

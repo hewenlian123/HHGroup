@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import * as React from "react";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -12,6 +13,9 @@ import {
   ChevronLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { createBrowserClient } from "@/lib/supabase";
+import { getCompanyInitials, getCompanyProfile } from "@/lib/company-profile";
 
 type NavItem = { href: string; label: string; icon?: typeof LayoutDashboard };
 
@@ -51,6 +55,7 @@ const groups: Array<{ label: string; items: NavItem[] }> = [
     label: "Settings",
     items: [
       { href: "/settings", label: "Settings", icon: Settings },
+      { href: "/settings/company", label: "Company" },
       { href: "/settings/lists", label: "Lists" },
     ],
   },
@@ -58,6 +63,32 @@ const groups: Array<{ label: string; items: NavItem[] }> = [
 
 export function Sidebar({ className, onNavigate }: { className?: string; onNavigate?: () => void }) {
   const pathname = usePathname();
+  const [orgName, setOrgName] = React.useState("HH Group");
+  const [logoUrl, setLogoUrl] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !anon) return;
+
+    const client = createBrowserClient(url, anon);
+    let mounted = true;
+    const load = async () => {
+      try {
+        const profile = await getCompanyProfile(client);
+        if (!mounted || !profile) return;
+        setOrgName(profile.org_name || "HH Group");
+        setLogoUrl(profile.logo_url);
+      } catch {
+        // Keep default fallback branding.
+      }
+    };
+    void load();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <aside
@@ -67,7 +98,16 @@ export function Sidebar({ className, onNavigate }: { className?: string; onNavig
       )}
     >
       <div className="flex h-14 items-center gap-2 border-b border-zinc-200/60 px-4 dark:border-border">
-        <span className="text-sm font-semibold tracking-[0.12em] text-foreground">HH UNIFIED</span>
+        <Avatar className="h-7 w-7 rounded-md">
+          {logoUrl ? <AvatarImage src={logoUrl} alt={orgName} className="object-contain" /> : null}
+          <AvatarFallback className="rounded-md bg-primary/10 text-[11px] font-semibold text-primary">
+            {getCompanyInitials(orgName)}
+          </AvatarFallback>
+        </Avatar>
+        <div className="min-w-0">
+          <p className="truncate text-[11px] uppercase tracking-[0.14em] text-muted-foreground">HH Unified</p>
+          <p className="truncate text-sm font-semibold text-foreground">{orgName}</p>
+        </div>
       </div>
       <nav className="flex-1 overflow-y-auto px-2 py-3">
         {groups.map((group) => (

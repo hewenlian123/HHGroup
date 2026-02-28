@@ -13,6 +13,10 @@ export default function DashboardPage() {
   const stats = getDashboardStats();
   const transactions = getRecentTransactions();
   const riskOverview = getProjectRiskOverview();
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const maskTail = (value: string | undefined) =>
+    value && value.length >= 6 ? `...${value.slice(-6)}` : value ? `...${value}` : "MISSING";
 
   const kpis = [
     { key: "total-projects", label: "Total Projects", value: String(stats.totalProjects), icon: FolderKanban },
@@ -97,6 +101,10 @@ export default function DashboardPage() {
   return (
     <div className="page-container page-stack py-6">
       <PageHeader title="Dashboard" subtitle="Overview of projects and finances." />
+      <div className="rounded-lg border border-zinc-200/60 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+        Supabase URL configured: {supabaseUrl ? "YES" : "NO"} ({maskTail(supabaseUrl)}) | Anon key configured:{" "}
+        {supabaseAnonKey ? "YES" : "NO"} ({maskTail(supabaseAnonKey)})
+      </div>
       <KpiRow items={kpis} />
       <section className="section-stack">
         <Card className="rounded-2xl border border-zinc-200/40 dark:border-border overflow-hidden">
@@ -127,6 +135,7 @@ export default function DashboardPage() {
                 columns={riskColumns}
                 data={riskOverview.projects}
                 keyExtractor={(row) => row.projectId}
+                emptyText="No data yet."
                 rowClassName="group"
                 zebra
               />
@@ -140,7 +149,7 @@ export default function DashboardPage() {
             <SectionHeader title="Recent Transactions" subtitle="Latest financial activities across projects." />
           </CardHeader>
           <CardContent>
-            <DataTable columns={txColumns} data={transactions} keyExtractor={(row) => row.id} zebra />
+            <DataTable columns={txColumns} data={transactions} keyExtractor={(row) => row.id} emptyText="No data yet." zebra />
           </CardContent>
         </Card>
       </section>
