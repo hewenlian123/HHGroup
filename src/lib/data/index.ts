@@ -21,6 +21,20 @@ export function getProjectById(id: string): Project | undefined {
   return MOCK_PROJECTS.find((p) => p.id === id);
 }
 
+export function createProject(input: { name: string; budget: number; status?: Project["status"] }): Project {
+  const nextNum = MOCK_PROJECTS.reduce((max, p) => Math.max(max, Number(p.id.replace(/^p/, "")) || 0), 0) + 1;
+  const project: Project = {
+    id: `p${nextNum}`,
+    name: input.name.trim(),
+    status: input.status ?? "pending",
+    budget: Math.max(0, Number(input.budget) || 0),
+    spent: 0,
+    updated: new Date().toISOString().slice(0, 10),
+  };
+  MOCK_PROJECTS.push(project);
+  return { ...project };
+}
+
 export function getCommitments(projectId: string): Commitment[] {
   return commitments
     .filter((c) => c.projectId === projectId)

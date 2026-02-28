@@ -139,9 +139,11 @@ export default function ProjectsPage() {
         title="Projects"
         description="Manage all construction projects."
         actions={
-          <Button variant="ghost" className="rounded-lg text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800" size="default">
-            <Plus className="h-4 w-4 mr-2" />
-            New Project
+          <Button asChild variant="ghost" className="rounded-lg text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800" size="default">
+            <Link href="/projects/new">
+              <Plus className="h-4 w-4 mr-2" />
+              New Project
+            </Link>
           </Button>
         }
       />
