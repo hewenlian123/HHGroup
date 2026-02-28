@@ -70,8 +70,9 @@ export default function LaborWorkersPage() {
         .order("created_at", { ascending: false });
       if (error) throw error;
       setRows((data ?? []) as WorkerRow[]);
-    } catch (err: any) {
-      setMessage(err?.message ?? "Failed to fetch workers.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setMessage(msg || "Failed to fetch workers.");
       setRows([]);
     } finally {
       setLoading(false);
@@ -167,8 +168,9 @@ export default function LaborWorkersPage() {
       setEditorOpen(false);
       setForm(EMPTY_FORM);
       await refresh();
-    } catch (err: any) {
-      setMessage(err?.message ?? "Failed to save worker.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setMessage(msg || "Failed to save worker.");
     } finally {
       setSubmitting(false);
     }
@@ -188,8 +190,9 @@ export default function LaborWorkersPage() {
         const { error } = await supabase.from("workers").delete().eq("id", worker.id);
         if (error) throw error;
         await refresh();
-      } catch (err: any) {
-        setMessage(err?.message ?? "Failed to delete worker.");
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setMessage(msg || "Failed to delete worker.");
       } finally {
         setDeletingId(null);
       }

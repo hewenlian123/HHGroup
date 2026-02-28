@@ -25,7 +25,6 @@ import {
   type InvoiceStatus,
 } from "@/lib/data";
 import { Plus, Eye, CreditCard, Copy, Trash2 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { FilterBar } from "@/components/filter-bar";
 import { StatusBadge } from "@/components/status-badge";
 
