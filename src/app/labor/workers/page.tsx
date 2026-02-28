@@ -226,11 +226,6 @@ export default function LaborWorkersPage() {
           {message}
         </div>
       ) : null}
-      <div className="rounded-lg border border-zinc-200/60 dark:border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-        <p>Env URL: {process.env.NEXT_PUBLIC_SUPABASE_URL ? "OK" : "MISSING"}</p>
-        <p>Env ANON: {process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? "OK" : "MISSING"}</p>
-      </div>
-
       {editorOpen ? (
         <Card className="rounded-2xl border border-zinc-200/60 dark:border-border p-4">
           <div className="grid gap-3 md:grid-cols-2">

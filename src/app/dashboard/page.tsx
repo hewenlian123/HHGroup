@@ -9,10 +9,16 @@ import { SectionHeader } from "@/components/section-header";
 import { DataTable, type Column } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 
-export default function DashboardPage() {
+export default function DashboardPage({
+  searchParams,
+}: {
+  searchParams?: { [key: string]: string | string[] | undefined };
+}) {
   const stats = getDashboardStats();
   const transactions = getRecentTransactions();
   const riskOverview = getProjectRiskOverview();
+  const debugFlag = searchParams?.debug;
+  const debugEnabled = debugFlag === "1" || debugFlag === "true";
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const maskTail = (value: string | undefined) =>
@@ -101,10 +107,12 @@ export default function DashboardPage() {
   return (
     <div className="page-container page-stack py-6">
       <PageHeader title="Dashboard" subtitle="Overview of projects and finances." />
-      <div className="rounded-lg border border-zinc-200/60 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-        Supabase URL configured: {supabaseUrl ? "YES" : "NO"} ({maskTail(supabaseUrl)}) | Anon key configured:{" "}
-        {supabaseAnonKey ? "YES" : "NO"} ({maskTail(supabaseAnonKey)})
-      </div>
+      {debugEnabled ? (
+        <div className="rounded-lg border border-zinc-200/60 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+          Supabase URL configured: {supabaseUrl ? "YES" : "NO"} ({maskTail(supabaseUrl)}) | Anon key configured:{" "}
+          {supabaseAnonKey ? "YES" : "NO"} ({maskTail(supabaseAnonKey)})
+        </div>
+      ) : null}
       <KpiRow items={kpis} />
       <section className="section-stack">
         <Card className="rounded-2xl border border-zinc-200/40 dark:border-border overflow-hidden">

@@ -30,8 +30,8 @@ export default function NewProjectPage() {
       return;
     }
 
-    const project = createProject({ name: cleanName, budget: budgetValue, status });
-    router.push(`/projects/${project.id}`);
+    createProject({ name: cleanName, budget: budgetValue, status });
+    router.push("/projects");
   };
 
   return (
