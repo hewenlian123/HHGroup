@@ -21,6 +21,12 @@ import {
   ChevronRight,
   CircleDollarSign,
   Landmark,
+  CheckSquare,
+  ListChecks,
+  Calendar,
+  Camera,
+  ClipboardCheck,
+  Boxes,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -35,6 +41,17 @@ const sections: { label: string; items: NavItem[] }[] = [
     items: [
       { href: "/projects", label: "Projects", icon: FolderKanban },
       { href: "/estimates", label: "Estimates", icon: FileText },
+    ],
+  },
+  {
+    label: "OPERATIONS",
+    items: [
+      { href: "/tasks", label: "Tasks", icon: CheckSquare },
+      { href: "/punch-list", label: "Punch List", icon: ListChecks },
+      { href: "/schedule", label: "Schedule", icon: Calendar },
+      { href: "/site-photos", label: "Site Photos", icon: Camera },
+      { href: "/inspection-log", label: "Inspection Log", icon: ClipboardCheck },
+      { href: "/materials/catalog", label: "Material Catalog", icon: Boxes },
     ],
   },
   {

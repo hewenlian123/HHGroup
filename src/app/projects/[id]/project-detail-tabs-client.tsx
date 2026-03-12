@@ -31,6 +31,9 @@ import type { ProjectTransactionRow } from "@/lib/data";
 import type { ProjectLaborBreakdownRow } from "@/lib/data";
 import type { DocumentRow } from "@/lib/data";
 import { ProjectDocumentsTab } from "./project-documents-tab";
+import { ProjectTasksTab } from "./project-tasks-tab";
+import { ProjectCloseoutTab } from "./project-closeout-tab";
+import { ProjectMaterialsTab } from "./project-materials-tab";
 import { deleteProjectAction, getProjectUsageAction, archiveProjectAction } from "../actions";
 import { useToast } from "@/components/toast/toast-provider";
 import type { ProjectUsageCounts } from "@/lib/data";
@@ -67,7 +70,7 @@ export type RecentExpenseRow = {
 };
 export type BudgetRow = { id: string; metric: string; budget: string; actual: string; variance: string };
 
-type TabKey = "overview" | "financial" | "budget" | "expenses" | "documents" | "activity" | "change-orders" | "labor" | "subcontracts" | "bills";
+type TabKey = "overview" | "tasks" | "schedule" | "financial" | "budget" | "expenses" | "labor" | "subcontracts" | "bills" | "documents" | "activity" | "change-orders" | "materials" | "closeout";
 
 type ExpenseLineJoin = Awaited<ReturnType<typeof import("@/lib/data").getProjectExpenseLines>>[number];
 type SourceForProject = Awaited<ReturnType<typeof import("@/lib/data").getSourceForProject>>;
@@ -103,15 +106,26 @@ export function ProjectDetailTabsClient({
 
   type TabCache = Partial<{
     overview: { transactions: ProjectTransactionRow[]; expenseLines: ExpenseLineJoin[] };
+    tasks: { tasks: import("@/lib/data").ProjectTaskWithWorker[]; workers: import("@/lib/data").Worker[] };
+    schedule: { schedule: import("@/lib/data").ProjectScheduleItem[] };
     financial: { canonical: CanonicalProjectProfit; billingSummary: ProjectDetailTabsClientProps["billingSummary"] };
     budget: { canonical: CanonicalProjectProfit; billingSummary: ProjectDetailTabsClientProps["billingSummary"]; sourceFromEstimate: SourceForProject };
     expenses: { expenseLines: ExpenseLineJoin[] };
     documents: { documents: DocumentRow[] };
-    activity: { transactions: ProjectTransactionRow[] };
+    activity: { transactions: ProjectTransactionRow[]; activityLogs: import("@/lib/data").ActivityLog[] };
     "change-orders": { changeOrders: ChangeOrder[] };
     labor: { laborBreakdownRows: ProjectLaborBreakdownRow[]; laborEntries: LaborEntryJoin[] };
     subcontracts: { subcontracts: Subcontract[]; bills: SubcontractBill[]; payments: SubcontractPayment[] };
     bills: { projectBills: import("@/lib/data").ApBillWithProject[] };
+    materials: {
+      selections: import("@/lib/data").ProjectMaterialSelectionWithMaterial[];
+      catalog: import("@/lib/data").MaterialCatalogRow[];
+    };
+    closeout: {
+      punch: import("@/lib/data").CloseoutPunch | null;
+      warranty: import("@/lib/data").CloseoutWarranty | null;
+      completion: import("@/lib/data").CloseoutCompletion | null;
+    };
   }>;
 
   const [cache, setCache] = React.useState<TabCache>({});
@@ -386,15 +400,19 @@ export function ProjectDetailTabsClient({
           {(
             [
               { key: "overview" as const, label: "Overview" },
+              { key: "tasks" as const, label: "Tasks" },
+              { key: "schedule" as const, label: "Schedule" },
               { key: "financial" as const, label: "Financial" },
               { key: "budget" as const, label: "Budget" },
               { key: "expenses" as const, label: "Expenses" },
-              { key: "documents" as const, label: "Documents" },
-              { key: "activity" as const, label: "Activity" },
-              { key: "change-orders" as const, label: "Change Orders" },
               { key: "labor" as const, label: "Labor" },
               { key: "subcontracts" as const, label: "Subcontracts" },
               { key: "bills" as const, label: "Bills" },
+              { key: "documents" as const, label: "Documents" },
+              { key: "activity" as const, label: "Activity" },
+              { key: "change-orders" as const, label: "Change Orders" },
+              { key: "materials" as const, label: "Material Selections" },
+              { key: "closeout" as const, label: "Closeout" },
             ] as const
           ).map((t) => (
             <TabsTrigger
@@ -421,6 +439,57 @@ export function ProjectDetailTabsClient({
           <Divider />
           {loadingTab === "overview" && !cache.overview ? skeletonTable : (
             <DataTable<ProjectTransactionRow> columns={activityColumns} data={overviewTransactions} getRowId={(r) => r.id} />
+          )}
+        </TabsContent>
+
+        <TabsContent value="tasks" className="mt-3">
+          {loadingTab === "tasks" && !cache.tasks ? skeletonTable : (
+            <ProjectTasksTab
+              projectId={projectId}
+              tasks={cache.tasks?.tasks ?? []}
+              workers={cache.tasks?.workers ?? []}
+              onTaskCreated={() => {
+                setCache((prev) => ({ ...prev, tasks: undefined }));
+                fetchTab("tasks");
+              }}
+              onTaskUpdated={() => {
+                setCache((prev) => ({ ...prev, tasks: undefined }));
+                fetchTab("tasks");
+              }}
+            />
+          )}
+        </TabsContent>
+
+        <TabsContent value="schedule" className="mt-3">
+          <SectionHeader label="Schedule" />
+          <Divider />
+          {loadingTab === "schedule" && !cache.schedule ? skeletonTable : (
+            <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+              {(cache.schedule?.schedule ?? []).length === 0 ? (
+                <div className="py-8 text-center text-sm text-gray-500">No schedule items yet.</div>
+              ) : (
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50">
+                      <th className="text-left py-2.5 px-3 text-xs font-medium uppercase tracking-wide text-gray-500">Task</th>
+                      <th className="text-left py-2.5 px-3 text-xs font-medium uppercase tracking-wide text-gray-500">Start date</th>
+                      <th className="text-left py-2.5 px-3 text-xs font-medium uppercase tracking-wide text-gray-500">End date</th>
+                      <th className="text-left py-2.5 px-3 text-xs font-medium uppercase tracking-wide text-gray-500">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(cache.schedule?.schedule ?? []).map((s) => (
+                      <tr key={s.id} className="border-b border-gray-200 last:border-b-0 hover:bg-gray-50/80 transition-colors">
+                        <td className="py-2 px-3 font-medium text-gray-900">{s.title || "—"}</td>
+                        <td className="py-2 px-3 text-gray-600">{s.start_date ? new Date(s.start_date).toLocaleDateString() : "—"}</td>
+                        <td className="py-2 px-3 text-gray-600">{s.end_date ? new Date(s.end_date).toLocaleDateString() : "—"}</td>
+                        <td className="py-2 px-3 text-gray-600">{s.status ?? "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
           )}
         </TabsContent>
 
@@ -653,10 +722,74 @@ export function ProjectDetailTabsClient({
         </TabsContent>
 
         <TabsContent value="activity" className="mt-3">
-          <SectionHeader label="Transactions" />
+          <SectionHeader label="Activity log" />
           <Divider />
           {loadingTab === "activity" && !cache.activity ? skeletonTable : (
-            <DataTable<ProjectTransactionRow> columns={activityColumns} data={cache.activity?.transactions ?? []} getRowId={(r) => r.id} />
+            <div className="space-y-4">
+              <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                {(cache.activity?.activityLogs ?? []).length === 0 ? (
+                  <div className="py-8 text-center text-sm text-gray-500">No activity yet.</div>
+                ) : (
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="border-b border-gray-200 bg-gray-50">
+                        <th className="text-left py-2.5 px-3 text-xs font-medium uppercase tracking-wide text-gray-500">Date</th>
+                        <th className="text-left py-2.5 px-3 text-xs font-medium uppercase tracking-wide text-gray-500">Type</th>
+                        <th className="text-left py-2.5 px-3 text-xs font-medium uppercase tracking-wide text-gray-500">Description</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(cache.activity?.activityLogs ?? []).map((a) => (
+                        <tr key={a.id} className="border-b border-gray-200 last:border-b-0 hover:bg-gray-50/80 transition-colors">
+                          <td className="py-2 px-3 text-gray-600">
+                            {new Date(a.created_at).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" })}
+                          </td>
+                          <td className="py-2 px-3 font-medium text-gray-900 capitalize">{a.type.replace(/_/g, " ")}</td>
+                          <td className="py-2 px-3 text-gray-600">{a.description}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+              <SectionHeader label="Transactions" className="mt-6" />
+              <Divider />
+              <DataTable<ProjectTransactionRow> columns={activityColumns} data={cache.activity?.transactions ?? []} getRowId={(r) => r.id} />
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="materials" className="mt-3">
+          {loadingTab === "materials" && !cache.materials ? skeletonTable : (
+            <ProjectMaterialsTab
+              projectId={projectId}
+              projectName={project.name}
+              clientName={(project as { client_name?: string }).client_name}
+              selections={cache.materials?.selections ?? []}
+              catalog={cache.materials?.catalog ?? []}
+              onRefresh={() => {
+                setCache((prev) => ({ ...prev, materials: undefined }));
+                fetchTab("materials");
+              }}
+            />
+          )}
+        </TabsContent>
+
+        <TabsContent value="closeout" className="mt-3">
+          {loadingTab === "closeout" && !cache.closeout ? skeletonTable : (
+            <ProjectCloseoutTab
+              projectId={projectId}
+              projectName={project.name}
+              billingSummary={billingSummary}
+              contractValue={canonicalProfit.revenue}
+              punch={cache.closeout?.punch ?? null}
+              warranty={cache.closeout?.warranty ?? null}
+              completion={cache.closeout?.completion ?? null}
+              onRefresh={() => {
+                setCache((prev) => ({ ...prev, closeout: undefined }));
+                fetchTab("closeout");
+              }}
+            />
           )}
         </TabsContent>
 

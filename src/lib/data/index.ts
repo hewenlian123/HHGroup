@@ -21,6 +21,15 @@ import * as subcontractsDb from "../subcontracts-db";
 import * as subcontractBillsDb from "../subcontract-bills-db";
 import * as subcontractPaymentsDb from "../subcontract-payments-db";
 import * as documentsDb from "../documents-db";
+import * as projectTasksDb from "../project-tasks-db";
+import * as projectScheduleDb from "../project-schedule-db";
+import * as activityLogsDb from "../activity-logs-db";
+import * as punchListDb from "../punch-list-db";
+import * as sitePhotosDb from "../site-photos-db";
+import * as inspectionLogDb from "../inspection-log-db";
+import * as materialCatalogDb from "../material-catalog-db";
+import * as materialSelectionsDb from "../material-selections-db";
+import * as projectCloseoutDb from "../project-closeout-db";
 import * as apBillsDb from "../ap-bills-db";
 import { getCanonicalProjectProfit, getCanonicalProjectProfitBatch } from "../profit-engine";
 import type { EstimateListItem, EstimateItemRow } from "../estimates-db";
@@ -60,6 +69,20 @@ export type { SubcontractorRow, SubcontractorDraft, SubcontractorWithInsuranceAl
 export type { SubcontractRow, SubcontractWithSubcontractor, SubcontractDraft } from "../subcontracts-db";
 export type { SubcontractBillRow, SubcontractBillDraft } from "../subcontract-bills-db";
 export type { DocumentRow, DocumentWithProject, DocumentFilters, DocumentDraft, DocumentFileType } from "../documents-db";
+export type { ProjectTask, ProjectTaskWithWorker, ProjectTaskDraft, ProjectTaskStatus, ProjectTaskPriority } from "../project-tasks-db";
+export type { ProjectScheduleItem, ProjectScheduleItemDraft } from "../project-schedule-db";
+export type { ActivityLog } from "../activity-logs-db";
+export type { PunchListItem, PunchListItemWithJoins, PunchListDraft } from "../punch-list-db";
+export type { SitePhoto, SitePhotoWithProject, SitePhotoDraft } from "../site-photos-db";
+export type { InspectionLogEntry, InspectionLogEntryWithProject, InspectionLogDraft, InspectionLogStatus } from "../inspection-log-db";
+export type { MaterialCatalogRow, MaterialCatalogDraft } from "../material-catalog-db";
+export type { ProjectMaterialSelection, ProjectMaterialSelectionWithMaterial, ProjectMaterialSelectionDraft, MaterialSelectionStatus } from "../material-selections-db";
+export type {
+  CloseoutPunch,
+  CloseoutWarranty,
+  CloseoutCompletion,
+  PunchListItem as CloseoutPunchListItem,
+} from "../project-closeout-db";
 export type { ApBillRow, ApBillWithProject, ApBillPaymentRow, ApBillsFilters, ApBillType, ApBillStatus } from "../ap-bills-db";
 export { AP_BILL_TYPES, AP_BILL_STATUSES } from "../ap-bills-db";
 export type { DailyWorkEntry, DailyWorkEntryDraft, DayType, PayrollSummaryRow } from "../daily-work-db";
@@ -232,7 +255,8 @@ export async function createWorker(input: {
   phone?: string;
   trade?: string;
   status?: "active" | "inactive";
-  halfDayRate: number;
+  halfDayRate?: number;
+  dailyRate?: number;
   notes?: string;
 }): Promise<import("../labor-db").Worker> {
   return laborDb.createWorker(input);
@@ -631,6 +655,126 @@ export async function getDocumentSignedUrl(filePath: string, expiresIn?: number)
   return documentsDb.getDocumentSignedUrl(filePath, expiresIn);
 }
 export { DOCUMENT_FILE_TYPES, isPreviewableMime } from "../documents-db";
+export async function getAllTasksWithProject() {
+  return projectTasksDb.getAllTasksWithProject();
+}
+export async function getProjectTasks(projectId: string) {
+  return projectTasksDb.getProjectTasks(projectId);
+}
+export async function getProjectTaskById(taskId: string) {
+  return projectTasksDb.getProjectTaskById(taskId);
+}
+export async function createProjectTask(draft: import("../project-tasks-db").ProjectTaskDraft) {
+  return projectTasksDb.createProjectTask(draft);
+}
+export async function updateProjectTask(taskId: string, patch: Parameters<typeof projectTasksDb.updateProjectTask>[1]) {
+  return projectTasksDb.updateProjectTask(taskId, patch);
+}
+export async function deleteProjectTask(taskId: string) {
+  return projectTasksDb.deleteProjectTask(taskId);
+}
+export async function getAllScheduleWithProject() {
+  return projectScheduleDb.getAllScheduleWithProject();
+}
+export async function getProjectSchedule(projectId: string) {
+  return projectScheduleDb.getProjectSchedule(projectId);
+}
+export async function createProjectScheduleItem(draft: import("../project-schedule-db").ProjectScheduleItemDraft) {
+  return projectScheduleDb.createProjectScheduleItem(draft);
+}
+export async function updateProjectScheduleItem(id: string, patch: Parameters<typeof projectScheduleDb.updateProjectScheduleItem>[1]) {
+  return projectScheduleDb.updateProjectScheduleItem(id, patch);
+}
+export async function deleteProjectScheduleItem(id: string) {
+  return projectScheduleDb.deleteProjectScheduleItem(id);
+}
+export async function getActivityLogsByProject(projectId: string, limit?: number) {
+  return activityLogsDb.getActivityLogsByProject(projectId, limit);
+}
+export async function insertActivityLog(projectId: string, type: string, description: string) {
+  return activityLogsDb.insertActivityLog(projectId, type, description);
+}
+export async function getPunchListAll() {
+  return punchListDb.getPunchListAll();
+}
+export async function createPunchListItem(draft: import("../punch-list-db").PunchListDraft) {
+  return punchListDb.createPunchListItem(draft);
+}
+export async function updatePunchListItem(id: string, patch: Parameters<typeof punchListDb.updatePunchListItem>[1]) {
+  return punchListDb.updatePunchListItem(id, patch);
+}
+export async function deletePunchListItem(id: string) {
+  return punchListDb.deletePunchListItem(id);
+}
+export async function getSitePhotos(projectId?: string | null) {
+  return sitePhotosDb.getSitePhotos(projectId);
+}
+export async function getSitePhotoById(id: string) {
+  return sitePhotosDb.getSitePhotoById(id);
+}
+export async function createSitePhoto(draft: import("../site-photos-db").SitePhotoDraft) {
+  return sitePhotosDb.createSitePhoto(draft);
+}
+export async function updateSitePhoto(id: string, patch: Parameters<typeof sitePhotosDb.updateSitePhoto>[1]) {
+  return sitePhotosDb.updateSitePhoto(id, patch);
+}
+export async function deleteSitePhoto(id: string) {
+  return sitePhotosDb.deleteSitePhoto(id);
+}
+export async function getInspectionLogs() {
+  return inspectionLogDb.getInspectionLogs();
+}
+export async function getInspectionLogById(id: string) {
+  return inspectionLogDb.getInspectionLogById(id);
+}
+export async function createInspectionLog(draft: import("../inspection-log-db").InspectionLogDraft) {
+  return inspectionLogDb.createInspectionLog(draft);
+}
+export async function updateInspectionLog(id: string, patch: Parameters<typeof inspectionLogDb.updateInspectionLog>[1]) {
+  return inspectionLogDb.updateInspectionLog(id, patch);
+}
+export async function deleteInspectionLog(id: string) {
+  return inspectionLogDb.deleteInspectionLog(id);
+}
+export async function getMaterialCatalog() {
+  return materialCatalogDb.getMaterialCatalog();
+}
+export async function createMaterial(draft: import("../material-catalog-db").MaterialCatalogDraft) {
+  return materialCatalogDb.createMaterial(draft);
+}
+export async function updateMaterial(id: string, patch: Parameters<typeof materialCatalogDb.updateMaterial>[1]) {
+  return materialCatalogDb.updateMaterial(id, patch);
+}
+export async function getSelectionsByProject(projectId: string) {
+  return materialSelectionsDb.getSelectionsByProject(projectId);
+}
+export async function createMaterialSelection(draft: import("../material-selections-db").ProjectMaterialSelectionDraft) {
+  return materialSelectionsDb.createSelection(draft);
+}
+export async function updateMaterialSelection(id: string, patch: Parameters<typeof materialSelectionsDb.updateSelection>[1]) {
+  return materialSelectionsDb.updateSelection(id, patch);
+}
+export async function deleteMaterialSelection(id: string) {
+  return materialSelectionsDb.deleteSelection(id);
+}
+export async function getCloseoutPunch(projectId: string) {
+  return projectCloseoutDb.getCloseoutPunch(projectId);
+}
+export async function upsertCloseoutPunch(projectId: string, data: Parameters<typeof projectCloseoutDb.upsertCloseoutPunch>[1]) {
+  return projectCloseoutDb.upsertCloseoutPunch(projectId, data);
+}
+export async function getCloseoutWarranty(projectId: string) {
+  return projectCloseoutDb.getCloseoutWarranty(projectId);
+}
+export async function upsertCloseoutWarranty(projectId: string, data: Parameters<typeof projectCloseoutDb.upsertCloseoutWarranty>[1]) {
+  return projectCloseoutDb.upsertCloseoutWarranty(projectId, data);
+}
+export async function getCloseoutCompletion(projectId: string) {
+  return projectCloseoutDb.getCloseoutCompletion(projectId);
+}
+export async function upsertCloseoutCompletion(projectId: string, data: Parameters<typeof projectCloseoutDb.upsertCloseoutCompletion>[1]) {
+  return projectCloseoutDb.upsertCloseoutCompletion(projectId, data);
+}
 export async function getApBills(filters: import("../ap-bills-db").ApBillsFilters = {}) {
   return apBillsDb.getApBills(filters);
 }

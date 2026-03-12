@@ -12,20 +12,32 @@ import {
   getBillsBySubcontractIds,
   getPaymentsBySubcontractIds,
   getApBillsByProject,
+  getProjectTasks,
+  getProjectSchedule,
+  getActivityLogsByProject,
+  getWorkers,
+  getCloseoutPunch,
+  getCloseoutWarranty,
+  getCloseoutCompletion,
+  getSelectionsByProject,
+  getMaterialCatalog,
 } from "@/lib/data";
 import { getCanonicalProjectProfit } from "@/lib/profit-engine";
 
 type TabKey =
   | "overview"
+  | "tasks"
+  | "schedule"
   | "financial"
   | "budget"
   | "expenses"
-  | "documents"
-  | "activity"
-  | "change-orders"
   | "labor"
   | "subcontracts"
-  | "bills";
+  | "bills"
+  | "documents"
+  | "activity"
+  | "materials"
+  | "closeout";
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ ok: false as const, message }, { status });
@@ -63,6 +75,16 @@ export async function GET(
       });
     }
 
+    if (key === "tasks") {
+      const [tasks, workers] = await Promise.all([getProjectTasks(id), getWorkers()]);
+      return NextResponse.json({ ok: true as const, key, tasks, workers });
+    }
+
+    if (key === "schedule") {
+      const schedule = await getProjectSchedule(id);
+      return NextResponse.json({ ok: true as const, key, schedule });
+    }
+
     if (key === "budget") {
       const [canonical, billingSummary, sourceFromEstimate] = await Promise.all([
         getCanonicalProjectProfit(id),
@@ -83,8 +105,11 @@ export async function GET(
     }
 
     if (key === "activity") {
-      const transactions = await Promise.resolve(getProjectTransactions(id));
-      return NextResponse.json({ ok: true as const, key, transactions });
+      const [transactions, activityLogs] = await Promise.all([
+        Promise.resolve(getProjectTransactions(id)),
+        getActivityLogsByProject(id, 100),
+      ]);
+      return NextResponse.json({ ok: true as const, key, transactions, activityLogs });
     }
 
     if (key === "change-orders") {
@@ -113,6 +138,23 @@ export async function GET(
     if (key === "bills") {
       const projectBills = await getApBillsByProject(id).catch(() => []);
       return NextResponse.json({ ok: true as const, key, projectBills });
+    }
+
+    if (key === "materials") {
+      const [selections, catalog] = await Promise.all([
+        getSelectionsByProject(id),
+        getMaterialCatalog(),
+      ]);
+      return NextResponse.json({ ok: true as const, key, selections, catalog });
+    }
+
+    if (key === "closeout") {
+      const [punch, warranty, completion] = await Promise.all([
+        getCloseoutPunch(id).catch(() => null),
+        getCloseoutWarranty(id).catch(() => null),
+        getCloseoutCompletion(id).catch(() => null),
+      ]);
+      return NextResponse.json({ ok: true as const, key, punch, warranty, completion });
     }
 
     return jsonError("Unknown tab key", 400);

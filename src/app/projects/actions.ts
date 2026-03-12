@@ -2,8 +2,18 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { createProject, deleteProject, getProjectUsageCounts, updateProject } from "@/lib/data";
+import {
+  createProject,
+  deleteProject,
+  getProjectUsageCounts,
+  updateProject,
+  createProjectTask,
+  updateProjectTask,
+  deleteProjectTask,
+  insertActivityLog,
+} from "@/lib/data";
 import type { ProjectUsageCounts } from "@/lib/data";
+import type { ProjectTaskStatus } from "@/lib/project-tasks-db";
 
 export async function createProjectAction(prevState: { error?: string } | null, formData: FormData): Promise<{ error?: string } | null> {
   const name = (formData.get("name") as string)?.trim();
@@ -75,6 +85,65 @@ export async function deleteProjectAction(projectId: string): Promise<{ error?: 
     redirect("/projects");
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to delete project.";
+    return { error: message };
+  }
+}
+
+export async function createProjectTaskAction(projectId: string, draft: {
+  title: string;
+  description?: string | null;
+  assigned_worker_id?: string | null;
+  due_date?: string | null;
+  priority?: "low" | "medium" | "high";
+  status?: ProjectTaskStatus;
+}): Promise<{ error?: string }> {
+  if (!projectId?.trim()) return { error: "Project ID is required." };
+  try {
+    await createProjectTask({
+      project_id: projectId,
+      title: draft.title.trim() || "Untitled",
+      description: draft.description?.trim() || null,
+      assigned_worker_id: draft.assigned_worker_id ?? null,
+      due_date: draft.due_date?.slice(0, 10) ?? null,
+      priority: (draft.priority as "low" | "medium" | "high") ?? "medium",
+      status: draft.status ?? "todo",
+    });
+    revalidatePath(`/projects/${projectId}`);
+    revalidatePath("/tasks");
+    return {};
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Failed to create task.";
+    return { error: message };
+  }
+}
+
+export async function updateProjectTaskAction(
+  projectId: string,
+  taskId: string,
+  patch: { title?: string; description?: string | null; status?: ProjectTaskStatus; assigned_worker_id?: string | null; due_date?: string | null; priority?: "low" | "medium" | "high" }
+): Promise<{ error?: string }> {
+  if (!projectId?.trim() || !taskId?.trim()) return { error: "Project and task ID are required." };
+  try {
+    const updated = await updateProjectTask(taskId, patch);
+    if (patch.status === "done" && updated?.project_id) {
+      await insertActivityLog(updated.project_id, "task_completed", "Task completed");
+    }
+    revalidatePath(`/projects/${projectId}`);
+    return {};
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Failed to update task.";
+    return { error: message };
+  }
+}
+
+export async function deleteProjectTaskAction(projectId: string, taskId: string): Promise<{ error?: string }> {
+  if (!projectId?.trim() || !taskId?.trim()) return { error: "Project and task ID are required." };
+  try {
+    await deleteProjectTask(taskId);
+    revalidatePath(`/projects/${projectId}`);
+    return {};
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Failed to delete task.";
     return { error: message };
   }
 }

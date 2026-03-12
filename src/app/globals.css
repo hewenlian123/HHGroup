@@ -161,6 +161,7 @@
 @layer base {
   body {
     @apply bg-[#F7F7F8] text-[#111111];
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   }
 }
 
@@ -186,6 +187,13 @@
     background: #fff;
   }
   .estimate-print-section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .final-punch-print {
     break-inside: avoid;
     page-break-inside: avoid;
   }

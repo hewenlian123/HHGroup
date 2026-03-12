@@ -25,11 +25,20 @@ type Props = {
   onSuccess: () => void;
 };
 
+const OT_MULTIPLIER = 1.5;
+
 type WorkerSelection = {
   workerId: string;
   morning: boolean;
   afternoon: boolean;
+  otHours: number;
 };
+
+function computeTotalPay(dailyRate: number, morning: boolean, afternoon: boolean, otHours: number): number {
+  const base = morning && afternoon ? dailyRate : (morning || afternoon ? dailyRate / 2 : 0);
+  const otPay = Math.max(0, otHours) * (dailyRate / 8) * OT_MULTIPLIER;
+  return base + otPay;
+}
 
 export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
   const [projectId, setProjectId] = React.useState("");
@@ -61,6 +70,7 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
             workerId: worker.id,
             morning: false,
             afternoon: false,
+            otHours: 0,
           }))
         );
       }
@@ -105,6 +115,14 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
     );
   };
 
+  const setOtHours = (workerId: string, value: number) => {
+    setSelections((prev) =>
+      prev.map((s) =>
+        s.workerId === workerId ? { ...s, otHours: Math.max(0, value) } : s
+      )
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!projectId || !workDate) {
@@ -120,6 +138,7 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
       workerId: s.workerId,
       morning: s.morning,
       afternoon: s.afternoon,
+      otHours: s.otHours,
     }));
     setError(null);
     setBusy(true);
@@ -139,7 +158,7 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md border-border/60 rounded-lg gap-4 p-5 max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-lg border-border/60 rounded-lg gap-4 p-5 max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-base font-semibold">
             Add Daily Entry
@@ -186,15 +205,27 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
               disabled.
             </p>
           </div>
-          <div className="flex-1 overflow-y-auto min-h-0 border-b border-border/60">
-            <table className="w-full text-sm">
+          <div className="flex-1 overflow-x-auto overflow-y-auto min-h-0 border-b border-border/60">
+            <table className="w-full text-sm table-fixed sm:table-auto min-w-[420px]">
               <thead>
                 <tr className="border-b border-border/60">
                   <th className="text-left py-2 text-xs font-medium text-muted-foreground">
                     Worker
                   </th>
-                  <th className="text-right py-2 text-xs font-medium text-muted-foreground w-32">
-                    AM / PM
+                  <th className="text-left py-2 text-xs font-medium text-muted-foreground whitespace-nowrap w-20 sm:w-24">
+                    Rate
+                  </th>
+                  <th className="text-center py-2 text-xs font-medium text-muted-foreground w-24">
+                    AM
+                  </th>
+                  <th className="text-center py-2 text-xs font-medium text-muted-foreground w-24">
+                    PM
+                  </th>
+                  <th className="text-center py-2 text-xs font-medium text-muted-foreground w-16 sm:w-20">
+                    OT
+                  </th>
+                  <th className="text-right py-2 text-xs font-medium text-muted-foreground whitespace-nowrap w-20 sm:w-24">
+                    Total Pay
                   </th>
                 </tr>
               </thead>
@@ -202,6 +233,10 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
                 {workers.map((worker) => {
                   const sel = selections.find((s) => s.workerId === worker.id);
                   const disabled = disabledWorkerIds.has(worker.id);
+                  const rate = worker.dailyRate != null && Number(worker.dailyRate) >= 0 ? Number(worker.dailyRate) : 0;
+                  const total = sel
+                    ? computeTotalPay(rate, sel.morning, sel.afternoon, sel.otHours)
+                    : 0;
                   return (
                     <tr
                       key={worker.id}
@@ -211,37 +246,56 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
                           : "border-b border-border/30"
                       }
                     >
-                      <td className="py-2 pr-2">
-                        <span className="font-medium">{worker.name}</span>
+                      <td className="py-2 pr-2 min-w-0">
+                        <span className="font-medium truncate block">{worker.name}</span>
                         {disabled ? (
                           <span className="block text-xs text-muted-foreground">
                             Already has entry
                           </span>
                         ) : null}
                       </td>
-                      <td className="py-2 text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant={sel?.morning ? "default" : "outline"}
-                            className="h-8 rounded-sm min-w-[52px]"
-                            onClick={() => toggleMorning(worker.id)}
-                            disabled={disabled}
-                          >
-                            AM
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant={sel?.afternoon ? "default" : "outline"}
-                            className="h-8 rounded-sm min-w-[52px]"
-                            onClick={() => toggleAfternoon(worker.id)}
-                            disabled={disabled}
-                          >
-                            PM
-                          </Button>
-                        </div>
+                      <td className="py-2 text-muted-foreground whitespace-nowrap text-xs sm:text-sm">
+                        ${Math.round(rate)}/day
+                      </td>
+                      <td className="py-2 text-center">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={sel?.morning ? "default" : "outline"}
+                          className="h-8 rounded-sm min-w-[44px] w-full sm:min-w-[44px]"
+                          onClick={() => toggleMorning(worker.id)}
+                          disabled={disabled}
+                        >
+                          AM
+                        </Button>
+                      </td>
+                      <td className="py-2 text-center">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant={sel?.afternoon ? "default" : "outline"}
+                          className="h-8 rounded-sm min-w-[44px] w-full sm:min-w-[44px]"
+                          onClick={() => toggleAfternoon(worker.id)}
+                          disabled={disabled}
+                        >
+                          PM
+                        </Button>
+                      </td>
+                      <td className="py-2 px-1">
+                        <Input
+                          type="number"
+                          min={0}
+                          step={0.5}
+                          value={sel?.otHours ?? 0}
+                          onChange={(e) => setOtHours(worker.id, parseFloat(e.target.value) || 0)}
+                          disabled={disabled}
+                          className="h-8 w-full min-w-0 text-center text-sm tabular-nums"
+                        />
+                      </td>
+                      <td className="py-2 text-right text-muted-foreground tabular-nums text-xs sm:text-sm">
+                        {((sel?.morning || sel?.afternoon) || ((sel?.otHours ?? 0) > 0))
+                          ? `$${total.toFixed(2)}`
+                          : "—"}
                       </td>
                     </tr>
                   );

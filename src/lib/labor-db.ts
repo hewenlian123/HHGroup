@@ -132,7 +132,7 @@ function isMissingTable(err: { message?: string } | null): boolean {
 
 function isMissingColumn(err: { message?: string } | null): boolean {
   const m = err?.message ?? "";
-  return /column.*does not exist|does not exist.*column|undefined column/i.test(m);
+  return /column.*does not exist|does not exist.*column|undefined column|could not find.*daily_rate|daily_rate.*schema cache/i.test(m);
 }
 
 function toWorker(r: WorkerRow): Worker {
@@ -240,22 +240,52 @@ export async function getWorkerById(id: string): Promise<Worker | null> {
   return toWorker(row as WorkerRow);
 }
 
-export async function createWorker(input: { name: string; phone?: string; trade?: string; status?: "active" | "inactive"; halfDayRate: number; notes?: string }): Promise<Worker> {
+export async function createWorker(input: {
+  name: string;
+  phone?: string;
+  trade?: string;
+  status?: "active" | "inactive";
+  halfDayRate?: number;
+  dailyRate?: number;
+  notes?: string;
+}): Promise<Worker> {
   const c = client();
+  const dailyRate = input.dailyRate != null ? Number(input.dailyRate) : undefined;
+  const halfDayRate = input.halfDayRate != null ? Number(input.halfDayRate) : dailyRate != null ? dailyRate / 2 : 0;
+  const payload: Record<string, unknown> = {
+    name: input.name.trim(),
+    phone: input.phone?.trim() ?? null,
+    role: input.trade?.trim() ?? null,
+    status: input.status ?? "active",
+    half_day_rate: Math.max(0, halfDayRate),
+    notes: input.notes?.trim() ?? null,
+  };
+  if (dailyRate != null && Number(dailyRate) >= 0) payload.daily_rate = dailyRate;
   const { data: row, error } = await c
     .from("workers")
-    .insert({
-      name: input.name.trim(),
-      phone: input.phone?.trim() ?? null,
-      role: input.trade?.trim() ?? null,
-      status: input.status ?? "active",
-      half_day_rate: Math.max(0, input.halfDayRate),
-      notes: input.notes?.trim() ?? null,
-    })
-    .select("id, name, role, phone, half_day_rate, status, notes, created_at")
+    .insert(payload)
+    .select("id, name, role, phone, half_day_rate, daily_rate, status, notes, created_at")
     .single();
-  if (error || !row) throw new Error(error?.message ?? "Failed to create worker.");
-  return toWorker(row as WorkerRow);
+  if (error) {
+    if (isMissingColumn(error)) {
+      const { data: row2, error: err2 } = await c
+        .from("workers")
+        .insert({
+          name: input.name.trim(),
+          phone: input.phone?.trim() ?? null,
+          role: input.trade?.trim() ?? null,
+          status: input.status ?? "active",
+          half_day_rate: Math.max(0, halfDayRate),
+          notes: input.notes?.trim() ?? null,
+        })
+        .select("id, name, role, phone, half_day_rate, status, notes, created_at")
+        .single();
+      if (err2 || !row2) throw new Error(err2?.message ?? "Failed to create worker.");
+      return toWorker(row2 as WorkerRow);
+    }
+    throw new Error(error.message ?? "Failed to create worker.");
+  }
+  return toWorker((row ?? {}) as WorkerRow);
 }
 
 export async function updateWorker(
@@ -377,9 +407,14 @@ export type DailyLaborRowInput = {
   workerId: string;
   morning: boolean;
   afternoon: boolean;
+  /** Optional OT hours. Pay = base (AM/PM) + otHours * (dailyRate/8)*1.5 */
+  otHours?: number;
 };
 
-/** Insert one labor_entries row per worker with morning and/or afternoon set. AM = 0.5h, PM = 0.5h, both = 1h. */
+/** Overtime rate multiplier (1.5x typical). */
+const OT_MULTIPLIER = 1.5;
+
+/** Insert one labor_entries row per worker with morning and/or afternoon set. AM = 0.5h, PM = 0.5h, both = 1h. Total pay = base + OT. */
 export async function insertDailyLaborEntries(
   projectId: string,
   workDate: string,
@@ -402,7 +437,11 @@ export async function insertDailyLaborEntries(
     const hours = (r.morning ? 0.5 : 0) + (r.afternoon ? 0.5 : 0);
     if (hours <= 0) continue;
     const dailyRate = worker.dailyRate ?? (worker.halfDayRate ?? 0) * 2;
-    const payAmount = (r.morning ? dailyRate / 2 : 0) + (r.afternoon ? dailyRate / 2 : 0);
+    const basePay = (r.morning ? dailyRate / 2 : 0) + (r.afternoon ? dailyRate / 2 : 0);
+    const otHours = Math.max(0, Number(r.otHours) || 0);
+    const otRate = (dailyRate / 8) * OT_MULTIPLIER;
+    const otPay = otHours * otRate;
+    const totalPay = basePay + otPay;
     payloads.push({
       worker_id: r.workerId,
       project_id: projectId || null,
@@ -412,7 +451,7 @@ export async function insertDailyLaborEntries(
       hours,
       cost_code: options?.costCode?.trim() || null,
       notes: options?.notes?.trim() || null,
-      cost_amount: payAmount,
+      cost_amount: totalPay,
     });
   }
   if (payloads.length === 0) return [];
@@ -430,6 +469,12 @@ export async function insertDailyLaborEntries(
       const { data: fallback, error: err2 } = await c.from("labor_entries").insert(payloadsHoursOnly).select(LABOR_ENTRIES_COLS);
       if (err2) throw new Error(err2.message ?? "Failed to save daily labor entries.");
       return (fallback ?? []).map((row) => toLaborEntry(row as LaborEntryRow));
+    }
+    const msg = error.message ?? "";
+    if (/foreign key constraint|worker_id_fkey/i.test(msg)) {
+      throw new Error(
+        "Selected worker(s) not found in the database. Run the migration that syncs labor_workers from workers (202604010000), or run that sync SQL in the Supabase SQL Editor."
+      );
     }
     throw new Error(error.message ?? "Failed to save daily labor entries.");
   }
