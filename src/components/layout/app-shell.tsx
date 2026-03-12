@@ -12,7 +12,10 @@ import { cn } from "@/lib/utils";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const barePage = pathname === "/upload-receipt" || pathname?.startsWith("/upload-receipt/");
+  const barePage =
+    pathname === "/receipt" ||
+    pathname === "/upload-receipt" ||
+    pathname?.startsWith("/upload-receipt/");
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [collapsed, setCollapsed] = React.useState(false);
 
