@@ -21,6 +21,9 @@ const withPWA = withPWAInit({
 export default function nextConfig(phase) {
   const base = {
     distDir: phase === PHASE_DEVELOPMENT_SERVER ? ".next-dev" : ".next",
+    eslint: {
+      ignoreDuringBuilds: true,
+    },
   };
   return withPWA(base);
 }

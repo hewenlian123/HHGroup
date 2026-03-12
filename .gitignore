@@ -1,5 +1,14 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
+# Next.js build and cache
+.next
+.next/
+node_modules
+.env
+.env.local
+.env.production
+.DS_Store
+
 # dependencies
 /node_modules
 /.pnp
@@ -39,7 +48,4 @@ yarn-error.log*
 next-env.d.ts
 
 # dev caches
-.next/
 .next-dev/
-node_modules/
-.DS_Store
