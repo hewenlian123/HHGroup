@@ -1,9 +1,14 @@
 {
   "pages": {
-    "/labor/workers/page": [
+    "/labor/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/labor/workers/page.js"
+      "static/chunks/app/labor/page.js"
+    ],
+    "/labor/layout": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/labor/layout.js"
     ],
     "/layout": [
       "static/chunks/webpack.js",
@@ -11,80 +16,120 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
-    "/labor/review/page": [
+    "/error": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/labor/review/page.js"
+      "static/chunks/app/error.js"
     ],
-    "/financial/bank/page": [
+    "/not-found": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/financial/bank/page.js"
+      "static/chunks/app/not-found.js"
+    ],
+    "/financial/accounts/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/financial/accounts/page.js"
     ],
     "/financial/expenses/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/financial/expenses/page.js"
     ],
+    "/workers/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/workers/page.js"
+    ],
+    "/labor/reimbursements/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/labor/reimbursements/page.js"
+    ],
+    "/labor/worker-invoices/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/labor/worker-invoices/page.js"
+    ],
+    "/labor/payroll/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/labor/payroll/page.js"
+    ],
     "/labor/payments/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/labor/payments/page.js"
     ],
-    "/financial/page": [
+    "/labor/subcontractors/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/financial/page.js"
+      "static/chunks/app/labor/subcontractors/page.js"
     ],
-    "/financial/invoices/page": [
+    "/subcontractors/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/financial/invoices/page.js"
+      "static/chunks/app/subcontractors/page.js"
     ],
-    "/labor/page": [
+    "/documents/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/labor/page.js"
-    ],
-    "/projects/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/projects/page.js"
-    ],
-    "/dashboard/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/dashboard/page.js"
-    ],
-    "/projects/[id]/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/projects/[id]/page.js"
-    ],
-    "/estimates/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/estimates/page.js"
+      "static/chunks/app/documents/page.js"
     ],
     "/settings/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/settings/page.js"
     ],
-    "/settings/lists/page": [
+    "/settings/company/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/settings/lists/page.js"
+      "static/chunks/app/settings/company/page.js"
     ],
-    "/labor/invoices/page": [
+    "/dashboard/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/labor/invoices/page.js"
+      "static/chunks/app/dashboard/page.js"
     ],
-    "/financial/ar/page": [
+    "/dashboard/loading": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/financial/ar/page.js"
+      "static/chunks/app/dashboard/loading.js"
+    ],
+    "/projects/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/projects/page.js"
+    ],
+    "/projects/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/projects/[id]/page.js"
+    ],
+    "/financial/invoices/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/financial/invoices/page.js"
+    ],
+    "/financial/deposits/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/financial/deposits/page.js"
+    ],
+    "/bills/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/bills/page.js"
+    ],
+    "/financial/payments/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/financial/payments/page.js"
+    ],
+    "/financial/invoices/[id]/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/financial/invoices/[id]/page.js"
     ]
   }
 }

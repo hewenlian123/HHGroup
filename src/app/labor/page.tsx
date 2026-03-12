@@ -2,262 +2,272 @@
 
 import * as React from "react";
 import { PageHeader } from "@/components/page-header";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   getProjects,
-  getLaborWorkers,
-  getLaborEntriesByDate,
-  upsertLaborEntry,
-  clearLaborEntry,
-  confirmLaborEntry,
-  unconfirmLaborEntry,
-  type LaborEntry,
-  type LaborWorker,
+  getWorkers,
+  getDailyWorkEntriesByDate,
+  insertDailyWorkEntry,
+  updateDailyWorkEntry,
+  deleteDailyWorkEntry,
+  dayPayForEntry,
+  totalPayForEntry,
+  type DailyWorkEntry,
+  type DailyWorkEntryDraft,
+  type DayType,
 } from "@/lib/data";
 
-type DraftRow = {
-  localId: string;
-  id?: string;
-  date: string;
-  workerId: string;
-  amWorked: boolean;
-  amProjectId?: string;
-  pmWorked: boolean;
-  pmProjectId?: string;
-  otAmount: number;
-  otProjectId?: string;
-  status: "draft" | "confirmed";
-  reviewedAt?: string;
-};
+const DAY_TYPES: { value: DayType; label: string }[] = [
+  { value: "full_day", label: "Full Day" },
+  { value: "half_day", label: "Half Day" },
+  { value: "absent", label: "Absent" },
+];
 
-function makeEmptyDraft(date: string): DraftRow {
+function fmtUsd(n: number): string {
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+}
+
+type DraftRow = (DailyWorkEntry | (DailyWorkEntryDraft & { id?: string; workDate: string; createdAt?: string })) & { localId: string };
+
+function toDraft(entry: DailyWorkEntry): DraftRow {
   return {
-    localId: `draft-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-    date,
-    workerId: "",
-    amWorked: false,
-    amProjectId: undefined,
-    pmWorked: false,
-    pmProjectId: undefined,
-    otAmount: 0,
-    otProjectId: undefined,
-    status: "draft",
-    reviewedAt: undefined,
+    ...entry,
+    localId: entry.id,
+    workDate: entry.workDate,
   };
 }
 
-function getDraftFromEntry(row: LaborEntry): DraftRow {
+function emptyDraft(workDate: string): DraftRow {
   return {
-    localId: row.id,
-    id: row.id,
-    date: row.date,
-    workerId: row.workerId,
-    amWorked: row.amWorked,
-    amProjectId: row.amProjectId,
-    pmWorked: row.pmWorked,
-    pmProjectId: row.pmProjectId,
-    otAmount: row.otAmount,
-    otProjectId: row.otProjectId,
-    status: row.status,
-    reviewedAt: row.reviewedAt,
+    localId: `draft-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+    workDate,
+    workerId: "",
+    projectId: null,
+    dayType: "full_day",
+    dailyRate: 0,
+    otAmount: 0,
+    notes: null,
   };
 }
 
 export default function LaborPage() {
-  const [date, setDate] = React.useState(() => new Date().toISOString().slice(0, 10));
-  const [workers] = React.useState<LaborWorker[]>(() => getLaborWorkers());
-  const projects = getProjects();
-  const workerById = React.useMemo(() => new Map(workers.map((w) => [w.id, w])), [workers]);
-  const [drafts, setDrafts] = React.useState<DraftRow[]>([]);
+  const [workDate, setWorkDate] = React.useState(() => new Date().toISOString().slice(0, 10));
+  const [projectFilter, setProjectFilter] = React.useState<string>("");
+  const [workers, setWorkers] = React.useState<Awaited<ReturnType<typeof getWorkers>>>([]);
+  const [projects, setProjects] = React.useState<Awaited<ReturnType<typeof getProjects>>>([]);
+  const [rows, setRows] = React.useState<DraftRow[]>([]);
+  const [loading, setLoading] = React.useState(true);
   const [message, setMessage] = React.useState<string | null>(null);
-  const [highlightedRowId, setHighlightedRowId] = React.useState<string | null>(null);
+  const [ensureSchemaLoading, setEnsureSchemaLoading] = React.useState(false);
 
-  const refresh = React.useCallback(() => {
-    const rows = getLaborEntriesByDate(date);
-    setDrafts(rows.length ? [...rows.map(getDraftFromEntry), makeEmptyDraft(date)] : [makeEmptyDraft(date)]);
-  }, [date]);
-
-  React.useEffect(() => {
-    refresh();
-  }, [refresh]);
-
-  React.useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    const nextDate = params.get("date");
-    const nextRow = params.get("row");
-    if (nextDate) setDate(nextDate);
-    setHighlightedRowId(nextRow);
-  }, []);
-
-  const updateDraft = (localId: string, patch: Partial<DraftRow>) => {
-    setDrafts((prev) => prev.map((row) => (row.localId === localId ? { ...row, ...patch } : row)));
-  };
-
-  const validate = (row: DraftRow): string | null => {
-    if (!row.workerId) return "Worker is required.";
-    if (row.amWorked && !row.amProjectId) return "AM Project is required when AM Worked is checked.";
-    if (row.pmWorked && !row.pmProjectId) return "PM Project is required when PM Worked is checked.";
-    if (row.otAmount > 0 && !row.otProjectId) return "OT Project is required when OT Amount is greater than 0.";
-    return null;
-  };
-
-  const handleSave = (row: DraftRow) => {
-    const error = validate(row);
-    if (error) {
-      setMessage(error);
-      return;
-    }
-    if (!row.workerId && !row.amWorked && !row.pmWorked && row.otAmount <= 0) {
-      setMessage("Nothing to save.");
-      return;
-    }
-    upsertLaborEntry({
-      id: row.id ?? "",
-      date: row.date,
-      workerId: row.workerId,
-      amWorked: row.amWorked,
-      amProjectId: row.amProjectId,
-      pmWorked: row.pmWorked,
-      pmProjectId: row.pmProjectId,
-      otAmount: Number.isFinite(row.otAmount) ? Math.max(0, row.otAmount) : 0,
-      otProjectId: row.otProjectId,
-      status: row.status ?? "draft",
-    });
-    setMessage("Entry saved as draft.");
-    refresh();
-  };
-
-  const handleClear = (row: DraftRow) => {
-    if (row.id) clearLaborEntry(row.id);
-    setMessage("Row cleared.");
-    setDrafts((prev) => prev.map((r) => (r.localId === row.localId ? makeEmptyDraft(date) : r)));
-  };
-
-  const handleConfirmToggle = (row: DraftRow) => {
-    if (!row.id) {
-      setMessage("Save the row before confirming.");
-      return;
-    }
-    if (row.status === "confirmed") {
-      const updated = unconfirmLaborEntry(row.id);
-      if (!updated) {
-        setMessage("Unable to unconfirm row.");
-        return;
+  const load = React.useCallback(async () => {
+    setLoading(true);
+    try {
+      const [w, p, entries] = await Promise.all([
+        getWorkers(),
+        getProjects(),
+        getDailyWorkEntriesByDate(workDate),
+      ]);
+      setWorkers(w);
+      setProjects(p);
+      let list = entries.map(toDraft);
+      if (projectFilter) {
+        list = list.filter((r) => r.projectId === projectFilter);
       }
-      setMessage("Row set back to draft.");
+      if (list.length === 0) list = [emptyDraft(workDate)];
+      setRows(list);
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Failed to load.");
+      setRows([emptyDraft(workDate)]);
+    } finally {
+      setLoading(false);
+    }
+  }, [workDate, projectFilter]);
+
+  const isTableMissingError = React.useMemo(
+    () =>
+      message !== null &&
+      (message.includes("daily_work_entries") || message.includes("未找到") || message.includes("schema cache")),
+    [message]
+  );
+
+  const runEnsureSchema = React.useCallback(async () => {
+    setEnsureSchemaLoading(true);
+    try {
+      const res = await fetch("/api/ensure-schema", { method: "POST" });
+      const data = (await res.json()) as { ok: boolean; message: string };
+      setMessage(data.message);
+      if (data.ok) setTimeout(() => load(), 1500);
+    } finally {
+      setEnsureSchemaLoading(false);
+    }
+  }, [load]);
+
+  React.useEffect(() => {
+    load();
+  }, [load]);
+
+  const updateRow = (localId: string, patch: Partial<DraftRow>) => {
+    setRows((prev) => prev.map((r) => (r.localId === localId ? { ...r, ...patch } : r)));
+  };
+
+  const addWorker = () => {
+    setRows((prev) => [...prev, emptyDraft(workDate)]);
+  };
+
+  const handleSave = async (row: DraftRow) => {
+    if (!row.workerId) {
+      setMessage("Select a worker.");
+      return;
+    }
+    setMessage(null);
+    try {
+      if ("id" in row && row.id && !row.localId.startsWith("draft-")) {
+        await updateDailyWorkEntry(row.id, {
+          workerId: row.workerId,
+          projectId: row.projectId,
+          dayType: row.dayType,
+          dailyRate: row.dailyRate,
+          otAmount: row.otAmount,
+          notes: row.notes,
+        });
+      } else {
+        await insertDailyWorkEntry(workDate, {
+          workerId: row.workerId,
+          projectId: row.projectId,
+          dayType: row.dayType,
+          dailyRate: row.dailyRate,
+          otAmount: row.otAmount,
+          notes: row.notes,
+        });
+      }
+      setMessage("Saved.");
+      await load();
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Save failed.");
+    }
+  };
+
+  const handleDelete = async (row: DraftRow) => {
+    if ("id" in row && row.id && !row.localId.startsWith("draft-")) {
+      if (!window.confirm("Delete this entry?")) return;
+      try {
+        await deleteDailyWorkEntry(row.id);
+        setMessage("Deleted.");
+        await load();
+      } catch (e) {
+        setMessage(e instanceof Error ? e.message : "Delete failed.");
+      }
     } else {
-      const error = validate(row);
-      if (error) {
-        setMessage(error);
-        return;
-      }
-      const updated = confirmLaborEntry(row.id);
-      if (!updated) {
-        setMessage("Unable to confirm row. Complete checklist in Labor Review.");
-        return;
-      }
-      setMessage("Row confirmed.");
+      setRows((prev) => (prev.length <= 1 ? prev : prev.filter((r) => r.localId !== row.localId)));
     }
-    refresh();
   };
 
-  const handleAddRow = () => {
-    setDrafts((prev) => [...prev, makeEmptyDraft(date)]);
-  };
+  const workerById = React.useMemo(() => new Map(workers.map((w) => [w.id, w])), [workers]);
 
-  const handleLoadAcceptanceExample = () => {
-    const worker = workers[0];
-    const pA = projects[0];
-    const pB = projects[1];
-    const pC = projects[2];
-    if (!worker || !pA || !pB || !pC) {
-      setMessage("Need at least 1 worker and 3 projects for acceptance example.");
-      return;
-    }
-    setDrafts((prev) => {
-      const idx = prev.findIndex((r) => !r.id);
-      const next = [...prev];
-      const target = idx >= 0 ? next[idx] : makeEmptyDraft(date);
-      const filled: DraftRow = {
-        ...target,
-        workerId: worker.id,
-        amWorked: true,
-        amProjectId: pA.id,
-        pmWorked: true,
-        pmProjectId: pB.id,
-        otAmount: 300,
-        otProjectId: pC.id,
-        status: "draft",
-      };
-      if (idx >= 0) next[idx] = filled;
-      else next.push(filled);
-      return next;
-    });
-    setMessage(`Acceptance example loaded (${worker.name}: ${pA.name} + ${pB.name} + ${pC.name}).`);
-  };
+  const displayRows = projectFilter ? rows : rows;
+  const totalLabor = displayRows.reduce((sum, r) => {
+    const dayPay = dayPayForEntry(r.dayType, r.dailyRate);
+    return sum + dayPay + r.otAmount;
+  }, 0);
 
   return (
     <div className="page-container page-stack py-6">
-      <PageHeader title="Labor" description="Shift-based labor entry. AM/PM fixed half-day rate, OT manual amount." />
-
-      <div className="flex items-center gap-3">
+      <PageHeader
+        title="Labor"
+        subtitle="Daily work for construction workers. Full / Half day or Absent; add OT as needed."
+      />
+      <div className="flex flex-wrap items-center gap-3 border-b border-border/60 pb-3">
         <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</label>
-        <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="max-w-[180px] rounded-lg" />
-        <Button variant="outline" className="rounded-lg h-9" onClick={handleAddRow}>
-          + Add Row
-        </Button>
-        <Button variant="outline" className="rounded-lg h-9" onClick={handleLoadAcceptanceExample}>
-          Load Acceptance Example
+        <Input
+          type="date"
+          value={workDate}
+          onChange={(e) => setWorkDate(e.target.value)}
+          className="h-9 w-[152px] rounded-md"
+        />
+        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Project</label>
+        <select
+          value={projectFilter}
+          onChange={(e) => setProjectFilter(e.target.value)}
+          className="h-9 rounded-md border border-input bg-transparent px-3 text-sm min-w-[180px]"
+        >
+          <option value="">All projects</option>
+          {projects.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+        <Button variant="outline" size="sm" className="h-9" onClick={addWorker}>
+          + Add Worker
         </Button>
       </div>
       {message ? (
-        <div className="rounded-lg border border-zinc-200/60 dark:border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
-          {message}
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-sm text-muted-foreground">{message}</p>
+          {isTableMissingError ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8"
+              disabled={ensureSchemaLoading}
+              onClick={runEnsureSchema}
+            >
+              {ensureSchemaLoading ? "处理中…" : "创建表"}
+            </Button>
+          ) : null}
         </div>
       ) : null}
-
-      <Card className="rounded-2xl border border-zinc-200/60 dark:border-border overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-zinc-200/40 dark:border-border/60 bg-muted/30">
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Worker</th>
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">AM Project</th>
-                <th className="text-center py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">AM ✔</th>
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">PM Project</th>
-                <th className="text-center py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">PM ✔</th>
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">OT Project</th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">OT Amount</th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Total</th>
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Status</th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Actions</th>
+      <div className="overflow-x-auto border-b border-border/60">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="border-b border-border/60">
+              <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Worker</th>
+              <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Project</th>
+              <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Day Type</th>
+              <th className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Daily Rate</th>
+              <th className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">OT</th>
+              <th className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Total Pay</th>
+              <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Notes</th>
+              <th className="w-24" />
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr className="border-b border-border/40">
+                <td colSpan={8} className="py-6 px-4 text-center text-muted-foreground text-xs">
+                  Loading…
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {drafts.map((d) => {
-                const worker = d.workerId ? workerById.get(d.workerId) : undefined;
-                const halfDayRate = worker?.halfDayRate ?? 0;
-                const amAmount = d.amWorked ? halfDayRate : 0;
-                const pmAmount = d.pmWorked ? halfDayRate : 0;
-                const otAmount = Number.isFinite(d.otAmount) ? Math.max(0, d.otAmount) : 0;
-                const totalAmount = amAmount + pmAmount + otAmount;
+            ) : (
+              displayRows.map((row) => {
+                const entryForPay: DailyWorkEntry = {
+                  id: "id" in row && row.id ? row.id : "",
+                  workDate: row.workDate,
+                  workerId: row.workerId,
+                  projectId: row.projectId,
+                  dayType: row.dayType,
+                  dailyRate: row.dailyRate,
+                  otAmount: row.otAmount,
+                  notes: row.notes ?? null,
+                  createdAt: "createdAt" in row ? (row.createdAt ?? "") : "",
+                };
+                const totalPay = totalPayForEntry(entryForPay);
                 return (
-                  <tr
-                    key={d.localId}
-                    className={
-                      d.id && highlightedRowId === d.id
-                        ? "border-b border-zinc-100/50 dark:border-border/30 bg-amber-50/70 dark:bg-amber-900/10"
-                        : "border-b border-zinc-100/50 dark:border-border/30"
-                    }
-                  >
-                    <td className="py-3 px-4">
+                  <tr key={row.localId} className="border-b border-border/40 hover:bg-muted/10">
+                    <td className="py-2 px-4">
                       <select
-                        value={d.workerId}
-                        onChange={(e) => updateDraft(d.localId, { workerId: e.target.value })}
-                        className="h-9 rounded-lg border border-input bg-transparent px-3 text-sm min-w-[170px]"
+                        value={row.workerId}
+                        onChange={(e) => {
+                          const id = e.target.value;
+                          const w = workerById.get(id);
+                          updateRow(row.localId, {
+                            workerId: id,
+                            dailyRate: w && "dailyRate" in w ? Number(w.dailyRate) : row.dailyRate,
+                          });
+                        }}
+                        className="h-9 w-full min-w-[160px] rounded-md border border-input bg-transparent px-3 text-sm"
                       >
                         <option value="">Select worker</option>
                         {workers.map((w) => (
@@ -266,96 +276,94 @@ export default function LaborPage() {
                           </option>
                         ))}
                       </select>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Half-day: {worker ? `$${worker.halfDayRate.toLocaleString()}` : "—"}
-                      </p>
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-2 px-4">
                       <select
-                        value={d.amProjectId ?? ""}
-                        onChange={(e) => updateDraft(d.localId, { amProjectId: e.target.value || undefined })}
-                        className="h-9 rounded-lg border border-input bg-transparent px-3 text-sm min-w-[160px]"
+                        value={row.projectId ?? ""}
+                        onChange={(e) => updateRow(row.localId, { projectId: e.target.value || null })}
+                        className="h-9 min-w-[140px] rounded-md border border-input bg-transparent px-3 text-sm"
                       >
                         <option value="">—</option>
                         {projects.map((p) => (
-                          <option key={p.id} value={p.id}>{p.name}</option>
+                          <option key={p.id} value={p.id}>
+                            {p.name}
+                          </option>
                         ))}
                       </select>
                     </td>
-                    <td className="py-3 px-4 text-center">
-                      <input type="checkbox" checked={d.amWorked} onChange={(e) => updateDraft(d.localId, { amWorked: e.target.checked })} />
-                    </td>
-                    <td className="py-3 px-4">
+                    <td className="py-2 px-4">
                       <select
-                        value={d.pmProjectId ?? ""}
-                        onChange={(e) => updateDraft(d.localId, { pmProjectId: e.target.value || undefined })}
-                        className="h-9 rounded-lg border border-input bg-transparent px-3 text-sm min-w-[160px]"
+                        value={row.dayType}
+                        onChange={(e) => updateRow(row.localId, { dayType: e.target.value as DayType })}
+                        className="h-9 min-w-[120px] rounded-md border border-input bg-transparent px-3 text-sm"
                       >
-                        <option value="">—</option>
-                        {projects.map((p) => (
-                          <option key={p.id} value={p.id}>{p.name}</option>
+                        {DAY_TYPES.map((d) => (
+                          <option key={d.value} value={d.value}>
+                            {d.label}
+                          </option>
                         ))}
                       </select>
                     </td>
-                    <td className="py-3 px-4 text-center">
-                      <input type="checkbox" checked={d.pmWorked} onChange={(e) => updateDraft(d.localId, { pmWorked: e.target.checked })} />
-                    </td>
-                    <td className="py-3 px-4">
-                      <select
-                        value={d.otProjectId ?? ""}
-                        onChange={(e) => updateDraft(d.localId, { otProjectId: e.target.value || undefined })}
-                        className="h-9 rounded-lg border border-input bg-transparent px-3 text-sm min-w-[160px]"
-                      >
-                        <option value="">—</option>
-                        {projects.map((p) => (
-                          <option key={p.id} value={p.id}>{p.name}</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="py-3 px-4 text-right">
+                    <td className="py-2 px-4 text-right">
                       <Input
                         type="number"
                         min="0"
                         step="0.01"
-                        value={d.otAmount}
-                        onChange={(e) => updateDraft(d.localId, { otAmount: Number(e.target.value) || 0 })}
-                        className="rounded-lg tabular-nums text-right max-w-[120px] ml-auto"
+                        value={row.dailyRate || ""}
+                        onChange={(e) => updateRow(row.localId, { dailyRate: parseFloat(e.target.value) || 0 })}
+                        className="h-9 w-24 text-right tabular-nums"
                       />
                     </td>
-                    <td className="py-3 px-4 text-right tabular-nums font-semibold text-foreground">
-                      {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(totalAmount)}
+                    <td className="py-2 px-4 text-right">
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={row.otAmount || ""}
+                        onChange={(e) => updateRow(row.localId, { otAmount: parseFloat(e.target.value) || 0 })}
+                        className="h-9 w-24 text-right tabular-nums"
+                      />
                     </td>
-                    <td className="py-3 px-4">
-                      <span
-                        className={
-                          d.status === "confirmed"
-                            ? "inline-flex items-center rounded-full px-2 py-0.5 text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-                            : "inline-flex items-center rounded-full px-2 py-0.5 text-xs bg-zinc-200/70 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-                        }
-                      >
-                        {d.status === "confirmed" ? "Confirmed" : "Draft"}
-                      </span>
+                    <td className="py-2 px-4 text-right tabular-nums font-medium">
+                      {fmtUsd(totalPay)}
                     </td>
-                    <td className="py-3 px-4 text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button size="sm" className="rounded-lg h-8" onClick={() => handleSave(d)}>
+                    <td className="py-2 px-4">
+                      <Input
+                        type="text"
+                        value={row.notes ?? ""}
+                        onChange={(e) => updateRow(row.localId, { notes: e.target.value || null })}
+                        placeholder="Notes"
+                        className="h-9 min-w-[120px] text-sm"
+                      />
+                    </td>
+                    <td className="py-2 px-4">
+                      <div className="flex gap-1">
+                        <Button size="sm" variant="outline" className="h-8" onClick={() => handleSave(row)}>
                           Save
                         </Button>
-                        <Button size="sm" variant="outline" className="rounded-lg h-8" onClick={() => handleConfirmToggle(d)}>
-                          {d.status === "confirmed" ? "Unconfirm" : "Confirm"}
-                        </Button>
-                        <Button size="sm" variant="outline" className="rounded-lg h-8" onClick={() => handleClear(d)}>
+                        <Button size="sm" variant="ghost" className="h-8 text-red-600" onClick={() => handleDelete(row)}>
                           Delete
                         </Button>
                       </div>
                     </td>
                   </tr>
                 );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+              })
+            )}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-border/60 bg-muted/10 font-medium">
+              <td colSpan={5} className="py-3 px-4 text-right text-muted-foreground">
+                Total labor cost (this day)
+              </td>
+              <td className="py-3 px-4 text-right tabular-nums">
+                {fmtUsd(totalLabor)}
+              </td>
+              <td colSpan={2} />
+            </tr>
+          </tfoot>
+        </table>
+      </div>
     </div>
   );
 }

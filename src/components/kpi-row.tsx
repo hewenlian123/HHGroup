@@ -19,7 +19,7 @@ export function KpiRow({ items }: { items: KpiItem[] }) {
           <Card
             key={item.key}
             className={cn(
-              "min-h-[116px] p-4 transition duration-150 hover:-translate-y-0.5 hover:shadow-sm",
+              "min-h-[116px] p-4 transition-colors duration-150 hover:bg-muted/20",
               item.emphasis && "border-zinc-300/70"
             )}
           >

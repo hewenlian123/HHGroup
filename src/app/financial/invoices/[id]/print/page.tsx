@@ -8,9 +8,9 @@ export default async function InvoicePrintPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const invoice = getInvoiceById(id);
+  const invoice = await getInvoiceById(id);
   if (!invoice) notFound();
-  const project = getProjectById(invoice.projectId);
+  const project = await getProjectById(invoice.projectId);
 
   return (
     <div className="min-h-screen bg-white text-black p-8 mx-auto" style={{ maxWidth: "8.5in" }}>

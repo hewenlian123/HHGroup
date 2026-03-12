@@ -10,19 +10,27 @@ import { createLaborInvoice, getLaborWorkers } from "@/lib/data";
 
 export default function NewLaborInvoicePage() {
   const router = useRouter();
-  const workers = getLaborWorkers();
+  const [workers, setWorkers] = React.useState<{ id: string; name: string }[]>([]);
   const [workerId, setWorkerId] = React.useState("");
   const [invoiceDate, setInvoiceDate] = React.useState(() => new Date().toISOString().slice(0, 10));
   const [amount, setAmount] = React.useState(0);
   const [memo, setMemo] = React.useState("");
 
   React.useEffect(() => {
+    let cancelled = false;
+    getLaborWorkers().then((list) => {
+      if (!cancelled) setWorkers(list);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  React.useEffect(() => {
     if (!workerId && workers[0]?.id) setWorkerId(workers[0].id);
   }, [workerId, workers]);
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!workerId) return;
-    const row = createLaborInvoice({
+    const row = await createLaborInvoice({
       workerId,
       invoiceDate,
       amount: Number.isFinite(amount) ? Math.max(0, amount) : 0,

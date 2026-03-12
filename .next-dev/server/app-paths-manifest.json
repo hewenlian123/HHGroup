@@ -1,9 +1,8 @@
 {
-  "/labor/invoices/page": "app/labor/invoices/page.js",
   "/dashboard/page": "app/dashboard/page.js",
-  "/labor/workers/page": "app/labor/workers/page.js",
-  "/financial/invoices/page": "app/financial/invoices/page.js",
-  "/labor/page": "app/labor/page.js",
   "/projects/page": "app/projects/page.js",
-  "/projects/[id]/page": "app/projects/[id]/page.js"
+  "/financial/payments/page": "app/financial/payments/page.js",
+  "/financial/invoices/page": "app/financial/invoices/page.js",
+  "/projects/[id]/page": "app/projects/[id]/page.js",
+  "/financial/invoices/[id]/page": "app/financial/invoices/[id]/page.js"
 }

@@ -1,168 +1,252 @@
-import { MOCK_PROJECTS, MOCK_RECENT_TRANSACTIONS, MOCK_PROJECT_LABOR, MOCK_PROJECT_TRANSACTIONS, MOCK_PROJECT_FINANCIAL_OVERRIDES, expenseCategories, disabledExpenseCategories, vendors, disabledVendors, paymentMethods, disabledPaymentMethods, expenses, bankTransactions, normalizeExpense, projectEstimates, costCodeMaster, estimateList, estimateItems, estimateMeta, createEstimate as createEstimateMock, createEstimateSnapshot as createEstimateSnapshotMock, createNewVersionFromSnapshot as createNewVersionFromSnapshotMock, convertEstimateSnapshotToProject as convertEstimateSnapshotToProjectMock, getEstimateSnapshotsByEstimateId, getEstimateSnapshotByVersion, projectsFromEstimates, setEstimateStatus as setEstimateStatusMock, updateEstimateMeta as updateEstimateMetaMock, addLineItem as addLineItemMock, updateLineItem as updateLineItemMock, deleteLineItem as deleteLineItemMock, invoices, invoicePayments, commitments, laborWorkers, laborEntries, laborInvoices, laborPayments, type EstimateSnapshot, type EstimateFrozenPayload, type Expense, type ExpenseRecord, type ExpenseAttachment, type ExpenseLine, type BankTransaction, type Invoice, type InvoicePayment, type InvoiceStatus, type InvoiceLineItem, type Commitment, type CommitmentType, type CommitmentStatus, type Worker, type LaborWorker, type LaborEntry, type LaborShiftEntry, type LaborInvoice, type LaborInvoiceSplit, type LaborInvoiceChecklist, type Attachment, type LaborPayment } from "../mock-data";
+import { costCodeMaster } from "../mock-data";
+import * as estDb from "../estimates-db";
+import * as coDb from "../change-orders-db";
+import * as projectsDb from "../projects-db";
+import * as expensesDb from "../expenses-db";
+import * as accountsDb from "../accounts-db";
+import * as bankTxDb from "../bank-transactions-db";
+import * as invoicesDb from "../invoices-db";
+import * as paymentsReceivedDb from "../payments-received-db";
+import * as depositsDb from "../deposits-db";
+import * as laborDb from "../labor-db";
+import * as dailyLaborDb from "../daily-labor-db";
+import * as dailyWorkDb from "../daily-work-db";
+import * as workerReimbursementsDb from "../worker-reimbursements-db";
+import * as workerInvoicesDb from "../worker-invoices-db";
+import * as workerPaymentsDb from "../worker-payments-db";
+import * as commitmentsDb from "../commitments-db";
+import * as refDataDb from "../reference-data-db";
+import * as subcontractorsDb from "../subcontractors-db";
+import * as subcontractsDb from "../subcontracts-db";
+import * as subcontractBillsDb from "../subcontract-bills-db";
+import * as subcontractPaymentsDb from "../subcontract-payments-db";
+import * as documentsDb from "../documents-db";
+import * as apBillsDb from "../ap-bills-db";
+import { getCanonicalProjectProfit, getCanonicalProjectProfitBatch } from "../profit-engine";
+import type { EstimateListItem, EstimateItemRow } from "../estimates-db";
+import type { Commitment } from "../commitments-db";
+import type { LaborInvoice, LaborPayment, LaborEntry, LaborShiftEntry, LaborInvoiceSplit, LaborInvoiceChecklist, Attachment } from "../labor-db";
+import type { Expense, ExpenseLine } from "../expenses-db";
+import type { BankTransaction } from "../bank-transactions-db";
+import type { Invoice, InvoicePayment, InvoiceStatus, InvoiceLineItem } from "../invoices-db";
+import type { InvoiceWithDerived, OverdueInvoiceRow } from "../invoices-db";
 
-export type Project = (typeof MOCK_PROJECTS)[number];
-export type RecentTransaction = (typeof MOCK_RECENT_TRANSACTIONS)[number];
-export type ProjectLaborRow = (typeof MOCK_PROJECT_LABOR)[number];
-export type ProjectTransactionRow = (typeof MOCK_PROJECT_TRANSACTIONS)[number];
-export type { Expense, ExpenseRecord, ExpenseAttachment, ExpenseLine, BankTransaction };
-export type { Commitment, CommitmentType, CommitmentStatus };
-export type { Worker };
-export type { LaborEntry };
-export type { LaborWorker, LaborShiftEntry };
-export type { LaborInvoice, LaborInvoiceSplit, LaborInvoiceChecklist };
-export type { Attachment };
-export type { LaborPayment };
+export { getProjectCostCodeSummary } from "./forecast";
+export type { ProjectCostCodeSummaryItem } from "./forecast";
 
-export function getProjects(): Project[] {
-  return [...MOCK_PROJECTS];
+export type Project = projectsDb.Project;
+export type RecentTransaction = {
+  id: string;
+  type: "invoice" | "bill" | "expense" | "labor";
+  description: string;
+  amount: number;
+  date: string;
+  projectName: string;
+};
+export type ProjectLaborRow = { id: string; projectId: string; worker: string; hours: number; rate: number; totalPaid: number; advance: number; remaining: number; status: "paid" | "pending" };
+export type ProjectTransactionRow = { id: string; projectId: string; date: string; type: "expense" | "income"; name: string; amount: number; note: string };
+export type { ChangeOrder, ChangeOrderItem, ChangeOrderStatus, ChangeOrderAttachment, CreateChangeOrderInput, UpdateChangeOrderPatch } from "../change-orders-db";
+export type ProjectBudgetItem = { id: string; projectId: string; changeOrderId: string; costCode: string; description: string; qty: number; unit: string; unitPrice: number; total: number };
+export type { Expense, ExpenseAttachment, ExpenseLine } from "../expenses-db";
+export type { Account, AccountType } from "../accounts-db";
+export type ExpenseRecord = import("../expenses-db").Expense;
+export type { BankTransaction } from "../bank-transactions-db";
+export type { Commitment, CommitmentType, CommitmentStatus } from "../commitments-db";
+export type { Worker, LaborWorker, LaborEntry, LaborShiftEntry, LaborInvoice, LaborInvoiceSplit, LaborInvoiceChecklist, Attachment, LaborPayment } from "../labor-db";
+export { calculateLaborPay } from "../labor-db";
+export type { Invoice, InvoicePayment, InvoiceStatus, InvoiceLineItem } from "../invoices-db";
+export type { InvoiceWithDerived, OverdueInvoiceRow, InvoiceComputedStatus } from "../invoices-db";
+export type { SubcontractorRow, SubcontractorDraft, SubcontractorWithInsuranceAlert } from "../subcontractors-db";
+export type { SubcontractRow, SubcontractWithSubcontractor, SubcontractDraft } from "../subcontracts-db";
+export type { SubcontractBillRow, SubcontractBillDraft } from "../subcontract-bills-db";
+export type { DocumentRow, DocumentWithProject, DocumentFilters, DocumentDraft, DocumentFileType } from "../documents-db";
+export type { ApBillRow, ApBillWithProject, ApBillPaymentRow, ApBillsFilters, ApBillType, ApBillStatus } from "../ap-bills-db";
+export { AP_BILL_TYPES, AP_BILL_STATUSES } from "../ap-bills-db";
+export type { DailyWorkEntry, DailyWorkEntryDraft, DayType, PayrollSummaryRow } from "../daily-work-db";
+export { dayPayForEntry, totalPayForEntry } from "../daily-work-db";
+export type { WorkerReimbursement, WorkerReimbursementDraft } from "../worker-reimbursements-db";
+export type { WorkerInvoice, WorkerInvoiceDraft, WorkerInvoiceStatus } from "../worker-invoices-db";
+export type { WorkerPayment, CreateWorkerPaymentInput } from "../worker-payments-db";
+
+export async function getProjects(): Promise<Project[]> {
+  return projectsDb.getProjects();
 }
 
-export function getProjectById(id: string): Project | undefined {
-  return MOCK_PROJECTS.find((p) => p.id === id);
+export async function getProjectById(id: string): Promise<Project | undefined> {
+  const p = await projectsDb.getProjectById(id);
+  return p ?? undefined;
 }
 
-export function createProject(input: { name: string; budget: number; status?: Project["status"] }): Project {
-  const nextNum = MOCK_PROJECTS.reduce((max, p) => Math.max(max, Number(p.id.replace(/^p/, "")) || 0), 0) + 1;
-  const project: Project = {
-    id: `p${nextNum}`,
-    name: input.name.trim(),
-    status: input.status ?? "pending",
-    budget: Math.max(0, Number(input.budget) || 0),
-    spent: 0,
-    updated: new Date().toISOString().slice(0, 10),
-  };
-  MOCK_PROJECTS.push(project);
-  return { ...project };
+export async function createProject(input: {
+  name: string;
+  budget: number;
+  status?: Project["status"];
+  client?: string;
+  address?: string;
+  projectManager?: string;
+  startDate?: string;
+  endDate?: string;
+  notes?: string;
+  estimateRef?: string;
+  sourceEstimateId?: string | null;
+  snapshotRevenue?: number | null;
+  snapshotBudgetCost?: number | null;
+  snapshotBreakdown?: { materials: number; labor: number; vendor: number; other: number } | null;
+}): Promise<Project> {
+  return projectsDb.createProject(input);
 }
 
-export function getCommitments(projectId: string): Commitment[] {
-  return commitments
-    .filter((c) => c.projectId === projectId)
-    .map((c) => ({ ...c, attachments: [...(c.attachments ?? [])] }))
-    .sort((a, b) => b.date.localeCompare(a.date));
-}
-
-/** Open commitments grouped to drilldown buckets (MVP mapping: PO->Materials, Subcontract->Vendor, Other->Other). */
-export function getCommittedCostByCategory(projectId: string): { materials: number; labor: number; vendor: number; other: number } {
-  const out = { materials: 0, labor: 0, vendor: 0, other: 0 };
-  const projectCommitments = getCommitments(projectId).filter((c) => c.status === "Open");
-  for (const c of projectCommitments) {
-    if (c.type === "PO") out.materials += c.amount;
-    else if (c.type === "Subcontract") out.vendor += c.amount;
-    else out.other += c.amount;
-  }
-  return out;
-}
-
-export function createCommitment(payload: Omit<Commitment, "id">): Commitment {
-  const commitment: Commitment = {
-    ...payload,
-    id: `cm-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-    attachments: payload.attachments ?? [],
-  };
-  commitments.push(commitment);
-  return { ...commitment, attachments: [...commitment.attachments] };
-}
-
-export function updateCommitment(
+export async function updateProject(
   id: string,
-  patch: Partial<Omit<Commitment, "id" | "projectId"> & { attachments: ExpenseAttachment[] }>
-): boolean {
-  const idx = commitments.findIndex((c) => c.id === id);
-  if (idx < 0) return false;
-  const current = commitments[idx];
-  commitments[idx] = {
-    ...current,
-    ...patch,
-    attachments: patch.attachments ?? current.attachments,
-  };
-  return true;
+  patch: import("../projects-db").UpdateProjectPatch
+): Promise<Project | null> {
+  return projectsDb.updateProject(id, patch);
 }
 
-export function deleteCommitment(id: string): boolean {
-  const idx = commitments.findIndex((c) => c.id === id);
-  if (idx < 0) return false;
-  commitments.splice(idx, 1);
-  return true;
+export async function deleteProject(id: string): Promise<boolean> {
+  return projectsDb.deleteProject(id);
 }
 
-export function getLaborWorkers(): LaborWorker[] {
-  return laborWorkers.filter((w) => w.status === "active").map((w) => ({ ...w }));
+export type ProjectUsageCounts = import("../projects-db").ProjectUsageCounts;
+
+export async function getProjectUsageCounts(projectId: string): Promise<ProjectUsageCounts> {
+  return projectsDb.getProjectUsageCounts(projectId);
 }
 
-export function getWorkers(): Worker[] {
-  return laborWorkers.map((w) => ({ ...w }));
+// —— Change Orders (Supabase only) ——
+
+export async function getChangeOrdersByProject(projectId: string) {
+  return coDb.getChangeOrdersByProject(projectId);
 }
 
-export function createWorker(input: {
+export async function getChangeOrderById(id: string) {
+  return coDb.getChangeOrderById(id);
+}
+
+export async function getChangeOrderItems(changeOrderId: string) {
+  return coDb.getChangeOrderItems(changeOrderId);
+}
+
+export async function getProjectBudgetItems(projectId: string): Promise<ProjectBudgetItem[]> {
+  const rows = await coDb.getProjectBudgetItems(projectId);
+  return rows.map((r) => ({
+    id: r.id,
+    projectId: r.project_id,
+    changeOrderId: r.change_order_id,
+    costCode: r.cost_code,
+    description: r.description,
+    qty: Number(r.qty),
+    unit: r.unit,
+    unitPrice: Number(r.unit_price),
+    total: Number(r.total),
+  }));
+}
+
+export async function createChangeOrder(projectId: string, input?: import("../change-orders-db").CreateChangeOrderInput) {
+  return coDb.createChangeOrder(projectId, input);
+}
+
+export async function updateChangeOrder(changeOrderId: string, patch: import("../change-orders-db").UpdateChangeOrderPatch) {
+  return coDb.updateChangeOrder(changeOrderId, patch);
+}
+
+export async function getChangeOrderAttachments(changeOrderId: string) {
+  return coDb.getChangeOrderAttachments(changeOrderId);
+}
+
+export async function addChangeOrderAttachment(
+  changeOrderId: string,
+  att: { fileName: string; storagePath: string; mimeType?: string | null; sizeBytes?: number }
+) {
+  return coDb.addChangeOrderAttachment(changeOrderId, att);
+}
+
+export async function deleteChangeOrderAttachment(attachmentId: string) {
+  return coDb.deleteChangeOrderAttachment(attachmentId);
+}
+
+export async function addChangeOrderItem(
+  changeOrderId: string,
+  item: { costCode: string; description: string; qty: number; unit: string; unitPrice: number }
+) {
+  return coDb.addChangeOrderItem(changeOrderId, item);
+}
+
+export async function updateChangeOrderItem(
+  changeOrderId: string,
+  itemId: string,
+  patch: { description?: string; qty?: number; unit?: string; unitPrice?: number }
+) {
+  return coDb.updateChangeOrderItem(changeOrderId, itemId, patch);
+}
+
+export async function deleteChangeOrderItem(changeOrderId: string, itemId: string) {
+  return coDb.deleteChangeOrderItem(changeOrderId, itemId);
+}
+
+export async function updateChangeOrderStatus(
+  changeOrderId: string,
+  status: import("../change-orders-db").ChangeOrderStatus,
+  options?: { approvedBy?: string | null }
+): Promise<boolean> {
+  return coDb.updateChangeOrderStatus(changeOrderId, status, options);
+}
+
+export async function getCommitments(projectId: string): Promise<Commitment[]> {
+  return commitmentsDb.getCommitments(projectId);
+}
+
+export async function getCommittedCostByCategory(projectId: string): Promise<{ materials: number; labor: number; vendor: number; other: number }> {
+  return commitmentsDb.getCommittedCostByCategory(projectId);
+}
+
+export async function createCommitment(payload: Omit<Commitment, "id" | "attachments"> & { attachments?: import("../commitments-db").ExpenseAttachment[] }): Promise<Commitment> {
+  return commitmentsDb.createCommitment(payload);
+}
+
+export async function updateCommitment(
+  id: string,
+  patch: Partial<Omit<Commitment, "id" | "projectId"> & { attachments: import("../commitments-db").ExpenseAttachment[] }>
+): Promise<boolean> {
+  return commitmentsDb.updateCommitment(id, patch);
+}
+
+export async function deleteCommitment(id: string): Promise<boolean> {
+  return commitmentsDb.deleteCommitment(id);
+}
+
+export async function getLaborWorkers(): Promise<import("../labor-db").LaborWorker[]> {
+  return laborDb.getLaborWorkers();
+}
+
+export async function getWorkers(): Promise<import("../labor-db").Worker[]> {
+  return laborDb.getWorkers();
+}
+
+export async function createWorker(input: {
   name: string;
   phone?: string;
   trade?: string;
   status?: "active" | "inactive";
   halfDayRate: number;
   notes?: string;
-}): Worker {
-  const worker: Worker = {
-    id: `lw-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-    name: input.name.trim(),
-    phone: input.phone?.trim() || undefined,
-    trade: input.trade?.trim() || undefined,
-    status: input.status ?? "active",
-    halfDayRate: Math.max(0, input.halfDayRate),
-    notes: input.notes?.trim() || undefined,
-    createdAt: new Date().toISOString().slice(0, 10),
-  };
-  laborWorkers.push(worker);
-  return { ...worker };
+}): Promise<import("../labor-db").Worker> {
+  return laborDb.createWorker(input);
 }
 
-export function updateWorker(
+export async function updateWorker(
   id: string,
-  patch: Partial<{
-    name: string;
-    phone?: string;
-    trade?: string;
-    status: "active" | "inactive";
-    halfDayRate: number;
-    notes?: string;
-  }>
-): Worker | null {
-  const idx = laborWorkers.findIndex((w) => w.id === id);
-  if (idx < 0) return null;
-  const current = laborWorkers[idx];
-  const updated: Worker = {
-    ...current,
-    ...patch,
-    name: patch.name != null ? patch.name.trim() : current.name,
-    phone: patch.phone !== undefined ? patch.phone?.trim() || undefined : current.phone,
-    trade: patch.trade !== undefined ? patch.trade?.trim() || undefined : current.trade,
-    notes: patch.notes !== undefined ? patch.notes?.trim() || undefined : current.notes,
-    halfDayRate: patch.halfDayRate != null ? Math.max(0, patch.halfDayRate) : current.halfDayRate,
-  };
-  laborWorkers[idx] = updated;
-  return { ...updated };
+  patch: Partial<{ name: string; phone?: string; trade?: string; status: "active" | "inactive"; halfDayRate: number; notes?: string }>
+): Promise<import("../labor-db").Worker | null> {
+  return laborDb.updateWorker(id, patch);
 }
 
-export function getWorkerById(id: string): Worker | null {
-  const w = laborWorkers.find((row) => row.id === id);
-  return w ? { ...w } : null;
+export async function getWorkerById(id: string): Promise<import("../labor-db").Worker | null> {
+  return laborDb.getWorkerById(id);
 }
 
-export function getWorkerUsage(id: string): { used: boolean; reason?: "entries" | "invoices" } {
-  const worker = laborWorkers.find((w) => w.id === id);
-  if (!worker) return { used: false };
-  const hasEntries = laborEntries.some((e) => e.workerId === id);
-  if (hasEntries) return { used: true, reason: "entries" };
-  const hasLaborInvoiceRecords = laborInvoices.some((inv) => inv.workerId === id);
-  if (hasLaborInvoiceRecords) return { used: true, reason: "invoices" };
-  const lowerName = worker.name.trim().toLowerCase();
-  const hasLaborInvoices = expenses.some((exp) => {
-    if (exp.vendorName.trim().toLowerCase() !== lowerName) return false;
-    const norm = normalizeExpense(exp);
-    return norm.lines.some((l) => l.category.trim().toLowerCase() === "labor");
-  }) || MOCK_PROJECT_LABOR.some((r) => r.worker.trim().toLowerCase() === lowerName);
-  if (hasLaborInvoices) return { used: true, reason: "invoices" };
-  return { used: false };
+export async function getWorkerUsage(id: string): Promise<{ used: boolean; reason?: "entries" | "invoices" }> {
+  return laborDb.getWorkerUsage(id);
 }
 
 export let includeLaborInvoicesInProjectLabor = true;
@@ -171,113 +255,32 @@ export function setIncludeLaborInvoicesInProjectLabor(enabled: boolean): void {
   includeLaborInvoicesInProjectLabor = enabled;
 }
 
-/** Backward-compat alias */
 export function setIncludeLaborInvoicesInLaborActual(enabled: boolean): void {
   includeLaborInvoicesInProjectLabor = enabled;
 }
 
-function cloneLaborInvoice(inv: LaborInvoice): LaborInvoice {
-  return {
-    ...inv,
-    projectSplits: inv.projectSplits.map((s) => ({ ...s })),
-    checklist: { ...inv.checklist },
-    attachments: inv.attachments.map((a) => ({ ...a })),
-  };
+export async function getLaborInvoices(): Promise<LaborInvoice[]> {
+  return laborDb.getLaborInvoices();
 }
 
-function normalizeLaborInvoiceChecklist(
-  checklist?: Partial<LaborInvoiceChecklist>
-): LaborInvoiceChecklist {
-  return {
-    verifiedWorker: !!checklist?.verifiedWorker,
-    verifiedAmount: !!checklist?.verifiedAmount,
-    verifiedAllocation: !!checklist?.verifiedAllocation,
-    verifiedAttachment: !!checklist?.verifiedAttachment,
-  };
+export async function getLaborInvoiceById(id: string): Promise<LaborInvoice | null> {
+  return laborDb.getLaborInvoiceById(id);
 }
 
-function getLaborInvoiceNextStatus(inv: Pick<LaborInvoice, "status" | "checklist">): LaborInvoice["status"] {
-  if (inv.status === "void") return "void";
-  if (inv.status === "confirmed") return "confirmed";
-  const allChecked =
-    inv.checklist.verifiedWorker &&
-    inv.checklist.verifiedAmount &&
-    inv.checklist.verifiedAllocation &&
-    inv.checklist.verifiedAttachment;
-  return allChecked ? "reviewed" : "draft";
+export async function getLaborInvoice(id: string): Promise<LaborInvoice | undefined> {
+  const inv = await laborDb.getLaborInvoiceById(id);
+  return inv ?? undefined;
 }
 
-function getNextLaborInvoiceNo(): string {
-  const maxSeq = laborInvoices.reduce((max, inv) => {
-    const match = /^LI-(\d+)$/.exec(inv.invoiceNo ?? "");
-    if (!match) return max;
-    return Math.max(max, Number(match[1]));
-  }, 0);
-  return `LI-${String(maxSeq + 1).padStart(4, "0")}`;
+export async function getLaborInvoicesByWorker(workerId: string): Promise<LaborInvoice[]> {
+  return laborDb.getLaborInvoicesByWorker(workerId);
 }
 
-function getLaborInvoiceValidation(inv: LaborInvoice): { ok: boolean; reason?: string } {
-  if (inv.status === "void") return { ok: false, reason: "Voided invoice cannot be confirmed." };
-  if (!inv.workerId) return { ok: false, reason: "Worker is required." };
-  if (inv.amount <= 0) return { ok: false, reason: "Amount must be greater than 0." };
-  if (inv.projectSplits.some((s) => !s.projectId || s.amount <= 0)) return { ok: false, reason: "Each split must have a project and amount > 0." };
-  const splitTotal = inv.projectSplits.reduce((s, split) => s + split.amount, 0);
-  if (Math.abs(inv.amount - splitTotal) > 0.005) return { ok: false, reason: "Split total must equal invoice amount." };
-  const allChecked =
-    inv.checklist.verifiedWorker &&
-    inv.checklist.verifiedAmount &&
-    inv.checklist.verifiedAllocation &&
-    inv.checklist.verifiedAttachment;
-  if (!allChecked) return { ok: false, reason: "Checklist must be fully verified." };
-  return { ok: true };
+export async function createLaborInvoice(input: { workerId: string; invoiceDate?: string; amount?: number; memo?: string }): Promise<LaborInvoice> {
+  return laborDb.createLaborInvoice(input);
 }
 
-export function getLaborInvoices(): LaborInvoice[] {
-  return laborInvoices
-    .map(cloneLaborInvoice)
-    .sort((a, b) => (a.invoiceDate === b.invoiceDate ? b.createdAt.localeCompare(a.createdAt) : b.invoiceDate.localeCompare(a.invoiceDate)));
-}
-
-export function getLaborInvoiceById(id: string): LaborInvoice | null {
-  const row = laborInvoices.find((inv) => inv.id === id);
-  return row ? cloneLaborInvoice(row) : null;
-}
-
-export function getLaborInvoice(id: string): LaborInvoice | undefined {
-  const row = laborInvoices.find((inv) => inv.id === id);
-  return row ? cloneLaborInvoice(row) : undefined;
-}
-
-export function getLaborInvoicesByWorker(workerId: string): LaborInvoice[] {
-  return getLaborInvoices().filter((row) => row.workerId === workerId);
-}
-
-export function createLaborInvoice(input: {
-  workerId: string;
-  invoiceDate?: string;
-  amount?: number;
-  memo?: string;
-}): LaborInvoice {
-  const nowDate = new Date().toISOString().slice(0, 10);
-  const created: LaborInvoice = {
-    id: `linv-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-    invoiceNo: getNextLaborInvoiceNo(),
-    workerId: input.workerId,
-    invoiceDate: input.invoiceDate ?? nowDate,
-    amount: Number.isFinite(input.amount) ? Math.max(0, input.amount ?? 0) : 0,
-    memo: input.memo?.trim() || undefined,
-    projectSplits: [],
-    status: "draft",
-    checklist: { verifiedWorker: false, verifiedAmount: false, verifiedAllocation: false, verifiedAttachment: false },
-    attachments: [],
-    createdAt: nowDate,
-    confirmedAt: undefined,
-  };
-  laborInvoices.push(created);
-  return cloneLaborInvoice(created);
-}
-
-export function updateLaborInvoice(
+export async function updateLaborInvoice(
   id: string,
   patch: Partial<{
     invoiceNo: string;
@@ -289,137 +292,78 @@ export function updateLaborInvoice(
     checklist: LaborInvoiceChecklist;
     status: LaborInvoice["status"];
   }>
-): LaborInvoice | null {
-  const idx = laborInvoices.findIndex((inv) => inv.id === id);
-  if (idx < 0) return null;
-  const current = laborInvoices[idx];
-  if (current.status === "confirmed" || current.status === "void") {
-    if (patch.status == null || (patch.status !== "void" && patch.status !== current.status)) {
-      return cloneLaborInvoice(current);
-    }
-  }
-  const next: LaborInvoice = {
-    ...current,
-    ...patch,
-    invoiceNo: patch.invoiceNo ?? current.invoiceNo,
-    amount: patch.amount != null ? Math.max(0, patch.amount) : current.amount,
-    memo: patch.memo !== undefined ? patch.memo?.trim() || undefined : current.memo,
-    projectSplits: patch.projectSplits
-      ? patch.projectSplits
-          .filter((s) => !!s.projectId)
-          .map((s) => ({ projectId: s.projectId, amount: Number.isFinite(s.amount) ? Math.max(0, s.amount) : 0 }))
-      : current.projectSplits,
-    checklist: normalizeLaborInvoiceChecklist(patch.checklist ?? current.checklist),
-    confirmedAt: current.confirmedAt,
-  };
-  next.status = patch.status ?? getLaborInvoiceNextStatus(next);
-  if (next.status !== "confirmed") next.confirmedAt = undefined;
-  laborInvoices[idx] = next;
-  return cloneLaborInvoice(next);
+): Promise<LaborInvoice | null> {
+  return laborDb.updateLaborInvoice(id, patch);
 }
 
-export function deleteLaborInvoice(id: string): void {
-  const idx = laborInvoices.findIndex((inv) => inv.id === id);
-  if (idx < 0) return;
-  if (laborInvoices[idx].status === "confirmed") return;
-  laborInvoices.splice(idx, 1);
+export async function deleteLaborInvoice(id: string): Promise<void> {
+  return laborDb.deleteLaborInvoice(id);
 }
 
-export function addLaborInvoiceAttachment(id: string, attachment: Attachment): LaborInvoice | null {
-  const idx = laborInvoices.findIndex((inv) => inv.id === id);
-  if (idx < 0) return null;
-  if (laborInvoices[idx].status === "confirmed" || laborInvoices[idx].status === "void") return cloneLaborInvoice(laborInvoices[idx]);
-  laborInvoices[idx].attachments.push({ ...attachment });
-  return cloneLaborInvoice(laborInvoices[idx]);
+export async function addLaborInvoiceAttachment(id: string, attachment: Attachment): Promise<LaborInvoice | null> {
+  void attachment; // reserved for future persistence
+  return laborDb.getLaborInvoiceById(id);
 }
 
-export function deleteLaborInvoiceAttachment(id: string, attachmentId: string): LaborInvoice | null {
-  const idx = laborInvoices.findIndex((inv) => inv.id === id);
-  if (idx < 0) return null;
-  if (laborInvoices[idx].status === "confirmed" || laborInvoices[idx].status === "void") return cloneLaborInvoice(laborInvoices[idx]);
-  laborInvoices[idx].attachments = laborInvoices[idx].attachments.filter((a) => a.id !== attachmentId);
-  return cloneLaborInvoice(laborInvoices[idx]);
+export async function deleteLaborInvoiceAttachment(id: string, attachmentId: string): Promise<LaborInvoice | null> {
+  void attachmentId; // reserved for future persistence
+  return laborDb.getLaborInvoiceById(id);
 }
 
-export function markLaborInvoiceReviewed(id: string): LaborInvoice | null {
-  return updateLaborInvoice(id, { status: "reviewed" });
+export async function markLaborInvoiceReviewed(id: string): Promise<LaborInvoice | null> {
+  return laborDb.updateLaborInvoice(id, { status: "reviewed" });
 }
 
-export function confirmLaborInvoice(id: string): LaborInvoice | null {
-  const idx = laborInvoices.findIndex((inv) => inv.id === id);
-  if (idx < 0) return null;
-  const inv = laborInvoices[idx];
-  const validation = getLaborInvoiceValidation(inv);
-  if (!validation.ok) return null;
-  laborInvoices[idx] = {
-    ...inv,
-    status: "confirmed",
-    checklist: normalizeLaborInvoiceChecklist(inv.checklist),
-    confirmedAt: new Date().toISOString(),
-  };
-  return cloneLaborInvoice(laborInvoices[idx]);
+export async function confirmLaborInvoice(id: string): Promise<LaborInvoice | null> {
+  return laborDb.confirmLaborInvoice(id);
 }
 
-export function voidLaborInvoice(id: string): LaborInvoice | null {
-  const idx = laborInvoices.findIndex((inv) => inv.id === id);
-  if (idx < 0) return null;
-  laborInvoices[idx] = {
-    ...laborInvoices[idx],
-    status: "void",
-  };
-  return cloneLaborInvoice(laborInvoices[idx]);
+export async function voidLaborInvoice(id: string): Promise<LaborInvoice | null> {
+  return laborDb.voidLaborInvoice(id);
 }
 
-export function getLaborInvoiceActualByProject(projectId: string): number {
-  let total = 0;
-  for (const inv of laborInvoices) {
-    if (inv.status !== "confirmed") continue;
-    for (const split of inv.projectSplits) {
-      if (split.projectId === projectId) total += Math.max(0, split.amount);
-    }
-  }
-  return total;
+export async function getLaborInvoiceActualByProject(projectId: string): Promise<number> {
+  return laborDb.getLaborInvoiceActualByProject(projectId);
 }
 
 function inDateRange(date: string, startDate: string, endDate: string): boolean {
   return date >= startDate && date <= endDate;
 }
 
-export function getConfirmedLaborDailyTotalByWorker(
+export async function getConfirmedLaborDailyTotalByWorker(
   workerId: string,
   startDate: string,
   endDate: string,
   projectId?: string
-): number {
-  const halfDayRate = laborWorkers.find((w) => w.id === workerId)?.halfDayRate ?? 0;
+): Promise<number> {
+  const [worker, entries] = await Promise.all([laborDb.getWorkerById(workerId), laborDb.getLaborEntries()]);
+  const halfDayRate = worker?.halfDayRate ?? 0;
+  const hourlyRate = halfDayRate / 4;
   let total = 0;
-  for (const row of laborEntries) {
-    if (row.status !== "confirmed") continue;
+  for (const row of entries) {
     if (row.workerId !== workerId) continue;
     if (!inDateRange(row.date, startDate, endDate)) continue;
-    if (row.amWorked && (!projectId || row.amProjectId === projectId)) total += halfDayRate;
-    if (row.pmWorked && (!projectId || row.pmProjectId === projectId)) total += halfDayRate;
-    if (row.otAmount > 0 && (!projectId || row.otProjectId === projectId)) total += row.otAmount;
+    if (projectId && row.projectId !== projectId) continue;
+    total += (Number(row.hours) || 0) * hourlyRate;
   }
   return total;
 }
 
-export function getConfirmedLaborInvoiceTotalByWorker(
+export async function getConfirmedLaborInvoiceTotalByWorker(
   workerId: string,
   startDate: string,
   endDate: string,
   projectId?: string
-): number {
+): Promise<number> {
   if (!includeLaborInvoicesInProjectLabor) return 0;
+  const invoices = await laborDb.getLaborInvoices();
   let total = 0;
-  for (const inv of laborInvoices) {
+  for (const inv of invoices) {
     if (inv.status !== "confirmed") continue;
     if (inv.workerId !== workerId) continue;
     if (!inDateRange(inv.invoiceDate, startDate, endDate)) continue;
     if (projectId) {
-      total += inv.projectSplits
-        .filter((split) => split.projectId === projectId)
-        .reduce((sum, split) => sum + split.amount, 0);
+      total += inv.projectSplits.filter((s) => s.projectId === projectId).reduce((sum, s) => sum + s.amount, 0);
     } else {
       total += inv.amount;
     }
@@ -427,41 +371,32 @@ export function getConfirmedLaborInvoiceTotalByWorker(
   return total;
 }
 
-export function getLaborPayments(workerId?: string, startDate?: string, endDate?: string): LaborPayment[] {
-  return laborPayments
-    .filter((p) => (workerId ? p.workerId === workerId : true))
-    .filter((p) => (startDate ? p.paymentDate >= startDate : true))
-    .filter((p) => (endDate ? p.paymentDate <= endDate : true))
-    .map((p) => ({ ...p, attachments: p.attachments.map((a) => ({ ...a })) }))
-    .sort((a, b) => b.paymentDate.localeCompare(a.paymentDate));
+export async function getLaborPayments(workerId?: string, startDate?: string, endDate?: string): Promise<LaborPayment[]> {
+  return laborDb.getLaborPayments({ workerId, startDate, endDate });
 }
 
-export function getLaborPaymentsByWorker(workerId: string): LaborPayment[] {
-  return getLaborPayments(workerId);
+export async function getLaborPaymentsByWorker(workerId: string): Promise<LaborPayment[]> {
+  return laborDb.getLaborPayments({ workerId });
 }
 
-export function createLaborPayment(payload: Omit<LaborPayment, "id" | "createdAt">): LaborPayment {
-  const now = new Date().toISOString();
-  const payment: LaborPayment = {
-    ...payload,
-    id: `lp-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-    amount: Math.max(0, payload.amount),
-    attachments: (payload.attachments ?? []).map((a) => ({ ...a })),
-    createdAt: now,
-  };
-  laborPayments.push(payment);
-  return { ...payment, attachments: payment.attachments.map((a) => ({ ...a })) };
+export async function createLaborPayment(payload: Omit<LaborPayment, "id" | "createdAt">): Promise<LaborPayment> {
+  return laborDb.createLaborPayment({
+    workerId: payload.workerId,
+    paymentDate: payload.paymentDate,
+    amount: payload.amount,
+    method: payload.method,
+    memo: payload.memo,
+    appliedRange: payload.appliedRange,
+  });
 }
 
-export function deleteLaborPayment(id: string): boolean {
-  const idx = laborPayments.findIndex((p) => p.id === id);
-  if (idx < 0) return false;
-  laborPayments.splice(idx, 1);
-  return true;
+export async function deleteLaborPayment(id: string): Promise<boolean> {
+  return laborDb.deleteLaborPayment(id);
 }
 
-function getPaymentsTotalForRange(workerId: string, startDate: string, endDate: string): number {
-  return getLaborPayments(workerId)
+async function getPaymentsTotalForRange(workerId: string, startDate: string, endDate: string): Promise<number> {
+  const payments = await laborDb.getLaborPayments({ workerId, startDate, endDate });
+  return payments
     .filter((p) => {
       if (p.appliedRange) return p.appliedRange.startDate === startDate && p.appliedRange.endDate === endDate;
       return inDateRange(p.paymentDate, startDate, endDate);
@@ -469,19 +404,15 @@ function getPaymentsTotalForRange(workerId: string, startDate: string, endDate: 
     .reduce((sum, p) => sum + Math.max(0, p.amount), 0);
 }
 
-export function getWorkerPaySummary(workerId: string, startDate: string, endDate: string, projectId?: string) {
-  const confirmedDailyTotal = getConfirmedLaborDailyTotalByWorker(workerId, startDate, endDate, projectId);
-  const confirmedInvoiceTotal = getConfirmedLaborInvoiceTotalByWorker(workerId, startDate, endDate, projectId);
+export async function getWorkerPaySummary(workerId: string, startDate: string, endDate: string, projectId?: string) {
+  const [confirmedDailyTotal, confirmedInvoiceTotal, paidTotal] = await Promise.all([
+    getConfirmedLaborDailyTotalByWorker(workerId, startDate, endDate, projectId),
+    getConfirmedLaborInvoiceTotalByWorker(workerId, startDate, endDate, projectId),
+    getPaymentsTotalForRange(workerId, startDate, endDate),
+  ]);
   const confirmedTotal = confirmedDailyTotal + confirmedInvoiceTotal;
-  const paidTotal = getPaymentsTotalForRange(workerId, startDate, endDate);
   const balance = Math.max(0, confirmedTotal - paidTotal);
-  return {
-    confirmedDailyTotal,
-    confirmedInvoiceTotal,
-    confirmedTotal,
-    paidTotal,
-    balance,
-  };
+  return { confirmedDailyTotal, confirmedInvoiceTotal, confirmedTotal, paidTotal, balance };
 }
 
 export type WorkerEarningAllocationRow = {
@@ -493,702 +424,811 @@ export type WorkerEarningAllocationRow = {
   notes: string | null;
 };
 
-export function getWorkerEarningsAllocations(
+export async function getWorkerEarningsAllocations(
   workerId: string,
   startDate: string,
   endDate: string,
   projectId?: string
-): WorkerEarningAllocationRow[] {
-  const halfDayRate = laborWorkers.find((w) => w.id === workerId)?.halfDayRate ?? 0;
+): Promise<WorkerEarningAllocationRow[]> {
+  const [projects, worker, entries] = await Promise.all([getProjects(), laborDb.getWorkerById(workerId), laborDb.getLaborEntries()]);
+  const projectMap = new Map(projects.map((p) => [p.id, p]));
+  const getName = (id: string) => projectMap.get(id)?.name ?? id;
+  const hourlyRate = (worker?.halfDayRate ?? 0) / 4;
   const out: WorkerEarningAllocationRow[] = [];
-  for (const row of laborEntries) {
-    if (row.status !== "confirmed") continue;
+  for (const row of entries) {
     if (row.workerId !== workerId) continue;
     if (!inDateRange(row.date, startDate, endDate)) continue;
-    if (row.amWorked && row.amProjectId) {
-      if (!projectId || row.amProjectId === projectId) {
-        out.push({
-          date: row.date,
-          projectId: row.amProjectId,
-          projectName: getProjectById(row.amProjectId)?.name ?? row.amProjectId,
-          shift: "AM",
-          amount: halfDayRate,
-          notes: null,
-        });
-      }
-    }
-    if (row.pmWorked && row.pmProjectId) {
-      if (!projectId || row.pmProjectId === projectId) {
-        out.push({
-          date: row.date,
-          projectId: row.pmProjectId,
-          projectName: getProjectById(row.pmProjectId)?.name ?? row.pmProjectId,
-          shift: "PM",
-          amount: halfDayRate,
-          notes: null,
-        });
-      }
-    }
-    if (row.otAmount > 0 && row.otProjectId) {
-      if (!projectId || row.otProjectId === projectId) {
-        out.push({
-          date: row.date,
-          projectId: row.otProjectId,
-          projectName: getProjectById(row.otProjectId)?.name ?? row.otProjectId,
-          shift: "OT",
-          amount: row.otAmount,
-          notes: null,
-        });
-      }
-    }
+    if (projectId && row.projectId !== projectId) continue;
+    const hours = Number(row.hours) || 0;
+    if (hours <= 0 || !row.projectId) continue;
+    const amount = hours * hourlyRate;
+    out.push({ date: row.date, projectId: row.projectId, projectName: getName(row.projectId), shift: "OT", amount, notes: row.notes || null });
   }
   return out.sort((a, b) => (a.date === b.date ? a.shift.localeCompare(b.shift) : a.date.localeCompare(b.date)));
 }
 
-export function getWorkerPayments(workerId: string, startDate: string, endDate: string): LaborPayment[] {
-  return getLaborPayments(workerId).filter((p) => inDateRange(p.paymentDate, startDate, endDate));
+export async function getWorkerLaborPayments(workerId: string, startDate: string, endDate: string): Promise<LaborPayment[]> {
+  const payments = await laborDb.getLaborPayments({ workerId, startDate, endDate });
+  return payments.filter((p) => inDateRange(p.paymentDate, startDate, endDate));
 }
 
-export function getWorkerLaborInvoices(workerId: string, startDate: string, endDate: string): LaborInvoice[] {
-  return getLaborInvoicesByWorker(workerId).filter((inv) => inDateRange(inv.invoiceDate, startDate, endDate));
+export async function getWorkerLaborInvoices(workerId: string, startDate: string, endDate: string): Promise<LaborInvoice[]> {
+  const invs = await laborDb.getLaborInvoicesByWorker(workerId);
+  return invs.filter((inv) => inDateRange(inv.invoiceDate, startDate, endDate));
 }
 
-export function getLaborPayRunRows(startDate: string, endDate: string, projectId?: string) {
-  return getWorkers().map((worker) => {
-    const summary = getWorkerPaySummary(worker.id, startDate, endDate, projectId);
-    return {
+export async function getLaborPayRunRows(startDate: string, endDate: string, projectId?: string) {
+  const workers = await laborDb.getWorkers();
+  const result = [];
+  for (const worker of workers) {
+    const summary = await getWorkerPaySummary(worker.id, startDate, endDate, projectId);
+    const payments = await laborDb.getLaborPaymentsByWorker(worker.id);
+    const filtered = payments.filter((p) => {
+      if (p.appliedRange) return p.appliedRange.startDate === startDate && p.appliedRange.endDate === endDate;
+      return inDateRange(p.paymentDate, startDate, endDate);
+    });
+    result.push({
       workerId: worker.id,
       workerName: worker.name,
       ...summary,
       status: summary.balance > 0 ? "Outstanding" : "Paid",
-      payments: getLaborPaymentsByWorker(worker.id).filter((p) => {
-        if (p.appliedRange) return p.appliedRange.startDate === startDate && p.appliedRange.endDate === endDate;
-        return inDateRange(p.paymentDate, startDate, endDate);
-      }),
-    };
-  });
+      payments: filtered,
+    });
+  }
+  return result;
 }
 
-export function disableWorker(id: string): Worker | null {
-  return updateWorker(id, { status: "inactive" });
+export async function disableWorker(id: string): Promise<import("../labor-db").Worker | null> {
+  return laborDb.updateWorker(id, { status: "inactive" });
 }
 
-export function deleteWorker(id: string): void {
-  const usage = getWorkerUsage(id);
+export async function deleteWorker(id: string): Promise<void> {
+  const usage = await laborDb.getWorkerUsage(id);
   if (usage.used) return;
-  const idx = laborWorkers.findIndex((w) => w.id === id);
-  if (idx >= 0) laborWorkers.splice(idx, 1);
+  return laborDb.deleteWorker(id);
 }
 
-function computeLaborEntryTotal(
-  row: Pick<LaborEntry, "workerId" | "amWorked" | "pmWorked" | "otAmount">
-): number {
-  const worker = laborWorkers.find((w) => w.id === row.workerId);
-  const halfDayRate = worker?.halfDayRate ?? 0;
-  const amAmount = row.amWorked ? halfDayRate : 0;
-  const pmAmount = row.pmWorked ? halfDayRate : 0;
-  const otAmount = Number.isFinite(row.otAmount) ? Math.max(0, row.otAmount) : 0;
-  return amAmount + pmAmount + otAmount;
+export async function getLaborEntriesByDate(date: string): Promise<LaborEntry[]> {
+  return laborDb.getLaborEntriesByDate(date);
 }
 
-function normalizeLaborChecklist(
-  checklist?: Partial<LaborEntry["checklist"]>
-): LaborEntry["checklist"] {
-  return {
-    verifiedWorker: !!checklist?.verifiedWorker,
-    verifiedProjects: !!checklist?.verifiedProjects,
-    verifiedAmount: !!checklist?.verifiedAmount,
-  };
+export async function getLaborEntries(status?: "draft" | "confirmed"): Promise<LaborEntry[]> {
+  return laborDb.getLaborEntries(status);
 }
 
-function getLaborEntryConfirmValidation(entry: LaborEntry): { ok: boolean; reason?: string } {
-  if (!entry.workerId) return { ok: false, reason: "Worker is required." };
-  if (entry.amWorked && !entry.amProjectId) return { ok: false, reason: "AM project is required." };
-  if (entry.pmWorked && !entry.pmProjectId) return { ok: false, reason: "PM project is required." };
-  if ((entry.otAmount ?? 0) > 0 && !entry.otProjectId) return { ok: false, reason: "OT project is required." };
-  const allChecked = entry.checklist.verifiedWorker && entry.checklist.verifiedProjects && entry.checklist.verifiedAmount;
-  if (!allChecked) return { ok: false, reason: "Checklist must be fully verified." };
-  return { ok: true };
+export async function upsertLaborEntry(entry: Omit<LaborEntry, "id"> & { id?: string }): Promise<LaborEntry> {
+  return laborDb.upsertLaborEntry(entry);
 }
 
-function cloneLaborEntry(entry: LaborEntry): LaborEntry {
-  return {
-    ...entry,
-    checklist: normalizeLaborChecklist(entry.checklist),
-  };
+export async function clearLaborEntry(id: string): Promise<void> {
+  return laborDb.deleteLaborEntry(id);
 }
 
-export function getLaborEntriesByDate(date: string): LaborEntry[] {
-  return laborEntries
-    .filter((row) => row.date === date)
-    .map((row) => cloneLaborEntry(row))
-    .sort((a, b) => a.id.localeCompare(b.id));
+export async function getLaborEntriesByProjectAndDate(projectId: string, workDate: string): Promise<LaborEntry[]> {
+  return laborDb.getLaborEntriesByProjectAndDate(projectId, workDate);
 }
 
-export function getLaborEntries(status?: "draft" | "confirmed"): LaborEntry[] {
-  const rows = status ? laborEntries.filter((row) => row.status === status) : laborEntries;
-  return rows
-    .map((row) => cloneLaborEntry(row))
-    .sort((a, b) => (a.date === b.date ? a.id.localeCompare(b.id) : b.date.localeCompare(a.date)));
+export async function insertDailyLaborEntriesAmPm(
+  projectId: string,
+  workDate: string,
+  rows: import("../labor-db").DailyLaborRowInput[],
+  options?: { notes?: string; costCode?: string }
+): Promise<LaborEntry[]> {
+  return laborDb.insertDailyLaborEntries(projectId, workDate, rows, options);
 }
 
-export function upsertLaborEntry(
-  entry: Omit<LaborEntry, "total" | "reviewedAt" | "checklist"> & {
-    reviewedAt?: string;
-    checklist?: Partial<LaborEntry["checklist"]>;
-  }
-): LaborEntry {
-  const existing = laborEntries.find((r) => r.id === entry.id);
-  const normalized: LaborEntry = {
-    ...entry,
-    amProjectId: entry.amProjectId || undefined,
-    pmProjectId: entry.pmProjectId || undefined,
-    otProjectId: entry.otProjectId || undefined,
-    otAmount: Number.isFinite(entry.otAmount) ? Math.max(0, entry.otAmount) : 0,
-    total: computeLaborEntryTotal(entry),
-    reviewedAt: entry.status === "confirmed" ? (entry.reviewedAt ?? new Date().toISOString()) : undefined,
-    checklist: normalizeLaborChecklist(entry.checklist ?? existing?.checklist),
-  };
-  const idx = laborEntries.findIndex((r) => r.id === normalized.id);
-  if (idx >= 0) {
-    laborEntries[idx] = normalized;
-    return { ...laborEntries[idx] };
-  }
-  const created: LaborEntry = {
-    ...normalized,
-    id: normalized.id || `le-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-  };
-  laborEntries.push(created);
-  return { ...created };
+export type { DailyLaborRowInput } from "../labor-db";
+
+export async function confirmLaborEntry(id: string): Promise<LaborEntry | null> {
+  return laborDb.confirmLaborEntry(id);
 }
 
-export function clearLaborEntry(id: string): void {
-  const idx = laborEntries.findIndex((r) => r.id === id);
-  if (idx >= 0) laborEntries.splice(idx, 1);
+export async function unconfirmLaborEntry(id: string): Promise<LaborEntry | null> {
+  return laborDb.unconfirmLaborEntry(id);
 }
 
-export function confirmLaborEntry(id: string): LaborEntry | null {
-  const idx = laborEntries.findIndex((r) => r.id === id);
-  if (idx < 0) return null;
-  const validation = getLaborEntryConfirmValidation(laborEntries[idx]);
-  if (!validation.ok) return null;
-  const next: LaborEntry = {
-    ...laborEntries[idx],
-    status: "confirmed",
-    reviewedAt: new Date().toISOString(),
-    total: computeLaborEntryTotal(laborEntries[idx]),
-  };
-  laborEntries[idx] = next;
-  return { ...next };
+export async function getLaborShiftEntries(date?: string): Promise<LaborShiftEntry[]> {
+  if (date) return laborDb.getLaborEntriesByDate(date);
+  return laborDb.getLaborEntries();
 }
 
-export function unconfirmLaborEntry(id: string): LaborEntry | null {
-  const idx = laborEntries.findIndex((r) => r.id === id);
-  if (idx < 0) return null;
-  const next: LaborEntry = {
-    ...laborEntries[idx],
-    status: "draft",
-    reviewedAt: undefined,
-    total: computeLaborEntryTotal(laborEntries[idx]),
-    checklist: normalizeLaborChecklist(laborEntries[idx].checklist),
-  };
-  laborEntries[idx] = next;
-  return { ...next };
-}
-
-/** Legacy API compatibility wrappers (old labor shift naming). */
-export function getLaborShiftEntries(date?: string): LaborShiftEntry[] {
-  const rows = date ? getLaborEntriesByDate(date) : laborEntries.map((r) => ({ ...r }));
-  return rows.map((r) => ({ ...r }));
-}
-
-export function upsertLaborShiftEntry(
-  workerId: string,
-  patch: Omit<LaborShiftEntry, "id" | "workerId">
-): LaborShiftEntry {
-  const existing = laborEntries.find((r) => r.workerId === workerId && r.date === patch.date);
-  return upsertLaborEntry({
-    id: existing?.id ?? `le-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+export async function upsertLaborShiftEntry(workerId: string, patch: Omit<LaborShiftEntry, "id" | "workerId">): Promise<LaborShiftEntry> {
+  const entries = await laborDb.getLaborEntriesByDate(patch.date);
+  const existing = entries.find((r) => r.workerId === workerId);
+  return laborDb.upsertLaborEntry({
+    id: existing?.id,
     date: patch.date,
     workerId,
-    amWorked: patch.amWorked,
-    amProjectId: patch.amProjectId ?? undefined,
-    pmWorked: patch.pmWorked,
-    pmProjectId: patch.pmProjectId ?? undefined,
-    otAmount: patch.otAmount,
-    otProjectId: patch.otProjectId ?? undefined,
-    status: existing?.status ?? "draft",
-    checklist: existing?.checklist ?? normalizeLaborChecklist(),
+    projectId: patch.projectId ?? "",
+    hours: patch.hours ?? 0,
+    costCode: patch.costCode ?? "",
+    notes: patch.notes ?? "",
   });
 }
 
-export function deleteLaborShiftEntry(workerId: string, date: string): boolean {
-  const idx = laborEntries.findIndex((r) => r.workerId === workerId && r.date === date);
-  if (idx < 0) return false;
-  laborEntries.splice(idx, 1);
+export async function deleteLaborShiftEntry(workerId: string, date: string): Promise<boolean> {
+  const entries = await laborDb.getLaborEntriesByDate(date);
+  const entry = entries.find((r) => r.workerId === workerId);
+  if (!entry) return false;
+  await laborDb.deleteLaborEntry(entry.id);
   return true;
 }
 
-export function getLaborAllocatedByProject(projectId: string, date?: string): number {
-  const workerRate = new Map(laborWorkers.map((w) => [w.id, w.halfDayRate]));
-  const rows = (date ? getLaborEntriesByDate(date) : laborEntries).filter((row) => row.status === "confirmed");
-  let total = 0;
-  for (const r of rows) {
-    const halfDayRate = workerRate.get(r.workerId) ?? 0;
-    if (r.amWorked && (r.amProjectId ?? "") === projectId) total += halfDayRate;
-    if (r.pmWorked && (r.pmProjectId ?? "") === projectId) total += halfDayRate;
-    if ((r.otProjectId ?? "") === projectId) total += Math.max(0, r.otAmount ?? 0);
-  }
-  return total;
+export async function getLaborAllocatedByProject(projectId: string, date?: string): Promise<number> {
+  return laborDb.getLaborAllocatedByProject(projectId, date);
 }
 
-/** Project labor actual: only confirmed labor entries are counted. */
-export function getLaborActualByProject(projectId: string): number {
-  const fromEntries = getLaborAllocatedByProject(projectId);
-  const fromInvoices = includeLaborInvoicesInProjectLabor ? getLaborInvoiceActualByProject(projectId) : 0;
+export type { DailyLaborEntryRow, DailyLaborEntryDraft, DailyLaborEntryOldForReallocate, LaborEntryWithJoins, LaborEntriesFilters, LaborEntryStatus, ProjectLaborBreakdownRow, MonthlyPayrollRow, WorkerPayableSummary, LaborPaymentInsert, LaborPaymentRow, LaborPaymentInRangeRow } from "../daily-labor-db";
+export async function getDailyLaborEntriesByDate(workDate: string) {
+  return dailyLaborDb.getDailyLaborEntriesByDate(workDate);
+}
+export async function getLaborEntriesWithJoins(filters: import("../daily-labor-db").LaborEntriesFilters = {}) {
+  return dailyLaborDb.getLaborEntriesWithJoins(filters);
+}
+export async function getLaborWorkersList() {
+  return dailyLaborDb.getLaborWorkersList();
+}
+export async function getLaborWorkerById(id: string) {
+  return dailyLaborDb.getLaborWorkerById(id);
+}
+export async function getLaborPaymentsByWorkerId(workerId: string) {
+  return dailyLaborDb.getLaborPaymentsByWorkerId(workerId);
+}
+export async function getLaborPaymentsByDateRange(dateFrom: string, dateTo: string) {
+  return dailyLaborDb.getLaborPaymentsByDateRange(dateFrom, dateTo);
+}
+export async function getWorkerPayableSummary(workerId: string) {
+  return dailyLaborDb.getWorkerPayableSummary(workerId);
+}
+export async function insertLaborPayment(payload: import("../daily-labor-db").LaborPaymentInsert) {
+  return dailyLaborDb.insertLaborPayment(payload);
+}
+export async function insertDailyLaborEntries(workDate: string, rows: import("../daily-labor-db").DailyLaborEntryDraft[]) {
+  return dailyLaborDb.insertDailyLaborEntries(workDate, rows);
+}
+export async function updateDailyLaborEntry(
+  entryId: string,
+  oldValues: import("../daily-labor-db").DailyLaborEntryOldForReallocate,
+  draft: import("../daily-labor-db").DailyLaborEntryDraft
+) {
+  return dailyLaborDb.updateDailyLaborEntry(entryId, oldValues, draft);
+}
+export async function deleteDailyLaborEntry(entryId: string) {
+  return dailyLaborDb.deleteDailyLaborEntry(entryId);
+}
+export async function submitLaborEntries(entryIds: string[], submittedBy?: string | null) {
+  return dailyLaborDb.submitLaborEntries(entryIds, submittedBy);
+}
+export async function approveLaborEntries(entryIds: string[], approvedBy?: string | null) {
+  return dailyLaborDb.approveLaborEntries(entryIds, approvedBy);
+}
+export async function lockLaborEntries(entryIds: string[], lockedBy?: string | null) {
+  return dailyLaborDb.lockLaborEntries(entryIds, lockedBy);
+}
+export async function getDocuments(filters: import("../documents-db").DocumentFilters = {}) {
+  return documentsDb.getDocuments(filters);
+}
+export async function getDocumentsByProject(projectId: string) {
+  return documentsDb.getDocumentsByProject(projectId);
+}
+export async function getDocumentById(id: string) {
+  return documentsDb.getDocumentById(id);
+}
+export async function insertDocument(draft: import("../documents-db").DocumentDraft) {
+  return documentsDb.insertDocument(draft);
+}
+export async function deleteDocument(id: string, removeFromStorage?: boolean) {
+  return documentsDb.deleteDocument(id, removeFromStorage ?? true);
+}
+export async function getDocumentSignedUrl(filePath: string, expiresIn?: number) {
+  return documentsDb.getDocumentSignedUrl(filePath, expiresIn);
+}
+export { DOCUMENT_FILE_TYPES, isPreviewableMime } from "../documents-db";
+export async function getApBills(filters: import("../ap-bills-db").ApBillsFilters = {}) {
+  return apBillsDb.getApBills(filters);
+}
+export async function getApBillById(id: string) {
+  return apBillsDb.getApBillById(id);
+}
+export async function getApBillPayments(billId: string) {
+  return apBillsDb.getApBillPayments(billId);
+}
+export async function createApBill(draft: Parameters<typeof apBillsDb.createApBill>[0]) {
+  return apBillsDb.createApBill(draft);
+}
+export async function updateApBill(id: string, patch: Parameters<typeof apBillsDb.updateApBill>[1]) {
+  return apBillsDb.updateApBill(id, patch);
+}
+export async function addApBillPayment(billId: string, payment: Parameters<typeof apBillsDb.addApBillPayment>[1]) {
+  return apBillsDb.addApBillPayment(billId, payment);
+}
+export async function setApBillPending(id: string) {
+  return apBillsDb.setApBillPending(id);
+}
+export async function voidApBill(id: string) {
+  return apBillsDb.voidApBill(id);
+}
+export async function deleteApBillDraft(id: string) {
+  return apBillsDb.deleteApBillDraft(id);
+}
+export async function getApBillsSummary() {
+  return apBillsDb.getApBillsSummary();
+}
+
+/** Finance overview: Revenue (invoices.total), Total Bills (ap_bills.amount), Total Expenses (expense_lines), Total Labor Cost (labor_entries.cost_amount), Profit = Revenue - Bills - Expenses - Labor. */
+export async function getFinanceOverviewStats(): Promise<{
+  revenue: number;
+  totalBills: number;
+  totalExpenses: number;
+  totalLaborCost: number;
+  profit: number;
+}> {
+  const [revenueCollected, totalBills, totalExpenses, totalLaborCost] = await Promise.all([
+    invoicesDb.getCompanyRevenueAndCollected().catch(() => ({ revenue: 0, collected: 0 })),
+    apBillsDb.getTotalBillsAmount().catch(() => 0),
+    expensesDb.getTotalExpenseLinesSum().catch(() => 0),
+    dailyLaborDb.getTotalLaborCost().catch(() => 0),
+  ]);
+  const revenue = revenueCollected.revenue ?? 0;
+  const profit = revenue - totalBills - totalExpenses - totalLaborCost;
+  return { revenue, totalBills, totalExpenses, totalLaborCost, profit };
+}
+
+/** Labor cost (Approved/Locked only) for work_date in the current week (Sun–Sat). For dashboard. */
+export async function getLaborCostThisWeek(): Promise<number> {
+  const now = new Date();
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - now.getDay());
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 6);
+  return laborDb.getLaborCostForDateRange(
+    startOfWeek.toISOString().slice(0, 10),
+    endOfWeek.toISOString().slice(0, 10)
+  );
+}
+/** Sum of expense line amounts for expenses dated in the current month. For dashboard. */
+export async function getExpensesThisMonth(): Promise<number> {
+  const now = new Date();
+  return expensesDb.getExpensesTotalForMonth(now.getFullYear(), now.getMonth() + 1);
+}
+export async function getApBillsByProject(projectId: string) {
+  return apBillsDb.getApBillsByProject(projectId);
+}
+export async function getProjectLaborBreakdown(projectId: string) {
+  return dailyLaborDb.getProjectLaborBreakdown(projectId);
+}
+export async function getMonthlyPayrollSummary(year: number, month: number) {
+  return dailyLaborDb.getMonthlyPayrollSummary(year, month);
+}
+export async function getTotalLaborCost(): Promise<number> {
+  return dailyLaborDb.getTotalLaborCost();
+}
+
+// Construction daily work (daily_work_entries)
+export async function getDailyWorkEntriesByDate(date: string) {
+  return dailyWorkDb.getDailyWorkEntriesByDate(date);
+}
+export async function getDailyWorkEntriesByDateAndProject(date: string, projectId: string | null) {
+  return dailyWorkDb.getDailyWorkEntriesByDateAndProject(date, projectId);
+}
+export async function getDailyWorkEntriesInRange(fromDate: string, toDate: string) {
+  return dailyWorkDb.getDailyWorkEntriesInRange(fromDate, toDate);
+}
+export async function insertDailyWorkEntry(workDate: string, draft: import("../daily-work-db").DailyWorkEntryDraft) {
+  return dailyWorkDb.insertDailyWorkEntry(workDate, draft);
+}
+export async function updateDailyWorkEntry(id: string, draft: Partial<import("../daily-work-db").DailyWorkEntryDraft>) {
+  return dailyWorkDb.updateDailyWorkEntry(id, draft);
+}
+export async function deleteDailyWorkEntry(id: string) {
+  return dailyWorkDb.deleteDailyWorkEntry(id);
+}
+export async function getPayrollSummary(fromDate: string, toDate: string) {
+  return dailyWorkDb.getPayrollSummary(fromDate, toDate);
+}
+export async function getDailyWorkEntriesForWorker(workerId: string, fromDate: string, toDate: string) {
+  return dailyWorkDb.getDailyWorkEntriesForWorker(workerId, fromDate, toDate);
+}
+
+// Worker reimbursements
+export async function getWorkerReimbursements() {
+  return workerReimbursementsDb.getWorkerReimbursements();
+}
+export async function insertWorkerReimbursement(draft: import("../worker-reimbursements-db").WorkerReimbursementDraft) {
+  return workerReimbursementsDb.insertWorkerReimbursement(draft);
+}
+export async function updateWorkerReimbursement(id: string, draft: Partial<import("../worker-reimbursements-db").WorkerReimbursementDraft>) {
+  return workerReimbursementsDb.updateWorkerReimbursement(id, draft);
+}
+export async function deleteWorkerReimbursement(id: string) {
+  return workerReimbursementsDb.deleteWorkerReimbursement(id);
+}
+export async function markWorkerReimbursementsPaid(workerId: string, projectId?: string | null) {
+  return workerReimbursementsDb.markWorkerReimbursementsPaid(workerId, projectId);
+}
+
+// Worker invoices (1099)
+export async function getWorkerInvoices() {
+  return workerInvoicesDb.getWorkerInvoices();
+}
+export async function getWorkerInvoiceById(id: string) {
+  return workerInvoicesDb.getWorkerInvoiceById(id);
+}
+export async function insertWorkerInvoice(draft: import("../worker-invoices-db").WorkerInvoiceDraft) {
+  return workerInvoicesDb.insertWorkerInvoice(draft);
+}
+export async function updateWorkerInvoice(id: string, draft: Partial<import("../worker-invoices-db").WorkerInvoiceDraft>) {
+  return workerInvoicesDb.updateWorkerInvoice(id, draft);
+}
+export async function deleteWorkerInvoice(id: string) {
+  return workerInvoicesDb.deleteWorkerInvoice(id);
+}
+export async function markWorkerInvoicesPaid(workerId: string, projectId?: string | null) {
+  return workerInvoicesDb.markWorkerInvoicesPaid(workerId, projectId);
+}
+
+// Worker payments
+export async function createWorkerPayment(input: import("../worker-payments-db").CreateWorkerPaymentInput) {
+  return workerPaymentsDb.createWorkerPayment(input);
+}
+export async function getWorkerPayments(filters?: Parameters<typeof workerPaymentsDb.getWorkerPayments>[0]) {
+  return workerPaymentsDb.getWorkerPayments(filters);
+}
+export async function getWorkerPaymentById(id: string) {
+  return workerPaymentsDb.getWorkerPaymentById(id);
+}
+export async function deleteWorkerPayment(id: string) {
+  return workerPaymentsDb.deleteWorkerPayment(id);
+}
+
+export async function getLaborActualByProject(projectId: string): Promise<number> {
+  const [fromEntries, fromInvoices] = await Promise.all([
+    laborDb.getLaborAllocatedByProject(projectId),
+    includeLaborInvoicesInProjectLabor ? laborDb.getLaborInvoiceActualByProject(projectId) : 0,
+  ]);
   return fromEntries + fromInvoices;
 }
 
-export function getDashboardStats() {
-  const projects = getProjects();
+export async function getDashboardStats() {
+  const projects = await getProjects();
   const totalProjects = projects.length;
   const activeProjects = projects.filter((p) => p.status === "active").length;
   const totalBudget = projects.reduce((s, p) => s + p.budget, 0);
-  const totalSpent = projects.reduce((s, p) => s + (getProjectDetailFinancial(p.id)?.totalSpent ?? p.spent), 0);
-  const totalProfit = projects.reduce((s, p) => {
-    const source = getSourceForProject?.(p.id) ?? null;
-    const revenue = source?.snapshotRevenue ?? p.budget;
-    const actualCost = getProjectDetailFinancial(p.id)?.totalSpent ?? p.spent;
-    return s + (revenue - actualCost);
-  }, 0);
+  // Use batch function: 5 queries total regardless of project count (vs 5×N previously).
+  const profitMap = await getCanonicalProjectProfitBatch(projects.map((p) => p.id)).catch(() => new Map());
+  const totalSpent = projects.reduce((s, p) => s + (profitMap.get(p.id)?.actualCost ?? 0), 0);
+  const totalProfit = projects.reduce((s, p) => s + (profitMap.get(p.id)?.profit ?? 0), 0);
   return { totalProjects, activeProjects, totalBudget, totalSpent, totalProfit };
 }
 
-export function getRecentTransactions(): RecentTransaction[] {
-  return [...MOCK_RECENT_TRANSACTIONS];
+export async function getRecentTransactions(limit = 20): Promise<RecentTransaction[]> {
+  const cap = Math.max(1, Math.min(limit, 100));
+  const [invoices, bills, expenses, labor] = await Promise.all([
+    invoicesDb.getInvoicesRecent(cap).catch(() => []),
+    apBillsDb.getApBillsRecent(cap).catch(() => []),
+    expensesDb.getExpensesRecent(cap).catch(() => []),
+    dailyLaborDb.getLaborEntriesRecent(cap).catch(() => []),
+  ]);
+  type Row = { id: string; created_at: string; amount: number; description: string; projectName: string | null };
+  const invoiceRows: Row[] = invoices.map((r) => ({
+    id: r.id,
+    created_at: r.created_at,
+    amount: r.total,
+    description: [r.invoice_no, r.client_name].filter(Boolean).join(" · ") || "Invoice",
+    projectName: r.project_name,
+  }));
+  const billRows: Row[] = bills.map((r) => ({
+    id: r.id,
+    created_at: r.created_at,
+    amount: r.amount,
+    description: [r.bill_no, r.vendor_name].filter(Boolean).join(" · ") || "Bill",
+    projectName: r.project_name ?? null,
+  }));
+  const expenseRows: Row[] = expenses.map((r) => ({
+    id: r.id,
+    created_at: r.created_at,
+    amount: r.total,
+    description: r.vendor_name?.trim() || r.notes?.slice(0, 50) || "Expense",
+    projectName: r.project_name,
+  }));
+  const laborRows: Row[] = labor.map((r) => ({
+    id: r.id,
+    created_at: r.created_at,
+    amount: r.cost_amount,
+    description: r.notes?.slice(0, 50) || `Labor · ${r.work_date}`,
+    projectName: r.project_name,
+  }));
+  const withType: Array<{ id: string; type: RecentTransaction["type"]; created_at: string; amount: number; description: string; projectName: string }> = [
+    ...invoiceRows.map((r) => ({ ...r, type: "invoice" as const, projectName: r.projectName ?? "" })),
+    ...billRows.map((r) => ({ ...r, type: "bill" as const, projectName: r.projectName ?? "" })),
+    ...expenseRows.map((r) => ({ ...r, type: "expense" as const, projectName: r.projectName ?? "" })),
+    ...laborRows.map((r) => ({ ...r, type: "labor" as const, projectName: r.projectName ?? "" })),
+  ];
+  const sorted = withType.sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
+  return sorted.slice(0, limit).map((t) => ({
+    id: t.id,
+    type: t.type,
+    description: t.description,
+    amount: t.type === "invoice" ? t.amount : -t.amount,
+    date: (t.created_at || "").slice(0, 10),
+    projectName: t.projectName || "—",
+  }));
 }
 
-export function getExpenseCategories(includeDisabled = false): string[] {
-  const list = [...expenseCategories];
-  if (includeDisabled) return list;
-  return list.filter((c) => !disabledExpenseCategories.some((d) => d.toLowerCase() === c.toLowerCase()));
+export async function getExpenseCategories(includeDisabled = false): Promise<string[]> {
+  return refDataDb.getExpenseCategories(includeDisabled);
 }
 
-/** Returns the value to select (existing match or newly added). Empty string if rejected. */
-export function addExpenseCategory(name: string): string {
-  const trimmed = name.trim();
-  if (!trimmed) return "";
-  const existing = expenseCategories.find((c) => c.toLowerCase() === trimmed.toLowerCase());
-  if (existing) return existing;
-  const inDisabledIdx = disabledExpenseCategories.findIndex((d) => d.toLowerCase() === trimmed.toLowerCase());
-  if (inDisabledIdx >= 0) {
-    disabledExpenseCategories.splice(inDisabledIdx, 1);
-    return trimmed;
-  }
-  expenseCategories.push(trimmed);
-  return trimmed;
+export async function addExpenseCategory(name: string): Promise<string> {
+  return refDataDb.addExpenseCategory(name);
 }
 
-export function getCategoryUsageCount(name: string): number {
-  const lower = name.toLowerCase();
-  let count = 0;
-  for (const exp of expenses) {
-    const norm = normalizeExpense(exp);
-    for (const line of norm.lines) {
-      if (line.category.toLowerCase() === lower) count++;
-    }
-  }
-  return count;
+export async function getCategoryUsageCount(name: string): Promise<number> {
+  return refDataDb.getCategoryUsageCount(name);
 }
 
-export function renameExpenseCategory(oldName: string, newName: string): boolean {
-  const oldTrim = oldName.trim();
-  const newTrim = newName.trim();
-  if (!newTrim || oldTrim.toLowerCase() === newTrim.toLowerCase()) return false;
-  const idx = expenseCategories.findIndex((c) => c.toLowerCase() === oldTrim.toLowerCase());
-  if (idx < 0) return false;
-  const wasDisabled = disabledExpenseCategories.some((d) => d.toLowerCase() === oldTrim.toLowerCase());
-  if (wasDisabled) {
-    const di = disabledExpenseCategories.findIndex((d) => d.toLowerCase() === oldTrim.toLowerCase());
-    if (di >= 0) disabledExpenseCategories.splice(di, 1);
-    disabledExpenseCategories.push(newTrim);
-  }
-  expenseCategories[idx] = newTrim;
-  for (const exp of expenses) {
-    const norm = normalizeExpense(exp);
-    for (const line of norm.lines) {
-      if (line.category.toLowerCase() === oldTrim.toLowerCase()) line.category = newTrim;
-    }
-  }
-  return true;
+export async function renameExpenseCategory(oldName: string, newName: string): Promise<boolean> {
+  return refDataDb.renameExpenseCategory(oldName, newName);
 }
 
-export function disableExpenseCategory(name: string): boolean {
-  const trimmed = name.trim();
-  if (!trimmed) return false;
-  const inList = expenseCategories.some((c) => c.toLowerCase() === trimmed.toLowerCase());
-  if (!inList) return false;
-  if (disabledExpenseCategories.some((d) => d.toLowerCase() === trimmed.toLowerCase())) return true;
-  const exact = expenseCategories.find((c) => c.toLowerCase() === trimmed.toLowerCase());
-  if (exact) disabledExpenseCategories.push(exact);
-  return true;
+export async function disableExpenseCategory(name: string): Promise<boolean> {
+  return refDataDb.disableExpenseCategory(name);
 }
 
-export function enableExpenseCategory(name: string): boolean {
-  const trimmed = name.trim();
-  const idx = disabledExpenseCategories.findIndex((d) => d.toLowerCase() === trimmed.toLowerCase());
-  if (idx < 0) return false;
-  disabledExpenseCategories.splice(idx, 1);
-  return true;
+export async function enableExpenseCategory(name: string): Promise<boolean> {
+  return refDataDb.enableExpenseCategory(name);
 }
 
-export function deleteExpenseCategory(name: string): boolean {
-  const trimmed = name.trim();
-  if (getCategoryUsageCount(trimmed) > 0) return false;
-  const idx = expenseCategories.findIndex((c) => c.toLowerCase() === trimmed.toLowerCase());
-  if (idx >= 0) expenseCategories.splice(idx, 1);
-  const di = disabledExpenseCategories.findIndex((d) => d.toLowerCase() === trimmed.toLowerCase());
-  if (di >= 0) disabledExpenseCategories.splice(di, 1);
-  return true;
+export async function deleteExpenseCategory(name: string): Promise<boolean> {
+  return refDataDb.deleteExpenseCategory(name);
 }
 
-export function isExpenseCategoryDisabled(name: string): boolean {
-  return disabledExpenseCategories.some((d) => d.toLowerCase() === name.trim().toLowerCase());
+export async function isExpenseCategoryDisabled(name: string): Promise<boolean> {
+  return refDataDb.isExpenseCategoryDisabled(name);
 }
 
-export function getVendors(includeDisabled = false): string[] {
-  const list = [...vendors];
-  if (includeDisabled) return list;
-  return list.filter((v) => !disabledVendors.some((d) => d.toLowerCase() === v.toLowerCase()));
+export async function getVendors(includeDisabled = false): Promise<string[]> {
+  return refDataDb.getVendors(includeDisabled);
 }
 
-/** Returns the value to select (existing match or newly added). Empty string if rejected. */
-export function addVendor(name: string): string {
-  const trimmed = name.trim();
-  if (!trimmed) return "";
-  const existing = vendors.find((v) => v.toLowerCase() === trimmed.toLowerCase());
-  if (existing) return existing;
-  const inDisabledIdx = disabledVendors.findIndex((d) => d.toLowerCase() === trimmed.toLowerCase());
-  if (inDisabledIdx >= 0) {
-    disabledVendors.splice(inDisabledIdx, 1);
-    return trimmed;
-  }
-  vendors.push(trimmed);
-  return trimmed;
+export async function addVendor(name: string): Promise<string> {
+  return refDataDb.addVendor(name);
 }
 
-export function getVendorUsageCount(name: string): number {
-  const lower = name.toLowerCase();
-  return expenses.filter((e) => e.vendorName.toLowerCase() === lower).length;
+export async function getVendorUsageCount(name: string): Promise<number> {
+  return refDataDb.getVendorUsageCount(name);
 }
 
-export function renameVendor(oldName: string, newName: string): boolean {
-  const oldTrim = oldName.trim();
-  const newTrim = newName.trim();
-  if (!newTrim || oldTrim.toLowerCase() === newTrim.toLowerCase()) return false;
-  const idx = vendors.findIndex((v) => v.toLowerCase() === oldTrim.toLowerCase());
-  if (idx < 0) return false;
-  const wasDisabled = disabledVendors.some((d) => d.toLowerCase() === oldTrim.toLowerCase());
-  if (wasDisabled) {
-    const di = disabledVendors.findIndex((d) => d.toLowerCase() === oldTrim.toLowerCase());
-    if (di >= 0) disabledVendors.splice(di, 1);
-    disabledVendors.push(newTrim);
-  }
-  vendors[idx] = newTrim;
-  for (const exp of expenses) {
-    if (exp.vendorName.toLowerCase() === oldTrim.toLowerCase()) exp.vendorName = newTrim;
-  }
-  return true;
+export async function renameVendor(oldName: string, newName: string): Promise<boolean> {
+  return refDataDb.renameVendor(oldName, newName);
 }
 
-export function disableVendor(name: string): boolean {
-  const trimmed = name.trim();
-  if (!trimmed) return false;
-  const inList = vendors.some((v) => v.toLowerCase() === trimmed.toLowerCase());
-  if (!inList) return false;
-  if (disabledVendors.some((d) => d.toLowerCase() === trimmed.toLowerCase())) return true;
-  const exact = vendors.find((v) => v.toLowerCase() === trimmed.toLowerCase());
-  if (exact) disabledVendors.push(exact);
-  return true;
+export async function disableVendor(name: string): Promise<boolean> {
+  return refDataDb.disableVendor(name);
 }
 
-export function enableVendor(name: string): boolean {
-  const trimmed = name.trim();
-  const idx = disabledVendors.findIndex((d) => d.toLowerCase() === trimmed.toLowerCase());
-  if (idx < 0) return false;
-  disabledVendors.splice(idx, 1);
-  return true;
+export async function enableVendor(name: string): Promise<boolean> {
+  return refDataDb.enableVendor(name);
 }
 
-export function deleteVendor(name: string): boolean {
-  const trimmed = name.trim();
-  if (getVendorUsageCount(trimmed) > 0) return false;
-  const idx = vendors.findIndex((v) => v.toLowerCase() === trimmed.toLowerCase());
-  if (idx >= 0) vendors.splice(idx, 1);
-  const di = disabledVendors.findIndex((d) => d.toLowerCase() === trimmed.toLowerCase());
-  if (di >= 0) disabledVendors.splice(di, 1);
-  return true;
+export async function deleteVendor(name: string): Promise<boolean> {
+  return refDataDb.deleteVendor(name);
 }
 
-export function isVendorDisabled(name: string): boolean {
-  return disabledVendors.some((d) => d.toLowerCase() === name.trim().toLowerCase());
+export async function isVendorDisabled(name: string): Promise<boolean> {
+  return refDataDb.isVendorDisabled(name);
 }
 
-export function getPaymentMethods(includeDisabled = false): string[] {
-  const list = [...paymentMethods];
-  if (includeDisabled) return list;
-  return list.filter((m) => !disabledPaymentMethods.some((d) => d.toLowerCase() === m.toLowerCase()));
+export async function getSubcontractors(): Promise<import("../subcontractors-db").SubcontractorRow[]> {
+  return subcontractorsDb.getSubcontractors();
 }
 
-/** Returns the value to select (existing match or newly added). Empty string if rejected. */
-export function addPaymentMethod(name: string): string {
-  const trimmed = name.trim();
-  if (!trimmed) return "";
-  const existing = paymentMethods.find((m) => m.toLowerCase() === trimmed.toLowerCase());
-  if (existing) return existing;
-  const inDisabledIdx = disabledPaymentMethods.findIndex((d) => d.toLowerCase() === trimmed.toLowerCase());
-  if (inDisabledIdx >= 0) {
-    disabledPaymentMethods.splice(inDisabledIdx, 1);
-    return trimmed;
-  }
-  paymentMethods.push(trimmed);
-  return trimmed;
+export async function getSubcontractorsWithInsuranceAlerts(): Promise<import("../subcontractors-db").SubcontractorWithInsuranceAlert[]> {
+  return subcontractorsDb.getSubcontractorsWithInsuranceAlerts();
 }
 
-export function getPaymentMethodUsageCount(name: string): number {
-  const lower = name.toLowerCase();
-  return expenses.filter((e) => e.paymentMethod.toLowerCase() === lower).length;
+export async function getSubcontractorById(id: string): Promise<import("../subcontractors-db").SubcontractorRow | null> {
+  return subcontractorsDb.getSubcontractorById(id);
 }
 
-export function renamePaymentMethod(oldName: string, newName: string): boolean {
-  const oldTrim = oldName.trim();
-  const newTrim = newName.trim();
-  if (!newTrim || oldTrim.toLowerCase() === newTrim.toLowerCase()) return false;
-  const idx = paymentMethods.findIndex((m) => m.toLowerCase() === oldTrim.toLowerCase());
-  if (idx < 0) return false;
-  const wasDisabled = disabledPaymentMethods.some((d) => d.toLowerCase() === oldTrim.toLowerCase());
-  if (wasDisabled) {
-    const di = disabledPaymentMethods.findIndex((d) => d.toLowerCase() === oldTrim.toLowerCase());
-    if (di >= 0) disabledPaymentMethods.splice(di, 1);
-    disabledPaymentMethods.push(newTrim);
-  }
-  paymentMethods[idx] = newTrim;
-  for (const exp of expenses) {
-    if (exp.paymentMethod.toLowerCase() === oldTrim.toLowerCase()) exp.paymentMethod = newTrim;
-  }
-  return true;
+export async function insertSubcontractor(draft: import("../subcontractors-db").SubcontractorDraft): Promise<void> {
+  return subcontractorsDb.insertSubcontractor(draft);
 }
 
-export function disablePaymentMethod(name: string): boolean {
-  const trimmed = name.trim();
-  if (!trimmed) return false;
-  const inList = paymentMethods.some((m) => m.toLowerCase() === trimmed.toLowerCase());
-  if (!inList) return false;
-  if (disabledPaymentMethods.some((d) => d.toLowerCase() === trimmed.toLowerCase())) return true;
-  const exact = paymentMethods.find((m) => m.toLowerCase() === trimmed.toLowerCase());
-  if (exact) disabledPaymentMethods.push(exact);
-  return true;
+export async function updateSubcontractor(
+  id: string,
+  patch: import("../subcontractors-db").UpdateSubcontractorPatch
+): Promise<import("../subcontractors-db").SubcontractorRow | null> {
+  return subcontractorsDb.updateSubcontractor(id, patch);
 }
 
-export function enablePaymentMethod(name: string): boolean {
-  const trimmed = name.trim();
-  const idx = disabledPaymentMethods.findIndex((d) => d.toLowerCase() === trimmed.toLowerCase());
-  if (idx < 0) return false;
-  disabledPaymentMethods.splice(idx, 1);
-  return true;
+export async function deleteSubcontractor(id: string): Promise<void> {
+  return subcontractorsDb.deleteSubcontractor(id);
 }
 
-export function deletePaymentMethod(name: string): boolean {
-  const trimmed = name.trim();
-  if (getPaymentMethodUsageCount(trimmed) > 0) return false;
-  const idx = paymentMethods.findIndex((m) => m.toLowerCase() === trimmed.toLowerCase());
-  if (idx >= 0) paymentMethods.splice(idx, 1);
-  const di = disabledPaymentMethods.findIndex((d) => d.toLowerCase() === trimmed.toLowerCase());
-  if (di >= 0) disabledPaymentMethods.splice(di, 1);
-  return true;
+export async function getSubcontractsByProject(projectId: string): Promise<import("../subcontracts-db").SubcontractWithSubcontractor[]> {
+  return subcontractsDb.getSubcontractsByProject(projectId);
 }
 
-export function isPaymentMethodDisabled(name: string): boolean {
-  return disabledPaymentMethods.some((d) => d.toLowerCase() === name.trim().toLowerCase());
+export async function getSubcontractsSummaryAll(): Promise<{ id: string; subcontractor_id: string; contract_amount: number }[]> {
+  return subcontractsDb.getSubcontractsSummaryAll();
 }
 
-export function getExpenses(): Expense[] {
-  return expenses.map((e) => normalizeExpense(e)).map((e) => ({ ...e, attachments: [...e.attachments], lines: [...e.lines] }));
+export async function getSubcontractsWithDetailsAll(): Promise<
+  { id: string; subcontractor_id: string; project_id: string; subcontractor_name: string; project_name: string }[]
+> {
+  return subcontractsDb.getSubcontractsWithDetailsAll();
 }
 
-export function getExpenseById(expenseId: string): Expense | null {
-  const exp = expenses.find((e) => e.id === expenseId);
-  if (!exp) return null;
-  const normalized = normalizeExpense(exp);
-  return { ...normalized, attachments: [...normalized.attachments], lines: [...normalized.lines] };
+export async function insertSubcontract(draft: import("../subcontracts-db").SubcontractDraft): Promise<void> {
+  return subcontractsDb.insertSubcontract(draft);
+}
+
+export async function getSubcontractById(subcontractId: string): Promise<import("../subcontracts-db").SubcontractWithSubcontractor | null> {
+  return subcontractsDb.getSubcontractById(subcontractId);
+}
+
+export async function updateSubcontractStatus(subcontractId: string, status: import("../subcontracts-db").SubcontractRow["status"]): Promise<void> {
+  return subcontractsDb.updateSubcontractStatus(subcontractId, status);
+}
+
+export async function getSubcontractsBySubcontractor(subcontractorId: string): Promise<import("../subcontracts-db").SubcontractWithProject[]> {
+  return subcontractsDb.getSubcontractsBySubcontractor(subcontractorId);
+}
+
+export async function getBillsBySubcontract(subcontractId: string): Promise<import("../subcontract-bills-db").SubcontractBillRow[]> {
+  return subcontractBillsDb.getBillsBySubcontract(subcontractId);
+}
+
+export async function insertSubcontractBill(draft: import("../subcontract-bills-db").SubcontractBillDraft): Promise<void> {
+  return subcontractBillsDb.insertSubcontractBill(draft);
+}
+
+export async function approveSubcontractBill(billId: string): Promise<void> {
+  return subcontractBillsDb.approveSubcontractBill(billId);
+}
+
+export async function voidSubcontractBill(billId: string): Promise<void> {
+  return subcontractBillsDb.voidSubcontractBill(billId);
+}
+
+export async function updateSubcontractBill(
+  billId: string,
+  patch: Parameters<typeof subcontractBillsDb.updateSubcontractBill>[1]
+): Promise<void> {
+  return subcontractBillsDb.updateSubcontractBill(billId, patch);
+}
+
+export async function deleteSubcontractBillDraft(billId: string): Promise<void> {
+  return subcontractBillsDb.deleteSubcontractBillDraft(billId);
+}
+
+export async function getBillsSummaryAll(): Promise<{ subcontract_id: string; amount: number; status: string }[]> {
+  return subcontractBillsDb.getBillsSummaryAll();
+}
+
+export async function getBillsAll(): Promise<{ id: string; amount: number; status: string }[]> {
+  return subcontractBillsDb.getBillsAll();
+}
+
+export async function getApprovedSubcontractBillsTotalByProject(projectId: string): Promise<number> {
+  return subcontractBillsDb.getApprovedSubcontractBillsTotalByProject(projectId);
+}
+
+export async function getBillsBySubcontractIds(subcontractIds: string[]): Promise<import("../subcontract-bills-db").SubcontractBillRow[]> {
+  return subcontractBillsDb.getBillsBySubcontractIds(subcontractIds);
+}
+
+export async function getPaymentsSummaryAll(): Promise<{ subcontract_id: string; amount: number }[]> {
+  return subcontractPaymentsDb.getPaymentsSummaryAll();
+}
+
+export async function getSubcontractPaymentsAll(): Promise<{ bill_id: string | null; amount: number }[]> {
+  return subcontractPaymentsDb.getPaymentsAll();
+}
+
+export async function getPaymentsBySubcontractIds(subcontractIds: string[]): Promise<import("../subcontract-payments-db").SubcontractPaymentRow[]> {
+  return subcontractPaymentsDb.getPaymentsBySubcontractIds(subcontractIds);
+}
+
+export async function recordSubcontractPayment(input: Parameters<typeof subcontractPaymentsDb.recordSubcontractPayment>[0]): Promise<void> {
+  return subcontractPaymentsDb.recordSubcontractPayment(input);
+}
+
+export async function getPaymentMethods(includeDisabled = false): Promise<string[]> {
+  return refDataDb.getPaymentMethods(includeDisabled);
+}
+
+export async function addPaymentMethod(name: string): Promise<string> {
+  return refDataDb.addPaymentMethod(name);
+}
+
+export async function getPaymentMethodUsageCount(name: string): Promise<number> {
+  return refDataDb.getPaymentMethodUsageCount(name);
+}
+
+export async function renamePaymentMethod(oldName: string, newName: string): Promise<boolean> {
+  return refDataDb.renamePaymentMethod(oldName, newName);
+}
+
+export async function disablePaymentMethod(name: string): Promise<boolean> {
+  return refDataDb.disablePaymentMethod(name);
+}
+
+export async function enablePaymentMethod(name: string): Promise<boolean> {
+  return refDataDb.enablePaymentMethod(name);
+}
+
+export async function deletePaymentMethod(name: string): Promise<boolean> {
+  return refDataDb.deletePaymentMethod(name);
+}
+
+export async function isPaymentMethodDisabled(name: string): Promise<boolean> {
+  return refDataDb.isPaymentMethodDisabled(name);
+}
+
+export async function getExpenses(): Promise<Expense[]> {
+  return expensesDb.getExpenses();
+}
+
+export async function getExpenseById(expenseId: string): Promise<Expense | null> {
+  return expensesDb.getExpenseById(expenseId);
+}
+
+export async function getExpenseCardNames(paymentMethod: string): Promise<string[]> {
+  return expensesDb.getExpenseCardNames(paymentMethod);
+}
+
+export async function getAccounts(): Promise<import("../accounts-db").Account[]> {
+  return accountsDb.getAccounts();
+}
+
+export async function createAccount(input: Parameters<typeof accountsDb.createAccount>[0]): Promise<import("../accounts-db").Account> {
+  return accountsDb.createAccount(input);
+}
+
+export async function updateAccount(id: string, patch: Parameters<typeof accountsDb.updateAccount>[1]): Promise<import("../accounts-db").Account | null> {
+  return accountsDb.updateAccount(id, patch);
+}
+
+export async function deleteAccount(id: string): Promise<boolean> {
+  return accountsDb.deleteAccount(id);
 }
 
 export function getExpenseTotal(expense: Expense): number {
-  const e = normalizeExpense(expense);
-  return e.lines.reduce((sum, line) => sum + line.amount, 0);
+  return expensesDb.getExpenseTotal(expense);
 }
 
-export function createExpense(payload: Partial<Omit<Expense, "id" | "attachments" | "lines">> & { attachments?: ExpenseAttachment[]; lines?: ExpenseLine[] }): Expense {
-  const id = `ex-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-  const defaultLine: ExpenseLine = {
-    id: `line-${id}-0`,
-    projectId: null,
-    category: "Other",
-    amount: 0,
-  };
-  const lines: ExpenseLine[] =
-    payload.lines?.length
-      ? payload.lines.map((l, i) => ({
-          ...l,
-          id: l.id?.startsWith("line-") ? l.id : `line-${id}-${i}`,
-          projectId: l.projectId ?? null,
-          category: l.category ?? "Other",
-          amount: l.amount ?? 0,
-        }))
-      : [defaultLine];
-  const record: Expense = {
-    id,
+export async function createExpense(payload: Partial<Omit<Expense, "id" | "attachments" | "lines">> & { attachments?: import("../expenses-db").ExpenseAttachment[]; lines?: Array<Omit<ExpenseLine, "id">> }): Promise<Expense> {
+  const lines = payload.lines?.length
+    ? payload.lines.map((l) => ({
+        projectId: l.projectId ?? null,
+        category: l.category ?? "Other",
+        costCode: l.costCode ?? null,
+        memo: l.memo ?? null,
+        amount: l.amount ?? 0,
+      }))
+    : undefined;
+  let paymentMethod = payload.paymentMethod ?? "Card";
+  if (payload.accountId) {
+    const accounts = await accountsDb.getAccounts();
+    const acc = accounts.find((a) => a.id === payload.accountId);
+    if (acc) paymentMethod = acc.name;
+  }
+  return expensesDb.createExpense({
     date: payload.date ?? new Date().toISOString().slice(0, 10),
     vendorName: payload.vendorName ?? "",
-    paymentMethod: payload.paymentMethod ?? "Card",
+    paymentMethod,
     referenceNo: payload.referenceNo,
     notes: payload.notes,
-    attachments: payload.attachments ? [...payload.attachments] : [],
-    lines,
-    linkedBankTxId: payload.linkedBankTxId ?? undefined,
-  };
-  expenses.push(record);
-  return { ...record, attachments: [...record.attachments], lines: [...record.lines] };
+    cardName: payload.cardName ?? undefined,
+    accountId: payload.accountId ?? undefined,
+    lines: lines ?? [{ projectId: null, category: "Other", amount: 0 }],
+    linkedBankTxId: payload.linkedBankTxId,
+  });
 }
 
-export function updateExpense(expenseId: string, patch: Partial<Omit<Expense, "id" | "lines" | "attachments">>): Expense | null {
-  const idx = expenses.findIndex((e) => e.id === expenseId);
-  if (idx < 0) return null;
-  const existing = expenses[idx];
-  const normalized = normalizeExpense(existing);
-  const updated: Expense = {
-    ...normalized,
-    ...patch,
-    id: existing.id,
-    lines: normalized.lines,
-    attachments: normalized.attachments,
-  };
-  expenses[idx] = updated;
-  return { ...updated, attachments: [...updated.attachments], lines: [...updated.lines] };
+export async function createQuickExpense(payload: {
+  date: string;
+  vendorName: string;
+  totalAmount: number;
+  receiptUrl: string;
+}): Promise<Expense> {
+  return expensesDb.createQuickExpense(payload);
 }
 
-export function addExpenseLine(expenseId: string, line: Partial<Omit<ExpenseLine, "id">>): Expense | null {
-  const idx = expenses.findIndex((e) => e.id === expenseId);
-  if (idx < 0) return null;
-  const exp = expenses[idx];
-  const normalized = normalizeExpense(exp);
-  const lineId = `line-${expenseId}-${Date.now()}`;
-  const newLine: ExpenseLine = {
-    id: lineId,
+export async function updateExpense(expenseId: string, patch: Partial<Omit<Expense, "id" | "lines" | "attachments">>): Promise<Expense | null> {
+  let resolvedPatch = { ...patch };
+  if (patch.accountId !== undefined) {
+    const accounts = await accountsDb.getAccounts();
+    const acc = accounts.find((a) => a.id === patch.accountId);
+    if (acc) resolvedPatch = { ...resolvedPatch, paymentMethod: acc.name };
+  }
+  return expensesDb.updateExpense(expenseId, {
+    date: resolvedPatch.date,
+    vendorName: resolvedPatch.vendorName,
+    paymentMethod: resolvedPatch.paymentMethod,
+    referenceNo: resolvedPatch.referenceNo,
+    notes: resolvedPatch.notes,
+    cardName: resolvedPatch.cardName,
+    accountId: resolvedPatch.accountId,
+  });
+}
+
+export async function updateExpenseReceiptUrl(expenseId: string, receiptUrl: string): Promise<Expense | null> {
+  return expensesDb.updateExpenseReceiptUrl(expenseId, receiptUrl);
+}
+
+export async function updateExpenseStatus(
+  expenseId: string,
+  status: "pending" | "needs_review" | "approved" | "reimbursed"
+): Promise<Expense | null> {
+  return expensesDb.updateExpenseStatus(expenseId, status);
+}
+
+export async function updateExpenseForReview(
+  expenseId: string,
+  patch: Partial<{
+    vendorName: string;
+    notes: string;
+    status: "pending" | "needs_review" | "approved" | "reimbursed";
+    workerId: string | null;
+    projectId: string | null;
+    category: string;
+    amount: number;
+  }>
+): Promise<Expense | null> {
+  return expensesDb.updateExpenseForReview(expenseId, patch);
+}
+
+export async function markWorkerExpensesReimbursed(workerId: string): Promise<number> {
+  return expensesDb.markWorkerExpensesReimbursed(workerId);
+}
+
+export async function addExpenseLine(expenseId: string, line: Partial<Omit<import("../expenses-db").ExpenseLine, "id">>): Promise<Expense | null> {
+  return expensesDb.addExpenseLine(expenseId, {
     projectId: line.projectId ?? null,
     category: line.category ?? "Other",
     costCode: line.costCode ?? null,
     memo: line.memo ?? null,
     amount: line.amount ?? 0,
-  };
-  normalized.lines.push(newLine);
-  expenses[idx] = normalized;
-  return { ...normalized, attachments: [...normalized.attachments], lines: [...normalized.lines] };
+  });
 }
 
-export function updateExpenseLine(expenseId: string, lineId: string, patch: Partial<ExpenseLine>): Expense | null {
-  const idx = expenses.findIndex((e) => e.id === expenseId);
-  if (idx < 0) return null;
-  const exp = expenses[idx];
-  const normalized = normalizeExpense(exp);
-  const lineIdx = normalized.lines.findIndex((l) => l.id === lineId);
-  if (lineIdx < 0) return null;
-  normalized.lines[lineIdx] = { ...normalized.lines[lineIdx], ...patch, id: normalized.lines[lineIdx].id };
-  expenses[idx] = normalized;
-  return { ...normalized, attachments: [...normalized.attachments], lines: [...normalized.lines] };
+export async function updateExpenseLine(expenseId: string, lineId: string, patch: Partial<import("../expenses-db").ExpenseLine>): Promise<Expense | null> {
+  return expensesDb.updateExpenseLine(expenseId, lineId, patch);
 }
 
-export function deleteExpenseLine(expenseId: string, lineId: string): Expense | null {
-  const idx = expenses.findIndex((e) => e.id === expenseId);
-  if (idx < 0) return null;
-  const exp = expenses[idx];
-  const normalized = normalizeExpense(exp);
-  if (normalized.lines.length <= 1) {
-    normalized.lines[0] = { id: normalized.lines[0].id, projectId: null, category: "Other", amount: 0 };
-    expenses[idx] = normalized;
-    return { ...normalized, attachments: [...normalized.attachments], lines: [...normalized.lines] };
-  }
-  const lineIdx = normalized.lines.findIndex((l) => l.id === lineId);
-  if (lineIdx < 0) return null;
-  normalized.lines.splice(lineIdx, 1);
-  expenses[idx] = normalized;
-  return { ...normalized, attachments: [...normalized.attachments], lines: [...normalized.lines] };
+export async function deleteExpenseLine(expenseId: string, lineId: string): Promise<Expense | null> {
+  return expensesDb.deleteExpenseLine(expenseId, lineId);
 }
 
-export function deleteExpense(expenseId: string): boolean {
-  const idx = expenses.findIndex((e) => e.id === expenseId);
-  if (idx < 0) return false;
-  expenses.splice(idx, 1);
-  return true;
+export async function deleteExpense(expenseId: string): Promise<boolean> {
+  return expensesDb.deleteExpense(expenseId);
 }
 
-export function addExpenseAttachment(expenseId: string, attachment: ExpenseAttachment): Expense | null {
-  const idx = expenses.findIndex((e) => e.id === expenseId);
-  if (idx < 0) return null;
-  const exp = expenses[idx];
-  const normalized = normalizeExpense(exp);
-  normalized.attachments.push(attachment);
-  expenses[idx] = normalized;
-  return { ...normalized, attachments: [...normalized.attachments], lines: [...normalized.lines] };
+export async function addExpenseAttachment(expenseId: string, attachment: import("../expenses-db").ExpenseAttachment): Promise<Expense | null> {
+  return expensesDb.addExpenseAttachment(expenseId, attachment);
 }
 
-export function deleteExpenseAttachment(expenseId: string, attachmentId: string): Expense | null {
-  const idx = expenses.findIndex((e) => e.id === expenseId);
-  if (idx < 0) return null;
-  const exp = expenses[idx];
-  const normalized = normalizeExpense(exp);
-  const aIdx = normalized.attachments.findIndex((a) => a.id === attachmentId);
-  if (aIdx < 0) return null;
-  normalized.attachments.splice(aIdx, 1);
-  expenses[idx] = normalized;
-  return { ...normalized, attachments: [...normalized.attachments], lines: [...normalized.lines] };
+export async function deleteExpenseAttachment(expenseId: string, attachmentId: string): Promise<Expense | null> {
+  return expensesDb.deleteExpenseAttachment(expenseId, attachmentId);
 }
 
-export function getExpenseTotalsByProject(projectId: string): number {
-  return expenses.reduce((sum, exp) => {
-    const e = normalizeExpense(exp);
-    return sum + e.lines.filter((l) => l.projectId === projectId).reduce((s, l) => s + l.amount, 0);
-  }, 0);
+export async function getExpenseTotalsByProject(projectId: string): Promise<number> {
+  return expensesDb.getExpenseTotalsByProject(projectId);
 }
 
-export function getTotalExpenses(): number {
-  return expenses.reduce((sum, exp) => sum + getExpenseTotal(exp), 0);
+export async function getTotalExpenses(): Promise<number> {
+  return expensesDb.getTotalExpenses();
 }
 
-/** Last N expense lines for a project (for project detail). */
-export function getExpenseLinesByProject(projectId: string, limit = 5): Array<{ expenseId: string; date: string; vendorName: string; line: ExpenseLine }> {
-  const result: Array<{ expenseId: string; date: string; vendorName: string; line: ExpenseLine }> = [];
-  for (const exp of expenses) {
-    const normalized = normalizeExpense(exp);
-    for (const line of normalized.lines) {
-      if (line.projectId === projectId) result.push({ expenseId: exp.id, date: normalized.date, vendorName: normalized.vendorName, line });
-    }
-  }
-  result.sort((a, b) => b.date.localeCompare(a.date));
-  return result.slice(0, limit);
+export async function getExpenseLinesByProject(projectId: string, limit = 5): Promise<Array<{ expenseId: string; date: string; vendorName: string; line: import("../expenses-db").ExpenseLine }>> {
+  return expensesDb.getExpenseLinesByProject(projectId, limit);
 }
 
-/** All expense lines for a project (for profit drilldown). Sorted by date desc. Returns [] when no data. */
-export function getProjectExpenseLines(projectId: string): Array<{ expenseId: string; date: string; vendorName: string; line: ExpenseLine }> {
-  const result: Array<{ expenseId: string; date: string; vendorName: string; line: ExpenseLine }> = [];
-  for (const exp of expenses) {
-    const normalized = normalizeExpense(exp);
-    for (const line of normalized.lines) {
-      if (line.projectId === projectId) result.push({ expenseId: exp.id, date: normalized.date, vendorName: normalized.vendorName, line });
-    }
-  }
-  result.sort((a, b) => b.date.localeCompare(a.date));
-  return result;
+export async function getProjectExpenseLines(projectId: string): Promise<Array<{ expenseId: string; date: string; vendorName: string; line: import("../expenses-db").ExpenseLine }>> {
+  return expensesDb.getProjectExpenseLines(projectId);
 }
 
 /** Map expense line category to drilldown bucket (Materials/Labor/Vendor/Other). */
@@ -1200,8 +1240,8 @@ function categoryToDrilldownBucket(category: string): "Materials" | "Labor" | "V
   return "Other";
 }
 
-/** Category spend by project (Materials/Labor/Vendor/Other). Returns zeroed object when no data. */
-export function getCategorySpendByProject(projectId: string): { materials: number; labor: number; vendor: number; other: number } {
+/** Category spend by project (Materials/Labor/Vendor/Other). */
+export async function getCategorySpendByProject(projectId: string): Promise<{ materials: number; labor: number; vendor: number; other: number }> {
   const out = { materials: 0, labor: 0, vendor: 0, other: 0 };
   const keyMap: Record<"Materials" | "Labor" | "Vendor" | "Other", keyof typeof out> = {
     Materials: "materials",
@@ -1209,13 +1249,10 @@ export function getCategorySpendByProject(projectId: string): { materials: numbe
     Vendor: "vendor",
     Other: "other",
   };
-  for (const exp of expenses) {
-    const normalized = normalizeExpense(exp);
-    for (const line of normalized.lines) {
-      if (line.projectId !== projectId) continue;
-      const bucket = categoryToDrilldownBucket(line.category ?? "Other");
-      out[keyMap[bucket]] += line.amount ?? 0;
-    }
+  const lines = await expensesDb.getProjectExpenseLines(projectId);
+  for (const { line } of lines) {
+    const bucket = categoryToDrilldownBucket(line.category ?? "Other");
+    out[keyMap[bucket]] += line.amount ?? 0;
   }
   return out;
 }
@@ -1227,25 +1264,15 @@ export interface VendorSpendRow {
   lastDate: string;
 }
 
-/** Vendor spend aggregation for a project. Sorted by total desc. Returns [] when no data. */
-export function getVendorSpendByProject(projectId: string): VendorSpendRow[] {
+export async function getVendorSpendByProject(projectId: string): Promise<VendorSpendRow[]> {
   const byVendor: Record<string, { total: number; count: number; lastDate: string }> = {};
-  for (const exp of expenses) {
-    const normalized = normalizeExpense(exp);
-    let hasProjectLine = false;
-    let lineTotal = 0;
-    for (const line of normalized.lines) {
-      if (line.projectId === projectId) {
-        hasProjectLine = true;
-        lineTotal += line.amount ?? 0;
-      }
-    }
-    if (!hasProjectLine || lineTotal === 0) continue;
-    const v = normalized.vendorName?.trim() || "—";
-    if (!byVendor[v]) byVendor[v] = { total: 0, count: 0, lastDate: normalized.date };
-    byVendor[v].total += lineTotal;
+  const lines = await expensesDb.getProjectExpenseLines(projectId);
+  for (const { vendorName, date, line } of lines) {
+    const v = vendorName?.trim() || "—";
+    if (!byVendor[v]) byVendor[v] = { total: 0, count: 0, lastDate: date };
+    byVendor[v].total += line.amount ?? 0;
     byVendor[v].count += 1;
-    if (normalized.date > byVendor[v].lastDate) byVendor[v].lastDate = normalized.date;
+    if (date > byVendor[v].lastDate) byVendor[v].lastDate = date;
   }
   return Object.entries(byVendor)
     .map(([vendorName, d]) => ({ vendorName, total: d.total, txCount: d.count, lastDate: d.lastDate }))
@@ -1266,24 +1293,19 @@ export interface ProjectCashFlowData {
   netPosition: number;
 }
 
-/** Cash flow series for a project: income transactions + expense lines, sorted by date ascending. Mock-only. */
-export function getProjectCashFlowData(projectId: string): ProjectCashFlowData {
+export async function getProjectCashFlowData(projectId: string): Promise<ProjectCashFlowData> {
+  const projectTxs = await getProjectTransactions(projectId);
+  const lines = await expensesDb.getProjectExpenseLines(projectId);
   const incomeByDate: Record<string, number> = {};
   const expenseByDate: Record<string, number> = {};
-  const projectTxs = getProjectTransactions(projectId);
   for (const tx of projectTxs) {
     if (tx.type === "income" && tx.amount > 0) {
       incomeByDate[tx.date] = (incomeByDate[tx.date] ?? 0) + tx.amount;
     }
   }
-  for (const exp of expenses) {
-    const normalized = normalizeExpense(exp);
-    for (const line of normalized.lines) {
-      if (line.projectId === projectId) {
-        const amt = line.amount ?? 0;
-        expenseByDate[normalized.date] = (expenseByDate[normalized.date] ?? 0) + amt;
-      }
-    }
+  for (const { date, line } of lines) {
+    const amt = line.amount ?? 0;
+    expenseByDate[date] = (expenseByDate[date] ?? 0) + amt;
   }
   const dates = Array.from(new Set([...Object.keys(incomeByDate), ...Object.keys(expenseByDate)])).sort();
   let cumIncome = 0;
@@ -1292,25 +1314,13 @@ export function getProjectCashFlowData(projectId: string): ProjectCashFlowData {
   for (const date of dates) {
     cumIncome += incomeByDate[date] ?? 0;
     cumExpense += expenseByDate[date] ?? 0;
-    points.push({
-      date,
-      cumulativeIncome: cumIncome,
-      cumulativeExpense: cumExpense,
-      netCash: cumIncome - cumExpense,
-    });
+    points.push({ date, cumulativeIncome: cumIncome, cumulativeExpense: cumExpense, netCash: cumIncome - cumExpense });
   }
-  const totalIncome = cumIncome;
-  const totalExpense = cumExpense;
-  return {
-    points,
-    totalIncome,
-    totalExpense,
-    netPosition: totalIncome - totalExpense,
-  };
+  return { points, totalIncome: cumIncome, totalExpense: cumExpense, netPosition: cumIncome - cumExpense };
 }
 
-export function getBankTransactions(): BankTransaction[] {
-  return [...bankTransactions];
+export async function getBankTransactions(): Promise<BankTransaction[]> {
+  return bankTxDb.getBankTransactions();
 }
 
 export interface CashOverview {
@@ -1322,134 +1332,79 @@ export interface CashOverview {
   recentUnreconciled: BankTransaction[];
 }
 
-export function getCashOverview(): CashOverview {
-  const txs = getBankTransactions();
+export async function getCashOverview(): Promise<CashOverview> {
+  const [txs, systemExpenses] = await Promise.all([bankTxDb.getBankTransactions(), expensesDb.getTotalExpenses()]);
   const bankBalance = txs.reduce((s, t) => s + t.amount, 0);
-  const systemExpenses = getTotalExpenses();
   const reconciledBankTotal = txs.filter((t) => t.status === "reconciled").reduce((s, t) => s + t.amount, 0);
   const unreconciledBankTotal = txs.filter((t) => t.status === "unmatched").reduce((s, t) => s + t.amount, 0);
-  const cashDifference = bankBalance - systemExpenses;
-  const recentUnreconciled = txs
-    .filter((t) => t.status === "unmatched")
-    .sort((a, b) => b.date.localeCompare(a.date))
-    .slice(0, 5);
+  const recentUnreconciled = txs.filter((t) => t.status === "unmatched").sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
   return {
     bankBalance,
     systemExpenses,
     reconciledBankTotal,
     unreconciledBankTotal,
-    cashDifference,
+    cashDifference: bankBalance - systemExpenses,
     recentUnreconciled,
   };
 }
 
-export type { Invoice, InvoicePayment, InvoiceStatus, InvoiceLineItem };
+export type ProjectFromEstimate = {
+  projectId: string;
+  sourceEstimateId: string;
+  sourceSnapshotId: string;
+  sourceVersion: number;
+  snapshotRevenue?: number;
+  snapshotBudgetCost?: number;
+  snapshotBudgetBreakdown?: { materials: number; labor: number; vendor: number; other: number };
+};
 
-function safeInvoices(): Invoice[] {
-  return Array.isArray(invoices) ? invoices : [];
+export async function getInvoices(): Promise<Invoice[]> {
+  return invoicesDb.getInvoices();
 }
 
-function safeInvoicePayments(): InvoicePayment[] {
-  return Array.isArray(invoicePayments) ? invoicePayments : [];
+export async function getInvoicePayments(): Promise<InvoicePayment[]> {
+  return invoicesDb.getInvoicePayments();
 }
 
-export function getInvoices(): Invoice[] {
-  return safeInvoices().map((i) => ({ ...i, lineItems: i.lineItems.map((l) => ({ ...l })) }));
+export async function getInvoicesWithDerived(filters?: { status?: InvoiceStatus | "Overdue"; projectId?: string; search?: string }): Promise<InvoiceWithDerived[]> {
+  return invoicesDb.getInvoicesWithDerived(filters);
 }
 
-export function getInvoicePayments(): InvoicePayment[] {
-  return safeInvoicePayments().map((p) => ({ ...p }));
+export async function getOverdueInvoices(): Promise<OverdueInvoiceRow[]> {
+  return invoicesDb.getOverdueInvoices();
 }
 
-function getPaymentsForInvoice(invoiceId: string): InvoicePayment[] {
-  return safeInvoicePayments().filter((p) => p.invoiceId === invoiceId);
+export async function getInvoiceById(id: string): Promise<InvoiceWithDerived | null> {
+  return invoicesDb.getInvoiceByIdWithDerived(id);
 }
 
-function computeInvoiceDerived(inv: Invoice): { paidTotal: number; balanceDue: number; status: InvoiceStatus } {
-  if (inv.status === "Void") {
-    const payments = getPaymentsForInvoice(inv.id);
-    const paidTotal = payments.filter((p) => p.status !== "Voided").reduce((s, p) => s + p.amount, 0);
-    return { paidTotal, balanceDue: 0, status: "Void" };
-  }
-  const payments = getPaymentsForInvoice(inv.id);
-  const paidTotal = payments.filter((p) => p.status !== "Voided").reduce((s, p) => s + p.amount, 0);
-  const balanceDue = Math.max(0, inv.total - paidTotal);
-  let status: InvoiceStatus = inv.status;
-  if (paidTotal >= inv.total) status = "Paid";
-  else if (paidTotal > 0) status = "Partially Paid";
-  else if (inv.status !== "Draft") status = "Sent";
-  return { paidTotal, balanceDue, status };
+/** Alias for getInvoiceById for compatibility. */
+export const getInvoiceByIdWithDerived = getInvoiceById;
+
+export async function getPaymentsByInvoiceId(invoiceId: string): Promise<InvoicePayment[]> {
+  return invoicesDb.getPaymentsByInvoiceId(invoiceId);
 }
 
-export interface InvoiceWithDerived extends Invoice {
-  paidTotal: number;
-  balanceDue: number;
-  computedStatus: InvoiceStatus;
+export async function recordInvoicePayment(invoiceId: string, payload: { date: string; amount: number; method: string; memo?: string }): Promise<InvoicePayment | null> {
+  return invoicesDb.recordInvoicePayment(invoiceId, payload);
 }
 
-export function getInvoicesWithDerived(filters?: { status?: InvoiceStatus; projectId?: string; search?: string }): InvoiceWithDerived[] {
-  let list = safeInvoices().map((inv) => {
-    const { paidTotal, balanceDue, status: computedStatus } = computeInvoiceDerived(inv);
-    return { ...inv, paidTotal, balanceDue, computedStatus };
-  });
-  if (filters?.status) list = list.filter((i) => i.computedStatus === filters.status);
-  if (filters?.projectId) list = list.filter((i) => i.projectId === filters.projectId);
-  if (filters?.search?.trim()) {
-    const q = filters.search.toLowerCase();
-    list = list.filter(
-      (i) =>
-        i.invoiceNo.toLowerCase().includes(q) ||
-        i.clientName.toLowerCase().includes(q) ||
-        (getProjectById(i.projectId)?.name ?? "").toLowerCase().includes(q)
-    );
-  }
-  list.sort((a, b) => b.issueDate.localeCompare(a.issueDate));
-  return list;
+export async function deleteInvoicePayment(paymentId: string): Promise<boolean> {
+  return invoicesDb.deleteInvoicePayment(paymentId);
 }
 
-export function getInvoiceById(id: string): InvoiceWithDerived | null {
-  const inv = safeInvoices().find((i) => i.id === id);
-  if (!inv) return null;
-  const { paidTotal, balanceDue, status: computedStatus } = computeInvoiceDerived(inv);
-  return { ...inv, paidTotal, balanceDue, computedStatus };
+export async function voidInvoice(invoiceId: string): Promise<boolean> {
+  return invoicesDb.voidInvoice(invoiceId);
+}
+export async function revertInvoiceToDraft(invoiceId: string): Promise<boolean> {
+  return invoicesDb.revertInvoiceToDraft(invoiceId);
 }
 
-export function getPaymentsByInvoiceId(invoiceId: string): InvoicePayment[] {
-  return getPaymentsForInvoice(invoiceId).sort((a, b) => b.date.localeCompare(a.date));
+export async function deleteInvoice(invoiceId: string): Promise<boolean> {
+  return invoicesDb.deleteInvoice(invoiceId);
 }
 
-export function recordInvoicePayment(invoiceId: string, payload: { date: string; amount: number; method: string; memo?: string }): InvoicePayment | null {
-  const inv = safeInvoices().find((i) => i.id === invoiceId);
-  if (!inv || inv.status === "Void") return null;
-  const id = `pay-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-  const payment: InvoicePayment = {
-    id,
-    invoiceId,
-    date: payload.date,
-    amount: payload.amount,
-    method: payload.method,
-    memo: payload.memo,
-    status: "Posted",
-  };
-  invoicePayments.push(payment);
-  return payment;
-}
-
-export function deleteInvoicePayment(paymentId: string): boolean {
-  const idx = invoicePayments.findIndex((p) => p.id === paymentId);
-  if (idx < 0) return false;
-  invoicePayments.splice(idx, 1);
-  return true;
-}
-
-export function voidInvoice(invoiceId: string): boolean {
-  const inv = safeInvoices().find((i) => i.id === invoiceId);
-  if (!inv) return false;
-  inv.status = "Void";
-  return true;
-}
-
-export function createInvoice(payload: {
+export async function createInvoice(payload: {
   projectId: string;
   clientName: string;
   issueDate: string;
@@ -1457,80 +1412,60 @@ export function createInvoice(payload: {
   lineItems: InvoiceLineItem[];
   taxPct?: number;
   notes?: string;
-}): Invoice {
-  const nextNum = safeInvoices().length + 1;
-  const invoiceNo = `INV-${String(nextNum).padStart(4, "0")}`;
-  const subtotal = payload.lineItems.reduce((s, l) => s + l.amount, 0);
-  const taxPct = payload.taxPct ?? 0;
-  const taxAmount = Math.round(subtotal * (taxPct / 100));
-  const total = subtotal + taxAmount;
-  const inv: Invoice = {
-    id: `inv-${nextNum}-${Date.now()}`,
-    invoiceNo,
-    projectId: payload.projectId,
-    clientName: payload.clientName,
-    issueDate: payload.issueDate,
-    dueDate: payload.dueDate,
-    status: "Draft",
-    lineItems: payload.lineItems,
-    subtotal,
-    taxPct: taxPct || undefined,
-    taxAmount: taxAmount || undefined,
-    total,
-    notes: payload.notes,
-  };
-  invoices.push(inv);
-  return inv;
+}): Promise<Invoice> {
+  return invoicesDb.createInvoice(payload);
 }
 
-export function updateInvoice(
+export async function updateInvoice(
   invoiceId: string,
   payload: Partial<{ issueDate: string; dueDate: string; lineItems: InvoiceLineItem[]; taxPct: number; notes: string }>
-): boolean {
-  const inv = safeInvoices().find((i) => i.id === invoiceId);
-  if (!inv || inv.status !== "Draft") return false;
-  if (payload.issueDate != null) inv.issueDate = payload.issueDate;
-  if (payload.dueDate != null) inv.dueDate = payload.dueDate;
-  if (payload.lineItems != null) {
-    inv.lineItems = payload.lineItems;
-    inv.subtotal = payload.lineItems.reduce((s, l) => s + l.amount, 0);
-    const taxPct = inv.taxPct ?? 0;
-    inv.taxAmount = Math.round(inv.subtotal * (taxPct / 100));
-    inv.total = inv.subtotal + (inv.taxAmount ?? 0);
-  }
-  if (payload.taxPct != null) {
-    inv.taxPct = payload.taxPct;
-    inv.taxAmount = Math.round(inv.subtotal * (payload.taxPct / 100));
-    inv.total = inv.subtotal + (inv.taxAmount ?? 0);
-  }
-  if (payload.notes !== undefined) inv.notes = payload.notes;
-  return true;
+): Promise<boolean> {
+  return invoicesDb.updateInvoice(invoiceId, payload);
 }
 
-export function markInvoiceSent(invoiceId: string): boolean {
-  const inv = safeInvoices().find((i) => i.id === invoiceId);
-  if (!inv || inv.status !== "Draft") return false;
-  inv.status = "Sent";
-  return true;
+export async function markInvoiceSent(invoiceId: string): Promise<boolean> {
+  return invoicesDb.markInvoiceSent(invoiceId);
 }
 
-export function duplicateInvoice(invoiceId: string): Invoice | null {
-  const inv = safeInvoices().find((i) => i.id === invoiceId);
+export type { PaymentReceivedRow, PaymentReceivedWithMeta, CreatePaymentReceivedPayload, PaymentMethod } from "../payments-received-db";
+export { PAYMENT_METHODS } from "../payments-received-db";
+export async function getPaymentsReceived() {
+  return paymentsReceivedDb.getPaymentsReceived();
+}
+export async function getPaymentsReceivedByInvoiceId(invoiceId: string) {
+  return paymentsReceivedDb.getPaymentsReceivedByInvoiceId(invoiceId);
+}
+export async function getSumPaymentsReceivedByInvoiceId(invoiceId: string) {
+  return paymentsReceivedDb.getSumPaymentsReceivedByInvoiceId(invoiceId);
+}
+export async function createPaymentReceived(payload: import("../payments-received-db").CreatePaymentReceivedPayload) {
+  return paymentsReceivedDb.createPaymentReceived(payload);
+}
+
+export type { DepositRow, DepositWithMeta } from "../deposits-db";
+export async function getDeposits() {
+  return depositsDb.getDeposits();
+}
+export async function getDepositsByInvoiceId(invoiceId: string) {
+  return depositsDb.getDepositsByInvoiceId(invoiceId);
+}
+export async function getTotalDepositsAmount() {
+  return depositsDb.getTotalDepositsAmount();
+}
+
+export async function duplicateInvoice(invoiceId: string): Promise<Invoice | null> {
+  const inv = await invoicesDb.getInvoiceById(invoiceId);
   if (!inv || inv.status === "Void") return null;
   const now = new Date().toISOString().slice(0, 10);
-  return createInvoice({
+  return invoicesDb.createInvoice({
     projectId: inv.projectId,
     clientName: inv.clientName,
     issueDate: now,
     dueDate: now,
-    lineItems: inv.lineItems.map((l) => ({ ...l })),
+    lineItems: inv.lineItems,
     taxPct: inv.taxPct,
     notes: inv.notes,
   });
-}
-
-function getInvoiceListByProject(projectId: string): Invoice[] {
-  return getInvoices().filter((i) => i.projectId === projectId);
 }
 
 export interface ProjectInvoiceARAggregate {
@@ -1540,43 +1475,30 @@ export interface ProjectInvoiceARAggregate {
   overdueBalance: number;
 }
 
-export function getInvoicesByProject(projectId: string): ProjectInvoiceARAggregate {
-  const today = new Date().toISOString().slice(0, 10);
-  const projectInvoices = getInvoiceListByProject(projectId).filter((i) => i.status !== "Void");
-  let invoicedTotal = 0;
-  let paidTotal = 0;
-  let overdueBalance = 0;
-  for (const inv of projectInvoices) {
-    const { paidTotal: paid, balanceDue, status } = computeInvoiceDerived(inv);
-    invoicedTotal += inv.total;
-    paidTotal += paid;
-    if (status !== "Paid" && inv.dueDate < today) overdueBalance += balanceDue;
-  }
-  return {
-    invoicedTotal,
-    paidTotal,
-    balanceTotal: Math.max(0, invoicedTotal - paidTotal),
-    overdueBalance,
-  };
+export async function getInvoicesByProject(projectId: string): Promise<ProjectInvoiceARAggregate> {
+  return invoicesDb.getInvoicesByProjectAggregate(projectId);
 }
 
-export function getInvoicePaymentsByProject(projectId: string): InvoicePayment[] {
-  const invoiceIds = new Set(getInvoiceListByProject(projectId).map((i) => i.id));
-  return getInvoicePayments().filter((p) => invoiceIds.has(p.invoiceId));
+export async function getInvoicePaymentsByProject(projectId: string): Promise<InvoicePayment[]> {
+  const invs = await invoicesDb.getInvoicesByProject(projectId);
+  const ids = new Set(invs.map((i) => i.id));
+  const allPayments = await invoicesDb.getInvoicePayments();
+  return allPayments.filter((p) => ids.has(p.invoiceId));
 }
 
-export function getProjectRevenueFromInvoices(projectId: string): number {
-  return getInvoicesByProject(projectId).invoicedTotal;
+export async function getProjectRevenueFromInvoices(projectId: string): Promise<number> {
+  const agg = await invoicesDb.getInvoicesByProjectAggregate(projectId);
+  return agg.invoicedTotal;
 }
 
-export function getProjectCollectedFromInvoicePayments(projectId: string): number {
-  return getInvoicesByProject(projectId).paidTotal;
+export async function getProjectCollectedFromInvoicePayments(projectId: string): Promise<number> {
+  const agg = await invoicesDb.getInvoicesByProjectAggregate(projectId);
+  return agg.paidTotal;
 }
 
-export function getProjectARBalance(projectId: string): number {
-  const revenue = getProjectRevenueFromInvoices(projectId);
-  const collected = getProjectCollectedFromInvoicePayments(projectId);
-  return Math.max(0, revenue - collected);
+export async function getProjectARBalance(projectId: string): Promise<number> {
+  const agg = await invoicesDb.getInvoicesByProjectAggregate(projectId);
+  return agg.balanceTotal;
 }
 
 export interface ARSummary {
@@ -1585,37 +1507,39 @@ export interface ARSummary {
   paidThisMonth: number;
 }
 
-export function getARSummary(): ARSummary {
+export async function getARSummary(): Promise<ARSummary> {
   const today = new Date().toISOString().slice(0, 10);
   const startOfMonth = today.slice(0, 7) + "-01";
+  const withDerived = await invoicesDb.getInvoicesWithDerived();
   let totalAR = 0;
   let overdueAR = 0;
+  const payments = await invoicesDb.getInvoicePayments();
   let paidThisMonth = 0;
-  for (const inv of safeInvoices()) {
-    const { balanceDue, status } = computeInvoiceDerived(inv);
-    if (status === "Void") continue;
-    if (status === "Sent" || status === "Partially Paid") {
-      totalAR += balanceDue;
-      if (inv.dueDate < today) overdueAR += balanceDue;
+  for (const inv of withDerived) {
+    if (inv.computedStatus === "Void") continue;
+    if (inv.computedStatus === "Unpaid" || inv.computedStatus === "Partial" || inv.computedStatus === "Overdue") {
+      totalAR += inv.balanceDue;
+      if (inv.dueDate < today) overdueAR += inv.balanceDue;
     }
   }
-  for (const p of safeInvoicePayments()) {
+  for (const p of payments) {
     if (p.status !== "Voided" && p.date >= startOfMonth && p.date <= today) paidThisMonth += p.amount;
   }
   return { totalAR, overdueAR, paidThisMonth };
 }
 
-export function getOutstandingInvoices(): InvoiceWithDerived[] {
-  return getInvoicesWithDerived().filter((i) => i.computedStatus === "Sent" || i.computedStatus === "Partially Paid");
+export async function getOutstandingInvoices(): Promise<InvoiceWithDerived[]> {
+  const list = await getInvoicesWithDerived();
+  return list.filter((i) => i.computedStatus === "Unpaid" || i.computedStatus === "Partial" || i.computedStatus === "Overdue");
 }
 
-export function getProjectBillingSummary(projectId: string): {
+export async function getProjectBillingSummary(projectId: string): Promise<{
   invoicedTotal: number;
   paidTotal: number;
   arBalance: number;
   lastPaymentDate: string | null;
-} {
-  const projectInvoices = getInvoicesWithDerived({ projectId }).filter((i) => i.computedStatus !== "Void");
+}> {
+  const projectInvoices = (await getInvoicesWithDerived({ projectId })).filter((i) => i.computedStatus !== "Void");
   let invoicedTotal = 0;
   let paidTotal = 0;
   let arBalance = 0;
@@ -1624,12 +1548,232 @@ export function getProjectBillingSummary(projectId: string): {
     invoicedTotal += inv.total;
     paidTotal += inv.paidTotal;
     arBalance += inv.balanceDue;
-    const payments = getPaymentsForInvoice(inv.id);
+  const payments = await getPaymentsByInvoiceId(inv.id);
     for (const p of payments) {
       if (!lastPaymentDate || p.date > lastPaymentDate) lastPaymentDate = p.date;
     }
   }
   return { invoicedTotal, paidTotal, arBalance, lastPaymentDate };
+}
+
+export interface ProjectFinancialSummary {
+  budget: number;
+  spent: number;
+  revenue: number;
+  collected: number;
+  outstanding: number;
+  profit: number;
+  cashflow: number;
+}
+
+/** Project financial summary: budget from project; spent = canonical actualCost (labor+expense+subcontract); revenue/collected from invoices. Display "spent" uses canonical only; project.spent is legacy and not used here. */
+export async function getProjectFinancialSummary(projectId: string): Promise<ProjectFinancialSummary | null> {
+  const project = await projectsDb.getProjectById(projectId);
+  if (!project) return null;
+  const [canonical, invoiceData] = await Promise.all([
+    getCanonicalProjectProfit(projectId),
+    invoicesDb.getProjectRevenueAndCollected(projectId),
+  ]);
+  const { revenue, collected } = invoiceData;
+  const budget = Number(project.budget) || 0;
+  const spent = canonical.actualCost;
+  const outstanding = Math.max(0, revenue - collected);
+  const profit = revenue - spent;
+  const cashflow = collected - spent;
+  return {
+    budget,
+    spent,
+    revenue,
+    collected,
+    outstanding,
+    profit,
+    cashflow,
+  };
+}
+
+/** Forecast margin % and whether any cost code is >10% over budget. Used for project list risk. No mock. */
+export async function getProjectForecastRisk(projectId: string): Promise<{ forecastMarginPct: number; anyCostCodeVarianceOver10Pct: boolean }> {
+  const [summary, laborEntries, subcontractTotal, expenseTotal, subcontracts, budgetItems, expenseLines] = await Promise.all([
+    getProjectFinancialSummary(projectId),
+    dailyLaborDb.getLaborEntriesWithJoins({ project_id: projectId }),
+    subcontractBillsDb.getApprovedSubcontractBillsTotalByProject(projectId),
+    expensesDb.getExpenseTotalsByProject(projectId),
+    subcontractsDb.getSubcontractsByProject(projectId),
+    coDb.getProjectBudgetItems(projectId),
+    expensesDb.getProjectExpenseLines(projectId),
+  ]);
+  const revenue = summary?.revenue ?? 0;
+  const laborActual = (laborEntries ?? []).reduce((s: number, e) => s + (Number(e.cost_amount) || 0), 0);
+  const totalCost = laborActual + subcontractTotal + expenseTotal;
+  const totalSubcontractContractAmount = (subcontracts ?? []).reduce((s: number, c: { contract_amount: number }) => s + c.contract_amount, 0);
+  const remainingCommitment = totalSubcontractContractAmount - subcontractTotal;
+  const forecastFinalCost = totalCost + remainingCommitment;
+  const forecastMarginPct = revenue > 0 ? ((revenue - forecastFinalCost) / revenue) * 100 : 0;
+
+  let anyCostCodeVarianceOver10Pct = false;
+  if ((budgetItems ?? []).length > 0 && subcontracts) {
+    const subcontractIds = subcontracts.map((s: { id: string }) => s.id);
+    const bills = subcontractIds.length > 0 ? await subcontractBillsDb.getBillsBySubcontractIds(subcontractIds) : [];
+    const budgetByCostCode = new Map<string, number>();
+    for (const item of budgetItems) {
+      const code = item.cost_code ?? "";
+      budgetByCostCode.set(code, (budgetByCostCode.get(code) ?? 0) + Number(item.total));
+    }
+    const laborByCostCode = new Map<string, number>();
+    for (const e of laborEntries ?? []) {
+      const code = e.cost_code ?? "";
+      laborByCostCode.set(code, (laborByCostCode.get(code) ?? 0) + (Number(e.cost_amount) || 0));
+    }
+    const subcontractIdToCostCode = new Map(subcontracts.map((s: { id: string; cost_code: string | null }) => [s.id, s.cost_code ?? ""]));
+    const approvedBillsByCostCode = new Map<string, number>();
+    for (const b of bills) {
+      if (b.status !== "Approved" && b.status !== "Paid") continue;
+      const code = subcontractIdToCostCode.get(b.subcontract_id) ?? "";
+      approvedBillsByCostCode.set(code, (approvedBillsByCostCode.get(code) ?? 0) + b.amount);
+    }
+    const expenseByCostCode = new Map<string, number>();
+    for (const { line } of expenseLines ?? []) {
+      const code = line.costCode ?? "";
+      expenseByCostCode.set(code, (expenseByCostCode.get(code) ?? 0) + line.amount);
+    }
+    const contractAmountByCostCode = new Map<string, number>();
+    for (const s of subcontracts) {
+      const code = (s as { cost_code: string | null }).cost_code ?? "";
+      contractAmountByCostCode.set(code, (contractAmountByCostCode.get(code) ?? 0) + (s as { contract_amount: number }).contract_amount);
+    }
+    const costCodes = Array.from(new Set(budgetItems.map((b: { cost_code?: string }) => b.cost_code ?? "")));
+    for (const code of costCodes) {
+      const budget = budgetByCostCode.get(code) ?? 0;
+      const labor = laborByCostCode.get(code) ?? 0;
+      const billsApproved = approvedBillsByCostCode.get(code) ?? 0;
+      const expense = expenseByCostCode.get(code) ?? 0;
+      const actual = labor + billsApproved + expense;
+      const contractAmount = contractAmountByCostCode.get(code) ?? 0;
+      const remaining = contractAmount - billsApproved;
+      const forecast = actual + remaining;
+      const variance = forecast - budget;
+      if (budget > 0 && variance > budget * 0.1) {
+        anyCostCodeVarianceOver10Pct = true;
+        break;
+      }
+    }
+  }
+  return { forecastMarginPct, anyCostCodeVarianceOver10Pct };
+}
+
+export type ProjectForecastSummary = {
+  revenue: number;
+  actualCost: number;
+  remainingCommitment: number;
+  forecastFinalCost: number;
+  forecastProfit: number;
+  forecastMarginPct: number;
+};
+
+export type ProjectCostCodeVariance = { costCode: string; variance: number };
+
+/** Full forecast summary per project. Optionally include cost code variances (forecast - budget) for owner dashboard. No mock. */
+export async function getProjectForecastSummary(
+  projectId: string,
+  options?: { includeCostCodeVariances?: boolean }
+): Promise<ProjectForecastSummary & { costCodeVariances?: ProjectCostCodeVariance[] }> {
+  const [summary, laborEntries, subcontractTotal, expenseTotal, subcontracts, budgetItems, expenseLines] = await Promise.all([
+    getProjectFinancialSummary(projectId),
+    dailyLaborDb.getLaborEntriesWithJoins({ project_id: projectId }),
+    subcontractBillsDb.getApprovedSubcontractBillsTotalByProject(projectId),
+    expensesDb.getExpenseTotalsByProject(projectId),
+    subcontractsDb.getSubcontractsByProject(projectId),
+    coDb.getProjectBudgetItems(projectId),
+    expensesDb.getProjectExpenseLines(projectId),
+  ]);
+  const revenue = summary?.revenue ?? 0;
+  const laborActual = (laborEntries ?? []).reduce((s: number, e) => s + (Number(e.cost_amount) || 0), 0);
+  const actualCost = laborActual + subcontractTotal + expenseTotal;
+  const totalSubcontractContractAmount = (subcontracts ?? []).reduce((s: number, c: { contract_amount: number }) => s + c.contract_amount, 0);
+  const remainingCommitment = totalSubcontractContractAmount - subcontractTotal;
+  const forecastFinalCost = actualCost + remainingCommitment;
+  const forecastProfit = revenue - forecastFinalCost;
+  const forecastMarginPct = revenue > 0 ? ((revenue - forecastFinalCost) / revenue) * 100 : 0;
+
+  const result: ProjectForecastSummary & { costCodeVariances?: ProjectCostCodeVariance[] } = {
+    revenue,
+    actualCost,
+    remainingCommitment,
+    forecastFinalCost,
+    forecastProfit,
+    forecastMarginPct,
+  };
+
+  if (options?.includeCostCodeVariances && (budgetItems ?? []).length > 0 && subcontracts) {
+    const subcontractIds = subcontracts.map((s: { id: string }) => s.id);
+    const bills = subcontractIds.length > 0 ? await subcontractBillsDb.getBillsBySubcontractIds(subcontractIds) : [];
+    const budgetByCostCode = new Map<string, number>();
+    for (const item of budgetItems) {
+      const code = item.cost_code ?? "";
+      budgetByCostCode.set(code, (budgetByCostCode.get(code) ?? 0) + Number(item.total));
+    }
+    const laborByCostCode = new Map<string, number>();
+    for (const e of laborEntries ?? []) {
+      const code = e.cost_code ?? "";
+      laborByCostCode.set(code, (laborByCostCode.get(code) ?? 0) + (Number(e.cost_amount) || 0));
+    }
+    const subcontractIdToCostCode = new Map(subcontracts.map((s: { id: string; cost_code: string | null }) => [s.id, s.cost_code ?? ""]));
+    const approvedBillsByCostCode = new Map<string, number>();
+    for (const b of bills) {
+      if (b.status !== "Approved" && b.status !== "Paid") continue;
+      const code = subcontractIdToCostCode.get(b.subcontract_id) ?? "";
+      approvedBillsByCostCode.set(code, (approvedBillsByCostCode.get(code) ?? 0) + b.amount);
+    }
+    const expenseByCostCode = new Map<string, number>();
+    for (const { line } of expenseLines ?? []) {
+      const code = line.costCode ?? "";
+      expenseByCostCode.set(code, (expenseByCostCode.get(code) ?? 0) + line.amount);
+    }
+    const contractAmountByCostCode = new Map<string, number>();
+    for (const s of subcontracts) {
+      const code = (s as { cost_code: string | null }).cost_code ?? "";
+      contractAmountByCostCode.set(code, (contractAmountByCostCode.get(code) ?? 0) + (s as { contract_amount: number }).contract_amount);
+    }
+    const costCodes = Array.from(new Set(budgetItems.map((b: { cost_code?: string }) => b.cost_code ?? "")));
+    result.costCodeVariances = costCodes.map((code) => {
+      const budget = budgetByCostCode.get(code) ?? 0;
+      const labor = laborByCostCode.get(code) ?? 0;
+      const billsApproved = approvedBillsByCostCode.get(code) ?? 0;
+      const expense = expenseByCostCode.get(code) ?? 0;
+      const actual = labor + billsApproved + expense;
+      const contractAmount = contractAmountByCostCode.get(code) ?? 0;
+      const remaining = contractAmount - billsApproved;
+      const forecast = actual + remaining;
+      const variance = forecast - budget;
+      return { costCode: code || "—", variance };
+    });
+  }
+
+  return result;
+}
+
+export type CompanyFinancialDashboard = {
+  budget: number;
+  spent: number;
+  revenue: number;
+  collected: number;
+  profit: number;
+  cashflow: number;
+};
+
+/** Company financial dashboard: budget from projects; spent = sum of canonical actualCost per project (labor+expense+subcontract); revenue/collected from invoices. project.spent not used for display. */
+export async function getCompanyFinancialDashboard(): Promise<CompanyFinancialDashboard> {
+  const [projects, revenueData] = await Promise.all([
+    getProjects(),
+    invoicesDb.getCompanyRevenueAndCollected(),
+  ]);
+  const budget = projects.reduce((s, p) => s + (Number(p.budget) || 0), 0);
+  const profitMap = await getCanonicalProjectProfitBatch(projects.map((p) => p.id)).catch(() => new Map());
+  const spent = projects.reduce((s, p) => s + (profitMap.get(p.id)?.actualCost ?? 0), 0);
+  const { revenue, collected } = revenueData;
+  const profit = revenue - spent;
+  const cashflow = collected - spent;
+  return { budget, spent, revenue, collected, profit, cashflow };
 }
 
 function parseCsvRow(line: string): string[] {
@@ -1651,7 +1795,7 @@ function parseCsvRow(line: string): string[] {
   return out;
 }
 
-export function importBankTransactionsFromCsv(csvText: string): BankTransaction[] {
+export async function importBankTransactionsFromCsv(csvText: string): Promise<BankTransaction[]> {
   const lines = csvText.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
   if (lines.length < 2) return [];
   const headerRow = parseCsvRow(lines[0]);
@@ -1691,9 +1835,7 @@ export function importBankTransactionsFromCsv(csvText: string): BankTransaction[
     } else if (amountIdx >= 0 && cols[amountIdx] != null) {
       amount = parseFloat(String(cols[amountIdx]).replace(/[,"\s]/g, "")) || 0;
     }
-    const id = `bt-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 9)}`;
-    const tx: BankTransaction = { id, date, description, amount, status: "unmatched", createdAt: now };
-    bankTransactions.push(tx);
+    const tx = await bankTxDb.createBankTransaction({ date, description, amount, status: "unmatched" });
     created.push(tx);
   }
   return created;
@@ -1712,16 +1854,15 @@ export interface ReconcileParams {
   lines?: Array<{ projectId: string | null; category: string; memo?: string | null; amount: number }>;
 }
 
-export function reconcileBankTransaction(params: ReconcileParams): BankTransaction | null {
-  const tx = bankTransactions.find((t) => t.id === params.bankTxId);
+export async function reconcileBankTransaction(params: ReconcileParams): Promise<BankTransaction | null> {
+  const tx = await bankTxDb.getBankTransactionById(params.bankTxId);
   if (!tx) return null;
   const now = new Date().toISOString().slice(0, 10);
   if (params.type === "Expense") {
     const targetAmount = Math.abs(tx.amount);
     const useLines = params.lines && params.lines.length > 0;
     const linePayload = useLines
-      ? params.lines!.map((l, i) => ({
-          id: `line-${tx.id}-${i}`,
+      ? params.lines!.map((l) => ({
           projectId: l.projectId ?? null,
           category: l.category ?? "Other",
           memo: l.memo ?? null,
@@ -1729,14 +1870,13 @@ export function reconcileBankTransaction(params: ReconcileParams): BankTransacti
         }))
       : [
           {
-            id: `line-${tx.id}-0`,
             projectId: params.projectId ?? null,
             category: params.category ?? "Other",
             memo: params.memo ?? tx.description ?? null,
             amount: targetAmount,
           },
         ];
-    const expense = createExpense({
+    const expense = await createExpense({
       date: tx.date,
       vendorName: params.vendorName ?? tx.description,
       paymentMethod: params.paymentMethod ?? "ACH",
@@ -1744,239 +1884,509 @@ export function reconcileBankTransaction(params: ReconcileParams): BankTransacti
       lines: linePayload,
       linkedBankTxId: tx.id,
     });
-    tx.linkedExpenseId = expense.id;
+    await bankTxDb.updateBankTransaction(params.bankTxId, {
+      status: "reconciled",
+      linkedExpenseId: expense.id,
+      reconciledAt: now,
+      reconciledBy: "owner",
+    });
   }
-  tx.status = "reconciled";
-  tx.reconciledAt = now;
-  tx.reconciledBy = "owner";
-  return { ...tx };
+  return bankTxDb.getBankTransactionById(params.bankTxId);
 }
 
 /** Link an existing expense to this bank transaction (1:1). Fails if either is already linked elsewhere. */
-export function linkBankTransactionToExpense(bankTxId: string, expenseId: string): boolean {
-  const tx = bankTransactions.find((t) => t.id === bankTxId);
-  const expIdx = expenses.findIndex((e) => e.id === expenseId);
-  if (!tx || expIdx < 0) return false;
-  if (tx.linkedExpenseId) return false;
-  const exp = expenses[expIdx];
-  const normalized = normalizeExpense(exp);
-  if (normalized.linkedBankTxId && normalized.linkedBankTxId !== bankTxId) return false;
-  const now = new Date().toISOString().slice(0, 10);
-  tx.linkedExpenseId = expenseId;
-  (normalized as Expense).linkedBankTxId = bankTxId;
-  tx.status = "reconciled";
-  tx.reconciledAt = now;
-  tx.reconciledBy = "owner";
-  expenses[expIdx] = normalized;
-  return true;
+export async function linkBankTransactionToExpense(bankTxId: string, expenseId: string): Promise<boolean> {
+  return bankTxDb.linkBankTransactionToExpense(bankTxId, expenseId);
 }
 
 /** Unlink bank transaction from expense; both sides cleared, bank tx becomes unmatched. */
-export function unlinkBankTransaction(bankTxId: string): boolean {
-  const tx = bankTransactions.find((t) => t.id === bankTxId);
-  if (!tx || !tx.linkedExpenseId) return false;
-  const expenseId = tx.linkedExpenseId;
-  const expIdx = expenses.findIndex((e) => e.id === expenseId);
-  tx.linkedExpenseId = undefined;
-  tx.status = "unmatched";
-  delete tx.reconciledAt;
-  delete tx.reconciledBy;
-  if (expIdx >= 0) {
-    const exp = expenses[expIdx];
-    const normalized = normalizeExpense(exp);
-    (normalized as Expense).linkedBankTxId = undefined;
-    expenses[expIdx] = normalized;
-  }
-  return true;
+export async function unlinkBankTransaction(bankTxId: string): Promise<boolean> {
+  return bankTxDb.unlinkBankTransaction(bankTxId);
 }
 
 export interface ExpenseSuggestion {
   expense: Expense;
   total: number;
   score: number;
-  /** Primary project name or "Overhead" */
   projectLabel: string;
-  /** First line category or "—" */
   categoryLabel: string;
-  /** First line memo or "—" */
   memoLabel: string;
 }
 
-/** Up to 8 suggested expenses for linking: unlinked only, sorted by match score (amount, date proximity, vendor). */
-export function getSuggestedExpensesForBankTx(bankTx: BankTransaction): ExpenseSuggestion[] {
+/** Up to 8 suggested expenses for linking: unlinked only, sorted by match score. */
+export async function getSuggestedExpensesForBankTx(bankTx: BankTransaction): Promise<ExpenseSuggestion[]> {
+  const [projects, unlinked] = await Promise.all([getProjects(), expensesDb.getUnlinkedExpenses()]);
+  const projectMap = new Map(projects.map((p) => [p.id, p.name]));
   const targetAmount = Math.abs(bankTx.amount);
   const txDate = new Date(bankTx.date).getTime();
   const descLower = bankTx.description.toLowerCase();
-  const unlinked = expenses.filter((e) => {
-    const norm = normalizeExpense(e);
-    return !(norm as Expense).linkedBankTxId;
-  });
   const withScore: ExpenseSuggestion[] = unlinked.map((exp) => {
-    const norm = normalizeExpense(exp);
-    const total = norm.lines.reduce((s, l) => s + l.amount, 0);
+    const total = exp.lines.reduce((s, l) => s + l.amount, 0);
     let score = 0;
     if (total > 0 && Math.abs(total - targetAmount) < 0.01) score += 100;
-    const expDate = new Date(norm.date).getTime();
+    const expDate = new Date(exp.date).getTime();
     const daysDiff = Math.abs((txDate - expDate) / (24 * 60 * 60 * 1000));
     if (daysDiff <= 3) score += Math.max(0, 30 - daysDiff * 10);
-    if (norm.vendorName && descLower.includes(norm.vendorName.toLowerCase())) score += 20;
-    if (norm.vendorName && norm.vendorName.toLowerCase().includes(descLower)) score += 20;
-    const projectId = norm.lines[0]?.projectId;
-    const projectLabel = projectId ? (getProjectById(projectId)?.name ?? projectId) : "Overhead";
-    const categoryLabel = norm.lines[0]?.category ?? "—";
-    const memoLabel = norm.lines[0]?.memo?.trim() || "—";
-    return {
-      expense: norm as Expense,
-      total,
-      score,
-      projectLabel,
-      categoryLabel,
-      memoLabel,
-    };
+    if (exp.vendorName && descLower.includes(exp.vendorName.toLowerCase())) score += 20;
+    if (exp.vendorName && exp.vendorName.toLowerCase().includes(descLower)) score += 20;
+    const projectId = exp.lines[0]?.projectId;
+    const projectLabel = projectId ? (projectMap.get(projectId ?? "") ?? projectId) : "Overhead";
+    const categoryLabel = exp.lines[0]?.category ?? "—";
+    const memoLabel = exp.lines[0]?.memo?.trim() || "—";
+    return { expense: exp, total, score, projectLabel, categoryLabel, memoLabel };
   });
-  return withScore
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 8);
+  return withScore.sort((a, b) => b.score - a.score).slice(0, 8);
 }
 
 export function getProjectLabor(projectId: string): ProjectLaborRow[] {
-  return MOCK_PROJECT_LABOR.filter((r) => r.projectId === projectId);
+  void projectId; // reserved for future labor integration
+  return [];
 }
 
 export function getProjectTransactions(projectId: string): ProjectTransactionRow[] {
-  return MOCK_PROJECT_TRANSACTIONS.filter((r) => r.projectId === projectId);
+  void projectId; // reserved for future transaction integration
+  return [];
 }
 
-export function getProjectEstimate(projectId: string) {
-  return projectEstimates.find((e) => e.projectId === projectId);
+export async function getProjectEstimate(projectId: string): Promise<{ projectId: string; revenue: number; cost: number; materialsCost: number; laborCost: number; vendorCost: number; otherCost: number } | undefined> {
+  const project = await getProjectById(projectId);
+  if (!project || !project.sourceEstimateId) return undefined;
+  const b = project.snapshotBudgetBreakdown;
+  return {
+    projectId: project.id,
+    revenue: project.snapshotRevenue ?? project.budget,
+    cost: project.snapshotBudgetCost ?? project.budget,
+    materialsCost: b?.materials ?? 0,
+    laborCost: b?.labor ?? 0,
+    vendorCost: b?.vendor ?? 0,
+    otherCost: b?.other ?? 0,
+  };
 }
 
 export type CostCode = (typeof costCodeMaster)[number];
-export type EstimateListItem = (typeof estimateList)[number];
-export type EstimateItemRow = (typeof estimateItems)[number];
-export type { EstimateSnapshot, EstimateFrozenPayload };
 
-export function getEstimateSnapshots(estimateId: string): EstimateSnapshot[] {
-  return getEstimateSnapshotsByEstimateId(estimateId);
+function estimateCodeToType(code: string): "material" | "labor" | "subcontractor" | undefined {
+  const c = costCodeMaster.find((x) => x.code === code);
+  if (!c || !("type" in c)) return undefined;
+  return (c as { type: "material" | "labor" | "subcontractor" }).type;
 }
 
-export function getEstimateSnapshot(estimateId: string, version: number): EstimateSnapshot | undefined {
-  return getEstimateSnapshotByVersion(estimateId, version);
+export type { EstimateListItem, EstimateItemRow, EstimateMetaRecord, EstimateSummary, PaymentScheduleItem, PaymentScheduleTemplate } from "../estimates-db";
+
+export function getEstimateSnapshots(estimateId: string): Promise<{ snapshotId: string; estimateId: string; version: number; createdAt: string; statusAtSnapshot: string; frozenPayload: unknown }[]> {
+  return estDb.listEstimateSnapshots(estimateId).then((rows) =>
+    rows.map((s) => ({
+      snapshotId: s.snapshotId,
+      estimateId: s.estimateId,
+      version: s.version,
+      createdAt: s.createdAt,
+      statusAtSnapshot: s.statusAtSnapshot,
+      frozenPayload: s.frozenPayload,
+    }))
+  );
 }
 
-export function createEstimateSnapshot(estimateId: string): EstimateSnapshot | null {
-  return createEstimateSnapshotMock(estimateId);
+export async function getEstimateSnapshot(estimateId: string, version: number): Promise<estDb.EstimateSnapshotRecord | null> {
+  return estDb.getEstimateSnapshotByVersion(estimateId, version);
 }
 
-export function createNewVersionFromSnapshot(estimateId: string): boolean {
-  return createNewVersionFromSnapshotMock(estimateId);
+export async function createEstimateSnapshot(estimateId: string): Promise<string | null> {
+  return estDb.createEstimateSnapshot(estimateId);
 }
 
-export function convertEstimateSnapshotToProject(estimateId: string) {
-  return convertEstimateSnapshotToProjectMock(estimateId);
+export function createNewVersionFromSnapshot(estimateId: string): Promise<boolean> {
+  return estDb.createNewVersionFromSnapshot(estimateId);
 }
 
-export function setEstimateStatus(estimateId: string, nextStatus: "Sent" | "Approved" | "Converted"): boolean {
-  return setEstimateStatusMock(estimateId, nextStatus);
+export async function convertEstimateSnapshotToProject(estimateId: string): Promise<ProjectFromEstimate | null> {
+  const existing = await getProjectFromEstimate(estimateId);
+  if (existing) return { ...existing };
+
+  const [estimate, meta, items] = await Promise.all([
+    estDb.getEstimateById(estimateId),
+    estDb.getEstimateMeta(estimateId),
+    estDb.getEstimateItems(estimateId),
+  ]);
+  if (!estimate || !meta) return null;
+  if (estimate.status !== "Approved") return null;
+
+  const s = estDb.computeSummary(items, meta, estimateCodeToType);
+
+  // Canonical contract value: store in projects.budget so profit-engine and dashboard use it as revenue base.
+  // Lock estimate by moving to Converted (allowed only from Approved).
+  const locked = await estDb.setEstimateStatus(estimateId, "Converted");
+  if (!locked) return null;
+
+  const project = await projectsDb.createProject({
+    name: meta.project.name?.trim() || estimate.project?.trim() || `Project ${estimate.number}`,
+    budget: s.total,
+    status: "active",
+    sourceEstimateId: estimateId,
+    snapshotRevenue: s.total,
+    snapshotBudgetCost: s.subtotal,
+    snapshotBreakdown: {
+      materials: s.materialCost,
+      labor: s.laborCost,
+      vendor: s.subcontractorCost,
+      other: 0,
+    },
+  });
+
+  return {
+    projectId: project.id,
+    sourceEstimateId: estimateId,
+    sourceSnapshotId: `estimate-${estimateId}`,
+    sourceVersion: 1,
+    snapshotRevenue: s.total,
+    snapshotBudgetCost: s.subtotal,
+    snapshotBudgetBreakdown: {
+      materials: s.materialCost,
+      labor: s.laborCost,
+      vendor: s.subcontractorCost,
+      other: 0,
+    },
+  };
 }
 
-export function getProjectFromEstimate(estimateId: string) {
-  return projectsFromEstimates.find((p) => p.sourceEstimateId === estimateId) ?? null;
+export interface ConvertToProjectPayload {
+  projectName: string;
+  client?: string;
+  address?: string;
+  projectManager?: string;
+  startDate?: string;
+  endDate?: string;
+  notes?: string;
+  estimateRef?: string;
 }
 
-export function getSourceForProject(projectId: string) {
-  return projectsFromEstimates.find((p) => p.projectId === projectId) ?? null;
+/**
+ * Convert an Approved estimate to a project with editable setup fields.
+ * Duplication: returns null if this estimate was already converted (getProjectFromEstimate).
+ * Lock: sets estimate status to Converted first; only then creates project and copies budget.
+ */
+export async function convertEstimateToProjectWithSetup(
+  estimateId: string,
+  payload: ConvertToProjectPayload
+): Promise<ProjectFromEstimate | null> {
+  const existing = await getProjectFromEstimate(estimateId);
+  if (existing) return null;
+
+  const [estimate, meta, items] = await Promise.all([
+    estDb.getEstimateById(estimateId),
+    estDb.getEstimateMeta(estimateId),
+    estDb.getEstimateItems(estimateId),
+  ]);
+  if (!estimate || !meta) return null;
+  if (estimate.status !== "Approved") return null;
+
+  const locked = await estDb.setEstimateStatus(estimateId, "Converted");
+  if (!locked) return null;
+
+  const s = estDb.computeSummary(items, meta, estimateCodeToType);
+  const name = payload.projectName?.trim() || meta.project.name?.trim() || estimate.project?.trim() || `Project ${estimate.number}`;
+
+  // Canonical contract value: store in projects.budget so profit-engine and dashboard use it as revenue base.
+  const project = await projectsDb.createProject({
+    name,
+    budget: s.total,
+    status: "active",
+    client: payload.client,
+    address: payload.address,
+    projectManager: payload.projectManager,
+    startDate: payload.startDate,
+    endDate: payload.endDate,
+    notes: payload.notes,
+    estimateRef: payload.estimateRef,
+    sourceEstimateId: estimateId,
+    snapshotRevenue: s.total,
+    snapshotBudgetCost: s.subtotal,
+    snapshotBreakdown: {
+      materials: s.materialCost,
+      labor: s.laborCost,
+      vendor: s.subcontractorCost,
+      other: 0,
+    },
+  });
+
+  return {
+    projectId: project.id,
+    sourceEstimateId: estimateId,
+    sourceSnapshotId: `estimate-${estimateId}`,
+    sourceVersion: 1,
+    snapshotRevenue: s.total,
+    snapshotBudgetCost: s.subtotal,
+    snapshotBudgetBreakdown: {
+      materials: s.materialCost,
+      labor: s.laborCost,
+      vendor: s.subcontractorCost,
+      other: 0,
+    },
+  };
+}
+
+export function setEstimateStatus(estimateId: string, nextStatus: "Sent" | "Approved" | "Rejected" | "Converted"): Promise<boolean> {
+  return estDb.setEstimateStatus(estimateId, nextStatus);
+}
+
+export function updateEstimateStatus(estimateId: string, newStatus: estDb.EstimateStatus): Promise<boolean> {
+  return estDb.updateEstimateStatus(estimateId, newStatus);
+}
+
+export async function getProjectFromEstimate(estimateId: string): Promise<ProjectFromEstimate | null> {
+  const project = await projectsDb.getProjectBySourceEstimateId(estimateId);
+  if (!project || !project.sourceEstimateId) return null;
+  const b = project.snapshotBudgetBreakdown;
+  return {
+    projectId: project.id,
+    sourceEstimateId: project.sourceEstimateId,
+    sourceSnapshotId: `estimate-${project.sourceEstimateId}`,
+    sourceVersion: 1,
+    snapshotRevenue: project.snapshotRevenue ?? project.budget,
+    snapshotBudgetCost: project.snapshotBudgetCost ?? undefined,
+    snapshotBudgetBreakdown: b
+      ? { materials: b.materials, labor: b.labor, vendor: b.vendor, other: b.other }
+      : undefined,
+  };
+}
+
+export async function getSourceForProject(projectId: string): Promise<ProjectFromEstimate | null> {
+  const project = await getProjectById(projectId);
+  if (!project || !("sourceEstimateId" in project) || !project.sourceEstimateId) return null;
+  const b = project.snapshotBudgetBreakdown;
+  return {
+    projectId: project.id,
+    sourceEstimateId: project.sourceEstimateId,
+    sourceSnapshotId: `estimate-${project.sourceEstimateId}`,
+    sourceVersion: 1,
+    snapshotRevenue: project.snapshotRevenue ?? project.budget,
+    snapshotBudgetCost: project.snapshotBudgetCost ?? undefined,
+    snapshotBudgetBreakdown: b
+      ? { materials: b.materials, labor: b.labor, vendor: b.vendor, other: b.other }
+      : undefined,
+  };
 }
 
 export function getCostCodes(): CostCode[] {
   return [...costCodeMaster];
 }
 
-export function getEstimateById(id: string): EstimateListItem | undefined {
-  return estimateList.find((e) => e.id === id);
+export function getEstimateById(id: string): Promise<EstimateListItem | null> {
+  return estDb.getEstimateById(id);
 }
 
-export function getEstimateList(): EstimateListItem[] {
-  return [...estimateList];
+export function getEstimateList(): Promise<EstimateListItem[]> {
+  return estDb.getEstimateList(estimateCodeToType);
 }
 
-export function getEstimateItems(estimateId: string): EstimateItemRow[] {
-  return estimateItems.filter((e) => e.estimateId === estimateId);
+export function getEstimateItems(estimateId: string): Promise<EstimateItemRow[]> {
+  return estDb.getEstimateItems(estimateId);
 }
 
-export function getEstimateMeta(estimateId: string) {
-  return estimateMeta[estimateId] ?? null;
+export function getEstimateMeta(estimateId: string): Promise<estDb.EstimateMetaRecord | null> {
+  return estDb.getEstimateMeta(estimateId);
+}
+
+export function getEstimateCategories(estimateId: string): Promise<{ costCode: string; displayName: string }[]> {
+  return estDb.getEstimateCategories(estimateId);
+}
+
+export function getPaymentSchedule(estimateId: string): Promise<estDb.PaymentScheduleItem[]> {
+  return estDb.getPaymentSchedule(estimateId);
+}
+
+export function addPaymentMilestone(
+  estimateId: string,
+  item: { title: string; amountType: "percent" | "fixed"; value: number; dueRule: string; dueDate?: string | null; notes?: string | null }
+) {
+  return estDb.addPaymentMilestone(estimateId, item);
+}
+
+export function updatePaymentMilestone(
+  estimateId: string,
+  itemId: string,
+  payload: { title?: string; amountType?: "percent" | "fixed"; value?: number; dueRule?: string; dueDate?: string | null; notes?: string | null }
+): Promise<boolean> {
+  return estDb.updatePaymentMilestone(estimateId, itemId, payload);
+}
+
+export function deletePaymentMilestone(estimateId: string, itemId: string): Promise<boolean> {
+  return estDb.deletePaymentMilestone(estimateId, itemId);
+}
+
+export function markPaymentMilestonePaid(estimateId: string, itemId: string): Promise<boolean> {
+  return estDb.markPaymentMilestonePaid(estimateId, itemId);
+}
+
+export function reorderPaymentSchedule(estimateId: string, orderedItemIds: string[]): Promise<boolean> {
+  return estDb.reorderPaymentSchedule(estimateId, orderedItemIds);
+}
+
+export function paymentMilestoneAmount(item: estDb.PaymentScheduleItem, estimateTotal: number): number {
+  return estDb.paymentMilestoneAmount(item, estimateTotal);
+}
+
+export function listPaymentTemplates(): Promise<estDb.PaymentScheduleTemplate[]> {
+  return estDb.listPaymentTemplates();
+}
+
+export function createPaymentTemplate(
+  name: string,
+  items: Array<{ title: string; amountType: "percent" | "fixed"; value: number; dueRule: string; notes?: string | null }>
+): Promise<estDb.PaymentScheduleTemplate | null> {
+  return estDb.createPaymentTemplate(name, items);
+}
+
+export function applyPaymentTemplateToEstimate(estimateId: string, templateId: string): Promise<boolean> {
+  return estDb.applyPaymentTemplateToEstimate(estimateId, templateId);
 }
 
 export function updateEstimateMeta(
   estimateId: string,
-  payload: { client?: { name?: string; phone?: string; email?: string; address?: string }; project?: { name?: string; siteAddress?: string } }
-): boolean {
-  return updateEstimateMetaMock(estimateId, payload);
+  payload: {
+    client?: { name?: string; phone?: string; email?: string; address?: string };
+    project?: { name?: string; siteAddress?: string };
+    costCategoryNames?: Record<string, string>;
+    tax?: number;
+    discount?: number;
+    overheadPct?: number;
+    profitPct?: number;
+    estimateDate?: string;
+    validUntil?: string;
+    notes?: string;
+    salesPerson?: string;
+  }
+): Promise<boolean> {
+  return estDb.updateEstimateMeta(estimateId, {
+    ...payload,
+    categoryNames: payload.costCategoryNames,
+  });
 }
 
 export function addLineItem(
   estimateId: string,
   item: { costCode: string; desc: string; qty: number; unit: string; unitCost: number; markupPct: number }
 ) {
-  return addLineItemMock(estimateId, item);
+  return estDb.addLineItem(estimateId, item);
 }
 
 export function updateLineItem(
   estimateId: string,
   itemId: string,
   payload: { desc?: string; qty?: number; unit?: string; unitCost?: number; markupPct?: number }
-): boolean {
-  return updateLineItemMock(estimateId, itemId, payload);
+): Promise<boolean> {
+  return estDb.updateLineItem(estimateId, itemId, payload);
 }
 
-export function deleteLineItem(estimateId: string, itemId: string): boolean {
-  return deleteLineItemMock(estimateId, itemId);
+export function deleteLineItem(estimateId: string, itemId: string): Promise<boolean> {
+  return estDb.deleteLineItem(estimateId, itemId);
 }
 
-export function createEstimate(payload: { clientName: string; projectName: string; address: string }): string {
-  return createEstimateMock(payload);
+export function duplicateLineItem(estimateId: string, itemId: string): Promise<EstimateItemRow | null> {
+  return estDb.duplicateLineItem(estimateId, itemId);
+}
+
+export function deleteEstimate(estimateId: string): Promise<boolean> {
+  return estDb.deleteEstimate(estimateId);
+}
+
+export function createEstimate(payload: {
+  clientName: string;
+  projectName: string;
+  address: string;
+  estimateDate?: string;
+  validUntil?: string;
+  notes?: string;
+  salesPerson?: string;
+}): Promise<string> {
+  return estDb.createEstimate(payload);
+}
+
+export function createEstimateWithItems(payload: {
+  clientName: string;
+  projectName: string;
+  address: string;
+  estimateDate?: string;
+  validUntil?: string;
+  notes?: string;
+  salesPerson?: string;
+  tax?: number;
+  discount?: number;
+  overheadPct?: number;
+  profitPct?: number;
+  costCategoryNames?: Record<string, string>;
+  items: Array<{ costCode: string; desc: string; qty: number; unit: string; unitCost: number; markupPct: number }>;
+  paymentSchedule?: Array<{ title: string; amountType: "percent" | "fixed"; value: number; dueRule: string; notes?: string | null }>;
+}): Promise<string> {
+  return estDb.createEstimateWithItems({
+    ...payload,
+    categoryNames: payload.costCategoryNames,
+    paymentSchedule: payload.paymentSchedule,
+  });
 }
 
 export function estimateLineTotal(row: EstimateItemRow): number {
-  return row.qty * row.unitCost * (1 + row.markupPct);
+  return estDb.lineTotal(row);
 }
 
-const ESTIMATE_OVERHEAD_PCT = 0.05;
-const ESTIMATE_PROFIT_PCT = 0.1;
+export interface EstimateSummaryResult {
+  materialCost: number;
+  laborCost: number;
+  subcontractorCost: number;
+  subtotal: number;
+  tax: number;
+  discount: number;
+  markup: number;
+  grandTotal: number;
+  overheadPct: number;
+  profitPct: number;
+  overhead: number;
+  profit: number;
+}
 
-export function getEstimateSummary(estimateId: string): { subtotal: number; overheadPct: number; profitPct: number; overhead: number; profit: number; grandTotal: number } | null {
-  const items = getEstimateItems(estimateId);
-  const subtotal = items.reduce((s, row) => s + estimateLineTotal(row), 0);
-  const overhead = subtotal * ESTIMATE_OVERHEAD_PCT;
-  const profit = subtotal * ESTIMATE_PROFIT_PCT;
-  const grandTotal = subtotal + overhead + profit;
+export async function getEstimateSummary(estimateId: string): Promise<EstimateSummaryResult | null> {
+  const meta = await estDb.getEstimateMeta(estimateId);
+  if (!meta) return null;
+  const items = await estDb.getEstimateItems(estimateId);
+  const s = estDb.computeSummary(items, meta, estimateCodeToType);
+  const overheadPct = meta.overheadPct ?? 0.05;
+  const profitPct = meta.profitPct ?? 0.1;
   return {
-    subtotal,
-    overheadPct: ESTIMATE_OVERHEAD_PCT,
-    profitPct: ESTIMATE_PROFIT_PCT,
-    overhead,
-    profit,
-    grandTotal,
+    materialCost: s.materialCost,
+    laborCost: s.laborCost,
+    subcontractorCost: s.subcontractorCost,
+    subtotal: s.subtotal,
+    tax: s.tax,
+    discount: s.discount,
+    markup: s.markup,
+    grandTotal: s.total,
+    overheadPct,
+    profitPct,
+    overhead: s.subtotal * overheadPct,
+    profit: s.subtotal * profitPct,
   };
 }
 
-export function getEstimateSummaryFromPayload(payload: EstimateFrozenPayload): { subtotal: number; overheadPct: number; profitPct: number; overhead: number; profit: number; grandTotal: number } {
-  const subtotal = payload.items.reduce((s, row) => s + estimateLineTotal(row as EstimateItemRow), 0);
+/** Used by snapshot [version] page when displaying a frozen payload. */
+export function getEstimateSummaryFromPayload(payload: {
+  items: Array<{ qty: number; unitCost: number; markupPct: number }>;
+  overheadPct: number;
+  profitPct: number;
+}): { subtotal: number; overheadPct: number; profitPct: number; overhead: number; profit: number; grandTotal: number } {
+  const subtotal = payload.items.reduce((s, row) => s + row.qty * row.unitCost * (1 + row.markupPct), 0);
   const overhead = subtotal * payload.overheadPct;
   const profit = subtotal * payload.profitPct;
-  const grandTotal = subtotal + overhead + profit;
   return {
     subtotal,
     overheadPct: payload.overheadPct,
     profitPct: payload.profitPct,
     overhead,
     profit,
-    grandTotal,
+    grandTotal: subtotal + overhead + profit,
   };
 }
 
 export interface ProjectDetailFinancial {
+  /** Display "spent" / actualCost is canonical only: labor + expense + subcontract (getCanonicalProjectProfit). project.spent is legacy and must not be used for UI. */
   totalBudget: number;
   totalRevenue: number;
   totalSpent: number;
@@ -1995,65 +2405,18 @@ export interface ProjectDetailFinancial {
   otherCost: number;
 }
 
-export function getProjectDetailFinancial(projectId: string): ProjectDetailFinancial | null {
-  const project = getProjectById(projectId);
+export async function getProjectDetailFinancial(projectId: string): Promise<ProjectDetailFinancial | null> {
+  const project = await getProjectById(projectId);
   if (!project) return null;
 
-  const override = MOCK_PROJECT_FINANCIAL_OVERRIDES[projectId];
-  if (override) {
-    const { incomeTotal, expenseTotal: overrideExpenseTotal, laborCost: laborCostAbs } = override;
-    const laborAllocated = getLaborActualByProject(projectId);
-    const laborCostAbsFinal = laborCostAbs + laborAllocated;
-    const expenseTotalForProject = getExpenseTotalsByProject(projectId);
-    const expenseTotal = overrideExpenseTotal + expenseTotalForProject + laborAllocated;
-    const materialCostAbs = override.materialCost ?? Math.round((overrideExpenseTotal - laborCostAbs) * 0.59);
-    const vendorCostAbs = override.vendorCost ?? Math.round((overrideExpenseTotal - laborCostAbs) * 0.29);
-    const otherCostAbs = override.otherCost ?? (overrideExpenseTotal - laborCostAbs - materialCostAbs - vendorCostAbs);
-    const profit = incomeTotal - expenseTotal;
-    const marginPct = incomeTotal > 0 ? (profit / incomeTotal) * 100 : 0;
-    const totalBudget = project.budget;
-    const budgetUsagePct = totalBudget > 0 ? (expenseTotal / totalBudget) * 100 : 0;
-    const remainingBudget = totalBudget - expenseTotal;
-    let riskStatus: string;
-    if (profit < 0) riskStatus = "Loss";
-    else if (budgetUsagePct >= 100) riskStatus = "Over budget";
-    else if (budgetUsagePct >= 80) riskStatus = "At risk";
-    else riskStatus = "On track";
-    return {
-      totalBudget,
-      totalRevenue: incomeTotal,
-      totalSpent: expenseTotal,
-      incomeTotal,
-      expenseTotal,
-      profit,
-      marginPct,
-      budgetUsagePct,
-      remainingBudget,
-      riskStatus,
-      materialCost: -materialCostAbs,
-      laborCost: -laborCostAbsFinal,
-      vendorCost: -vendorCostAbs,
-      otherCost: -otherCostAbs,
-    };
-  }
-
-  const totalBudget = project.budget;
-  const totalSpent = project.spent;
-  const laborAllocated = getLaborActualByProject(projectId);
-  const expenseTotalForProject = getExpenseTotalsByProject(projectId);
-  const actualCost = totalSpent + expenseTotalForProject + laborAllocated;
-
-  const materialsCost = Math.round(totalSpent * 0.4);
-  const laborCost = Math.round(totalSpent * 0.35) + laborAllocated;
-  const vendorCost = Math.round(totalSpent * 0.15);
-  const otherCost = totalSpent - materialsCost - laborCost - vendorCost;
-
-  const fromEstimate = getSourceForProject(projectId)?.snapshotRevenue != null;
-  const totalRevenue = fromEstimate ? totalBudget : totalBudget * 1.1;
-  const profit = totalRevenue - actualCost;
-  const marginPct = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0;
-  const budgetUsagePct = totalBudget > 0 ? (actualCost / totalBudget) * 100 : 0;
-  const remainingBudget = totalBudget - actualCost;
+  const canonical = await getCanonicalProjectProfit(projectId);
+  const totalBudget = canonical.budget;
+  const totalRevenue = canonical.revenue;
+  const totalSpent = canonical.actualCost;
+  const profit = canonical.profit;
+  const marginPct = canonical.revenue > 0 ? canonical.margin * 100 : 0;
+  const budgetUsagePct = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
+  const remainingBudget = totalBudget - totalSpent;
 
   let riskStatus: string;
   if (profit < 0) riskStatus = "Loss";
@@ -2064,18 +2427,18 @@ export function getProjectDetailFinancial(projectId: string): ProjectDetailFinan
   return {
     totalBudget,
     totalRevenue,
-    totalSpent: actualCost,
+    totalSpent,
     incomeTotal: totalRevenue,
-    expenseTotal: actualCost,
+    expenseTotal: totalSpent,
     profit,
     marginPct,
     budgetUsagePct,
     remainingBudget,
     riskStatus,
-    materialCost: -materialsCost,
-    laborCost: -laborCost,
-    vendorCost: -vendorCost,
-    otherCost: -otherCost,
+    materialCost: 0,
+    laborCost: -canonical.laborCost,
+    vendorCost: -canonical.subcontractCost,
+    otherCost: -canonical.expenseCost,
   };
 }
 
@@ -2103,18 +2466,43 @@ export interface ProjectRiskOverview {
   projects: ProjectRiskRow[];
 }
 
-/** Computes risk overview from projects + sources + financial. Null-safe, mock-only. */
-export function getProjectRiskOverview(): ProjectRiskOverview {
-  const projects = getProjects();
+/** Computes risk overview from projects + sources + financial. Null-safe. */
+export async function getProjectRiskOverview(): Promise<ProjectRiskOverview> {
+  const projects = await getProjects();
   const rows: ProjectRiskRow[] = [];
   let highCount = 0;
   let overBudgetCount = 0;
   let laborOverCount = 0;
   let lowRunwayCount = 0;
 
-  for (const project of projects) {
-    const source = getSourceForProject?.(project.id) ?? null;
-    const financial = getProjectDetailFinancial(project.id);
+  // Fetch financials in batch (5 queries total) + all sources in parallel.
+  const [profitMap, sources] = await Promise.all([
+    getCanonicalProjectProfitBatch(projects.map((p) => p.id)).catch(() => new Map()),
+    Promise.all(projects.map((p) => getSourceForProject(p.id).catch(() => null))),
+  ]);
+
+  for (let i = 0; i < projects.length; i++) {
+    const project = projects[i];
+    const source = sources[i];
+    const canonical = profitMap.get(project.id);
+    const financial: ProjectDetailFinancial | null = canonical
+      ? {
+          totalBudget: canonical.budget,
+          totalRevenue: canonical.revenue,
+          totalSpent: canonical.actualCost,
+          incomeTotal: canonical.revenue,
+          expenseTotal: canonical.actualCost,
+          profit: canonical.profit,
+          marginPct: canonical.revenue > 0 ? canonical.margin * 100 : 0,
+          budgetUsagePct: canonical.budget > 0 ? (canonical.actualCost / canonical.budget) * 100 : 0,
+          remainingBudget: canonical.budget - canonical.actualCost,
+          riskStatus: canonical.profit < 0 ? "Loss" : canonical.budget > 0 && canonical.actualCost / canonical.budget >= 1 ? "Over budget" : canonical.budget > 0 && canonical.actualCost / canonical.budget >= 0.8 ? "At risk" : "On track",
+          materialCost: 0,
+          laborCost: -canonical.laborCost,
+          vendorCost: -canonical.subcontractCost,
+          otherCost: -canonical.expenseCost,
+        }
+      : null;
     const breakdown = source?.snapshotBudgetBreakdown;
     const snapshotBudgetCost =
       source?.snapshotBudgetCost ??

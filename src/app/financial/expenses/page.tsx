@@ -4,7 +4,6 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -17,43 +16,121 @@ import {
 } from "@/components/ui/table";
 import {
   getExpenses,
-  getProjects,
-  getProjectById,
   getExpenseCategories,
   getExpenseTotal,
-  createExpense,
+  getWorkers,
   deleteExpense,
-  isVendorDisabled,
-  isPaymentMethodDisabled,
+  updateExpenseReceiptUrl,
   type Expense,
 } from "@/lib/data";
+import { createBrowserClient } from "@/lib/supabase";
 import { Plus, Trash2 } from "lucide-react";
+import { Pagination } from "@/components/ui/pagination";
+import { useSearchParams } from "next/navigation";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { QuickExpenseModal } from "./quick-expense-modal";
+import { EditExpenseModal } from "./edit-expense-modal";
 
-const MAX_SUMMARY_LEN = 40;
+type ProjectRow = { id: string; name: string | null };
+type WorkerRow = { id: string; name: string };
 
-function splitSummary(expense: Expense): string {
-  const byProject = new Map<string | null, number>();
-  for (const line of expense.lines) {
-    const key = line.projectId;
-    byProject.set(key, (byProject.get(key) ?? 0) + line.amount);
+function statusLabel(s: string): string {
+  if (s === "needs_review") return "Needs Review";
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function projectLabel(expense: Expense, projectNameById: Map<string, string>): string {
+  const ids = Array.from(new Set(expense.lines.map((l) => l.projectId)));
+  if (ids.length === 0) return "—";
+  if (ids.length === 1) {
+    const id = ids[0];
+    return id == null ? "Overhead" : projectNameById.get(id) ?? id;
   }
-  const parts: string[] = [];
-  Array.from(byProject.entries()).forEach(([projectId, amount]) => {
-    const label = projectId == null ? "Overhead" : (getProjectById(projectId)?.name ?? projectId);
-    parts.push(`${label} $${amount.toLocaleString()}`);
-  });
-  return parts.join(" • ");
+  return "Multiple";
 }
 
 export default function ExpensesPage() {
+  return (
+    <React.Suspense fallback={<div className="page-container py-6" />}>
+      <ExpensesPageInner />
+    </React.Suspense>
+  );
+}
+
+function ExpensesPageInner() {
   const router = useRouter();
-  const [expenses, setExpenses] = React.useState<Expense[]>(() => getExpenses());
+  const searchParams = useSearchParams();
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const configured = Boolean(url && anon);
+  const supabase = React.useMemo(
+    () => (configured ? createBrowserClient(url as string, anon as string) : null),
+    [configured, url, anon]
+  );
+
+  const [projects, setProjects] = React.useState<ProjectRow[]>([]);
+  const [workers, setWorkers] = React.useState<WorkerRow[]>([]);
+  const [projectsError, setProjectsError] = React.useState<string | null>(null);
+  const [expenses, setExpenses] = React.useState<Expense[]>([]);
+  const [categoriesList, setCategoriesList] = React.useState<string[]>([]);
   const [search, setSearch] = React.useState("");
   const [projectFilter, setProjectFilter] = React.useState("");
   const [categoryFilter, setCategoryFilter] = React.useState("");
+  const [receiptPreview, setReceiptPreview] = React.useState<{ url: string; fileName: string; expenseId?: string } | null>(null);
+  const [quickExpenseOpen, setQuickExpenseOpen] = React.useState(false);
+  const receiptReplaceRef = React.useRef<HTMLInputElement>(null);
+  const [receiptReplacing, setReceiptReplacing] = React.useState(false);
+  const [editExpense, setEditExpense] = React.useState<Expense | null>(null);
+  const [editModalOpen, setEditModalOpen] = React.useState(false);
 
-  const projects = getProjects();
-  const categoriesList = getExpenseCategories();
+  React.useEffect(() => {
+    if (!supabase) {
+      setProjectsError("Supabase is not configured.");
+      setProjects([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data: projectsData, error } = await supabase.from("projects").select("*");
+      if (cancelled) return;
+      if (error) {
+        setProjectsError(error.message ?? "Failed to load projects.");
+        setProjects([]);
+        return;
+      }
+      setProjectsError(null);
+      const safe = projectsData ?? [];
+      setProjects(Array.isArray(safe) ? safe : []);
+    })();
+    return () => { cancelled = true; };
+  }, [supabase]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [expList, cats, workerList] = await Promise.all([getExpenses(), getExpenseCategories(), getWorkers()]);
+      if (cancelled) return;
+      setExpenses(expList);
+      setCategoriesList(cats);
+      setWorkers(workerList as WorkerRow[]);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const safeProjects = React.useMemo(() => projects ?? [], [projects]);
+  const projectNameById = React.useMemo(() => new Map(safeProjects.map((p) => [p.id, p.name ?? p.id])), [safeProjects]);
+  const workerNameById = React.useMemo(() => new Map(workers.map((w) => [w.id, w.name])), [workers]);
+
+  const summary = React.useMemo(() => {
+    const now = new Date();
+    const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-`;
+    const monthTotal = expenses
+      .filter((e) => (e.date ?? "").startsWith(ym))
+      .reduce((s, e) => s + getExpenseTotal(e), 0);
+    const allTotal = expenses.reduce((s, e) => s + getExpenseTotal(e), 0);
+    const projectsCount = safeProjects.length;
+    return { monthTotal, allTotal, projectsCount };
+  }, [expenses, safeProjects]);
 
   const filtered = React.useMemo(() => {
     let list = expenses;
@@ -71,131 +148,196 @@ export default function ExpensesPage() {
     return list;
   }, [expenses, search, projectFilter, categoryFilter]);
 
-  const refresh = React.useCallback(() => {
-    setExpenses(getExpenses());
-  }, []);
+  const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
+  const pageSize = 20;
+  const total = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const curPage = Math.min(page, totalPages);
+  const pageRows = React.useMemo(() => {
+    const start = (curPage - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [curPage, filtered]);
 
-  const handleNew = () => {
-    const created = createExpense({});
-    router.push(`/financial/expenses/${created.id}`);
+  const setPage = (nextPage: number) => {
+    const sp = new URLSearchParams(searchParams);
+    sp.set("page", String(nextPage));
+    router.push(`/financial/expenses?${sp.toString()}`, { scroll: false });
   };
 
-  const handleDelete = (expense: Expense) => {
+  const refresh = React.useCallback(async () => {
+    const list = await getExpenses();
+    setExpenses(list);
+  }, []);
+
+  const handleNew = async () => {
+    router.push("/financial/expenses/new");
+  };
+
+  const handleDelete = async (expense: Expense) => {
     if (typeof window !== "undefined" && window.confirm("Delete this expense?")) {
       expense.attachments?.forEach((a) => {
         if (a.url?.startsWith("blob:")) URL.revokeObjectURL(a.url);
       });
-      deleteExpense(expense.id);
-      refresh();
+      await deleteExpense(expense.id);
+      await refresh();
     }
   };
 
   return (
-    <div className="page-container page-stack py-6">
+    <div className="page-container page-stack px-8 py-8">
       <PageHeader
         title="Expenses"
-        description="Internal owner view. Split lines by project and category."
+        description="Track and manage company expenses"
         actions={
-          <Button onClick={handleNew} className="rounded-lg">
-            <Plus className="h-4 w-4 mr-2" />
-            New Expense
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="h-8" onClick={() => setQuickExpenseOpen(true)}>
+              Quick Expense
+            </Button>
+            <Button onClick={handleNew} size="sm" className="h-8">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Expense
+            </Button>
+          </div>
         }
       />
 
-      <section>
-        <Card className="rounded-2xl border border-zinc-200/40 dark:border-border p-4">
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Search</label>
-              <Input
-                placeholder="Vendor, ref, memo..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="rounded-lg"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Project</label>
-              <select
-                className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm"
-                value={projectFilter}
-                onChange={(e) => setProjectFilter(e.target.value)}
-              >
-                <option value="">All projects</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Category</label>
-              <select
-                className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm"
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-              >
-                <option value="">All categories</option>
-                {categoriesList.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
+      <section className="border border-border/60">
+        <div className="grid sm:grid-cols-3">
+          <div className="px-5 py-5">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">This Month</div>
+            <div className="mt-1 text-2xl font-semibold tabular-nums text-foreground">
+              ${summary.monthTotal.toLocaleString()}
             </div>
           </div>
-        </Card>
+          <div className="px-5 py-5 sm:border-l sm:border-border/60">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">Total Expenses</div>
+            <div className="mt-1 text-2xl font-semibold tabular-nums text-foreground">
+              ${summary.allTotal.toLocaleString()}
+            </div>
+          </div>
+          <div className="px-5 py-5 sm:border-l sm:border-border/60">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">Projects</div>
+            <div className="mt-1 text-2xl font-semibold tabular-nums text-foreground">
+              {summary.projectsCount.toLocaleString()}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        <Input
+          placeholder="Search expenses..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="h-10"
+        />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-1">
+            <select
+              className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+              value={projectFilter}
+              onChange={(e) => setProjectFilter(e.target.value)}
+            >
+              <option value="">All projects</option>
+              {safeProjects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name ?? p.id}
+                </option>
+              ))}
+            </select>
+            {projectsError ? (
+              <p className="text-xs text-amber-600 dark:text-amber-400">{projectsError}</p>
+            ) : null}
+          </div>
+          <select
+            className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+          >
+            <option value="">All categories</option>
+            {categoriesList.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </div>
       </section>
 
       <section>
-        <Card className="rounded-2xl border border-zinc-200/40 dark:border-border overflow-hidden">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-b border-zinc-200/40 dark:border-border/60 hover:bg-transparent bg-muted/30">
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Date</TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Vendor</TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Payment</TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">Total</TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-center tabular-nums">#Lines</TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Split Summary</TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((row) => {
-                  const total = getExpenseTotal(row);
-                  const summary = splitSummary(row);
-                  const truncated = summary.length > MAX_SUMMARY_LEN ? summary.slice(0, MAX_SUMMARY_LEN - 3) + "..." : summary;
+        {total === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="mb-3 flex h-10 w-10 items-center justify-center text-muted-foreground">
+              <Plus className="h-5 w-5" />
+            </div>
+            <p className="text-sm font-medium text-foreground">
+              {search.trim() || projectFilter || categoryFilter ? "No expenses match filters" : "No expenses yet"}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {search.trim() || projectFilter || categoryFilter
+                ? "Try adjusting the filters."
+                : "Create your first expense to start tracking project costs."}
+            </p>
+            {search.trim() || projectFilter || categoryFilter ? null : (
+              <div className="mt-5">
+                <Button size="sm" className="h-8" onClick={handleNew}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Expense
+                </Button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="overflow-x-auto border-b border-border/60">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-b border-border/60 hover:bg-transparent">
+                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Date</TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Worker</TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Vendor</TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Project</TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">Amount</TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Status</TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Receipt</TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pageRows.map((row) => {
+                  const rowTotal = getExpenseTotal(row);
+                  const workerName = row.workerId ? workerNameById.get(row.workerId) ?? "—" : "—";
+                  const projLabel = projectLabel(row, projectNameById);
+                  const status = row.status ?? "pending";
                   return (
                     <TableRow
                       key={row.id}
-                      className="border-b border-zinc-100/50 dark:border-border/30"
+                      className="border-b border-border/30 cursor-pointer hover:bg-muted/30"
+                      onClick={() => { setEditExpense(row); setEditModalOpen(true); }}
                     >
                       <TableCell className="tabular-nums text-foreground">{row.date}</TableCell>
-                      <TableCell className="text-foreground">
-                        <span>{row.vendorName}</span>
-                        {row.vendorName && isVendorDisabled(row.vendorName) && (
-                          <span className="text-xs text-amber-600 dark:text-amber-400 ml-1">Disabled</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        <span>{row.paymentMethod}</span>
-                        {row.paymentMethod && isPaymentMethodDisabled(row.paymentMethod) && (
-                          <span className="text-xs text-amber-600 dark:text-amber-400 ml-1">Disabled</span>
-                        )}
-                      </TableCell>
+                      <TableCell className="text-muted-foreground">{workerName}</TableCell>
+                      <TableCell className="text-foreground">{row.vendorName}</TableCell>
+                      <TableCell className="text-muted-foreground text-sm">{projLabel}</TableCell>
                       <TableCell className="text-right tabular-nums font-medium text-red-600/90 dark:text-red-400/90">
-                        −${total.toLocaleString()}
+                        −${rowTotal.toLocaleString()}
                       </TableCell>
-                      <TableCell className="text-center tabular-nums text-muted-foreground">{row.lines.length}</TableCell>
-                      <TableCell className="text-muted-foreground text-sm" title={summary}>
-                        {truncated || "—"}
+                      <TableCell className="text-muted-foreground text-sm">{statusLabel(status)}</TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        {row.receiptUrl ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8"
+                            onClick={() => setReceiptPreview({ url: row.receiptUrl!, fileName: "Receipt", expenseId: row.id })}
+                          >
+                            View
+                          </Button>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">—</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
+                        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                           <Button asChild variant="ghost" size="sm">
                             <Link href={`/financial/expenses/${row.id}`}>View</Link>
                           </Button>
@@ -213,11 +355,90 @@ export default function ExpensesPage() {
                     </TableRow>
                   );
                 })}
-              </TableBody>
-            </Table>
-          </div>
-        </Card>
+                </TableBody>
+              </Table>
+            </div>
+        )}
       </section>
+
+      {total > 0 ? (
+        <Pagination page={curPage} pageSize={pageSize} total={total} onPageChange={setPage} />
+      ) : null}
+
+      <Dialog open={!!receiptPreview} onOpenChange={(open) => !open && setReceiptPreview(null)}>
+        <DialogContent className="max-h-[90vh] max-w-4xl border-border/60 p-0 gap-0 overflow-hidden flex flex-col">
+          <DialogHeader className="shrink-0 border-b border-border/60 px-4 py-2">
+            <DialogTitle className="text-sm font-medium truncate">{receiptPreview?.fileName ?? "Receipt"}</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 overflow-auto p-4">
+            {receiptPreview ? (
+              (() => {
+                const u = receiptPreview.url;
+                if (u.toLowerCase().endsWith(".pdf")) {
+                  return <iframe src={u} title="Receipt" className="w-full h-[70vh] min-h-[400px] rounded border border-border/60" />;
+                }
+                if (/\.(jpe?g|png|gif|webp)$/i.test(u)) {
+                  /* eslint-disable-next-line @next/next/no-img-element -- receipt URL is dynamic (storage/external) */
+                  return <img src={u} alt="Receipt" className="max-w-full max-h-[70vh] object-contain rounded border border-border/60" />;
+                }
+                return <p className="text-sm text-muted-foreground"><a href={u} target="_blank" rel="noopener noreferrer" className="text-primary underline">Open receipt</a></p>;
+              })()
+            ) : null}
+          </div>
+          {receiptPreview ? (
+            <div className="shrink-0 border-t border-border/60 px-4 py-2 flex items-center justify-end gap-2">
+              <Button variant="outline" size="sm" className="h-8" asChild>
+                <a href={receiptPreview.url} download target="_blank" rel="noopener noreferrer">Download</a>
+              </Button>
+              {receiptPreview.expenseId && supabase ? (
+                <>
+                  <input
+                    type="file"
+                    ref={receiptReplaceRef}
+                    accept="image/*,.pdf"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file || !receiptPreview.expenseId) return;
+                      setReceiptReplacing(true);
+                      try {
+                        const path = `receipts/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+                        const { error } = await supabase.storage.from("receipts").upload(path, file, { contentType: file.type || "application/octet-stream", upsert: true });
+                        if (error) throw error;
+                        const { data } = supabase.storage.from("receipts").getPublicUrl(path);
+                        await updateExpenseReceiptUrl(receiptPreview.expenseId, data.publicUrl);
+                        setReceiptPreview((p) => (p ? { ...p, url: data.publicUrl } : null));
+                        refresh();
+                      } finally {
+                        setReceiptReplacing(false);
+                        e.target.value = "";
+                      }
+                    }}
+                  />
+                  <Button variant="outline" size="sm" className="h-8" disabled={receiptReplacing} onClick={() => receiptReplaceRef.current?.click()}>
+                    {receiptReplacing ? "Replacing…" : "Replace Receipt"}
+                  </Button>
+                </>
+              ) : null}
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <QuickExpenseModal
+        open={quickExpenseOpen}
+        onOpenChange={setQuickExpenseOpen}
+        onSuccess={refresh}
+      />
+      <EditExpenseModal
+        expense={editExpense}
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+        projects={safeProjects}
+        workers={workers}
+        categories={categoriesList}
+        onSuccess={refresh}
+      />
     </div>
   );
 }

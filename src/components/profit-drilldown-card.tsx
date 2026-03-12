@@ -65,7 +65,7 @@ export function ProfitDrilldownCard({
   const hasBudget = budgetBreakdown != null;
 
   return (
-    <Card className="rounded-2xl border border-zinc-200/60 dark:border-border overflow-hidden p-6">
+    <Card className="overflow-hidden p-6">
       <div className="mb-4">
         <h2 className="text-base font-semibold text-foreground">Profit Drilldown</h2>
         <p className="text-sm text-muted-foreground mt-0.5">Category variance, top vendors, and recent costs. Internal only.</p>
@@ -84,8 +84,8 @@ export function ProfitDrilldownCard({
             type="button"
             onClick={() => setTab(id)}
             className={cn(
-              "px-3 py-1.5 rounded-lg text-sm font-medium",
-              tab === id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+              "px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
+              tab === id ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
             )}
           >
             {label}

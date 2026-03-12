@@ -44,7 +44,8 @@ export function CommitmentsSection({
   actualSpent: number;
   budgetCostBaseline: number;
 }) {
-  const [rows, setRows] = React.useState<Commitment[]>(() => getCommitments(projectId));
+  const [rows, setRows] = React.useState<Commitment[]>([]);
+  const [vendors, setVendors] = React.useState<string[]>([]);
   const [open, setOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Commitment | null>(null);
   const [previewAttachment, setPreviewAttachment] = React.useState<ExpenseAttachment | null>(null);
@@ -60,10 +61,20 @@ export function CommitmentsSection({
   const uploadRef = React.useRef<HTMLInputElement>(null);
   const cameraRef = React.useRef<HTMLInputElement>(null);
 
-  const vendors = getVendors(true);
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [list, v] = await Promise.all([getCommitments(projectId), getVendors(true)]);
+      if (cancelled) return;
+      setRows(list);
+      setVendors(v);
+    })();
+    return () => { cancelled = true; };
+  }, [projectId]);
 
-  const refresh = React.useCallback(() => {
-    setRows(getCommitments(projectId));
+  const refresh = React.useCallback(async () => {
+    const list = await getCommitments(projectId);
+    setRows(list);
   }, [projectId]);
 
   const resetForm = React.useCallback(() => {
@@ -94,16 +105,16 @@ export function CommitmentsSection({
     setOpen(true);
   };
 
-  const handleDelete = (row: Commitment) => {
-    deleteCommitment(row.id);
-    refresh();
+  const handleDelete = async (row: Commitment) => {
+    await deleteCommitment(row.id);
+    await refresh();
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const parsedAmount = parseFloat(amount);
     if (!date || !vendorName.trim() || Number.isNaN(parsedAmount) || parsedAmount < 0) return;
     if (editing) {
-      updateCommitment(editing.id, {
+      await updateCommitment(editing.id, {
         date,
         vendorName: vendorName.trim(),
         type,
@@ -113,7 +124,7 @@ export function CommitmentsSection({
         attachments,
       });
     } else {
-      createCommitment({
+      await createCommitment({
         projectId,
         date,
         vendorName: vendorName.trim(),
@@ -126,7 +137,7 @@ export function CommitmentsSection({
     }
     setOpen(false);
     resetForm();
-    refresh();
+    await refresh();
   };
 
   const handleUploadFiles = (files: FileList | null) => {
@@ -144,7 +155,7 @@ export function CommitmentsSection({
 
   return (
     <section>
-      <Card className="rounded-2xl border border-zinc-200/60 dark:border-border overflow-hidden p-6">
+      <Card className="overflow-hidden p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-base font-semibold text-foreground">Committed Cost</h2>
@@ -152,18 +163,18 @@ export function CommitmentsSection({
               Open commitments are tracked separately from spent cost (internal only).
             </p>
           </div>
-          <Button onClick={openCreate} className="rounded-lg" size="sm">
+          <Button onClick={openCreate} size="sm">
             <Plus className="h-4 w-4 mr-2" />
             New Commitment
           </Button>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-          <div className="rounded-xl border border-zinc-200/60 dark:border-border bg-card px-3 py-2">
+          <div className="rounded-md border border-border/60 bg-background px-3 py-2">
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Total Committed</p>
             <p className="text-base font-semibold tabular-nums text-amber-700 dark:text-amber-400">{formatMoney(totalCommitted)}</p>
           </div>
-          <div className="rounded-xl border border-zinc-200/60 dark:border-border bg-card px-3 py-2">
+          <div className="rounded-md border border-border/60 bg-background px-3 py-2">
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Total Spent</p>
             <p className="text-base font-semibold tabular-nums text-foreground">{formatMoney(actualSpent)}</p>
           </div>
@@ -267,23 +278,23 @@ export function CommitmentsSection({
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setOpen(false)}>
-          <Card className="rounded-2xl border border-zinc-200/60 dark:border-border p-6 w-full max-w-xl mx-4" onClick={(e) => e.stopPropagation()}>
+          <Card className="p-6 w-full max-w-xl mx-4" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-base font-semibold text-foreground mb-4">{editing ? "Edit Commitment" : "New Commitment"}</h3>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</label>
-                <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="mt-1 rounded-lg" />
+                <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="mt-1" />
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Vendor</label>
-                <Input list="commitment-vendors" value={vendorName} onChange={(e) => setVendorName(e.target.value)} className="mt-1 rounded-lg" placeholder="Vendor" />
+                <Input list="commitment-vendors" value={vendorName} onChange={(e) => setVendorName(e.target.value)} className="mt-1" placeholder="Vendor" />
                 <datalist id="commitment-vendors">
                   {vendors.map((v) => <option key={v} value={v} />)}
                 </datalist>
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Type</label>
-                <select value={type} onChange={(e) => setType(e.target.value as CommitmentType)} className="mt-1 flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm">
+                <select value={type} onChange={(e) => setType(e.target.value as CommitmentType)} className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm">
                   <option value="PO">PO</option>
                   <option value="Subcontract">Subcontract</option>
                   <option value="Other">Other</option>

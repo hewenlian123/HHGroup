@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getWorkerById, getWorkerEarningsAllocations, getWorkerPayments } from "@/lib/data";
+import { getWorkerById, getWorkerEarningsAllocations, getWorkerLaborPayments } from "@/lib/data";
 
 export default async function WorkerStatementPrintPage({
   params,
@@ -14,11 +14,11 @@ export default async function WorkerStatementPrintPage({
   const end = qs.end ?? new Date().toISOString().slice(0, 10);
   const project = qs.project || undefined;
 
-  const worker = getWorkerById(id);
+  const worker = await getWorkerById(id);
   if (!worker) notFound();
 
-  const earningsRows = getWorkerEarningsAllocations(id, start, end, project);
-  const payments = getWorkerPayments(id, start, end);
+  const earningsRows = await getWorkerEarningsAllocations(id, start, end, project);
+  const payments = await getWorkerLaborPayments(id, start, end);
   const earningsTotal = earningsRows.reduce((s, r) => s + r.amount, 0);
   const paidTotal = payments.reduce((s, p) => s + p.amount, 0);
   const balance = Math.max(0, earningsTotal - paidTotal);

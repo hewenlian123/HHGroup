@@ -28,7 +28,7 @@ export function ProjectCashFlowChart({
 }: ProjectCashFlowChartProps) {
   if (points.length === 0) {
     return (
-      <div className={cn("flex items-center justify-center rounded-xl border border-zinc-200/60 dark:border-border bg-muted/20", className)} style={{ width, height }}>
+      <div className={cn("flex items-center justify-center rounded-md border border-border/60 bg-background", className)} style={{ width, height }}>
         <p className="text-sm text-muted-foreground">No cash flow data</p>
       </div>
     );

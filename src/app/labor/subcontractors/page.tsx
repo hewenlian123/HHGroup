@@ -1,0 +1,510 @@
+"use client";
+
+import * as React from "react";
+import Link from "next/link";
+import { createBrowserClient } from "@/lib/supabase";
+import { PageHeader } from "@/components/page-header";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { FilterBar } from "@/components/filter-bar";
+import { StatusBadge } from "@/components/status-badge";
+
+type SubcontractorRow = {
+  id: string;
+  display_name: string;
+  legal_name: string | null;
+  contact_name: string | null;
+  phone: string | null;
+  email: string | null;
+  address1: string | null;
+  address2: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  tax_id_last4: string | null;
+  w9_on_file: boolean;
+  insurance_expiration: string | null;
+  license_number: string | null;
+  notes: string | null;
+  status: "active" | "inactive";
+  created_at: string;
+};
+
+type SubcontractorForm = {
+  id?: string;
+  display_name: string;
+  legal_name: string;
+  contact_name: string;
+  phone: string;
+  email: string;
+  address1: string;
+  address2: string;
+  city: string;
+  state: string;
+  zip: string;
+  tax_id_last4: string;
+  w9_on_file: boolean;
+  insurance_expiration: string;
+  license_number: string;
+  notes: string;
+  status: "active" | "inactive";
+};
+
+const EMPTY_FORM: SubcontractorForm = {
+  display_name: "",
+  legal_name: "",
+  contact_name: "",
+  phone: "",
+  email: "",
+  address1: "",
+  address2: "",
+  city: "",
+  state: "",
+  zip: "",
+  tax_id_last4: "",
+  w9_on_file: false,
+  insurance_expiration: "",
+  license_number: "",
+  notes: "",
+  status: "active",
+};
+
+const toNullable = (value: string): string | null => {
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+};
+
+export default function SubcontractorsPage() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const configured = Boolean(url && anon);
+  const supabase = React.useMemo(
+    () => (configured ? createBrowserClient(url as string, anon as string) : null),
+    [configured, url, anon]
+  );
+
+  const [rows, setRows] = React.useState<SubcontractorRow[]>([]);
+  const [query, setQuery] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState<"" | "active" | "inactive">("");
+  const [message, setMessage] = React.useState<string | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [editorOpen, setEditorOpen] = React.useState(false);
+  const [editorMode, setEditorMode] = React.useState<"create" | "edit">("create");
+  const [form, setForm] = React.useState<SubcontractorForm>(EMPTY_FORM);
+  const [submitting, setSubmitting] = React.useState(false);
+  const [deletingId, setDeletingId] = React.useState<string | null>(null);
+
+  const refresh = React.useCallback(async () => {
+    setLoading(true);
+    setMessage(null);
+    if (!configured || !supabase) {
+      setRows([]);
+      setMessage("Supabase is not configured.");
+      setLoading(false);
+      return;
+    }
+    try {
+      const { data, error } = await supabase
+        .from("subcontractors")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      setRows((data ?? []) as SubcontractorRow[]);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      setRows([]);
+      setMessage(msg || "Failed to load subcontractors.");
+    } finally {
+      setLoading(false);
+    }
+  }, [configured, supabase]);
+
+  React.useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  const filtered = React.useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return rows.filter((row) => {
+      if (statusFilter && row.status !== statusFilter) return false;
+      if (!q) return true;
+      return [row.display_name, row.legal_name, row.contact_name, row.phone, row.email]
+        .map((v) => (v ?? "").toLowerCase())
+        .some((v) => v.includes(q));
+    });
+  }, [rows, query, statusFilter]);
+
+  const openCreate = React.useCallback(() => {
+    setEditorMode("create");
+    setForm(EMPTY_FORM);
+    setEditorOpen(true);
+    setMessage(null);
+  }, []);
+
+  const openEdit = React.useCallback((row: SubcontractorRow) => {
+    setEditorMode("edit");
+    setForm({
+      id: row.id,
+      display_name: row.display_name ?? "",
+      legal_name: row.legal_name ?? "",
+      contact_name: row.contact_name ?? "",
+      phone: row.phone ?? "",
+      email: row.email ?? "",
+      address1: row.address1 ?? "",
+      address2: row.address2 ?? "",
+      city: row.city ?? "",
+      state: row.state ?? "",
+      zip: row.zip ?? "",
+      tax_id_last4: row.tax_id_last4 ?? "",
+      w9_on_file: row.w9_on_file ?? false,
+      insurance_expiration: row.insurance_expiration ?? "",
+      license_number: row.license_number ?? "",
+      notes: row.notes ?? "",
+      status: row.status === "inactive" ? "inactive" : "active",
+    });
+    setEditorOpen(true);
+    setMessage(null);
+  }, []);
+
+  const closeEditor = React.useCallback(() => {
+    if (submitting) return;
+    setEditorOpen(false);
+    setForm(EMPTY_FORM);
+  }, [submitting]);
+
+  const handleSave = React.useCallback(async () => {
+    if (!configured || !supabase) {
+      setMessage("Supabase is not configured.");
+      return;
+    }
+    if (!form.display_name.trim()) {
+      setMessage("Display name is required.");
+      return;
+    }
+    setSubmitting(true);
+    setMessage(null);
+    const payload = {
+      display_name: form.display_name.trim(),
+      legal_name: toNullable(form.legal_name),
+      contact_name: toNullable(form.contact_name),
+      phone: toNullable(form.phone),
+      email: toNullable(form.email),
+      address1: toNullable(form.address1),
+      address2: toNullable(form.address2),
+      city: toNullable(form.city),
+      state: toNullable(form.state),
+      zip: toNullable(form.zip),
+      tax_id_last4: toNullable(form.tax_id_last4),
+      w9_on_file: form.w9_on_file,
+      insurance_expiration: form.insurance_expiration || null,
+      license_number: toNullable(form.license_number),
+      notes: toNullable(form.notes),
+      status: form.status,
+    };
+    try {
+      if (editorMode === "create") {
+        const { error } = await supabase.from("subcontractors").insert([payload]);
+        if (error) throw error;
+      } else {
+        if (!form.id) throw new Error("Missing subcontractor id.");
+        const { error } = await supabase.from("subcontractors").update(payload).eq("id", form.id);
+        if (error) throw error;
+      }
+      setEditorOpen(false);
+      setForm(EMPTY_FORM);
+      await refresh();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      setMessage(msg || "Failed to save subcontractor.");
+    } finally {
+      setSubmitting(false);
+    }
+  }, [configured, editorMode, form, refresh, supabase]);
+
+  const handleDelete = React.useCallback(
+    async (row: SubcontractorRow) => {
+      if (!configured || !supabase) {
+        setMessage("Supabase is not configured.");
+        return;
+      }
+      if (!window.confirm(`Delete subcontractor "${row.display_name}"?`)) return;
+      setDeletingId(row.id);
+      setMessage(null);
+      try {
+        const { error } = await supabase.from("subcontractors").delete().eq("id", row.id);
+        if (error) throw error;
+        await refresh();
+      } catch (error: unknown) {
+        const msg = error instanceof Error ? error.message : String(error);
+        setMessage(msg || "Failed to delete subcontractor.");
+      } finally {
+        setDeletingId(null);
+      }
+    },
+    [configured, refresh, supabase]
+  );
+
+  return (
+    <div className="page-container page-stack py-6">
+      <PageHeader
+        title="Vendors"
+        subtitle="Master data: company info, compliance, and attachments. (Contracts & billing are under Subcontractors.)"
+        actions={
+          <Button className="rounded-lg" onClick={openCreate} disabled={submitting || !!deletingId}>
+            + New Subcontractor
+          </Button>
+        }
+      />
+
+      <FilterBar>
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            placeholder="Search name, contact, phone, email"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            className="max-w-[360px]"
+          />
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter((event.target.value as "" | "active" | "inactive") ?? "")}
+            className="h-10 rounded-[10px] border border-input bg-muted/20 px-3 text-sm"
+          >
+            <option value="">All statuses</option>
+            <option value="active">active</option>
+            <option value="inactive">inactive</option>
+          </select>
+        </div>
+      </FilterBar>
+
+      {message ? (
+        <div className="rounded-lg border border-zinc-200/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground dark:border-border">
+          {message}
+        </div>
+      ) : null}
+
+      {editorOpen ? (
+        <Card className="rounded-2xl border border-zinc-200/60 p-4 dark:border-border">
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Display Name</p>
+              <Input
+                value={form.display_name}
+                onChange={(event) => setForm((prev) => ({ ...prev, display_name: event.target.value }))}
+                placeholder="Required"
+                disabled={submitting}
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Legal Name</p>
+              <Input
+                value={form.legal_name}
+                onChange={(event) => setForm((prev) => ({ ...prev, legal_name: event.target.value }))}
+                placeholder="Optional"
+                disabled={submitting}
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Contact Name</p>
+              <Input
+                value={form.contact_name}
+                onChange={(event) => setForm((prev) => ({ ...prev, contact_name: event.target.value }))}
+                placeholder="Optional"
+                disabled={submitting}
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Phone</p>
+              <Input
+                value={form.phone}
+                onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))}
+                placeholder="Optional"
+                disabled={submitting}
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Email</p>
+              <Input
+                value={form.email}
+                onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
+                placeholder="Optional"
+                disabled={submitting}
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">W9 on file</p>
+              <label className="inline-flex items-center gap-2 rounded-[10px] border border-input bg-muted/20 px-3 py-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.w9_on_file}
+                  onChange={(event) => setForm((prev) => ({ ...prev, w9_on_file: event.target.checked }))}
+                  disabled={submitting}
+                />
+                Yes
+              </label>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Insurance Expiration</p>
+              <Input
+                type="date"
+                value={form.insurance_expiration}
+                onChange={(event) => setForm((prev) => ({ ...prev, insurance_expiration: event.target.value }))}
+                disabled={submitting}
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">License Number</p>
+              <Input
+                value={form.license_number}
+                onChange={(event) => setForm((prev) => ({ ...prev, license_number: event.target.value }))}
+                placeholder="Optional"
+                disabled={submitting}
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Tax ID Last 4</p>
+              <Input
+                value={form.tax_id_last4}
+                onChange={(event) => setForm((prev) => ({ ...prev, tax_id_last4: event.target.value }))}
+                placeholder="Optional"
+                disabled={submitting}
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Status</p>
+              <select
+                value={form.status}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, status: event.target.value === "inactive" ? "inactive" : "active" }))
+                }
+                className="h-10 w-full rounded-[10px] border border-input bg-muted/20 px-3 text-sm"
+                disabled={submitting}
+              >
+                <option value="active">active</option>
+                <option value="inactive">inactive</option>
+              </select>
+            </div>
+            <div className="space-y-1 md:col-span-2">
+              <p className="text-xs text-muted-foreground">Address Line 1</p>
+              <Input
+                value={form.address1}
+                onChange={(event) => setForm((prev) => ({ ...prev, address1: event.target.value }))}
+                placeholder="Optional"
+                disabled={submitting}
+              />
+            </div>
+            <div className="space-y-1 md:col-span-2">
+              <p className="text-xs text-muted-foreground">Address Line 2</p>
+              <Input
+                value={form.address2}
+                onChange={(event) => setForm((prev) => ({ ...prev, address2: event.target.value }))}
+                placeholder="Optional"
+                disabled={submitting}
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">City</p>
+              <Input value={form.city} onChange={(event) => setForm((prev) => ({ ...prev, city: event.target.value }))} />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">State</p>
+              <Input value={form.state} onChange={(event) => setForm((prev) => ({ ...prev, state: event.target.value }))} />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">ZIP</p>
+              <Input value={form.zip} onChange={(event) => setForm((prev) => ({ ...prev, zip: event.target.value }))} />
+            </div>
+            <div className="space-y-1 md:col-span-2">
+              <p className="text-xs text-muted-foreground">Notes</p>
+              <Input
+                value={form.notes}
+                onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
+                placeholder="Optional"
+              />
+            </div>
+          </div>
+          <div className="mt-4 flex items-center justify-end gap-2 border-t border-zinc-200/60 pt-3 dark:border-border">
+            <Button onClick={handleSave} disabled={submitting}>
+              {submitting ? "Saving..." : editorMode === "create" ? "Create Subcontractor" : "Save Changes"}
+            </Button>
+            <Button variant="outline" onClick={closeEditor} disabled={submitting}>
+              Cancel
+            </Button>
+          </div>
+        </Card>
+      ) : null}
+
+      <Card className="overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-zinc-200/40 bg-muted/30 dark:border-border/60">
+                <th className="table-head-label px-4 py-3 text-left">Name</th>
+                <th className="table-head-label px-4 py-3 text-left">Contact</th>
+                <th className="table-head-label px-4 py-3 text-left">Phone</th>
+                <th className="table-head-label px-4 py-3 text-left">Email</th>
+                <th className="table-head-label px-4 py-3 text-left">W9</th>
+                <th className="table-head-label px-4 py-3 text-left">Insurance</th>
+                <th className="table-head-label px-4 py-3 text-left">Status</th>
+                <th className="table-head-label px-4 py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td className="px-4 py-8 text-center text-muted-foreground" colSpan={8}>
+                    Loading subcontractors...
+                  </td>
+                </tr>
+              ) : null}
+              {filtered.map((row) => (
+                <tr key={row.id} className="group border-b border-zinc-100/50 dark:border-border/30">
+                  <td className="px-4 py-3 font-medium text-foreground">
+                    <Link href={`/labor/subcontractors/${row.id}`} className="hover:underline">
+                      {row.display_name}
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">{row.contact_name || "—"}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{row.phone || "—"}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{row.email || "—"}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{row.w9_on_file ? "On file" : "Missing"}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{row.insurance_expiration || "—"}</td>
+                  <td className="px-4 py-3">
+                    <StatusBadge status={row.status} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-2 opacity-0 transition-opacity duration-100 group-hover:opacity-100">
+                      <Button
+                        variant="outline"
+                        className="h-8 px-3"
+                        onClick={() => openEdit(row)}
+                        disabled={submitting || deletingId === row.id}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="h-8 px-3"
+                        onClick={() => void handleDelete(row)}
+                        disabled={submitting || deletingId === row.id}
+                      >
+                        {deletingId === row.id ? "Deleting..." : "Delete"}
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {!loading && filtered.length === 0 ? (
+                <tr>
+                  <td className="px-4 py-8 text-center text-muted-foreground" colSpan={8}>
+                    No subcontractors yet.
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}

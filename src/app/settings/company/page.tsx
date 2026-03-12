@@ -3,11 +3,13 @@
 import * as React from "react";
 import Image from "next/image";
 import { Upload, Image as ImageIcon, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { SectionHeader } from "@/components/section-header";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/toast/toast-provider";
 import { createBrowserClient } from "@/lib/supabase";
 import {
   ensureCompanyProfile,
@@ -25,6 +27,7 @@ type FormState = {
   website: string;
   license_number: string;
   tax_id: string;
+  default_tax_pct: string;
   address1: string;
   address2: string;
   city: string;
@@ -44,6 +47,7 @@ const EMPTY_FORM: FormState = {
   website: "",
   license_number: "",
   tax_id: "",
+  default_tax_pct: "0",
   address1: "",
   address2: "",
   city: "",
@@ -64,6 +68,7 @@ function toFormState(profile: CompanyProfile): FormState {
     website: profile.website ?? "",
     license_number: profile.license_number ?? "",
     tax_id: profile.tax_id ?? "",
+    default_tax_pct: String(profile.default_tax_pct ?? 0),
     address1: profile.address1 ?? "",
     address2: profile.address2 ?? "",
     city: profile.city ?? "",
@@ -82,6 +87,8 @@ function toNullable(value: string): string | null {
 }
 
 export default function SettingsCompanyPage() {
+  const router = useRouter();
+  const { toast } = useToast();
   const fileRef = React.useRef<HTMLInputElement>(null);
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -97,8 +104,6 @@ export default function SettingsCompanyPage() {
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [uploading, setUploading] = React.useState(false);
-  const [message, setMessage] = React.useState<string | null>(null);
-  const [error, setError] = React.useState<string | null>(null);
 
   const loadProfile = React.useCallback(async () => {
     if (!supabase) {
@@ -106,18 +111,17 @@ export default function SettingsCompanyPage() {
       return;
     }
     setLoading(true);
-    setError(null);
     try {
       const row = await ensureCompanyProfile(supabase);
       setProfile(row);
       setForm(toFormState(row));
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      setError(msg || "Failed to load company profile.");
+      toast({ title: "Load failed", description: msg || "Failed to load company profile.", variant: "error" });
     } finally {
       setLoading(false);
     }
-  }, [supabase]);
+  }, [supabase, toast]);
 
   React.useEffect(() => {
     loadProfile();
@@ -130,9 +134,9 @@ export default function SettingsCompanyPage() {
   const onSave = async () => {
     if (!supabase || !configured) return;
     setSaving(true);
-    setError(null);
-    setMessage(null);
     try {
+      const n = Number(form.default_tax_pct);
+      const defaultTaxPct = Number.isFinite(n) ? Math.max(0, n) : 0;
       const updated = await saveCompanyProfile(supabase, {
         org_name: form.org_name.trim() || "HH Group",
         legal_name: toNullable(form.legal_name),
@@ -141,6 +145,7 @@ export default function SettingsCompanyPage() {
         website: toNullable(form.website),
         license_number: toNullable(form.license_number),
         tax_id: toNullable(form.tax_id),
+        default_tax_pct: defaultTaxPct,
         address1: toNullable(form.address1),
         address2: toNullable(form.address2),
         city: toNullable(form.city),
@@ -153,10 +158,11 @@ export default function SettingsCompanyPage() {
       });
       setProfile(updated);
       setForm(toFormState(updated));
-      setMessage("Company profile saved.");
+      toast({ title: "Saved", variant: "success" });
+      router.refresh();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      setError(msg || "Failed to save profile.");
+      toast({ title: "Save failed", description: msg || "Failed to save profile.", variant: "error" });
     } finally {
       setSaving(false);
     }
@@ -165,15 +171,14 @@ export default function SettingsCompanyPage() {
   const processFile = async (file: File | null | undefined) => {
     if (!file || !supabase) return;
     setUploading(true);
-    setError(null);
-    setMessage(null);
     try {
       const result = await uploadCompanyLogo(supabase, file);
       setProfile(result.profile);
-      setMessage("Logo uploaded.");
+      toast({ title: "Logo uploaded", variant: "success" });
+      router.refresh();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      setError(msg || "Logo upload failed.");
+      toast({ title: "Upload failed", description: msg || "Logo upload failed.", variant: "error" });
     } finally {
       setUploading(false);
     }
@@ -188,15 +193,14 @@ export default function SettingsCompanyPage() {
   const onRemoveLogo = async () => {
     if (!supabase || !profile?.logo_path) return;
     setUploading(true);
-    setError(null);
-    setMessage(null);
     try {
       const updated = await removeCompanyLogo(supabase);
       setProfile(updated);
-      setMessage("Logo removed.");
+      toast({ title: "Logo removed", variant: "success" });
+      router.refresh();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      setError(msg || "Failed to remove logo.");
+      toast({ title: "Remove failed", description: msg || "Failed to remove logo.", variant: "error" });
     } finally {
       setUploading(false);
     }
@@ -215,13 +219,6 @@ export default function SettingsCompanyPage() {
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
           Supabase is not configured. Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` to enable save and upload.
         </div>
-      ) : null}
-
-      {error ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
-      ) : null}
-      {message ? (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{message}</div>
       ) : null}
 
       <Card className="rounded-2xl border border-zinc-200/60 p-5 dark:border-border">
@@ -292,6 +289,12 @@ export default function SettingsCompanyPage() {
             onChange={(e) => updateField("license_number", e.target.value)}
           />
           <Input placeholder="Tax ID" value={form.tax_id} onChange={(e) => updateField("tax_id", e.target.value)} />
+          <Input
+            placeholder="Default tax %"
+            inputMode="decimal"
+            value={form.default_tax_pct}
+            onChange={(e) => updateField("default_tax_pct", e.target.value)}
+          />
           <Input placeholder="Address Line 1" value={form.address1} onChange={(e) => updateField("address1", e.target.value)} />
           <Input placeholder="Address Line 2" value={form.address2} onChange={(e) => updateField("address2", e.target.value)} />
           <Input placeholder="City" value={form.city} onChange={(e) => updateField("city", e.target.value)} />

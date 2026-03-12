@@ -1,0 +1,883 @@
+/**
+ * Expenses + expense_lines — Supabase only. No mock data.
+ * Tables: expenses, expense_lines, attachments (entity_type = 'expense').
+ */
+
+import { supabase } from "@/lib/supabase";
+
+export type ExpenseAttachment = {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  size: number;
+  url: string;
+  createdAt: string;
+};
+
+export type ExpenseLine = {
+  id: string;
+  projectId: string | null;
+  category: string;
+  costCode?: string | null;
+  memo?: string | null;
+  amount: number;
+};
+
+export type Expense = {
+  id: string;
+  date: string;
+  vendorName: string;
+  paymentMethod: string;
+  referenceNo?: string;
+  notes?: string;
+  attachments: ExpenseAttachment[];
+  lines: ExpenseLine[];
+  linkedBankTxId?: string | null;
+  /** Receipt file URL (storage bucket receipts). */
+  receiptUrl?: string | null;
+  /** pending | needs_review | approved | reimbursed */
+  status?: "pending" | "needs_review" | "approved" | "reimbursed";
+  workerId?: string | null;
+  /** Card name when payment method is Credit Card or Debit Card. */
+  cardName?: string | null;
+  /** Payment source account (from Accounts module). */
+  accountId?: string | null;
+};
+
+type ExpenseRow = {
+  id: string;
+  expense_date: string;
+  vendor?: string;
+  vendor_name?: string;
+  payment_method?: string;
+  reference_no?: string | null;
+  notes: string | null;
+  total?: number;
+  line_count?: number;
+  receipt_url?: string | null;
+  status?: string | null;
+  worker_id?: string | null;
+  card_name?: string | null;
+  account_id?: string | null;
+};
+
+type ExpenseLineRow = {
+  id: string;
+  expense_id: string;
+  project_id?: string | null;
+  category?: string;
+  cost_code?: string | null;
+  memo?: string | null;
+  amount?: number;
+  total?: number;
+};
+
+function client() {
+  if (!supabase) throw new Error("Supabase is not configured.");
+  return supabase;
+}
+
+function isMissingTable(err: { message?: string } | null): boolean {
+  const m = err?.message ?? "";
+  return /schema cache|relation.*does not exist|could not find the table/i.test(m);
+}
+
+function isMissingFunction(err: { message?: string } | null): boolean {
+  const m = err?.message ?? "";
+  return /could not find the function|schema cache/i.test(m);
+}
+
+const HINT = "Run supabase/migrations/202602280008_create_expenses.sql";
+
+async function getLinkedBankTxId(expenseId: string): Promise<string | null> {
+  const c = client();
+  const { data } = await c.from("bank_transactions").select("id").eq("linked_expense_id", expenseId).maybeSingle();
+  return data?.id ?? null;
+}
+
+async function getAttachments(expenseId: string): Promise<ExpenseAttachment[]> {
+  const c = client();
+  const { data: rows } = await c
+    .from("attachments")
+    .select("id, file_name, mime_type, size_bytes, file_path, created_at")
+    .eq("entity_type", "expense")
+    .eq("entity_id", expenseId);
+  if (!rows || !Array.isArray(rows)) return [];
+  return rows.map((r) => ({
+    id: r.id,
+    fileName: r.file_name ?? "",
+    mimeType: r.mime_type ?? "",
+    size: Number(r.size_bytes) || 0,
+    url: r.file_path ?? "",
+    createdAt: r.created_at ?? new Date().toISOString(),
+  }));
+}
+
+function toExpenseLine(r: ExpenseLineRow): ExpenseLine {
+  return {
+    id: r.id,
+    projectId: r.project_id ?? null,
+    category: r.category ?? "Other",
+    costCode: r.cost_code ?? undefined,
+    memo: r.memo ?? undefined,
+    amount: Number(r.amount ?? r.total) || 0,
+  };
+}
+
+async function toExpense(row: ExpenseRow, lines: ExpenseLineRow[], attachments: ExpenseAttachment[], linkedBankTxId: string | null): Promise<Expense> {
+  const s = row.status;
+  const status = s === "approved" || s === "reimbursed" ? s : s === "needs_review" ? "needs_review" : "pending";
+  return {
+    id: row.id,
+    date: row.expense_date?.slice(0, 10) ?? "",
+    vendorName: (row.vendor ?? row.vendor_name) ?? "",
+    paymentMethod: row.payment_method ?? "Card",
+    referenceNo: row.reference_no ?? undefined,
+    notes: row.notes ?? undefined,
+    attachments,
+    lines: lines.map(toExpenseLine),
+    linkedBankTxId: linkedBankTxId ?? undefined,
+    receiptUrl: row.receipt_url ?? undefined,
+    status,
+    workerId: row.worker_id ?? undefined,
+    cardName: row.card_name ?? undefined,
+    accountId: row.account_id ?? undefined,
+  };
+}
+
+/** Select columns: base + optional receipt_url, status, worker_id. */
+const EXPENSE_COLS_FULL = "id,expense_date,vendor,vendor_name,notes,payment_method,reference_no,total,line_count,receipt_url,status,worker_id,card_name,account_id";
+/** Fallback when payment_method column does not exist (e.g. account_id-only schema). */
+const EXPENSE_COLS_FULL_NO_PAYMENT_METHOD = "id,expense_date,vendor,vendor_name,notes,reference_no,total,line_count,receipt_url,status,worker_id,card_name,account_id";
+/** Legacy: table may have only vendor (no vendor_name). No payment_method so works when column is missing. */
+const EXPENSE_COLS_LEGACY = "id,expense_date,vendor,notes,reference_no,total,line_count";
+/** Minimal: no reference_no, no payment_method (for schemas that only have core columns). */
+const EXPENSE_COLS_MINIMAL = "id,expense_date,vendor,vendor_name,notes,total,line_count";
+const EXPENSE_COLS_MINIMAL_LEGACY = "id,expense_date,vendor,notes,total,line_count";
+/** Fallback when total/line_count do not exist: total is derived from expense_lines in app. */
+const EXPENSE_COLS_NO_TOTAL = "id,expense_date,vendor,vendor_name,notes";
+const EXPENSE_COLS_NO_TOTAL_LEGACY = "id,expense_date,vendor,notes";
+
+function isMissingColumn(err: { message?: string } | null): boolean {
+  const m = err?.message ?? "";
+  return /column .* does not exist|schema cache/i.test(m);
+}
+
+export async function getExpenses(): Promise<Expense[]> {
+  const c = client();
+  let rows: unknown[] = [];
+  const res = await c.from("expenses").select(EXPENSE_COLS_FULL).order("expense_date", { ascending: false });
+  if (res.error) {
+    if (!isMissingColumn(res.error)) {
+      if (isMissingTable(res.error)) throw new Error(`Expenses table not found. ${HINT}`);
+      throw new Error(res.error.message ? `${res.error.message} ${HINT}` : HINT);
+    }
+    const fallback = await c.from("expenses").select(EXPENSE_COLS_FULL_NO_PAYMENT_METHOD).order("expense_date", { ascending: false });
+    if (fallback.error && isMissingColumn(fallback.error)) {
+      const legacy = await c.from("expenses").select(EXPENSE_COLS_LEGACY).order("expense_date", { ascending: false });
+      if (legacy.error && isMissingColumn(legacy.error)) {
+        const minimal = await c.from("expenses").select(EXPENSE_COLS_MINIMAL).order("expense_date", { ascending: false });
+        if (minimal.error && isMissingColumn(minimal.error)) {
+          const minimalLegacy = await c.from("expenses").select(EXPENSE_COLS_MINIMAL_LEGACY).order("expense_date", { ascending: false });
+          if (minimalLegacy.error && isMissingColumn(minimalLegacy.error)) {
+            const noTotal = await c.from("expenses").select(EXPENSE_COLS_NO_TOTAL).order("expense_date", { ascending: false });
+            if (noTotal.error && isMissingColumn(noTotal.error)) {
+              const noTotalLegacy = await c.from("expenses").select(EXPENSE_COLS_NO_TOTAL_LEGACY).order("expense_date", { ascending: false });
+              if (noTotalLegacy.error) throw new Error(noTotalLegacy.error.message ?? HINT);
+              rows = noTotalLegacy.data ?? [];
+            } else if (noTotal.error) {
+              throw new Error(noTotal.error.message ?? HINT);
+            } else {
+              rows = noTotal.data ?? [];
+            }
+          } else if (minimalLegacy.error) {
+            throw new Error(minimalLegacy.error.message ?? HINT);
+          } else {
+            rows = minimalLegacy.data ?? [];
+          }
+        } else if (minimal.error) {
+          throw new Error(minimal.error.message ?? HINT);
+        } else {
+          rows = minimal.data ?? [];
+        }
+      } else if (legacy.error) {
+        throw new Error(legacy.error.message ?? HINT);
+      } else {
+        rows = legacy.data ?? [];
+      }
+    } else if (fallback.error) {
+      throw new Error(fallback.error.message ?? HINT);
+    } else {
+      rows = fallback.data ?? [];
+    }
+  } else {
+    rows = res.data ?? [];
+  }
+  const result: Expense[] = [];
+  for (const row of rows) {
+    const r = row as ExpenseRow;
+    const { data: lineRows } = await c.from("expense_lines").select("*").eq("expense_id", r.id);
+    const lines = (lineRows ?? []) as ExpenseLineRow[];
+    const attachments = await getAttachments(r.id);
+    const linkedBankTxId = await getLinkedBankTxId(r.id);
+    result.push(await toExpense(r, lines, attachments, linkedBankTxId));
+  }
+  return result;
+}
+
+export async function getExpenseById(expenseId: string): Promise<Expense | null> {
+  const c = client();
+  const res = await c.from("expenses").select(EXPENSE_COLS_FULL).eq("id", expenseId).maybeSingle();
+  let row: ExpenseRow | null = null;
+  if (res.error) {
+    if (!isMissingColumn(res.error)) {
+      if (isMissingTable(res.error)) throw new Error(`Expenses table not found. ${HINT}`);
+      return null;
+    }
+    const fallback = await c.from("expenses").select(EXPENSE_COLS_FULL_NO_PAYMENT_METHOD).eq("id", expenseId).maybeSingle();
+    if (fallback.error && isMissingColumn(fallback.error)) {
+      const legacy = await c.from("expenses").select(EXPENSE_COLS_LEGACY).eq("id", expenseId).maybeSingle();
+      if (legacy.error && isMissingColumn(legacy.error)) {
+        const minimal = await c.from("expenses").select(EXPENSE_COLS_MINIMAL).eq("id", expenseId).maybeSingle();
+        if (minimal.error && isMissingColumn(minimal.error)) {
+          const minimalLegacy = await c.from("expenses").select(EXPENSE_COLS_MINIMAL_LEGACY).eq("id", expenseId).maybeSingle();
+          if (minimalLegacy.error && isMissingColumn(minimalLegacy.error)) {
+            const noTotal = await c.from("expenses").select(EXPENSE_COLS_NO_TOTAL).eq("id", expenseId).maybeSingle();
+            if (!noTotal.error && noTotal.data) row = noTotal.data as ExpenseRow;
+            else if (noTotal.error && isMissingColumn(noTotal.error)) {
+              const noTotalLegacy = await c.from("expenses").select(EXPENSE_COLS_NO_TOTAL_LEGACY).eq("id", expenseId).maybeSingle();
+              if (!noTotalLegacy.error && noTotalLegacy.data) row = noTotalLegacy.data as ExpenseRow;
+            }
+          } else if (!minimalLegacy.error && minimalLegacy.data) {
+            row = minimalLegacy.data as ExpenseRow;
+          }
+        } else if (!minimal.error && minimal.data) {
+          row = minimal.data as ExpenseRow;
+        }
+      } else if (!legacy.error && legacy.data) {
+        row = legacy.data as ExpenseRow;
+      }
+    } else if (!fallback.error && fallback.data) {
+      row = fallback.data as ExpenseRow;
+    }
+  } else {
+    row = res.data as ExpenseRow | null;
+  }
+  if (!row) return null;
+  const { data: lineRows } = await c.from("expense_lines").select("*").eq("expense_id", expenseId);
+  const lines = (lineRows ?? []) as ExpenseLineRow[];
+  const attachments = await getAttachments(expenseId);
+  const linkedBankTxId = await getLinkedBankTxId(expenseId);
+  return toExpense(row, lines, attachments, linkedBankTxId);
+}
+
+/** Distinct card names used for a given payment method (e.g. "Credit Card", "Debit Card"). For creatable select options. */
+export async function getExpenseCardNames(paymentMethod: string): Promise<string[]> {
+  const c = client();
+  const trimmed = (paymentMethod ?? "").trim();
+  if (!trimmed) return [];
+  const { data: rows, error } = await c
+    .from("expenses")
+    .select("card_name")
+    .eq("payment_method", trimmed)
+    .not("card_name", "is", null);
+  if (error) return [];
+  const names = (rows ?? [])
+    .map((r: { card_name?: string | null }) => (r.card_name ?? "").trim())
+    .filter(Boolean);
+  return Array.from(new Set(names)).sort();
+}
+
+export async function createExpense(payload: {
+  date: string;
+  vendorName: string;
+  paymentMethod: string;
+  referenceNo?: string;
+  notes?: string;
+  cardName?: string | null;
+  accountId?: string | null;
+  lines: Array<{ projectId: string | null; category: string; costCode?: string | null; memo?: string | null; amount: number }>;
+  linkedBankTxId?: string | null;
+}): Promise<Expense> {
+  const c = client();
+  const date = payload.date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
+  const vendor = (payload.vendorName ?? "").trim();
+  if (!vendor) throw new Error("Vendor name is required");
+  const notes = payload.notes ?? null;
+
+  const lines = payload.lines?.length ? payload.lines : [];
+  const totalAmount = lines.reduce((s, l) => s + (Number(l.amount) || 0), 0);
+  if (!(totalAmount > 0)) throw new Error("Amount must be greater than 0");
+
+  const byProject = new Map<string | null, typeof lines>();
+  for (const l of lines) {
+    const key = l.projectId ?? null;
+    if (!byProject.has(key)) byProject.set(key, []);
+    byProject.get(key)!.push(l);
+  }
+
+  let firstId: string | null = null;
+  const createdIds: string[] = [];
+  for (const [projectId, group] of Array.from(byProject)) {
+    const pLines = group.map((l) => ({
+      description: l.memo ?? "",
+      qty: 1,
+      unit_cost: l.amount ?? 0,
+      cost_code: l.costCode ?? null,
+      memo: l.memo ?? null,
+      amount: Number(l.amount) || 0,
+    }));
+    const category = group[0]?.category ?? "Other";
+
+    const { data: expenseId, error } = await c.rpc("create_expense_with_lines", {
+      p_project_id: projectId,
+      p_vendor: vendor,
+      p_category: category,
+      p_expense_date: date,
+      p_notes: notes,
+      p_lines: pLines,
+    });
+
+    let id: string | null = null;
+    if (error) {
+      if (!isMissingFunction(error)) throw new Error(error.message ?? "Failed to create expense.");
+      // Fallback: insert expense header then expense_lines directly.
+      const totalGroupAmount = group.reduce((s, l) => s + (Number(l.amount) || 0), 0);
+      const insertPayload: Record<string, unknown> = {
+        project_id: projectId,
+        vendor: vendor,
+        expense_date: date,
+        notes: notes,
+        reference_no: payload.referenceNo?.trim() || null,
+        total: totalGroupAmount,
+        card_name: payload.cardName?.trim() || null,
+        account_id: payload.accountId ?? null,
+      };
+      let expInsErr: { message?: string } | null = null;
+      let expRow: { id: string } | null = null;
+      let ins = await c.from("expenses").insert({ ...insertPayload, payment_method: payload.paymentMethod ?? "Card" }).select("id").single();
+      if (ins.error && isMissingColumn(ins.error)) {
+        ins = await c.from("expenses").insert(insertPayload).select("id").single();
+      }
+      expInsErr = ins.error as { message?: string } | null;
+      expRow = ins.data as { id: string } | null;
+      if (expInsErr) throw new Error(expInsErr.message ?? "Failed to create expense.");
+      id = (expRow as { id: string } | null)?.id ?? null;
+      if (id) {
+        const lineInserts = group.map((l) => ({
+          expense_id: id,
+          project_id: l.projectId ?? null,
+          category: l.category ?? "Other",
+          cost_code: l.costCode ?? null,
+          memo: l.memo ?? null,
+          amount: Number(l.amount) || 0,
+        }));
+        const { error: lineInsErr } = await c.from("expense_lines").insert(lineInserts);
+        if (lineInsErr) throw new Error(lineInsErr.message ?? "Failed to create expense lines.");
+      }
+    } else {
+      const rawId = expenseId;
+      id = (Array.isArray(rawId) ? rawId[0] : rawId) as string | null;
+    }
+    if (id) {
+      createdIds.push(id);
+      if (!firstId) firstId = id;
+    }
+  }
+
+  if (!firstId) throw new Error("Failed to create expense: no id returned.");
+
+  const paymentMethodValue = payload.paymentMethod ?? "Card";
+  const cardNameValue = payload.cardName?.trim() || null;
+  const updatePayload: Record<string, unknown> = {
+    card_name: cardNameValue,
+    account_id: payload.accountId ?? null,
+  };
+  let updateErr: { message?: string } | null = null;
+  const withPaymentMethod = { ...updatePayload, payment_method: paymentMethodValue };
+  let upd = await c.from("expenses").update(withPaymentMethod).in("id", createdIds);
+  if (upd.error && isMissingColumn(upd.error)) {
+    upd = await c.from("expenses").update(updatePayload).in("id", createdIds);
+  }
+  updateErr = upd.error as { message?: string } | null;
+  if (updateErr && !isMissingColumn(updateErr)) {
+    throw new Error(updateErr.message ?? "Failed to update expense.");
+  }
+
+  const exp = await getExpenseById(firstId);
+  if (!exp) throw new Error("Failed to load created expense.");
+  const linkedBankTxId = payload.linkedBankTxId ?? (await getLinkedBankTxId(firstId));
+  return { ...exp, linkedBankTxId: linkedBankTxId ?? undefined };
+}
+
+/** Create a single expense from Quick Expense flow: one line, receipt_url, status needs_review.
+ * Persists to real Supabase: expenses and expense_lines tables. No mock. */
+export async function createQuickExpense(payload: {
+  date: string;
+  vendorName: string;
+  totalAmount: number;
+  receiptUrl: string;
+}): Promise<Expense> {
+  const c = client();
+  const date = payload.date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
+  const vendor = (payload.vendorName ?? "").trim() || "Unknown";
+  const total = Number(payload.totalAmount) || 0;
+  const receiptUrl = payload.receiptUrl || "";
+
+  const insertRow: Record<string, unknown> = {
+    expense_date: date,
+    vendor_name: vendor,
+    notes: null,
+    reference_no: null,
+    total,
+    line_count: 1,
+    receipt_url: receiptUrl || null,
+    status: "needs_review",
+  };
+  let result = await c.from("expenses").insert({ ...insertRow, payment_method: "Other" }).select("id").single();
+  if (result.error && isMissingColumn(result.error)) {
+    result = await c.from("expenses").insert(insertRow).select("id").single();
+  }
+  if (result.error && isMissingColumn(result.error)) {
+    const insertRowLegacy: Record<string, unknown> = {
+      expense_date: date,
+      vendor,
+      notes: null,
+      reference_no: null,
+      total,
+      line_count: 1,
+    };
+    result = await c.from("expenses").insert(insertRowLegacy).select("id").single();
+  }
+  const { data: expRow, error: expErr } = result;
+  if (expErr) throw new Error(expErr.message ?? "Failed to create quick expense.");
+  const expenseId = (expRow as { id: string } | null)?.id;
+  if (!expenseId) throw new Error("Failed to create quick expense: no id.");
+
+  const { error: lineErr } = await c.from("expense_lines").insert({
+    expense_id: expenseId,
+    project_id: null,
+    category: "Other",
+    memo: null,
+    amount: total,
+  });
+  if (lineErr) throw new Error(lineErr.message ?? "Failed to create expense line.");
+
+  const exp = await getExpenseById(expenseId);
+  if (!exp) throw new Error("Failed to load created expense.");
+  return exp;
+}
+
+export async function updateExpense(
+  expenseId: string,
+  patch: Partial<{ date: string; vendorName: string; paymentMethod: string; referenceNo: string; notes: string; cardName: string | null; accountId: string | null }>
+): Promise<Expense | null> {
+  const c = client();
+  const updates: Record<string, unknown> = {};
+  if (patch.date != null) updates.expense_date = patch.date.slice(0, 10);
+  if (patch.vendorName != null) updates.vendor = patch.vendorName;
+  if (patch.paymentMethod != null) updates.payment_method = patch.paymentMethod;
+  if (patch.referenceNo !== undefined) updates.reference_no = patch.referenceNo || null;
+  if (patch.notes !== undefined) updates.notes = patch.notes || null;
+  if (patch.cardName !== undefined) updates.card_name = patch.cardName?.trim() || null;
+  if (patch.accountId !== undefined) updates.account_id = patch.accountId ?? null;
+  if (Object.keys(updates).length > 0) {
+    let res = await c.from("expenses").update(updates).eq("id", expenseId);
+    let err: { message?: string } | null = res.error;
+    if (err && isMissingColumn(err) && updates.payment_method !== undefined) {
+      delete updates.payment_method;
+      if (Object.keys(updates).length > 0) {
+        res = await c.from("expenses").update(updates).eq("id", expenseId);
+        err = res.error;
+      } else {
+        err = null;
+      }
+    }
+    if (err) return null;
+  }
+  return getExpenseById(expenseId);
+}
+
+/** Update expense and first line for review workflow: vendor, amount, project, category, worker, notes, status. */
+export async function updateExpenseForReview(
+  expenseId: string,
+  patch: Partial<{
+    vendorName: string;
+    notes: string;
+    status: "pending" | "needs_review" | "approved" | "reimbursed";
+    workerId: string | null;
+    projectId: string | null;
+    category: string;
+    amount: number;
+  }>
+): Promise<Expense | null> {
+  const c = client();
+  const expUpdates: Record<string, unknown> = {};
+  if (patch.vendorName != null) {
+    expUpdates.vendor = patch.vendorName;
+    expUpdates.vendor_name = patch.vendorName;
+  }
+  if (patch.notes !== undefined) expUpdates.notes = patch.notes || null;
+  if (patch.status != null) expUpdates.status = patch.status;
+  if (patch.workerId !== undefined) expUpdates.worker_id = patch.workerId;
+  if (Object.keys(expUpdates).length > 0) {
+    await c.from("expenses").update(expUpdates).eq("id", expenseId);
+  }
+  if (patch.projectId !== undefined || patch.category != null || patch.amount != null) {
+    const { data: lines } = await c.from("expense_lines").select("id").eq("expense_id", expenseId).limit(1);
+    const firstLine = Array.isArray(lines) ? lines[0] : null;
+    if (firstLine && typeof firstLine === "object" && "id" in firstLine) {
+      const lineUpdates: Record<string, unknown> = {};
+      if (patch.projectId !== undefined) lineUpdates.project_id = patch.projectId;
+      if (patch.category != null) lineUpdates.category = patch.category;
+      if (patch.amount != null) lineUpdates.amount = patch.amount;
+      if (Object.keys(lineUpdates).length > 0) {
+        await c.from("expense_lines").update(lineUpdates).eq("id", (firstLine as { id: string }).id).eq("expense_id", expenseId);
+      }
+    }
+  }
+  return getExpenseById(expenseId);
+}
+
+export async function updateExpenseReceiptUrl(expenseId: string, receiptUrl: string): Promise<Expense | null> {
+  const c = client();
+  const { error } = await c.from("expenses").update({ receipt_url: receiptUrl }).eq("id", expenseId);
+  if (error) {
+    if (isMissingColumn(error)) return getExpenseById(expenseId);
+    return null;
+  }
+  return getExpenseById(expenseId);
+}
+
+export async function updateExpenseStatus(
+  expenseId: string,
+  status: "pending" | "needs_review" | "approved" | "reimbursed"
+): Promise<Expense | null> {
+  const c = client();
+  const { error } = await c.from("expenses").update({ status }).eq("id", expenseId);
+  if (error) {
+    if (isMissingColumn(error)) return getExpenseById(expenseId);
+    return null;
+  }
+  return getExpenseById(expenseId);
+}
+
+/** Set status to 'reimbursed' for all expenses with the given worker_id and status in ('pending','needs_review','approved'). Returns count updated. */
+export async function markWorkerExpensesReimbursed(workerId: string): Promise<number> {
+  const c = client();
+  const { data: rows, error } = await c
+    .from("expenses")
+    .select("id")
+    .eq("worker_id", workerId)
+    .or("status.eq.pending,status.eq.needs_review,status.eq.approved");
+  if (error) {
+    if (isMissingColumn(error)) return 0;
+    throw new Error((error as { message?: string }).message ?? "Failed to update");
+  }
+  const ids = (rows ?? []).map((r: { id: string }) => r.id);
+  if (ids.length === 0) return 0;
+  const { error: updateError } = await c.from("expenses").update({ status: "reimbursed" }).in("id", ids);
+  if (updateError) throw new Error((updateError as { message?: string }).message ?? "Failed to update");
+  return ids.length;
+}
+
+export async function addExpenseLine(
+  expenseId: string,
+  line: { projectId: string | null; category: string; costCode?: string | null; memo?: string | null; amount: number }
+): Promise<Expense | null> {
+  const c = client();
+  await c.from("expense_lines").insert({
+    expense_id: expenseId,
+    project_id: line.projectId ?? null,
+    category: line.category ?? "Other",
+    cost_code: line.costCode ?? null,
+    memo: line.memo ?? null,
+    amount: line.amount ?? 0,
+  });
+  return getExpenseById(expenseId);
+}
+
+export async function updateExpenseLine(
+  expenseId: string,
+  lineId: string,
+  patch: Partial<ExpenseLine>
+): Promise<Expense | null> {
+  const c = client();
+  const updates: Record<string, unknown> = {};
+  if (patch.projectId !== undefined) updates.project_id = patch.projectId;
+  if (patch.category != null) updates.category = patch.category;
+  if (patch.costCode !== undefined) updates.cost_code = patch.costCode ?? null;
+  if (patch.memo !== undefined) updates.memo = patch.memo ?? null;
+  if (patch.amount != null) updates.amount = patch.amount;
+  if (Object.keys(updates).length > 0) {
+    await c.from("expense_lines").update(updates).eq("id", lineId).eq("expense_id", expenseId);
+  }
+  return getExpenseById(expenseId);
+}
+
+export async function deleteExpenseLine(expenseId: string, lineId: string): Promise<Expense | null> {
+  const c = client();
+  const { data: lines } = await c.from("expense_lines").select("id").eq("expense_id", expenseId);
+  if (lines && lines.length <= 1) {
+    await c.from("expense_lines").update({ project_id: null, category: "Other", amount: 0, cost_code: null, memo: null }).eq("id", lineId).eq("expense_id", expenseId);
+  } else {
+    await c.from("expense_lines").delete().eq("id", lineId).eq("expense_id", expenseId);
+  }
+  return getExpenseById(expenseId);
+}
+
+export async function deleteExpense(expenseId: string): Promise<boolean> {
+  const c = client();
+  // expense_lines has FK `expense_id references expenses(id) on delete cascade` in migrations.
+  // We delete the expense header and rely on DB cascade to remove all expense_lines.
+  const { error } = await c.from("expenses").delete().eq("id", expenseId);
+  return !error;
+}
+
+export async function addExpenseAttachment(expenseId: string, att: ExpenseAttachment): Promise<Expense | null> {
+  const c = client();
+  await c.from("attachments").insert({
+    entity_type: "expense",
+    entity_id: expenseId,
+    file_name: att.fileName,
+    file_path: att.url,
+    mime_type: att.mimeType,
+    size_bytes: att.size,
+  });
+  return getExpenseById(expenseId);
+}
+
+export async function deleteExpenseAttachment(expenseId: string, attachmentId: string): Promise<Expense | null> {
+  const c = client();
+  const { data: att, error: attErr } = await c
+    .from("attachments")
+    .select("id, file_path")
+    .eq("id", attachmentId)
+    .eq("entity_type", "expense")
+    .eq("entity_id", expenseId)
+    .maybeSingle();
+  if (attErr) throw new Error(attErr.message ?? "Failed to load attachment.");
+
+  const filePath = (att as { file_path?: unknown } | null)?.file_path;
+  if (typeof filePath === "string" && filePath) {
+    const { error: storageErr } = await c.storage.from("expense-attachments").remove([filePath]);
+    if (storageErr) throw new Error(storageErr.message ?? "Failed to delete attachment file.");
+  }
+
+  const { error: delErr } = await c.from("attachments").delete().eq("id", attachmentId).eq("entity_type", "expense").eq("entity_id", expenseId);
+  if (delErr) throw new Error(delErr.message ?? "Failed to delete attachment record.");
+  return getExpenseById(expenseId);
+}
+
+export function getExpenseTotal(expense: Expense): number {
+  return expense.lines.reduce((sum, l) => sum + l.amount, 0);
+}
+
+/** Expense lines for a project (for project detail / profit drilldown). */
+export async function getExpenseLinesByProject(projectId: string, limit = 5): Promise<Array<{ expenseId: string; date: string; vendorName: string; line: ExpenseLine }>> {
+  const c = client();
+  const { data: lineRows } = await c
+    .from("expense_lines")
+    .select("id, expense_id, project_id, category, cost_code, memo, amount")
+    .eq("project_id", projectId);
+  const lines = (lineRows ?? []) as (ExpenseLineRow & { expense_id: string })[];
+  const result: Array<{ expenseId: string; date: string; vendorName: string; line: ExpenseLine }> = [];
+  for (const l of lines.slice(0, limit * 2)) {
+    const exp = await getExpenseById(l.expense_id);
+    if (!exp) continue;
+    result.push({
+      expenseId: exp.id,
+      date: exp.date,
+      vendorName: exp.vendorName,
+      line: toExpenseLine(l as ExpenseLineRow),
+    });
+  }
+  result.sort((a, b) => b.date.localeCompare(a.date));
+  return result.slice(0, limit);
+}
+
+/** All expense lines for a project. */
+export async function getProjectExpenseLines(projectId: string): Promise<Array<{ expenseId: string; date: string; vendorName: string; line: ExpenseLine }>> {
+  const c = client();
+  const { data: lineRows } = await c
+    .from("expense_lines")
+    .select("id, expense_id, project_id, category, cost_code, memo, amount")
+    .eq("project_id", projectId);
+  const lines = (lineRows ?? []) as (ExpenseLineRow & { expense_id: string })[];
+  const result: Array<{ expenseId: string; date: string; vendorName: string; line: ExpenseLine }> = [];
+  for (const l of lines) {
+    const exp = await getExpenseById(l.expense_id);
+    if (!exp) continue;
+    result.push({
+      expenseId: exp.id,
+      date: exp.date,
+      vendorName: exp.vendorName,
+      line: toExpenseLine(l as ExpenseLineRow),
+    });
+  }
+  result.sort((a, b) => b.date.localeCompare(a.date));
+  return result;
+}
+
+export async function getExpenseTotalsByProject(projectId: string): Promise<number> {
+  const c = client();
+  const { data: rows } = await c.from("expense_lines").select("amount").eq("project_id", projectId);
+  return (rows ?? []).reduce((s, r) => s + Number(r.amount || 0), 0);
+}
+
+export async function getTotalExpenses(): Promise<number> {
+  const c = client();
+  const { data: rows, error } = await c.from("expenses").select("total");
+  if (error) {
+    if (isMissingColumn(error)) {
+      const { data: lineRows } = await c.from("expense_lines").select("expense_id, amount");
+      if (!lineRows?.length) return 0;
+      const byExpense = new Map<string, number>();
+      for (const r of lineRows as { expense_id: string; amount?: number }[]) {
+        const id = r.expense_id;
+        byExpense.set(id, (byExpense.get(id) ?? 0) + Number(r.amount ?? 0));
+      }
+      return Array.from(byExpense.values()).reduce((s, v) => s + v, 0);
+    }
+    return 0;
+  }
+  return (rows ?? []).reduce((s, r) => s + Number((r as { total?: number }).total || 0), 0);
+}
+
+/** Sum of all expense_lines amounts (amount or total column). For finance overview. */
+export async function getTotalExpenseLinesSum(): Promise<number> {
+  const c = client();
+  const { data: rows, error } = await c.from("expense_lines").select("amount, total");
+  if (error) {
+    if (/column .* does not exist|schema cache/i.test(error.message ?? "")) {
+      const fallback = await c.from("expense_lines").select("total");
+      if (fallback.error) return 0;
+      return (fallback.data ?? []).reduce((s, r) => s + Number((r as { total?: number }).total ?? 0), 0);
+    }
+    return 0;
+  }
+  return (rows ?? []).reduce((s, r) => s + Number((r as { amount?: number; total?: number }).amount ?? (r as { total?: number }).total ?? 0), 0);
+}
+
+/** Sum of expense line amounts for expenses with expense_date in the given month. For dashboard "Expenses This Month". */
+export async function getExpensesTotalForMonth(year: number, month: number): Promise<number> {
+  const c = client();
+  const y = String(year);
+  const m = String(month).padStart(2, "0");
+  const start = `${y}-${m}-01`;
+  const lastDay = new Date(year, month, 0).getDate();
+  const end = `${y}-${m}-${String(lastDay).padStart(2, "0")}`;
+  const { data: expenseRows } = await c
+    .from("expenses")
+    .select("id")
+    .gte("expense_date", start)
+    .lte("expense_date", end);
+  const ids = (expenseRows ?? []).map((r: { id: string }) => r.id);
+  if (ids.length === 0) return 0;
+  const { data: lineRows } = await c.from("expense_lines").select("amount").in("expense_id", ids);
+  return (lineRows ?? []).reduce((s, r) => s + Number((r as { amount?: number }).amount || 0), 0);
+}
+
+/** Unlinked expenses for bank tx suggestion. */
+export async function getUnlinkedExpenses(): Promise<Expense[]> {
+  const c = client();
+  const { data: btRows } = await c.from("bank_transactions").select("linked_expense_id").not("linked_expense_id", "is", null);
+  const linkedIds = new Set((btRows ?? []).map((r: { linked_expense_id: string }) => r.linked_expense_id));
+  const all = await getExpenses();
+  return all.filter((e) => !linkedIds.has(e.id));
+}
+
+export type ExpenseRecentRow = {
+  id: string;
+  expense_date: string;
+  vendor_name: string;
+  notes: string | null;
+  total: number;
+  created_at: string;
+  project_id: string | null;
+  project_name: string | null;
+};
+
+/** Recent expenses for dashboard activity feed. Ordered by created_at desc, limit. Resolves first line's project for project_name. */
+export async function getExpensesRecent(limit: number): Promise<ExpenseRecentRow[]> {
+  const c = client();
+  const cols = "id,expense_date,vendor,vendor_name,notes,total,created_at";
+  const colsLegacy = "id,expense_date,vendor,notes,total,created_at";
+  const colsNoTotal = "id,expense_date,vendor,vendor_name,notes,created_at";
+  const colsNoTotalLegacy = "id,expense_date,vendor,notes,created_at";
+  const safeLimit = Math.max(1, Math.min(limit, 100));
+
+  let rows: Array<Record<string, unknown>> = [];
+  let error: { message?: string } | null = null;
+  let needTotalFromLines = false;
+
+  const primary = await c.from("expenses").select(cols).order("created_at", { ascending: false }).limit(safeLimit);
+  if (!primary.error) {
+    rows = (primary.data ?? []) as Array<Record<string, unknown>>;
+  } else if (isMissingColumn(primary.error)) {
+    const legacy = await c.from("expenses").select(colsLegacy).order("created_at", { ascending: false }).limit(safeLimit);
+    if (!legacy.error) {
+      rows = (legacy.data ?? []) as Array<Record<string, unknown>>;
+    } else if (isMissingColumn(legacy.error)) {
+      const noTotal = await c.from("expenses").select(colsNoTotal).order("created_at", { ascending: false }).limit(safeLimit);
+      if (!noTotal.error) {
+        rows = (noTotal.data ?? []) as Array<Record<string, unknown>>;
+        needTotalFromLines = true;
+      } else if (isMissingColumn(noTotal.error)) {
+        const noTotalLegacy = await c.from("expenses").select(colsNoTotalLegacy).order("created_at", { ascending: false }).limit(safeLimit);
+        if (noTotalLegacy.error) error = noTotalLegacy.error;
+        else {
+          rows = (noTotalLegacy.data ?? []) as Array<Record<string, unknown>>;
+          needTotalFromLines = true;
+        }
+      } else {
+        error = noTotal.error;
+      }
+    } else {
+      error = legacy.error;
+    }
+  } else {
+    error = primary.error;
+  }
+  if (error) {
+    if (isMissingTable(error)) return [];
+    return [];
+  }
+  const list = rows ?? [];
+  if (list.length === 0) return [];
+  const ids = list.map((r) => r.id as string);
+  const totalByExpenseId = new Map<string, number>();
+  const { data: lineRows } = await c
+    .from("expense_lines")
+    .select(needTotalFromLines ? "expense_id, project_id, amount" : "expense_id, project_id")
+    .in("expense_id", ids);
+  const firstProjectByExpenseId = new Map<string, string>();
+  for (const l of (lineRows ?? []) as unknown as Array<{ expense_id: string; project_id: string | null; amount?: number }>) {
+    if (l.project_id && !firstProjectByExpenseId.has(l.expense_id)) firstProjectByExpenseId.set(l.expense_id, l.project_id);
+    if (needTotalFromLines && l.amount != null) {
+      const id = l.expense_id;
+      totalByExpenseId.set(id, (totalByExpenseId.get(id) ?? 0) + Number(l.amount));
+    }
+  }
+  const projectIds = Array.from(firstProjectByExpenseId.values());
+  let projectNameById = new Map<string, string>();
+  if (projectIds.length > 0) {
+    const { data: projRows } = await c.from("projects").select("id, name").in("id", projectIds);
+    projectNameById = new Map(((projRows ?? []) as Array<{ id: string; name: string | null }>).map((p) => [p.id, p.name ?? ""]));
+  }
+  return list.map((r) => {
+    const expenseId = (r.id as string) ?? "";
+    const projectId = firstProjectByExpenseId.get(expenseId) ?? null;
+    const total = needTotalFromLines ? (totalByExpenseId.get(expenseId) ?? 0) : Number(r.total) || 0;
+    return {
+      id: expenseId,
+      expense_date: (r.expense_date as string)?.slice(0, 10) ?? "",
+      vendor_name: (r.vendor_name ?? r.vendor ?? "") as string,
+      notes: (r.notes as string | null) ?? null,
+      total,
+      created_at: (r.created_at as string) ?? new Date().toISOString(),
+      project_id: projectId,
+      project_name: projectId ? projectNameById.get(projectId) ?? null : null,
+    };
+  });
+}

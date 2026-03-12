@@ -28,9 +28,6 @@ import {
   addExpenseCategory,
   addVendor,
   addPaymentMethod,
-  isExpenseCategoryDisabled,
-  isVendorDisabled,
-  isPaymentMethodDisabled,
   type BankTransaction,
   type ReconcileParams,
   type ExpenseSuggestion,
@@ -80,7 +77,7 @@ function isEditableElement(el: EventTarget | null): boolean {
 }
 
 export default function BankReconcilePage() {
-  const [transactions, setTransactions] = React.useState<BankTransaction[]>(() => getBankTransactions());
+  const [transactions, setTransactions] = React.useState<BankTransaction[]>([]);
   const [search, setSearch] = React.useState("");
   const [tab, setTab] = React.useState<TabFilter>("unmatched");
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
@@ -97,6 +94,27 @@ export default function BankReconcilePage() {
   const [bulkVendor, setBulkVendor] = React.useState("");
   const [bulkPaymentMethod, setBulkPaymentMethod] = React.useState("ACH");
 
+  const [projects, setProjects] = React.useState<Awaited<ReturnType<typeof getProjects>>>([]);
+  const [categories, setCategories] = React.useState<string[]>([]);
+  const [vendorsList, setVendorsList] = React.useState<string[]>([]);
+  const [paymentMethodsList, setPaymentMethodsList] = React.useState<string[]>([]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    Promise.all([getBankTransactions(), getProjects(), getExpenseCategories(), getVendors(), getPaymentMethods()]).then(
+      ([txs, projs, cats, vendors, methods]) => {
+        if (!cancelled) {
+          setTransactions(txs);
+          setProjects(projs);
+          setCategories(cats);
+          setVendorsList(vendors);
+          setPaymentMethodsList(methods);
+        }
+      }
+    );
+    return () => { cancelled = true; };
+  }, []);
+
   const selected =
     selectedIds.size === 1
       ? transactions.find((t) => t.id === Array.from(selectedIds)[0]) ?? null
@@ -104,10 +122,11 @@ export default function BankReconcilePage() {
   const selectedList = transactions.filter((t) => selectedIds.has(t.id));
   const isBulkMode = selectedList.length > 1;
 
-  const projects = getProjects();
-  const categories = getExpenseCategories();
-  const vendorsList = getVendors();
-  const paymentMethodsList = getPaymentMethods();
+  const refresh = React.useCallback(async () => {
+    const txs = await getBankTransactions();
+    setTransactions(txs);
+    return txs;
+  }, []);
 
   const targetAmount = selected ? Math.abs(selected.amount) : 0;
   const linesTotal = lines.reduce((s, l) => s + l.amount, 0);
@@ -159,18 +178,14 @@ export default function BankReconcilePage() {
     }
   }, [selected]);
 
-  const refresh = React.useCallback(() => {
-    setTransactions(getBankTransactions());
-  }, []);
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       const text = String(reader.result);
-      const imported = importBankTransactionsFromCsv(text);
-      refresh();
+      const imported = await importBankTransactionsFromCsv(text);
+      await refresh();
       setImportMessage(`Imported ${imported.length} lines`);
       setTimeout(() => setImportMessage(null), 4000);
     };
@@ -188,7 +203,7 @@ export default function BankReconcilePage() {
     setLines((prev) => (prev.length <= 1 ? prev : prev.filter((l) => l.id !== lineId)));
   };
 
-  const handleReconcile = () => {
+  const handleReconcile = async () => {
     if (!selected || !canReconcile) return;
     const params: ReconcileParams = {
       bankTxId: selected.id,
@@ -205,37 +220,45 @@ export default function BankReconcilePage() {
             }))
           : undefined,
     };
-    reconcileBankTransaction(params);
-    refresh();
-    const next = getNextUnmatched(getBankTransactions(), selected.id);
+    await reconcileBankTransaction(params);
+    const txs = await refresh();
+    const next = getNextUnmatched(txs, selected.id);
     setSelectedIds(next ? new Set([next.id]) : new Set());
   };
 
-  const handleLinkToExpense = (expenseId: string) => {
+  const handleLinkToExpense = async (expenseId: string) => {
     if (!selected) return;
-    const ok = linkBankTransactionToExpense(selected.id, expenseId);
+    const ok = await linkBankTransactionToExpense(selected.id, expenseId);
     if (ok) {
-      refresh();
-      const next = getNextUnmatched(getBankTransactions(), selected.id);
+      const txs = await refresh();
+      const next = getNextUnmatched(txs, selected.id);
       setSelectedIds(next ? new Set([next.id]) : new Set());
     }
   };
 
-  const handleUnlink = () => {
+  const handleUnlink = async () => {
     if (!selected) return;
-    unlinkBankTransaction(selected.id);
-    refresh();
-    const updated = getBankTransactions().find((t) => t.id === selected.id);
+    await unlinkBankTransaction(selected.id);
+    const txs = await refresh();
+    const updated = txs.find((t) => t.id === selected.id);
     setSelectedIds(updated ? new Set([updated.id]) : new Set());
   };
 
   const selectedTxFromList = selected ? transactions.find((t) => t.id === selected.id) ?? selected : null;
   const isReconciled = selectedTxFromList?.status === "reconciled";
   const isLinkedToExpense = !!(selectedTxFromList?.linkedExpenseId);
-  const suggestions: ExpenseSuggestion[] = React.useMemo(
-    () => (selected && selected.status === "unmatched" ? getSuggestedExpensesForBankTx(selected) : []),
-    [selected]
-  );
+  const [suggestions, setSuggestions] = React.useState<ExpenseSuggestion[]>([]);
+  React.useEffect(() => {
+    if (!selected || selected.status !== "unmatched") {
+      setSuggestions([]);
+      return;
+    }
+    let cancelled = false;
+    getSuggestedExpensesForBankTx(selected).then((s) => {
+      if (!cancelled) setSuggestions(s);
+    });
+    return () => { cancelled = true; };
+  }, [selected]);
 
   const bankListRef = React.useRef<HTMLDivElement>(null);
   const [focusNewLineId, setFocusNewLineId] = React.useState<string | null>(null);
@@ -246,7 +269,7 @@ export default function BankReconcilePage() {
     if (el && (el instanceof HTMLInputElement || el instanceof HTMLSelectElement)) {
       queueMicrotask(() => el.focus());
     }
-  }, [selected?.id, reconcileType, selected]);
+  }, [selected, reconcileType]);
 
   const handleBankListKeyDown = (e: React.KeyboardEvent) => {
     if (isEditableElement(e.target)) return;
@@ -304,13 +327,13 @@ export default function BankReconcilePage() {
     setSelectedIds(new Set(unmatchedInFiltered.map((t) => t.id)));
   };
 
-  const handleReconcileAll = () => {
-    const fresh = getBankTransactions();
+  const handleReconcileAll = async () => {
+    const fresh = await getBankTransactions();
     for (const tx of selectedList) {
       const current = fresh.find((t) => t.id === tx.id);
       if (!current) continue;
       if (current.amount < 0) {
-        reconcileBankTransaction({
+        await reconcileBankTransaction({
           bankTxId: current.id,
           type: "Expense",
           projectId: bulkProjectId || null,
@@ -327,14 +350,14 @@ export default function BankReconcilePage() {
           ],
         });
       } else {
-        reconcileBankTransaction({
+        await reconcileBankTransaction({
           bankTxId: current.id,
           type: "Income",
         });
       }
     }
-    refresh();
-    const next = getNextUnmatched(getBankTransactions(), null);
+    const txs = await refresh();
+    const next = getNextUnmatched(txs, null);
     setSelectedIds(next ? new Set([next.id]) : new Set());
     setToastMessage(`Reconciled ${selectedList.length} transaction(s).`);
   };
@@ -484,8 +507,8 @@ export default function BankReconcilePage() {
                   options={categories}
                   placeholder="Category"
                   onChange={setBulkCategory}
-                  onCreate={(name) => {
-                    const id = addExpenseCategory(name);
+                  onCreate={async (name) => {
+                    const id = await addExpenseCategory(name);
                     if (id) setBulkCategory(name);
                   }}
                 />
@@ -643,9 +666,9 @@ export default function BankReconcilePage() {
                       onAddVendor={addVendor}
                       onAddPaymentMethod={addPaymentMethod}
                       onToast={setToastMessage}
-                      isExpenseCategoryDisabled={isExpenseCategoryDisabled}
-                      isVendorDisabled={isVendorDisabled}
-                      isPaymentMethodDisabled={isPaymentMethodDisabled}
+                      isExpenseCategoryDisabled={() => false}
+                      isVendorDisabled={() => false}
+                      isPaymentMethodDisabled={() => false}
                       minLines={1}
                       firstFocusId="bank-reconcile-first-focus"
                       focusLineId={focusNewLineId}

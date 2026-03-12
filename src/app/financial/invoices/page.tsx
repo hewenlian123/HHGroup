@@ -18,34 +18,63 @@ import {
 import {
   getInvoicesWithDerived,
   getProjects,
-  getProjectById,
   duplicateInvoice,
   voidInvoice,
   type InvoiceWithDerived,
-  type InvoiceStatus,
+  type InvoiceComputedStatus,
 } from "@/lib/data";
 import { Plus, Eye, CreditCard, Copy, Trash2 } from "lucide-react";
 import { FilterBar } from "@/components/filter-bar";
-import { StatusBadge } from "@/components/status-badge";
+import { InvoiceStatusBadge } from "@/components/invoice-status-badge";
+import { EmptyState } from "@/components/empty-state";
+import { Pagination } from "@/components/ui/pagination";
+import { useSearchParams } from "next/navigation";
 
-const STATUS_OPTIONS: { value: "" | InvoiceStatus; label: string }[] = [
+const STATUS_OPTIONS: { value: "" | InvoiceComputedStatus; label: string }[] = [
   { value: "", label: "All" },
   { value: "Draft", label: "Draft" },
-  { value: "Sent", label: "Sent" },
-  { value: "Partially Paid", label: "Partially Paid" },
   { value: "Paid", label: "Paid" },
+  { value: "Partial", label: "Partial" },
+  { value: "Unpaid", label: "Unpaid" },
+  { value: "Overdue", label: "Overdue" },
   { value: "Void", label: "Void" },
 ];
 
 export default function InvoicesPage() {
+  return (
+    <React.Suspense fallback={<div className="page-container py-6" />}>
+      <InvoicesPageInner />
+    </React.Suspense>
+  );
+}
+
+function InvoicesPageInner() {
   const router = useRouter();
-  const [invoices, setInvoices] = React.useState<InvoiceWithDerived[]>(() => getInvoicesWithDerived());
+  const searchParams = useSearchParams();
+  const [invoices, setInvoices] = React.useState<InvoiceWithDerived[]>([]);
   const [search, setSearch] = React.useState("");
-  const [statusFilter, setStatusFilter] = React.useState<"" | InvoiceStatus>("");
+  const [statusFilter, setStatusFilter] = React.useState<"" | InvoiceComputedStatus>("");
   const [projectFilter, setProjectFilter] = React.useState("");
   const [voidConfirmId, setVoidConfirmId] = React.useState<string | null>(null);
+  const [projects, setProjects] = React.useState<Awaited<ReturnType<typeof getProjects>>>([]);
 
-  const projects = getProjects();
+  React.useEffect(() => {
+    let cancelled = false;
+    getInvoicesWithDerived().then((list) => {
+      if (!cancelled) setInvoices(list);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    getProjects().then((list) => {
+      if (!cancelled) setProjects(list);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  const projectNameById = React.useMemo(() => new Map(projects.map((p) => [p.id, p.name])), [projects]);
 
   const filtered = React.useMemo(() => {
     let list = invoices;
@@ -55,26 +84,43 @@ export default function InvoicesPage() {
         (i) =>
           i.invoiceNo.toLowerCase().includes(q) ||
           i.clientName.toLowerCase().includes(q) ||
-          (getProjectById(i.projectId)?.name ?? "").toLowerCase().includes(q)
+          (projectNameById.get(i.projectId) ?? "").toLowerCase().includes(q)
       );
     }
     if (statusFilter) list = list.filter((i) => i.computedStatus === statusFilter);
     if (projectFilter) list = list.filter((i) => i.projectId === projectFilter);
     return list;
-  }, [invoices, search, statusFilter, projectFilter]);
+  }, [invoices, search, statusFilter, projectFilter, projectNameById]);
 
-  const refresh = React.useCallback(() => {
-    setInvoices(getInvoicesWithDerived());
+  const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
+  const pageSize = 20;
+  const total = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const curPage = Math.min(page, totalPages);
+  const pageRows = React.useMemo(() => {
+    const start = (curPage - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [curPage, filtered]);
+
+  const setPage = (nextPage: number) => {
+    const sp = new URLSearchParams(searchParams);
+    sp.set("page", String(nextPage));
+    router.push(`/financial/invoices?${sp.toString()}`, { scroll: false });
+  };
+
+  const refresh = React.useCallback(async () => {
+    const list = await getInvoicesWithDerived();
+    setInvoices(list);
     setVoidConfirmId(null);
   }, []);
 
-  const handleVoid = (id: string) => {
-    voidInvoice(id);
-    refresh();
+  const handleVoid = async (id: string) => {
+    await voidInvoice(id);
+    await refresh();
   };
 
-  const handleDuplicate = (id: string) => {
-    const dup = duplicateInvoice(id);
+  const handleDuplicate = async (id: string) => {
+    const dup = await duplicateInvoice(id);
     if (dup) router.push(`/financial/invoices/${dup.id}`);
   };
 
@@ -102,7 +148,7 @@ export default function InvoicesPage() {
           />
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as "" | InvoiceStatus)}
+            onChange={(e) => setStatusFilter(e.target.value as "" | InvoiceComputedStatus)}
             className="flex h-10 rounded-[10px] border border-input bg-muted/20 px-3 text-sm"
           >
             {STATUS_OPTIONS.map((o) => (
@@ -126,7 +172,21 @@ export default function InvoicesPage() {
         </div>
       </FilterBar>
 
-      <Card className="rounded-2xl border border-zinc-200/60 dark:border-border overflow-hidden">
+      {total === 0 ? (
+        <EmptyState
+          title={search.trim() || statusFilter || projectFilter ? "No invoices match filters" : "No invoices yet"}
+          description={search.trim() || statusFilter || projectFilter ? "Try adjusting the filters." : "Create an invoice to get started."}
+          icon={<Plus className="h-5 w-5" />}
+          action={
+            search.trim() || statusFilter || projectFilter ? null : (
+              <Button asChild size="sm" className="h-8">
+                <Link href="/financial/invoices/new">New Invoice</Link>
+              </Button>
+            )
+          }
+        />
+      ) : (
+        <Card className="rounded-2xl border border-zinc-200/60 dark:border-border overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -139,33 +199,33 @@ export default function InvoicesPage() {
                 <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Total</TableHead>
                 <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Paid</TableHead>
                 <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Balance</TableHead>
-                <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Status</TableHead>
                 <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
-                    No invoices match filters.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filtered.map((inv) => (
+              {pageRows.map((inv) => (
                   <TableRow key={inv.id} className="group border-b border-zinc-100/50 dark:border-border/30">
                     <TableCell className="font-medium">
-                      <Link href={`/financial/invoices/${inv.id}`} className="text-primary hover:underline">
-                        {inv.invoiceNo}
-                      </Link>
+                      <div className="flex items-center gap-2">
+                        <Link href={`/financial/invoices/${inv.id}`} className="text-primary hover:underline">
+                          {inv.invoiceNo}
+                        </Link>
+                        <InvoiceStatusBadge status={inv.computedStatus} />
+                      </div>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{getProjectById(inv.projectId)?.name ?? inv.projectId}</TableCell>
+                    <TableCell className="text-muted-foreground">{projectNameById.get(inv.projectId) ?? inv.projectId}</TableCell>
                     <TableCell className="text-foreground">{inv.clientName}</TableCell>
                     <TableCell className="tabular-nums text-muted-foreground">{inv.issueDate}</TableCell>
-                    <TableCell className="tabular-nums text-muted-foreground">{inv.dueDate}</TableCell>
+                    <TableCell className="tabular-nums">
+                      {inv.computedStatus === "Overdue" ? (
+                        <span className="text-red-600 dark:text-red-400">{inv.dueDate}</span>
+                      ) : (
+                        <span className="text-muted-foreground">{inv.dueDate}</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right tabular-nums font-medium">${inv.total.toLocaleString()}</TableCell>
                     <TableCell className="text-right tabular-nums text-emerald-600/90 dark:text-emerald-400/90">${inv.paidTotal.toLocaleString()}</TableCell>
                     <TableCell className="text-right tabular-nums font-medium">${inv.balanceDue.toLocaleString()}</TableCell>
-                    <TableCell><StatusBadge status={inv.computedStatus} /></TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1 opacity-0 transition-opacity duration-100 group-hover:opacity-100">
                         <Button asChild variant="ghost" size="sm" className="h-8">
@@ -216,12 +276,21 @@ export default function InvoicesPage() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
+                ))}
             </TableBody>
           </Table>
         </div>
       </Card>
+      )}
+
+      {total > 0 ? (
+        <Pagination
+          page={curPage}
+          pageSize={pageSize}
+          total={total}
+          onPageChange={setPage}
+        />
+      ) : null}
     </div>
   );
 }

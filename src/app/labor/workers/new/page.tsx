@@ -16,9 +16,9 @@ export default function NewWorkerPage() {
   const [halfDayRate, setHalfDayRate] = React.useState(0);
   const [notes, setNotes] = React.useState("");
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (!name.trim()) return;
-    const next = createWorker({
+    const next = await createWorker({
       name: name.trim(),
       phone,
       trade,

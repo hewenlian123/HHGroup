@@ -14,11 +14,11 @@ export default async function EstimateSnapshotPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const estimate = getEstimateById(id);
+  const estimate = await getEstimateById(id);
   if (!estimate) notFound();
 
-  const meta = getEstimateMeta(id);
-  const items = getEstimateItems(id);
+  const meta = await getEstimateMeta(id);
+  const items = await getEstimateItems(id);
 
   const payload = {
     estimateId: id,

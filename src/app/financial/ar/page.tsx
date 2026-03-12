@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getARSummary, getOutstandingInvoices, getProjectById } from "@/lib/data";
+import { getARSummary, getOutstandingInvoices, getProjects } from "@/lib/data";
 import { Banknote, AlertCircle, TrendingUp, CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -26,9 +26,15 @@ function getAgingBucket(dueDate: string): string {
   return "90+";
 }
 
-export default function ARPage() {
-  const summary = getARSummary();
-  const outstanding = getOutstandingInvoices();
+export const dynamic = "force-dynamic";
+
+export default async function ARPage() {
+  const [summary, outstanding, projects] = await Promise.all([
+    getARSummary(),
+    getOutstandingInvoices(),
+    getProjects(),
+  ]);
+  const projectNameById = new Map(projects.map((p) => [p.id, p.name]));
 
   const byBucket: Record<string, typeof outstanding> = {};
   for (const inv of outstanding) {
@@ -115,7 +121,7 @@ export default function ARPage() {
                               {inv.invoiceNo}
                             </Link>
                           </TableCell>
-                          <TableCell className="text-muted-foreground">{getProjectById(inv.projectId)?.name ?? inv.projectId}</TableCell>
+                          <TableCell className="text-muted-foreground">{projectNameById.get(inv.projectId) ?? inv.projectId}</TableCell>
                           <TableCell className="text-foreground">{inv.clientName}</TableCell>
                           <TableCell className="text-right tabular-nums">${inv.total.toLocaleString()}</TableCell>
                           <TableCell className="text-right tabular-nums text-emerald-600/90 dark:text-emerald-400/90">${inv.paidTotal.toLocaleString()}</TableCell>

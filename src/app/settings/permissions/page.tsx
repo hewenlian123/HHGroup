@@ -1,0 +1,145 @@
+"use client";
+
+import * as React from "react";
+import { createBrowserClient } from "@/lib/supabase";
+import { PageHeader } from "@/components/page-header";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  DEFAULT_ROLE_PERMISSIONS,
+  PERMISSION_GROUPS,
+  type AppRole,
+  type PermissionKey,
+  type PermissionMap,
+} from "@/lib/permissions";
+
+type PermissionRow = {
+  role: AppRole;
+  perms: unknown;
+};
+
+function coercePerms(input: unknown, role: AppRole): PermissionMap {
+  const out = { ...DEFAULT_ROLE_PERMISSIONS[role] };
+  if (!input || typeof input !== "object") return out;
+  const rec = input as Record<string, unknown>;
+  for (const key of Object.keys(out) as PermissionKey[]) {
+    if (typeof rec[key] === "boolean") out[key] = rec[key] as boolean;
+  }
+  return out;
+}
+
+export default function SettingsPermissionsPage() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const configured = Boolean(url && anon);
+  const supabase = React.useMemo(
+    () => (configured ? createBrowserClient(url as string, anon as string) : null),
+    [configured, url, anon]
+  );
+
+  const [targetRole, setTargetRole] = React.useState<AppRole>("admin");
+  const [perms, setPerms] = React.useState<PermissionMap>(DEFAULT_ROLE_PERMISSIONS.admin);
+  const [loading, setLoading] = React.useState(true);
+  const [saving, setSaving] = React.useState(false);
+  const [message, setMessage] = React.useState<string | null>(null);
+
+  const loadRole = React.useCallback(async () => {
+    if (!supabase) {
+      setLoading(false);
+      setMessage("Supabase is not configured.");
+      return;
+    }
+    setLoading(true);
+    setMessage(null);
+    const { data, error } = await supabase
+      .from("role_permissions")
+      .select("role,perms")
+      .eq("role", targetRole)
+      .maybeSingle();
+    if (error) {
+      setMessage(error.message || "Failed to load role permissions.");
+      setPerms(DEFAULT_ROLE_PERMISSIONS[targetRole]);
+      setLoading(false);
+      return;
+    }
+    const row = (data ?? null) as PermissionRow | null;
+    setPerms(coercePerms(row?.perms, targetRole));
+    setLoading(false);
+  }, [supabase, targetRole]);
+
+  React.useEffect(() => {
+    void loadRole();
+  }, [loadRole]);
+
+  const toggle = (key: PermissionKey) => {
+    setPerms((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const save = async () => {
+    if (!supabase) {
+      setMessage("Supabase is not configured.");
+      return;
+    }
+    setSaving(true);
+    setMessage(null);
+    const { error } = await supabase
+      .from("role_permissions")
+      .upsert([{ role: targetRole, perms }], { onConflict: "role" });
+    if (error) {
+      setMessage(error.message || "Failed to save permissions.");
+      setSaving(false);
+      return;
+    }
+    setSaving(false);
+    setMessage("Permissions saved.");
+  };
+
+  return (
+    <div className="page-container page-stack py-6">
+      <PageHeader
+        title="Permissions"
+        subtitle="Owner-only permission matrix for admin and assistant roles."
+        actions={
+          <Button onClick={() => void save()} disabled={saving || loading}>
+            {saving ? "Saving..." : "Save"}
+          </Button>
+        }
+      />
+      {message ? (
+        <div className="rounded-lg border border-zinc-200/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground dark:border-border">
+          {message}
+        </div>
+      ) : null}
+
+      <Card className="rounded-2xl border border-zinc-200/60 dark:border-border p-5">
+        <div className="mb-4 flex items-center gap-2">
+          <p className="text-sm text-muted-foreground">Role</p>
+          <select
+            value={targetRole}
+            onChange={(event) => setTargetRole(event.target.value === "assistant" ? "assistant" : "admin")}
+            className="h-9 rounded-[10px] border border-input bg-muted/20 px-3 text-sm"
+          >
+            <option value="admin">admin</option>
+            <option value="assistant">assistant</option>
+          </select>
+        </div>
+
+        <div className="space-y-4">
+          {PERMISSION_GROUPS.map((group) => (
+            <div key={group.title} className="rounded-xl border border-zinc-200/60 dark:border-border p-3">
+              <p className="mb-2 text-sm font-semibold text-foreground">{group.title}</p>
+              <div className="grid gap-2 md:grid-cols-2">
+                {group.keys.map((key) => (
+                  <label key={key} className="inline-flex items-center gap-2 text-sm text-foreground">
+                    <input type="checkbox" checked={Boolean(perms[key])} onChange={() => toggle(key)} />
+                    <span>{key}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+    </div>
+  );
+}

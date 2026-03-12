@@ -7,61 +7,84 @@ import {
   LayoutDashboard,
   FolderKanban,
   FileText,
-  Users,
   Receipt,
+  Banknote,
+  ShoppingCart,
+  CreditCard,
+  Clock,
+  Wallet,
+  UserPlus,
+  Users,
+  FileStack,
   Settings,
   ChevronLeft,
+  ChevronRight,
+  CircleDollarSign,
+  Landmark,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { createBrowserClient } from "@/lib/supabase";
 import { getCompanyInitials, getCompanyProfile } from "@/lib/company-profile";
 
-type NavItem = { href: string; label: string; icon?: typeof LayoutDashboard };
+type NavItem = { href: string; label: string; icon?: React.ComponentType<{ className?: string }> };
 
-const groups: Array<{ label: string; items: NavItem[] }> = [
+const sections: { label: string; items: NavItem[] }[] = [
   {
-    label: "Main",
-    items: [{ href: "/dashboard", label: "Dashboard", icon: LayoutDashboard }],
-  },
-  {
-    label: "Projects",
+    label: "PROJECTS",
     items: [
       { href: "/projects", label: "Projects", icon: FolderKanban },
       { href: "/estimates", label: "Estimates", icon: FileText },
     ],
   },
   {
-    label: "Financial",
+    label: "FINANCE",
     items: [
-      { href: "/financial", label: "Overview", icon: Receipt },
-      { href: "/financial/expenses", label: "Expenses" },
-      { href: "/financial/bank", label: "Bank Reconcile" },
-      { href: "/financial/invoices", label: "Invoices" },
-      { href: "/financial/ar", label: "AR" },
+      { href: "/financial/invoices", label: "Invoices", icon: Receipt },
+      { href: "/financial/payments", label: "Payments Received", icon: CircleDollarSign },
+      { href: "/financial/deposits", label: "Deposits", icon: Landmark },
+      { href: "/bills", label: "Bills", icon: Banknote },
+      { href: "/financial/expenses", label: "Expenses", icon: ShoppingCart },
+      { href: "/financial/accounts", label: "Accounts", icon: CreditCard },
     ],
   },
   {
-    label: "Labor",
+    label: "LABOR",
     items: [
-      { href: "/labor", label: "Daily Entry", icon: Users },
-      { href: "/labor/workers", label: "Workers" },
-      { href: "/labor/review", label: "Review" },
-      { href: "/labor/invoices", label: "Invoices/Receipts" },
-      { href: "/labor/payments", label: "Payments" },
+      { href: "/labor", label: "Daily Entry", icon: Clock },
+      { href: "/workers", label: "Workers", icon: Users },
+      { href: "/labor/reimbursements", label: "Reimbursements", icon: Receipt },
+      { href: "/labor/worker-invoices", label: "Worker Invoices", icon: FileText },
+      { href: "/labor/payroll", label: "Payroll Summary", icon: Wallet },
+      { href: "/labor/payments", label: "Worker Payments", icon: CircleDollarSign },
     ],
   },
   {
-    label: "Settings",
+    label: "PEOPLE",
     items: [
-      { href: "/settings", label: "Settings", icon: Settings },
-      { href: "/settings/company", label: "Company" },
-      { href: "/settings/lists", label: "Lists" },
+      { href: "/workers", label: "Workers", icon: UserPlus },
+      { href: "/labor/subcontractors", label: "Vendors", icon: Users },
+      { href: "/subcontractors", label: "Subcontractors", icon: Users },
     ],
   },
 ];
 
-export function Sidebar({ className, onNavigate }: { className?: string; onNavigate?: () => void }) {
+const standaloneItems: NavItem[] = [
+  { href: "/documents", label: "Documents", icon: FileStack },
+  { href: "/settings", label: "Settings", icon: Settings },
+];
+
+export function Sidebar({
+  className,
+  onNavigate,
+  collapsed = false,
+  onToggleCollapsed,
+}: {
+  className?: string;
+  onNavigate?: () => void;
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
+}) {
   const pathname = usePathname();
   const [orgName, setOrgName] = React.useState("HH Group");
   const [logoUrl, setLogoUrl] = React.useState<string | null>(null);
@@ -90,66 +113,135 @@ export function Sidebar({ className, onNavigate }: { className?: string; onNavig
     };
   }, []);
 
+  const isActive = (href: string) =>
+    pathname === href || (href !== "/dashboard" && pathname.startsWith(href + "/"));
+
+  const linkClass = (active: boolean) =>
+    cn(
+      "flex h-9 items-center rounded-md text-sm transition-colors",
+      collapsed ? "justify-center px-2" : "gap-2 px-2.5",
+      active
+        ? "bg-[#E5E7EB] text-foreground"
+        : "text-muted-foreground hover:bg-[#F3F4F6] hover:text-foreground"
+    );
+
   return (
     <aside
       className={cn(
-        "flex h-full w-[248px] shrink-0 flex-col border-r border-zinc-200/70 bg-zinc-100/70 dark:border-border dark:bg-zinc-950/60",
+        "flex h-full shrink-0 flex-col border-r border-[#E5E7EB] bg-white dark:border-border dark:bg-zinc-950/60",
+        collapsed ? "w-16" : "w-[240px]",
         className
       )}
     >
-      <div className="flex h-14 items-center gap-2 border-b border-zinc-200/60 px-4 dark:border-border">
+      <div
+        className={cn(
+          "flex h-14 items-center gap-2 border-b border-[#E5E7EB] dark:border-border",
+          collapsed ? "px-3" : "px-4"
+        )}
+      >
         <Avatar className="h-7 w-7 rounded-md">
           {logoUrl ? <AvatarImage src={logoUrl} alt={orgName} className="object-contain" /> : null}
           <AvatarFallback className="rounded-md bg-primary/10 text-[11px] font-semibold text-primary">
             {getCompanyInitials(orgName)}
           </AvatarFallback>
         </Avatar>
-        <div className="min-w-0">
-          <p className="truncate text-[11px] uppercase tracking-[0.14em] text-muted-foreground">HH Unified</p>
-          <p className="truncate text-sm font-semibold text-foreground">{orgName}</p>
-        </div>
-      </div>
-      <nav className="flex-1 overflow-y-auto px-2 py-3">
-        {groups.map((group) => (
-          <div key={group.label} className="mb-4">
-            <p className="px-2 pb-1 text-[11px] uppercase tracking-[0.08em] text-muted-foreground">{group.label}</p>
-            <div className="space-y-0.5">
-              {group.items.map((item) => {
-                const active = pathname === item.href || pathname.startsWith(item.href + "/");
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={onNavigate}
-                    className={cn(
-                      "relative flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-muted-foreground transition-colors hover:bg-zinc-200/50 hover:text-foreground dark:hover:bg-zinc-800/40",
-                      active && "bg-zinc-200/70 text-foreground dark:bg-zinc-800/60"
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "absolute left-0 top-1/2 h-4 -translate-y-1/2 rounded-r-full border-l-2 border-transparent",
-                        active && "border-zinc-700 dark:border-zinc-200"
-                      )}
-                    />
-                    {Icon ? <Icon className="h-[18px] w-[18px] shrink-0" /> : <span className="h-[18px] w-[18px] shrink-0" />}
-                    <span className="truncate">{item.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
+        {!collapsed && (
+          <div className="min-w-0">
+            <p className="truncate text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+              HH Unified
+            </p>
+            <p className="truncate text-sm font-semibold text-foreground">{orgName}</p>
           </div>
-        ))}
+        )}
+      </div>
+
+      <nav className={cn("flex-1 overflow-y-auto", collapsed ? "px-2 py-3" : "px-2 py-3")}>
+        {/* Dashboard */}
+        <div className="flex flex-col gap-1">
+          <Link
+            href="/dashboard"
+            onClick={onNavigate}
+            title={collapsed ? "Dashboard" : undefined}
+            aria-label={collapsed ? "Dashboard" : undefined}
+            className={linkClass(isActive("/dashboard"))}
+          >
+            <LayoutDashboard className="h-[18px] w-[18px] shrink-0" />
+            {!collapsed && <span className="truncate">Dashboard</span>}
+          </Link>
+        </div>
+
+        {/* Sections — 20px between sections, 4px between items */}
+        <div className={cn("flex flex-col gap-5", collapsed && "gap-3")} style={{ marginTop: 20 }}>
+          {sections.map((section) => (
+            <div key={section.label} className="flex flex-col gap-1">
+              {!collapsed && (
+                <p className="px-2.5 pb-1 text-[11px] font-medium uppercase tracking-wider text-gray-500 dark:text-muted-foreground" style={{ marginBottom: 4 }}>
+                  {section.label}
+                </p>
+              )}
+              <div className="flex flex-col gap-1">
+                {section.items.map((item) => {
+                  const active = isActive(item.href);
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={onNavigate}
+                      title={collapsed ? item.label : undefined}
+                      aria-label={collapsed ? item.label : undefined}
+                      className={linkClass(active)}
+                    >
+                      {Icon ? <Icon className="h-[18px] w-[18px] shrink-0" /> : null}
+                      {!collapsed && <span className="truncate">{item.label}</span>}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+
+          {/* Documents & Settings */}
+          <div className="flex flex-col gap-1">
+            {standaloneItems.map((item) => {
+              const active = isActive(item.href);
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={onNavigate}
+                  title={collapsed ? item.label : undefined}
+                  aria-label={collapsed ? item.label : undefined}
+                  className={linkClass(active)}
+                >
+                  {Icon ? <Icon className="h-[18px] w-[18px] shrink-0" /> : null}
+                  {!collapsed && <span className="truncate">{item.label}</span>}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
       </nav>
-      <div className="border-t border-zinc-200/60 p-2 dark:border-border">
+
+      {/* Collapse button at bottom */}
+      <div className="border-t border-[#E5E7EB] p-2 dark:border-border">
         <button
           type="button"
-          className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-muted-foreground hover:bg-zinc-200/50 hover:text-foreground dark:hover:bg-zinc-800/40"
+          onClick={onToggleCollapsed}
+          className={cn(
+            "flex h-9 w-full items-center rounded-md text-sm text-muted-foreground transition-colors hover:bg-[#F3F4F6] hover:text-foreground",
+            collapsed ? "justify-center px-2" : "gap-2 px-2.5"
+          )}
           aria-label="Collapse sidebar"
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
-          <ChevronLeft className="h-[18px] w-[18px]" />
-          Collapse (Soon)
+          {collapsed ? (
+            <ChevronRight className="h-[18px] w-[18px]" />
+          ) : (
+            <ChevronLeft className="h-[18px] w-[18px]" />
+          )}
+          {!collapsed && "Collapse"}
         </button>
       </div>
     </aside>

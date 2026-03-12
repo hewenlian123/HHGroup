@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/sheet";
 import { ArrowLeft, Send, CheckCircle, FolderKanban, Lock, FileText } from "lucide-react";
 
-type Status = "Draft" | "Sent" | "Approved" | "Converted";
+type Status = "Draft" | "Sent" | "Approved" | "Rejected" | "Converted";
 
 type SnapshotItem = {
   snapshotId: string;
@@ -35,6 +35,8 @@ export function EstimateHeader({
   approveAction,
   createNewVersionAction,
   convertToProjectAction,
+  sendAction,
+  rejectAction,
 }: {
   estimateId: string;
   estimateNumber: string;
@@ -43,6 +45,8 @@ export function EstimateHeader({
   approveAction: (formData: FormData) => Promise<void>;
   createNewVersionAction: (formData: FormData) => Promise<void>;
   convertToProjectAction: (formData: FormData) => Promise<void>;
+  sendAction?: (formData: FormData) => Promise<void>;
+  rejectAction?: (formData: FormData) => Promise<void>;
 }) {
   const latestApproved = snapshots
     .filter((s) => s.statusAtSnapshot === "Approved")
@@ -64,8 +68,8 @@ export function EstimateHeader({
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             Estimate #{estimateNumber}
           </h1>
-          <Badge variant={status === "Draft" ? "secondary" : status === "Approved" || status === "Converted" ? "default" : "outline"} className="text-[10px] font-medium">
-            Status: {status}
+          <Badge variant={status === "Draft" ? "secondary" : status === "Rejected" ? "destructive" : status === "Approved" || status === "Converted" ? "default" : "outline"} className="text-[10px] font-medium">
+            Status: {status === "Converted" ? "Converted to Project" : status}
           </Badge>
           {latestApproved && (
             <span className="text-xs text-muted-foreground">
@@ -82,6 +86,12 @@ export function EstimateHeader({
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="outline" size="sm" className="rounded-lg border-zinc-200/60" asChild>
+          <Link href={`/estimates/${estimateId}/preview`}>
+            <FileText className="h-4 w-4 mr-2" />
+            Preview
+          </Link>
+        </Button>
+        <Button variant="outline" size="sm" className="rounded-lg border-zinc-200/60" asChild>
           <a href={`/estimates/${estimateId}/print`} target="_blank" rel="noopener noreferrer">
             Preview PDF
           </a>
@@ -93,10 +103,15 @@ export function EstimateHeader({
         </Button>
         {showEditActions && (
           <>
-            <Button type="button" variant="outline" size="sm" className="rounded-lg border-zinc-200/60">
-              <Send className="h-4 w-4 mr-2" />
-              Send
-            </Button>
+            {sendAction && (
+              <form action={sendAction} className="inline-block">
+                <input type="hidden" name="estimateId" value={estimateId} />
+                <Button type="submit" variant="outline" size="sm" className="rounded-lg border-zinc-200/60">
+                  <Send className="h-4 w-4 mr-2" />
+                  Send
+                </Button>
+              </form>
+            )}
             <form action={approveAction} className="inline-block">
               <input type="hidden" name="estimateId" value={estimateId} />
               <Button type="submit" variant="outline" size="sm" className="rounded-lg border-zinc-200/60">
@@ -105,6 +120,14 @@ export function EstimateHeader({
               </Button>
             </form>
           </>
+        )}
+        {(status === "Sent" && rejectAction) && (
+          <form action={rejectAction} className="inline-block">
+            <input type="hidden" name="estimateId" value={estimateId} />
+            <Button type="submit" variant="outline" size="sm" className="rounded-lg border-zinc-200/60 text-destructive hover:text-destructive">
+              Reject
+            </Button>
+          </form>
         )}
         {canCreateNewVersion && (status === "Approved" || status === "Converted") && (
           <form action={createNewVersionAction} className="inline-block">

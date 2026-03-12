@@ -1,0 +1,289 @@
+"use client";
+
+import * as React from "react";
+import Link from "next/link";
+import { PageHeader } from "@/components/page-header";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { FilterBar } from "@/components/filter-bar";
+import { StatusBadge } from "@/components/status-badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { createBrowserClient } from "@/lib/supabase";
+
+type LaborInvoiceStatus = "draft" | "reviewed" | "confirmed" | "void";
+
+type LaborInvoiceRow = {
+  id: string;
+  invoice_no: string;
+  worker_id: string;
+  invoice_date: string;
+  amount: number;
+  project_splits: { projectId: string; amount: number }[];
+  status: LaborInvoiceStatus;
+};
+
+type WorkerOption = { id: string; name: string };
+
+function safeNumber(v: unknown): number {
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function isMissingTableError(error: unknown): boolean {
+  return (error as { code?: string } | null)?.code === "42P01";
+}
+
+export default function LaborInvoicesListClient() {
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const [invoices, setInvoices] = React.useState<LaborInvoiceRow[]>([]);
+  const [workers, setWorkers] = React.useState<WorkerOption[]>([]);
+  const [message, setMessage] = React.useState<string | null>(null);
+  const [search, setSearch] = React.useState("");
+  const [status, setStatus] = React.useState<"" | LaborInvoiceStatus>("");
+  const [fromDate, setFromDate] = React.useState("");
+  const [toDate, setToDate] = React.useState("");
+  const [voidConfirmId, setVoidConfirmId] = React.useState<string | null>(null);
+  const [busyId, setBusyId] = React.useState<string | null>(null);
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const configured = Boolean(url && anon);
+  const supabase = React.useMemo(
+    () => (configured ? createBrowserClient(url as string, anon as string) : null),
+    [configured, url, anon]
+  );
+
+  const refresh = React.useCallback(async () => {
+    if (!supabase) {
+      setInvoices([]);
+      setWorkers([]);
+      setLoading(false);
+      setError(configured ? "Supabase client unavailable." : "Supabase is not configured.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    setMessage(null);
+    setVoidConfirmId(null);
+
+    const [
+      { data: invData, error: invErr },
+      { data: workerData, error: workerErr },
+    ] = await Promise.all([
+      supabase.from("labor_invoices").select("id,invoice_no,worker_id,invoice_date,amount,project_splits,status").order("created_at", { ascending: false }).limit(500),
+      supabase.from("workers").select("id,name").order("created_at", { ascending: false }).limit(500),
+    ]);
+
+    if (invErr) {
+      if (isMissingTableError(invErr)) setInvoices([]);
+      else setError(invErr.message);
+    } else {
+      setInvoices((invData ?? []).map((r) => {
+        const row = r as { id: string; invoice_no: string; worker_id: string; invoice_date: string; amount?: unknown; project_splits?: { projectId?: string; amount?: number }[]; status: string };
+        const splits = Array.isArray(row.project_splits)
+          ? row.project_splits.map((s) => ({ projectId: s.projectId ?? "", amount: Number.isFinite(s.amount) ? Number(s.amount) : 0 }))
+          : [];
+        return {
+          id: row.id,
+          invoice_no: row.invoice_no,
+          worker_id: row.worker_id,
+          invoice_date: row.invoice_date,
+          amount: safeNumber(row.amount),
+          project_splits: splits,
+          status: row.status as LaborInvoiceStatus,
+        };
+      }));
+    }
+
+    if (workerErr) {
+      if (!isMissingTableError(workerErr)) setError((e) => e ?? workerErr.message);
+      setWorkers([]);
+    } else {
+      setWorkers((workerData ?? []).map((w) => ({ id: (w as { id: string }).id, name: (w as { name: string }).name ?? "" })));
+    }
+    setLoading(false);
+  }, [supabase, configured]);
+
+  React.useEffect(() => {
+    void refresh();
+  }, [refresh]);
+
+  const workersMap = React.useMemo(() => new Map(workers.map((w) => [w.id, w.name])), [workers]);
+
+  const filtered = React.useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return invoices.filter((r) => {
+      if (status && r.status !== status) return false;
+      if (fromDate && r.invoice_date < fromDate) return false;
+      if (toDate && r.invoice_date > toDate) return false;
+      if (!q) return true;
+      const workerName = (workersMap.get(r.worker_id) ?? "").toLowerCase();
+      return (r.invoice_no ?? "").toLowerCase().includes(q) || workerName.includes(q);
+    });
+  }, [invoices, search, status, fromDate, toDate, workersMap]);
+
+  const handleDelete = React.useCallback(
+    async (id: string) => {
+      const row = invoices.find((r) => r.id === id);
+      if (!row) return;
+      if (row.status === "confirmed") {
+        setMessage("Confirmed invoice cannot be deleted. Void it instead.");
+        return;
+      }
+      if (!supabase) return;
+      setBusyId(id);
+      setError(null);
+      const { error: delErr } = await supabase.from("labor_invoices").delete().eq("id", id);
+      if (delErr) setError(delErr.message);
+      else setMessage("Invoice deleted.");
+      await refresh();
+      setBusyId(null);
+    },
+    [invoices, supabase, refresh]
+  );
+
+  const handleVoid = React.useCallback(
+    async (id: string) => {
+      if (!supabase) return;
+      setBusyId(id);
+      setError(null);
+      const { error: updateErr } = await supabase.from("labor_invoices").update({ status: "void" }).eq("id", id);
+      if (updateErr) setError(updateErr.message);
+      else setMessage("Invoice voided.");
+      await refresh();
+      setVoidConfirmId(null);
+      setBusyId(null);
+    },
+    [supabase, refresh]
+  );
+
+  return (
+    <div className="page-container page-stack py-6">
+      <PageHeader
+        title="Labor Invoices"
+        subtitle="Worker invoices/receipts with attachment and project split review."
+        actions={
+          <Link href="/labor/invoices/new">
+            <Button className="rounded-lg">+ New Invoice</Button>
+          </Link>
+        }
+      />
+      <FilterBar className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search invoice # or worker" className="h-10 rounded-[10px]" />
+        <select
+          value={status}
+          onChange={(e) => setStatus(e.target.value as "" | LaborInvoiceStatus)}
+          className="h-10 rounded-[10px] border border-input bg-muted/20 px-3 text-sm"
+        >
+          <option value="">All status</option>
+          <option value="draft">Draft</option>
+          <option value="reviewed">Reviewed</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="void">Void</option>
+        </select>
+        <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="h-10 rounded-[10px]" />
+        <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="h-10 rounded-[10px]" />
+      </FilterBar>
+      {message ? (
+        <div className="rounded-lg border border-zinc-200/60 dark:border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+          {message}
+        </div>
+      ) : null}
+      {error ? (
+        <Card className="p-5">
+          <p className="text-sm text-red-600">{error}</p>
+        </Card>
+      ) : null}
+      <Card className="rounded-2xl border border-zinc-200/60 dark:border-border overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-zinc-200/40 dark:border-border/60 bg-muted/30">
+                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Invoice #</th>
+                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Worker</th>
+                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Date</th>
+                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Amount</th>
+                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Split Projects</th>
+                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Status</th>
+                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i}>
+                    <td colSpan={7}>
+                      <Skeleton className="h-12 w-full" />
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <>
+                  {filtered.map((row) => (
+                    <tr key={row.id} className="group border-b border-zinc-100/50 dark:border-border/30">
+                      <td className="py-3 px-4 font-medium text-foreground">
+                        <Link href={`/labor/invoices/${row.id}`} className="hover:underline">
+                          {row.invoice_no}
+                        </Link>
+                      </td>
+                      <td className="py-3 px-4">{workersMap.get(row.worker_id) ?? "Unknown worker"}</td>
+                      <td className="py-3 px-4 tabular-nums">{row.invoice_date}</td>
+                      <td className="py-3 px-4 text-right tabular-nums">
+                        {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(row.amount)}
+                      </td>
+                      <td className="py-3 px-4 text-right tabular-nums">{row.project_splits?.length ?? 0}</td>
+                      <td className="py-3 px-4">
+                        <StatusBadge status={row.status} />
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex justify-end gap-2 opacity-0 transition-opacity duration-100 group-hover:opacity-100">
+                          <Link href={`/labor/invoices/${row.id}`}>
+                            <Button size="sm" variant="outline" className="rounded-lg h-8">View/Edit</Button>
+                          </Link>
+                          {row.status !== "void" ? (
+                            voidConfirmId === row.id ? (
+                              <>
+                                <Button size="sm" variant="outline" className="rounded-lg h-8" disabled={!!busyId} onClick={() => handleVoid(row.id)}>
+                                  Confirm Void
+                                </Button>
+                                <Button size="sm" variant="outline" className="rounded-lg h-8" disabled={!!busyId} onClick={() => setVoidConfirmId(null)}>
+                                  Cancel
+                                </Button>
+                              </>
+                            ) : (
+                              <Button size="sm" variant="outline" className="rounded-lg h-8" disabled={!!busyId} onClick={() => setVoidConfirmId(row.id)}>
+                                Void
+                              </Button>
+                            )
+                          ) : null}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="rounded-lg h-8"
+                            disabled={row.status === "confirmed" || !!busyId}
+                            onClick={() => handleDelete(row.id)}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {filtered.length === 0 && !loading ? (
+                    <tr>
+                      <td className="py-8 px-4 text-center text-muted-foreground" colSpan={7}>
+                        {configured ? "No labor invoices yet." : "Supabase is not configured."}
+                      </td>
+                    </tr>
+                  ) : null}
+                </>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}

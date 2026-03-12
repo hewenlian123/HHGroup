@@ -42,17 +42,29 @@ export default function LaborInvoiceDetailPage() {
   const [previewAttachment, setPreviewAttachment] = React.useState<Attachment | null>(null);
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const workers = getWorkers();
-  const projects = getProjects();
+  const [workers, setWorkers] = React.useState<Awaited<ReturnType<typeof getWorkers>>>([]);
+  const [projects, setProjects] = React.useState<Awaited<ReturnType<typeof getProjects>>>([]);
 
-  const refresh = React.useCallback(() => {
+  const refresh = React.useCallback(async () => {
     if (!id) return;
-    setInvoice(getLaborInvoice(id) ?? null);
+    const inv = await getLaborInvoice(id);
+    setInvoice(inv ?? null);
   }, [id]);
 
   React.useEffect(() => {
     refresh();
   }, [refresh]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    Promise.all([getWorkers(), getProjects()]).then(([w, p]) => {
+      if (!cancelled) {
+        setWorkers(w);
+        setProjects(p);
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   if (!id || !invoice) {
     return (

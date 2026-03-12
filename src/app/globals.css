@@ -27,12 +27,24 @@
   .date-text {
     @apply tabular-nums text-muted-foreground;
   }
+
+  /* Linear-style layout primitives */
+  .ui-divider {
+    @apply border-b border-border/60;
+  }
+  .ui-section {
+    @apply py-2;
+  }
+  .ui-section-label {
+    @apply text-sm font-semibold text-foreground;
+  }
 }
 
 
 
 @layer base {
   :root {
+    /* ---- Color tokens (HSL) ---- */
     --background: 0 0% 100%;
     --foreground: 0 0% 3.9%;
     --card: 0 0% 100%;
@@ -57,7 +69,40 @@
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
-    --radius: 0.75rem;
+
+    /* ---- Spacing tokens ---- */
+    --space-0: 0px;
+    --space-1: 0.25rem; /* 4 */
+    --space-2: 0.5rem;  /* 8 */
+    --space-3: 0.75rem; /* 12 */
+    --space-4: 1rem;    /* 16 */
+    --space-5: 1.25rem; /* 20 */
+    --space-6: 1.5rem;  /* 24 */
+    --space-8: 2rem;    /* 32 */
+    --space-10: 2.5rem; /* 40 */
+    --space-12: 3rem;   /* 48 */
+
+    /* ---- Radius tokens ---- */
+    --radius: 0.5rem; /* global base radius (Linear-style) */
+    --radius-sm: 0.25rem;
+    --radius-md: 0.375rem;
+    --radius-lg: 0.5rem;
+    --radius-xl: 0.75rem;
+
+    /* ---- Typography tokens ---- */
+    --font-size-xs: 0.75rem;
+    --font-size-sm: 0.875rem;
+    --font-size-md: 1rem;
+    --font-size-lg: 1.125rem;
+    --font-size-xl: 1.25rem;
+    --line-height-tight: 1.2;
+    --line-height-normal: 1.45;
+
+    /* ---- Shadow tokens ---- */
+    --shadow-0: none;
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.06);
+    --shadow-2: 0 10px 24px rgba(0, 0, 0, 0.12);
+    --shadow-popover: var(--shadow-2);
   }
   .dark {
     --background: 0 0% 3.9%;
@@ -84,6 +129,11 @@
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
+
+    /* ---- Shadow tokens (dark) ---- */
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.45);
+    --shadow-2: 0 12px 30px rgba(0, 0, 0, 0.55);
+    --shadow-popover: var(--shadow-2);
   }
 }
 

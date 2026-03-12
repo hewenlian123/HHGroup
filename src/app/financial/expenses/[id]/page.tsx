@@ -12,13 +12,10 @@ import {
   getProjects,
   getExpenseCategories,
   getVendors,
-  getPaymentMethods,
+  getAccounts,
   addExpenseCategory,
   addVendor,
-  addPaymentMethod,
-  isExpenseCategoryDisabled,
   isVendorDisabled,
-  isPaymentMethodDisabled,
   getExpenseTotal,
   updateExpense,
   addExpenseLine,
@@ -34,16 +31,33 @@ import { CreatableSelect } from "@/components/ui/creatable-select";
 import { SplitLinesEditor } from "@/components/split-lines-editor";
 import { AttachmentPreviewDialog } from "@/components/attachment-preview-dialog";
 import { ArrowLeft, Plus, FileText, Download, Trash2 } from "lucide-react";
-import { getProjectById } from "@/lib/data";
+import { createBrowserClient } from "@/lib/supabase";
+import { useToast } from "@/components/toast/toast-provider";
+
+function useAsyncDisabled(name: string | null, fn: (n: string) => Promise<boolean>): boolean {
+  const [disabled, setDisabled] = React.useState(false);
+  React.useEffect(() => {
+    if (!name) {
+      setDisabled(false);
+      return;
+    }
+    let cancelled = false;
+    fn(name).then((b) => {
+      if (!cancelled) setDisabled(b);
+    });
+    return () => { cancelled = true; };
+  }, [name, fn]);
+  return disabled;
+}
 
 function makeAttachment(file: File): ExpenseAttachment {
-  const url = URL.createObjectURL(file);
   return {
     id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
     fileName: file.name,
     mimeType: file.type,
     size: file.size,
-    url,
+    // url stores the Storage path in DB; preview/download use signed URLs.
+    url: "",
     createdAt: new Date().toISOString().slice(0, 10),
   };
 }
@@ -54,29 +68,61 @@ export default function ExpenseDetailPage() {
   const [expense, setExpense] = React.useState<Expense | null>(null);
   const [notFoundState, setNotFoundState] = React.useState(false);
   const [vendorName, setVendorName] = React.useState("");
-  const [paymentMethod, setPaymentMethod] = React.useState("ACH");
+  const [accountId, setAccountId] = React.useState("");
   const [toastMessage, setToastMessage] = React.useState<string | null>(null);
   const [previewAttachment, setPreviewAttachment] = React.useState<ExpenseAttachment | null>(null);
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [projects, setProjects] = React.useState<Awaited<ReturnType<typeof getProjects>>>([]);
+  const [categories, setCategories] = React.useState<string[]>([]);
+  const [vendorsList, setVendorsList] = React.useState<string[]>([]);
+  const [accounts, setAccounts] = React.useState<Array<{ id: string; name: string; lastFour: string | null }>>([]);
+  const { toast } = useToast();
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const configured = Boolean(url && anon);
+  const supabase = React.useMemo(
+    () => (configured ? createBrowserClient(url as string, anon as string) : null),
+    [configured, url, anon]
+  );
+
+  const vendorDisabled = useAsyncDisabled(vendorName || null, isVendorDisabled);
 
   React.useEffect(() => {
     if (!id) {
       setNotFoundState(true);
       return;
     }
-    const e = getExpenseById(id);
-    if (!e) setNotFoundState(true);
-    else {
-      setExpense(e);
-      setVendorName(e.vendorName);
-      setPaymentMethod(e.paymentMethod);
-    }
+    let cancelled = false;
+    getExpenseById(id).then((e) => {
+      if (cancelled) return;
+      if (!e) setNotFoundState(true);
+      else {
+        setExpense(e);
+        setVendorName(e.vendorName);
+        setAccountId(e.accountId ?? "");
+      }
+    });
+    return () => { cancelled = true; };
   }, [id]);
 
-  const refresh = React.useCallback(() => {
+  React.useEffect(() => {
+    let cancelled = false;
+    Promise.all([getProjects(), getExpenseCategories(), getVendors(), getAccounts()]).then(([p, c, v, accs]) => {
+      if (!cancelled) {
+        setProjects(p);
+        setCategories(c);
+        setVendorsList(v);
+        setAccounts(accs);
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  const refresh = React.useCallback(async () => {
     if (!id) return;
-    const e = getExpenseById(id);
+    const e = await getExpenseById(id);
     if (e) setExpense(e);
   }, [id]);
 
@@ -90,6 +136,9 @@ export default function ExpenseDetailPage() {
     return map;
   }, [expense]);
 
+  const total = expense ? getExpenseTotal(expense) : 0;
+  const projectNameById = React.useMemo(() => new Map(projects.map((p) => [p.id, p.name])), [projects]);
+
   React.useEffect(() => {
     if (toastMessage) {
       const t = setTimeout(() => setToastMessage(null), 3000);
@@ -100,63 +149,88 @@ export default function ExpenseDetailPage() {
   if (notFoundState) notFound();
   if (!expense) return <div className="p-6 text-muted-foreground">Loading…</div>;
 
-  const projects = getProjects();
-  const categories = getExpenseCategories();
-  const vendorsList = getVendors();
-  const paymentMethodsList = getPaymentMethods();
-  const total = getExpenseTotal(expense);
-
-  const handleSaveHeader = () => {
+  const handleSaveHeader = async () => {
+    if (!expense) return;
     const form = document.querySelector("[data-expense-header-form]") as HTMLFormElement;
     if (!form) return;
     const formData = new FormData(form);
-    updateExpense(expense.id, {
+    await updateExpense(expense.id, {
       date: (formData.get("date") as string) || expense.date,
       vendorName,
-      paymentMethod,
+      accountId: accountId || undefined,
       referenceNo: (formData.get("referenceNo") as string) || undefined,
       notes: (formData.get("notes") as string) || undefined,
     });
-    refresh();
+    await refresh();
   };
 
-  const handleLineChange = (lineId: string, patch: Partial<ExpenseLine>) => {
-    updateExpenseLine(expense.id, lineId, patch);
-    refresh();
+  const handleLineChange = async (lineId: string, patch: Partial<ExpenseLine>) => {
+    if (!expense) return;
+    await updateExpenseLine(expense.id, lineId, patch);
+    await refresh();
   };
 
-  const handleAddLine = () => {
-    addExpenseLine(expense.id, { projectId: null, category: "Other", amount: 0 });
-    refresh();
+  const handleAddLine = async () => {
+    if (!expense) return;
+    await addExpenseLine(expense.id, { projectId: null, category: "Other", amount: 0 });
+    await refresh();
   };
 
-  const handleDeleteLine = (lineId: string) => {
-    deleteExpenseLine(expense.id, lineId);
-    refresh();
+  const handleDeleteLine = async (lineId: string) => {
+    if (!expense) return;
+    await deleteExpenseLine(expense.id, lineId);
+    await refresh();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files?.length) return;
-    for (let i = 0; i < files.length; i++) {
-      const att = makeAttachment(files[i]);
-      addExpenseAttachment(expense.id, att);
+    if (!files?.length || !expense) return;
+    if (!supabase) {
+      toast({ title: "Upload failed", description: configured ? "Supabase client unavailable." : "Supabase is not configured.", variant: "error" });
+      return;
+    }
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]!;
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const filePath = `expenses/${expense.id}/${safeName}`;
+        const uploadRes = await supabase.storage.from("expense-attachments").upload(filePath, file, {
+          contentType: file.type || undefined,
+          upsert: false,
+        });
+        if (uploadRes.error) throw uploadRes.error;
+        const att = { ...makeAttachment(file), url: filePath };
+        await addExpenseAttachment(expense.id, att);
+      }
+      setToastMessage("Receipt uploaded.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Upload failed.";
+      toast({ title: "Upload failed", description: msg, variant: "error" });
     }
     e.target.value = "";
-    refresh();
+    await refresh();
   };
 
-  const handleRemoveAttachment = (att: ExpenseAttachment) => {
-    if (att.url?.startsWith("blob:")) URL.revokeObjectURL(att.url);
-    deleteExpenseAttachment(expense.id, att.id);
-    refresh();
+  const handleRemoveAttachment = async (att: ExpenseAttachment) => {
+    if (!expense) return;
+    if (!window.confirm("Delete attachment?")) return;
+    await deleteExpenseAttachment(expense.id, att.id);
+    await refresh();
   };
 
   const handleDownload = (att: ExpenseAttachment) => {
-    const a = document.createElement("a");
-    a.href = att.url;
-    a.download = att.fileName;
-    a.click();
+    void (async () => {
+      if (!supabase) return;
+      const { data, error } = await supabase.storage.from("expense-attachments").createSignedUrl(att.url, 60);
+      if (error || !data?.signedUrl) {
+        toast({ title: "Download failed", description: error?.message ?? "Unable to create signed URL.", variant: "error" });
+        return;
+      }
+      const a = document.createElement("a");
+      a.href = data.signedUrl;
+      a.download = att.fileName;
+      a.click();
+    })();
   };
 
   return (
@@ -184,15 +258,16 @@ export default function ExpenseDetailPage() {
                 options={vendorsList}
                 placeholder="Vendor name"
                 onChange={setVendorName}
-                onCreate={(name) => {
-                  const toSelect = addVendor(name);
+                onCreate={async (name) => {
+                  const toSelect = await addVendor(name);
                   if (toSelect) {
                     setVendorName(toSelect);
                     setToastMessage(`Added vendor: ${toSelect}`);
+                    setVendorsList((prev) => (prev.includes(toSelect) ? prev : [...prev, toSelect]));
                   }
                 }}
               />
-              {vendorName && isVendorDisabled(vendorName) && (
+              {vendorName && vendorDisabled && (
                 <span className="text-xs text-amber-600 dark:text-amber-400 mt-0.5 inline-block">Disabled</span>
               )}
             </div>
@@ -201,23 +276,19 @@ export default function ExpenseDetailPage() {
               <Input name="date" type="date" defaultValue={expense.date} className="mt-1 rounded-lg" />
             </div>
             <div>
-              <CreatableSelect
-                label="Payment method"
-                value={paymentMethod}
-                options={paymentMethodsList}
-                placeholder="Payment method"
-                onChange={setPaymentMethod}
-                onCreate={(name) => {
-                  const toSelect = addPaymentMethod(name);
-                  if (toSelect) {
-                    setPaymentMethod(toSelect);
-                    setToastMessage(`Added payment method: ${toSelect}`);
-                  }
-                }}
-              />
-              {paymentMethod && isPaymentMethodDisabled(paymentMethod) && (
-                <span className="text-xs text-amber-600 dark:text-amber-400 mt-0.5 inline-block">Disabled</span>
-              )}
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Payment source</label>
+              <select
+                value={accountId}
+                onChange={(e) => setAccountId(e.target.value)}
+                className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+              >
+                <option value="">Select payment source</option>
+                {accounts.map((acc) => (
+                  <option key={acc.id} value={acc.id}>
+                    {acc.lastFour ? `${acc.name} •••• ${acc.lastFour}` : acc.name}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Reference #</label>
@@ -236,7 +307,6 @@ export default function ExpenseDetailPage() {
 
       <section>
         <h2 className="text-sm font-semibold text-foreground mb-3">Receipt attachments</h2>
-        <p className="text-xs text-muted-foreground mb-2">Attachments are stored locally in this demo.</p>
         <input
           ref={fileInputRef}
           type="file"
@@ -256,7 +326,18 @@ export default function ExpenseDetailPage() {
               <button
                 type="button"
                 className="flex items-center gap-3 min-w-0 flex-1 text-left"
-                onClick={() => { setPreviewAttachment(att); setPreviewOpen(true); }}
+                onClick={() => {
+                  void (async () => {
+                    if (!supabase) return;
+                    const { data, error } = await supabase.storage.from("expense-attachments").createSignedUrl(att.url, 60);
+                    if (error || !data?.signedUrl) {
+                      toast({ title: "Open failed", description: error?.message ?? "Unable to open attachment.", variant: "error" });
+                      return;
+                    }
+                    setPreviewAttachment({ ...att, url: data.signedUrl });
+                    setPreviewOpen(true);
+                  })();
+                }}
               >
                 <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
                 <span className="text-sm font-medium truncate">{att.fileName}</span>
@@ -293,14 +374,14 @@ export default function ExpenseDetailPage() {
             projects={projects}
             categories={categories}
             vendorsList={vendorsList}
-            paymentMethodsList={paymentMethodsList}
+            paymentMethodsList={accounts.map((a) => (a.lastFour ? `${a.name} •••• ${a.lastFour}` : a.name))}
             onAddCategory={addExpenseCategory}
             onAddVendor={addVendor}
-            onAddPaymentMethod={addPaymentMethod}
+            onAddPaymentMethod={async (name) => name}
             onToast={setToastMessage}
-            isExpenseCategoryDisabled={isExpenseCategoryDisabled}
-            isVendorDisabled={isVendorDisabled}
-            isPaymentMethodDisabled={isPaymentMethodDisabled}
+            isExpenseCategoryDisabled={() => false}
+            isVendorDisabled={() => false}
+            isPaymentMethodDisabled={() => false}
             minLines={1}
           />
         </Card>
@@ -315,7 +396,7 @@ export default function ExpenseDetailPage() {
             <ul className="space-y-1 text-sm">
               {Array.from(byProject.entries()).map(([projectId, amount]) => (
                 <li key={projectId ?? "overhead"} className="flex justify-between tabular-nums">
-                  <span className="text-muted-foreground">{projectId == null ? "Overhead" : getProjectById(projectId)?.name ?? projectId}</span>
+                  <span className="text-muted-foreground">{projectId == null ? "Overhead" : projectNameById.get(projectId) ?? projectId}</span>
                   <span>${amount.toLocaleString()}</span>
                 </li>
               ))}

@@ -44,27 +44,36 @@ type TabId = "categories" | "vendors" | "paymentMethods";
 
 type ListRow = { name: string; used: number; disabled: boolean };
 
-function useListState(
-  tab: TabId,
-  refresh: number,
-  getItems: (includeDisabled: boolean) => string[],
-  getUsage: (name: string) => number,
-  isDisabled: (name: string) => boolean
-) {
+type ListConfig = {
+  getItems: (includeDisabled: boolean) => Promise<string[]>;
+  getUsage: (name: string) => Promise<number>;
+  isDisabled: (name: string) => Promise<boolean>;
+};
+
+function useListState(tab: TabId, refresh: number, config: ListConfig) {
   const [search, setSearch] = React.useState("");
   const [addValue, setAddValue] = React.useState("");
   const [renameFor, setRenameFor] = React.useState<string | null>(null);
   const [renameValue, setRenameValue] = React.useState("");
   const [deleteBlocked, setDeleteBlocked] = React.useState<{ name: string; count: number } | null>(null);
+  const [items, setItems] = React.useState<ListRow[]>([]);
 
-  const items: ListRow[] = React.useMemo(() => {
-    const all = getItems(true);
-    return all.map((name) => ({
-      name,
-      used: getUsage(name),
-      disabled: isDisabled(name),
-    }));
-  }, [tab, refresh, getItems, getUsage, isDisabled]);
+  React.useEffect(() => {
+    let cancelled = false;
+    config.getItems(true).then((names) => {
+      if (cancelled) return;
+      return Promise.all(
+        names.map(async (name) => ({
+          name,
+          used: await config.getUsage(name),
+          disabled: await config.isDisabled(name),
+        }))
+      );
+    }).then((rows) => {
+      if (!cancelled && rows) setItems(rows);
+    });
+    return () => { cancelled = true; };
+  }, [tab, refresh, config]);
 
   const filtered = React.useMemo(() => {
     if (!search.trim()) return items;
@@ -94,84 +103,91 @@ export default function SettingsListsPage() {
 
   const refreshAll = React.useCallback(() => setRefresh((r) => r + 1), []);
 
-  const categoriesState = useListState(
-    "categories",
-    refresh,
-    (inc) => getExpenseCategories(inc),
-    getCategoryUsageCount,
-    isExpenseCategoryDisabled
+  const categoriesConfig = React.useMemo<ListConfig>(
+    () => ({
+      getItems: (inc) => getExpenseCategories(inc),
+      getUsage: getCategoryUsageCount,
+      isDisabled: isExpenseCategoryDisabled,
+    }),
+    []
   );
-  const vendorsState = useListState(
-    "vendors",
-    refresh,
-    (inc) => getVendors(inc),
-    getVendorUsageCount,
-    isVendorDisabled
+  const vendorsConfig = React.useMemo<ListConfig>(
+    () => ({
+      getItems: (inc) => getVendors(inc),
+      getUsage: getVendorUsageCount,
+      isDisabled: isVendorDisabled,
+    }),
+    []
   );
-  const paymentState = useListState(
-    "paymentMethods",
-    refresh,
-    (inc) => getPaymentMethods(inc),
-    getPaymentMethodUsageCount,
-    isPaymentMethodDisabled
+  const paymentConfig = React.useMemo<ListConfig>(
+    () => ({
+      getItems: (inc) => getPaymentMethods(inc),
+      getUsage: getPaymentMethodUsageCount,
+      isDisabled: isPaymentMethodDisabled,
+    }),
+    []
   );
+
+  const categoriesState = useListState("categories", refresh, categoriesConfig);
+  const vendorsState = useListState("vendors", refresh, vendorsConfig);
+  const paymentState = useListState("paymentMethods", refresh, paymentConfig);
 
   const state = tab === "categories" ? categoriesState : tab === "vendors" ? vendorsState : paymentState;
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     const v = state.addValue.trim();
     if (!v) return;
     if (tab === "categories") {
-      const out = addExpenseCategory(v);
-      if (out) refreshAll();
+      const out = await addExpenseCategory(v);
+      if (out) await refreshAll();
     } else if (tab === "vendors") {
-      const out = addVendor(v);
-      if (out) refreshAll();
+      const out = await addVendor(v);
+      if (out) await refreshAll();
     } else {
-      const out = addPaymentMethod(v);
-      if (out) refreshAll();
+      const out = await addPaymentMethod(v);
+      if (out) await refreshAll();
     }
     state.setAddValue("");
   };
 
-  const handleRenameSave = () => {
+  const handleRenameSave = async () => {
     const newVal = state.renameValue.trim();
     if (!newVal || !state.renameFor) return;
     let ok = false;
-    if (tab === "categories") ok = renameExpenseCategory(state.renameFor, newVal);
-    else if (tab === "vendors") ok = renameVendor(state.renameFor, newVal);
-    else ok = renamePaymentMethod(state.renameFor, newVal);
+    if (tab === "categories") ok = await renameExpenseCategory(state.renameFor, newVal);
+    else if (tab === "vendors") ok = await renameVendor(state.renameFor, newVal);
+    else ok = await renamePaymentMethod(state.renameFor, newVal);
     if (ok) {
-      refreshAll();
+      await refreshAll();
       state.setRenameFor(null);
       state.setRenameValue("");
     }
   };
 
-  const handleDisableEnable = (name: string, currentlyDisabled: boolean) => {
+  const handleDisableEnable = async (name: string, currentlyDisabled: boolean) => {
     if (tab === "categories") {
-      if (currentlyDisabled) enableExpenseCategory(name);
-      else disableExpenseCategory(name);
+      if (currentlyDisabled) await enableExpenseCategory(name);
+      else await disableExpenseCategory(name);
     } else if (tab === "vendors") {
-      if (currentlyDisabled) enableVendor(name);
-      else disableVendor(name);
+      if (currentlyDisabled) await enableVendor(name);
+      else await disableVendor(name);
     } else {
-      if (currentlyDisabled) enablePaymentMethod(name);
-      else disablePaymentMethod(name);
+      if (currentlyDisabled) await enablePaymentMethod(name);
+      else await disablePaymentMethod(name);
     }
-    refreshAll();
+    await refreshAll();
   };
 
-  const handleDelete = (name: string, used: number) => {
+  const handleDelete = async (name: string, used: number) => {
     if (used > 0) {
       state.setDeleteBlocked({ name, count: used });
       return;
     }
     let ok = false;
-    if (tab === "categories") ok = deleteExpenseCategory(name);
-    else if (tab === "vendors") ok = deleteVendor(name);
-    else ok = deletePaymentMethod(name);
-    if (ok) refreshAll();
+    if (tab === "categories") ok = await deleteExpenseCategory(name);
+    else if (tab === "vendors") ok = await deleteVendor(name);
+    else ok = await deletePaymentMethod(name);
+    if (ok) await refreshAll();
   };
 
   const sectionTitle =

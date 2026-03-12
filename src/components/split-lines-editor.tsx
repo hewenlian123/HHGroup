@@ -44,9 +44,9 @@ export interface SplitLinesEditorProps {
   categories: string[];
   vendorsList: string[];
   paymentMethodsList: string[];
-  onAddCategory: (name: string) => string;
-  onAddVendor: (name: string) => string;
-  onAddPaymentMethod: (name: string) => string;
+  onAddCategory: (name: string) => string | Promise<string>;
+  onAddVendor: (name: string) => string | Promise<string>;
+  onAddPaymentMethod: (name: string) => string | Promise<string>;
   onToast?: (msg: string) => void;
   isExpenseCategoryDisabled: (name: string) => boolean;
   isVendorDisabled: (name: string) => boolean;
@@ -111,11 +111,12 @@ export function SplitLinesEditor({
               placeholder="Vendor name"
               onChange={onVendorNameChange}
               onCreate={(name) => {
-                const toSelect = onAddVendor(name);
-                if (toSelect) {
-                  onVendorNameChange(toSelect);
-                  onToast?.(`Added vendor: ${toSelect}`);
-                }
+                void Promise.resolve(onAddVendor(name)).then((toSelect) => {
+                  if (toSelect) {
+                    onVendorNameChange(toSelect);
+                    onToast?.(`Added vendor: ${toSelect}`);
+                  }
+                });
               }}
             />
             {vendorName && isVendorDisabled(vendorName) && (
@@ -130,11 +131,12 @@ export function SplitLinesEditor({
               placeholder="Payment method"
               onChange={onPaymentMethodChange}
               onCreate={(name) => {
-                const toSelect = onAddPaymentMethod(name);
-                if (toSelect) {
-                  onPaymentMethodChange(toSelect);
-                  onToast?.(`Added payment method: ${toSelect}`);
-                }
+                void Promise.resolve(onAddPaymentMethod(name)).then((toSelect) => {
+                  if (toSelect) {
+                    onPaymentMethodChange(toSelect);
+                    onToast?.(`Added payment method: ${toSelect}`);
+                  }
+                });
               }}
             />
             {paymentMethod && isPaymentMethodDisabled(paymentMethod) && (
@@ -145,7 +147,7 @@ export function SplitLinesEditor({
       )}
 
       {targetAmount != null && (
-        <div className="flex flex-wrap gap-4 rounded-xl border border-zinc-200/60 dark:border-border bg-muted/20 px-4 py-3">
+        <div className="flex flex-wrap gap-4 rounded-md border border-border/60 bg-background px-4 py-3">
           <div>
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Needed</p>
             <p className="text-lg font-bold tabular-nums">${targetAmount.toLocaleString()}</p>
@@ -210,11 +212,12 @@ export function SplitLinesEditor({
                       placeholder="Category"
                       onChange={(v) => onLineChange(line.id, { category: v })}
                       onCreate={(name) => {
-                        const toSelect = onAddCategory(name);
-                        if (toSelect) {
-                          onLineChange(line.id, { category: toSelect });
-                          onToast?.(`Added category: ${toSelect}`);
-                        }
+                        void Promise.resolve(onAddCategory(name)).then((toSelect) => {
+                          if (toSelect) {
+                            onLineChange(line.id, { category: toSelect });
+                            onToast?.(`Added category: ${toSelect}`);
+                          }
+                        });
                       }}
                     />
                     {line.category && isExpenseCategoryDisabled(line.category) && (

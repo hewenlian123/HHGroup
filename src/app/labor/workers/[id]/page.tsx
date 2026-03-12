@@ -14,40 +14,47 @@ export default function WorkerDetailPage() {
   const router = useRouter();
   const id = params?.id as string | undefined;
   const [message, setMessage] = React.useState<string | null>(null);
-  const worker = React.useMemo(() => (id ? getWorkerById(id) : null), [id]);
+  const [worker, setWorker] = React.useState<Awaited<ReturnType<typeof getWorkerById>> | undefined>(undefined);
+  const [usage, setUsage] = React.useState<Awaited<ReturnType<typeof getWorkerUsage>> | null>(null);
 
-  const [name, setName] = React.useState(worker?.name ?? "");
-  const [phone, setPhone] = React.useState(worker?.phone ?? "");
-  const [trade, setTrade] = React.useState(worker?.trade ?? "");
-  const [status, setStatus] = React.useState<"active" | "inactive">(worker?.status ?? "active");
-  const [halfDayRate, setHalfDayRate] = React.useState(worker?.halfDayRate ?? 0);
-  const [notes, setNotes] = React.useState(worker?.notes ?? "");
+  const [name, setName] = React.useState("");
+  const [phone, setPhone] = React.useState("");
+  const [trade, setTrade] = React.useState("");
+  const [status, setStatus] = React.useState<"active" | "inactive">("active");
+  const [halfDayRate, setHalfDayRate] = React.useState(0);
+  const [notes, setNotes] = React.useState("");
 
   React.useEffect(() => {
-    if (!worker) return;
-    setName(worker.name);
-    setPhone(worker.phone ?? "");
-    setTrade(worker.trade ?? "");
-    setStatus(worker.status);
-    setHalfDayRate(worker.halfDayRate);
-    setNotes(worker.notes ?? "");
-  }, [worker]);
+    if (!id) return;
+    let cancelled = false;
+    getWorkerById(id).then((w) => {
+      if (!cancelled) {
+        setWorker(w);
+        if (w) {
+          setName(w.name);
+          setPhone(w.phone ?? "");
+          setTrade(w.trade ?? "");
+          setStatus(w.status);
+          setHalfDayRate(w.halfDayRate);
+          setNotes(w.notes ?? "");
+        }
+      }
+    });
+    return () => { cancelled = true; };
+  }, [id]);
 
-  if (!id || !worker) {
-    return (
-      <div className="mx-auto max-w-[680px] flex flex-col gap-6 p-6">
-        <PageHeader title="Worker Not Found" description="This worker does not exist." />
-        <Link href="/labor/workers">
-          <Button variant="outline" className="rounded-lg w-fit">Back to Workers</Button>
-        </Link>
-      </div>
-    );
-  }
+  React.useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    getWorkerUsage(id).then((u) => {
+      if (!cancelled) setUsage(u);
+    });
+    return () => { cancelled = true; };
+  }, [id]);
 
-  const usage = getWorkerUsage(id);
-
-  const handleSave = () => {
-    const updated = updateWorker(id, {
+  const handleSave = async () => {
+    if (!id) return;
+    const updated = await updateWorker(id, {
       name: name.trim(),
       phone,
       trade,
@@ -59,24 +66,62 @@ export default function WorkerDetailPage() {
       setMessage("Unable to save worker.");
       return;
     }
+    setWorker(updated);
     setMessage("Worker updated.");
   };
 
-  const handleDisable = () => {
-    disableWorker(id);
+  const handleDisable = async () => {
+    if (!id) return;
+    await disableWorker(id);
     setStatus("inactive");
     setMessage("Worker set to inactive.");
   };
 
-  const handleDelete = () => {
-    const used = getWorkerUsage(id).used;
-    if (used) {
+  const handleDelete = async () => {
+    if (!id) return;
+    const u = await getWorkerUsage(id);
+    if (u.used) {
       setMessage("Delete blocked: this worker has labor entries or labor invoices. Use Disable.");
       return;
     }
-    deleteWorker(id);
+    await deleteWorker(id);
     router.push("/labor/workers");
   };
+
+  const usageRes = usage ?? { used: false };
+
+  if (!id) {
+    return (
+      <div className="mx-auto max-w-[680px] flex flex-col gap-6 p-6">
+        <PageHeader title="Worker Not Found" description="This worker does not exist." />
+        <Link href="/labor/workers">
+          <Button variant="outline" className="rounded-lg w-fit">Back to Workers</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  if (worker === undefined) {
+    return (
+      <div className="mx-auto max-w-[680px] flex flex-col gap-6 p-6">
+        <p className="text-muted-foreground">Loading…</p>
+        <Link href="/labor/workers">
+          <Button variant="outline" className="rounded-lg w-fit">Back to Workers</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  if (worker === null) {
+    return (
+      <div className="mx-auto max-w-[680px] flex flex-col gap-6 p-6">
+        <PageHeader title="Worker Not Found" description="This worker does not exist." />
+        <Link href="/labor/workers">
+          <Button variant="outline" className="rounded-lg w-fit">Back to Workers</Button>
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-[680px] flex flex-col gap-6 p-6">
@@ -131,7 +176,7 @@ export default function WorkerDetailPage() {
             />
           </div>
           <p className="text-xs text-muted-foreground">
-            Created: {worker.createdAt} {usage.used ? "• Used in labor records" : "• Not used yet"}
+            Created: {worker.createdAt} {usageRes.used ? "• Used in labor records" : "• Not used yet"}
           </p>
         </div>
         <div className="mt-6 flex flex-wrap justify-end gap-2">
@@ -141,7 +186,7 @@ export default function WorkerDetailPage() {
           <Link href={`/labor/workers/${id}/statement`}>
             <Button variant="outline" className="rounded-lg">Statement</Button>
           </Link>
-          {usage.used ? (
+          {usageRes.used ? (
             <Button variant="outline" className="rounded-lg" disabled={status === "inactive"} onClick={handleDisable}>
               Disable
             </Button>

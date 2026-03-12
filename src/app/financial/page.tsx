@@ -14,14 +14,15 @@ import { getCashOverview, getARSummary } from "@/lib/data";
 import { Banknote, Receipt, CheckCircle, AlertCircle, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+export const dynamic = "force-dynamic";
+
 function formatMoney(amount: number): string {
   const formatted = `$${Math.abs(amount).toLocaleString()}`;
   return amount < 0 ? `−${formatted}` : formatted;
 }
 
-export default function FinancialPage() {
-  const cash = getCashOverview();
-  const ar = getARSummary();
+export default async function FinancialPage() {
+  const [cash, ar] = await Promise.all([getCashOverview(), getARSummary()]);
 
   const kpis = [
     { label: "Bank Balance", value: cash.bankBalance, icon: Banknote },
@@ -36,6 +37,9 @@ export default function FinancialPage() {
   return (
     <div className="page-container page-stack py-6">
       <PageHeader title="Financial" description="Financial overview and reports." />
+      <div className="flex items-center gap-4 text-sm text-muted-foreground border-b border-border/60 pb-3">
+        <Link href="/financial/dashboard" className="hover:text-foreground">Company Dashboard</Link>
+      </div>
 
       <section>
         <h2 className="text-lg font-semibold text-foreground mb-4">CASH OVERVIEW</h2>

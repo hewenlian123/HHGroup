@@ -1,5 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+function isMissingColumn(err: { message?: string } | null): boolean {
+  const m = err?.message ?? "";
+  return /column .* does not exist|does not exist.*column|schema cache/i.test(m);
+}
+
 export type CompanyProfile = {
   id: string;
   created_at: string;
@@ -11,6 +16,7 @@ export type CompanyProfile = {
   website: string | null;
   license_number: string | null;
   tax_id: string | null;
+  default_tax_pct: number | null;
   address1: string | null;
   address2: string | null;
   city: string | null;
@@ -34,6 +40,7 @@ const DEFAULT_PROFILE: CompanyProfileInput = {
   website: null,
   license_number: null,
   tax_id: null,
+  default_tax_pct: 0,
   address1: null,
   address2: null,
   city: null,
@@ -74,9 +81,17 @@ export async function ensureCompanyProfile(client: SupabaseClient): Promise<Comp
     .insert(DEFAULT_PROFILE)
     .select("*")
     .single();
-  if (error) throw new Error(error.message);
+  if (!error) return data as CompanyProfile;
 
-  return data as CompanyProfile;
+  if (isMissingColumn(error)) {
+    // Retry without newer columns (e.g. default_tax_pct not yet migrated).
+    const { default_tax_pct: _omit, ...baseProfile } = DEFAULT_PROFILE;
+    void _omit;
+    const retry = await client.from("company_profile").insert(baseProfile).select("*").single();
+    if (retry.error) throw new Error(retry.error.message);
+    return retry.data as CompanyProfile;
+  }
+  throw new Error(error.message);
 }
 
 export async function saveCompanyProfile(
@@ -90,9 +105,22 @@ export async function saveCompanyProfile(
     .eq("id", current.id)
     .select("*")
     .single();
-  if (error) throw new Error(error.message);
+  if (!error) return data as CompanyProfile;
 
-  return data as CompanyProfile;
+  if (isMissingColumn(error)) {
+    // Retry without columns that may not exist yet (e.g. default_tax_pct).
+    const { default_tax_pct: _omit, ...safeValues } = values as Partial<CompanyProfileInput> & { default_tax_pct?: unknown };
+    void _omit;
+    const retry = await client
+      .from("company_profile")
+      .update(safeValues)
+      .eq("id", current.id)
+      .select("*")
+      .single();
+    if (retry.error) throw new Error(retry.error.message);
+    return retry.data as CompanyProfile;
+  }
+  throw new Error(error.message);
 }
 
 export async function uploadCompanyLogo(

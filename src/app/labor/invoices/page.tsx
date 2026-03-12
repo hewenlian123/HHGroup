@@ -11,33 +11,54 @@ import { FilterBar } from "@/components/filter-bar";
 import { StatusBadge } from "@/components/status-badge";
 
 export default function LaborInvoicesPage() {
-  const [rows, setRows] = React.useState<LaborInvoice[]>(() => getLaborInvoices());
+  const [rows, setRows] = React.useState<LaborInvoice[]>([]);
   const [message, setMessage] = React.useState<string | null>(null);
   const [search, setSearch] = React.useState("");
   const [status, setStatus] = React.useState<"" | LaborInvoice["status"]>("");
   const [fromDate, setFromDate] = React.useState("");
   const [toDate, setToDate] = React.useState("");
-  const workers = React.useMemo(() => new Map(getWorkers().map((w) => [w.id, w.name])), []);
+  const [workers, setWorkers] = React.useState<Awaited<ReturnType<typeof getWorkers>>>([]);
 
-  const refresh = React.useCallback(() => setRows(getLaborInvoices()), []);
+  React.useEffect(() => {
+    let cancelled = false;
+    getLaborInvoices().then((list) => {
+      if (!cancelled) setRows(list);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
-  const handleDelete = (id: string) => {
+  React.useEffect(() => {
+    let cancelled = false;
+    getWorkers().then((list) => {
+      if (!cancelled) setWorkers(list);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  const workersMap = React.useMemo(() => new Map(workers.map((w) => [w.id, w.name])), [workers]);
+
+  const refresh = React.useCallback(async () => {
+    const list = await getLaborInvoices();
+    setRows(list);
+  }, []);
+
+  const handleDelete = async (id: string) => {
     const target = rows.find((r) => r.id === id);
     if (!target) return;
     if (target.status === "confirmed") {
       setMessage("Confirmed invoice cannot be deleted. Void it instead.");
       return;
     }
-    deleteLaborInvoice(id);
+    await deleteLaborInvoice(id);
     setMessage("Invoice deleted.");
-    refresh();
+    await refresh();
   };
 
-  const handleVoid = (id: string) => {
+  const handleVoid = async (id: string) => {
     if (!window.confirm("Void this invoice?")) return;
-    const updated = voidLaborInvoice(id);
+    const updated = await voidLaborInvoice(id);
     setMessage(updated ? "Invoice voided." : "Void failed.");
-    refresh();
+    await refresh();
   };
 
   const filtered = React.useMemo(() => {
@@ -47,10 +68,10 @@ export default function LaborInvoicesPage() {
       if (fromDate && r.invoiceDate < fromDate) return false;
       if (toDate && r.invoiceDate > toDate) return false;
       if (!q) return true;
-      const workerName = (workers.get(r.workerId) ?? "").toLowerCase();
+      const workerName = (workersMap.get(r.workerId) ?? "").toLowerCase();
       return r.invoiceNo.toLowerCase().includes(q) || workerName.includes(q);
     });
-  }, [rows, search, status, fromDate, toDate, workers]);
+  }, [rows, search, status, fromDate, toDate, workersMap]);
 
   return (
     <div className="page-container page-stack py-6">
@@ -102,7 +123,7 @@ export default function LaborInvoicesPage() {
               {filtered.map((row) => (
                 <tr key={row.id} className="group border-b border-zinc-100/50 dark:border-border/30">
                   <td className="py-3 px-4 font-medium text-foreground">{row.invoiceNo}</td>
-                  <td className="py-3 px-4">{workers.get(row.workerId) ?? "Unknown worker"}</td>
+                  <td className="py-3 px-4">{workersMap.get(row.workerId) ?? "Unknown worker"}</td>
                   <td className="py-3 px-4 tabular-nums">{row.invoiceDate}</td>
                   <td className="py-3 px-4 text-right tabular-nums">
                     {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(row.amount)}

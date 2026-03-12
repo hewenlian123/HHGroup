@@ -1,22 +1,122 @@
-import { PageHeader } from "@/components/page-header";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { getDashboardStats, getRecentTransactions, getProjectRiskOverview } from "@/lib/data";
+import {
+  getDashboardStats,
+  getProjects,
+  getRecentTransactions,
+  getProjectRiskOverview,
+  getSubcontractsWithDetailsAll,
+  getBillsSummaryAll,
+  getPaymentsSummaryAll,
+  getApBillsSummary,
+  getLaborCostThisWeek,
+  getExpensesThisMonth,
+  getOverdueInvoices,
+} from "@/lib/data";
+import { getCanonicalProjectProfit } from "@/lib/profit-engine";
 import { DollarSign, FolderKanban, TrendingUp, Wallet } from "lucide-react";
-import Link from "next/link";
-import { cn } from "@/lib/utils";
-import { KpiRow } from "@/components/kpi-row";
-import { SectionHeader } from "@/components/section-header";
-import { DataTable, type Column } from "@/components/data-table";
-import { StatusBadge } from "@/components/status-badge";
+import { DashboardView } from "./dashboard-view";
 
-export default function DashboardPage({
+export const dynamic = "force-dynamic";
+
+export default async function DashboardPage({
   searchParams,
 }: {
   searchParams?: { [key: string]: string | string[] | undefined };
 }) {
-  const stats = getDashboardStats();
-  const transactions = getRecentTransactions();
-  const riskOverview = getProjectRiskOverview();
+  const [stats, transactions, riskOverview, projects] = await Promise.all([
+    getDashboardStats(),
+    getRecentTransactions(20),
+    getProjectRiskOverview(),
+    getProjects(),
+  ]);
+  let subcontractsDetails: Awaited<ReturnType<typeof getSubcontractsWithDetailsAll>> = [];
+  let billsSummary: Awaited<ReturnType<typeof getBillsSummaryAll>> = [];
+  let paymentsSummary: Awaited<ReturnType<typeof getPaymentsSummaryAll>> = [];
+  try {
+    [subcontractsDetails, billsSummary, paymentsSummary] = await Promise.all([
+      getSubcontractsWithDetailsAll(),
+      getBillsSummaryAll(),
+      getPaymentsSummaryAll(),
+    ]);
+  } catch {
+    // Subcontract/bills/payments tables may not exist yet; use empty data.
+  }
+  let apBillsSummary: Awaited<ReturnType<typeof getApBillsSummary>> = {
+    totalOutstanding: 0,
+    overdueCount: 0,
+    overdueAmount: 0,
+    dueThisWeekCount: 0,
+    dueThisWeekAmount: 0,
+    paidThisMonthAmount: 0,
+  };
+  try {
+    apBillsSummary = await getApBillsSummary();
+  } catch {
+    // ap_bills may not exist yet.
+  }
+  let laborCostThisWeek = 0;
+  let expensesThisMonth = 0;
+  let overdueInvoices: Awaited<ReturnType<typeof getOverdueInvoices>> = [];
+  try {
+    [laborCostThisWeek, expensesThisMonth, overdueInvoices] = await Promise.all([
+      getLaborCostThisWeek(),
+      getExpensesThisMonth(),
+      getOverdueInvoices(),
+    ]);
+  } catch {
+    // labor_entries, expenses, or invoices may not exist yet.
+  }
+
+  const riskByProjectId = new Map(riskOverview.projects.map((r) => [r.projectId, r.riskLevel] as const));
+
+  const approvedBySubcontractId = new Map<string, number>();
+  for (const r of billsSummary) {
+    if (r.status !== "Approved" && r.status !== "Paid") continue;
+    const sum = (approvedBySubcontractId.get(r.subcontract_id) ?? 0) + r.amount;
+    approvedBySubcontractId.set(r.subcontract_id, sum);
+  }
+  const paidBySubcontractId = new Map<string, number>();
+  for (const r of paymentsSummary) {
+    const sum = (paidBySubcontractId.get(r.subcontract_id) ?? 0) + r.amount;
+    paidBySubcontractId.set(r.subcontract_id, sum);
+  }
+  const outstandingSubcontracts = subcontractsDetails
+    .map((s) => {
+      const approved = approvedBySubcontractId.get(s.id) ?? 0;
+      const paid = paidBySubcontractId.get(s.id) ?? 0;
+      const balance = approved - paid;
+      return { ...s, balance };
+    })
+    .filter((r) => r.balance > 0);
+
+  const projectHealthRows = await Promise.all(
+    projects.map(async (project) => {
+      let revenue = 0;
+      let actual = 0;
+      let profit = 0;
+      let marginPct = 0;
+      try {
+        const canonical = await getCanonicalProjectProfit(project.id);
+        revenue = canonical.revenue;
+        actual = canonical.actualCost;
+        profit = canonical.profit;
+        marginPct = canonical.margin * 100;
+      } catch {
+        // Missing columns or DB errors: do not crash dashboard; show zeros for this project.
+      }
+      const budget = project.budget ?? 0;
+      return {
+        id: project.id,
+        name: project.name,
+        revenue,
+        budget,
+        actual,
+        profit,
+        marginPct,
+      };
+    })
+  );
+  const projectProfitSummary = projectHealthRows.reduce((s, p) => s + p.profit, 0);
+
   const debugFlag = searchParams?.debug;
   const debugEnabled = debugFlag === "1" || debugFlag === "true";
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -31,136 +131,77 @@ export default function DashboardPage({
     { key: "total-profit", label: "Total Profit", value: `$${stats.totalProfit.toLocaleString()}`, icon: TrendingUp, emphasis: true },
   ];
 
-  type RiskRow = (typeof riskOverview.projects)[number];
-  const riskColumns: Column<RiskRow>[] = [
-    {
-      key: "projectName",
-      header: "Project",
-      render: (row) => (
-        <Link href={`/projects/${row.projectId}`} className="font-medium text-foreground hover:underline">
-          {row.projectName}
-        </Link>
-      ),
-    },
-    { key: "status", header: "Status", render: (row) => <span className="capitalize text-zinc-500 dark:text-zinc-400">{row.status}</span> },
-    { key: "riskLevel", header: "Risk", render: (row) => <StatusBadge status={row.riskLevel === "HIGH" ? "Over budget" : row.riskLevel === "MEDIUM" ? "At risk" : "On track"} /> },
-    { key: "triggers", header: "Triggers", render: (row) => <span className="text-muted-foreground">{row.triggers.length ? row.triggers.join(", ") : "—"}</span> },
-    {
-      key: "budgetVar",
-      header: "Budget Var",
-      align: "right",
-      className: "tabular-nums",
-      render: (row) => (row.budgetVar == null ? "—" : `${row.budgetVar >= 0 ? "+" : "−"}$${Math.abs(row.budgetVar).toLocaleString()}`),
-    },
-    {
-      key: "laborVar",
-      header: "Labor Var",
-      align: "right",
-      className: "tabular-nums",
-      render: (row) => (row.laborVar == null ? "—" : `${row.laborVar >= 0 ? "+" : "−"}$${Math.abs(row.laborVar).toLocaleString()}`),
-    },
-    {
-      key: "runwayWeeks",
-      header: "Runway",
-      align: "right",
-      className: "tabular-nums",
-      render: (row) => (row.runwayWeeks == null ? "—" : `${row.runwayWeeks.toFixed(1)}w`),
-    },
-    {
-      key: "actions",
-      header: "Actions",
-      align: "right",
-      render: (row) => (
-        <div className="flex items-center justify-end gap-2 opacity-0 transition-opacity group-hover:opacity-100">
-          <Link href={`/projects/${row.projectId}`} className="text-xs text-muted-foreground hover:text-foreground">
-            View Project
-          </Link>
-          {row.sourceEstimateId ? (
-            <Link href={`/estimates/${row.sourceEstimateId}`} className="text-xs text-muted-foreground hover:text-foreground">
-              View Estimate
-            </Link>
-          ) : null}
-        </div>
-      ),
-    },
-  ];
+  const highRiskProjects = riskOverview.projects.filter((p) => p.riskLevel === "HIGH").slice(0, 3);
+  const upcomingTasks: Array<{ id: string; title: string; meta: string; due: string }> = [
+    ...(riskOverview.summary.overBudgetCount > 0
+      ? [
+          {
+            id: "task-over-budget",
+            title: "Review projects over budget",
+            meta: `${riskOverview.summary.overBudgetCount} flagged`,
+            due: "Today",
+          },
+        ]
+      : []),
+    ...(riskOverview.summary.lowRunwayCount > 0
+      ? [
+          {
+            id: "task-runway",
+            title: "Follow up on low runway projects",
+            meta: `${riskOverview.summary.lowRunwayCount} flagged`,
+            due: "This week",
+          },
+        ]
+      : []),
+    ...(riskOverview.summary.laborOverCount > 0
+      ? [
+          {
+            id: "task-labor",
+            title: "Check labor overages",
+            meta: `${riskOverview.summary.laborOverCount} flagged`,
+            due: "This week",
+          },
+        ]
+      : []),
+    ...highRiskProjects.map((p) => ({
+      id: `task-risk-${p.projectId}`,
+      title: `Review risk: ${p.projectName}`,
+      meta: p.triggers.length ? p.triggers.join(", ") : "High risk",
+      due: p.runwayWeeks != null && p.runwayWeeks < 2 ? "Today" : "This week",
+    })),
+  ]
+    .slice(0, 6)
+    .map((t, i) => ({ ...t, id: `${t.id}-${i}` }));
 
-  type TxRow = (typeof transactions)[number];
-  const txColumns: Column<TxRow>[] = [
-    { key: "date", header: "Date", className: "tabular-nums text-muted-foreground" },
-    { key: "project", header: "Project" },
-    { key: "type", header: "Type", render: (row) => <span className="capitalize text-muted-foreground">{row.type}</span> },
-    {
-      key: "amount",
-      header: "Amount",
-      align: "right",
-      className: "tabular-nums",
-      render: (row) => (
-        <span className={cn(row.amount < 0 && "text-red-600/80", row.amount > 0 && "text-emerald-700/80")}>
-          {row.amount >= 0 ? "" : "−"}${Math.abs(row.amount).toLocaleString()}
-        </span>
-      ),
-    },
-    { key: "note", header: "Note", className: "text-muted-foreground" },
-  ];
+  const recentActivity = transactions.slice(0, 8);
 
-  return (
-    <div className="page-container page-stack py-6">
-      <PageHeader title="Dashboard" subtitle="Overview of projects and finances." />
-      {debugEnabled ? (
-        <div className="rounded-lg border border-zinc-200/60 bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-          Supabase URL configured: {supabaseUrl ? "YES" : "NO"} ({maskTail(supabaseUrl)}) | Anon key configured:{" "}
-          {supabaseAnonKey ? "YES" : "NO"} ({maskTail(supabaseAnonKey)})
-        </div>
-      ) : null}
-      <KpiRow items={kpis} />
-      <section className="section-stack">
-        <Card className="rounded-2xl border border-zinc-200/40 dark:border-border overflow-hidden">
-          <CardHeader>
-            <SectionHeader title="Project Risk Overview" subtitle="Owner-only. Auto flags over-budget, labor risk, and low runway." />
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="rounded-xl border border-zinc-200/60 dark:border-border bg-card px-4 py-3">
-                <p className="text-xs uppercase tracking-wider text-muted-foreground">High Risk</p>
-                <p className="text-xl font-semibold tabular-nums text-zinc-800 dark:text-zinc-100">{riskOverview.summary.highCount}</p>
-              </div>
-              <div className="rounded-xl border border-zinc-200/60 dark:border-border bg-card px-4 py-3">
-                <p className="text-xs uppercase tracking-wider text-muted-foreground">Over Budget</p>
-                <p className="text-xl font-bold tabular-nums text-foreground">{riskOverview.summary.overBudgetCount}</p>
-              </div>
-              <div className="rounded-xl border border-zinc-200/60 dark:border-border bg-card px-4 py-3">
-                <p className="text-xs uppercase tracking-wider text-muted-foreground">Labor Over</p>
-                <p className="text-xl font-bold tabular-nums text-foreground">{riskOverview.summary.laborOverCount}</p>
-              </div>
-              <div className="rounded-xl border border-zinc-200/60 dark:border-border bg-card px-4 py-3">
-                <p className="text-xs uppercase tracking-wider text-muted-foreground">Low Runway</p>
-                <p className="text-xl font-bold tabular-nums text-foreground">{riskOverview.summary.lowRunwayCount}</p>
-              </div>
-            </div>
-            <div className="overflow-x-auto rounded-xl border border-zinc-200/60 dark:border-border">
-              <DataTable
-                columns={riskColumns}
-                data={riskOverview.projects}
-                keyExtractor={(row) => row.projectId}
-                emptyText="No data yet."
-                rowClassName="group"
-                zebra
-              />
-            </div>
-          </CardContent>
-        </Card>
-      </section>
-      <section className="section-stack">
-        <Card className="rounded-2xl border border-zinc-200/40 dark:border-border overflow-hidden shadow-sm">
-          <CardHeader>
-            <SectionHeader title="Recent Transactions" subtitle="Latest financial activities across projects." />
-          </CardHeader>
-          <CardContent>
-            <DataTable columns={txColumns} data={transactions} keyExtractor={(row) => row.id} emptyText="No data yet." zebra />
-          </CardContent>
-        </Card>
-      </section>
-    </div>
-  );
+  const budgetUsagePct = stats.totalBudget > 0 ? Math.min(100, (stats.totalSpent / stats.totalBudget) * 100) : 0;
+  const profitPositive = stats.totalProfit >= 0;
+
+  return DashboardView({
+    stats,
+    transactions,
+    riskOverview,
+    projects,
+    subcontractsDetails,
+    billsSummary,
+    paymentsSummary,
+    apBillsSummary,
+    laborCostThisWeek,
+    expensesThisMonth,
+    overdueInvoices,
+    riskByProjectId,
+    outstandingSubcontracts,
+    projectHealthRows,
+    projectProfitSummary,
+    debugEnabled,
+    supabaseUrl,
+    supabaseAnonKey,
+    maskTail,
+    kpis,
+    upcomingTasks,
+    recentActivity,
+    budgetUsagePct,
+    profitPositive,
+  });
 }
