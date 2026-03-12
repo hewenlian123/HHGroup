@@ -118,25 +118,25 @@ export function Sidebar({
 
   const linkClass = (active: boolean) =>
     cn(
-      "flex h-9 items-center rounded-md text-sm transition-colors",
+      "flex h-8 items-center rounded-md text-sm transition-colors",
       collapsed ? "justify-center px-2" : "gap-2 px-2.5",
       active
-        ? "bg-[#E5E7EB] text-foreground"
-        : "text-muted-foreground hover:bg-[#F3F4F6] hover:text-foreground"
+        ? "bg-gray-100 text-[#111111] font-medium"
+        : "text-[#6B7280] hover:bg-gray-50 hover:text-[#111111]"
     );
 
   return (
     <aside
       className={cn(
-        "flex h-full shrink-0 flex-col border-r border-[#E5E7EB] bg-white dark:border-border dark:bg-zinc-950/60",
+        "flex h-full shrink-0 flex-col border-r border-[#E5E7EB] bg-white",
         collapsed ? "w-16" : "w-[260px]",
         className
       )}
     >
       <div
         className={cn(
-          "flex h-14 items-center gap-2 border-b border-[#E5E7EB] dark:border-border",
-          collapsed ? "px-3" : "px-4"
+          "flex h-12 items-center gap-2 border-b border-[#E5E7EB]",
+          collapsed ? "px-3" : "px-3"
         )}
       >
         <Avatar className="h-7 w-7 rounded-md">
@@ -147,10 +147,10 @@ export function Sidebar({
         </Avatar>
         {!collapsed && (
           <div className="min-w-0">
-            <p className="truncate text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+            <p className="truncate text-[11px] font-medium uppercase tracking-wide text-gray-400">
               HH Unified
             </p>
-            <p className="truncate text-sm font-semibold text-foreground">{orgName}</p>
+            <p className="truncate text-sm font-semibold text-[#111111]">{orgName}</p>
           </div>
         )}
       </div>
@@ -171,11 +171,11 @@ export function Sidebar({
         </div>
 
         {/* Sections — 20px between sections, 4px between items */}
-        <div className={cn("flex flex-col gap-5", collapsed && "gap-3")} style={{ marginTop: 20 }}>
+        <div className={cn("flex flex-col gap-4", collapsed && "gap-3")} style={{ marginTop: 16 }}>
           {sections.map((section) => (
-            <div key={section.label} className="flex flex-col gap-1">
+            <div key={section.label} className="flex flex-col gap-0.5">
               {!collapsed && (
-                <p className="px-2.5 pb-1 text-[11px] font-medium uppercase tracking-wider text-gray-500 dark:text-muted-foreground" style={{ marginBottom: 4 }}>
+                <p className="px-2.5 pb-1 text-[11px] font-medium uppercase tracking-wide text-gray-400">
                   {section.label}
                 </p>
               )}
@@ -225,12 +225,12 @@ export function Sidebar({
       </nav>
 
       {/* Collapse button at bottom */}
-      <div className="border-t border-[#E5E7EB] p-2 dark:border-border">
+      <div className="border-t border-[#E5E7EB] p-2">
         <button
           type="button"
           onClick={onToggleCollapsed}
           className={cn(
-            "flex h-9 w-full items-center rounded-md text-sm text-muted-foreground transition-colors hover:bg-[#F3F4F6] hover:text-foreground",
+            "flex h-8 w-full items-center rounded-md text-sm text-[#6B7280] transition-colors hover:bg-gray-50 hover:text-[#111111]",
             collapsed ? "justify-center px-2" : "gap-2 px-2.5"
           )}
           aria-label="Collapse sidebar"

@@ -85,7 +85,7 @@ export function DataTable<T>({
                 <TableRow
                   key={id}
                   className={cn(
-                    "table-row-compact cursor-pointer border-b border-border/40 transition-colors hover:bg-muted/30",
+                    "table-row-compact cursor-pointer border-b border-[#E5E7EB] transition-colors hover:bg-gray-50",
                     onRowClick && "cursor-pointer"
                   )}
                   onClick={(e) => {
@@ -150,19 +150,19 @@ export function DataTable<T>({
           return (
             <div
               key={id}
-              className="rounded-lg border border-border/60 bg-background p-4 shadow-[var(--shadow-1)]"
+              className="rounded-lg border border-[#E5E7EB] bg-white p-3"
               role={onRowClick ? "button" : undefined}
               tabIndex={onRowClick ? 0 : undefined}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
               onKeyDown={onRowClick ? (e) => e.key === "Enter" && onRowClick(row) : undefined}
             >
-              <div className="text-base font-medium text-foreground">
+              <div className="text-sm font-medium text-[#111111]">
                 {titleCol ? getCellContent(row, titleCol) : null}
               </div>
               <dl className="mt-3 space-y-2">
                 {columns.slice(1).map((col) => (
                   <div key={col.key} className="flex justify-between gap-2 text-sm">
-                    <dt className="text-muted-foreground">{col.header}</dt>
+                    <dt className="text-[#6B7280]">{col.header}</dt>
                     <dd className={cn(col.numeric && "text-right tabular-nums")}>
                       {getCellContent(row, col)}
                     </dd>

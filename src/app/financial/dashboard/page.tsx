@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getCompanyFinancialDashboard } from "@/lib/data";
-import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
+import { PageLayout, PageHeader, SectionHeader } from "@/components/base";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +28,7 @@ export default async function CompanyFinancialDashboardPage() {
           title="Company Financial Dashboard"
           description="Portfolio totals: budget, spent, revenue, collected, profit, cashflow."
           actions={
-            <Link href="/financial" className="text-sm text-muted-foreground hover:text-foreground">
+            <Link href="/financial" className="text-sm text-[#6B7280] hover:text-[#111111]">
               Financial
             </Link>
           }
@@ -36,21 +36,14 @@ export default async function CompanyFinancialDashboardPage() {
       }
     >
       <SectionHeader label="Metrics" />
-      <Divider />
-      <div className="grid grid-cols-3 gap-x-8 gap-y-4 py-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6 mt-2">
         {metrics.map((m) => (
-          <div
-            key={m.label}
-            className="flex justify-between items-baseline border-b border-border/40 pb-2"
-          >
-            <span className="text-sm text-muted-foreground">{m.label}</span>
+          <div key={m.label} className="kpi-metric">
+            <span className="kpi-metric-label">{m.label}</span>
             <span
               className={cn(
-                "tabular-nums text-right font-medium",
-                m.positiveGood !== undefined &&
-                  (m.value >= 0
-                    ? "text-emerald-600 dark:text-emerald-400"
-                    : "text-red-600 dark:text-red-400")
+                "kpi-metric-value mt-0.5 block",
+                m.positiveGood !== undefined && (m.value >= 0 ? "text-green-600" : "text-red-600")
               )}
             >
               {m.value >= 0 ? "" : "−"}${fmtUsd(Math.abs(m.value))}

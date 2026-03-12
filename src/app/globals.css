@@ -6,50 +6,58 @@
   .text-balance {
     text-wrap: balance;
   }
+  /* Premium SaaS: centered content, compact max width */
   .page-container {
-    @apply mx-auto w-full max-w-[1320px] px-4 sm:px-4 md:px-6 lg:px-8;
+    @apply mx-auto w-full max-w-6xl px-4 sm:px-4 md:px-5 lg:px-6;
   }
   .page-stack {
-    @apply flex flex-col gap-4 md:gap-5;
+    @apply flex flex-col gap-6;
   }
   .section-stack {
     @apply flex flex-col gap-3;
   }
   .table-head-label {
-    @apply text-[11px] uppercase tracking-[0.08em] text-muted-foreground font-medium;
+    @apply text-xs font-medium uppercase tracking-wide text-gray-500;
   }
   .table-row-compact {
-    @apply h-11;
+    @apply h-10;
   }
   .num {
     @apply text-right tabular-nums;
   }
   .date-text {
-    @apply tabular-nums text-muted-foreground;
+    @apply tabular-nums text-gray-500;
   }
-  /* Mobile-friendly forms: full width, comfortable tap targets */
+  /* Compact KPI metric cell */
+  .kpi-metric {
+    @apply rounded-lg border border-[#E5E7EB] bg-white px-4 py-3;
+  }
+  .kpi-metric-label {
+    @apply text-xs font-medium uppercase tracking-wide text-gray-500;
+  }
+  .kpi-metric-value {
+    @apply text-base font-semibold text-[#111111];
+  }
+  /* Mobile-friendly forms */
   .form-mobile-friendly input,
   .form-mobile-friendly select,
   .form-mobile-friendly textarea {
     @apply min-h-[44px] w-full rounded-lg md:min-h-0;
   }
   .form-mobile-friendly .form-actions button {
-    @apply h-11 w-full rounded-lg md:h-9 md:w-auto;
+    @apply h-11 w-full rounded-lg md:h-10 md:w-auto;
   }
-  /* Touch-friendly minimum tap area */
   .touch-target {
     @apply min-h-[44px] min-w-[44px];
   }
-
-  /* Linear-style layout primitives */
   .ui-divider {
-    @apply border-b border-border/60;
+    @apply border-b border-[#E5E7EB];
   }
   .ui-section {
     @apply py-2;
   }
   .ui-section-label {
-    @apply text-sm font-semibold text-foreground;
+    @apply text-sm font-semibold uppercase tracking-wide text-gray-500;
   }
 }
 
@@ -152,7 +160,7 @@
 
 @layer base {
   body {
-    @apply bg-background text-foreground;
+    @apply bg-[#F7F7F8] text-[#111111];
   }
 }
 

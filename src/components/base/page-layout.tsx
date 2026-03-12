@@ -23,11 +23,11 @@ export function PageHeader({
     <header className={cn("flex flex-col gap-1", className)}>
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-xl font-semibold tracking-tight text-foreground">
+          <h1 className="text-2xl font-semibold tracking-tight text-[#111111]">
             {title}
           </h1>
           {description ? (
-            <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>
+            <p className="mt-0.5 text-xs text-[#6B7280]">{description}</p>
           ) : null}
         </div>
         {rightContent}
@@ -36,9 +36,9 @@ export function PageHeader({
   );
 }
 
-/** Horizontal divider using design tokens (border only, no heavy shadow). */
+/** Horizontal divider using design tokens (border only). */
 export function Divider({ className }: { className?: string }) {
-  return <div className={cn("ui-divider border-b border-border/60", className)} />;
+  return <div className={cn("ui-divider border-b border-[#E5E7EB]", className)} />;
 }
 
 /** Bar for primary page actions (left/right slots). Uses Phase 1 layout. */
@@ -56,7 +56,7 @@ export function ActionBar({
   return (
     <div
       className={cn(
-        "flex flex-col gap-2 border-b border-border/60 pb-3 sm:flex-row sm:items-center sm:justify-between",
+        "flex flex-col gap-2 border-b border-[#E5E7EB] pb-3 sm:flex-row sm:items-center sm:justify-between",
         className
       )}
     >
@@ -96,7 +96,7 @@ export function PageLayout({
   className?: string;
 }) {
   return (
-    <div className={cn("page-stack flex flex-col", className)}>
+    <div className={cn("page-container page-stack flex flex-col py-4", className)}>
       {header}
       {actionBar}
       <Divider />

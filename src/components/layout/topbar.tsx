@@ -52,33 +52,33 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar?: () => void }) {
   }, []);
 
   return (
-    <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-zinc-200/60 bg-white px-4 backdrop-blur supports-[backdrop-filter]:bg-white/90 md:px-6 dark:border-border dark:bg-background/90">
+    <header className="sticky top-0 z-40 flex h-12 items-center justify-between border-b border-[#E5E7EB] bg-white px-4 md:px-5">
       <div
-        className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,hsl(var(--primary)/0.08),transparent)]"
+        className="absolute inset-0 -z-10"
         aria-hidden
       />
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <Button
           variant="ghost"
           size="icon"
-          className="h-11 min-h-[44px] min-w-[44px] shrink-0 md:hidden"
+          className="h-10 min-h-[44px] min-w-[44px] shrink-0 md:hidden"
           aria-label="Open navigation"
           onClick={onOpenSidebar}
         >
           <PanelLeft className="h-5 w-5" />
         </Button>
         <div className="flex min-w-0 flex-1 flex-col md:flex-row md:items-center md:gap-1">
-          <span className="truncate text-base font-semibold text-foreground md:hidden">
+          <span className="truncate text-base font-semibold text-[#111111] md:hidden">
             {crumbs.length > 0 ? crumbs[crumbs.length - 1] : "Dashboard"}
           </span>
-          <nav className="hidden min-w-0 items-center gap-1 text-sm text-muted-foreground md:flex" aria-label="Breadcrumb">
-            <span className="truncate text-[11px] uppercase tracking-[0.1em] text-muted-foreground">{orgName}</span>
+          <nav className="hidden min-w-0 items-center gap-1 text-sm text-[#6B7280] md:flex" aria-label="Breadcrumb">
+            <span className="truncate text-[11px] font-medium uppercase tracking-wide text-gray-400">{orgName}</span>
             <ChevronRight className="h-4 w-4 shrink-0 opacity-50" />
             <div className="flex min-w-0 items-center gap-1">
               {crumbs.slice(0, 3).map((c, i) => (
                 <React.Fragment key={`${c}-${i}`}>
                   {i > 0 && <ChevronRight className="h-4 w-4 shrink-0 opacity-40" />}
-                  <span className={cn("truncate", i === crumbs.length - 1 ? "text-foreground" : undefined)}>{c}</span>
+                  <span className={cn("truncate", i === crumbs.length - 1 ? "text-[#111111]" : undefined)}>{c}</span>
                 </React.Fragment>
               ))}
             </div>
@@ -86,19 +86,19 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar?: () => void }) {
         </div>
         <button
           type="button"
-          className="ml-1 hidden w-[420px] max-w-[36vw] items-center gap-2 rounded-md border border-zinc-200/70 bg-background px-3 py-2 text-sm text-muted-foreground hover:bg-zinc-50 dark:border-border dark:hover:bg-muted/30 lg:flex"
+          className="ml-1 hidden w-[380px] max-w-[36vw] items-center gap-2 rounded-lg border border-[#E5E7EB] bg-[#F7F7F8] px-3 py-2 text-sm text-[#6B7280] hover:bg-gray-50 lg:flex"
           aria-label="Search (Command Palette)"
         >
           <Search className="h-4 w-4 shrink-0" />
           <span className="truncate">Search or jump to…</span>
-          <span className="ml-auto rounded border border-zinc-200/70 bg-zinc-50 px-1.5 py-0.5 text-[11px] text-muted-foreground dark:border-border dark:bg-muted/30">
+          <span className="ml-auto rounded border border-[#E5E7EB] bg-white px-1.5 py-0.5 text-[11px] text-[#6B7280]">
             ⌘K
           </span>
         </button>
         <Button
           variant="ghost"
           size="icon"
-          className="h-11 min-h-[44px] min-w-[44px] shrink-0 lg:hidden"
+          className="h-10 min-h-[44px] min-w-[44px] shrink-0 lg:hidden"
           aria-label="Search"
         >
           <Search className="h-4 w-4" />
@@ -107,7 +107,7 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar?: () => void }) {
       <div className="flex shrink-0 items-center gap-1">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button className="hidden h-9 min-h-[44px] rounded-md px-3 sm:flex" size="sm">
+            <Button className="hidden h-10 min-h-[44px] rounded-lg px-4 sm:flex" size="sm">
               <Plus className="mr-2 h-4 w-4" />
               New
             </Button>
@@ -130,14 +130,14 @@ export function Topbar({ onOpenSidebar }: { onOpenSidebar?: () => void }) {
         <Button
           variant="ghost"
           size="icon"
-          className="h-11 min-h-[44px] min-w-[44px] rounded-full"
+          className="h-10 min-h-[44px] min-w-[44px] rounded-full"
           aria-label="Notifications"
         >
           <Bell className="h-4 w-4" />
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-11 min-h-[44px] min-w-[44px] rounded-full">
+            <Button variant="ghost" className="relative h-10 min-h-[44px] min-w-[44px] rounded-full">
               <Avatar className="h-9 w-9">
                 {logoUrl ? <AvatarImage src={logoUrl} alt={orgName} className="object-contain" /> : null}
                 <AvatarFallback className="bg-primary/10 text-primary text-sm">

@@ -1,5 +1,142 @@
 {
-  "node": {},
+  "node": {
+    "14b1608fdf3f4f0e47bc18c5ca030b978f02ba3c": {
+      "workers": {
+        "app/projects/page": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fprojects%2Factions.ts%22%2C%5B%22archiveProjectAction%22%2C%22getProjectUsageAction%22%2C%22deleteProjectAction%22%2C%22createProjectAction%22%5D%5D%5D&__client_imported__=true!",
+        "app/projects/[id]/page": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fdocuments%2Factions.ts%22%2C%5B%22deleteDocumentAction%22%2C%22uploadDocument%22%2C%22getDocumentDownloadUrl%22%2C%22getDocumentPreviewUrl%22%5D%5D%2C%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fprojects%2F%5Bid%5D%2Fdocuments%2Factions.ts%22%2C%5B%22uploadProjectDocument%22%5D%5D%2C%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fprojects%2Factions.ts%22%2C%5B%22archiveProjectAction%22%2C%22getProjectUsageAction%22%2C%22deleteProjectAction%22%2C%22createProjectAction%22%5D%5D%5D&__client_imported__=true!"
+      },
+      "layer": {
+        "app/projects/page": "action-browser",
+        "app/projects/[id]/page": "action-browser"
+      }
+    },
+    "cdb98d1f85c63c3900c231086f8a4bd8c0601705": {
+      "workers": {
+        "app/projects/page": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fprojects%2Factions.ts%22%2C%5B%22archiveProjectAction%22%2C%22getProjectUsageAction%22%2C%22deleteProjectAction%22%2C%22createProjectAction%22%5D%5D%5D&__client_imported__=true!",
+        "app/projects/[id]/page": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fdocuments%2Factions.ts%22%2C%5B%22deleteDocumentAction%22%2C%22uploadDocument%22%2C%22getDocumentDownloadUrl%22%2C%22getDocumentPreviewUrl%22%5D%5D%2C%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fprojects%2F%5Bid%5D%2Fdocuments%2Factions.ts%22%2C%5B%22uploadProjectDocument%22%5D%5D%2C%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fprojects%2Factions.ts%22%2C%5B%22archiveProjectAction%22%2C%22getProjectUsageAction%22%2C%22deleteProjectAction%22%2C%22createProjectAction%22%5D%5D%5D&__client_imported__=true!"
+      },
+      "layer": {
+        "app/projects/page": "action-browser",
+        "app/projects/[id]/page": "action-browser"
+      }
+    },
+    "d4f376df1f174b7f3a5cb5f0d3c7cab9ababad26": {
+      "workers": {
+        "app/projects/page": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fprojects%2Factions.ts%22%2C%5B%22archiveProjectAction%22%2C%22getProjectUsageAction%22%2C%22deleteProjectAction%22%2C%22createProjectAction%22%5D%5D%5D&__client_imported__=true!",
+        "app/projects/[id]/page": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fdocuments%2Factions.ts%22%2C%5B%22deleteDocumentAction%22%2C%22uploadDocument%22%2C%22getDocumentDownloadUrl%22%2C%22getDocumentPreviewUrl%22%5D%5D%2C%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fprojects%2F%5Bid%5D%2Fdocuments%2Factions.ts%22%2C%5B%22uploadProjectDocument%22%5D%5D%2C%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fprojects%2Factions.ts%22%2C%5B%22archiveProjectAction%22%2C%22getProjectUsageAction%22%2C%22deleteProjectAction%22%2C%22createProjectAction%22%5D%5D%5D&__client_imported__=true!"
+      },
+      "layer": {
+        "app/projects/page": "action-browser",
+        "app/projects/[id]/page": "action-browser"
+      }
+    },
+    "d6c81c2a4fb95db5b335197ad0c427e44f320fe1": {
+      "workers": {
+        "app/projects/page": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fprojects%2Factions.ts%22%2C%5B%22archiveProjectAction%22%2C%22getProjectUsageAction%22%2C%22deleteProjectAction%22%2C%22createProjectAction%22%5D%5D%5D&__client_imported__=true!",
+        "app/projects/[id]/page": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fdocuments%2Factions.ts%22%2C%5B%22deleteDocumentAction%22%2C%22uploadDocument%22%2C%22getDocumentDownloadUrl%22%2C%22getDocumentPreviewUrl%22%5D%5D%2C%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fprojects%2F%5Bid%5D%2Fdocuments%2Factions.ts%22%2C%5B%22uploadProjectDocument%22%5D%5D%2C%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fprojects%2Factions.ts%22%2C%5B%22archiveProjectAction%22%2C%22getProjectUsageAction%22%2C%22deleteProjectAction%22%2C%22createProjectAction%22%5D%5D%5D&__client_imported__=true!"
+      },
+      "layer": {
+        "app/projects/page": "action-browser",
+        "app/projects/[id]/page": "action-browser"
+      }
+    },
+    "0b9d2def145c8091d04813e580c8e5e9c0c757a2": {
+      "workers": {
+        "app/projects/[id]/page": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fdocuments%2Factions.ts%22%2C%5B%22deleteDocumentAction%22%2C%22uploadDocument%22%2C%22getDocumentDownloadUrl%22%2C%22getDocumentPreviewUrl%22%5D%5D%2C%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fprojects%2F%5Bid%5D%2Fdocuments%2Factions.ts%22%2C%5B%22uploadProjectDocument%22%5D%5D%2C%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fprojects%2Factions.ts%22%2C%5B%22archiveProjectAction%22%2C%22getProjectUsageAction%22%2C%22deleteProjectAction%22%2C%22createProjectAction%22%5D%5D%5D&__client_imported__=true!"
+      },
+      "layer": {
+        "app/projects/[id]/page": "action-browser"
+      }
+    },
+    "0e251a1e933ec9e483261e8bc625deeefff595fc": {
+      "workers": {
+        "app/projects/[id]/page": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fdocuments%2Factions.ts%22%2C%5B%22deleteDocumentAction%22%2C%22uploadDocument%22%2C%22getDocumentDownloadUrl%22%2C%22getDocumentPreviewUrl%22%5D%5D%2C%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fprojects%2F%5Bid%5D%2Fdocuments%2Factions.ts%22%2C%5B%22uploadProjectDocument%22%5D%5D%2C%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fprojects%2Factions.ts%22%2C%5B%22archiveProjectAction%22%2C%22getProjectUsageAction%22%2C%22deleteProjectAction%22%2C%22createProjectAction%22%5D%5D%5D&__client_imported__=true!"
+      },
+      "layer": {
+        "app/projects/[id]/page": "action-browser"
+      }
+    },
+    "30e8a3cdfd5392d39f505d52ace3e174521e92b6": {
+      "workers": {
+        "app/projects/[id]/page": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fdocuments%2Factions.ts%22%2C%5B%22deleteDocumentAction%22%2C%22uploadDocument%22%2C%22getDocumentDownloadUrl%22%2C%22getDocumentPreviewUrl%22%5D%5D%2C%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fprojects%2F%5Bid%5D%2Fdocuments%2Factions.ts%22%2C%5B%22uploadProjectDocument%22%5D%5D%2C%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fprojects%2Factions.ts%22%2C%5B%22archiveProjectAction%22%2C%22getProjectUsageAction%22%2C%22deleteProjectAction%22%2C%22createProjectAction%22%5D%5D%5D&__client_imported__=true!"
+      },
+      "layer": {
+        "app/projects/[id]/page": "action-browser"
+      }
+    },
+    "a7476abce66f2b7039b3bcb7093eb59b89f8ba30": {
+      "workers": {
+        "app/projects/[id]/page": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fdocuments%2Factions.ts%22%2C%5B%22deleteDocumentAction%22%2C%22uploadDocument%22%2C%22getDocumentDownloadUrl%22%2C%22getDocumentPreviewUrl%22%5D%5D%2C%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fprojects%2F%5Bid%5D%2Fdocuments%2Factions.ts%22%2C%5B%22uploadProjectDocument%22%5D%5D%2C%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fprojects%2Factions.ts%22%2C%5B%22archiveProjectAction%22%2C%22getProjectUsageAction%22%2C%22deleteProjectAction%22%2C%22createProjectAction%22%5D%5D%5D&__client_imported__=true!"
+      },
+      "layer": {
+        "app/projects/[id]/page": "action-browser"
+      }
+    },
+    "48093c93b1324a068f940a422827d1b31a6b0abc": {
+      "workers": {
+        "app/projects/[id]/page": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fdocuments%2Factions.ts%22%2C%5B%22deleteDocumentAction%22%2C%22uploadDocument%22%2C%22getDocumentDownloadUrl%22%2C%22getDocumentPreviewUrl%22%5D%5D%2C%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fprojects%2F%5Bid%5D%2Fdocuments%2Factions.ts%22%2C%5B%22uploadProjectDocument%22%5D%5D%2C%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fprojects%2Factions.ts%22%2C%5B%22archiveProjectAction%22%2C%22getProjectUsageAction%22%2C%22deleteProjectAction%22%2C%22createProjectAction%22%5D%5D%5D&__client_imported__=true!"
+      },
+      "layer": {
+        "app/projects/[id]/page": "action-browser"
+      }
+    },
+    "3b0c1641afa124abee423778c95945c05ecb7a63": {
+      "workers": {
+        "app/estimates/page": "(rsc)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Festimates%2Factions.ts%22%2C%5B%22createTestEstimateAction%22%2C%22deleteEstimateAction%22%5D%5D%5D&__client_imported__=!"
+      },
+      "layer": {
+        "app/estimates/page": "rsc"
+      }
+    },
+    "a1b716e50a05a6abd0543a587ea415329e847666": {
+      "workers": {
+        "app/estimates/page": "(rsc)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Festimates%2Factions.ts%22%2C%5B%22createTestEstimateAction%22%2C%22deleteEstimateAction%22%5D%5D%5D&__client_imported__=!"
+      },
+      "layer": {
+        "app/estimates/page": "rsc"
+      }
+    },
+    "2b6013063c748e667e3c79fed39cfe92201cc30b": {
+      "workers": {
+        "app/bills/page": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fbills%2Factions.ts%22%2C%5B%22deleteBillDraftAction%22%2C%22voidBillAction%22%5D%5D%5D&__client_imported__=true!"
+      },
+      "layer": {
+        "app/bills/page": "action-browser"
+      }
+    },
+    "be04ba3f2e349e411c677c41cf42d1559093fd5d": {
+      "workers": {
+        "app/bills/page": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fbills%2Factions.ts%22%2C%5B%22deleteBillDraftAction%22%2C%22voidBillAction%22%5D%5D%5D&__client_imported__=true!"
+      },
+      "layer": {
+        "app/bills/page": "action-browser"
+      }
+    },
+    "6b35b90e4a0d3df16077aca285816775eca9a24f": {
+      "workers": {
+        "app/workers/page": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fworkers%2Factions.ts%22%2C%5B%22createWorkerAction%22%2C%22updateWorkerAction%22%2C%22deleteWorkerAction%22%5D%5D%5D&__client_imported__=true!"
+      },
+      "layer": {
+        "app/workers/page": "action-browser"
+      }
+    },
+    "6f616e4a44b480d712d782ef02fedd8117a78bba": {
+      "workers": {
+        "app/workers/page": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fworkers%2Factions.ts%22%2C%5B%22createWorkerAction%22%2C%22updateWorkerAction%22%2C%22deleteWorkerAction%22%5D%5D%5D&__client_imported__=true!"
+      },
+      "layer": {
+        "app/workers/page": "action-browser"
+      }
+    },
+    "921d4ad7493d20b44449bf24da406476dd15a8d8": {
+      "workers": {
+        "app/workers/page": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Fsolidcore%2FDesktop%2FHH%20Group%2Fhh-unified-web%2Fsrc%2Fapp%2Fworkers%2Factions.ts%22%2C%5B%22createWorkerAction%22%2C%22updateWorkerAction%22%2C%22deleteWorkerAction%22%5D%5D%5D&__client_imported__=true!"
+      },
+      "layer": {
+        "app/workers/page": "action-browser"
+      }
+    }
+  },
   "edge": {},
-  "encryptionKey": "KXyk+zikoVEpOSTYSidq5+GuMvBL/FR6nUvgApvE3BE="
+  "encryptionKey": "DRNwcFxJvFN8qo8KEISt4PpGrC8ndnlXpb0cemg1ds4="
 }

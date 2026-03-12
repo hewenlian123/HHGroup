@@ -32,7 +32,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <ToastProvider>
-      <div className="app-shell flex h-screen overflow-hidden bg-zinc-50 dark:bg-background">
+      <div className="app-shell flex h-screen overflow-hidden bg-[#F7F7F8]">
         {/* Desktop/Tablet: fixed sidebar (md and up). */}
         <Sidebar
           className="hidden md:flex shrink-0 transition-[width] duration-200"
@@ -50,7 +50,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </Sheet>
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <Topbar onOpenSidebar={() => setMobileOpen(true)} />
-          <main className={cn("flex-1 overflow-y-auto pb-14 md:pb-0")}>{children}</main>
+          <main className={cn("flex-1 overflow-y-auto bg-[#F7F7F8] pb-14 md:pb-0")}>{children}</main>
           <BottomNav className="fixed bottom-0 left-0 right-0 z-30 md:hidden" />
         </div>
       </div>

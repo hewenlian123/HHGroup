@@ -25,7 +25,6 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import type { Project } from "@/lib/data";
-import type { ProjectDetailFinancial } from "@/lib/data";
 import type { ProjectFinancialSummary } from "@/lib/data";
 import type { CanonicalProjectProfit } from "@/lib/profit-engine";
 import type { ProjectTransactionRow } from "@/lib/data";
@@ -35,6 +34,7 @@ import { ProjectDocumentsTab } from "./project-documents-tab";
 import { deleteProjectAction, getProjectUsageAction, archiveProjectAction } from "../actions";
 import { useToast } from "@/components/toast/toast-provider";
 import type { ProjectUsageCounts } from "@/lib/data";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export type ChangeOrderRow = { id: string; number: string; status: string; total: number; date: string };
 
@@ -69,59 +69,88 @@ export type BudgetRow = { id: string; metric: string; budget: string; actual: st
 
 type TabKey = "overview" | "financial" | "budget" | "expenses" | "documents" | "activity" | "change-orders" | "labor" | "subcontracts" | "bills";
 
+type ExpenseLineJoin = Awaited<ReturnType<typeof import("@/lib/data").getProjectExpenseLines>>[number];
+type SourceForProject = Awaited<ReturnType<typeof import("@/lib/data").getSourceForProject>>;
+type ChangeOrder = Awaited<ReturnType<typeof import("@/lib/data").getChangeOrdersByProject>>[number];
+type LaborEntryJoin = Awaited<ReturnType<typeof import("@/lib/data").getLaborEntriesWithJoins>>[number];
+type Subcontract = Awaited<ReturnType<typeof import("@/lib/data").getSubcontractsByProject>>[number];
+type SubcontractBill = Awaited<ReturnType<typeof import("@/lib/data").getBillsBySubcontractIds>>[number];
+type SubcontractPayment = Awaited<ReturnType<typeof import("@/lib/data").getPaymentsBySubcontractIds>>[number];
+
 export interface ProjectDetailTabsClientProps {
   projectId: string;
   project: Project;
-  financial: ProjectDetailFinancial;
   financialSummary: ProjectFinancialSummary | null;
-  tab: TabKey;
-  summaryRows: SummaryRow[];
-  recentExpenseRows: RecentExpenseRow[];
-  transactions: ProjectTransactionRow[];
-  budgetRows: BudgetRow[];
-  expenseRows: RecentExpenseRow[];
-  projectDocuments: DocumentRow[];
   billingSummary: { invoicedTotal: number; paidTotal: number; arBalance: number; lastPaymentDate: string | null };
-  changeOrderRows: ChangeOrderRow[];
-  laborBreakdownRows: ProjectLaborBreakdownRow[];
-  laborSummary: ProjectLaborSummary;
-  subcontractSummaryRows: SubcontractSummaryRow[];
-  projectBills: import("@/lib/data").ApBillWithProject[];
   canonicalProfit: CanonicalProjectProfit;
+  initialTab: TabKey;
 }
 
 export function ProjectDetailTabsClient({
   projectId,
   project,
-  financial,
   financialSummary,
-  tab,
-  summaryRows,
-  recentExpenseRows,
-  transactions,
-  budgetRows,
-  expenseRows,
-  projectDocuments,
   billingSummary,
-  changeOrderRows,
-  laborBreakdownRows,
-  laborSummary,
-  subcontractSummaryRows,
-  projectBills,
   canonicalProfit,
+  initialTab,
 }: ProjectDetailTabsClientProps) {
   const router = useRouter();
   const { toast } = useToast();
-  void laborBreakdownRows;
 
   const fmtUsd = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  const setTab = React.useCallback(
-    (value: string) => {
-      router.push(`/projects/${projectId}?tab=${value}`, { scroll: false });
+  const [tab, setTab] = React.useState<TabKey>(initialTab);
+
+  type TabCache = Partial<{
+    overview: { transactions: ProjectTransactionRow[]; expenseLines: ExpenseLineJoin[] };
+    financial: { canonical: CanonicalProjectProfit; billingSummary: ProjectDetailTabsClientProps["billingSummary"] };
+    budget: { canonical: CanonicalProjectProfit; billingSummary: ProjectDetailTabsClientProps["billingSummary"]; sourceFromEstimate: SourceForProject };
+    expenses: { expenseLines: ExpenseLineJoin[] };
+    documents: { documents: DocumentRow[] };
+    activity: { transactions: ProjectTransactionRow[] };
+    "change-orders": { changeOrders: ChangeOrder[] };
+    labor: { laborBreakdownRows: ProjectLaborBreakdownRow[]; laborEntries: LaborEntryJoin[] };
+    subcontracts: { subcontracts: Subcontract[]; bills: SubcontractBill[]; payments: SubcontractPayment[] };
+    bills: { projectBills: import("@/lib/data").ApBillWithProject[] };
+  }>;
+
+  const [cache, setCache] = React.useState<TabCache>({});
+  const cacheRef = React.useRef<TabCache>({});
+  React.useEffect(() => {
+    cacheRef.current = cache;
+  }, [cache]);
+  const [loadingTab, setLoadingTab] = React.useState<TabKey | null>(null);
+  const [tabError, setTabError] = React.useState<string | null>(null);
+
+  const fetchTab = React.useCallback(
+    async (key: TabKey) => {
+      // Base props already include what's needed for this tab.
+      if (key === "financial") return;
+
+      if (cacheRef.current[key]) return;
+      setLoadingTab(key);
+      setTabError(null);
+      try {
+        const res = await fetch(`/api/projects/${projectId}/tab?key=${encodeURIComponent(key)}`, {
+          cache: "no-store",
+        });
+        const data = (await res.json()) as unknown;
+        const payload = data as { ok?: boolean; message?: string } & TabCache[keyof TabCache];
+        if (!res.ok || !payload?.ok) throw new Error(payload?.message || "Failed to load tab data.");
+        setCache((prev) => ({ ...prev, [key]: payload as TabCache[typeof key] }));
+      } catch (e) {
+        setTabError(e instanceof Error ? e.message : "Failed to load tab data.");
+      } finally {
+        setLoadingTab((cur) => (cur === key ? null : cur));
+      }
     },
-    [projectId, router]
+    [projectId]
   );
+
+  React.useEffect(() => {
+    // Lazy-load only the active tab, and cache results.
+    void fetchTab(tab);
+  }, [tab, fetchTab]);
 
   const [deleteBlockedOpen, setDeleteBlockedOpen] = React.useState(false);
   const [deleteBlockedCounts, setDeleteBlockedCounts] = React.useState<ProjectUsageCounts | null>(null);
@@ -201,11 +230,52 @@ export function ProjectDetailTabsClient({
   ];
 
   const subtitle = [
-    `Budget $${financial.totalBudget.toLocaleString()}`,
-    `Spent $${financial.totalSpent.toLocaleString()}`,
-    `Profit ${financial.profit >= 0 ? "" : "−"}$${Math.abs(financial.profit).toLocaleString()}`,
-    `Margin ${financial.marginPct.toFixed(1)}%`,
+    `Budget $${(financialSummary?.budget ?? project.budget ?? 0).toLocaleString()}`,
+    `Spent $${(financialSummary?.spent ?? canonicalProfit.actualCost).toLocaleString()}`,
+    `Profit ${canonicalProfit.profit >= 0 ? "" : "−"}$${Math.abs(canonicalProfit.profit).toLocaleString()}`,
+    `Margin ${(canonicalProfit.margin * 100).toFixed(1)}%`,
   ].join(" · ");
+
+  const overview = cache.overview;
+  const overviewTransactions = overview?.transactions ?? [];
+  const overviewExpenseLines = overview?.expenseLines ?? [];
+  const recentExpenseRows: RecentExpenseRow[] = overviewExpenseLines
+    .slice(0, 8)
+    .map(({ date, vendorName, line }) => ({
+      id: line.id,
+      date,
+      vendorName,
+      category: line.category ?? "Other",
+      memo: line.memo ?? null,
+      amount: line.amount ?? 0,
+    }));
+  const expenseRows: RecentExpenseRow[] = (cache.expenses?.expenseLines ?? overviewExpenseLines).map(({ date, vendorName, line }) => ({
+    id: line.id,
+    date,
+    vendorName,
+    category: line.category ?? "Other",
+    memo: line.memo ?? null,
+    amount: line.amount ?? 0,
+  }));
+
+  const summaryRows: SummaryRow[] = [
+    { id: "budget", metric: "Total budget", value: `$${(project.budget ?? 0).toLocaleString()}` },
+    { id: "revenue", metric: "Total revenue", value: `$${canonicalProfit.revenue.toLocaleString()}` },
+    { id: "spent", metric: "Total spent", value: `$${canonicalProfit.actualCost.toLocaleString()}` },
+    { id: "profit", metric: "Profit", value: `${canonicalProfit.profit >= 0 ? "" : "−"}$${Math.abs(canonicalProfit.profit).toLocaleString()}` },
+    { id: "margin", metric: "Margin %", value: `${(canonicalProfit.margin * 100).toFixed(1)}%` },
+    { id: "invoiced", metric: "Invoiced", value: `$${billingSummary.invoicedTotal.toLocaleString()}` },
+    { id: "collected", metric: "Collected", value: `$${billingSummary.paidTotal.toLocaleString()}` },
+    { id: "ar", metric: "AR", value: `$${billingSummary.arBalance.toLocaleString()}` },
+  ];
+
+  const skeletonTable = (
+    <div className="space-y-2 py-4">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <Skeleton key={i} className="h-10 w-full" />
+      ))}
+    </div>
+  );
 
   return (
     <PageLayout
@@ -215,12 +285,12 @@ export function ProjectDetailTabsClient({
             <div className="flex items-center gap-3">
               <Link
                 href="/projects"
-                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+                className="flex items-center gap-1.5 text-sm text-[#6B7280] hover:text-[#111111]"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back
               </Link>
-              <span className="text-xl font-semibold tracking-tight text-foreground">
+              <span className="text-2xl font-semibold tracking-tight text-[#111111]">
                 {project.name}
               </span>
               <StatusBadge
@@ -232,14 +302,14 @@ export function ProjectDetailTabsClient({
           description={subtitle}
         >
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" className="shrink-0">
+            <Button variant="ghost" size="sm" className="shrink-0 h-9">
               <Pencil className="h-4 w-4 mr-2" />
               Edit
             </Button>
             <Button
               variant="ghost"
               size="sm"
-              className="shrink-0 text-muted-foreground hover:text-destructive"
+              className="shrink-0 text-[#6B7280] hover:text-red-600 h-9"
               disabled={deleteInProgress}
               onClick={async () => {
                 const usage = await getProjectUsageAction(projectId);
@@ -274,57 +344,45 @@ export function ProjectDetailTabsClient({
     >
       {financialSummary ? (
         <>
-          <SectionHeader label="Financial overview" className="mb-1" />
-          <Divider />
-          <div className="grid grid-cols-3 gap-x-8 gap-y-3 py-4">
-            <div className="flex justify-between items-baseline border-b border-border/40 pb-1">
-              <span className="text-sm text-muted-foreground">Budget</span>
-              <span className="tabular-nums text-right font-medium">${fmtUsd(financialSummary.budget)}</span>
+          <SectionHeader label="Financial overview" className="mb-2" />
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5 mb-4">
+            <div className="kpi-metric">
+              <span className="kpi-metric-label">Budget</span>
+              <span className="kpi-metric-value mt-0.5 block">${fmtUsd(financialSummary.budget)}</span>
             </div>
-            <div className="flex justify-between items-baseline border-b border-border/40 pb-1">
-              <span className="text-sm text-muted-foreground">Spent</span>
-              <span className="tabular-nums text-right font-medium">${fmtUsd(financialSummary.spent)}</span>
+            <div className="kpi-metric">
+              <span className="kpi-metric-label">Spent</span>
+              <span className="kpi-metric-value mt-0.5 block">${fmtUsd(financialSummary.spent)}</span>
             </div>
-            <div className="flex justify-between items-baseline border-b border-border/40 pb-1">
-              <span className="text-sm text-muted-foreground">Revenue</span>
-              <span className="tabular-nums text-right font-medium">${fmtUsd(financialSummary.revenue)}</span>
+            <div className="kpi-metric">
+              <span className="kpi-metric-label">Revenue</span>
+              <span className="kpi-metric-value mt-0.5 block">${fmtUsd(financialSummary.revenue)}</span>
             </div>
-            <div className="flex justify-between items-baseline border-b border-border/40 pb-1">
-              <span className="text-sm text-muted-foreground">Collected</span>
-              <span className="tabular-nums text-right font-medium">${fmtUsd(financialSummary.collected)}</span>
+            <div className="kpi-metric">
+              <span className="kpi-metric-label">Collected</span>
+              <span className="kpi-metric-value mt-0.5 block">${fmtUsd(financialSummary.collected)}</span>
             </div>
-            <div className="flex justify-between items-baseline border-b border-border/40 pb-1">
-              <span className="text-sm text-muted-foreground">Outstanding</span>
-              <span className="tabular-nums text-right font-medium">${fmtUsd(financialSummary.outstanding)}</span>
+            <div className="kpi-metric">
+              <span className="kpi-metric-label">Outstanding</span>
+              <span className="kpi-metric-value mt-0.5 block">${fmtUsd(financialSummary.outstanding)}</span>
             </div>
-            <div className="flex justify-between items-baseline border-b border-border/40 pb-1">
-              <span className="text-sm text-muted-foreground">Profit</span>
-              <span
-                className={cn(
-                  "tabular-nums text-right font-medium",
-                  financialSummary.profit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
-                )}
-              >
+            <div className="kpi-metric">
+              <span className="kpi-metric-label">Profit</span>
+              <span className={cn("kpi-metric-value mt-0.5 block", financialSummary.profit >= 0 ? "text-green-600" : "text-red-600")}>
                 {financialSummary.profit >= 0 ? "" : "−"}${fmtUsd(Math.abs(financialSummary.profit))}
               </span>
             </div>
-            <div className="col-span-3 flex justify-between items-baseline border-b border-border/40 pb-1">
-              <span className="text-sm text-muted-foreground">Cashflow</span>
-              <span
-                className={cn(
-                  "tabular-nums text-right font-medium",
-                  financialSummary.cashflow >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
-                )}
-              >
+            <div className="kpi-metric lg:col-span-2">
+              <span className="kpi-metric-label">Cashflow</span>
+              <span className={cn("kpi-metric-value mt-0.5 block", financialSummary.cashflow >= 0 ? "text-green-600" : "text-red-600")}>
                 {financialSummary.cashflow >= 0 ? "" : "−"}${fmtUsd(Math.abs(financialSummary.cashflow))}
               </span>
             </div>
           </div>
-          <Divider className="mb-0" />
         </>
       ) : null}
-      <Tabs value={tab} onValueChange={setTab} className="w-full">
-        <TabsList className="h-9 w-full justify-start rounded-none border-0 border-b border-border/60 bg-transparent p-0 gap-0">
+      <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)} className="w-full">
+        <TabsList className="h-9 w-full justify-start rounded-none border-0 border-b border-[#E5E7EB] bg-transparent p-0 gap-0 min-h-0">
           {(
             [
               { key: "overview" as const, label: "Overview" },
@@ -342,74 +400,37 @@ export function ProjectDetailTabsClient({
             <TabsTrigger
               key={t.key}
               value={t.key}
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+              className="rounded-none border-b-2 border-transparent px-3 py-2 text-sm text-[#6B7280] data-[state=active]:border-[#111111] data-[state=active]:text-[#111111] data-[state=active]:bg-transparent data-[state=active]:shadow-none"
             >
               {t.label}
             </TabsTrigger>
           ))}
         </TabsList>
 
-        <TabsContent value="overview" className="mt-4">
+        <TabsContent value="overview" className="mt-3">
           <SectionHeader label="Summary" />
           <Divider />
-          <DataTable<SummaryRow>
-            columns={summaryColumns}
-            data={summaryRows}
-            getRowId={(r) => r.id}
-          />
-          {subcontractSummaryRows.length > 0 ? (
-            <>
-              <SectionHeader
-                label="Subcontract summary"
-                action={
-                  <button
-                    type="button"
-                    onClick={() => setTab("subcontracts")}
-                    className="text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    View all
-                  </button>
-                }
-              />
-              <Divider />
-              <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 py-3 text-sm">
-                <span className="text-muted-foreground">{subcontractSummaryRows.length} subcontract(s)</span>
-                <span className="tabular-nums">
-                  Contract total ${fmtUsd(subcontractSummaryRows.reduce((s, r) => s + r.contract_amount, 0))}
-                </span>
-                <span className="text-muted-foreground">Approved</span>
-                <span className="tabular-nums">${fmtUsd(subcontractSummaryRows.reduce((s, r) => s + r.approved, 0))}</span>
-                <span className="text-muted-foreground">Paid</span>
-                <span className="tabular-nums">${fmtUsd(subcontractSummaryRows.reduce((s, r) => s + r.paid, 0))}</span>
-                <span className="text-muted-foreground">Retainage held</span>
-                <span className="tabular-nums">${fmtUsd(subcontractSummaryRows.reduce((s, r) => s + r.retainage_held, 0))}</span>
-                <span className="text-muted-foreground">Balance due</span>
-                <span className="tabular-nums font-medium">
-                  ${fmtUsd(subcontractSummaryRows.reduce((s, r) => s + r.balance_due, 0))}
-                </span>
-              </div>
-              <Divider className="mb-0" />
-            </>
-          ) : null}
+          <DataTable<SummaryRow> columns={summaryColumns} data={summaryRows} getRowId={(r) => r.id} />
+
           <SectionHeader label="Recent expense lines" className="mt-6" />
           <Divider />
-          <DataTable<RecentExpenseRow>
-            columns={expenseColumns}
-            data={recentExpenseRows}
-            getRowId={(r) => r.id}
-          />
+          {loadingTab === "overview" && !cache.overview ? skeletonTable : (
+            <DataTable<RecentExpenseRow> columns={expenseColumns} data={recentExpenseRows} getRowId={(r) => r.id} />
+          )}
           <SectionHeader label="Activity" className="mt-6" />
           <Divider />
-          <DataTable<ProjectTransactionRow>
-            columns={activityColumns}
-            data={transactions}
-            getRowId={(r) => r.id}
-          />
+          {loadingTab === "overview" && !cache.overview ? skeletonTable : (
+            <DataTable<ProjectTransactionRow> columns={activityColumns} data={overviewTransactions} getRowId={(r) => r.id} />
+          )}
         </TabsContent>
 
-        <TabsContent value="financial" className="mt-4">
+        <TabsContent value="financial" className="mt-3">
           <SectionHeader label="Financial summary" />
           <Divider />
+          {loadingTab === "financial" && !cache.financial ? skeletonTable : null}
+          {tabError && tab === "financial" ? (
+            <p className="py-4 text-sm text-red-600">{tabError}</p>
+          ) : null}
 
           {/* Revenue */}
           <div className="py-3">
@@ -564,14 +585,45 @@ export function ProjectDetailTabsClient({
           </div>
         </TabsContent>
 
-        <TabsContent value="budget" className="mt-4">
+        <TabsContent value="budget" className="mt-3">
           <SectionHeader label="Budget vs actual" />
           <Divider />
-          <DataTable<BudgetRow>
-            columns={budgetColumns}
-            data={budgetRows}
-            getRowId={(r) => r.id}
-          />
+          {loadingTab === "budget" && !cache.budget ? skeletonTable : null}
+          {cache.budget ? (
+            (() => {
+              const sourceFromEstimate = cache.budget?.sourceFromEstimate;
+              const budgetRevenue = sourceFromEstimate?.snapshotRevenue ?? project.budget;
+              const breakdown = sourceFromEstimate?.snapshotBudgetBreakdown;
+              const budgetCost =
+                sourceFromEstimate?.snapshotBudgetCost ??
+                (breakdown ? breakdown.materials + breakdown.labor + breakdown.vendor + breakdown.other : project.budget);
+              const budgetProfit = budgetRevenue - budgetCost;
+              const budgetMarginPct = budgetRevenue > 0 ? (budgetProfit / budgetRevenue) * 100 : 0;
+              const revenueVar = canonicalProfit.revenue - budgetRevenue;
+              const costVar = canonicalProfit.actualCost - budgetCost;
+              const profitVar = canonicalProfit.profit - budgetProfit;
+              const marginVar = canonicalProfit.margin * 100 - budgetMarginPct;
+              const fmt = (n: number) => `$${n.toLocaleString()}`;
+              const fmtPct = (n: number) => `${n.toFixed(1)}%`;
+              const varStr = (v: number, isPct = false) =>
+                `${v >= 0 ? "+" : "−"}${isPct ? Math.abs(v).toFixed(1) + "%" : fmt(Math.abs(v))}`;
+              const budgetRows: BudgetRow[] = [
+                { id: "revenue", metric: "Revenue", budget: fmt(budgetRevenue), actual: fmt(canonicalProfit.revenue), variance: varStr(revenueVar) },
+                { id: "cost", metric: "Cost", budget: fmt(budgetCost), actual: fmt(canonicalProfit.actualCost), variance: varStr(costVar) },
+                {
+                  id: "profit",
+                  metric: "Profit",
+                  budget: `${budgetProfit < 0 ? "−" : ""}${fmt(Math.abs(budgetProfit))}`,
+                  actual: `${canonicalProfit.profit < 0 ? "−" : ""}${fmt(Math.abs(canonicalProfit.profit))}`,
+                  variance: varStr(profitVar),
+                },
+                { id: "margin", metric: "Margin %", budget: fmtPct(budgetMarginPct), actual: fmtPct(canonicalProfit.margin * 100), variance: varStr(marginVar, true) },
+              ];
+              return (
+                <DataTable<BudgetRow> columns={budgetColumns} data={budgetRows} getRowId={(r) => r.id} />
+              );
+            })()
+          ) : null}
           <SectionHeader label="Billing summary" className="mt-6" />
           <Divider />
           <DataTable<SummaryRow>
@@ -586,34 +638,29 @@ export function ProjectDetailTabsClient({
           />
         </TabsContent>
 
-        <TabsContent value="expenses" className="mt-4">
+        <TabsContent value="expenses" className="mt-3">
           <SectionHeader label="Expense lines" />
           <Divider />
-          <DataTable<RecentExpenseRow>
-            columns={expenseColumns}
-            data={expenseRows}
-            getRowId={(r) => r.id}
-          />
+          {loadingTab === "expenses" && !cache.expenses ? skeletonTable : (
+            <DataTable<RecentExpenseRow> columns={expenseColumns} data={expenseRows} getRowId={(r) => r.id} />
+          )}
         </TabsContent>
 
-        <TabsContent value="documents" className="mt-4">
-          <ProjectDocumentsTab
-            projectId={projectId}
-            documents={projectDocuments}
-          />
+        <TabsContent value="documents" className="mt-3">
+          {loadingTab === "documents" && !cache.documents ? skeletonTable : (
+            <ProjectDocumentsTab projectId={projectId} documents={cache.documents?.documents ?? []} />
+          )}
         </TabsContent>
 
-        <TabsContent value="activity" className="mt-4">
+        <TabsContent value="activity" className="mt-3">
           <SectionHeader label="Transactions" />
           <Divider />
-          <DataTable<ProjectTransactionRow>
-            columns={activityColumns}
-            data={transactions}
-            getRowId={(r) => r.id}
-          />
+          {loadingTab === "activity" && !cache.activity ? skeletonTable : (
+            <DataTable<ProjectTransactionRow> columns={activityColumns} data={cache.activity?.transactions ?? []} getRowId={(r) => r.id} />
+          )}
         </TabsContent>
 
-        <TabsContent value="change-orders" className="mt-4">
+        <TabsContent value="change-orders" className="mt-3">
           <SectionHeader
             label="Change orders"
             action={
@@ -623,19 +670,68 @@ export function ProjectDetailTabsClient({
             }
           />
           <Divider />
-          {changeOrderRows.length === 0 ? (
+          {loadingTab === "change-orders" && !cache["change-orders"] ? skeletonTable : null}
+          {(cache["change-orders"]?.changeOrders ?? []).length === 0 ? (
             <p className="py-6 text-sm text-muted-foreground">No change orders yet.</p>
           ) : (
             <DataTable<ChangeOrderRow>
               columns={changeOrderColumns}
-              data={changeOrderRows}
+              data={(cache["change-orders"]?.changeOrders ?? []).map((co) => ({ id: co.id, number: co.number, status: co.status, total: co.total, date: co.date }))}
               getRowId={(r) => r.id}
               onRowClick={(r) => router.push(`/projects/${projectId}/change-orders/${r.id}`)}
             />
           )}
         </TabsContent>
 
-        <TabsContent value="labor" className="mt-4">
+        <TabsContent value="labor" className="mt-3">
+          {loadingTab === "labor" && !cache.labor ? skeletonTable : null}
+          {(() => {
+            const laborEntries = cache.labor?.laborEntries ?? [];
+            const byStatus: Record<"Draft" | "Submitted" | "Approved" | "Locked", number> = {
+              Draft: 0,
+              Submitted: 0,
+              Approved: 0,
+              Locked: 0,
+            };
+            const byStatusHours = { Draft: 0, Submitted: 0, Approved: 0, Locked: 0 };
+            let totalHours = 0;
+            let totalLaborCost = 0;
+            const approvedByWorker = new Map<string, { worker_name: string; days: number; totalLaborCost: number }>();
+            for (const e of laborEntries) {
+              totalHours += e.hours ?? 0;
+              const st = e.status as "Draft" | "Submitted" | "Approved" | "Locked";
+              if (st in byStatus) byStatus[st] += 1;
+              const hrs = e.hours ?? 0;
+              if (st === "Draft") byStatusHours.Draft += hrs;
+              else if (st === "Submitted") byStatusHours.Submitted += hrs;
+              else if (st === "Approved") byStatusHours.Approved += hrs;
+              else if (st === "Locked") byStatusHours.Locked += hrs;
+              if (st === "Approved" || st === "Locked") {
+                totalLaborCost += e.cost_amount ?? 0;
+                const cur = approvedByWorker.get(e.worker_id);
+                const name = e.worker_name ?? "—";
+                if (cur) {
+                  cur.days += 1;
+                  cur.totalLaborCost += e.cost_amount ?? 0;
+                } else {
+                  approvedByWorker.set(e.worker_id, { worker_name: name, days: 1, totalLaborCost: e.cost_amount ?? 0 });
+                }
+              }
+            }
+            const laborSummary: ProjectLaborSummary = {
+              totalHours,
+              totalLaborCost,
+              byStatus: { ...byStatus },
+              byStatusHours: { ...byStatusHours },
+              approvedLaborRows: Array.from(approvedByWorker.entries()).map(([worker_id, v]) => ({
+                worker_id,
+                worker_name: v.worker_name,
+                days: v.days,
+                total_labor_cost: v.totalLaborCost,
+              })),
+            };
+            return (
+              <>
           <SectionHeader label="Labor summary" />
           <Divider />
           <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 py-3 text-sm">
@@ -660,7 +756,7 @@ export function ProjectDetailTabsClient({
             <span className="text-muted-foreground">Locked</span>
             <span className="tabular-nums">{laborSummary.byStatus.Locked}</span>
           </div>
-          <SectionHeader label="Approved labor by worker" className="mt-4" />
+          <SectionHeader label="Approved labor by worker" className="mt-3" />
           <Divider />
           {laborSummary.approvedLaborRows.length === 0 ? (
             <p className="py-6 text-sm text-muted-foreground">No approved labor entries for this project.</p>
@@ -697,9 +793,12 @@ export function ProjectDetailTabsClient({
               </table>
             </div>
           )}
+              </>
+            );
+          })()}
         </TabsContent>
 
-        <TabsContent value="subcontracts" className="mt-4">
+        <TabsContent value="subcontracts" className="mt-3">
           <SectionHeader
             label="Subcontract summary"
             action={
@@ -709,48 +808,76 @@ export function ProjectDetailTabsClient({
             }
           />
           <Divider />
-          {subcontractSummaryRows.length === 0 ? (
-            <p className="py-6 text-sm text-muted-foreground">No subcontracts for this project.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="border-b border-border/60">
-                    <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Subcontractor</th>
-                    <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Contract</th>
-                    <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Approved</th>
-                    <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Paid</th>
-                    <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Retainage held</th>
-                    <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Balance due</th>
-                    <th className="w-20" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {subcontractSummaryRows.map((r) => (
-                    <tr key={r.id} className="border-b border-border/40">
-                      <td className="py-1.5 px-3 font-medium">{r.subcontractor_name}</td>
-                      <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.contract_amount)}</td>
-                      <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.approved)}</td>
-                      <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.paid)}</td>
-                      <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.retainage_held)}</td>
-                      <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.balance_due)}</td>
-                      <td className="py-1.5 px-3">
-                        <Link
-                          href={`/projects/${projectId}/subcontracts/${r.id}/bills`}
-                          className="text-xs text-muted-foreground hover:text-foreground"
-                        >
-                          Bills
-                        </Link>
-                      </td>
+          {loadingTab === "subcontracts" && !cache.subcontracts ? skeletonTable : null}
+          {(() => {
+            const subcontracts = cache.subcontracts?.subcontracts ?? [];
+            const bills = cache.subcontracts?.bills ?? [];
+            const payments = cache.subcontracts?.payments ?? [];
+            const approvedBySubcontractId = new Map<string, number>();
+            for (const b of bills) {
+              if (b.status !== "Approved" && b.status !== "Paid") continue;
+              approvedBySubcontractId.set(b.subcontract_id, (approvedBySubcontractId.get(b.subcontract_id) ?? 0) + b.amount);
+            }
+            const paidBySubcontractId = new Map<string, number>();
+            for (const p of payments) {
+              paidBySubcontractId.set(p.subcontract_id, (paidBySubcontractId.get(p.subcontract_id) ?? 0) + p.amount);
+            }
+            const subcontractSummaryRows: SubcontractSummaryRow[] = subcontracts.map((s) => {
+              const approved = approvedBySubcontractId.get(s.id) ?? 0;
+              const paid = paidBySubcontractId.get(s.id) ?? 0;
+              const balanceDue = approved - paid;
+              return {
+                id: s.id,
+                subcontractor_name: s.subcontractor_name,
+                contract_amount: s.contract_amount,
+                approved,
+                paid,
+                retainage_held: 0,
+                balance_due: balanceDue,
+              };
+            });
+
+            if (subcontractSummaryRows.length === 0) {
+              return <p className="py-6 text-sm text-muted-foreground">No subcontracts for this project.</p>;
+            }
+            return (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="border-b border-border/60">
+                      <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Subcontractor</th>
+                      <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Contract</th>
+                      <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Approved</th>
+                      <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Paid</th>
+                      <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Retainage held</th>
+                      <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Balance due</th>
+                      <th className="w-20" />
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  </thead>
+                  <tbody>
+                    {subcontractSummaryRows.map((r) => (
+                      <tr key={r.id} className="border-b border-border/40">
+                        <td className="py-1.5 px-3 font-medium">{r.subcontractor_name}</td>
+                        <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.contract_amount)}</td>
+                        <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.approved)}</td>
+                        <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.paid)}</td>
+                        <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.retainage_held)}</td>
+                        <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.balance_due)}</td>
+                        <td className="py-1.5 px-3">
+                          <Link href={`/projects/${projectId}/subcontracts/${r.id}/bills`} className="text-xs text-muted-foreground hover:text-foreground">
+                            Bills
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
         </TabsContent>
 
-        <TabsContent value="bills" className="mt-4">
+        <TabsContent value="bills" className="mt-3">
           <SectionHeader
             label="Bills (AP)"
             action={
@@ -760,7 +887,8 @@ export function ProjectDetailTabsClient({
             }
           />
           <Divider />
-          {projectBills.length === 0 ? (
+          {loadingTab === "bills" && !cache.bills ? skeletonTable : null}
+          {(cache.bills?.projectBills ?? []).length === 0 ? (
             <p className="py-6 text-sm text-muted-foreground">No bills linked to this project. <Link href="/bills/new" className="hover:text-foreground">Create a bill</Link> and link it to this project.</p>
           ) : (
             <div className="overflow-x-auto">
@@ -777,7 +905,7 @@ export function ProjectDetailTabsClient({
                   </tr>
                 </thead>
                 <tbody>
-                  {projectBills.map((b) => (
+                  {(cache.bills?.projectBills ?? []).map((b) => (
                     <tr key={b.id} className="border-b border-border/40">
                       <td className="py-1.5 px-3 font-medium">{b.bill_no ?? "—"}</td>
                       <td className="py-1.5 px-3">{b.vendor_name}</td>

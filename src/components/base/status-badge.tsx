@@ -5,10 +5,10 @@ import { cn } from "@/lib/utils";
 export type StatusBadgeVariant = "default" | "success" | "warning" | "muted";
 
 const dotColors: Record<StatusBadgeVariant, string> = {
-  default: "bg-foreground",
-  success: "bg-emerald-500",
+  default: "bg-[#111111]",
+  success: "bg-green-500",
   warning: "bg-amber-500",
-  muted: "bg-muted-foreground",
+  muted: "bg-gray-400",
 };
 
 export interface StatusBadgeProps {
@@ -26,8 +26,8 @@ export function StatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 text-sm text-foreground",
-        variant === "muted" && "text-muted-foreground",
+        "inline-flex items-center gap-1.5 text-xs text-[#111111]",
+        variant === "muted" && "text-[#6B7280]",
         className
       )}
     >
