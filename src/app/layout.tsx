@@ -32,7 +32,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#000000",
+  themeColor: "#1f2937",
 };
 
 export default async function RootLayout(
@@ -48,7 +48,7 @@ export default async function RootLayout(
   return (
     <html lang="en">
       <head>
-        <link rel="icon" href="/logo.png" sizes="any" />
+        <link rel="icon" href="/favicon.png" type="image/png" sizes="32x32" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
       <body
