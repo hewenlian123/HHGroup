@@ -20,5 +20,19 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "Upload Receipt",
+      "short_name": "Receipt",
+      "url": "/upload-receipt",
+      "icons": [
+        {
+          "src": "/icons/upload.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
   ]
 }
