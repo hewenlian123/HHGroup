@@ -77,8 +77,8 @@ export async function getPunchListAll(): Promise<PunchListItemWithJoins[]> {
   }
   if (error) throw new Error(error.message ?? "Failed to load punch list.");
   const items = (rows ?? []).map((r) => toItem(r as Record<string, unknown>, useNotes));
-  const projectIds = [...new Set(items.map((i) => i.project_id))];
-  const workerIds = [...new Set(items.map((i) => i.assigned_worker_id).filter(Boolean))] as string[];
+  const projectIds = Array.from(new Set(items.map((i) => i.project_id)));
+  const workerIds = Array.from(new Set(items.map((i) => i.assigned_worker_id).filter(Boolean))) as string[];
   const [projectsRes, workersRes] = await Promise.all([
     projectIds.length ? c.from("projects").select("id, name").in("id", projectIds) : { data: [] },
     workerIds.length ? c.from("workers").select("id, name").in("id", workerIds) : { data: [] },

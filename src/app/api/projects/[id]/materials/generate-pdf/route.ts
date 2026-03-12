@@ -93,7 +93,7 @@ export async function POST(
 
     await insertDocument({
       file_name: `Material Selections - ${project.name}.pdf`,
-      file_path,
+      file_path: filePath,
       file_type: "Other",
       mime_type: "application/pdf",
       size_bytes: buf.byteLength,

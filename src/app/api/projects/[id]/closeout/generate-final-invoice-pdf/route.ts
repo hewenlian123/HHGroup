@@ -46,7 +46,7 @@ export async function POST(
     if (uploadError) return NextResponse.json({ ok: false, message: uploadError.message }, { status: 500 });
     await insertDocument({
       file_name: `Final Invoice - ${project.name}.pdf`,
-      file_path,
+      file_path: filePath,
       file_type: "Invoice",
       mime_type: "application/pdf",
       size_bytes: buf.byteLength,

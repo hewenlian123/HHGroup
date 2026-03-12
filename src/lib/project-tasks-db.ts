@@ -62,8 +62,8 @@ export async function getAllTasksWithProject(): Promise<(ProjectTaskWithWorker &
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message ?? "Failed to load tasks.");
   const tasks = (rows ?? []).map((r) => toTask(r as Record<string, unknown>));
-  const projectIds = [...new Set(tasks.map((t) => t.project_id))];
-  const workerIds = [...new Set(tasks.map((t) => t.assigned_worker_id).filter(Boolean))] as string[];
+  const projectIds = Array.from(new Set(tasks.map((t) => t.project_id)));
+  const workerIds = Array.from(new Set(tasks.map((t) => t.assigned_worker_id).filter(Boolean))) as string[];
   const [projectsRes, workersRes] = await Promise.all([
     projectIds.length ? c.from("projects").select("id, name").in("id", projectIds) : { data: [] },
     workerIds.length ? c.from("workers").select("id, name").in("id", workerIds) : { data: [] },
@@ -87,7 +87,7 @@ export async function getProjectTasks(projectId: string): Promise<ProjectTaskWit
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message ?? "Failed to load tasks.");
   const tasks = (rows ?? []).map((r) => toTask(r as Record<string, unknown>));
-  const workerIds = [...new Set(tasks.map((t) => t.assigned_worker_id).filter(Boolean))] as string[];
+  const workerIds = Array.from(new Set(tasks.map((t) => t.assigned_worker_id).filter(Boolean))) as string[];
   const workerNames = new Map<string, string>();
   if (workerIds.length > 0) {
     const { data: workers } = await c.from("workers").select("id, name").in("id", workerIds);

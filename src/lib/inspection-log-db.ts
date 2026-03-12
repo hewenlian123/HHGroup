@@ -59,7 +59,7 @@ export async function getInspectionLogs(): Promise<InspectionLogEntryWithProject
     .order("inspection_date", { ascending: false, nullsFirst: false });
   if (error) throw new Error(error.message ?? "Failed to load inspection log.");
   const items = (rows ?? []).map((r) => toRow(r as Record<string, unknown>));
-  const projectIds = [...new Set(items.map((i) => i.project_id))];
+  const projectIds = Array.from(new Set(items.map((i) => i.project_id)));
   if (projectIds.length === 0) return items.map((i) => ({ ...i, project_name: null }));
   const { data: projects } = await c.from("projects").select("id, name").in("id", projectIds);
   const projectNames = new Map<string, string>(((projects ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name ?? ""]));

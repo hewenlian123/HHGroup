@@ -298,7 +298,7 @@ function QuickTimesheetModal({
   const otNum = Number(otHours) || 0;
   const totalPayPreview = React.useMemo(() => {
     let sum = 0;
-    for (const id of selectedWorkerIds) {
+    for (const id of Array.from(selectedWorkerIds)) {
       const worker = workers.find((w) => w.id === id);
       const dailyRate = worker?.dailyRate ?? (worker?.halfDayRate ?? 0) * 2;
       const basePay =
@@ -334,7 +334,7 @@ function QuickTimesheetModal({
     try {
       // Pay: Full Day = daily_rate, Half Day = daily_rate/2, Absent = 0. OT: (daily_rate/8)*1.5 per hour.
       const rows: { worker_id: string; project_id: string; hours: number; cost_code: string | null; notes: string | null }[] = [];
-      for (const id of selectedWorkerIds) {
+      for (const id of Array.from(selectedWorkerIds)) {
         const worker = workers.find((w) => w.id === id);
         const dailyRate = worker?.dailyRate ?? (worker?.halfDayRate ?? 0) * 2;
         const basePay =

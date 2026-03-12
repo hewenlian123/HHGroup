@@ -31,6 +31,7 @@ type TabKey =
   | "financial"
   | "budget"
   | "expenses"
+  | "change-orders"
   | "labor"
   | "subcontracts"
   | "bills"
