@@ -128,7 +128,8 @@ export async function updatePunchListItem(
   if (Object.keys(updates).length === 0) return null;
   let result = await c.from("punch_list").update(updates).eq("id", id).select(COLS).single();
   if (result.error && isMissingColumn(result.error) && "notes" in updates) {
-    const { notes: _n, ...rest } = updates;
+    const rest = { ...updates };
+    delete (rest as Record<string, unknown>).notes;
     if (Object.keys(rest).length > 0) {
       result = await c.from("punch_list").update(rest).eq("id", id).select(COLS_NO_NOTES).single();
     }

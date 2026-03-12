@@ -4,7 +4,6 @@ import * as React from "react";
 import { PageLayout, PageHeader, Drawer } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 
 type PhotoRow = {
   id: string;

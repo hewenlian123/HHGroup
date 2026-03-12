@@ -3,6 +3,8 @@
 # Next.js build and cache
 .next
 .next/
+.next-dev
+.next-dev/
 node_modules
 .env
 .env.local
