@@ -34,6 +34,7 @@ import { ProjectDocumentsTab } from "./project-documents-tab";
 import { ProjectTasksTab } from "./project-tasks-tab";
 import { ProjectCloseoutTab } from "./project-closeout-tab";
 import { ProjectMaterialsTab } from "./project-materials-tab";
+import { ProjectCommissionTab } from "./project-commission-tab";
 import { deleteProjectAction, getProjectUsageAction, archiveProjectAction } from "../actions";
 import { useToast } from "@/components/toast/toast-provider";
 import type { ProjectUsageCounts } from "@/lib/data";
@@ -70,7 +71,7 @@ export type RecentExpenseRow = {
 };
 export type BudgetRow = { id: string; metric: string; budget: string; actual: string; variance: string };
 
-type TabKey = "overview" | "tasks" | "schedule" | "financial" | "budget" | "expenses" | "labor" | "subcontracts" | "bills" | "documents" | "activity" | "change-orders" | "materials" | "closeout";
+type TabKey = "overview" | "tasks" | "schedule" | "financial" | "budget" | "expenses" | "labor" | "subcontracts" | "bills" | "documents" | "activity" | "change-orders" | "materials" | "closeout" | "commission";
 
 type ExpenseLineJoin = Awaited<ReturnType<typeof import("@/lib/data").getProjectExpenseLines>>[number];
 type SourceForProject = Awaited<ReturnType<typeof import("@/lib/data").getSourceForProject>>;
@@ -126,6 +127,7 @@ export function ProjectDetailTabsClient({
       warranty: import("@/lib/data").CloseoutWarranty | null;
       completion: import("@/lib/data").CloseoutCompletion | null;
     };
+    commission: { commissions: import("@/lib/data").ProjectCommission[] };
   }>;
 
   const [cache, setCache] = React.useState<TabCache>({});
@@ -413,6 +415,7 @@ export function ProjectDetailTabsClient({
               { key: "change-orders" as const, label: "Change Orders" },
               { key: "materials" as const, label: "Material Selections" },
               { key: "closeout" as const, label: "Closeout" },
+              { key: "commission" as const, label: "Commission" },
             ] as const
           ).map((t) => (
             <TabsTrigger
@@ -788,6 +791,19 @@ export function ProjectDetailTabsClient({
               onRefresh={() => {
                 setCache((prev) => ({ ...prev, closeout: undefined }));
                 fetchTab("closeout");
+              }}
+            />
+          )}
+        </TabsContent>
+
+        <TabsContent value="commission" className="mt-3">
+          {loadingTab === "commission" && !cache.commission ? skeletonTable : (
+            <ProjectCommissionTab
+              projectId={projectId}
+              commissions={cache.commission?.commissions ?? []}
+              onRefresh={() => {
+                setCache((prev) => ({ ...prev, commission: undefined }));
+                fetchTab("commission");
               }}
             />
           )}

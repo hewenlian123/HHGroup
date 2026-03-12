@@ -30,6 +30,7 @@ import * as inspectionLogDb from "../inspection-log-db";
 import * as materialCatalogDb from "../material-catalog-db";
 import * as materialSelectionsDb from "../material-selections-db";
 import * as projectCloseoutDb from "../project-closeout-db";
+import * as commissionDb from "../commission-db";
 import * as apBillsDb from "../ap-bills-db";
 import { getCanonicalProjectProfit, getCanonicalProjectProfitBatch } from "../profit-engine";
 import type { EstimateListItem, EstimateItemRow } from "../estimates-db";
@@ -83,6 +84,8 @@ export type {
   CloseoutCompletion,
   PunchListItem as CloseoutPunchListItem,
 } from "../project-closeout-db";
+export type { ProjectCommission, CommissionPaymentRecord, CommissionWithPaid, CommissionStatus, CalculationMode, CommissionRole } from "../commission-db";
+export { getCommissionsByProject, getAllCommissionsWithPayments, getCommissionSummary, createCommission, updateCommission, deleteCommission, getCommissionById, getPaymentRecordsByCommissionId, createPaymentRecord } from "../commission-db";
 export type { ApBillRow, ApBillWithProject, ApBillPaymentRow, ApBillsFilters, ApBillType, ApBillStatus } from "../ap-bills-db";
 export { AP_BILL_TYPES, AP_BILL_STATUSES } from "../ap-bills-db";
 export type { DailyWorkEntry, DailyWorkEntryDraft, DayType, PayrollSummaryRow } from "../daily-work-db";

@@ -27,6 +27,7 @@ import {
   Camera,
   ClipboardCheck,
   Boxes,
+  Percent,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -59,6 +60,7 @@ const sections: { label: string; items: NavItem[] }[] = [
     items: [
       { href: "/financial/invoices", label: "Invoices", icon: Receipt },
       { href: "/financial/payments", label: "Payments Received", icon: CircleDollarSign },
+      { href: "/financial/commissions", label: "Commission Payments", icon: Percent },
       { href: "/financial/deposits", label: "Deposits", icon: Landmark },
       { href: "/bills", label: "Bills", icon: Banknote },
       { href: "/financial/expenses", label: "Expenses", icon: ShoppingCart },
@@ -71,6 +73,7 @@ const sections: { label: string; items: NavItem[] }[] = [
       { href: "/labor", label: "Daily Entry", icon: Clock },
       { href: "/workers", label: "Workers", icon: Users },
       { href: "/labor/reimbursements", label: "Reimbursements", icon: Receipt },
+      { href: "/labor/receipts", label: "Receipt Uploads", icon: ClipboardCheck },
       { href: "/labor/worker-invoices", label: "Worker Invoices", icon: FileText },
       { href: "/labor/payroll", label: "Payroll Summary", icon: Wallet },
       { href: "/labor/payments", label: "Worker Payments", icon: CircleDollarSign },

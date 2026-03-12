@@ -1,0 +1,44 @@
+import { NextResponse } from "next/server";
+import { insertWorkerReceipt } from "@/lib/worker-receipts-db";
+
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+    const workerId = typeof body.workerId === "string" ? body.workerId : null;
+    const workerName = typeof body.workerName === "string" ? body.workerName.trim() : "";
+    const projectId = typeof body.projectId === "string" && body.projectId ? body.projectId : null;
+    const expenseType = typeof body.expenseType === "string" ? body.expenseType : "Other";
+    const vendor = typeof body.vendor === "string" ? body.vendor.trim() : null;
+    const amount = Number(body.amount);
+    const receiptUrl = typeof body.receiptUrl === "string" ? body.receiptUrl.trim() : null;
+    const description = typeof body.description === "string" ? body.description.trim() : null;
+    const notes = typeof body.notes === "string" ? body.notes.trim() : null;
+
+    if (!workerName && !workerId) {
+      return NextResponse.json({ message: "Worker is required." }, { status: 400 });
+    }
+    if (!Number.isFinite(amount) || amount < 0) {
+      return NextResponse.json({ message: "Valid amount is required." }, { status: 400 });
+    }
+    if (!receiptUrl) {
+      return NextResponse.json({ message: "Receipt photo is required." }, { status: 400 });
+    }
+
+    const receipt = await insertWorkerReceipt({
+      workerId,
+      workerName: workerName || "Unknown",
+      projectId,
+      expenseType,
+      vendor: vendor || null,
+      amount,
+      receiptUrl,
+      description: description || null,
+      notes: notes || null,
+      status: "Pending",
+    });
+    return NextResponse.json({ ok: true, id: receipt.id });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Submit failed";
+    return NextResponse.json({ message }, { status: 500 });
+  }
+}

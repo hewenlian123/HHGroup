@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { usePathname } from "next/navigation";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 import { BottomNav } from "./bottom-nav";
@@ -10,6 +11,8 @@ import { PWAInstallPrompt } from "../pwa-install-prompt";
 import { cn } from "@/lib/utils";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const barePage = pathname === "/upload-receipt" || pathname?.startsWith("/upload-receipt/");
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [collapsed, setCollapsed] = React.useState(false);
 
@@ -29,6 +32,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       // ignore
     }
   }, [collapsed]);
+
+  if (barePage) {
+    return (
+      <ToastProvider>
+        <div className="min-h-screen bg-[#F2F2F4]">{children}</div>
+      </ToastProvider>
+    );
+  }
 
   return (
     <ToastProvider>

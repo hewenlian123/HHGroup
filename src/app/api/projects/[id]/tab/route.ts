@@ -21,6 +21,7 @@ import {
   getCloseoutCompletion,
   getSelectionsByProject,
   getMaterialCatalog,
+  getCommissionsByProject,
 } from "@/lib/data";
 import { getCanonicalProjectProfit } from "@/lib/profit-engine";
 
@@ -38,7 +39,8 @@ type TabKey =
   | "documents"
   | "activity"
   | "materials"
-  | "closeout";
+  | "closeout"
+  | "commission";
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ ok: false as const, message }, { status });
@@ -156,6 +158,11 @@ export async function GET(
         getCloseoutCompletion(id).catch(() => null),
       ]);
       return NextResponse.json({ ok: true as const, key, punch, warranty, completion });
+    }
+
+    if (key === "commission") {
+      const commissions = await getCommissionsByProject(id);
+      return NextResponse.json({ ok: true as const, key, commissions });
     }
 
     return jsonError("Unknown tab key", 400);
