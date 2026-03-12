@@ -11,6 +11,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { createBrowserClient } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
+import { Pagination } from "@/components/ui/pagination";
 
 type ProjectRow = {
   id: string;
@@ -59,6 +60,9 @@ export function ProjectsClient() {
   const [billsByProject, setBillsByProject] = React.useState<Map<string, number>>(new Map());
   const [query, setQuery] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<"" | "active" | "pending" | "completed">("");
+  const [page, setPage] = React.useState(1);
+  const pageSize = 20;
+  const [total, setTotal] = React.useState(0);
 
   const refresh = React.useCallback(async () => {
     if (!supabase) {
@@ -71,17 +75,14 @@ export function ProjectsClient() {
     setLoading(true);
     setError(null);
 
-    const [projectsRes, billsRes] = await Promise.all([
-      supabase
-        .from("projects")
-        .select("id,name,status,budget,spent,created_at,updated_at")
-        .order("created_at", { ascending: false })
-        .limit(500),
-      supabase
-        .from("bills")
-        .select("project_id,status,total")
-        .limit(2000),
-    ]);
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    const projectsRes = await supabase
+      .from("projects")
+      .select("id,name,status,budget,spent,created_at,updated_at", { count: "exact" })
+      .order("created_at", { ascending: false })
+      .range(from, to);
 
     if (projectsRes.error) {
       setError(projectsRes.error.message || "Failed to load projects.");
@@ -92,7 +93,13 @@ export function ProjectsClient() {
     }
 
     const nextRows = (projectsRes.data ?? []) as ProjectRow[];
-    const billRows = billsRes.error ? ([] as BillMiniRow[]) : ((billsRes.data ?? []) as BillMiniRow[]);
+    setTotal(projectsRes.count ?? nextRows.length);
+
+    const projectIds = nextRows.map((p) => p.id).filter(Boolean);
+    const billsRes = projectIds.length
+      ? await supabase.from("bills").select("project_id,status,total").in("project_id", projectIds)
+      : { data: [] as unknown[], error: null as unknown };
+    const billRows = (billsRes as { error?: unknown; data?: unknown[] }).error ? ([] as BillMiniRow[]) : (((billsRes as { data?: unknown[] }).data ?? []) as BillMiniRow[]);
     const totals = new Map<string, number>();
     for (const b of billRows) {
       const pid = b.project_id;
@@ -105,11 +112,15 @@ export function ProjectsClient() {
     setRows(nextRows);
     setBillsByProject(totals);
     setLoading(false);
-  }, [supabase]);
+  }, [supabase, page, pageSize]);
 
   React.useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  React.useEffect(() => {
+    setPage(1);
+  }, [query, statusFilter]);
 
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -319,6 +330,7 @@ export function ProjectsClient() {
             />
           )}
         </Card>
+        <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} />
       </div>
     </div>
   );

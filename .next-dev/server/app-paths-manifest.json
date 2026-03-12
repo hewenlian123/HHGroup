@@ -1,8 +1,1 @@
-{
-  "/dashboard/page": "app/dashboard/page.js",
-  "/projects/page": "app/projects/page.js",
-  "/financial/payments/page": "app/financial/payments/page.js",
-  "/financial/invoices/page": "app/financial/invoices/page.js",
-  "/projects/[id]/page": "app/projects/[id]/page.js",
-  "/financial/invoices/[id]/page": "app/financial/invoices/[id]/page.js"
-}
+{}

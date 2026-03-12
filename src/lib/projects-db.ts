@@ -106,6 +106,36 @@ export async function getProjects(): Promise<Project[]> {
   return (rows ?? []).map((r) => toProject(r as ProjectRow));
 }
 
+/**
+ * Dashboard-optimized project list: only selects fields needed for summary + health table.
+ * Avoids pulling large optional columns (notes, snapshots, etc).
+ */
+export async function getProjectsDashboard(limit = 200): Promise<Array<Pick<Project, "id" | "name" | "status" | "budget" | "updated">>> {
+  const c = client();
+  const cap = Math.max(1, Math.min(limit, 1000));
+  const { data: rows, error } = await c
+    .from("projects")
+    .select("id,name,status,budget,updated_at,created_at")
+    .order("updated_at", { ascending: false })
+    .limit(cap);
+  if (error) {
+    if (isMissingTable(error)) throw new Error(`Projects table not found. ${HINT}`);
+    throw new Error(error.message ? `${error.message} ${HINT}` : HINT);
+  }
+
+  return (rows ?? []).map((r) => {
+    const row = r as { id: string; name: string | null; status: string | null; budget: number | null; updated_at: string | null; created_at: string | null };
+    const status = (row.status === "active" || row.status === "pending" || row.status === "completed" ? row.status : "pending") as ProjectStatus;
+    return {
+      id: row.id,
+      name: row.name ?? "",
+      status,
+      budget: Number(row.budget) || 0,
+      updated: row.updated_at ?? row.created_at ?? new Date().toISOString().slice(0, 10),
+    };
+  });
+}
+
 export async function getProjectById(id: string): Promise<Project | null> {
   const c = client();
   const { data: r, error } = await c

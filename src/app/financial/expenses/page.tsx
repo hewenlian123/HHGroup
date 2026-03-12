@@ -396,6 +396,7 @@ function ExpensesPageInner() {
                     type="file"
                     ref={receiptReplaceRef}
                     accept="image/*,.pdf"
+                    capture="environment"
                     className="hidden"
                     onChange={async (e) => {
                       const file = e.target.files?.[0];

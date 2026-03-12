@@ -12,9 +12,10 @@ import { StatusBadge } from "@/components/status-badge";
 import { DataTable, type Column } from "@/components/data-table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { createBrowserClient } from "@/lib/supabase";
-import { getInvoicesWithDerived } from "@/lib/data";
+import { getInvoicesWithDerivedPaged } from "@/lib/data";
 import { deleteInvoiceAction } from "./actions";
 import { Plus, Eye, CreditCard, Copy, Trash2 } from "lucide-react";
+import { Pagination } from "@/components/ui/pagination";
 
 type InvoiceStatus = "Draft" | "Sent" | "Partially Paid" | "Paid" | "Void";
 
@@ -77,10 +78,13 @@ export function InvoicesClient() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [invoices, setInvoices] = React.useState<InvoiceRow[]>([]);
+  const [total, setTotal] = React.useState(0);
   const [projects, setProjects] = React.useState<ProjectOption[]>([]);
   const [search, setSearch] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<"" | InvoiceStatus>("");
   const [projectFilter, setProjectFilter] = React.useState("");
+  const [page, setPage] = React.useState(1);
+  const pageSize = 20;
   const [voidConfirmId, setVoidConfirmId] = React.useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = React.useState<string | null>(null);
   const [busyId, setBusyId] = React.useState<string | null>(null);
@@ -108,8 +112,14 @@ export function InvoicesClient() {
     setDeleteConfirmId(null);
 
     try {
-      const [list, { data: projectData, error: projectError }] = await Promise.all([
-        getInvoicesWithDerived(),
+      const [{ rows: list, total: totalCount }, { data: projectData, error: projectError }] = await Promise.all([
+        getInvoicesWithDerivedPaged({
+          page,
+          pageSize,
+          status: statusFilter || undefined,
+          projectId: projectFilter || undefined,
+          search: search.trim() || undefined,
+        }),
         supabase.from("projects").select("id,name").order("created_at", { ascending: false }).limit(500),
       ]);
       const projectMap = new Map(((projectData ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name]));
@@ -127,6 +137,7 @@ export function InvoicesClient() {
         projects: inv.projectId ? { id: inv.projectId, name: projectMap.get(inv.projectId) ?? "" } : null,
       }));
       setInvoices(normalized);
+      setTotal(totalCount ?? normalized.length);
 
       if (projectError) {
         if (!isMissingTableError(projectError)) setError((prev) => prev ?? projectError.message);
@@ -139,27 +150,15 @@ export function InvoicesClient() {
     } finally {
       setLoading(false);
     }
-  }, [supabase, configured]);
+  }, [supabase, configured, page, pageSize, statusFilter, projectFilter, search]);
 
   React.useEffect(() => {
     void refresh();
   }, [refresh]);
 
-  const filtered = React.useMemo(() => {
-    let list = invoices;
-    const q = search.trim().toLowerCase();
-    if (q) {
-      list = list.filter((i) => {
-        const invoiceNo = (i.invoice_no ?? "").toLowerCase();
-        const clientName = (i.client_name ?? "").toLowerCase();
-        const projectName = (i.projects?.name ?? "").toLowerCase();
-        return invoiceNo.includes(q) || clientName.includes(q) || projectName.includes(q);
-      });
-    }
-    if (statusFilter) list = list.filter((i) => i.status === statusFilter);
-    if (projectFilter) list = list.filter((i) => (i.project_id ?? "") === projectFilter);
-    return list;
-  }, [invoices, search, statusFilter, projectFilter]);
+  React.useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter, projectFilter]);
 
   const columns = React.useMemo<Column<InvoiceRow>[]>(() => {
     return [
@@ -437,11 +436,12 @@ export function InvoicesClient() {
         ) : (
           <DataTable<InvoiceRow>
             columns={columns}
-            data={filtered}
+            data={invoices}
             keyExtractor={(r) => r.id}
             emptyText={configured ? "No data yet." : "Supabase is not configured."}
           />
         )}
+        <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} className="px-4" />
       </Card>
     </div>
   );

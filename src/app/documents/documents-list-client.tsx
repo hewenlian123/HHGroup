@@ -19,6 +19,7 @@ import {
 import { DocumentPreviewModal } from "@/components/documents/document-preview-modal";
 import { EmptyState } from "@/components/empty-state";
 import { FileUp } from "lucide-react";
+import { Pagination } from "@/components/ui/pagination";
 import {
   getDocumentPreviewUrl,
   getDocumentDownloadUrl,
@@ -69,9 +70,10 @@ function getRelatedRecordUrl(doc: DocumentWithProject): string | null {
 type Props = {
   documents: DocumentWithProject[];
   projects: { id: string; name: string }[];
+  total: number;
 };
 
-export function DocumentsListClient({ documents, projects }: Props) {
+export function DocumentsListClient({ documents, projects, total }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [previewDoc, setPreviewDoc] = React.useState<DocumentWithProject | null>(null);
@@ -85,6 +87,8 @@ export function DocumentsListClient({ documents, projects }: Props) {
   const fileType = searchParams.get("file_type") ?? "";
   const dateFrom = searchParams.get("date_from") ?? "";
   const dateTo = searchParams.get("date_to") ?? "";
+  const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
+  const pageSize = 20;
 
   const [searchInput, setSearchInput] = React.useState(search);
   React.useEffect(() => setSearchInput(search), [search]);
@@ -101,10 +105,17 @@ export function DocumentsListClient({ documents, projects }: Props) {
         if (v) next.set(k, v);
         else next.delete(k);
       });
+      if (!("page" in updates)) next.set("page", "1");
       router.push(`/documents?${next.toString()}`, { scroll: false });
     },
     [router, searchParams]
   );
+
+  const setPage = (nextPage: number) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("page", String(nextPage));
+    router.push(`/documents?${next.toString()}`, { scroll: false });
+  };
 
   const handlePreview = React.useCallback(async (doc: DocumentWithProject) => {
     setPreviewDoc(doc);
@@ -301,6 +312,8 @@ export function DocumentsListClient({ documents, projects }: Props) {
           </table>
         </div>
       )}
+
+      <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} />
 
       <DocumentPreviewModal
         open={!!previewDoc}

@@ -72,6 +72,10 @@ export async function getProjects(): Promise<Project[]> {
   return projectsDb.getProjects();
 }
 
+export async function getProjectsDashboard(limit?: number) {
+  return projectsDb.getProjectsDashboard(limit);
+}
+
 export async function getProjectById(id: string): Promise<Project | undefined> {
   const p = await projectsDb.getProjectById(id);
   return p ?? undefined;
@@ -608,6 +612,9 @@ export async function lockLaborEntries(entryIds: string[], lockedBy?: string | n
 export async function getDocuments(filters: import("../documents-db").DocumentFilters = {}) {
   return documentsDb.getDocuments(filters);
 }
+export async function getDocumentsPaged(input: Parameters<typeof documentsDb.getDocumentsPaged>[0]) {
+  return documentsDb.getDocumentsPaged(input);
+}
 export async function getDocumentsByProject(projectId: string) {
   return documentsDb.getDocumentsByProject(projectId);
 }
@@ -790,7 +797,7 @@ export async function getLaborActualByProject(projectId: string): Promise<number
 }
 
 export async function getDashboardStats() {
-  const projects = await getProjects();
+  const projects = await projectsDb.getProjectsDashboard(200);
   const totalProjects = projects.length;
   const activeProjects = projects.filter((p) => p.status === "active").length;
   const totalBudget = projects.reduce((s, p) => s + p.budget, 0);
@@ -1368,6 +1375,10 @@ export async function getInvoicePayments(): Promise<InvoicePayment[]> {
 
 export async function getInvoicesWithDerived(filters?: { status?: InvoiceStatus | "Overdue"; projectId?: string; search?: string }): Promise<InvoiceWithDerived[]> {
   return invoicesDb.getInvoicesWithDerived(filters);
+}
+
+export async function getInvoicesWithDerivedPaged(input?: Parameters<typeof invoicesDb.getInvoicesWithDerivedPaged>[0]) {
+  return invoicesDb.getInvoicesWithDerivedPaged(input);
 }
 
 export async function getOverdueInvoices(): Promise<OverdueInvoiceRow[]> {

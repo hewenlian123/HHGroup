@@ -51,7 +51,7 @@ export interface DashboardViewProps {
   stats: Awaited<ReturnType<typeof import("@/lib/data").getDashboardStats>>;
   transactions: RecentTransaction[];
   riskOverview: ProjectRiskOverview;
-  projects: Awaited<ReturnType<typeof import("@/lib/data").getProjects>>;
+  projects: Awaited<ReturnType<typeof import("@/lib/data").getProjectsDashboard>>;
   subcontractsDetails: SubcontractDetail[];
   billsSummary: { subcontract_id: string; amount: number; status: string }[];
   paymentsSummary: { subcontract_id: string; amount: number }[];
@@ -148,28 +148,28 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-stretch gap-0 border-b border-zinc-200/70 dark:border-border">
-        <div className="flex min-w-0 flex-1 basis-32 flex-col border-r border-zinc-200/70 py-3 pr-4 dark:border-border">
+      <div className="flex flex-wrap items-stretch border-b border-zinc-200/70 dark:border-border">
+        <div className="flex min-w-0 flex-1 basis-1/2 flex-col border-r border-zinc-200/70 py-3 pr-4 dark:border-border md:basis-1/3 lg:basis-1/6">
           <span className="text-xs text-muted-foreground">Outstanding Bills</span>
           <span className="mt-0.5 text-sm font-medium tabular-nums">${fmtUsd(apBillsSummary.totalOutstanding)}</span>
         </div>
-        <div className="flex min-w-0 flex-1 basis-32 flex-col border-r border-zinc-200/70 py-3 pr-4 dark:border-border">
+        <div className="flex min-w-0 flex-1 basis-1/2 flex-col border-r border-zinc-200/70 py-3 pr-4 dark:border-border md:basis-1/3 lg:basis-1/6">
           <span className="text-xs text-muted-foreground">Overdue Bills</span>
           <span className="mt-0.5 text-sm font-medium tabular-nums">{apBillsSummary.overdueCount} · ${fmtUsd(apBillsSummary.overdueAmount)}</span>
         </div>
-        <div className="flex min-w-0 flex-1 basis-32 flex-col border-r border-zinc-200/70 py-3 pr-4 dark:border-border">
+        <div className="flex min-w-0 flex-1 basis-1/2 flex-col border-r border-zinc-200/70 py-3 pr-4 dark:border-border md:basis-1/3 lg:basis-1/6">
           <span className="text-xs text-muted-foreground">Bills Due This Week</span>
           <span className="mt-0.5 text-sm font-medium tabular-nums">{apBillsSummary.dueThisWeekCount} · ${fmtUsd(apBillsSummary.dueThisWeekAmount)}</span>
         </div>
-        <div className="flex min-w-0 flex-1 basis-32 flex-col border-r border-zinc-200/70 py-3 pr-4 dark:border-border">
+        <div className="flex min-w-0 flex-1 basis-1/2 flex-col border-r border-zinc-200/70 py-3 pr-4 dark:border-border md:basis-1/3 lg:basis-1/6">
           <span className="text-xs text-muted-foreground">Labor Cost This Week</span>
           <span className="mt-0.5 text-sm font-medium tabular-nums">${fmtUsd(laborCostThisWeek)}</span>
         </div>
-        <div className="flex min-w-0 flex-1 basis-32 flex-col border-r border-zinc-200/70 py-3 pr-4 dark:border-border">
+        <div className="flex min-w-0 flex-1 basis-1/2 flex-col border-r border-zinc-200/70 py-3 pr-4 dark:border-border md:basis-1/3 lg:basis-1/6">
           <span className="text-xs text-muted-foreground">Expenses This Month</span>
           <span className="mt-0.5 text-sm font-medium tabular-nums">${fmtUsd(expensesThisMonth)}</span>
         </div>
-        <div className="flex min-w-0 flex-1 basis-32 flex-col py-3 pr-4">
+        <div className="flex min-w-0 flex-1 basis-1/2 flex-col py-3 pr-4 md:basis-1/3 lg:basis-1/6">
           <span className="text-xs text-muted-foreground">Project Profit Summary</span>
           <span className={cn("mt-0.5 text-sm font-medium tabular-nums", projectProfitSummary >= 0 ? "text-emerald-700/90 dark:text-emerald-300" : "text-red-600/90 dark:text-red-400")}>
             ${projectProfitSummary >= 0 ? "" : "−"}${fmtUsd(Math.abs(projectProfitSummary))}
@@ -177,8 +177,8 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
+      <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-6 md:col-span-2 lg:col-span-2">
           <section className="border border-zinc-200/70 dark:border-border rounded-lg overflow-hidden bg-background">
             <div className="px-4 py-3 border-b border-zinc-200/70 dark:border-border bg-muted/20">
               <SectionHeader
@@ -434,7 +434,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
               <SectionHeader title="Financial Overview" subtitle="Portfolio snapshot." />
             </div>
             <div className="p-4 space-y-4">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {kpis.map((k) => (
                   <div key={k.key} className="rounded-md border border-zinc-200/70 bg-background px-3 py-2 dark:border-border">
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">

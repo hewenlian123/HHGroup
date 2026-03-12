@@ -7,7 +7,7 @@
     text-wrap: balance;
   }
   .page-container {
-    @apply mx-auto w-full max-w-[1320px] px-4 md:px-6 lg:px-8;
+    @apply mx-auto w-full max-w-[1320px] px-4 sm:px-4 md:px-6 lg:px-8;
   }
   .page-stack {
     @apply flex flex-col gap-4 md:gap-5;
@@ -26,6 +26,19 @@
   }
   .date-text {
     @apply tabular-nums text-muted-foreground;
+  }
+  /* Mobile-friendly forms: full width, comfortable tap targets */
+  .form-mobile-friendly input,
+  .form-mobile-friendly select,
+  .form-mobile-friendly textarea {
+    @apply min-h-[44px] w-full rounded-lg md:min-h-0;
+  }
+  .form-mobile-friendly .form-actions button {
+    @apply h-11 w-full rounded-lg md:h-9 md:w-auto;
+  }
+  /* Touch-friendly minimum tap area */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
   }
 
   /* Linear-style layout primitives */

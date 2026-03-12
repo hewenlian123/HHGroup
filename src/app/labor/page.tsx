@@ -178,19 +178,19 @@ export default function LaborPage() {
         title="Labor"
         subtitle="Daily work for construction workers. Full / Half day or Absent; add OT as needed."
       />
-      <div className="flex flex-wrap items-center gap-3 border-b border-border/60 pb-3">
+      <div className="form-mobile-friendly flex flex-wrap items-center gap-3 border-b border-border/60 pb-3 space-y-4 md:space-y-0">
         <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</label>
         <Input
           type="date"
           value={workDate}
           onChange={(e) => setWorkDate(e.target.value)}
-          className="h-9 w-[152px] rounded-md"
+          className="h-11 w-full rounded-lg md:h-9 md:w-[152px]"
         />
         <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Project</label>
         <select
           value={projectFilter}
           onChange={(e) => setProjectFilter(e.target.value)}
-          className="h-9 rounded-md border border-input bg-transparent px-3 text-sm min-w-[180px]"
+          className="h-11 w-full rounded-lg border border-input bg-transparent px-3 text-sm md:h-9 md:min-w-[180px]"
         >
           <option value="">All projects</option>
           {projects.map((p) => (
@@ -199,7 +199,7 @@ export default function LaborPage() {
             </option>
           ))}
         </select>
-        <Button variant="outline" size="sm" className="h-9" onClick={addWorker}>
+        <Button variant="outline" size="sm" className="h-11 w-full rounded-lg md:h-9 md:w-auto" onClick={addWorker}>
           + Add Worker
         </Button>
       </div>
@@ -219,7 +219,7 @@ export default function LaborPage() {
           ) : null}
         </div>
       ) : null}
-      <div className="overflow-x-auto border-b border-border/60">
+      <div className="overflow-x-auto border-b border-border/60 hidden md:block">
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-border/60">
@@ -363,6 +363,141 @@ export default function LaborPage() {
             </tr>
           </tfoot>
         </table>
+      </div>
+
+      {/* Mobile: worker cards */}
+      <div className="grid gap-4 md:hidden">
+        {loading ? (
+          <div className="rounded-lg border border-border/60 bg-muted/20 px-4 py-6 text-center text-sm text-muted-foreground">
+            Loading…
+          </div>
+        ) : (
+          displayRows.map((row) => {
+            const entryForPay: DailyWorkEntry = {
+              id: "id" in row && row.id ? row.id : "",
+              workDate: row.workDate,
+              workerId: row.workerId,
+              projectId: row.projectId,
+              dayType: row.dayType,
+              dailyRate: row.dailyRate,
+              otAmount: row.otAmount,
+              notes: row.notes ?? null,
+              createdAt: "createdAt" in row ? (row.createdAt ?? "") : "",
+            };
+            const totalPay = totalPayForEntry(entryForPay);
+            return (
+              <div
+                key={row.localId}
+                className="rounded-lg border border-border/60 bg-background p-4 shadow-[var(--shadow-1)] space-y-4"
+              >
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Worker</label>
+                  <select
+                    value={row.workerId}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      const w = workerById.get(id);
+                      updateRow(row.localId, {
+                        workerId: id,
+                        dailyRate: w && "dailyRate" in w ? Number(w.dailyRate) : row.dailyRate,
+                      });
+                    }}
+                    className="mt-1 h-11 w-full rounded-lg border border-input bg-transparent px-3 text-sm font-medium"
+                  >
+                    <option value="">Select worker</option>
+                    {workers.map((w) => (
+                      <option key={w.id} value={w.id}>
+                        {w.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Project</label>
+                    <select
+                      value={row.projectId ?? ""}
+                      onChange={(e) => updateRow(row.localId, { projectId: e.target.value || null })}
+                      className="mt-1 h-11 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
+                    >
+                      <option value="">—</option>
+                      {projects.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Day Type</label>
+                    <select
+                      value={row.dayType}
+                      onChange={(e) => updateRow(row.localId, { dayType: e.target.value as DayType })}
+                      className="mt-1 h-11 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
+                    >
+                      {DAY_TYPES.map((d) => (
+                        <option key={d.value} value={d.value}>
+                          {d.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Daily Rate</label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={row.dailyRate || ""}
+                        onChange={(e) => updateRow(row.localId, { dailyRate: parseFloat(e.target.value) || 0 })}
+                        className="mt-1 h-11 w-full rounded-lg text-right tabular-nums"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">OT</label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={row.otAmount || ""}
+                        onChange={(e) => updateRow(row.localId, { otAmount: parseFloat(e.target.value) || 0 })}
+                        className="mt-1 h-11 w-full rounded-lg text-right tabular-nums"
+                      />
+                    </div>
+                  </div>
+                  <div className="text-sm font-medium tabular-nums">Total: {fmtUsd(totalPay)}</div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Notes</label>
+                    <Input
+                      type="text"
+                      value={row.notes ?? ""}
+                      onChange={(e) => updateRow(row.localId, { notes: e.target.value || null })}
+                      placeholder="Notes"
+                      className="mt-1 h-11 w-full rounded-lg text-sm"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <Button size="sm" variant="outline" className="h-11 flex-1 rounded-lg" onClick={() => handleSave(row)}>
+                    Save
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-11 flex-1 rounded-lg text-red-600" onClick={() => handleDelete(row)}>
+                    Delete
+                  </Button>
+                </div>
+              </div>
+            );
+          })
+        )}
+        {!loading && displayRows.length > 0 && (
+          <div className="rounded-lg border-t-2 border-border/60 bg-muted/10 px-4 py-3 font-medium text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Total labor cost (this day)</span>
+              <span className="tabular-nums">{fmtUsd(totalLabor)}</span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

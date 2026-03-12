@@ -3,8 +3,11 @@
 import * as React from "react";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
+import { BottomNav } from "./bottom-nav";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { ToastProvider } from "../toast/toast-provider";
+import { PWAInstallPrompt } from "../pwa-install-prompt";
+import { cn } from "@/lib/utils";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
@@ -30,21 +33,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <ToastProvider>
       <div className="app-shell flex h-screen overflow-hidden bg-zinc-50 dark:bg-background">
+        {/* Desktop/Tablet: fixed sidebar (md and up). */}
         <Sidebar
-          className="hidden lg:flex"
+          className="hidden md:flex shrink-0 transition-[width] duration-200"
           collapsed={collapsed}
           onToggleCollapsed={() => setCollapsed((v) => !v)}
         />
+        {/* Mobile: drawer overlay */}
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-          <SheetContent side="left" className="w-[240px] p-0">
-            <Sidebar className="w-full border-none" onNavigate={() => setMobileOpen(false)} />
+          <SheetContent
+            side="left"
+            className="w-[18rem] max-w-[85vw] p-0 transition-transform duration-200 data-[state=open]:slide-in-from-left data-[state=closed]:slide-out-to-left"
+          >
+            <Sidebar className="h-full w-full border-none" onNavigate={() => setMobileOpen(false)} />
           </SheetContent>
         </Sheet>
-        <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <Topbar onOpenSidebar={() => setMobileOpen(true)} />
-          <main className="flex-1 overflow-y-auto">{children}</main>
+          <main className={cn("flex-1 overflow-y-auto pb-14 md:pb-0")}>{children}</main>
+          <BottomNav className="fixed bottom-0 left-0 right-0 z-30 md:hidden" />
         </div>
       </div>
+      <PWAInstallPrompt />
     </ToastProvider>
   );
 }

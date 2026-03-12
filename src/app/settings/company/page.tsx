@@ -254,6 +254,7 @@ export default function SettingsCompanyPage() {
               type="file"
               className="hidden"
               accept="image/*"
+              capture="environment"
               disabled={disabled}
               onChange={async (e) => {
                 const file = e.target.files?.[0];

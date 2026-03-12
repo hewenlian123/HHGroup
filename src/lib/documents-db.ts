@@ -136,6 +136,70 @@ export async function getDocuments(filters: DocumentFilters = {}): Promise<Docum
   });
 }
 
+export async function getDocumentsPaged(
+  input: DocumentFilters & { page?: number; pageSize?: number } = {}
+): Promise<{ rows: DocumentWithProject[]; total: number }> {
+  const c = client();
+  const page = Math.max(1, Math.floor(input.page ?? 1));
+  const pageSize = Math.max(1, Math.min(100, Math.floor(input.pageSize ?? 20)));
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  const colsWithProject =
+    "id, file_name, file_path, file_type, mime_type, size_bytes, project_id, related_module, related_id, uploaded_by, uploaded_at, notes, projects(name)";
+  const colsOnly =
+    "id, file_name, file_path, file_type, mime_type, size_bytes, project_id, related_module, related_id, uploaded_by, uploaded_at, notes";
+
+  let q = c
+    .from("documents")
+    .select(colsWithProject, { count: "exact" })
+    .order("uploaded_at", { ascending: false });
+
+  if (input.project_id) q = q.eq("project_id", input.project_id);
+  if (input.file_type) q = q.eq("file_type", input.file_type);
+  if (input.related_module) q = q.eq("related_module", input.related_module);
+  if (input.date_from) q = q.gte("uploaded_at", input.date_from);
+  if (input.date_to) q = q.lte("uploaded_at", input.date_to + "T23:59:59.999Z");
+  if (input.search?.trim()) {
+    const term = `%${input.search.trim().toLowerCase()}%`;
+    q = q.ilike("file_name", term);
+  }
+
+  const res = await q.range(from, to);
+  if (res.error) {
+    try {
+      let qFallback = c
+        .from("documents")
+        .select(colsOnly, { count: "exact" })
+        .order("uploaded_at", { ascending: false });
+      if (input.project_id) qFallback = qFallback.eq("project_id", input.project_id);
+      if (input.file_type) qFallback = qFallback.eq("file_type", input.file_type);
+      if (input.related_module) qFallback = qFallback.eq("related_module", input.related_module);
+      if (input.date_from) qFallback = qFallback.gte("uploaded_at", input.date_from);
+      if (input.date_to) qFallback = qFallback.lte("uploaded_at", input.date_to + "T23:59:59.999Z");
+      if (input.search?.trim()) {
+        const term = `%${input.search.trim().toLowerCase()}%`;
+        qFallback = qFallback.ilike("file_name", term);
+      }
+      const fallback = await qFallback.range(from, to);
+      if (fallback.error) return { rows: safeReturnDocuments(), total: 0 };
+      return {
+        rows: (fallback.data ?? []).map((r: Record<string, unknown>) => ({ ...mapRow(r), project_name: null })),
+        total: fallback.count ?? 0,
+      };
+    } catch {
+      return { rows: safeReturnDocuments(), total: 0 };
+    }
+  }
+
+  const rows = (res.data ?? []).map((r: Record<string, unknown>) => {
+    const proj = r.projects as { name?: string } | null;
+    const row = mapRow(r);
+    return { ...row, project_name: proj?.name ?? null };
+  });
+  return { rows, total: res.count ?? rows.length };
+}
+
 /** Get documents for a single project. */
 export async function getDocumentsByProject(projectId: string): Promise<DocumentRow[]> {
   try {

@@ -1,6 +1,6 @@
 import {
   getDashboardStats,
-  getProjects,
+  getProjectsDashboard,
   getRecentTransactions,
   getProjectRiskOverview,
   getSubcontractsWithDetailsAll,
@@ -11,7 +11,7 @@ import {
   getExpensesThisMonth,
   getOverdueInvoices,
 } from "@/lib/data";
-import { getCanonicalProjectProfit } from "@/lib/profit-engine";
+import { getCanonicalProjectProfitBatch } from "@/lib/profit-engine";
 import { DollarSign, FolderKanban, TrendingUp, Wallet } from "lucide-react";
 import { DashboardView } from "./dashboard-view";
 
@@ -26,7 +26,7 @@ export default async function DashboardPage({
     getDashboardStats(),
     getRecentTransactions(20),
     getProjectRiskOverview(),
-    getProjects(),
+    getProjectsDashboard(200),
   ]);
   let subcontractsDetails: Awaited<ReturnType<typeof getSubcontractsWithDetailsAll>> = [];
   let billsSummary: Awaited<ReturnType<typeof getBillsSummaryAll>> = [];
@@ -88,33 +88,25 @@ export default async function DashboardPage({
     })
     .filter((r) => r.balance > 0);
 
-  const projectHealthRows = await Promise.all(
-    projects.map(async (project) => {
-      let revenue = 0;
-      let actual = 0;
-      let profit = 0;
-      let marginPct = 0;
-      try {
-        const canonical = await getCanonicalProjectProfit(project.id);
-        revenue = canonical.revenue;
-        actual = canonical.actualCost;
-        profit = canonical.profit;
-        marginPct = canonical.margin * 100;
-      } catch {
-        // Missing columns or DB errors: do not crash dashboard; show zeros for this project.
-      }
-      const budget = project.budget ?? 0;
-      return {
-        id: project.id,
-        name: project.name,
-        revenue,
-        budget,
-        actual,
-        profit,
-        marginPct,
-      };
-    })
-  );
+  const projectIds = projects.map((p) => p.id);
+  const profitMap = await getCanonicalProjectProfitBatch(projectIds).catch(() => new Map());
+  const projectHealthRows = projects.map((project) => {
+    const canonical = profitMap.get(project.id);
+    const revenue = canonical?.revenue ?? 0;
+    const actual = canonical?.actualCost ?? 0;
+    const profit = canonical?.profit ?? 0;
+    const marginPct = (canonical?.margin ?? 0) * 100;
+    const budget = project.budget ?? 0;
+    return {
+      id: project.id,
+      name: project.name,
+      revenue,
+      budget,
+      actual,
+      profit,
+      marginPct,
+    };
+  });
   const projectProfitSummary = projectHealthRows.reduce((s, p) => s + p.profit, 0);
 
   const debugFlag = searchParams?.debug;

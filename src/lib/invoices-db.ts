@@ -294,6 +294,89 @@ export async function getInvoicesWithDerived(filters?: {
   return withDerived;
 }
 
+export async function getInvoicesWithDerivedPaged(input?: {
+  page?: number;
+  pageSize?: number;
+  status?: InvoiceStatus | InvoiceComputedStatus;
+  projectId?: string;
+  search?: string;
+}): Promise<{ rows: InvoiceWithDerived[]; total: number }> {
+  const page = Math.max(1, Math.floor(input?.page ?? 1));
+  const pageSize = Math.max(1, Math.min(100, Math.floor(input?.pageSize ?? 20)));
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  const c = client();
+
+  // Query invoices page (server-side filters where possible)
+  let invQ = c
+    .from("invoices")
+    .select(INVOICE_COLS, { count: "exact" })
+    .order("issue_date", { ascending: false })
+    .order("created_at", { ascending: false });
+
+  if (input?.projectId) invQ = invQ.eq("project_id", input.projectId);
+  if (input?.search?.trim()) {
+    const q = input.search.trim();
+    // PostgREST OR filter across a few columns; keep it simple.
+    invQ = invQ.or(`invoice_no.ilike.%${q}%,client_name.ilike.%${q}%`);
+  }
+  if (input?.status && ["Draft", "Sent", "Partially Paid", "Paid", "Void"].includes(input.status as string)) {
+    invQ = invQ.eq("status", input.status as InvoiceStatus);
+  }
+
+  const invRes = await invQ.range(from, to);
+  if (invRes.error) {
+    if (isMissingTable(invRes.error)) throw new Error(`invoices: table not found. ${HINT}`);
+    throwInvoiceError(invRes.error, HINT);
+  }
+
+  const invoiceRows = ((invRes.data ?? []) as InvoiceRow[]).map((r) => toInvoice(r, []));
+  const invoiceIds = invoiceRows.map((r) => r.id).filter(Boolean);
+
+  // Pull payments for only these invoices (batched)
+  const paymentsByInvoiceId = new Map<string, InvoicePayment[]>();
+  if (invoiceIds.length) {
+    const payRes = await c
+      .from("invoice_payments")
+      .select("id, invoice_id, amount, payment_date, paid_at, method, reference, memo, status")
+      .in("invoice_id", invoiceIds);
+    if (!payRes.error && Array.isArray(payRes.data)) {
+      for (const p of (payRes.data ?? []) as InvoicePaymentRow[]) {
+        const payment = toPayment(p);
+        const arr = paymentsByInvoiceId.get(payment.invoiceId) ?? [];
+        arr.push(payment);
+        paymentsByInvoiceId.set(payment.invoiceId, arr);
+      }
+    }
+  }
+
+  // Compute derived per invoice
+  let rows: InvoiceWithDerived[] = invoiceRows.map((inv) => {
+    const invPayments = paymentsByInvoiceId.get(inv.id) ?? [];
+    const { paidTotal, balanceDue, computedStatus, daysOverdue } = computeDerived(inv, invPayments);
+    return { ...inv, paidTotal, balanceDue, computedStatus, daysOverdue };
+  });
+
+  // computedStatus filters (Partial/Unpaid/Overdue) need client-side derivation
+  if (input?.status && !["Draft", "Sent", "Partially Paid", "Paid", "Void"].includes(input.status as string)) {
+    rows = rows.filter((r) => r.computedStatus === input.status);
+  }
+
+  // search might include projectId substring in old implementation; keep parity cheaply
+  if (input?.search?.trim()) {
+    const q = input.search.toLowerCase();
+    rows = rows.filter(
+      (i) =>
+        i.invoiceNo.toLowerCase().includes(q) ||
+        i.clientName.toLowerCase().includes(q) ||
+        (i.projectId ?? "").toLowerCase().includes(q)
+    );
+  }
+
+  return { rows, total: invRes.count ?? rows.length };
+}
+
 export async function getInvoiceByIdWithDerived(id: string): Promise<InvoiceWithDerived | null> {
   const inv = await getInvoiceById(id);
   if (!inv) return null;
