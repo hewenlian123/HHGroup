@@ -31,10 +31,15 @@
       "static/chunks/main-app.js",
       "static/chunks/app/dashboard/loading.js"
     ],
-    "/labor/page": [
+    "/financial/commissions/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/chunks/app/labor/page.js"
+      "static/chunks/app/financial/commissions/page.js"
+    ],
+    "/labor/receipts/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/labor/receipts/page.js"
     ],
     "/labor/layout": [
       "static/chunks/webpack.js",
