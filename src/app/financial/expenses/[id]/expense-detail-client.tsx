@@ -450,7 +450,6 @@ export function ExpenseDetailClient({ id }: { id: string }) {
               type="file"
               accept="image/*,application/pdf"
               capture="environment"
-              capture="environment"
               multiple
               className="hidden"
               onChange={(e) => {

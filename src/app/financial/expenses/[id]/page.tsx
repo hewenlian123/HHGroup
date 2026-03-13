@@ -312,7 +312,6 @@ export default function ExpenseDetailPage() {
           type="file"
           accept="image/*,application/pdf"
           capture="environment"
-          capture="environment"
           multiple
           className="hidden"
           onChange={handleFileChange}
