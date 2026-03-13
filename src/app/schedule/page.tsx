@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
+type ViewMode = "list" | "calendar";
 type ScheduleRow = {
   id: string;
   project_id: string;
@@ -40,7 +41,45 @@ const STATUS_LABEL: Record<string, string> = {
   delayed: "Delayed",
 };
 
+function formatDateRange(start: string | null, end: string | null): string {
+  if (!start && !end) return "—";
+  const s = start ? new Date(start).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—";
+  const e = end ? new Date(end).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—";
+  return start && end ? `${s} → ${e}` : s;
+}
+
+const ScheduleListRow = React.memo(function ScheduleListRow({
+  item,
+  statusStyle,
+  statusLabel,
+}: {
+  item: ScheduleRow;
+  statusStyle: (s: string) => string;
+  statusLabel: (s: string) => string;
+}) {
+  return (
+    <li className="py-2.5 px-3 border-b border-[#eee] last:border-b-0 hover:bg-[#fafafa] transition-colors">
+      <div className="font-medium text-foreground">{item.title || "—"}</div>
+      <div className="text-sm text-muted-foreground mt-0.5">{item.project_name ?? "—"}</div>
+      <div className="flex flex-wrap items-center gap-2 mt-1.5 text-sm">
+        <span className="tabular-nums text-muted-foreground">
+          {formatDateRange(item.start_date, item.end_date)}
+        </span>
+        <span
+          className={cn(
+            "inline-flex rounded-sm px-1.5 py-0.5 text-xs font-medium",
+            statusStyle(item.status)
+          )}
+        >
+          {statusLabel(item.status)}
+        </span>
+      </div>
+    </li>
+  );
+});
+
 export default function SchedulePage() {
+  const [viewMode, setViewMode] = React.useState<ViewMode>("list");
   const [schedule, setSchedule] = React.useState<ScheduleRow[]>([]);
   const [projects, setProjects] = React.useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -79,18 +118,19 @@ export default function SchedulePage() {
     load();
   }, [load]);
 
-  const openModal = () => {
-    setForm({
+  const openModal = React.useCallback(() => {
+    setForm((prev) => ({
+      ...prev,
       project_id: projects[0]?.id ?? "",
       title: "",
       start_date: "",
       end_date: "",
       status: "planned",
-    });
+    }));
     setModalOpen(true);
-  };
+  }, [projects]);
 
-  const handleCreate = async () => {
+  const handleCreate = React.useCallback(async () => {
     if (!form.project_id) {
       setError("Select a project.");
       return;
@@ -118,11 +158,11 @@ export default function SchedulePage() {
     } finally {
       setSubmitting(false);
     }
-  };
+  }, [form, load]);
 
-  const statusStyle = (status: string) =>
-    STATUS_STYLES[status] ?? "bg-muted text-muted-foreground";
-  const statusLabel = (status: string) => STATUS_LABEL[status] ?? status;
+  const statusStyle = React.useCallback((status: string) =>
+    STATUS_STYLES[status] ?? "bg-muted text-muted-foreground", []);
+  const statusLabel = React.useCallback((status: string) => STATUS_LABEL[status] ?? status, []);
 
   return (
     <PageLayout
@@ -139,81 +179,98 @@ export default function SchedulePage() {
       }
     >
       <div className="max-w-5xl space-y-3">
-        <div className="border border-border/60 rounded-sm overflow-hidden">
-          {loading ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">Loading…</div>
-          ) : error ? (
-            <div className="py-10 text-center text-sm text-destructive">{error}</div>
-          ) : schedule.length === 0 ? (
-            <div className="py-10 text-center">
-              <p className="text-sm text-muted-foreground">No schedule items yet.</p>
-              <Button onClick={openModal} className="mt-4 max-md:min-h-[44px] max-md:w-full max-md:max-w-[280px]" size="sm">
-                New schedule item
-              </Button>
-            </div>
-          ) : (
-            <>
-              {/* Mobile: card layout */}
-              <div className="flex flex-col gap-2 md:hidden divide-y divide-border/60">
-                {schedule.map((s) => (
-                  <div
-                    key={s.id}
-                    className="flex min-h-[44px] flex-col gap-1 border-0 bg-transparent px-4 py-3"
-                  >
-                    <span className="font-medium truncate">{s.title || "—"}</span>
-                    <span className="text-xs text-muted-foreground truncate">{s.project_name ?? "—"}</span>
-                    <span className="text-xs text-muted-foreground tabular-nums">
-                      {s.start_date ? new Date(s.start_date).toLocaleDateString() : "—"} – {s.end_date ? new Date(s.end_date).toLocaleDateString() : "—"}
-                    </span>
-                    <span
-                      className={cn(
-                        "mt-1 w-fit rounded-sm px-1.5 py-0.5 text-xs font-medium",
-                        statusStyle(s.status)
-                      )}
-                    >
-                      {statusLabel(s.status)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <table className="hidden w-full text-sm border-collapse md:table">
-              <thead>
-                <tr className="border-b border-border/60">
-                  <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground">Task</th>
-                  <th className="hidden sm:table-cell text-left py-2 px-3 font-medium text-muted-foreground">Project</th>
-                  <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground">Start date</th>
-                  <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground">End date</th>
-                  <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {schedule.map((s) => (
-                  <tr key={s.id} className="border-b border-border/60 last:border-b-0 hover:bg-muted/40 transition-colors">
-                    <td className="py-2 px-2 sm:px-3 font-medium">{s.title || "—"}</td>
-                    <td className="hidden sm:table-cell py-2 px-3 text-muted-foreground">{s.project_name ?? "—"}</td>
-                    <td className="py-2 px-2 sm:px-3 text-muted-foreground tabular-nums">
-                      {s.start_date ? new Date(s.start_date).toLocaleDateString() : "—"}
-                    </td>
-                    <td className="py-2 px-2 sm:px-3 text-muted-foreground tabular-nums">
-                      {s.end_date ? new Date(s.end_date).toLocaleDateString() : "—"}
-                    </td>
-                    <td className="py-2 px-2 sm:px-3">
-                      <span
-                        className={cn(
-                          "inline-flex rounded-sm px-1.5 py-0.5 text-xs font-medium",
-                          statusStyle(s.status)
-                        )}
-                      >
-                        {statusLabel(s.status)}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            </>
-          )}
+        {/* View switch: List | Calendar */}
+        <div className="flex items-center gap-1 p-0.5 rounded-lg border border-[#eee] bg-white w-fit">
+          <button
+            type="button"
+            onClick={() => setViewMode("list")}
+            className={cn(
+              "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
+              viewMode === "list"
+                ? "bg-foreground text-background"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            List
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("calendar")}
+            className={cn(
+              "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
+              viewMode === "calendar"
+                ? "bg-foreground text-background"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            Calendar
+          </button>
         </div>
+
+        {/* List view — compact list */}
+        {viewMode === "list" && (
+          <div className="rounded-lg border border-[#eee] bg-white overflow-hidden">
+            {loading ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>
+            ) : error ? (
+              <div className="py-8 text-center text-sm text-destructive">{error}</div>
+            ) : schedule.length === 0 ? (
+              <div className="py-8 text-center">
+                <p className="text-sm text-muted-foreground">No schedule items yet.</p>
+                <Button onClick={openModal} className="mt-3" size="sm">
+                  New schedule item
+                </Button>
+              </div>
+            ) : (
+              <ul className="divide-y divide-[#eee]">
+                {schedule.map((s) => (
+                  <ScheduleListRow
+                    key={s.id}
+                    item={s}
+                    statusStyle={statusStyle}
+                    statusLabel={statusLabel}
+                  />
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        {/* Calendar view — placeholder */}
+        {viewMode === "calendar" && (
+          <div className="rounded-lg border border-[#eee] bg-white overflow-hidden">
+            {loading ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>
+            ) : error ? (
+              <div className="py-8 text-center text-sm text-destructive">{error}</div>
+            ) : schedule.length === 0 ? (
+              <div className="py-8 text-center">
+                <p className="text-sm text-muted-foreground">No schedule items yet.</p>
+                <Button onClick={openModal} className="mt-3" size="sm">
+                  New schedule item
+                </Button>
+              </div>
+            ) : (
+              <>
+                {/* Mobile: simplified list (event title + date only) */}
+                <div className="lg:hidden divide-y divide-[#eee]">
+                  {schedule.map((s) => (
+                    <div key={s.id} className="py-3 px-3 sm:px-4">
+                      <div className="font-medium text-foreground">{s.title || "—"}</div>
+                      <div className="text-sm text-muted-foreground mt-0.5 tabular-nums">
+                        {formatDateRange(s.start_date, s.end_date)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {/* Desktop: full calendar placeholder */}
+                <div className="hidden lg:block p-6 text-center text-sm text-muted-foreground">
+                  Calendar view — schedule items: {schedule.length}
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>

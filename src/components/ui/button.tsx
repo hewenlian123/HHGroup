@@ -25,9 +25,9 @@ const buttonVariants = cva(
         link: "text-[#111111] underline-offset-4 hover:underline",
       },
       size: {
-        /* Desktop (lg+) unchanged; max-lg = mobile/tablet get 44px touch targets */
+        /* Touch-friendly: min 44px on mobile/tablet (max-lg) */
         default: "h-10 px-4 max-lg:min-h-[44px]",
-        sm: "h-8 px-3 text-xs",
+        sm: "h-8 px-3 text-xs max-lg:min-h-[44px]",
         lg: "h-11 px-4.5 max-lg:min-h-[44px]",
         icon: "h-10 w-10 max-lg:min-h-[44px] max-lg:min-w-[44px]",
         touch: "min-h-[44px] min-w-[44px] px-4 text-sm",

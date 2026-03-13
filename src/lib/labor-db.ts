@@ -473,7 +473,7 @@ export async function insertDailyLaborEntries(
     const msg = error.message ?? "";
     if (/foreign key constraint|worker_id_fkey/i.test(msg)) {
       throw new Error(
-        "Selected worker(s) not found in the database. Run the migration that syncs labor_workers from workers (202604010000), or run that sync SQL in the Supabase SQL Editor."
+        "Selected worker(s) not found in the database. Run the migration that syncs labor_workers from workers (202604010000), or run supabase/sync_labor_workers_from_workers.sql in the Supabase SQL Editor."
       );
     }
     throw new Error(error.message ?? "Failed to save daily labor entries.");

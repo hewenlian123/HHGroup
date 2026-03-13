@@ -62,8 +62,8 @@ export function ActionBar({
     >
       {children ?? (
         <>
-          <div className="flex min-w-0 flex-wrap items-center gap-2">{left}</div>
-          <div className="flex items-center gap-2">{right}</div>
+          <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">{left}</div>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">{right}</div>
         </>
       )}
     </div>
@@ -96,7 +96,7 @@ export function PageLayout({
   className?: string;
 }) {
   return (
-    <div className={cn("page-container page-stack flex flex-col py-4", className)}>
+    <div className={cn("page-container page-stack flex flex-col py-3 sm:py-4 lg:py-6", className)}>
       {header}
       {actionBar}
       <Divider />

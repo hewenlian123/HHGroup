@@ -6,9 +6,9 @@
   .text-balance {
     text-wrap: balance;
   }
-  /* Premium SaaS: centered content, compact max width */
+  /* Responsive padding: mobile 12px, tablet 16px, desktop 24px */
   .page-container {
-    @apply mx-auto w-full max-w-6xl px-4 sm:px-4 md:px-5 lg:px-6;
+    @apply mx-auto w-full max-w-6xl px-3 sm:px-4 lg:px-6;
   }
   .page-stack {
     @apply flex flex-col gap-6;
@@ -166,7 +166,7 @@
 
 @layer base {
   body {
-    @apply bg-[#F7F7F8] text-[#111111];
+    @apply bg-[#F7F7F8] text-[#111111] overflow-x-hidden;
     font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);

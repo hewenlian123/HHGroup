@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { PageLayout, PageHeader, Drawer } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,6 +65,7 @@ function isOverdue(d: string | null): boolean {
 }
 
 export default function TasksPage() {
+  const router = useRouter();
   const [tasks, setTasks] = React.useState<TaskRow[]>([]);
   const [projects, setProjects] = React.useState<{ id: string; name: string }[]>([]);
   const [workers, setWorkers] = React.useState<{ id: string; name: string }[]>([]);
@@ -95,7 +97,7 @@ export default function TasksPage() {
   const load = React.useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/operations/tasks");
+      const res = await fetch("/api/operations/tasks", { cache: "no-store" });
       const data = await res.json();
       if (!data.ok) throw new Error(data.message || "Failed to load");
       const taskList = data.tasks ?? [];
@@ -175,7 +177,8 @@ export default function TasksPage() {
         return;
       }
       setModalOpen(false);
-      load();
+      await load();
+      router.refresh();
     } finally {
       setSubmitting(false);
     }
@@ -185,7 +188,10 @@ export default function TasksPage() {
     e.stopPropagation();
     const nextStatus = task.status === "done" ? "todo" : "done";
     const result = await updateProjectTaskAction(task.project_id, task.id, { status: nextStatus });
-    if (!result.error) load();
+    if (!result.error) {
+      await load();
+      router.refresh();
+    }
   };
 
   const handleSaveDrawer = async () => {
@@ -206,7 +212,8 @@ export default function TasksPage() {
         return;
       }
       setDrawerOpen(false);
-      load();
+      await load();
+      router.refresh();
     } finally {
       setSubmitting(false);
     }

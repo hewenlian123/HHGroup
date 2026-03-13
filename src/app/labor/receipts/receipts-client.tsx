@@ -89,6 +89,22 @@ export function ReceiptsClient({ initialRows }: { initialRows: ReceiptRow[] }) {
     }
   };
 
+  const handleDelete = async (id: string) => {
+    if (typeof window !== "undefined" && !window.confirm("Delete this receipt upload?")) return;
+    setBusyId(id);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/worker-receipts/${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message ?? "Delete failed");
+      await refresh();
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   return (
     <div className="page-container py-6">
       <PageHeader
@@ -122,14 +138,40 @@ export function ReceiptsClient({ initialRows }: { initialRows: ReceiptRow[] }) {
             )}
             {r.status === "Pending" && (
               <div className="mt-3 flex gap-2">
-                <Button type="button" size="touch" variant="outline" className="min-h-[44px] flex-1 rounded-sm" disabled={busyId === r.id} onClick={() => approve(r.id)}>
+                <Button
+                  type="button"
+                  size="touch"
+                  variant="outline"
+                  className="min-h-[44px] flex-1 rounded-sm"
+                  disabled={busyId === r.id}
+                  onClick={() => approve(r.id)}
+                >
                   {busyId === r.id ? "…" : "Approve"}
                 </Button>
-                <Button type="button" size="touch" variant="ghost" className="min-h-[44px] flex-1 rounded-sm" disabled={busyId === r.id} onClick={() => openReject(r.id)}>
+                <Button
+                  type="button"
+                  size="touch"
+                  variant="ghost"
+                  className="min-h-[44px] flex-1 rounded-sm"
+                  disabled={busyId === r.id}
+                  onClick={() => openReject(r.id)}
+                >
                   Reject
                 </Button>
               </div>
             )}
+            <div className="mt-2 flex justify-end">
+              <Button
+                type="button"
+                size="touch"
+                variant="ghost"
+                className="min-h-[32px] text-xs text-destructive"
+                disabled={busyId === r.id}
+                onClick={() => handleDelete(r.id)}
+              >
+                Delete
+              </Button>
+            </div>
           </div>
         ))
         )}
@@ -193,30 +235,42 @@ export function ReceiptsClient({ initialRows }: { initialRows: ReceiptRow[] }) {
                     {r.createdAt.slice(0, 10)}
                   </td>
                   <td className="py-2 px-3 text-right">
-                    {r.status === "Pending" && (
-                      <div className="flex justify-end gap-1.5">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs rounded-sm"
-                          disabled={busyId === r.id}
-                          onClick={() => approve(r.id)}
-                        >
-                          {busyId === r.id ? "…" : "Approve"}
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 text-xs rounded-sm"
-                          disabled={busyId === r.id}
-                          onClick={() => openReject(r.id)}
-                        >
-                          Reject
-                        </Button>
-                      </div>
-                    )}
+                    <div className="flex justify-end gap-1.5">
+                      {r.status === "Pending" && (
+                        <>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs rounded-sm"
+                            disabled={busyId === r.id}
+                            onClick={() => approve(r.id)}
+                          >
+                            {busyId === r.id ? "…" : "Approve"}
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 text-xs rounded-sm"
+                            disabled={busyId === r.id}
+                            onClick={() => openReject(r.id)}
+                          >
+                            Reject
+                          </Button>
+                        </>
+                      )}
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-xs rounded-sm text-destructive"
+                        disabled={busyId === r.id}
+                        onClick={() => handleDelete(r.id)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))

@@ -10,9 +10,9 @@ const config: Config = {
   theme: {
   	extend: {
   		screens: {
-  			/* Add-on: mobile <768px, tablet 768–1024px, desktop >1024px (use md/lg) */
-  			mobile: { max: "767px" },
-  			tablet: { min: "768px", max: "1023px" },
+  			/* mobile <640px (default), tablet 640–1024px (sm/md), desktop >1024px (lg) */
+  			mobile: { max: "639px" },
+  			tablet: { min: "640px", max: "1023px" },
   			desktop: "1024px",
   		},
   		minHeight: {

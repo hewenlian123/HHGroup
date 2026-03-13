@@ -13,6 +13,17 @@ export async function POST(req: Request) {
     const receiptUrl = typeof body.receiptUrl === "string" ? body.receiptUrl.trim() : null;
     const description = typeof body.description === "string" ? body.description.trim() : null;
     const notes = typeof body.notes === "string" ? body.notes.trim() : null;
+    const receiptDateRaw = typeof body.receiptDate === "string" ? body.receiptDate.trim() : "";
+    const today = new Date();
+    const todayIso = new Date(
+      Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())
+    )
+      .toISOString()
+      .slice(0, 10);
+    const receiptDate =
+      receiptDateRaw && /^\d{4}-\d{2}-\d{2}$/.test(receiptDateRaw)
+        ? receiptDateRaw
+        : todayIso;
 
     if (!workerName && !workerId) {
       return NextResponse.json({ message: "Worker is required." }, { status: 400 });
@@ -34,6 +45,7 @@ export async function POST(req: Request) {
       receiptUrl,
       description: description || null,
       notes: notes || null,
+      receiptDate,
       status: "Pending",
     });
     return NextResponse.json({ ok: true, id: receipt.id });

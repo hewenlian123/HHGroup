@@ -13,14 +13,13 @@ import {
   CreditCard,
   Clock,
   Wallet,
-  UserPlus,
   Users,
   FileStack,
   Settings,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   CircleDollarSign,
-  Landmark,
   CheckSquare,
   ListChecks,
   Calendar,
@@ -28,23 +27,35 @@ import {
   ClipboardCheck,
   Boxes,
   Percent,
+  Package,
+  ReceiptText,
+  Upload,
+  Calculator,
+  FilePen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { createBrowserClient } from "@/lib/supabase";
 import { getCompanyInitials, getCompanyProfile } from "@/lib/company-profile";
 
+const STORAGE_KEY = "hh.sidebarSections";
+
 type NavItem = { href: string; label: string; icon?: React.ComponentType<{ className?: string }> };
 
-const sections: { label: string; items: NavItem[] }[] = [
+const SECTION_KEYS = ["PROJECTS", "OPERATIONS", "FINANCE", "LABOR", "PEOPLE"] as const;
+
+const sections: { key: (typeof SECTION_KEYS)[number]; label: string; items: NavItem[] }[] = [
   {
+    key: "PROJECTS",
     label: "PROJECTS",
     items: [
       { href: "/projects", label: "Projects", icon: FolderKanban },
       { href: "/estimates", label: "Estimates", icon: FileText },
+      { href: "/change-orders", label: "Change Orders", icon: FilePen },
     ],
   },
   {
+    key: "OPERATIONS",
     label: "OPERATIONS",
     items: [
       { href: "/tasks", label: "Tasks", icon: CheckSquare },
@@ -52,37 +63,40 @@ const sections: { label: string; items: NavItem[] }[] = [
       { href: "/schedule", label: "Schedule", icon: Calendar },
       { href: "/site-photos", label: "Site Photos", icon: Camera },
       { href: "/inspection-log", label: "Inspection Log", icon: ClipboardCheck },
-      { href: "/materials/catalog", label: "Material Catalog", icon: Boxes },
+      { href: "/materials/catalog", label: "Material Catalog", icon: Package },
     ],
   },
   {
+    key: "FINANCE",
     label: "FINANCE",
     items: [
-      { href: "/financial/invoices", label: "Invoices", icon: Receipt },
+      { href: "/financial/invoices", label: "Invoices", icon: FileText },
       { href: "/financial/payments", label: "Payments Received", icon: CircleDollarSign },
       { href: "/financial/commissions", label: "Commission Payments", icon: Percent },
-      { href: "/financial/deposits", label: "Deposits", icon: Landmark },
-      { href: "/bills", label: "Bills", icon: Banknote },
+      { href: "/financial/deposits", label: "Deposits", icon: Banknote },
+      { href: "/bills", label: "Bills", icon: Receipt },
       { href: "/financial/expenses", label: "Expenses", icon: ShoppingCart },
-      { href: "/financial/accounts", label: "Accounts", icon: CreditCard },
+      { href: "/financial/accounts", label: "Accounts", icon: Wallet },
     ],
   },
   {
+    key: "LABOR",
     label: "LABOR",
     items: [
       { href: "/labor", label: "Daily Entry", icon: Clock },
       { href: "/workers", label: "Workers", icon: Users },
-      { href: "/labor/reimbursements", label: "Reimbursements", icon: Receipt },
-      { href: "/labor/receipts", label: "Receipt Uploads", icon: ClipboardCheck },
+      { href: "/labor/reimbursements", label: "Reimbursements", icon: ReceiptText },
+      { href: "/labor/receipts", label: "Receipt Uploads", icon: Upload },
       { href: "/labor/worker-invoices", label: "Worker Invoices", icon: FileText },
-      { href: "/labor/payroll", label: "Payroll Summary", icon: Wallet },
+      { href: "/labor/payroll", label: "Payroll Summary", icon: Calculator },
       { href: "/labor/payments", label: "Worker Payments", icon: CircleDollarSign },
     ],
   },
   {
+    key: "PEOPLE",
     label: "PEOPLE",
     items: [
-      { href: "/workers", label: "Workers", icon: UserPlus },
+      { href: "/workers", label: "Workers", icon: Users },
       { href: "/labor/subcontractors", label: "Vendors", icon: Users },
       { href: "/subcontractors", label: "Subcontractors", icon: Users },
     ],
@@ -108,6 +122,8 @@ export function Sidebar({
   const pathname = usePathname();
   const [orgName, setOrgName] = React.useState("HH Group");
   const [logoUrl, setLogoUrl] = React.useState<string | null>(null);
+  const [openSections, setOpenSections] = React.useState<Record<string, boolean>>(() => ({}));
+  const sectionsInitDone = React.useRef(false);
 
   React.useEffect(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -133,23 +149,62 @@ export function Sidebar({
     };
   }, []);
 
+  React.useEffect(() => {
+    if (sectionsInitDone.current) return;
+    sectionsInitDone.current = true;
+    const isMobileOrTablet = typeof window !== "undefined" && window.innerWidth < 1024;
+    if (isMobileOrTablet) {
+      const allClosed = SECTION_KEYS.reduce((acc, k) => ({ ...acc, [k]: false }), {} as Record<string, boolean>);
+      setOpenSections(allClosed);
+      return;
+    }
+    try {
+      const raw = typeof window !== "undefined" ? window.localStorage.getItem(STORAGE_KEY) : null;
+      if (raw) {
+        const parsed = JSON.parse(raw) as Record<string, boolean>;
+        if (parsed && typeof parsed === "object") {
+          setOpenSections(parsed);
+          return;
+        }
+      }
+    } catch {
+      // ignore
+    }
+    const allOpen = SECTION_KEYS.reduce((acc, k) => ({ ...acc, [k]: true }), {} as Record<string, boolean>);
+    setOpenSections(allOpen);
+  }, []);
+
+  const setSectionOpen = React.useCallback((key: string, open: boolean) => {
+    setOpenSections((prev) => {
+      const next = { ...prev, [key]: open };
+      try {
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        }
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, []);
+
   const isActive = (href: string) =>
     pathname === href || (href !== "/dashboard" && pathname.startsWith(href + "/"));
 
   const linkClass = (active: boolean) =>
     cn(
-      "flex h-8 items-center rounded-md text-sm transition-colors",
+      "flex h-8 items-center rounded-md text-sm transition-all duration-200 ease-out border-l-[3px] border-l-transparent",
       collapsed ? "justify-center px-2" : "gap-2 px-2.5",
       active
-        ? "bg-gray-100 text-[#111111] font-medium"
-        : "text-[#6B7280] hover:bg-gray-50 hover:text-[#111111]"
+        ? "bg-[#f5f5f5] text-[#111111] font-semibold border-l-[#111111]"
+        : "text-[#6B7280] hover:bg-[#fafafa] hover:text-[#111111]"
     );
 
   return (
     <aside
       className={cn(
         "flex h-full shrink-0 flex-col border-r border-[#E5E7EB] bg-white",
-        collapsed ? "w-16" : "w-[260px]",
+          collapsed ? "w-[72px]" : "w-[260px]",
         className
       )}
     >
@@ -190,36 +245,76 @@ export function Sidebar({
           </Link>
         </div>
 
-        {/* Sections — 20px between sections, 4px between items */}
+        {/* Sections — Linear-style collapsible groups */}
         <div className={cn("flex flex-col gap-4", collapsed && "gap-3")} style={{ marginTop: 16 }}>
-          {sections.map((section) => (
-            <div key={section.label} className="flex flex-col gap-0.5">
-              {!collapsed && (
-                <p className="px-2.5 pb-1 text-[11px] font-medium uppercase tracking-wide text-gray-400">
-                  {section.label}
-                </p>
-              )}
-              <div className="flex flex-col gap-1">
-                {section.items.map((item) => {
-                  const active = isActive(item.href);
-                  const Icon = item.icon;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={onNavigate}
-                      title={collapsed ? item.label : undefined}
-                      aria-label={collapsed ? item.label : undefined}
-                      className={linkClass(active)}
-                    >
-                      {Icon ? <Icon className="h-[18px] w-[18px] shrink-0" /> : null}
-                      {!collapsed && <span className="truncate">{item.label}</span>}
-                    </Link>
-                  );
-                })}
+          {sections.map((section) => {
+            const isOpen = openSections[section.key] ?? false;
+            if (collapsed) {
+              return (
+                <div key={section.key} className="flex flex-col gap-1">
+                  {section.items.map((item) => {
+                    const active = isActive(item.href);
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={onNavigate}
+                        title={item.label}
+                        aria-label={item.label}
+                        className={linkClass(active)}
+                      >
+                        {Icon ? <Icon className="h-[18px] w-[18px] shrink-0" /> : null}
+                      </Link>
+                    );
+                  })}
+                </div>
+              );
+            }
+            return (
+              <div key={section.key} className="flex flex-col gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => setSectionOpen(section.key, !isOpen)}
+                  className="flex h-8 w-full items-center gap-2 rounded-md px-4 text-left text-[11px] font-medium uppercase tracking-[0.08em] text-[#9CA3AF] transition-colors hover:bg-gray-50"
+                  aria-expanded={isOpen}
+                >
+                  {isOpen ? (
+                    <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  ) : (
+                    <ChevronRight className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  )}
+                  <span className="truncate">{section.label}</span>
+                </button>
+                <div
+                  className="grid transition-[grid-template-rows] duration-200 ease-out"
+                  style={{ gridTemplateRows: isOpen ? "1fr" : "0fr" }}
+                >
+                  <div className="min-h-0 overflow-hidden">
+                    <div className="mt-1 flex flex-col gap-1">
+                      {section.items.map((item) => {
+                        const active = isActive(item.href);
+                        const Icon = item.icon;
+                        return (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            onClick={onNavigate}
+                            title={collapsed ? item.label : undefined}
+                            aria-label={collapsed ? item.label : undefined}
+                            className={linkClass(active)}
+                          >
+                            {Icon ? <Icon className="h-[18px] w-[18px] shrink-0" /> : null}
+                            {!collapsed && <span className="truncate">{item.label}</span>}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {/* Documents & Settings */}
           <div className="flex flex-col gap-1">

@@ -4,14 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus, Search, Trash2 } from "lucide-react";
-import {
-  PageLayout,
-  PageHeader,
-  ActionBar,
-  DataTable,
-  StatusBadge,
-  type DataTableColumn,
-} from "@/components/base";
+import { PageLayout, PageHeader, ActionBar } from "@/components/base";
 import {
   Dialog,
   DialogContent,
@@ -55,9 +48,125 @@ function statusLabel(status: string): string {
   const s = status.toLowerCase();
   if (s === "active") return "Active";
   if (s === "pending") return "Pending";
-  if (s === "completed") return "Completed";
+  if (s === "completed") return "Closed";
   return status;
 }
+
+/** Compact status badge: Active green, Closed gray. 11px, 2px 6px, rounded 6px. */
+const ProjectStatusBadge = React.memo(function ProjectStatusBadge({ status }: { status: string }) {
+  const label = statusLabel(status);
+  const isActive = status.toLowerCase() === "active";
+  return (
+    <span
+      className={cn(
+        "inline-flex text-[11px] font-medium py-0.5 px-1.5 rounded-md",
+        isActive ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300" : "bg-[#f3f4f6] text-[#6b7280]"
+      )}
+    >
+      {label}
+    </span>
+  );
+});
+
+/** Memoized mobile card row. */
+const ProjectMobileCard = React.memo(function ProjectMobileCard({
+  row,
+  onNavigate,
+}: {
+  row: ProjectsListRow;
+  onNavigate: (id: string) => void;
+}) {
+  const progress = Math.max(0, Math.min(100, row.progressPct));
+  const barTone = progress >= 95 ? "bg-emerald-500" : progress >= 70 ? "bg-amber-500" : "bg-emerald-400";
+  return (
+    <li className="border-b border-[#eee] last:border-b-0">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => onNavigate(row.id)}
+        onKeyDown={(e) => e.key === "Enter" && onNavigate(row.id)}
+        className="py-3 px-3 hover:bg-[#fafafa] transition-colors text-left"
+      >
+        <div className="font-medium text-foreground">{row.name}</div>
+        <div className="text-sm text-muted-foreground mt-0.5">Client: {row.clientName ?? "—"}</div>
+        <div className="text-sm text-muted-foreground tabular-nums mt-0.5">
+          Budget: ${row.budget.toLocaleString("en-US", { maximumFractionDigits: 0 })} · Spent: ${Math.round(row.spent).toLocaleString("en-US")}
+        </div>
+        <div className="flex items-center justify-between gap-2 mt-2">
+          <ProjectStatusBadge status={row.status} />
+          <div className="flex items-center gap-2">
+            <div className="h-1.5 w-14 shrink-0 overflow-hidden rounded bg-[#eee]" style={{ borderRadius: 4 }}>
+              <div className={cn("h-full rounded", barTone)} style={{ width: `${progress}%`, borderRadius: 4 }} />
+            </div>
+            <span className="text-xs tabular-nums text-muted-foreground">{progress.toFixed(0)}%</span>
+          </div>
+        </div>
+      </div>
+    </li>
+  );
+});
+
+/** Memoized table row with delete. */
+const ProjectTableRow = React.memo(function ProjectTableRow({
+  row,
+  onNavigate,
+  onDelete,
+  deletingId,
+}: {
+  row: ProjectsListRow;
+  onNavigate: (id: string) => void;
+  onDelete: (id: string, name: string) => void;
+  deletingId: string | null;
+}) {
+  const progress = Math.max(0, Math.min(100, row.progressPct));
+  const barTone = progress >= 95 ? "bg-emerald-500" : progress >= 70 ? "bg-amber-500" : "bg-emerald-400";
+  const handleDelete = React.useCallback((ev: React.MouseEvent) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    onDelete(row.id, row.name);
+  }, [row.id, row.name, onDelete]);
+  return (
+    <tr
+      onClick={() => onNavigate(row.id)}
+      className="border-b border-[#eee] last:border-b-0 hover:bg-[#fafafa] cursor-pointer transition-colors"
+    >
+      <td className="py-2.5 px-3">
+        <span className="font-medium text-foreground">{row.name}</span>
+      </td>
+      <td className="py-2.5 px-3 text-muted-foreground">{row.clientName ?? "—"}</td>
+      <td className="py-2.5 px-3">
+        <ProjectStatusBadge status={row.status} />
+      </td>
+      <td className="py-2.5 px-3 text-right tabular-nums text-muted-foreground">
+        ${row.budget.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+      </td>
+      <td className="py-2.5 px-3 text-right tabular-nums font-medium">
+        ${Math.round(row.spent).toLocaleString("en-US")}
+      </td>
+      <td className="py-2.5 px-3">
+        <div className="flex items-center gap-2">
+          <div className="h-1.5 w-16 shrink-0 overflow-hidden rounded bg-[#eee]" style={{ borderRadius: 4 }}>
+            <div className={cn("h-full rounded", barTone)} style={{ width: `${progress}%`, borderRadius: 4 }} />
+          </div>
+          <span className="text-xs tabular-nums text-muted-foreground">{progress.toFixed(0)}%</span>
+        </div>
+      </td>
+      <td className="py-2.5 px-3" onClick={(e) => e.stopPropagation()}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+          aria-label={`Delete ${row.name}`}
+          disabled={deletingId === row.id}
+          onClick={handleDelete}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </td>
+    </tr>
+  );
+});
 
 export function ProjectsListClient({
   rows,
@@ -73,12 +182,18 @@ export function ProjectsListClient({
   const [deleteBlockedCounts, setDeleteBlockedCounts] = React.useState<ProjectUsageCounts | null>(null);
   const [deleteBlockedProjectId, setDeleteBlockedProjectId] = React.useState<string | null>(null);
 
-  const deleteModalCountLabels: { key: keyof ProjectUsageCounts; label: string }[] = [
-    { key: "expenses", label: "Expenses" },
-    { key: "labor_entries", label: "Labor Entries" },
-    { key: "worker_receipts", label: "Worker Receipts" },
-    { key: "invoices", label: "Invoices" },
-    { key: "site_photos", label: "Site Photos" },
+  const deleteModalRelatedConfig: { key: keyof ProjectUsageCounts; label: string; viewPath: string }[] = [
+    { key: "project_tasks", label: "Tasks", viewPath: "/tasks" },
+    { key: "expenses", label: "Expenses", viewPath: "/financial/expenses" },
+    { key: "invoices", label: "Invoices", viewPath: "/financial/invoices" },
+    { key: "labor_entries", label: "Labor Entries", viewPath: "/labor" },
+    { key: "punch_list", label: "Punch List", viewPath: "/punch-list" },
+    { key: "site_photos", label: "Site Photos", viewPath: "/site-photos" },
+    { key: "project_change_orders", label: "Change Orders", viewPath: "/change-orders" },
+    { key: "bills", label: "Bills", viewPath: "/bills" },
+    { key: "worker_receipts", label: "Worker Receipts", viewPath: "/labor/receipts" },
+    { key: "subcontracts", label: "Subcontracts", viewPath: "/projects" },
+    { key: "materials", label: "Materials", viewPath: "/materials/catalog" },
   ];
 
   const filtered = React.useMemo(() => {
@@ -99,148 +214,43 @@ export function ProjectsListClient({
       });
   }, [query, rows, view]);
 
-  const columns: DataTableColumn<ProjectsListRow>[] = [
-    {
-      key: "name",
-      header: "Project Name",
-      cell: (r) => (
-        <div className="min-w-0">
-          <div className="truncate font-medium text-foreground">{r.name}</div>
-          <div className="truncate text-xs text-muted-foreground tabular-nums">
-            {r.id}
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: "client",
-      header: "Client",
-      cell: (r) => (
-        <span className="text-muted-foreground">{r.clientName ?? "—"}</span>
-      ),
-    },
-    {
-      key: "status",
-      header: "Status",
-      cell: (r) => (
-        <StatusBadge
-          label={statusLabel(r.status)}
-          variant={statusVariant(r.status)}
-        />
-      ),
-    },
-    {
-      key: "risk",
-      header: "Risk",
-      cell: (r) => {
-        const dotClass =
-          r.risk === "green"
-            ? "bg-green-500"
-            : r.risk === "yellow"
-              ? "bg-amber-500"
-              : "bg-red-500";
-        return (
-          <span className="flex items-center gap-1.5" title={r.risk}>
-            <span className={cn("h-2 w-2 shrink-0 rounded-full", dotClass)} aria-hidden />
-          </span>
-        );
-      },
-    },
-    {
-      key: "budget",
-      header: "Budget",
-      numeric: true,
-      cell: (r) => `$${r.budget.toLocaleString()}`,
-    },
-    {
-      key: "spent",
-      header: "Spent",
-      numeric: true,
-      cell: (r) => `$${Math.round(r.spent).toLocaleString()}`,
-    },
-    {
-      key: "progress",
-      header: "Progress",
-      cell: (r) => {
-        const progress = Math.max(0, Math.min(100, r.progressPct));
-        const barTone =
-          progress >= 95
-            ? "bg-emerald-500"
-            : progress >= 70
-              ? "bg-amber-500"
-              : "bg-muted-foreground/50";
-        return (
-          <div className="flex items-center gap-2">
-            <div className="h-1.5 w-16 shrink-0 overflow-hidden rounded-full bg-muted">
-              <div
-                className={cn("h-full rounded-full", barTone)}
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-            <span className="text-xs tabular-nums text-muted-foreground">
-              {progress.toFixed(0)}%
-            </span>
-          </div>
-        );
-      },
-    },
-    {
-      key: "start",
-      header: "Start",
-      cell: (r) => (
-        <span className="date-text">{r.startDate ?? "—"}</span>
-      ),
-    },
-    {
-      key: "end",
-      header: "End",
-      cell: (r) => (
-        <span className="date-text">{r.endDate ?? "—"}</span>
-      ),
-    },
-    {
-      key: "actions",
-      header: "",
-      cell: (r) => (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-          aria-label={`Delete ${r.name}`}
-          disabled={deletingId === r.id}
-          onClick={async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const usage = await getProjectUsageAction(r.id);
-            if (usage.blocked && usage.counts) {
-              setDeleteBlockedCounts(usage.counts);
-              setDeleteBlockedProjectId(r.id);
-              setDeleteBlockedOpen(true);
-              return;
-            }
-            if (!window.confirm(`Delete project "${r.name}"? This cannot be undone.`)) return;
-            setDeletingId(r.id);
-            try {
-              const result = await deleteProjectAction(r.id);
-              if (result?.error && !result?.blocked) {
-                const msg = String(result.error || "").trim();
-                const friendly =
-                  /subcontract|contract|cannot|can'?t|关联|合同|不能/i.test(msg) ? msg : "Delete failed. Please try again.";
-                toast({ title: "Error", description: friendly, variant: "error" });
-              } else if (!result?.blocked) {
-                router.refresh();
-              }
-            } finally {
-              setDeletingId(null);
-            }
-          }}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      ),
-    },
-  ];
+  /** Project overview: totals from all rows (not filtered). */
+  const overview = React.useMemo(() => {
+    const totalProjects = rows.length;
+    const activeProjects = rows.filter((r) => r.status === "active").length;
+    const totalBudget = rows.reduce((s, r) => s + r.budget, 0);
+    const totalSpent = rows.reduce((s, r) => s + r.spent, 0);
+    return { totalProjects, activeProjects, totalBudget, totalSpent };
+  }, [rows]);
+
+  const handleNavigate = React.useCallback((id: string) => {
+    router.push(`/projects/${id}`);
+  }, [router]);
+
+  const handleDelete = React.useCallback(async (id: string, name: string) => {
+    const usage = await getProjectUsageAction(id);
+    if (usage.blocked && usage.counts) {
+      setDeleteBlockedCounts(usage.counts);
+      setDeleteBlockedProjectId(id);
+      setDeleteBlockedOpen(true);
+      return;
+    }
+    if (!window.confirm(`Delete project "${name}"? This cannot be undone.`)) return;
+    setDeletingId(id);
+    try {
+      const result = await deleteProjectAction(id);
+      if (result?.error && !result?.blocked) {
+        const msg = String(result.error || "").trim();
+        const friendly =
+          /subcontract|contract|cannot|can'?t|关联|合同|不能/i.test(msg) ? msg : "Delete failed. Please try again.";
+        toast({ title: "Error", description: friendly, variant: "error" });
+      } else if (!result?.blocked) {
+        router.refresh();
+      }
+    } finally {
+      setDeletingId(null);
+    }
+  }, [router, toast]);
 
   const totalCount = rows.length;
   const subtitle =
@@ -343,30 +353,99 @@ export function ProjectsListClient({
           }
         />
       ) : (
-        <DataTable<ProjectsListRow>
-          columns={columns}
-          data={filtered}
-          getRowId={(r) => r.id}
-          onRowClick={(r) => router.push(`/projects/${r.id}`)}
-        />
+        <>
+          {/* Project Overview — summary cards */}
+          <section className="mb-4">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+              Project Overview
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="p-4 rounded-lg border border-[#eee] bg-white">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Projects</p>
+                <p className="mt-1 text-lg font-semibold tabular-nums">{overview.totalProjects}</p>
+              </div>
+              <div className="p-4 rounded-lg border border-[#eee] bg-white">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Active Projects</p>
+                <p className="mt-1 text-lg font-semibold tabular-nums">{overview.activeProjects}</p>
+              </div>
+              <div className="p-4 rounded-lg border border-[#eee] bg-white">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Budget</p>
+                <p className="mt-1 text-lg font-semibold tabular-nums">
+                  ${overview.totalBudget.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </p>
+              </div>
+              <div className="p-4 rounded-lg border border-[#eee] bg-white">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Spent</p>
+                <p className="mt-1 text-lg font-semibold tabular-nums">
+                  ${overview.totalSpent.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Mobile: stacked cards */}
+          <div className="sm:hidden rounded-lg border border-[#eee] bg-white overflow-hidden">
+            <ul className="divide-y divide-[#eee]">
+              {filtered.map((r) => (
+                <ProjectMobileCard key={r.id} row={r} onNavigate={handleNavigate} />
+              ))}
+            </ul>
+          </div>
+
+          {/* Tablet/Desktop: table */}
+          <div className="hidden sm:block rounded-lg border border-[#eee] bg-white overflow-hidden">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="border-b border-[#eee]">
+                  <th className="text-left py-2.5 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Project</th>
+                  <th className="text-left py-2.5 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Client</th>
+                  <th className="text-left py-2.5 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Status</th>
+                  <th className="text-right py-2.5 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground tabular-nums">Budget</th>
+                  <th className="text-right py-2.5 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground tabular-nums">Spent</th>
+                  <th className="text-left py-2.5 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Progress</th>
+                  <th className="w-9" aria-label="Actions" />
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((r) => (
+                  <ProjectTableRow
+                    key={r.id}
+                    row={r}
+                    onNavigate={handleNavigate}
+                    onDelete={handleDelete}
+                    deletingId={deletingId}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       <Dialog open={deleteBlockedOpen} onOpenChange={setDeleteBlockedOpen}>
-        <DialogContent className="max-w-sm border-border/60 p-5 rounded-md">
+        <DialogContent className="max-w-md border-border/60 p-5 rounded-md">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Cannot delete project</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
-              This project has related records.
+              Cannot delete project because it contains related records.
             </DialogDescription>
           </DialogHeader>
-          {deleteBlockedCounts && (
-            <ul className="text-sm text-foreground list-disc list-inside space-y-1">
-              {deleteModalCountLabels.map(({ key, label }) => {
+          {deleteBlockedCounts && deleteBlockedProjectId != null && (
+            <ul className="text-sm text-foreground space-y-2">
+              {deleteModalRelatedConfig.map(({ key, label, viewPath }) => {
                 const n = deleteBlockedCounts[key] ?? 0;
                 if (n <= 0) return null;
+                const href = `${viewPath}?project_id=${deleteBlockedProjectId}`;
                 return (
-                  <li key={key}>
-                    {label} ({n})
+                  <li key={key} className="flex items-center justify-between gap-3 border-b border-border/60 pb-2 last:border-0 last:pb-0">
+                    <span>
+                      {label} ({n})
+                    </span>
+                    <Button variant="outline" size="sm" className="shrink-0 rounded-sm" asChild>
+                      <Link href={href} onClick={() => setDeleteBlockedOpen(false)}>
+                        View {label}
+                      </Link>
+                    </Button>
                   </li>
                 );
               })}
@@ -376,27 +455,6 @@ export function ProjectsListClient({
             <Button variant="ghost" size="sm" onClick={() => setDeleteBlockedOpen(false)}>
               Cancel
             </Button>
-            {deleteBlockedProjectId != null && (deleteBlockedCounts?.expenses ?? 0) > 0 && (
-              <Button variant="outline" size="sm" asChild>
-                <Link href={`/financial/expenses?project_id=${deleteBlockedProjectId}`} onClick={() => setDeleteBlockedOpen(false)}>
-                  View Expenses
-                </Link>
-              </Button>
-            )}
-            {deleteBlockedProjectId != null && (deleteBlockedCounts?.labor_entries ?? 0) > 0 && (
-              <Button variant="outline" size="sm" asChild>
-                <Link href={`/labor?project_id=${deleteBlockedProjectId}`} onClick={() => setDeleteBlockedOpen(false)}>
-                  View Labor
-                </Link>
-              </Button>
-            )}
-            {deleteBlockedProjectId != null && (deleteBlockedCounts?.worker_receipts ?? 0) > 0 && (
-              <Button variant="outline" size="sm" asChild>
-                <Link href={`/labor/receipts?project_id=${deleteBlockedProjectId}`} onClick={() => setDeleteBlockedOpen(false)}>
-                  View Receipts
-                </Link>
-              </Button>
-            )}
             {deleteBlockedProjectId != null && (
               <Button
                 variant="secondary"

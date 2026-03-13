@@ -14,7 +14,10 @@ import {
 } from "@/components/ui/dialog";
 import { createPunchListItemAction, updatePunchListItemAction } from "./actions";
 import { cn } from "@/lib/utils";
+import { Search } from "lucide-react";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 
+type ViewMode = "list" | "kanban";
 type PunchRow = {
   id: string;
   project_id: string;
@@ -38,15 +41,110 @@ type StatusFilter = "open" | "assigned" | "completed" | "";
 const PRIORITIES = ["Low", "Medium", "High", "Urgent"] as const;
 const STATUS_LABEL: Record<string, string> = {
   open: "Open",
-  assigned: "Assigned",
+  assigned: "In Progress",
   completed: "Completed",
-  in_progress: "Assigned",
+  in_progress: "In Progress",
   resolved: "Completed",
 };
 
 function normStatus(s: string): string {
   return s === "in_progress" ? "assigned" : s === "resolved" ? "completed" : s;
 }
+
+/** Priority badge: Low gray, Medium orange, High/Urgent red. */
+const PriorityBadge = React.memo(function PriorityBadge({ priority }: { priority: string }) {
+  const p = (priority || "Medium").toLowerCase();
+  const style =
+    p === "low"
+      ? "bg-[#f3f4f6] text-[#6b7280]"
+      : p === "medium"
+        ? "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300"
+        : "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300";
+  return (
+    <span className={cn("inline-flex text-[11px] font-medium py-0.5 px-1.5 rounded-[6px]", style)}>
+      {priority || "Medium"}
+    </span>
+  );
+});
+
+/** Status badge: Open gray, In Progress blue, Completed green. */
+const StatusBadge = React.memo(function StatusBadge({ status }: { status: string }) {
+  const n = normStatus(status);
+  const label = STATUS_LABEL[n] ?? status;
+  const style =
+    n === "completed"
+      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+      : n === "assigned"
+        ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300"
+        : "bg-[#f3f4f6] text-[#6b7280]";
+  return (
+    <span className={cn("inline-flex text-[11px] font-medium py-0.5 px-1.5 rounded-[6px]", style)}>
+      {label}
+    </span>
+  );
+});
+
+/** Memoized list row to avoid re-renders when other rows update. */
+const PunchListRow = React.memo(function PunchListRow({
+  item,
+  onOpenDrawer,
+}: {
+  item: PunchRow;
+  onOpenDrawer: (item: PunchRow) => void;
+}) {
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={() => onOpenDrawer(item)}
+        className="w-full text-left py-2.5 px-3 hover:bg-[#fafafa] transition-colors"
+      >
+        <div className="font-medium text-foreground">{item.issue || "—"}</div>
+        <div className="text-xs text-muted-foreground mt-0.5">
+          {[item.project_name, item.location].filter(Boolean).join(" · ") || "—"}
+        </div>
+        <div className="flex flex-wrap items-center gap-2 mt-1.5">
+          <PriorityBadge priority={item.priority ?? "Medium"} />
+          <span className="text-xs text-muted-foreground">
+            {item.worker_name ?? "Unassigned"}
+          </span>
+          <StatusBadge status={item.status} />
+        </div>
+      </button>
+    </li>
+  );
+});
+
+/** Memoized Kanban card for minimal re-renders when dragging/dropping. */
+const KanbanCard = React.memo(function KanbanCard({
+  item,
+  onOpenDrawer,
+}: {
+  item: PunchRow;
+  onOpenDrawer: (item: PunchRow) => void;
+}) {
+  const onDragStart = React.useCallback((ev: React.DragEvent) => {
+    ev.dataTransfer.setData("application/json", JSON.stringify({ id: item.id }));
+    ev.dataTransfer.effectAllowed = "move";
+  }, [item.id]);
+  return (
+    <div
+      draggable
+      onDragStart={onDragStart}
+      onClick={() => onOpenDrawer(item)}
+      className="p-[10px] border border-[#eee] rounded-lg bg-white cursor-grab active:cursor-grabbing hover:border-[#ddd] transition-colors text-left"
+    >
+      <div className="font-medium text-sm text-foreground">{item.issue || "—"}</div>
+      <div className="text-xs text-muted-foreground mt-0.5">
+        {item.project_name ?? "—"}
+        {item.location ? ` · ${item.location}` : ""}
+      </div>
+      <div className="mt-1.5">
+        <PriorityBadge priority={item.priority ?? "Medium"} />
+      </div>
+    </div>
+  );
+});
 
 export default function PunchListPage() {
   const [items, setItems] = React.useState<PunchRow[]>([]);
@@ -56,6 +154,9 @@ export default function PunchListPage() {
   const [loading, setLoading] = React.useState(true);
   const [projectFilter, setProjectFilter] = React.useState<string>("");
   const [statusFilter, setStatusFilter] = React.useState<StatusFilter>("");
+  const [priorityFilter, setPriorityFilter] = React.useState<string>("");
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [viewMode, setViewMode] = React.useState<ViewMode>("list");
   const [modalOpen, setModalOpen] = React.useState(false);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [selectedItem, setSelectedItem] = React.useState<PunchRow | null>(null);
@@ -85,7 +186,6 @@ export default function PunchListPage() {
     try {
       const params = new URLSearchParams();
       if (projectFilter) params.set("project_id", projectFilter);
-      if (statusFilter) params.set("status", statusFilter);
       const res = await fetch(`/api/operations/punch-list?${params.toString()}`);
       const data = await res.json();
       if (!data.ok) throw new Error(data.message || "Failed to load");
@@ -93,7 +193,7 @@ export default function PunchListPage() {
       setSummary(data.summary ?? { open: 0, assigned: 0, completed: 0 });
       setProjects(data.projects ?? []);
       setWorkers(data.workers ?? []);
-      if ((data.items ?? []).length === 0 && !projectFilter && !statusFilter) {
+      if ((data.items ?? []).length === 0 && !projectFilter) {
         const seedRes = await fetch("/api/seed/operations", { method: "POST" });
         const seedData = await seedRes.json();
         if (seedData.ok && seedData.seeded?.punchList) await load();
@@ -103,13 +203,49 @@ export default function PunchListPage() {
     } finally {
       setLoading(false);
     }
-  }, [projectFilter, statusFilter]);
+  }, [projectFilter]);
 
   React.useEffect(() => {
     load();
   }, [load]);
 
-  const openModal = () => {
+  const debouncedSearch = useDebouncedValue(searchQuery, 200);
+  const filteredItems = React.useMemo(() => {
+    let list = items;
+    if (statusFilter && viewMode === "list") {
+      const statusNorm = statusFilter;
+      list = list.filter((r) => normStatus(r.status) === statusNorm);
+    }
+    if (priorityFilter) {
+      list = list.filter((r) => (r.priority || "Medium").toLowerCase() === priorityFilter.toLowerCase());
+    }
+    const q = debouncedSearch.trim().toLowerCase();
+    if (q) {
+      list = list.filter(
+        (r) =>
+          (r.issue || "").toLowerCase().includes(q) ||
+          (r.project_name || "").toLowerCase().includes(q) ||
+          (r.location || "").toLowerCase().includes(q) ||
+          (r.worker_name || "").toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [items, priorityFilter, debouncedSearch, statusFilter, viewMode]);
+
+  const kanbanColumns = React.useMemo(() => {
+    const open: PunchRow[] = [];
+    const in_progress: PunchRow[] = [];
+    const completed: PunchRow[] = [];
+    for (const r of filteredItems) {
+      const s = normStatus(r.status);
+      if (s === "open") open.push(r);
+      else if (s === "assigned") in_progress.push(r);
+      else completed.push(r);
+    }
+    return { open, in_progress, completed } as const;
+  }, [filteredItems]);
+
+  const openModal = React.useCallback(() => {
     setForm({
       project_id: projectFilter || projects[0]?.id || "",
       issue: "",
@@ -121,9 +257,9 @@ export default function PunchListPage() {
     });
     setError(null);
     setModalOpen(true);
-  };
+  }, [projectFilter, projects]);
 
-  const openDrawer = (item: PunchRow) => {
+  const openDrawer = React.useCallback((item: PunchRow) => {
     setSelectedItem(item);
     setDrawerForm({
       description: item.description ?? "",
@@ -133,9 +269,9 @@ export default function PunchListPage() {
     });
     setError(null);
     setDrawerOpen(true);
-  };
+  }, []);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = React.useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
@@ -153,9 +289,9 @@ export default function PunchListPage() {
       setUploading(false);
       e.target.value = "";
     }
-  };
+  }, []);
 
-  const handleDrawerFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDrawerFileChange = React.useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
@@ -173,9 +309,9 @@ export default function PunchListPage() {
       setUploading(false);
       e.target.value = "";
     }
-  };
+  }, []);
 
-  const handleSaveNew = async () => {
+  const handleSaveNew = React.useCallback(async () => {
     if (!form.project_id) {
       setError("Select a project.");
       return;
@@ -206,9 +342,9 @@ export default function PunchListPage() {
     } finally {
       setSubmitting(false);
     }
-  };
+  }, [form, load]);
 
-  const handleSaveDrawer = async () => {
+  const handleSaveDrawer = React.useCallback(async () => {
     if (!selectedItem) return;
     setSubmitting(true);
     setError(null);
@@ -228,12 +364,27 @@ export default function PunchListPage() {
     } finally {
       setSubmitting(false);
     }
-  };
+  }, [selectedItem, drawerForm, load]);
 
-  const photoUrl = (path: string | null) =>
-    path ? `/api/operations/punch-list/photo?path=${encodeURIComponent(path)}` : null;
-  const sitePhotoImageUrl = (path: string | null) =>
-    path ? `/api/operations/site-photos/photo?path=${encodeURIComponent(path)}` : null;
+  const photoUrl = React.useCallback((path: string | null) =>
+    path ? `/api/operations/punch-list/photo?path=${encodeURIComponent(path)}` : null, []);
+  const sitePhotoImageUrl = React.useCallback((path: string | null) =>
+    path ? `/api/operations/site-photos/photo?path=${encodeURIComponent(path)}` : null, []);
+
+  const handleColumnDrop = React.useCallback(async (columnStatus: string, e: React.DragEvent) => {
+    e.preventDefault();
+    e.currentTarget.classList.remove("ring-1", "ring-[#eee]");
+    const raw = e.dataTransfer.getData("application/json");
+    if (!raw) return;
+    try {
+      const { id } = JSON.parse(raw) as { id: string };
+      const result = await updatePunchListItemAction(id, { status: columnStatus });
+      if (result?.error) return;
+      load();
+    } catch {
+      // ignore
+    }
+  }, [load]);
 
   return (
     <PageLayout
@@ -249,31 +400,64 @@ export default function PunchListPage() {
         />
       }
     >
-      <div className="max-w-5xl space-y-4">
-        {/* Dashboard summary */}
-        <div className="grid grid-cols-3 gap-2 border-b border-border/60 pb-3">
-          <div className="rounded-sm border border-border/60 px-3 py-2">
-            <p className="text-xs font-medium text-muted-foreground">Open Issues</p>
-            <p className="text-lg font-semibold tabular-nums">{summary.open}</p>
+      <div className="max-w-5xl space-y-3">
+        {/* Issue overview — compact cards */}
+        <section>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+            Issue Overview
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="p-3 border border-[#eee] rounded-lg">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Open Issues</p>
+              <p className="mt-0.5 text-lg font-semibold tabular-nums">{summary.open}</p>
+            </div>
+            <div className="p-3 border border-[#eee] rounded-lg">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Assigned Issues</p>
+              <p className="mt-0.5 text-lg font-semibold tabular-nums">{summary.assigned}</p>
+            </div>
+            <div className="p-3 border border-[#eee] rounded-lg">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Completed Issues</p>
+              <p className="mt-0.5 text-lg font-semibold tabular-nums">{summary.completed}</p>
+            </div>
           </div>
-          <div className="rounded-sm border border-border/60 px-3 py-2">
-            <p className="text-xs font-medium text-muted-foreground">Assigned Issues</p>
-            <p className="text-lg font-semibold tabular-nums">{summary.assigned}</p>
-          </div>
-          <div className="rounded-sm border border-border/60 px-3 py-2">
-            <p className="text-xs font-medium text-muted-foreground">Completed Issues</p>
-            <p className="text-lg font-semibold tabular-nums">{summary.completed}</p>
-          </div>
+        </section>
+
+        {/* View switch: List | Kanban */}
+        <div className="flex items-center gap-0 rounded-md border border-[#eee] bg-white p-0.5 w-fit">
+          <button
+            type="button"
+            onClick={() => setViewMode("list")}
+            className={cn(
+              "px-3 py-1.5 text-sm font-medium rounded-[6px] transition-colors",
+              viewMode === "list"
+                ? "bg-foreground text-background"
+                : "text-muted-foreground hover:text-foreground hover:bg-[#fafafa]"
+            )}
+          >
+            List View
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("kanban")}
+            className={cn(
+              "px-3 py-1.5 text-sm font-medium rounded-[6px] transition-colors",
+              viewMode === "kanban"
+                ? "bg-foreground text-background"
+                : "text-muted-foreground hover:text-foreground hover:bg-[#fafafa]"
+            )}
+          >
+            Kanban Board
+          </button>
         </div>
 
-        {/* Filters: stack on mobile */}
-        <div className="grid grid-cols-1 gap-3 border-b border-border/60 pb-3 sm:flex sm:flex-wrap sm:items-center sm:gap-2 sm:border-b-0 sm:pb-0">
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">Project</label>
+        {/* Filters: stacked on mobile, row on desktop */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-2">
+          <div className="w-full min-w-0 sm:w-auto">
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Project</label>
             <select
               value={projectFilter}
               onChange={(e) => setProjectFilter(e.target.value)}
-              className="mt-1 min-h-[44px] w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm min-w-0 sm:mt-0 sm:min-h-0 sm:h-9 sm:min-w-[160px]"
+              className="h-9 w-full min-w-0 rounded-sm border border-[#eee] bg-background px-2.5 text-sm sm:w-auto sm:min-w-[160px]"
             >
               <option value="">All projects</option>
               {projects.map((p) => (
@@ -281,113 +465,120 @@ export default function PunchListPage() {
               ))}
             </select>
           </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground sm:ml-2">Status</label>
+          <div className="w-full min-w-0 sm:w-auto">
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Status</label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-              className="mt-1 min-h-[44px] w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm min-w-0 sm:mt-0 sm:min-h-0 sm:h-9 sm:min-w-[120px]"
+              className="h-9 w-full min-w-0 rounded-sm border border-[#eee] bg-background px-2.5 text-sm sm:w-auto sm:min-w-[120px]"
             >
               <option value="">All</option>
               <option value="open">Open</option>
-              <option value="assigned">Assigned</option>
+              <option value="assigned">In Progress</option>
               <option value="completed">Completed</option>
             </select>
           </div>
+          <div className="w-full min-w-0 sm:w-auto">
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Priority</label>
+            <select
+              value={priorityFilter}
+              onChange={(e) => setPriorityFilter(e.target.value)}
+              className="h-9 w-full min-w-0 rounded-sm border border-[#eee] bg-background px-2.5 text-sm sm:w-auto sm:min-w-[100px]"
+            >
+              <option value="">All</option>
+              {PRIORITIES.map((pr) => (
+                <option key={pr} value={pr}>{pr}</option>
+              ))}
+            </select>
+          </div>
+          <div className="w-full min-w-0 flex-1 sm:min-w-[140px]">
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Search</label>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Issue, project, location…"
+                className="h-9 pl-8 rounded-sm border-[#eee] bg-background text-sm"
+              />
+            </div>
+          </div>
         </div>
 
-        {/* Table / mobile cards */}
-        <div className="border border-border/60 rounded-sm overflow-hidden">
-          {loading ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">Loading…</div>
-          ) : error && items.length === 0 ? (
-            <div className="py-10 text-center text-sm text-destructive">{error}</div>
-          ) : items.length === 0 ? (
-            <div className="py-10 text-center">
-              <p className="text-sm text-muted-foreground">No issues match the filters.</p>
-              <Button onClick={openModal} className="mt-4 max-md:min-h-[44px] max-md:w-full max-md:max-w-[280px]" size="sm">
-                Add Issue
-              </Button>
-            </div>
-          ) : (
-            <>
-              {/* Mobile: card layout */}
-              <div className="flex flex-col gap-2 md:hidden divide-y divide-border/60">
-                {items.map((r) => (
-                  <button
-                    key={r.id}
-                    type="button"
-                    onClick={() => openDrawer(r)}
-                    className="flex min-h-[44px] w-full touch-manipulation flex-col items-stretch gap-1 border-0 bg-transparent px-4 py-3 text-left transition-colors active:bg-muted/50"
-                  >
-                    <span className="font-medium truncate">{r.issue || "—"}</span>
-                    <span className="text-xs text-muted-foreground truncate">{r.project_name ?? "—"}{r.location ? ` · ${r.location}` : ""}</span>
-                    <div className="mt-1 flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs font-medium",
-                          normStatus(r.status) === "completed" && "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300",
-                          normStatus(r.status) === "assigned" && "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
-                          normStatus(r.status) === "open" && "bg-muted text-muted-foreground"
-                        )}
-                      >
-                        {STATUS_LABEL[normStatus(r.status)] ?? r.status}
-                      </span>
-                      <span className="text-xs text-muted-foreground">{r.priority ?? "Medium"}</span>
-                    </div>
-                  </button>
-                ))}
+        {/* List view — compact issue list */}
+        {viewMode === "list" && (
+          <div className="rounded-lg border border-[#eee] bg-white overflow-hidden">
+            {loading ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>
+            ) : error && items.length === 0 ? (
+              <div className="py-8 text-center text-sm text-destructive">{error}</div>
+            ) : filteredItems.length === 0 ? (
+              <div className="py-8 text-center">
+                <p className="text-sm text-muted-foreground">No issues match the filters.</p>
+                <Button onClick={openModal} className="mt-3" size="sm">
+                  Add Issue
+                </Button>
               </div>
-              <table className="hidden w-full text-sm border-collapse md:table">
-              <thead>
-                <tr className="border-b border-border/60 bg-muted/30">
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Project</th>
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Issue</th>
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Location</th>
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Assigned</th>
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Priority</th>
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((r) => (
-                  <tr
-                    key={r.id}
-                    onClick={() => openDrawer(r)}
-                    className="border-b border-border/60 last:border-b-0 hover:bg-muted/40 cursor-pointer transition-colors"
-                  >
-                    <td className="py-2 px-3 text-muted-foreground">{r.project_name ?? "—"}</td>
-                    <td className="py-2 px-3 font-medium">{r.issue || "—"}</td>
-                    <td className="py-2 px-3 text-muted-foreground">{r.location ?? "—"}</td>
-                    <td className="py-2 px-3 text-muted-foreground">{r.worker_name ?? "—"}</td>
-                    <td className="py-2 px-3">{r.priority ?? "Medium"}</td>
-                    <td className="py-2 px-3">
-                      <span
-                        className={cn(
-                          "inline-flex items-center gap-1.5 rounded-sm px-1.5 py-0.5 text-xs font-medium",
-                          normStatus(r.status) === "completed" && "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300",
-                          normStatus(r.status) === "assigned" && "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
-                          normStatus(r.status) === "open" && "bg-muted text-muted-foreground"
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            "h-1.5 w-1.5 rounded-full",
-                            normStatus(r.status) === "completed" && "bg-green-500",
-                            normStatus(r.status) === "assigned" && "bg-amber-500",
-                            normStatus(r.status) === "open" && "bg-gray-400"
-                          )}
-                        />
-                        {STATUS_LABEL[normStatus(r.status)] ?? r.status}
-                      </span>
-                    </td>
-                  </tr>
+            ) : (
+              <ul className="divide-y divide-[#eee]">
+                {filteredItems.map((r) => (
+                  <PunchListRow key={r.id} item={r} onOpenDrawer={openDrawer} />
                 ))}
-              </tbody>
-            </table>
-            </>
-          )}
-        </div>
+              </ul>
+            )}
+          </div>
+        )}
+
+        {/* Kanban board — 3 columns with drag and drop */}
+        {viewMode === "kanban" && (
+          <div className="rounded-lg border border-[#eee] bg-white overflow-hidden">
+            {loading ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>
+            ) : error && items.length === 0 ? (
+              <div className="py-8 text-center text-sm text-destructive">{error}</div>
+            ) : filteredItems.length === 0 ? (
+              <div className="py-8 text-center">
+                <p className="text-sm text-muted-foreground">No issues match the filters.</p>
+                <Button onClick={openModal} className="mt-3" size="sm">
+                  Add Issue
+                </Button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto overflow-y-hidden scroll-touch-x p-3 sm:p-4">
+                <div className="flex min-w-0 gap-4 sm:grid sm:grid-cols-3 lg:grid-cols-3">
+                {(["open", "in_progress", "completed"] as const).map((columnId) => {
+                  const columnStatus = columnId === "in_progress" ? "assigned" : columnId;
+                  const label = columnId === "open" ? "Open" : columnId === "in_progress" ? "In Progress" : "Completed";
+                  const columnItems = kanbanColumns[columnId];
+                  return (
+                    <div
+                      key={columnId}
+                      className="flex flex-col rounded-lg border border-[#eee] bg-[#fafafa]/50 min-h-[280px] w-[280px] min-w-[280px] sm:min-w-0 sm:w-auto"
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.currentTarget.classList.add("ring-1", "ring-[#eee]");
+                      }}
+                      onDragLeave={(e) => {
+                        e.currentTarget.classList.remove("ring-1", "ring-[#eee]");
+                      }}
+                      onDrop={(e) => handleColumnDrop(columnStatus, e)}
+                    >
+                      <div className="p-2.5 border-b border-[#eee] font-medium text-sm text-muted-foreground">
+                        {label} ({columnItems.length})
+                      </div>
+                      <div className="flex-1 p-2 space-y-2 overflow-y-auto min-h-0">
+                        {columnItems.map((r) => (
+                          <KanbanCard key={r.id} item={r} onOpenDrawer={openDrawer} />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Issue detail drawer */}

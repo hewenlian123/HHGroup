@@ -34,6 +34,7 @@ export function UploadReceiptClient() {
   const [vendor, setVendor] = React.useState("");
   const [amount, setAmount] = React.useState("");
   const [notes, setNotes] = React.useState("");
+  const [receiptDate, setReceiptDate] = React.useState("");
   const [file, setFile] = React.useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = React.useState(false);
@@ -77,6 +78,7 @@ export function UploadReceiptClient() {
     setVendor("");
     setAmount("");
     setNotes("");
+    setReceiptDate("");
     setFile(null);
     setPreviewUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev);
@@ -141,6 +143,7 @@ export function UploadReceiptClient() {
           receiptUrl: upData.receipt_url,
           description: null,
           notes: notes.trim() || null,
+          receiptDate: receiptDate || null,
         }),
       });
       const data = await res.json();
@@ -234,6 +237,16 @@ export function UploadReceiptClient() {
               </option>
             ))}
           </select>
+        </div>
+
+        <div>
+          <Label zh="报销日期" en="Receipt Date" />
+          <Input
+            type="date"
+            value={receiptDate}
+            onChange={(e) => setReceiptDate(e.target.value)}
+            className="h-12 text-base rounded-lg px-4"
+          />
         </div>
 
         <div>

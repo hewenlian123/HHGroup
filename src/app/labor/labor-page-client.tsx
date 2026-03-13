@@ -1,9 +1,616 @@
 "use client";
 
+import * as React from "react";
+import { useSearchParams } from "next/navigation";
+import { PageHeader } from "@/components/page-header";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { getProjects, getLaborEntriesWithJoins, getLaborWorkersList } from "@/lib/data";
+import type { LaborEntryWithJoins } from "@/lib/daily-labor-db";
+import { cn } from "@/lib/utils";
+import { AddDailyEntryModal as QuickTimesheetModal } from "./add-daily-entry-modal";
+
+const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const HIGH_COST_THRESHOLD = 1000;
+
+function parseDayTypeAndOt(notes: string | null): { dayType: string; otHours: string } {
+  const defaultDay = "—";
+  const defaultOt = "—";
+  if (!notes?.trim()) return { dayType: defaultDay, otHours: defaultOt };
+  const dayMatch = /day_type=(\w+)/.exec(notes);
+  const otMatch = /ot_hours=([\d.]+)/.exec(notes);
+  return {
+    dayType: dayMatch
+      ? dayMatch[1] === "full_day"
+        ? "Full Day"
+        : dayMatch[1] === "half_day"
+          ? "Half Day"
+          : dayMatch[1] === "absent"
+            ? "Absent"
+            : dayMatch[1]
+      : defaultDay,
+    otHours: otMatch ? otMatch[1] : defaultOt,
+  };
+}
+
+function getMonthRange(ym: string): { dateFrom: string; dateTo: string } {
+  const [y, m] = ym.split("-").map(Number);
+  const dateFrom = `${ym}-01`;
+  const lastDay = new Date(y, m, 0).getDate();
+  const dateTo = `${ym}-${String(lastDay).padStart(2, "0")}`;
+  return { dateFrom, dateTo };
+}
+
+function formatMonthLabel(ym: string): string {
+  const [y, m] = ym.split("-").map(Number);
+  const date = new Date(y, m - 1, 1);
+  return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+}
+
+function buildMonthOptions(): { value: string; label: string }[] {
+  const now = new Date();
+  const options: { value: string; label: string }[] = [];
+  for (let i = -12; i <= 2; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    options.push({ value: ym, label: formatMonthLabel(ym) });
+  }
+  return options;
+}
+
+function getDatesInMonth(ym: string): string[] {
+  const [y, m] = ym.split("-").map(Number);
+  const lastDay = new Date(y, m, 0).getDate();
+  const dates: string[] = [];
+  for (let d = 1; d <= lastDay; d++) {
+    dates.push(`${ym}-${String(d).padStart(2, "0")}`);
+  }
+  return dates;
+}
+
+function formatShortDate(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.toLocaleDateString("en-US", { month: "short", day: "2-digit" });
+}
+
+/** Build calendar grid for month (Mon–Sun). Each cell is null (empty) or day number 1–31. Last row padded to 7. */
+function getCalendarGrid(ym: string): (number | null)[][] {
+  const [y, m] = ym.split("-").map(Number);
+  const first = new Date(y, m - 1, 1);
+  const lastDay = new Date(y, m, 0).getDate();
+  const startOffset = (first.getDay() + 6) % 7; // 0 = Monday
+  const cells: (number | null)[] = [
+    ...Array(startOffset).fill(null),
+    ...Array.from({ length: lastDay }, (_, i) => i + 1),
+  ];
+  const remainder = cells.length % 7;
+  if (remainder !== 0) {
+    cells.push(...Array(7 - remainder).fill(null));
+  }
+  const rows: (number | null)[][] = [];
+  for (let i = 0; i < cells.length; i += 7) {
+    rows.push(cells.slice(i, i + 7));
+  }
+  return rows;
+}
+
+const MONTH_OPTIONS = buildMonthOptions();
+
 export default function LaborPageClient() {
+  const searchParams = useSearchParams();
+  const now = new Date();
+  const initialMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const [selectedMonth, setSelectedMonth] = React.useState(initialMonth);
+  const { dateFrom: monthStart, dateTo: monthEnd } = getMonthRange(selectedMonth);
+  const [projectFilter, setProjectFilter] = React.useState<string>("");
+  const [workerFilter, setWorkerFilter] = React.useState<string>("");
+  const appliedProjectIdFromUrl = React.useRef(false);
+  React.useEffect(() => {
+    if (appliedProjectIdFromUrl.current) return;
+    const pid = searchParams.get("project_id");
+    if (pid) {
+      setProjectFilter(pid);
+      appliedProjectIdFromUrl.current = true;
+    }
+  }, [searchParams]);
+  const [projects, setProjects] = React.useState<Awaited<ReturnType<typeof getProjects>>>([]);
+  const [workers, setWorkers] = React.useState<{ id: string; name: string }[]>([]);
+  const [monthEntries, setMonthEntries] = React.useState<LaborEntryWithJoins[]>([]);
+  const [loadingProjects, setLoadingProjects] = React.useState(true);
+  const [loadingEntries, setLoadingEntries] = React.useState(false);
+  const [message, setMessage] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+  const [modalOpen, setModalOpen] = React.useState(false);
+  const [expandedDate, setExpandedDate] = React.useState<string | null>(null);
+  const [view, setView] = React.useState<"list" | "calendar">("list");
+  const [selectedDayForDetail, setSelectedDayForDetail] = React.useState<string | null>(null);
+
+  const loadProjects = React.useCallback(async () => {
+    setLoadingProjects(true);
+    try {
+      const p = await getProjects();
+      setProjects(p);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load projects.");
+    } finally {
+      setLoadingProjects(false);
+    }
+  }, []);
+
+  const loadWorkers = React.useCallback(async () => {
+    try {
+      const list = await getLaborWorkersList();
+      setWorkers(list ?? []);
+    } catch {
+      setWorkers([]);
+    }
+  }, []);
+
+  const loadMonthEntries = React.useCallback(async () => {
+    setLoadingEntries(true);
+    try {
+      const list = await getLaborEntriesWithJoins({
+        date_from: monthStart,
+        date_to: monthEnd,
+        project_id: projectFilter || undefined,
+        worker_id: workerFilter || undefined,
+      });
+      setMonthEntries(list);
+    } catch {
+      setMonthEntries([]);
+    } finally {
+      setLoadingEntries(false);
+    }
+  }, [monthStart, monthEnd, projectFilter, workerFilter]);
+
+  React.useEffect(() => {
+    void loadProjects();
+  }, [loadProjects]);
+
+  React.useEffect(() => {
+    void loadWorkers();
+  }, [loadWorkers]);
+
+  React.useEffect(() => {
+    void loadMonthEntries();
+  }, [loadMonthEntries]);
+
+  const handleSaved = React.useCallback(() => {
+    setMessage("Entries saved.");
+    setError(null);
+    void loadMonthEntries();
+  }, [loadMonthEntries]);
+
+  const summary = React.useMemo(() => {
+    const totalLaborCost = monthEntries.reduce((sum, e) => sum + (e.cost_amount ?? 0), 0);
+    const uniqueDates = new Set(monthEntries.map((e) => e.work_date?.slice(0, 10)).filter(Boolean));
+    return {
+      totalLaborCost,
+      totalWorkDays: uniqueDates.size,
+      totalEntries: monthEntries.length,
+    };
+  }, [monthEntries]);
+
+  /** Labor cost per project for selected month (group by project_id, sum amount). Sorted by highest cost. */
+  const projectLaborCost = React.useMemo(() => {
+    const byProject = new Map<string, { id: string; name: string; total: number }>();
+    for (const e of monthEntries) {
+      const pid = e.project_id ?? "__none__";
+      const name = e.project_name ?? "No project";
+      const amount = e.cost_amount ?? 0;
+      const cur = byProject.get(pid);
+      if (cur) {
+        cur.total += amount;
+      } else {
+        byProject.set(pid, { id: pid, name, total: amount });
+      }
+    }
+    return Array.from(byProject.values())
+      .filter((v) => v.total > 0)
+      .sort((a, b) => b.total - a.total);
+  }, [monthEntries]);
+
+  const datesInMonth = React.useMemo(() => getDatesInMonth(selectedMonth), [selectedMonth]);
+
+  const entriesByDate = React.useMemo(() => {
+    const map = new Map<string, LaborEntryWithJoins[]>();
+    for (const e of monthEntries) {
+      const d = e.work_date?.slice(0, 10);
+      if (!d) continue;
+      if (!map.has(d)) map.set(d, []);
+      map.get(d)!.push(e);
+    }
+    return map;
+  }, [monthEntries]);
+
   return (
-    <div className="p-6">
-      <h1 className="text-xl font-semibold">Labor</h1>
+    <div className="page-container page-stack py-6">
+      <PageHeader
+        title="Labor"
+        subtitle="Daily labor entries by worker and project."
+      />
+      {/* Filter bar — Month, Project, Worker (gap 12px, height 36px) */}
+      <div className="flex flex-col gap-3 border-b border-border/60 pb-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider shrink-0">Month</label>
+            <select
+              value={selectedMonth}
+              onChange={(e) => {
+                setSelectedMonth(e.target.value);
+                setExpandedDate(null);
+                setSelectedDayForDetail(null);
+              }}
+              className="h-9 min-w-[160px] rounded-md border border-input bg-transparent px-3 text-sm"
+            >
+              {MONTH_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider shrink-0">Project</label>
+            <select
+              value={projectFilter}
+              onChange={(e) => {
+                setProjectFilter(e.target.value);
+                setExpandedDate(null);
+              }}
+              className="h-9 min-w-[180px] rounded-md border border-input bg-transparent px-3 text-sm"
+            >
+              <option value="">All Projects</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider shrink-0">Worker</label>
+            <select
+              value={workerFilter}
+              onChange={(e) => {
+                setWorkerFilter(e.target.value);
+                setExpandedDate(null);
+              }}
+              className="h-9 min-w-[180px] rounded-md border border-input bg-transparent px-3 text-sm"
+            >
+              <option value="">All Workers</option>
+              {workers.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        {/* Action buttons — below filters */}
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            size="sm"
+            className="rounded-sm h-9"
+            onClick={() => setModalOpen(true)}
+            disabled={loadingProjects}
+          >
+            + Add Entry
+          </Button>
+          <div className="flex border border-border/60 rounded-sm overflow-hidden shrink-0 h-9">
+            <button
+              type="button"
+              onClick={() => setView("list")}
+              className={cn(
+                "h-full px-3 text-xs font-medium transition-colors",
+                view === "list"
+                  ? "bg-foreground text-background"
+                  : "bg-transparent text-muted-foreground hover:text-foreground"
+              )}
+            >
+              List View
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("calendar")}
+              className={cn(
+                "h-full px-3 text-xs font-medium transition-colors border-l border-border/60",
+                view === "calendar"
+                  ? "bg-foreground text-background"
+                  : "bg-transparent text-muted-foreground hover:text-foreground"
+              )}
+            >
+              Calendar View
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {error ? (
+        <p className="py-3 text-sm text-red-600">{error}</p>
+      ) : null}
+      {message ? (
+        <p className="py-3 text-sm text-muted-foreground">{message}</p>
+      ) : null}
+
+      {/* Monthly Summary */}
+      <section className="border-b border-border/60 pb-4">
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
+          Monthly Summary · {formatMonthLabel(selectedMonth)}
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="rounded-sm border border-border/60 bg-background px-3 py-2">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Labor Cost</p>
+            <p className="mt-1 text-xl font-semibold tabular-nums">
+              ${summary.totalLaborCost.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+            </p>
+          </div>
+          <div className="rounded-sm border border-border/60 bg-background px-3 py-2">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Work Days</p>
+            <p className="mt-1 text-xl font-semibold tabular-nums">
+              {summary.totalWorkDays.toLocaleString("en-US")}
+            </p>
+          </div>
+          <div className="rounded-sm border border-border/60 bg-background px-3 py-2">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">Entries</p>
+            <p className="mt-1 text-xl font-semibold tabular-nums">
+              {summary.totalEntries.toLocaleString("en-US")}
+            </p>
+          </div>
+        </div>
+
+        {/* PROJECT LABOR COST — labor cost per project for selected month, sorted by highest */}
+        {projectLaborCost.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-border/60">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+              PROJECT LABOR COST
+            </p>
+            <div className="rounded-lg border border-border/60 overflow-hidden">
+              {projectLaborCost.map(({ id, name, total }) => (
+                <div
+                  key={id}
+                  className="flex items-center justify-between gap-3 py-2.5 px-2.5 border-b border-border/60 last:border-b-0 hover:bg-[#fafafa]"
+                >
+                  <span className="text-sm font-medium text-foreground truncate">{name}</span>
+                  <span className="text-sm tabular-nums font-medium text-foreground shrink-0">
+                    ${total.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* List View */}
+      {view === "list" && (
+        <section className="mt-4 border-b border-border/60 pb-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">
+            Daily entries · {formatMonthLabel(selectedMonth)}
+          </p>
+          {loadingEntries ? (
+            <p className="py-4 text-sm text-muted-foreground">Loading…</p>
+          ) : datesInMonth.length === 0 ? (
+            <p className="py-4 text-sm text-muted-foreground">No dates.</p>
+          ) : (
+            <div className="flex flex-col divide-y divide-border/60 rounded-lg border border-border/60 overflow-hidden">
+              {datesInMonth.map((date) => {
+                const entries = entriesByDate.get(date) ?? [];
+                const totalPay = entries.reduce((s, e) => s + (e.cost_amount ?? 0), 0);
+                const isHighCost = totalPay > HIGH_COST_THRESHOLD;
+                const isExpanded = expandedDate === date;
+                return (
+                  <div key={date}>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedDate((prev) => (prev === date ? null : date))}
+                      className={cn(
+                        "flex w-full items-center justify-between gap-3 rounded-none px-2.5 py-2.5 text-left transition-colors hover:bg-[#fafafa]",
+                        isExpanded && "bg-[#fafafa]"
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-medium text-foreground">{formatShortDate(date)}</span>
+                        <span className="text-sm text-muted-foreground">
+                          {entries.length === 0
+                            ? "No entries"
+                            : `${entries.length} entries   $${totalPay.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
+                        </span>
+                      </div>
+                      <span
+                        className={cn(
+                          "shrink-0 text-muted-foreground transition-transform duration-200 text-xs",
+                          isExpanded && "rotate-90"
+                        )}
+                        aria-hidden
+                      >
+                        ▶
+                      </span>
+                    </button>
+                    <div
+                      className={cn(
+                        "overflow-hidden transition-[max-height] duration-200 ease-out",
+                        isExpanded ? "max-h-[2000px]" : "max-h-0"
+                      )}
+                    >
+                      <div className="border-t border-border/60 bg-background">
+                        {entries.length === 0 ? (
+                          <p className="py-2.5 px-2.5 text-sm text-muted-foreground">
+                            No entries. Use &quot;+ Add Entry&quot; to add workers.
+                          </p>
+                        ) : (
+                          <table className="w-full text-sm border-collapse">
+                            <thead>
+                              <tr className="border-b border-border/60">
+                                <th className="text-left py-2.5 px-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">Worker</th>
+                                <th className="text-left py-2.5 px-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">Project</th>
+                                <th className="text-right py-2.5 px-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground tabular-nums">Total Pay</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {entries.map((e) => {
+                                const pay = e.cost_amount != null ? Number(e.cost_amount) : 0;
+                                return (
+                                  <tr key={e.id} className="border-b border-border/30 last:border-b-0 hover:bg-[#fafafa]">
+                                    <td className="py-2.5 px-2.5 font-medium text-foreground">{e.worker_name ?? "—"}</td>
+                                    <td className="py-2.5 px-2.5 text-muted-foreground">{e.project_name ?? "—"}</td>
+                                    <td className="py-2.5 px-2.5 text-right tabular-nums font-medium">
+                                      {pay > 0 ? `$${pay.toFixed(2)}` : "—"}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Calendar View */}
+      {view === "calendar" && (
+        <section className="mt-4 border-b border-border/60 pb-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">
+            {formatMonthLabel(selectedMonth)}
+          </p>
+          {loadingEntries ? (
+            <p className="py-4 text-sm text-muted-foreground">Loading…</p>
+          ) : (
+            <div className="rounded-sm border border-border/60 overflow-hidden">
+              <div className="grid grid-cols-7 text-sm">
+                {WEEKDAYS.map((wd) => (
+                  <div
+                    key={wd}
+                    className="border-b border-r border-border/60 py-2 px-1 text-center text-xs font-medium text-muted-foreground last:border-r-0"
+                  >
+                    {wd}
+                  </div>
+                ))}
+                {getCalendarGrid(selectedMonth).flat().map((day, idx) => (
+                  <div
+                    key={idx}
+                    className={cn(
+                      "min-h-[4rem] border-b border-r border-border/60 p-1 last:border-r-0 flex flex-col",
+                      day === null && "border-border/30"
+                    )}
+                  >
+                    {day === null ? (
+                      <span className="invisible">0</span>
+                    ) : (() => {
+                      const dateStr = `${selectedMonth}-${String(day).padStart(2, "0")}`;
+                      const entries = entriesByDate.get(dateStr) ?? [];
+                      const hasEntries = entries.length > 0;
+                      const workerCount = entries.length;
+                      const totalPay = entries.reduce((s, e) => s + (e.cost_amount ?? 0), 0);
+                      const isHighCost = totalPay > HIGH_COST_THRESHOLD;
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedDayForDetail(dateStr)}
+                          className={cn(
+                            "w-full h-full min-h-[4rem] rounded-sm flex flex-col items-center justify-center gap-0.5 text-left py-1.5 px-1 transition-colors",
+                            hasEntries
+                              ? isHighCost
+                                ? "bg-amber-50 dark:bg-amber-950/30 text-foreground hover:bg-amber-100 dark:hover:bg-amber-950/50"
+                                : "bg-background text-foreground hover:bg-muted/30"
+                              : "bg-muted/40 text-muted-foreground hover:bg-muted/60"
+                          )}
+                        >
+                          <span className="font-medium tabular-nums">{day}</span>
+                          {hasEntries ? (
+                            <>
+                              <span className="text-xs tabular-nums">
+                                {workerCount} worker{workerCount !== 1 ? "s" : ""}
+                              </span>
+                              <span className="text-xs font-medium tabular-nums">
+                                ${totalPay.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-xs">No entries</span>
+                          )}
+                        </button>
+                      );
+                    })()}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
+      <QuickTimesheetModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        onSuccess={handleSaved}
+      />
+
+      {/* Day detail (Calendar View) */}
+      <Dialog open={!!selectedDayForDetail} onOpenChange={(open) => !open && setSelectedDayForDetail(null)}>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col border-border/60 rounded-sm">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold">
+              {selectedDayForDetail ? formatShortDate(selectedDayForDetail) : ""}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="overflow-auto min-h-0 -mx-6 px-6">
+            {selectedDayForDetail && (() => {
+              const dayEntries = entriesByDate.get(selectedDayForDetail) ?? [];
+              if (dayEntries.length === 0) {
+                return (
+                  <p className="py-4 text-sm text-muted-foreground">
+                    No entries for this day.
+                  </p>
+                );
+              }
+              return (
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="border-b border-border/60">
+                      <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Worker</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Project</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Day Type</th>
+                      <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground tabular-nums">OT</th>
+                      <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground tabular-nums">Total Pay</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dayEntries.map((e) => {
+                      const { dayType, otHours } = parseDayTypeAndOt(e.notes);
+                      const pay = e.cost_amount != null ? Number(e.cost_amount) : 0;
+                      return (
+                        <tr key={e.id} className="border-b border-border/60 last:border-b-0">
+                          <td className="py-2 px-3 font-medium text-foreground">{e.worker_name ?? "—"}</td>
+                          <td className="py-2 px-3 text-muted-foreground">{e.project_name ?? "—"}</td>
+                          <td className="py-2 px-3 text-muted-foreground">{dayType}</td>
+                          <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">{otHours}</td>
+                          <td className="py-2 px-3 text-right tabular-nums font-medium">
+                            {pay > 0 ? `$${pay.toFixed(2)}` : "—"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              );
+            })()}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+

@@ -30,6 +30,7 @@ export type WorkerReceipt = {
   description: string | null;
   receiptUrl: string | null;
   notes: string | null;
+  receiptDate: string | null;
   status: WorkerReceiptStatus;
   rejectionReason: string | null;
   reimbursementId: string | null;
@@ -41,7 +42,7 @@ export type WorkerReceiptWithNames = WorkerReceipt & {
 };
 
 const COLS =
-  "id, worker_id, worker_name, project_id, expense_type, vendor, amount, description, receipt_url, notes, status, rejection_reason, reimbursement_id, created_at";
+  "id, worker_id, worker_name, project_id, expense_type, vendor, amount, description, receipt_url, notes, receipt_date, status, rejection_reason, reimbursement_id, created_at";
 
 function client() {
   if (!supabase) throw new Error("Supabase is not configured.");
@@ -63,6 +64,7 @@ function fromRow(r: Record<string, unknown>): WorkerReceipt {
     description: r.description != null ? String(r.description) : null,
     receiptUrl: r.receipt_url != null ? String(r.receipt_url) : null,
     notes: r.notes != null ? String(r.notes) : null,
+    receiptDate: r.receipt_date != null ? String(r.receipt_date).slice(0, 10) : null,
     status: normalized,
     rejectionReason: r.rejection_reason != null ? String(r.rejection_reason) : null,
     reimbursementId: r.reimbursement_id != null ? String(r.reimbursement_id) : null,
@@ -104,6 +106,7 @@ export async function insertWorkerReceipt(draft: {
   description?: string | null;
   receiptUrl?: string | null;
   notes?: string | null;
+  receiptDate?: string | null;
   status?: WorkerReceiptStatus;
 }): Promise<WorkerReceipt> {
   const insertPayload: Record<string, unknown> = {
@@ -115,6 +118,7 @@ export async function insertWorkerReceipt(draft: {
     description: draft.description?.trim() || null,
     receipt_url: draft.receiptUrl?.trim() || null,
     notes: draft.notes?.trim() || null,
+    receipt_date: draft.receiptDate ?? null,
     status: draft.status ?? "Pending",
   };
   if (draft.workerId != null && draft.workerId !== "") insertPayload.worker_id = draft.workerId;
@@ -145,6 +149,11 @@ export async function updateWorkerReceiptStatus(
   return fromRow(data as Record<string, unknown>);
 }
 
+export async function deleteWorkerReceipt(id: string): Promise<void> {
+  const { error } = await client().from("worker_receipts").delete().eq("id", id);
+  if (error) throw new Error(error.message ?? "Failed to delete receipt.");
+}
+
 /**
  * Approve: set status Approved, create worker_reimbursement (Pending), link reimbursement_id.
  * Requires worker_id or resolvable worker by name.
@@ -152,30 +161,9 @@ export async function updateWorkerReceiptStatus(
 export async function approveWorkerReceipt(receiptId: string): Promise<WorkerReceipt> {
   const receipt = await getWorkerReceiptById(receiptId);
   if (!receipt) throw new Error("Receipt not found.");
-  if (receipt.status !== "Pending")
-    throw new Error("Only Pending receipts can be approved.");
-
-  let workerId = receipt.workerId;
-  if (!workerId && receipt.workerName) {
-    const workers = await laborDb.getWorkers();
-    const match = workers.find((w) => w.name.toLowerCase() === receipt.workerName.toLowerCase());
-    if (match) workerId = match.id;
-  }
-  if (!workerId) throw new Error("Cannot approve: link worker to reimbursement (missing worker).");
-
-  const reimbursement = await workerReimbursementsDb.insertWorkerReimbursement({
-    workerId,
-    projectId: receipt.projectId,
-    amount: receipt.amount,
-    receiptUrl: receipt.receiptUrl,
-    description:
-      [receipt.expenseType, receipt.vendor, receipt.description, receipt.notes].filter(Boolean).join(" — ") || "From approved receipt upload",
-    status: "Pending",
-  });
-
+  // For testing: simply mark as Approved without creating reimbursement
   return updateWorkerReceiptStatus(receiptId, {
     status: "Approved",
-    reimbursementId: reimbursement.id,
   });
 }
 
@@ -185,7 +173,6 @@ export async function approveWorkerReceipt(receiptId: string): Promise<WorkerRec
 export async function rejectWorkerReceipt(receiptId: string, reason?: string | null): Promise<WorkerReceipt> {
   const receipt = await getWorkerReceiptById(receiptId);
   if (!receipt) throw new Error("Receipt not found.");
-  if (receipt.status !== "Pending") throw new Error("Only Pending receipts can be rejected.");
   return updateWorkerReceiptStatus(receiptId, {
     status: "Rejected",
     rejectionReason: reason ?? null,

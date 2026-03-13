@@ -36,6 +36,7 @@ export async function getProjectUsageAction(projectId: string): Promise<
   try {
     const counts = await getProjectUsageCounts(projectId);
     const hasAny =
+      (counts.project_tasks ?? 0) > 0 ||
       (counts.labor_entries ?? 0) > 0 ||
       (counts.expenses ?? 0) > 0 ||
       (counts.bills ?? 0) > 0 ||
@@ -43,6 +44,7 @@ export async function getProjectUsageAction(projectId: string): Promise<
       (counts.subcontracts ?? 0) > 0 ||
       (counts.project_change_orders ?? 0) > 0 ||
       (counts.worker_receipts ?? 0) > 0 ||
+      (counts.punch_list ?? 0) > 0 ||
       (counts.site_photos ?? 0) > 0 ||
       (counts.materials ?? 0) > 0;
     if (hasAny) return { blocked: true, counts };
@@ -72,6 +74,7 @@ export async function deleteProjectAction(projectId: string): Promise<{ error?: 
   try {
     const usage = await getProjectUsageCounts(projectId);
     const hasAny =
+      (usage.project_tasks ?? 0) > 0 ||
       (usage.labor_entries ?? 0) > 0 ||
       (usage.expenses ?? 0) > 0 ||
       (usage.bills ?? 0) > 0 ||
@@ -79,6 +82,7 @@ export async function deleteProjectAction(projectId: string): Promise<{ error?: 
       (usage.subcontracts ?? 0) > 0 ||
       (usage.project_change_orders ?? 0) > 0 ||
       (usage.worker_receipts ?? 0) > 0 ||
+      (usage.punch_list ?? 0) > 0 ||
       (usage.site_photos ?? 0) > 0 ||
       (usage.materials ?? 0) > 0;
     if (hasAny) {
@@ -135,6 +139,7 @@ export async function updateProjectTaskAction(
       await insertActivityLog(updated.project_id, "task_completed", "Task completed");
     }
     revalidatePath(`/projects/${projectId}`);
+    revalidatePath("/tasks");
     return {};
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to update task.";
@@ -147,6 +152,7 @@ export async function deleteProjectTaskAction(projectId: string, taskId: string)
   try {
     await deleteProjectTask(taskId);
     revalidatePath(`/projects/${projectId}`);
+    revalidatePath("/tasks");
     return {};
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to delete task.";

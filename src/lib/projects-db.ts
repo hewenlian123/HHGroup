@@ -284,6 +284,7 @@ export async function deleteProject(id: string): Promise<boolean> {
 }
 
 export type ProjectUsageCounts = {
+  project_tasks: number;
   labor_entries: number;
   expenses: number;
   bills: number;
@@ -291,6 +292,7 @@ export type ProjectUsageCounts = {
   subcontracts: number;
   project_change_orders: number;
   worker_receipts: number;
+  punch_list: number;
   site_photos: number;
   materials: number;
 };
@@ -323,6 +325,7 @@ export async function getProjectUsageCounts(projectId: string): Promise<ProjectU
   };
 
   const [
+    project_tasks,
     labor_entries,
     expenses,
     bills,
@@ -330,9 +333,11 @@ export async function getProjectUsageCounts(projectId: string): Promise<ProjectU
     subcontracts,
     project_change_orders,
     worker_receipts,
+    punch_list,
     site_photos,
     materials,
   ] = await Promise.all([
+    safeCount("project_tasks", "project_id", pid),
     laborOr(),
     safeCount("expense_lines", "project_id", pid),
     safeCount("ap_bills", "project_id", pid),
@@ -340,11 +345,13 @@ export async function getProjectUsageCounts(projectId: string): Promise<ProjectU
     safeCount("subcontracts", "project_id", pid),
     safeCount("project_change_orders", "project_id", pid),
     safeCount("worker_receipts", "project_id", pid),
+    safeCount("punch_list", "project_id", pid),
     safeCount("site_photos", "project_id", pid),
     safeCount("project_material_selections", "project_id", pid),
   ]);
 
   return {
+    project_tasks,
     labor_entries,
     expenses,
     bills,
@@ -352,6 +359,7 @@ export async function getProjectUsageCounts(projectId: string): Promise<ProjectU
     subcontracts,
     project_change_orders,
     worker_receipts,
+    punch_list,
     site_photos,
     materials,
   };

@@ -174,22 +174,30 @@ export function ProjectDetailTabsClient({
   const [deleteBlockedCounts, setDeleteBlockedCounts] = React.useState<ProjectUsageCounts | null>(null);
   const [deleteInProgress, setDeleteInProgress] = React.useState(false);
 
-  const deleteModalCountLabels: { key: keyof ProjectUsageCounts; label: string }[] = [
-    { key: "expenses", label: "Expenses" },
-    { key: "labor_entries", label: "Labor Entries" },
-    { key: "worker_receipts", label: "Worker Receipts" },
-    { key: "invoices", label: "Invoices" },
-    { key: "site_photos", label: "Site Photos" },
+  const deleteModalRelatedConfig: { key: keyof ProjectUsageCounts; label: string; viewPath: string }[] = [
+    { key: "project_tasks", label: "Tasks", viewPath: "/tasks" },
+    { key: "expenses", label: "Expenses", viewPath: "/financial/expenses" },
+    { key: "invoices", label: "Invoices", viewPath: "/financial/invoices" },
+    { key: "labor_entries", label: "Labor Entries", viewPath: "/labor" },
+    { key: "punch_list", label: "Punch List", viewPath: "/punch-list" },
+    { key: "site_photos", label: "Site Photos", viewPath: "/site-photos" },
+    { key: "project_change_orders", label: "Change Orders", viewPath: "/change-orders" },
+    { key: "bills", label: "Bills", viewPath: "/bills" },
+    { key: "worker_receipts", label: "Worker Receipts", viewPath: "/labor/receipts" },
+    { key: "subcontracts", label: "Subcontracts", viewPath: "/projects" },
+    { key: "materials", label: "Materials", viewPath: "/materials/catalog" },
   ];
 
   const firstTabForCounts = React.useMemo((): TabKey | null => {
     if (!deleteBlockedCounts) return null;
+    if ((deleteBlockedCounts.project_tasks ?? 0) > 0) return "tasks";
     if ((deleteBlockedCounts.labor_entries ?? 0) > 0) return "labor";
     if ((deleteBlockedCounts.expenses ?? 0) > 0) return "expenses";
     if ((deleteBlockedCounts.bills ?? 0) > 0) return "bills";
     if ((deleteBlockedCounts.invoices ?? 0) > 0) return "financial";
     if ((deleteBlockedCounts.subcontracts ?? 0) > 0) return "subcontracts";
     if ((deleteBlockedCounts.project_change_orders ?? 0) > 0) return "change-orders";
+    if ((deleteBlockedCounts.punch_list ?? 0) > 0) return "punch-list";
     return null;
   }, [deleteBlockedCounts]);
 
@@ -1086,21 +1094,29 @@ export function ProjectDetailTabsClient({
       </Tabs>
 
       <Dialog open={deleteBlockedOpen} onOpenChange={setDeleteBlockedOpen}>
-        <DialogContent className="max-w-sm border-border/60 p-5 rounded-md">
+        <DialogContent className="max-w-md border-border/60 p-5 rounded-md">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Cannot delete project</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
-              This project has related records.
+              Cannot delete project because it contains related records.
             </DialogDescription>
           </DialogHeader>
           {deleteBlockedCounts && (
-            <ul className="text-sm text-foreground list-disc list-inside space-y-1">
-              {deleteModalCountLabels.map(({ key, label }) => {
+            <ul className="text-sm text-foreground space-y-2">
+              {deleteModalRelatedConfig.map(({ key, label, viewPath }) => {
                 const n = deleteBlockedCounts[key] ?? 0;
                 if (n <= 0) return null;
+                const href = `${viewPath}?project_id=${projectId}`;
                 return (
-                  <li key={key}>
-                    {label} ({n})
+                  <li key={key} className="flex items-center justify-between gap-3 border-b border-border/60 pb-2 last:border-0 last:pb-0">
+                    <span>
+                      {label} ({n})
+                    </span>
+                    <Button variant="outline" size="sm" className="shrink-0 rounded-sm" asChild>
+                      <Link href={href} onClick={() => setDeleteBlockedOpen(false)}>
+                        View {label}
+                      </Link>
+                    </Button>
                   </li>
                 );
               })}
@@ -1110,27 +1126,6 @@ export function ProjectDetailTabsClient({
             <Button variant="ghost" size="sm" onClick={() => setDeleteBlockedOpen(false)}>
               Cancel
             </Button>
-            {(deleteBlockedCounts?.expenses ?? 0) > 0 && (
-              <Button variant="outline" size="sm" asChild>
-                <Link href={`/financial/expenses?project_id=${projectId}`} onClick={() => setDeleteBlockedOpen(false)}>
-                  View Expenses
-                </Link>
-              </Button>
-            )}
-            {(deleteBlockedCounts?.labor_entries ?? 0) > 0 && (
-              <Button variant="outline" size="sm" asChild>
-                <Link href={`/labor?project_id=${projectId}`} onClick={() => setDeleteBlockedOpen(false)}>
-                  View Labor
-                </Link>
-              </Button>
-            )}
-            {(deleteBlockedCounts?.worker_receipts ?? 0) > 0 && (
-              <Button variant="outline" size="sm" asChild>
-                <Link href={`/labor/receipts?project_id=${projectId}`} onClick={() => setDeleteBlockedOpen(false)}>
-                  View Receipts
-                </Link>
-              </Button>
-            )}
             <Button
               variant="secondary"
               size="sm"
