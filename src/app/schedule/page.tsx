@@ -131,7 +131,7 @@ export default function SchedulePage() {
           title="Schedule"
           description="Project schedule across all projects."
           actions={
-            <Button size="sm" className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90" onClick={openModal}>
+            <Button size="touch" className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90 min-h-[44px]" onClick={openModal}>
               + New schedule item
             </Button>
           }
@@ -145,9 +145,38 @@ export default function SchedulePage() {
           ) : error ? (
             <div className="py-10 text-center text-sm text-destructive">{error}</div>
           ) : schedule.length === 0 ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">No schedule items yet.</div>
+            <div className="py-10 text-center">
+              <p className="text-sm text-muted-foreground">No schedule items yet.</p>
+              <Button onClick={openModal} className="mt-4 max-md:min-h-[44px] max-md:w-full max-md:max-w-[280px]" size="sm">
+                New schedule item
+              </Button>
+            </div>
           ) : (
-            <table className="w-full text-sm border-collapse">
+            <>
+              {/* Mobile: card layout */}
+              <div className="flex flex-col gap-2 md:hidden divide-y divide-border/60">
+                {schedule.map((s) => (
+                  <div
+                    key={s.id}
+                    className="flex min-h-[44px] flex-col gap-1 border-0 bg-transparent px-4 py-3"
+                  >
+                    <span className="font-medium truncate">{s.title || "—"}</span>
+                    <span className="text-xs text-muted-foreground truncate">{s.project_name ?? "—"}</span>
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {s.start_date ? new Date(s.start_date).toLocaleDateString() : "—"} – {s.end_date ? new Date(s.end_date).toLocaleDateString() : "—"}
+                    </span>
+                    <span
+                      className={cn(
+                        "mt-1 w-fit rounded-sm px-1.5 py-0.5 text-xs font-medium",
+                        statusStyle(s.status)
+                      )}
+                    >
+                      {statusLabel(s.status)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <table className="hidden w-full text-sm border-collapse md:table">
               <thead>
                 <tr className="border-b border-border/60">
                   <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground">Task</th>
@@ -182,6 +211,7 @@ export default function SchedulePage() {
                 ))}
               </tbody>
             </table>
+            </>
           )}
         </div>
       </div>
@@ -215,7 +245,7 @@ export default function SchedulePage() {
                 className="mt-1.5 h-9 rounded-sm border-border/60"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <div>
                 <label className="text-xs font-medium text-muted-foreground">Start date</label>
                 <Input

@@ -1,9 +1,19 @@
 "use client";
 
 import * as React from "react";
+import { Trash2, Pencil, Download, ClipboardList } from "lucide-react";
 import { PageLayout, PageHeader, Drawer } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useAuth } from "@/components/auth/auth-provider";
+import { createPunchListItemAction } from "@/app/punch-list/actions";
 
 type PhotoRow = {
   id: string;
@@ -15,6 +25,10 @@ type PhotoRow = {
   uploaded_by: string | null;
   created_at: string;
 };
+
+function isDemoMissingPath(path: string): boolean {
+  return /^site-photos\/demo-\d+\.jpg$/i.test((path ?? "").trim());
+}
 
 function photoImageUrl(path: string): string {
   return `/api/operations/site-photos/photo?path=${encodeURIComponent(path)}`;
@@ -39,6 +53,25 @@ export default function SitePhotosPage() {
     uploaded_by: "",
   });
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [failedPhotoIds, setFailedPhotoIds] = React.useState<Set<string>>(new Set());
+  const [deleteConfirmPhoto, setDeleteConfirmPhoto] = React.useState<PhotoRow | null>(null);
+  const [deleting, setDeleting] = React.useState(false);
+  const [viewerPhoto, setViewerPhoto] = React.useState<PhotoRow | null>(null);
+  const [downloading, setDownloading] = React.useState(false);
+  const [punchIssuePhoto, setPunchIssuePhoto] = React.useState<PhotoRow | null>(null);
+  const [punchIssueForm, setPunchIssueForm] = React.useState({ issue: "", location: "", description: "", priority: "Medium", assigned_worker_id: "" });
+  const [punchIssueSubmitting, setPunchIssueSubmitting] = React.useState(false);
+  const [punchIssueWorkers, setPunchIssueWorkers] = React.useState<{ id: string; name: string }[]>([]);
+  const [editMode, setEditMode] = React.useState(false);
+  const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = React.useState(false);
+  const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = React.useState(false);
+  const { role } = useAuth();
+  const canDelete = role === "admin" || role === "owner";
+
+  const markPhotoFailed = React.useCallback((id: string) => {
+    setFailedPhotoIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
+  }, []);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -52,6 +85,18 @@ export default function SitePhotosPage() {
       const list = data.photos ?? [];
       setPhotos(list);
       setProjects(data.projects ?? []);
+      // Avoid noisy 404s for legacy demo rows that point to missing files.
+      // These records may exist in some dev DBs from older seeds.
+      const demoMissing = new Set<string>(
+        (list as PhotoRow[]).filter((p) => isDemoMissingPath(p.photo_url)).map((p) => p.id)
+      );
+      if (demoMissing.size) {
+        setFailedPhotoIds((prev) => {
+          const next = new Set(prev);
+          demoMissing.forEach((id) => next.add(id));
+          return next;
+        });
+      }
 
       // If there are no site photos at all, seed demo data once and reload.
       if (!list.length) {
@@ -77,6 +122,93 @@ export default function SitePhotosPage() {
     load();
   }, [load]);
 
+  const handleDeleteClick = (e: React.MouseEvent, photo: PhotoRow) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (canDelete) setDeleteConfirmPhoto(photo);
+  };
+
+  const openPunchIssueModal = React.useCallback(async (e: React.MouseEvent, photo: PhotoRow) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setPunchIssuePhoto(photo);
+    setPunchIssueForm({
+      issue: photo.description?.slice(0, 120) ?? "",
+      location: "",
+      description: photo.description ?? "",
+      priority: "Medium",
+      assigned_worker_id: "",
+    });
+    setError(null);
+    try {
+      const res = await fetch("/api/operations/punch-list");
+      const data = await res.json();
+      if (data.ok) setPunchIssueWorkers(data.workers ?? []);
+    } catch {
+      setPunchIssueWorkers([]);
+    }
+  }, []);
+
+  const handleCreatePunchIssue = async () => {
+    if (!punchIssuePhoto) return;
+    if (!punchIssueForm.issue.trim()) {
+      setError("Issue title is required.");
+      return;
+    }
+    setPunchIssueSubmitting(true);
+    setError(null);
+    try {
+      const result = await createPunchListItemAction({
+        project_id: punchIssuePhoto.project_id,
+        issue: punchIssueForm.issue.trim(),
+        location: punchIssueForm.location.trim() || null,
+        description: punchIssueForm.description.trim() || null,
+        priority: punchIssueForm.priority,
+        assigned_worker_id: punchIssueForm.assigned_worker_id || null,
+        photo_id: punchIssuePhoto.id,
+        status: "open",
+      });
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      setPunchIssuePhoto(null);
+    } finally {
+      setPunchIssueSubmitting(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirmPhoto) return;
+    setDeleting(true);
+    setError(null);
+    const id = deleteConfirmPhoto.id;
+    try {
+      // Optimistic UI update: remove from grid immediately.
+      setPhotos((prev) => prev.filter((p) => p.id !== id));
+      setFailedPhotoIds((prev) => {
+        if (!prev.has(id)) return prev;
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      setDeleteConfirmPhoto(null);
+      if (detailOpen && selectedPhoto?.id === id) setDetailOpen(false);
+
+      const res = await fetch(`/api/operations/site-photos/${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message ?? "Failed to delete");
+      // Refresh in background to ensure consistency (e.g. if filters changed).
+      void load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to delete photo.");
+      // If delete failed, reload to restore.
+      void load();
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const openDetail = (photo: PhotoRow) => {
     setSelectedPhoto(photo);
     setDetailForm({
@@ -86,6 +218,33 @@ export default function SitePhotosPage() {
     });
     setDetailOpen(true);
   };
+
+  const openViewer = (photo: PhotoRow) => {
+    setViewerPhoto(photo);
+  };
+
+  const handleDownload = React.useCallback(async () => {
+    if (!viewerPhoto) return;
+    setDownloading(true);
+    try {
+      const url = photoImageUrl(viewerPhoto.photo_url);
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Failed to fetch image");
+      const blob = await res.blob();
+      const ext = viewerPhoto.photo_url.split(".").pop()?.toLowerCase() || "jpg";
+      const name = viewerPhoto.description?.replace(/[^a-zA-Z0-9-_]/g, "_").slice(0, 40) || "site-photo";
+      const filename = `${name}-${viewerPhoto.id.slice(0, 8)}.${ext}`;
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Download failed.");
+    } finally {
+      setDownloading(false);
+    }
+  }, [viewerPhoto]);
 
   const handleSaveDetail = async () => {
     if (!selectedPhoto) return;
@@ -121,6 +280,79 @@ export default function SitePhotosPage() {
     });
     setUploadOpen(true);
     setError(null);
+  };
+
+  const toggleEditMode = () => {
+    setEditMode((prev) => !prev);
+    setSelectedIds(new Set());
+  };
+
+  const togglePhotoSelection = (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAllPhotos = () => {
+    setSelectedIds(new Set(photos.map((p) => p.id)));
+  };
+
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+  };
+
+  const openBulkDeleteConfirm = () => {
+    if (selectedIds.size === 0) return;
+    setBulkDeleteConfirmOpen(true);
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    setBulkDeleting(true);
+    setError(null);
+    try {
+      const ids = Array.from(selectedIds);
+      // Optimistic UI: remove selected rows immediately.
+      setPhotos((prev) => prev.filter((p) => !selectedIds.has(p.id)));
+      setFailedPhotoIds((prev) => {
+        const next = new Set(prev);
+        ids.forEach((id) => next.delete(id));
+        return next;
+      });
+
+      // Delete in parallel with a small concurrency limit to speed up,
+      // without overwhelming the server/storage.
+      const concurrency = 6;
+      let cursor = 0;
+      const workers = Array.from({ length: Math.min(concurrency, ids.length) }).map(async () => {
+        while (cursor < ids.length) {
+          const id = ids[cursor++];
+          const res = await fetch(`/api/operations/site-photos/${id}`, { method: "DELETE" });
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.message ?? "Failed to delete");
+          }
+        }
+      });
+      await Promise.all(workers);
+
+      setBulkDeleteConfirmOpen(false);
+      setSelectedIds(new Set());
+      setEditMode(false);
+      if (detailOpen && selectedPhoto && ids.includes(selectedPhoto.id)) setDetailOpen(false);
+      void load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Delete failed.");
+      // Reload to restore if anything failed.
+      void load();
+    } finally {
+      setBulkDeleting(false);
+    }
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -170,9 +402,47 @@ export default function SitePhotosPage() {
           title="Site Photos"
           description="Photos by project."
           actions={
-            <Button size="sm" className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90" onClick={openUpload}>
-              + Upload Photo
-            </Button>
+            <div className="flex items-center gap-2">
+              {editMode ? (
+                <>
+                  <Button size="sm" variant="outline" className="rounded-sm" onClick={toggleEditMode} disabled={bulkDeleting}>
+                    Cancel
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={selectAllPhotos}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Select all
+                  </button>
+                  <button
+                    type="button"
+                    onClick={clearSelection}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Clear
+                  </button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="rounded-sm"
+                    onClick={openBulkDeleteConfirm}
+                    disabled={selectedIds.size === 0 || bulkDeleting}
+                  >
+                    Delete ({selectedIds.size})
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button size="sm" variant="outline" className="rounded-sm" onClick={toggleEditMode}>
+                    Edit
+                  </Button>
+                  <Button size="sm" className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90" onClick={openUpload}>
+                    + Upload Photo
+                  </Button>
+                </>
+              )}
+            </div>
           }
         />
       }
@@ -201,42 +471,290 @@ export default function SitePhotosPage() {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {photos.map((p) => (
-              <button
+              <div
                 key={p.id}
-                type="button"
-                onClick={() => openDetail(p)}
-                className="text-left rounded-sm border border-border/60 overflow-hidden hover:bg-muted/40 transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+                className={`group relative text-left rounded-sm border overflow-hidden transition-colors focus-within:ring-2 focus-within:ring-ring ${
+                  editMode && selectedIds.has(p.id) ? "border-[#111111] ring-1 ring-[#111111]" : "border-border/60 hover:bg-muted/40"
+                }`}
               >
-                <div className="aspect-square bg-muted/50 relative">
-                  <img
-                    src={photoImageUrl(p.photo_url)}
-                    alt={p.description || "Site photo"}
-                    className="w-full h-full object-cover"
-                  />
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => {
+                    if (editMode) {
+                      setSelectedIds((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(p.id)) next.delete(p.id);
+                        else next.add(p.id);
+                        return next;
+                      });
+                    } else {
+                      openViewer(p);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      if (editMode) {
+                        setSelectedIds((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(p.id)) next.delete(p.id);
+                          else next.add(p.id);
+                          return next;
+                        });
+                      } else openViewer(p);
+                    }
+                  }}
+                  className="block w-full text-left cursor-pointer focus:outline-none"
+                >
+                  <div className="aspect-square bg-muted/50 relative">
+                    {editMode && (
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => { e.stopPropagation(); togglePhotoSelection(e, p.id); }}
+                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); togglePhotoSelection(e as unknown as React.MouseEvent, p.id); } }}
+                        className="absolute top-1.5 left-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-sm border border-border bg-background shadow-sm"
+                      >
+                        {selectedIds.has(p.id) ? (
+                          <span className="text-xs font-medium text-[#111111]">✓</span>
+                        ) : null}
+                      </div>
+                    )}
+                    {!editMode && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); openDetail(p); }}
+                        className="absolute top-1.5 left-1.5 z-10 p-1.5 rounded-sm bg-background/90 text-muted-foreground hover:bg-muted hover:text-foreground opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity focus:outline-none focus:ring-2 focus:ring-ring"
+                        aria-label="Edit details"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                    )}
+                    {failedPhotoIds.has(p.id) ? (
+                      <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
+                        Photo unavailable
+                      </div>
+                    ) : (
+                      <img
+                        src={photoImageUrl(p.photo_url)}
+                        alt={p.description || "Site photo"}
+                        className="w-full h-full object-cover"
+                        onError={() => markPhotoFailed(p.id)}
+                      />
+                    )}
+                    {!editMode && canDelete && (
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteClick(e, p)}
+                        className="absolute top-1.5 right-1.5 z-10 p-1.5 rounded-sm bg-background/90 text-destructive hover:bg-destructive hover:text-destructive-foreground opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity focus:outline-none focus:ring-2 focus:ring-ring"
+                        aria-label="Delete photo"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                  <div className="p-2 space-y-0.5">
+                    <p className="text-xs font-medium text-foreground truncate">{p.project_name ?? "—"}</p>
+                    <p className="text-xs text-muted-foreground truncate">{p.description || "—"}</p>
+                    <p className="text-xs text-muted-foreground truncate">{p.uploaded_by ? `By ${p.uploaded_by}` : "—"}</p>
+                    <p className="text-xs text-muted-foreground tabular-nums">
+                      {p.created_at ? new Date(p.created_at).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" }) : "—"}
+                    </p>
+                    {!editMode && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="mt-1.5 h-8 w-full justify-start text-xs text-muted-foreground hover:text-foreground rounded-sm"
+                        onClick={(e) => openPunchIssueModal(e, p)}
+                      >
+                        <ClipboardList className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+                        Create Punch Issue
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                <div className="p-2 space-y-0.5">
-                  <p className="text-xs font-medium text-foreground truncate">{p.project_name ?? "—"}</p>
-                  <p className="text-xs text-muted-foreground truncate">{p.description || "—"}</p>
-                  <p className="text-xs text-muted-foreground truncate">{p.uploaded_by ? `By ${p.uploaded_by}` : "—"}</p>
-                  <p className="text-xs text-muted-foreground tabular-nums">
-                    {p.created_at ? new Date(p.created_at).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" }) : "—"}
-                  </p>
-                </div>
-              </button>
+              </div>
             ))}
           </div>
         )}
       </div>
 
+      <Dialog open={!!deleteConfirmPhoto} onOpenChange={(open) => !open && setDeleteConfirmPhoto(null)}>
+        <DialogContent className="max-w-sm border-border/60 rounded-sm">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold">Delete Photo</DialogTitle>
+            <p className="text-sm text-muted-foreground">Are you sure you want to delete this photo? This action cannot be undone.</p>
+          </DialogHeader>
+          <DialogFooter className="gap-2 pt-3 border-t border-border/60">
+            <Button variant="outline" size="sm" className="rounded-sm" onClick={() => setDeleteConfirmPhoto(null)} disabled={deleting}>
+              Cancel
+            </Button>
+            <Button variant="destructive" size="sm" className="rounded-sm" onClick={handleConfirmDelete} disabled={deleting}>
+              {deleting ? "Deleting…" : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={bulkDeleteConfirmOpen} onOpenChange={(open) => !open && setBulkDeleteConfirmOpen(false)}>
+        <DialogContent className="max-w-sm border-border/60 rounded-sm">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold">Delete photos</DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              Delete {selectedIds.size} photo{selectedIds.size !== 1 ? "s" : ""}? This action cannot be undone.
+            </p>
+          </DialogHeader>
+          <DialogFooter className="gap-2 pt-3 border-t border-border/60">
+            <Button variant="outline" size="sm" className="rounded-sm" onClick={() => setBulkDeleteConfirmOpen(false)} disabled={bulkDeleting}>
+              Cancel
+            </Button>
+            <Button variant="destructive" size="sm" className="rounded-sm" onClick={handleBulkDelete} disabled={bulkDeleting}>
+              {bulkDeleting ? "Deleting…" : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!viewerPhoto} onOpenChange={(open) => !open && setViewerPhoto(null)}>
+        <DialogContent className="max-w-4xl border-border/60 rounded-sm p-2 flex flex-col max-h-[90vh]">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Photo</DialogTitle>
+          </DialogHeader>
+          {viewerPhoto && (
+            <>
+              <div className="flex-1 min-h-0 flex items-center justify-center bg-muted/30 rounded-sm overflow-auto p-2">
+                {failedPhotoIds.has(viewerPhoto.id) ? (
+                  <p className="text-sm text-muted-foreground">Photo unavailable</p>
+                ) : (
+                  <img
+                    src={photoImageUrl(viewerPhoto.photo_url)}
+                    alt={viewerPhoto.description || "Site photo"}
+                    className="max-w-full max-h-[70vh] w-auto h-auto object-contain"
+                    onError={() => markPhotoFailed(viewerPhoto.id)}
+                  />
+                )}
+              </div>
+              <DialogFooter className="gap-2 pt-3 border-t border-border/60 shrink-0">
+                <Button variant="outline" size="sm" className="rounded-sm" onClick={handleDownload} disabled={downloading || failedPhotoIds.has(viewerPhoto.id)}>
+                  <Download className="h-4 w-4 mr-1.5" />
+                  {downloading ? "Downloading…" : "Download"}
+                </Button>
+                <Button variant="outline" size="sm" className="rounded-sm" onClick={() => setViewerPhoto(null)}>
+                  Close
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!punchIssuePhoto} onOpenChange={(open) => !open && setPunchIssuePhoto(null)}>
+        <DialogContent className="max-w-lg border-border/60 rounded-sm p-0 flex flex-col max-h-[90vh] overflow-hidden">
+          <DialogHeader className="px-4 pt-4 pb-2 border-b border-border/60 shrink-0">
+            <DialogTitle className="text-base font-semibold">Create Punch Issue</DialogTitle>
+          </DialogHeader>
+          {punchIssuePhoto && (
+            <>
+              <div className="px-4 py-3 bg-muted/20 flex items-center justify-center min-h-[200px] max-h-[280px] shrink-0">
+                {failedPhotoIds.has(punchIssuePhoto.id) ? (
+                  <p className="text-sm text-muted-foreground">Photo unavailable</p>
+                ) : (
+                  <img
+                    src={photoImageUrl(punchIssuePhoto.photo_url)}
+                    alt={punchIssuePhoto.description || "Site photo"}
+                    className="max-w-full max-h-[260px] w-auto h-auto object-contain rounded-sm"
+                  />
+                )}
+              </div>
+              <div className="px-4 py-3 space-y-3 overflow-auto flex-1 min-h-0">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Project</label>
+                  <p className="mt-0.5 text-sm">{punchIssuePhoto.project_name ?? "—"}</p>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Issue Title</label>
+                  <Input
+                    value={punchIssueForm.issue}
+                    onChange={(e) => setPunchIssueForm((f) => ({ ...f, issue: e.target.value }))}
+                    placeholder="Short title"
+                    className="mt-1 h-9 rounded-sm border-border/60"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Location</label>
+                  <Input
+                    value={punchIssueForm.location}
+                    onChange={(e) => setPunchIssueForm((f) => ({ ...f, location: e.target.value }))}
+                    placeholder="e.g. Room 101"
+                    className="mt-1 h-9 rounded-sm border-border/60"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Description</label>
+                  <textarea
+                    value={punchIssueForm.description}
+                    onChange={(e) => setPunchIssueForm((f) => ({ ...f, description: e.target.value }))}
+                    placeholder="Optional details"
+                    rows={2}
+                    className="mt-1 w-full rounded-sm border border-border/60 px-2.5 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Priority</label>
+                  <select
+                    value={punchIssueForm.priority}
+                    onChange={(e) => setPunchIssueForm((f) => ({ ...f, priority: e.target.value }))}
+                    className="mt-1 h-9 w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm"
+                  >
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                    <option value="Urgent">Urgent</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Assigned Worker</label>
+                  <select
+                    value={punchIssueForm.assigned_worker_id}
+                    onChange={(e) => setPunchIssueForm((f) => ({ ...f, assigned_worker_id: e.target.value }))}
+                    className="mt-1 h-9 w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm"
+                  >
+                    <option value="">—</option>
+                    {punchIssueWorkers.map((w) => (
+                      <option key={w.id} value={w.id}>{w.name}</option>
+                    ))}
+                  </select>
+                </div>
+                {error && <p className="text-sm text-destructive">{error}</p>}
+              </div>
+              <DialogFooter className="gap-2 px-4 py-3 border-t border-border/60 shrink-0">
+                <Button variant="outline" size="sm" className="rounded-sm" onClick={() => setPunchIssuePhoto(null)} disabled={punchIssueSubmitting}>
+                  Cancel
+                </Button>
+                <Button size="sm" className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90" onClick={handleCreatePunchIssue} disabled={punchIssueSubmitting || !punchIssueForm.issue.trim()}>
+                  {punchIssueSubmitting ? "Creating…" : "Create"}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <Drawer open={detailOpen} onOpenChange={setDetailOpen} title="Photo detail" description={selectedPhoto?.project_name ?? undefined}>
         {selectedPhoto && (
           <div className="space-y-4">
-            <div className="rounded-sm border border-border/60 overflow-hidden bg-muted/30">
-              <img
-                src={photoImageUrl(selectedPhoto.photo_url)}
-                alt={selectedPhoto.description || "Photo"}
-                className="w-full max-h-48 object-contain"
-              />
+            <div className="rounded-sm border border-border/60 overflow-hidden bg-muted/30 min-h-[8rem] flex items-center justify-center">
+              {failedPhotoIds.has(selectedPhoto.id) ? (
+                <span className="text-sm text-muted-foreground">Photo unavailable</span>
+              ) : (
+                <img
+                  src={photoImageUrl(selectedPhoto.photo_url)}
+                  alt={selectedPhoto.description || "Photo"}
+                  className="w-full max-h-48 object-contain"
+                  onError={() => markPhotoFailed(selectedPhoto.id)}
+                />
+              )}
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Description</label>
@@ -268,8 +786,17 @@ export default function SitePhotosPage() {
               Created: {selectedPhoto.created_at ? new Date(selectedPhoto.created_at).toLocaleString() : "—"}
             </p>
             {error && <p className="text-sm text-destructive">{error}</p>}
-            <div className="flex gap-2 pt-2">
+            <div className="flex flex-wrap gap-2 pt-2">
               <Button size="sm" variant="outline" className="rounded-sm" onClick={() => setDetailOpen(false)}>Cancel</Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                className="rounded-sm"
+                onClick={() => setDeleteConfirmPhoto(selectedPhoto)}
+                disabled={deleting}
+              >
+                {deleting ? "Deleting…" : "Delete"}
+              </Button>
               <Button size="sm" className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90" onClick={handleSaveDetail} disabled={submitting}>Save</Button>
             </div>
           </div>

@@ -104,8 +104,9 @@ export function ProjectDocumentsTab({ projectId, documents }: Props) {
             <input
               type="file"
               name="file"
-              accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp"
-              className="text-xs file:mr-2 file:rounded file:border-0 file:bg-muted file:px-2 file:py-1 file:text-xs"
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,image/*"
+              capture="environment"
+              className="min-h-[44px] text-xs file:mr-2 file:rounded file:border-0 file:bg-muted file:px-2 file:py-1 file:text-xs md:min-h-0"
             />
             <select
               name="file_type"

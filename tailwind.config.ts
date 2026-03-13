@@ -9,6 +9,15 @@ const config: Config = {
   ],
   theme: {
   	extend: {
+  		screens: {
+  			/* Add-on: mobile <768px, tablet 768–1024px, desktop >1024px (use md/lg) */
+  			mobile: { max: "767px" },
+  			tablet: { min: "768px", max: "1023px" },
+  			desktop: "1024px",
+  		},
+  		minHeight: {
+  			touch: "44px",
+  		},
   		colors: {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',

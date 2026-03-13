@@ -116,6 +116,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess }: Props) {
               type="file"
               accept="image/*"
               capture="environment"
+              capture="environment"
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0];

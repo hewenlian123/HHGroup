@@ -323,6 +323,7 @@ export function CommitmentsSection({
                 ref={uploadRef}
                 type="file"
                 accept="image/*,application/pdf"
+                capture="environment"
                 multiple
                 className="hidden"
                 onChange={(e) => {

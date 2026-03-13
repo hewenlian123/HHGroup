@@ -219,23 +219,10 @@ export async function POST() {
       seeded.schedule = true;
     }
 
-    // 4) Site photos — only if empty.
+    // 4) Site photos — seeding disabled; demo paths (site-photos/demo-*.jpg) have no files in storage and would 404.
+    // When the list is empty, the UI shows "No photos yet. Upload a photo to get started."
     if (sitePhotos.length === 0) {
-      try {
-        for (let i = 0; i < SITE_PHOTO_DESCRIPTIONS.length; i++) {
-          await createSitePhoto({
-            project_id: projectId,
-            photo_url: `site-photos/demo-${i + 1}.jpg`,
-            description: SITE_PHOTO_DESCRIPTIONS[i],
-            tags: null,
-            uploaded_by: "Demo User",
-          });
-        }
-        seeded.sitePhotos = true;
-      } catch {
-        // Ignore site photo seed failures in dev (e.g. table not migrated yet).
-        seeded.sitePhotos = false;
-      }
+      seeded.sitePhotos = false;
     }
 
     // 5) Inspection log — only if empty.

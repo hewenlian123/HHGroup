@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
-const BUCKET = "attachments";
-const PREFIX = "punch-list";
+const BUCKET = "punch-photos";
 
 export async function POST(req: Request) {
   if (!supabase) {
@@ -15,7 +14,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, message: "No file provided." }, { status: 400 });
     }
     const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-    const path = `${PREFIX}/${crypto.randomUUID()}.${ext}`;
+    const path = `${crypto.randomUUID()}.${ext}`;
     const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
       contentType: file.type || "image/jpeg",
       upsert: false,

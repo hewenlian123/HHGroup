@@ -700,6 +700,12 @@ export async function insertActivityLog(projectId: string, type: string, descrip
 export async function getPunchListAll() {
   return punchListDb.getPunchListAll();
 }
+export async function getPunchListByProject(projectId: string) {
+  return punchListDb.getPunchListByProject(projectId);
+}
+export async function getPunchListSummary() {
+  return punchListDb.getPunchListSummary();
+}
 export async function createPunchListItem(draft: import("../punch-list-db").PunchListDraft) {
   return punchListDb.createPunchListItem(draft);
 }

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 import { BottomNav } from "./bottom-nav";
+import { FloatingActionButton } from "./floating-action-button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { ToastProvider } from "../toast/toast-provider";
 import { PWAInstallPrompt } from "../pwa-install-prompt";
@@ -66,6 +67,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Topbar onOpenSidebar={() => setMobileOpen(true)} />
           <main className={cn("flex-1 overflow-y-auto bg-[#F7F7F8] pb-14 md:pb-0")}>{children}</main>
           <BottomNav className="fixed bottom-0 left-0 right-0 z-30 md:hidden" />
+          <FloatingActionButton />
         </div>
       </div>
       <PWAInstallPrompt />

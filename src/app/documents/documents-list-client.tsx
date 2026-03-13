@@ -339,8 +339,9 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
               <input
                 type="file"
                 name="file"
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp"
-                className="mt-1 block w-full text-sm file:mr-2 file:rounded file:border-0 file:bg-muted file:px-2 file:py-1.5 file:text-xs"
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,image/*"
+                capture="environment"
+                className="mt-1 block w-full min-h-[44px] text-sm file:mr-2 file:rounded file:border-0 file:bg-muted file:px-2 file:py-1.5 file:text-xs md:min-h-0"
               />
             </div>
             <div>

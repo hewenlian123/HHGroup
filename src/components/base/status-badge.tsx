@@ -2,12 +2,13 @@
 
 import { cn } from "@/lib/utils";
 
-export type StatusBadgeVariant = "default" | "success" | "warning" | "muted";
+export type StatusBadgeVariant = "default" | "success" | "warning" | "danger" | "muted";
 
 const dotColors: Record<StatusBadgeVariant, string> = {
   default: "bg-[#111111]",
   success: "bg-green-500",
   warning: "bg-amber-500",
+  danger: "bg-red-500",
   muted: "bg-gray-400",
 };
 
@@ -28,6 +29,7 @@ export function StatusBadge({
       className={cn(
         "inline-flex items-center gap-1.5 text-xs text-[#111111]",
         variant === "muted" && "text-[#6B7280]",
+        variant === "danger" && "text-red-600 dark:text-red-400",
         className
       )}
     >

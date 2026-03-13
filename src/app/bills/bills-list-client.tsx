@@ -26,6 +26,20 @@ function formatDate(s: string | null): string {
   return s.slice(0, 10);
 }
 
+function startOfToday(): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function daysUntil(due: string | null): number | null {
+  if (!due) return null;
+  const dt = new Date(due.slice(0, 10) + "T00:00:00");
+  if (Number.isNaN(dt.getTime())) return null;
+  const diff = dt.getTime() - startOfToday().getTime();
+  return Math.floor(diff / (1000 * 60 * 60 * 24));
+}
+
 type Props = {
   bills: ApBillWithProject[];
   summary: {
@@ -51,7 +65,6 @@ export function BillsListClient({ bills, summary, projects }: Props) {
   const projectId = searchParams.get("project_id") ?? "";
   const dateFrom = searchParams.get("date_from") ?? "";
   const dateTo = searchParams.get("date_to") ?? "";
-  const overdueOnly = searchParams.get("overdue_only") === "1" || searchParams.get("overdue_only") === "true";
 
   const [searchInput, setSearchInput] = React.useState(search);
   React.useEffect(() => setSearchInput(search), [search]);
@@ -60,10 +73,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
     (updates: Record<string, string | boolean>) => {
       const next = new URLSearchParams(searchParams);
       Object.entries(updates).forEach(([k, v]) => {
-        if (k === "overdue_only") {
-          if (v) next.set("overdue_only", "1");
-          else next.delete("overdue_only");
-        } else if (v !== "" && v !== false) next.set(k, String(v));
+        if (v !== "" && v !== false) next.set(k, String(v));
         else next.delete(k);
       });
       router.push(`/bills?${next.toString()}`, { scroll: false });
@@ -87,31 +97,39 @@ export function BillsListClient({ bills, summary, projects }: Props) {
     }
   }, [router]);
 
-  const statusVariant = (s: string): "success" | "warning" | "muted" => {
-    if (s === "Paid") return "success";
-    if (s === "Partially Paid" || s === "Pending") return "warning";
-    return "muted";
-  };
+  const statusPill = React.useCallback((bill: ApBillWithProject): { label: string; variant: Parameters<typeof StatusBadge>[0]["variant"] } => {
+    if (bill.status === "Paid") return { label: "Paid", variant: "success" };
+    if (bill.status === "Void") return { label: "Void", variant: "muted" };
+    const d = daysUntil(bill.due_date);
+    if (d != null && d < 0) return { label: "Overdue", variant: "danger" };
+    if (d != null && d <= 7) return { label: "Due Soon", variant: "warning" };
+    return { label: "Pending", variant: "muted" };
+  }, []);
 
   return (
     <div className="flex flex-col gap-6 text-foreground [font-family:var(--font-inter),var(--font-geist-sans),sans-serif]">
       {/* Summary row */}
-      <div className={`border-b border-[#E5E7EB] pb-6 text-sm text-muted-foreground`}>
-        <span className="tabular-nums font-semibold text-foreground">
-          Outstanding {fmtUsd(summary.totalOutstanding)}
-        </span>
-        <span className="mx-3 text-muted-foreground">·</span>
-        <span>Overdue {summary.overdueCount}</span>
-        <span className="mx-3">·</span>
-        <span className="tabular-nums">Due this week {fmtUsd(summary.dueThisWeekAmount)}</span>
-        <span className="mx-3">·</span>
-        <span className="tabular-nums text-emerald-600 dark:text-emerald-400">
-          Paid this month {fmtUsd(summary.paidThisMonthAmount)}
-        </span>
+      <div className="grid grid-cols-2 gap-2 border-b border-border/60 pb-4 md:grid-cols-4">
+        <div className="rounded-sm border border-border/60 px-3 py-2">
+          <p className="text-xs font-medium text-muted-foreground">Outstanding</p>
+          <p className="mt-0.5 text-lg font-semibold tabular-nums">{fmtUsd(summary.totalOutstanding)}</p>
+        </div>
+        <div className="rounded-sm border border-border/60 px-3 py-2">
+          <p className="text-xs font-medium text-muted-foreground">Overdue</p>
+          <p className="mt-0.5 text-lg font-semibold tabular-nums">{fmtUsd(summary.overdueAmount)}</p>
+        </div>
+        <div className="rounded-sm border border-border/60 px-3 py-2">
+          <p className="text-xs font-medium text-muted-foreground">Due This Week</p>
+          <p className="mt-0.5 text-lg font-semibold tabular-nums">{fmtUsd(summary.dueThisWeekAmount)}</p>
+        </div>
+        <div className="rounded-sm border border-border/60 px-3 py-2">
+          <p className="text-xs font-medium text-muted-foreground">Paid This Month</p>
+          <p className="mt-0.5 text-lg font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{fmtUsd(summary.paidThisMonthAmount)}</p>
+        </div>
       </div>
 
       {/* Search */}
-      <div>
+      <div className="space-y-3">
         <Input
           type="text"
           placeholder="Search bills..."
@@ -119,89 +137,114 @@ export function BillsListClient({ bills, summary, projects }: Props) {
           onChange={(e) => setSearchInput(e.target.value)}
           onBlur={() => setFilters({ search: searchInput })}
           onKeyDown={(e) => e.key === "Enter" && setFilters({ search: searchInput })}
-          className={`h-9 w-56 rounded-sm border border-[#E5E7EB] bg-white text-sm`}
+          className="w-full rounded-sm border border-border/60 bg-background"
         />
-      </div>
-
-      {/* Filters */}
-      <div className={`flex flex-wrap items-center gap-3 border-b border-[#E5E7EB] pb-6`}>
-        <select
-          value={status}
-          onChange={(e) => setFilters({ status: e.target.value })}
-          className={`h-9 min-w-[100px] rounded-sm border border-[#E5E7EB] bg-white px-2 text-sm`}
-        >
-          <option value="">Status</option>
-          {AP_BILL_STATUSES.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
-        <select
-          value={billType}
-          onChange={(e) => setFilters({ bill_type: e.target.value })}
-          className={`h-9 min-w-[90px] rounded-sm border border-[#E5E7EB] bg-white px-2 text-sm`}
-        >
-          <option value="">Type</option>
-          {AP_BILL_TYPES.map((t) => (
-            <option key={t} value={t}>{t}</option>
-          ))}
-        </select>
-        <select
-          value={projectId}
-          onChange={(e) => setFilters({ project_id: e.target.value })}
-          className={`h-9 min-w-[110px] rounded-sm border border-[#E5E7EB] bg-white px-2 text-sm`}
-        >
-          <option value="">Project</option>
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
-        </select>
-        <div className="flex items-center gap-2">
-          <Input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setFilters({ date_from: e.target.value })}
-            className="h-9 w-[130px] rounded-sm border border-[#E5E7EB] bg-white text-sm"
-          />
-          <span className="text-muted-foreground text-sm">–</span>
-          <Input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setFilters({ date_to: e.target.value })}
-            className="h-9 w-[130px] rounded-sm border border-[#E5E7EB] bg-white text-sm"
-          />
+        {/* Filters: stack vertically on mobile */}
+        <div className="grid grid-cols-1 gap-3 border-b border-border/60 pb-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Status</label>
+            <select
+              value={status}
+              onChange={(e) => setFilters({ status: e.target.value })}
+              className="mt-1 min-h-[44px] w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm md:min-h-0 md:h-9"
+            >
+              <option value="">All</option>
+              {AP_BILL_STATUSES.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Type</label>
+            <select
+              value={billType}
+              onChange={(e) => setFilters({ bill_type: e.target.value })}
+              className="mt-1 min-h-[44px] w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm md:min-h-0 md:h-9"
+            >
+              <option value="">All</option>
+              {AP_BILL_TYPES.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Project</label>
+            <select
+              value={projectId}
+              onChange={(e) => setFilters({ project_id: e.target.value })}
+              className="mt-1 min-h-[44px] w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm md:min-h-0 md:h-9"
+            >
+              <option value="">All</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Date range</label>
+            <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setFilters({ date_from: e.target.value })}
+                className="w-full rounded-sm border border-border/60 bg-background sm:flex-1"
+              />
+              <span className="text-muted-foreground text-sm">–</span>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setFilters({ date_to: e.target.value })}
+                className="w-full rounded-sm border border-border/60 bg-background sm:flex-1"
+              />
+            </div>
+          </div>
         </div>
-        <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-          <input
-            type="checkbox"
-            checked={overdueOnly}
-            onChange={(e) => setFilters({ overdue_only: e.target.checked })}
-            className={`rounded border border-[#E5E7EB]`}
-          />
-          Overdue
-        </label>
       </div>
 
       {/* Table or empty state */}
       {bills.length === 0 ? (
         <div className="flex min-h-[280px] flex-col items-center justify-center text-center">
-          <p className="text-sm font-medium text-foreground">No bills</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Create your first bill to track payables.
-          </p>
-          <Button asChild size="sm" className="mt-4 h-9 rounded-sm">
-            <Link href="/bills/new">New Bill</Link>
+          <p className="text-sm font-medium text-foreground">No bills yet</p>
+          <Button asChild size="touch" className="mt-4 rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90">
+            <Link href="/bills/new">Create First Bill</Link>
           </Button>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
+        <>
+          {/* Mobile: card layout */}
+          <div className="flex flex-col gap-3 md:hidden">
+            {bills.map((bill) => {
+              const s = statusPill(bill);
+              return (
+                <Link
+                  key={bill.id}
+                  href={`/bills/${bill.id}`}
+                  className="block rounded-sm border border-border/60 bg-background p-4 transition-colors hover:bg-muted/30 active:bg-muted/50"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-foreground truncate">{bill.vendor_name}</p>
+                      <p className="mt-0.5 text-sm text-muted-foreground truncate">{bill.project_name ?? "—"}</p>
+                      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                        <span className="tabular-nums font-medium">{fmtUsd(bill.amount)}</span>
+                        <span className="text-muted-foreground">Due {formatDate(bill.due_date)}</span>
+                      </div>
+                    </div>
+                    <StatusBadge label={s.label} variant={s.variant} />
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+          {/* Desktop/tablet: table */}
+          <div className="hidden overflow-x-auto md:block">
+          <table className="min-w-[760px] w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-[#E5E7EB]">
                 <th className="table-head-label py-3 px-3 text-left">Vendor</th>
-                <th className="table-head-label py-3 px-3 text-left">Bill #</th>
                 <th className="table-head-label py-3 px-3 text-left">Project</th>
-                <th className="table-head-label py-3 px-3 text-left">Due Date</th>
                 <th className="table-head-label py-3 px-3 text-right tabular-nums">Amount</th>
+                <th className="table-head-label py-3 px-3 text-left">Due Date</th>
                 <th className="table-head-label py-3 px-3 text-left">Status</th>
                 <th className="w-10 px-1" />
               </tr>
@@ -215,25 +258,25 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                   <td className="py-0 px-3 align-middle">
                     <Link
                       href={`/bills/${bill.id}`}
-                      className="font-medium text-foreground hover:underline"
+                      className="block max-w-[220px] truncate font-medium text-foreground hover:underline"
                     >
                       {bill.vendor_name}
                     </Link>
                   </td>
                   <td className="py-0 px-3 align-middle text-muted-foreground">
-                    {bill.bill_no ?? "—"}
+                    <span className="block max-w-[240px] truncate">{bill.project_name ?? "—"}</span>
                   </td>
-                  <td className="py-0 px-3 align-middle text-muted-foreground">
-                    {bill.project_name ?? "—"}
-                  </td>
-                  <td className="py-0 px-3 align-middle text-muted-foreground tabular-nums">
-                    {formatDate(bill.due_date)}
-                  </td>
-                  <td className="py-0 px-3 text-right align-middle tabular-nums">
+                  <td className="py-0 px-3 text-right align-middle tabular-nums whitespace-nowrap">
                     {fmtUsd(bill.amount)}
                   </td>
+                  <td className="py-0 px-3 align-middle text-muted-foreground tabular-nums whitespace-nowrap">
+                    {formatDate(bill.due_date)}
+                  </td>
                   <td className="py-0 px-3 align-middle">
-                    <StatusBadge label={bill.status} variant={statusVariant(bill.status)} />
+                    {(() => {
+                      const s = statusPill(bill);
+                      return <StatusBadge label={s.label} variant={s.variant} />;
+                    })()}
                   </td>
                   <td className="py-0 px-1 align-middle">
                     <DropdownMenu>
@@ -289,7 +332,8 @@ export function BillsListClient({ bills, summary, projects }: Props) {
               ))}
             </tbody>
           </table>
-        </div>
+          </div>
+        </>
       )}
 
       <ConfirmDialog

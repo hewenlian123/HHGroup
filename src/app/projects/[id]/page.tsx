@@ -8,7 +8,7 @@ import {
   ProjectDetailTabsClient,
 } from "./project-detail-tabs-client";
 
-type TabKey = "overview" | "tasks" | "schedule" | "financial" | "budget" | "expenses" | "labor" | "subcontracts" | "bills" | "documents" | "activity" | "change-orders" | "materials" | "closeout" | "commission";
+type TabKey = "overview" | "tasks" | "schedule" | "financial" | "budget" | "expenses" | "labor" | "subcontracts" | "bills" | "documents" | "activity" | "change-orders" | "materials" | "closeout" | "commission" | "punch-list";
 
 export default async function ProjectDetailPage({
   params,
@@ -20,7 +20,7 @@ export default async function ProjectDetailPage({
   const { id } = await params;
   const sp = (await searchParams) ?? {};
   const tabParam = (sp.tab ?? "overview").toString().toLowerCase();
-  const validTabs: TabKey[] = ["overview", "tasks", "schedule", "financial", "budget", "expenses", "labor", "subcontracts", "bills", "documents", "activity", "change-orders", "materials", "closeout", "commission"];
+  const validTabs: TabKey[] = ["overview", "tasks", "schedule", "financial", "budget", "expenses", "labor", "subcontracts", "bills", "documents", "activity", "change-orders", "materials", "closeout", "commission", "punch-list"];
   const tab: TabKey = validTabs.includes(tabParam as TabKey) ? (tabParam as TabKey) : "overview";
 
   const project = await getProjectById(id);

@@ -22,6 +22,7 @@ import {
   getSelectionsByProject,
   getMaterialCatalog,
   getCommissionsByProject,
+  getPunchListByProject,
 } from "@/lib/data";
 import { getCanonicalProjectProfit } from "@/lib/profit-engine";
 
@@ -40,7 +41,8 @@ type TabKey =
   | "activity"
   | "materials"
   | "closeout"
-  | "commission";
+  | "commission"
+  | "punch-list";
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ ok: false as const, message }, { status });
@@ -163,6 +165,11 @@ export async function GET(
     if (key === "commission") {
       const commissions = await getCommissionsByProject(id);
       return NextResponse.json({ ok: true as const, key, commissions });
+    }
+
+    if (key === "punch-list") {
+      const [punchItems, workers] = await Promise.all([getPunchListByProject(id), getWorkers()]);
+      return NextResponse.json({ ok: true as const, key, punchItems, workers });
     }
 
     return jsonError("Unknown tab key", 400);

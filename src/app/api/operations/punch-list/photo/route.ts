@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { getDocumentSignedUrl } from "@/lib/data";
+import { supabase } from "@/lib/supabase";
+
+const BUCKET = "punch-photos";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -8,9 +10,10 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, message: "Missing path." }, { status: 400 });
   }
   try {
-    const { url: signedUrl } = await getDocumentSignedUrl(path, 60);
-    if (!signedUrl) return NextResponse.json({ ok: false, message: "Failed to get URL." }, { status: 500 });
-    return NextResponse.redirect(signedUrl);
+    if (!supabase) return NextResponse.json({ ok: false, message: "Storage not configured." }, { status: 500 });
+    const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60);
+    if (error || !data?.signedUrl) return NextResponse.json({ ok: false, message: "Failed to get URL." }, { status: 500 });
+    return NextResponse.redirect(data.signedUrl);
   } catch {
     return NextResponse.json({ ok: false, message: "Failed to get photo URL." }, { status: 500 });
   }

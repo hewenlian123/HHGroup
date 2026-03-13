@@ -73,13 +73,12 @@ export function ProjectsListClient({
   const [deleteBlockedCounts, setDeleteBlockedCounts] = React.useState<ProjectUsageCounts | null>(null);
   const [deleteBlockedProjectId, setDeleteBlockedProjectId] = React.useState<string | null>(null);
 
-  const labelCounts: { key: keyof ProjectUsageCounts; label: string }[] = [
-    { key: "labor_entries", label: "Labor entries" },
+  const deleteModalCountLabels: { key: keyof ProjectUsageCounts; label: string }[] = [
     { key: "expenses", label: "Expenses" },
-    { key: "bills", label: "Bills" },
+    { key: "labor_entries", label: "Labor Entries" },
+    { key: "worker_receipts", label: "Worker Receipts" },
     { key: "invoices", label: "Invoices" },
-    { key: "subcontracts", label: "Subcontracts" },
-    { key: "project_change_orders", label: "Change orders" },
+    { key: "site_photos", label: "Site Photos" },
   ];
 
   const filtered = React.useMemo(() => {
@@ -357,12 +356,12 @@ export function ProjectsListClient({
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Cannot delete project</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
-              This project cannot be deleted because it is used in other records.
+              This project has related records.
             </DialogDescription>
           </DialogHeader>
           {deleteBlockedCounts && (
             <ul className="text-sm text-foreground list-disc list-inside space-y-1">
-              {labelCounts.map(({ key, label }) => {
+              {deleteModalCountLabels.map(({ key, label }) => {
                 const n = deleteBlockedCounts[key] ?? 0;
                 if (n <= 0) return null;
                 return (
@@ -373,14 +372,28 @@ export function ProjectsListClient({
               })}
             </ul>
           )}
-          <DialogFooter className="gap-2 pt-3 border-t border-border/60">
+          <DialogFooter className="gap-2 pt-3 border-t border-border/60 flex-wrap">
             <Button variant="ghost" size="sm" onClick={() => setDeleteBlockedOpen(false)}>
               Cancel
             </Button>
-            {deleteBlockedProjectId != null && (
+            {deleteBlockedProjectId != null && (deleteBlockedCounts?.expenses ?? 0) > 0 && (
               <Button variant="outline" size="sm" asChild>
-                <Link href={`/projects/${deleteBlockedProjectId}`} onClick={() => setDeleteBlockedOpen(false)}>
-                  View records
+                <Link href={`/financial/expenses?project_id=${deleteBlockedProjectId}`} onClick={() => setDeleteBlockedOpen(false)}>
+                  View Expenses
+                </Link>
+              </Button>
+            )}
+            {deleteBlockedProjectId != null && (deleteBlockedCounts?.labor_entries ?? 0) > 0 && (
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/labor?project_id=${deleteBlockedProjectId}`} onClick={() => setDeleteBlockedOpen(false)}>
+                  View Labor
+                </Link>
+              </Button>
+            )}
+            {deleteBlockedProjectId != null && (deleteBlockedCounts?.worker_receipts ?? 0) > 0 && (
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/labor/receipts?project_id=${deleteBlockedProjectId}`} onClick={() => setDeleteBlockedOpen(false)}>
+                  View Receipts
                 </Link>
               </Button>
             )}

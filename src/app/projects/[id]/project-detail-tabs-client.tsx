@@ -35,6 +35,7 @@ import { ProjectTasksTab } from "./project-tasks-tab";
 import { ProjectCloseoutTab } from "./project-closeout-tab";
 import { ProjectMaterialsTab } from "./project-materials-tab";
 import { ProjectCommissionTab } from "./project-commission-tab";
+import { ProjectPunchListTab } from "./project-punch-list-tab";
 import { deleteProjectAction, getProjectUsageAction, archiveProjectAction } from "../actions";
 import { useToast } from "@/components/toast/toast-provider";
 import type { ProjectUsageCounts } from "@/lib/data";
@@ -71,7 +72,7 @@ export type RecentExpenseRow = {
 };
 export type BudgetRow = { id: string; metric: string; budget: string; actual: string; variance: string };
 
-type TabKey = "overview" | "tasks" | "schedule" | "financial" | "budget" | "expenses" | "labor" | "subcontracts" | "bills" | "documents" | "activity" | "change-orders" | "materials" | "closeout" | "commission";
+type TabKey = "overview" | "tasks" | "schedule" | "financial" | "budget" | "expenses" | "labor" | "subcontracts" | "bills" | "documents" | "activity" | "change-orders" | "materials" | "closeout" | "commission" | "punch-list";
 
 type ExpenseLineJoin = Awaited<ReturnType<typeof import("@/lib/data").getProjectExpenseLines>>[number];
 type SourceForProject = Awaited<ReturnType<typeof import("@/lib/data").getSourceForProject>>;
@@ -128,6 +129,7 @@ export function ProjectDetailTabsClient({
       completion: import("@/lib/data").CloseoutCompletion | null;
     };
     commission: { commissions: import("@/lib/data").ProjectCommission[] };
+    "punch-list": { punchItems: import("@/lib/data").PunchListItemWithJoins[]; workers: import("@/lib/data").Worker[] };
   }>;
 
   const [cache, setCache] = React.useState<TabCache>({});
@@ -172,13 +174,12 @@ export function ProjectDetailTabsClient({
   const [deleteBlockedCounts, setDeleteBlockedCounts] = React.useState<ProjectUsageCounts | null>(null);
   const [deleteInProgress, setDeleteInProgress] = React.useState(false);
 
-  const labelCounts: { key: keyof ProjectUsageCounts; label: string }[] = [
-    { key: "labor_entries", label: "Labor entries" },
+  const deleteModalCountLabels: { key: keyof ProjectUsageCounts; label: string }[] = [
     { key: "expenses", label: "Expenses" },
-    { key: "bills", label: "Bills" },
+    { key: "labor_entries", label: "Labor Entries" },
+    { key: "worker_receipts", label: "Worker Receipts" },
     { key: "invoices", label: "Invoices" },
-    { key: "subcontracts", label: "Subcontracts" },
-    { key: "project_change_orders", label: "Change orders" },
+    { key: "site_photos", label: "Site Photos" },
   ];
 
   const firstTabForCounts = React.useMemo((): TabKey | null => {
@@ -416,6 +417,7 @@ export function ProjectDetailTabsClient({
               { key: "materials" as const, label: "Material Selections" },
               { key: "closeout" as const, label: "Closeout" },
               { key: "commission" as const, label: "Commission" },
+              { key: "punch-list" as const, label: "Punch List" },
             ] as const
           ).map((t) => (
             <TabsTrigger
@@ -809,6 +811,15 @@ export function ProjectDetailTabsClient({
           )}
         </TabsContent>
 
+        <TabsContent value="punch-list" className="mt-3">
+          {loadingTab === "punch-list" && !cache["punch-list"] ? skeletonTable : (
+            <ProjectPunchListTab
+              projectId={projectId}
+              punchItems={cache["punch-list"]?.punchItems ?? []}
+            />
+          )}
+        </TabsContent>
+
         <TabsContent value="change-orders" className="mt-3">
           <SectionHeader
             label="Change orders"
@@ -1079,12 +1090,12 @@ export function ProjectDetailTabsClient({
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Cannot delete project</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
-              This project cannot be deleted because it is used in other records.
+              This project has related records.
             </DialogDescription>
           </DialogHeader>
           {deleteBlockedCounts && (
             <ul className="text-sm text-foreground list-disc list-inside space-y-1">
-              {labelCounts.map(({ key, label }) => {
+              {deleteModalCountLabels.map(({ key, label }) => {
                 const n = deleteBlockedCounts[key] ?? 0;
                 if (n <= 0) return null;
                 return (
@@ -1095,20 +1106,29 @@ export function ProjectDetailTabsClient({
               })}
             </ul>
           )}
-          <DialogFooter className="gap-2 pt-3 border-t border-border/60">
+          <DialogFooter className="gap-2 pt-3 border-t border-border/60 flex-wrap">
             <Button variant="ghost" size="sm" onClick={() => setDeleteBlockedOpen(false)}>
               Cancel
             </Button>
-            {firstTabForCounts != null && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setTab(firstTabForCounts);
-                  setDeleteBlockedOpen(false);
-                }}
-              >
-                View records
+            {(deleteBlockedCounts?.expenses ?? 0) > 0 && (
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/financial/expenses?project_id=${projectId}`} onClick={() => setDeleteBlockedOpen(false)}>
+                  View Expenses
+                </Link>
+              </Button>
+            )}
+            {(deleteBlockedCounts?.labor_entries ?? 0) > 0 && (
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/labor?project_id=${projectId}`} onClick={() => setDeleteBlockedOpen(false)}>
+                  View Labor
+                </Link>
+              </Button>
+            )}
+            {(deleteBlockedCounts?.worker_receipts ?? 0) > 0 && (
+              <Button variant="outline" size="sm" asChild>
+                <Link href={`/labor/receipts?project_id=${projectId}`} onClick={() => setDeleteBlockedOpen(false)}>
+                  View Receipts
+                </Link>
               </Button>
             )}
             <Button

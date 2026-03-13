@@ -76,6 +76,15 @@ function ExpensesPageInner() {
   const [search, setSearch] = React.useState("");
   const [projectFilter, setProjectFilter] = React.useState("");
   const [categoryFilter, setCategoryFilter] = React.useState("");
+  const appliedProjectIdFromUrl = React.useRef(false);
+  React.useEffect(() => {
+    if (appliedProjectIdFromUrl.current) return;
+    const pid = searchParams.get("project_id");
+    if (pid) {
+      setProjectFilter(pid);
+      appliedProjectIdFromUrl.current = true;
+    }
+  }, [searchParams]);
   const [receiptPreview, setReceiptPreview] = React.useState<{ url: string; fileName: string; expenseId?: string } | null>(null);
   const [quickExpenseOpen, setQuickExpenseOpen] = React.useState(false);
   const receiptReplaceRef = React.useRef<HTMLInputElement>(null);
@@ -190,10 +199,10 @@ function ExpensesPageInner() {
         description="Track and manage company expenses"
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="h-8" onClick={() => setQuickExpenseOpen(true)}>
+            <Button variant="outline" size="touch" className="min-h-[44px]" onClick={() => setQuickExpenseOpen(true)}>
               Quick Expense
             </Button>
-            <Button onClick={handleNew} size="sm" className="h-8">
+            <Button onClick={handleNew} size="touch" className="min-h-[44px]">
               <Plus className="h-4 w-4 mr-2" />
               Add Expense
             </Button>
@@ -231,10 +240,10 @@ function ExpensesPageInner() {
           onChange={(e) => setSearch(e.target.value)}
           className="h-10"
         />
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-1">
             <select
-              className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+              className="flex min-h-[44px] h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm md:min-h-0"
               value={projectFilter}
               onChange={(e) => setProjectFilter(e.target.value)}
             >
@@ -250,7 +259,7 @@ function ExpensesPageInner() {
             ) : null}
           </div>
           <select
-            className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+            className="flex min-h-[44px] h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm md:min-h-0"
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
           >
@@ -288,7 +297,33 @@ function ExpensesPageInner() {
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto border-b border-border/60">
+          <>
+              {/* Mobile: card layout */}
+              <div className="flex flex-col gap-3 md:hidden">
+                {pageRows.map((row) => {
+                  const rowTotal = getExpenseTotal(row);
+                  const workerName = row.workerId ? workerNameById.get(row.workerId) ?? "—" : "—";
+                  const projLabel = projectLabel(row, projectNameById);
+                  const status = row.status ?? "pending";
+                  return (
+                    <button
+                      key={row.id}
+                      type="button"
+                      onClick={() => { setEditExpense(row); setEditModalOpen(true); }}
+                      className="flex min-h-[44px] w-full touch-manipulation flex-col items-stretch gap-1 rounded-sm border border-border/60 bg-background p-4 text-left transition-colors active:bg-muted/30"
+                    >
+                      <span className="font-medium text-foreground truncate">{row.vendorName}</span>
+                      <span className="text-sm text-muted-foreground truncate">{row.date} · {workerName}</span>
+                      <span className="text-sm text-muted-foreground truncate">{projLabel}</span>
+                      <div className="mt-1 flex items-center justify-between gap-2">
+                        <span className="text-xs text-red-600 font-medium tabular-nums dark:text-red-400">−${rowTotal.toLocaleString()}</span>
+                        <span className="text-xs text-muted-foreground">{statusLabel(status)}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="hidden overflow-x-auto border-b border-border/60 md:block">
               <Table>
                 <TableHeader>
                   <TableRow className="border-b border-border/60 hover:bg-transparent">
@@ -358,6 +393,7 @@ function ExpensesPageInner() {
                 </TableBody>
               </Table>
             </div>
+          </>
         )}
       </section>
 

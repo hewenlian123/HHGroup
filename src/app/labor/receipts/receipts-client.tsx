@@ -100,8 +100,42 @@ export function ReceiptsClient({ initialRows }: { initialRows: ReceiptRow[] }) {
         <p className="text-sm text-destructive border-b border-border/60 pb-3 mb-3">{message}</p>
       )}
 
-      <div className="overflow-x-auto rounded-sm border border-border/60">
-        <table className="w-full text-sm border-collapse table-row-compact">
+      {/* Mobile: card layout */}
+      <div className="flex flex-col gap-3 md:hidden">
+        {rows.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">No receipt uploads yet.</p>
+        ) : (
+        rows.map((r) => (
+          <div key={r.id} className="rounded-sm border border-border/60 bg-background p-4">
+            <p className="font-medium text-foreground truncate">{r.workerName}</p>
+            <p className="text-sm text-muted-foreground truncate">{r.projectName || "—"} · {r.expenseType || "—"}</p>
+            <p className="text-sm text-muted-foreground truncate">{r.vendor || "—"}</p>
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <span className="tabular-nums font-medium">${fmtUsd(r.amount)}</span>
+              <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                <span className={`h-1.5 w-1.5 rounded-full ${statusDot(r.status)}`} />
+                {r.status}
+              </span>
+            </div>
+            {r.receiptUrl && (
+              <a href={r.receiptUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-xs text-primary hover:underline">View receipt</a>
+            )}
+            {r.status === "Pending" && (
+              <div className="mt-3 flex gap-2">
+                <Button type="button" size="touch" variant="outline" className="min-h-[44px] flex-1 rounded-sm" disabled={busyId === r.id} onClick={() => approve(r.id)}>
+                  {busyId === r.id ? "…" : "Approve"}
+                </Button>
+                <Button type="button" size="touch" variant="ghost" className="min-h-[44px] flex-1 rounded-sm" disabled={busyId === r.id} onClick={() => openReject(r.id)}>
+                  Reject
+                </Button>
+              </div>
+            )}
+          </div>
+        ))
+        )}
+      </div>
+      <div className="hidden overflow-x-auto rounded-sm border border-border/60 md:block">
+        <table className="w-full text-sm border-collapse table-row-compact min-w-[800px]">
           <thead>
             <tr className="border-b border-border/60">
               <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Worker</th>

@@ -290,6 +290,9 @@ export type ProjectUsageCounts = {
   invoices: number;
   subcontracts: number;
   project_change_orders: number;
+  worker_receipts: number;
+  site_photos: number;
+  materials: number;
 };
 
 /** Count records that reference the project. Used to block deletion when in use. */
@@ -319,13 +322,26 @@ export async function getProjectUsageCounts(projectId: string): Promise<ProjectU
     return (data ?? []).length;
   };
 
-  const [labor_entries, expenses, bills, invoices, subcontracts, project_change_orders] = await Promise.all([
+  const [
+    labor_entries,
+    expenses,
+    bills,
+    invoices,
+    subcontracts,
+    project_change_orders,
+    worker_receipts,
+    site_photos,
+    materials,
+  ] = await Promise.all([
     laborOr(),
     safeCount("expense_lines", "project_id", pid),
     safeCount("ap_bills", "project_id", pid),
     safeCount("invoices", "project_id", pid),
     safeCount("subcontracts", "project_id", pid),
     safeCount("project_change_orders", "project_id", pid),
+    safeCount("worker_receipts", "project_id", pid),
+    safeCount("site_photos", "project_id", pid),
+    safeCount("project_material_selections", "project_id", pid),
   ]);
 
   return {
@@ -335,5 +351,8 @@ export async function getProjectUsageCounts(projectId: string): Promise<ProjectU
     invoices,
     subcontracts,
     project_change_orders,
+    worker_receipts,
+    site_photos,
+    materials,
   };
 }

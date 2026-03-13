@@ -247,6 +247,7 @@ export default function MaterialCatalogPage() {
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
+                capture="environment"
                 className="hidden"
                 onChange={handleFileChange}
               />

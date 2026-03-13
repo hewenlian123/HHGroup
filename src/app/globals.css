@@ -38,17 +38,23 @@
   .kpi-metric-value {
     @apply text-base font-semibold text-[#111111];
   }
-  /* Mobile-friendly forms */
+  /* Add-on: touch-friendly forms only when <1024px; desktop unchanged */
   .form-mobile-friendly input,
   .form-mobile-friendly select,
   .form-mobile-friendly textarea {
-    @apply min-h-[44px] w-full rounded-lg md:min-h-0;
+    @apply w-full rounded-lg max-lg:min-h-[44px] lg:min-h-0;
   }
   .form-mobile-friendly .form-actions button {
-    @apply h-11 w-full rounded-lg md:h-10 md:w-auto;
+    @apply rounded-lg max-lg:min-h-[44px] max-lg:w-full lg:h-10 lg:w-auto;
   }
   .touch-target {
     @apply min-h-[44px] min-w-[44px];
+  }
+  /* Horizontal scroll for Kanban / boards on mobile; enables swipe */
+  .scroll-touch-x {
+    @apply overflow-x-auto overflow-y-hidden;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x;
   }
   .ui-divider {
     @apply border-b border-[#E5E7EB];
@@ -162,6 +168,8 @@
   body {
     @apply bg-[#F7F7F8] text-[#111111];
     font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
 }
 

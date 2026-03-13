@@ -248,7 +248,8 @@ export default function NewExpensePage() {
             <h2 className="text-sm font-medium text-foreground">Receipt</h2>
             <input
               type="file"
-              accept=".jpg,.jpeg,.png,.pdf"
+              accept=".jpg,.jpeg,.png,.pdf,image/*"
+              capture="environment"
               className="hidden"
               id="receipt-upload"
               onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}

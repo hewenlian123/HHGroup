@@ -96,7 +96,7 @@ export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
           description="Add workers to track trades, daily rates, and OT rates."
           icon={<UserPlus className="h-5 w-5" />}
           action={
-            <Button size="sm" className="h-8" onClick={() => setAddOpen(true)}>
+            <Button size="touch" className="min-h-[44px]" onClick={() => setAddOpen(true)}>
               Add Worker
             </Button>
           }
@@ -108,8 +108,25 @@ export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
 
   return (
     <>
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-sm">
+      {/* Mobile: card layout */}
+      <div className="flex flex-col gap-3 md:hidden">
+        {rows.map((r) => (
+          <div key={r.id} className="rounded-sm border border-border/60 bg-background p-4">
+            <p className="font-medium text-foreground">{r.name}</p>
+            <p className="text-sm text-muted-foreground">{r.trade ?? "—"} · {r.phone ?? "—"}</p>
+            <div className="mt-2 flex items-center justify-between gap-2 text-sm">
+              <span className="tabular-nums text-muted-foreground">Daily {fmtRate(r.daily_rate)}</span>
+              <span className={r.status === "Active" ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>{r.status}</span>
+            </div>
+            <div className="mt-3 flex gap-2">
+              <Button variant="ghost" size="touch" className="min-h-[44px] flex-1 rounded-sm text-sm" onClick={() => setEditFor(r)} disabled={busy}>Edit</Button>
+              <Button variant="ghost" size="touch" className="min-h-[44px] flex-1 rounded-sm text-sm text-red-600" onClick={() => void onDelete(r)} disabled={busy}>Delete</Button>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="hidden overflow-x-auto md:block">
+        <table className="w-full min-w-[640px] border-collapse text-sm">
           <thead>
             <tr className="border-b border-border/60">
               <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Name</th>

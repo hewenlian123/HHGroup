@@ -49,7 +49,7 @@ function isMissingTable(err: { message?: string } | null): boolean {
 
 function isMissingColumn(err: { message?: string } | null): boolean {
   const m = err?.message ?? "";
-  return /column.*does not exist|does not exist.*column|undefined column/i.test(m);
+  return /column.*does not exist|does not exist.*column|undefined column|could not find.*column|schema cache/i.test(m);
 }
 
 /** Map an extended-schema row. */

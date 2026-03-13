@@ -227,7 +227,7 @@ export default function TasksPage() {
           title="Tasks"
           description="Construction tasks across all projects."
           actions={
-            <Button size="sm" className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90" onClick={openModal}>
+            <Button size="touch" className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90 min-h-[44px]" onClick={openModal}>
               + New Task
             </Button>
           }
@@ -235,13 +235,13 @@ export default function TasksPage() {
       }
     >
       <div className="max-w-5xl space-y-3">
-        <div className="flex flex-wrap items-center gap-1 border-b border-border/60 pb-2">
+        <div className="flex flex-wrap items-center gap-2 border-b border-border/60 pb-3">
           {filterTabs.map((f) => (
             <button
               key={f.value}
               onClick={() => setFilter(f.value)}
               className={cn(
-                "rounded-sm border px-2.5 py-1.5 text-xs font-medium transition-colors",
+                "min-h-[44px] min-w-[44px] rounded-sm border px-3 py-2 text-sm font-medium transition-colors touch-manipulation md:min-h-0 md:min-w-0 md:px-2.5 md:py-1.5 md:text-xs",
                 filter === f.value
                   ? "border-[#111111] bg-[#111111] text-white"
                   : "border-border/60 bg-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground"
@@ -258,9 +258,51 @@ export default function TasksPage() {
           ) : error ? (
             <div className="py-10 text-center text-sm text-destructive">{error}</div>
           ) : filtered.length === 0 ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">No tasks match the filter.</div>
+            <div className="py-10 text-center">
+              <p className="text-sm text-muted-foreground">No tasks match the filter.</p>
+              <Button onClick={openModal} className="mt-4 max-md:min-h-[44px] max-md:w-full max-md:max-w-[280px]" size="sm">
+                Create Task
+              </Button>
+            </div>
           ) : (
-            <table className="w-full text-sm border-collapse table-fixed sm:table-auto">
+            <>
+              {/* Mobile: card layout */}
+              <div className="flex flex-col gap-2 md:hidden divide-y divide-border/60">
+                {filtered.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => openDrawer(t)}
+                    className="flex min-h-[44px] w-full touch-manipulation items-center gap-3 border-0 bg-transparent px-4 py-3 text-left transition-colors active:bg-muted/50"
+                  >
+                    <span
+                      className={cn(
+                        "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-sm border",
+                        t.status === "done" ? "border-[#111111] bg-[#111111] text-white" : "border-border"
+                      )}
+                      onClick={(e) => { e.stopPropagation(); handleToggleDone(e, t); }}
+                    >
+                      {t.status === "done" ? "✓" : null}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className={cn("font-medium truncate", t.status === "done" && "text-muted-foreground line-through")}>{t.title || "—"}</p>
+                      <p className="text-xs text-muted-foreground truncate">{t.project_name ?? "—"} · Due {t.due_date ? new Date(t.due_date).toLocaleDateString() : "—"}</p>
+                    </div>
+                    <span
+                      className={cn(
+                        "shrink-0 rounded-sm px-1.5 py-0.5 text-xs font-medium",
+                        t.priority === "high" && "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
+                        t.priority === "medium" && "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+                        t.priority === "low" && "bg-muted text-muted-foreground"
+                      )}
+                    >
+                      {PRIORITY_LABEL[t.priority] ?? t.priority}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              {/* Desktop: table */}
+              <table className="hidden w-full text-sm border-collapse table-fixed sm:table-auto md:table">
               <thead>
                 <tr className="border-b border-border/60">
                   <th className="w-9 text-left py-2 px-2 sm:px-3" aria-label="Done" />
@@ -321,6 +363,7 @@ export default function TasksPage() {
                 ))}
               </tbody>
             </table>
+            </>
           )}
         </div>
       </div>

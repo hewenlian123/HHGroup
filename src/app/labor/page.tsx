@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import {
@@ -105,11 +106,21 @@ function getCalendarGrid(ym: string): (number | null)[][] {
 const MONTH_OPTIONS = buildMonthOptions();
 
 export default function LaborPage() {
+  const searchParams = useSearchParams();
   const now = new Date();
   const initialMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const [selectedMonth, setSelectedMonth] = React.useState(initialMonth);
   const { dateFrom: monthStart, dateTo: monthEnd } = getMonthRange(selectedMonth);
   const [projectFilter, setProjectFilter] = React.useState<string>("");
+  const appliedProjectIdFromUrl = React.useRef(false);
+  React.useEffect(() => {
+    if (appliedProjectIdFromUrl.current) return;
+    const pid = searchParams.get("project_id");
+    if (pid) {
+      setProjectFilter(pid);
+      appliedProjectIdFromUrl.current = true;
+    }
+  }, [searchParams]);
   const [projects, setProjects] = React.useState<Awaited<ReturnType<typeof getProjects>>>([]);
   const [monthEntries, setMonthEntries] = React.useState<LaborEntryWithJoins[]>([]);
   const [loadingProjects, setLoadingProjects] = React.useState(true);
