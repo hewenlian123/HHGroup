@@ -257,6 +257,14 @@ export function ExpenseDetailClient({ id }: { id: string }) {
 
   const uploadAttachment = async (file: File) => {
     if (!supabase) return;
+    // Debug: expense receipt upload start
+    // eslint-disable-next-line no-console
+    console.log("[ExpenseDetail] uploadAttachment start", {
+      expenseId: id,
+      name: file.name,
+      size: file.size,
+      type: file.type,
+    });
     setSaving(true);
     setError(null);
     setMessage(null);
@@ -268,6 +276,13 @@ export function ExpenseDetailClient({ id }: { id: string }) {
         upsert: false,
       });
       if (uploadRes.error) throw uploadRes.error;
+      // Debug: storage upload success
+      // eslint-disable-next-line no-console
+      console.log("[ExpenseDetail] storage upload success", {
+        expenseId: id,
+        filePath,
+        bucket: "attachments",
+      });
       const insertRes = await supabase.from("attachments").insert([
         {
           entity_type: "expense",
@@ -281,9 +296,15 @@ export function ExpenseDetailClient({ id }: { id: string }) {
       if (insertRes.error) throw insertRes.error;
       await refresh();
       setMessage("Attachment uploaded.");
+      // Debug: attachment row insert + refresh success
+      // eslint-disable-next-line no-console
+      console.log("[ExpenseDetail] attachment insert success", { expenseId: id, filePath });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       setError(msg || "Upload failed.");
+      // Debug: upload error
+      // eslint-disable-next-line no-console
+      console.error("[ExpenseDetail] uploadAttachment error", e);
     } finally {
       setSaving(false);
     }

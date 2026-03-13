@@ -1,3 +1,4 @@
 {
-  "/punch-list/page": "app/punch-list/page.js"
+  "/dashboard/page": "app/dashboard/page.js",
+  "/labor/page": "app/labor/page.js"
 }

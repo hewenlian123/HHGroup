@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 type Option = { id: string; name: string };
 
@@ -34,6 +35,8 @@ export function UploadReceiptClient() {
   const [amount, setAmount] = React.useState("");
   const [notes, setNotes] = React.useState("");
   const [file, setFile] = React.useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = React.useState(false);
   const [uploading, setUploading] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [message, setMessage] = React.useState<string | null>(null);
@@ -56,9 +59,14 @@ export function UploadReceiptClient() {
   }, [workers, workerId]);
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    setFile(f ?? null);
+    const f = e.target.files?.[0] ?? null;
+    setFile(f);
     setMessage(null);
+    // Update preview URL
+    setPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return f ? URL.createObjectURL(f) : null;
+    });
   };
 
   const resetForm = () => {
@@ -70,6 +78,11 @@ export function UploadReceiptClient() {
     setAmount("");
     setNotes("");
     setFile(null);
+    setPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+    setPreviewOpen(false);
     setMessage(null);
     if (inputRef.current) inputRef.current.value = "";
   };
@@ -93,6 +106,16 @@ export function UploadReceiptClient() {
 
     setUploading(true);
     try {
+      // Debug: upload + submit start
+      // eslint-disable-next-line no-console
+      console.log("[UploadReceipt] submit start", {
+        workerId,
+        workerName,
+        projectId,
+        expenseType,
+        fileName: file?.name,
+        fileSize: file?.size,
+      });
       const fd = new FormData();
       fd.set("file", file);
       const up = await fetch("/api/upload-receipt/upload", { method: "POST", body: fd });
@@ -100,6 +123,9 @@ export function UploadReceiptClient() {
       if (!up.ok || !upData.receipt_url) {
         throw new Error(upData.message ?? "上传失败 / Upload failed");
       }
+      // Debug: upload success
+      // eslint-disable-next-line no-console
+      console.log("[UploadReceipt] upload success", { receiptUrl: upData.receipt_url });
       setUploading(false);
       setSubmitting(true);
       const res = await fetch("/api/upload-receipt/submit", {
@@ -119,9 +145,15 @@ export function UploadReceiptClient() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message ?? "提交失败 / Submit failed");
+      // Debug: submit success
+      // eslint-disable-next-line no-console
+      console.log("[UploadReceipt] submit success", { id: data.id });
       setDone(true);
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "出错 / Something went wrong");
+      // Debug: error
+      // eslint-disable-next-line no-console
+      console.error("[UploadReceipt] submit error", err);
     } finally {
       setUploading(false);
       setSubmitting(false);
@@ -247,6 +279,55 @@ export function UploadReceiptClient() {
               </>
             )}
           </button>
+
+          {previewUrl ? (
+            <div className="mt-3 space-y-2">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPreviewOpen(true)}
+                  className="shrink-0 rounded-md border border-border/70 overflow-hidden"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={previewUrl}
+                    alt="Receipt preview"
+                    className="w-32 h-24 object-cover rounded-md"
+                  />
+                </button>
+                <div className="flex-1 text-xs text-muted-foreground">
+                  <p>轻点预览可放大查看 / Tap to enlarge</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 flex-1"
+                  onClick={() => {
+                    setFile(null);
+                    setPreviewUrl((prev) => {
+                      if (prev) URL.revokeObjectURL(prev);
+                      return null;
+                    });
+                    if (inputRef.current) inputRef.current.value = "";
+                  }}
+                >
+                  移除 / Remove
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 flex-1"
+                  onClick={() => inputRef.current?.click()}
+                >
+                  更换 / Replace
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <div>
@@ -271,6 +352,20 @@ export function UploadReceiptClient() {
           {uploading ? "上传中…" : submitting ? "提交中…" : "提交报销 / Submit Receipt"}
         </Button>
       </form>
+      <Dialog open={previewOpen && !!previewUrl} onOpenChange={(open) => setPreviewOpen(open)}>
+        <DialogContent className="max-w-full sm:max-w-lg border-border/60 p-0">
+          {previewUrl ? (
+            <div className="w-full max-h-[80vh] flex items-center justify-center bg-background">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={previewUrl}
+                alt="Receipt full preview"
+                className="max-w-full max-h-[80vh] object-contain"
+              />
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
