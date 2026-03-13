@@ -1,6 +1,0 @@
-{
-  "/financial/commissions/page": "app/financial/commissions/page.js",
-  "/dashboard/page": "app/dashboard/page.js",
-  "/page": "app/page.js",
-  "/labor/receipts/page": "app/labor/receipts/page.js"
-}
