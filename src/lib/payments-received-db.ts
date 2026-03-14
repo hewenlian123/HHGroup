@@ -186,7 +186,7 @@ export async function createPaymentReceived(payload: CreatePaymentReceivedPayloa
         .select(selectCols)
         .single();
       if (!error) {
-        row = data as PaymentReceivedRow;
+        row = data as unknown as PaymentReceivedRow;
         break;
       }
       lastError = error as { message?: string };

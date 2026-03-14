@@ -24,13 +24,16 @@ export async function GET(
   }
   const c = supabase;
 
+  type RawResult = { data: Record<string, unknown>[] | null; error: { message?: string } | null };
+  async function query(table: string, cols: string): Promise<RawResult> {
+    const { data, error } = await c.from(table).select(cols).eq("worker_id", workerId);
+    return { data: (data ?? null) as Record<string, unknown>[] | null, error };
+  }
+
   try {
-    let laborRes = await c
-      .from("labor_entries")
-      .select("cost_amount")
-      .eq("worker_id", workerId);
+    let laborRes: RawResult = await query("labor_entries", "cost_amount");
     if (laborRes.error && /column.*cost_amount|schema cache/i.test(laborRes.error.message ?? "")) {
-      laborRes = await c.from("labor_entries").select("amount").eq("worker_id", workerId);
+      laborRes = await query("labor_entries", "amount");
     }
     const laborRows = (laborRes.data ?? []) as { cost_amount?: number | null; amount?: number | null }[];
     const totalLabor = laborRows.reduce(
@@ -38,26 +41,17 @@ export async function GET(
       0
     );
 
-    let reimbRes = await c
-      .from("worker_reimbursements")
-      .select("amount")
-      .eq("worker_id", workerId);
+    const reimbRes = await query("worker_reimbursements", "amount");
     const reimbRows = (reimbRes.data ?? []) as { amount?: number | null }[];
     const totalReimbursements = reimbRows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
 
-    let invoicesRes = await c
-      .from("worker_invoices")
-      .select("amount")
-      .eq("worker_id", workerId);
+    const invoicesRes = await query("worker_invoices", "amount");
     const invoiceRows = (invoicesRes.data ?? []) as { amount?: number | null }[];
     const totalWorkerInvoices = invoiceRows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
 
-    let paymentsRes = await c
-      .from("worker_payments")
-      .select("worker_id, amount")
-      .eq("worker_id", workerId);
+    let paymentsRes: RawResult = await query("worker_payments", "worker_id, amount");
     if (paymentsRes.error && /column.*amount|schema cache/i.test(paymentsRes.error.message ?? "")) {
-      paymentsRes = await c.from("worker_payments").select("worker_id, total_amount").eq("worker_id", workerId);
+      paymentsRes = await query("worker_payments", "worker_id, total_amount");
     }
     const paymentRows = (paymentsRes.data ?? []) as { amount?: number | null; total_amount?: number | null }[];
     const totalPayments = paymentRows.reduce(

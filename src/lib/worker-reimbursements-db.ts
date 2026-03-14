@@ -127,7 +127,7 @@ export async function getWorkerReimbursements(): Promise<WorkerReimbursement[]> 
   let { data, error } = await c.from(TABLE_NAME).select(COLS).order("created_at", { ascending: false });
   if (error && isColumnMissingError(error)) {
     const fallback = await c.from(TABLE_NAME).select(COLS_MINIMAL).order("created_at", { ascending: false });
-    data = fallback.data;
+    data = fallback.data as unknown as typeof data;
     error = fallback.error;
   }
   if (error) {
@@ -144,7 +144,7 @@ export async function getReimbursementById(reimbursementId: string): Promise<Wor
   let { data, error } = await c.from(TABLE_NAME).select(COLS).eq("id", reimbursementId).maybeSingle();
   if (error && isColumnMissingError(error)) {
     const fallback = await c.from(TABLE_NAME).select(COLS_MINIMAL).eq("id", reimbursementId).maybeSingle();
-    data = fallback.data;
+    data = fallback.data as unknown as typeof data;
     error = fallback.error;
   }
   if (error) {
@@ -160,7 +160,7 @@ export async function getWorkerReimbursementsByWorkerId(workerId: string): Promi
   let { data, error } = await c.from(TABLE_NAME).select(COLS).eq("worker_id", workerId).order("created_at", { ascending: false });
   if (error && isColumnMissingError(error)) {
     const fallback = await c.from(TABLE_NAME).select(COLS_MINIMAL).eq("worker_id", workerId).order("created_at", { ascending: false });
-    data = fallback.data;
+    data = fallback.data as unknown as typeof data;
     error = fallback.error;
   }
   if (error) {

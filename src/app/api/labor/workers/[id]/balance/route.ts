@@ -32,7 +32,8 @@ type PaymentRow = {
 
 /**
  * GET: Worker balance detail — labor entries, reimbursements, payments, and summary.
- * Does not modify any existing APIs; read-only.
+ * Uses a per-request Supabase client with cache: "no-store" so Next.js data cache
+ * never serves a stale response between balance checks within the same workflow test.
  */
 export async function GET(
   _req: Request,
@@ -47,8 +48,7 @@ export async function GET(
   if (!supabaseUrl || !supabaseKey) {
     return NextResponse.json({ message: "Supabase not configured" }, { status: 500 });
   }
-  // Create a fresh client per-request with no-store fetch so Next.js data cache
-  // does not serve stale Supabase responses between balance checks.
+
   const c = createClient(supabaseUrl, supabaseKey, {
     auth: { persistSession: false, autoRefreshToken: false },
     global: {
@@ -57,70 +57,75 @@ export async function GET(
     },
   });
 
+  // Shared result shape — avoids TypeScript inferring per-column types from each .select() call.
+  type RawResult = { data: Record<string, unknown>[] | null; error: { message?: string } | null };
+
   function isMissingColumn(err: { message?: string } | null): boolean {
-    return /column .* does not exist|could not find the .* column|schema cache/i.test(err?.message ?? "");
+    return /column .* does not exist|could not find the .* column|schema cache/i.test(
+      err?.message ?? ""
+    );
+  }
+
+  /**
+   * Run a query scoped to this worker and return a plain RawResult.
+   * Using a wrapper function forces TypeScript to use the explicit return type
+   * instead of inferring a per-column response type from .select().
+   */
+  async function queryWorker(
+    table: string,
+    cols: string,
+    orderCol?: string
+  ): Promise<RawResult> {
+    const base = c.from(table).select(cols).eq("worker_id", workerId);
+    const q = orderCol ? base.order(orderCol, { ascending: false }) : base;
+    const { data, error } = await q;
+    return {
+      data: (data ?? null) as Record<string, unknown>[] | null,
+      error: error as { message?: string } | null,
+    };
   }
 
   try {
-    const workerRes = await c.from("workers").select("id, name").eq("id", workerId).maybeSingle();
+    const workerRes = await c
+      .from("workers")
+      .select("id, name")
+      .eq("id", workerId)
+      .maybeSingle();
 
-    // labor_entries: try with status+cost_amount, then without status, then without cost_amount
-    let laborRes = await c
-      .from("labor_entries")
-      .select("id, worker_id, project_id, work_date, cost_amount, status")
-      .eq("worker_id", workerId)
-      .order("work_date", { ascending: false });
-    if (laborRes.error && isMissingColumn(laborRes.error)) {
-      laborRes = await c
-        .from("labor_entries")
-        .select("id, worker_id, project_id, work_date, cost_amount")
-        .eq("worker_id", workerId)
-        .order("work_date", { ascending: false });
-    }
-    if (laborRes.error && isMissingColumn(laborRes.error)) {
-      laborRes = await c
-        .from("labor_entries")
-        .select("id, worker_id, project_id, work_date")
-        .eq("worker_id", workerId)
-        .order("work_date", { ascending: false });
+    // labor_entries — progressively strip missing columns
+    let laborRes: RawResult = { data: null, error: null };
+    for (const cols of [
+      "id, worker_id, project_id, work_date, cost_amount, status",
+      "id, worker_id, project_id, work_date, cost_amount",
+      "id, worker_id, project_id, work_date",
+    ]) {
+      laborRes = await queryWorker("labor_entries", cols, "work_date");
+      if (!laborRes.error || !isMissingColumn(laborRes.error)) break;
     }
 
-    // worker_payments: progressively simpler selects; final fallbacks drop order clause entirely
-    let paymentsRes = await c
-      .from("worker_payments")
-      .select("id, worker_id, payment_date, amount, payment_method, notes")
-      .eq("worker_id", workerId)
-      .order("payment_date", { ascending: false });
-    if (paymentsRes.error && isMissingColumn(paymentsRes.error)) {
-      paymentsRes = await c
-        .from("worker_payments")
-        .select("id, worker_id, payment_date, amount, notes")
-        .eq("worker_id", workerId)
-        .order("payment_date", { ascending: false });
-    }
-    if (paymentsRes.error && isMissingColumn(paymentsRes.error)) {
-      paymentsRes = await c
-        .from("worker_payments")
-        .select("id, worker_id, payment_date, amount")
-        .eq("worker_id", workerId)
-        .order("payment_date", { ascending: false });
-    }
-    // If order("payment_date") itself causes an error, retry without it
-    if (paymentsRes.error) {
-      paymentsRes = await c
-        .from("worker_payments")
-        .select("id, worker_id, amount")
-        .eq("worker_id", workerId);
+    // worker_payments — progressively strip missing columns, then drop ordering
+    let paymentsRes: RawResult = { data: null, error: null };
+    for (const cols of [
+      "id, worker_id, payment_date, amount, payment_method, notes",
+      "id, worker_id, payment_date, amount, notes",
+      "id, worker_id, payment_date, amount",
+    ]) {
+      paymentsRes = await queryWorker("worker_payments", cols, "payment_date");
+      if (!paymentsRes.error || !isMissingColumn(paymentsRes.error)) break;
     }
     if (paymentsRes.error) {
-      paymentsRes = await c
-        .from("worker_payments")
-        .select("id, amount")
-        .eq("worker_id", workerId);
+      paymentsRes = await queryWorker("worker_payments", "id, worker_id, amount");
+    }
+    if (paymentsRes.error) {
+      paymentsRes = await queryWorker("worker_payments", "id, amount");
     }
 
     const [reimbRes, projectsRes] = await Promise.all([
-      c.from("worker_reimbursements").select("id, worker_id, project_id, vendor, amount, status, created_at").eq("worker_id", workerId).order("created_at", { ascending: false }),
+      c
+        .from("worker_reimbursements")
+        .select("id, worker_id, project_id, vendor, amount, status, created_at")
+        .eq("worker_id", workerId)
+        .order("created_at", { ascending: false }),
       c.from("projects").select("id, name"),
     ]);
 
@@ -132,17 +137,30 @@ export async function GET(
     const projectRows = (projectsRes.data ?? []) as { id: string; name: string | null }[];
     const projectNameById = new Map(projectRows.map((p) => [p.id, p.name ?? null]));
 
-    const laborRaw = (laborRes.data ?? []) as { id: string; project_id: string | null; work_date?: string; cost_amount?: number | null; status?: string | null }[];
+    const laborRaw = (laborRes.data ?? []) as {
+      id: string;
+      project_id: string | null;
+      work_date?: string;
+      cost_amount?: number | null;
+      status?: string | null;
+    }[];
     const laborEntries: LaborEntryRow[] = laborRaw.map((r) => ({
       id: r.id,
       date: (r.work_date ?? "").slice(0, 10),
       projectId: r.project_id ?? null,
       projectName: r.project_id ? (projectNameById.get(r.project_id) ?? null) : null,
       amount: Number(r.cost_amount) || 0,
-      status: (r.status ?? "").toString() || "—",
+      status: String(r.status ?? "") || "—",
     }));
 
-    const reimbRaw = (reimbRes.data ?? []) as { id: string; project_id: string | null; vendor: string | null; amount?: number | null; status?: string | null; created_at?: string }[];
+    const reimbRaw = (reimbRes.data ?? []) as {
+      id: string;
+      project_id: string | null;
+      vendor: string | null;
+      amount?: number | null;
+      status?: string | null;
+      created_at?: string;
+    }[];
     const reimbursements: ReimbursementRow[] = reimbRaw.map((r) => ({
       id: r.id,
       date: (r.created_at ?? "").slice(0, 10),
@@ -150,10 +168,16 @@ export async function GET(
       projectId: r.project_id ?? null,
       projectName: r.project_id ? (projectNameById.get(r.project_id) ?? null) : null,
       amount: Number(r.amount) || 0,
-      status: (r.status ?? "").toString() || "pending",
+      status: String(r.status ?? "") || "pending",
     }));
 
-    const payRaw = (paymentsRes.data ?? []) as { id: string; payment_date?: string; amount?: number | null; payment_method?: string | null; notes?: string | null }[];
+    const payRaw = (paymentsRes.data ?? []) as {
+      id: string;
+      payment_date?: string;
+      amount?: number | null;
+      payment_method?: string | null;
+      notes?: string | null;
+    }[];
     const payments: PaymentRow[] = payRaw.map((r) => ({
       id: r.id,
       date: (r.payment_date ?? "").slice(0, 10),

@@ -166,12 +166,18 @@ export async function POST(req: Request) {
             expFound = byId.data as { id: string } | null;
           }
           if (!expFound) {
-            const byRef = await server.from("expenses").select("id").eq("reference_no", `REIM-${reimbId}`).maybeSingle().catch(() => ({ data: null }));
-            expFound = (byRef as { data?: { id?: string } | null }).data ?? null;
+            try {
+              const byRef = await server.from("expenses").select("id").eq("reference_no", `REIM-${reimbId}`).maybeSingle();
+              const d = byRef.data as { id?: string } | null;
+              if (d?.id) expFound = { id: d.id };
+            } catch { /* column may not exist */ }
           }
           if (!expFound) {
-            const bySource = await server.from("expenses").select("id").eq("source_id", reimbId).maybeSingle().catch(() => ({ data: null }));
-            expFound = (bySource as { data?: { id?: string } | null }).data ?? null;
+            try {
+              const bySource = await server.from("expenses").select("id").eq("source_id", reimbId).maybeSingle();
+              const d = bySource.data as { id?: string } | null;
+              if (d?.id) expFound = { id: d.id };
+            } catch { /* column may not exist */ }
           }
           steps.push(expFound?.id ? "expense created" : "expense created: not found");
           log("reimbursement_workflow", "expense created");

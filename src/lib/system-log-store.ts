@@ -23,7 +23,7 @@ function formatTime(now: Date): string {
 function parseArgs(args: unknown[]): { module: string; message: string } {
   const first = args[0];
   if (typeof first === "string") {
-    const match = first.match(/^\[([^\]]+)\]\s*(.*)/s);
+    const match = first.match(/^\[([^\]]+)\]\s*([\s\S]*)/);
     if (match) {
       return { module: match[1].trim(), message: (match[2] || "").trim() || first };
     }

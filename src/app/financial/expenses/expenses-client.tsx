@@ -79,17 +79,18 @@ export function ExpensesClient() {
       const setBusy = append ? setLoadingMore : setLoading;
       setBusy(true);
       if (!append) setError(null);
-      let expRes = await supabase
+      type ExpRaw = { data: Record<string, unknown>[] | null; error: { message: string } | null };
+      let expRes: ExpRaw = await supabase
         .from("expenses")
         .select("id,expense_date,vendor_name,payment_method,reference_no,total,line_count,created_at,worker_id,project_id,workers(id,name),projects(id,name)")
         .order("expense_date", { ascending: false })
-        .range(offset, offset + PAGE_SIZE - 1);
+        .range(offset, offset + PAGE_SIZE - 1) as ExpRaw;
       if (expRes.error) {
         expRes = await supabase
           .from("expenses")
           .select("id,expense_date,vendor_name,payment_method,reference_no,total,line_count,created_at")
           .order("expense_date", { ascending: false })
-          .range(offset, offset + PAGE_SIZE - 1);
+          .range(offset, offset + PAGE_SIZE - 1) as ExpRaw;
       }
       if (expRes.error) {
         setError(expRes.error.message || "Failed to load expenses.");
