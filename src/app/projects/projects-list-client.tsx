@@ -330,7 +330,7 @@ export function ProjectsListClient({
             </>
           }
           right={
-            <Button asChild variant="primary" size="default">
+            <Button asChild variant="primary" size="default" className="min-h-[44px] sm:min-h-0 w-full sm:w-auto">
               <Link href="/projects/new">
                 <Plus className="h-4 w-4 mr-2" />
                 New Project
@@ -393,8 +393,8 @@ export function ProjectsListClient({
           </div>
 
           {/* Tablet/Desktop: table */}
-          <div className="hidden sm:block rounded-lg border border-[#eee] bg-white overflow-hidden">
-            <table className="w-full text-sm border-collapse">
+          <div className="hidden sm:block table-responsive rounded-lg border border-[#eee] bg-white overflow-hidden">
+            <table className="w-full min-w-[640px] sm:min-w-0 text-sm border-collapse">
               <thead>
                 <tr className="border-b border-[#eee]">
                   <th className="text-left py-2.5 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Project</th>

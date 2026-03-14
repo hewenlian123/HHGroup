@@ -10,11 +10,14 @@ export type ToastInput = {
   description?: string;
   variant?: ToastVariant;
   durationMs?: number;
+  /** When set, the toast is clickable and navigates or runs this action. */
+  onClick?: () => void;
 };
 
 type ToastRecord = ToastInput & {
   id: string;
   createdAt: number;
+  onClick?: () => void;
 };
 
 type ToastContextValue = {
@@ -46,6 +49,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       durationMs: t.durationMs ?? 4000,
       title: t.title,
       description: t.description,
+      onClick: t.onClick,
     };
     setToasts((prev) => [rec, ...prev].slice(0, 4));
 
@@ -60,22 +64,28 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <ToastContext.Provider value={value}>
       {children}
       <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex w-[360px] max-w-[calc(100vw-2rem)] flex-col gap-2">
-        {toasts.map((t) => (
-          <div
-            key={t.id}
-            className={cn(
-              "pointer-events-auto rounded-md border px-3 py-2 shadow-[var(--shadow-1)]",
-              variantClasses(t.variant ?? "default")
-            )}
-            role="status"
-            aria-live="polite"
-          >
-            <div className="text-sm font-medium">{t.title}</div>
-            {t.description ? (
-              <div className="mt-0.5 text-sm text-muted-foreground">{t.description}</div>
-            ) : null}
-          </div>
-        ))}
+        {toasts.map((t) => {
+          const Wrapper = t.onClick ? "button" : "div";
+          return (
+            <Wrapper
+              key={t.id}
+              type={t.onClick ? "button" : undefined}
+              onClick={t.onClick}
+              className={cn(
+                "pointer-events-auto w-full rounded-md border px-3 py-2 text-left shadow-[var(--shadow-1)]",
+                variantClasses(t.variant ?? "default"),
+                t.onClick && "cursor-pointer hover:opacity-90"
+              )}
+              role="status"
+              aria-live="polite"
+            >
+              <div className="text-sm font-medium">{t.title}</div>
+              {t.description ? (
+                <div className="mt-0.5 text-sm text-muted-foreground">{t.description}</div>
+              ) : null}
+            </Wrapper>
+          );
+        })}
       </div>
     </ToastContext.Provider>
   );

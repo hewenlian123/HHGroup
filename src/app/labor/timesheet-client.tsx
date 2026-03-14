@@ -224,10 +224,13 @@ export default function TimesheetClient() {
     if (row.id) {
       setBusy(true);
       setMessage(null);
+      const prevRows = rows;
+      setRows((prev) => prev.filter((r) => r.id !== row.id));
       const { error: delErr } = await supabase.from("labor_entries").delete().eq("id", row.id);
-      if (delErr) setError(delErr.message);
-      else setMessage("Row deleted.");
-      await refresh();
+      if (delErr) {
+        setError(delErr.message);
+        setRows(prevRows);
+      } else setMessage("Row deleted.");
       setBusy(false);
     } else {
       setRows((prev) => prev.filter((r) => r.localId !== row.localId));

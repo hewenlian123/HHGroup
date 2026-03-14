@@ -1,9 +1,12 @@
 import { ensureConstructionSchema } from "@/lib/ensure-construction-schema";
+import { runSchemaAutoRepair } from "@/lib/ensure-schema-auto-repair";
 import { NextResponse } from "next/server";
 
 /**
  * POST /api/ensure-schema
- * Runs schema creation (if DB URL is set) and returns status for the UI.
+ * 1) Runs core schema creation (ensureConstructionSchema) if DB URL is set.
+ * 2) Runs schema auto-repair (worker_payments, expenses columns, expense_lines, payments_received, labor_entries).
+ * Returns combined status for the UI.
  */
 export async function POST() {
   const url = process.env.SUPABASE_DATABASE_URL ?? process.env.DATABASE_URL;
@@ -13,29 +16,45 @@ export async function POST() {
         ok: false,
         hasDatabaseUrl: false,
         message:
-          "未配置数据库直连。请在 .env.local 中设置 SUPABASE_DATABASE_URL（Supabase → Project Settings → Database → Connection string），重启 dev server 后刷新页面。",
+          "Direct database URL is required. Set SUPABASE_DATABASE_URL or DATABASE_URL in .env.local (Supabase → Project Settings → Database → Connection string), then restart the dev server.",
       },
       { status: 200 }
     );
   }
 
+  let constructionOk = true;
+  let constructionMessage = "";
+
   try {
     await ensureConstructionSchema();
-    return NextResponse.json({
-      ok: true,
+    constructionMessage =
+      "Core tables created or already exist.";
+  } catch (err) {
+    constructionOk = false;
+    constructionMessage = err instanceof Error ? err.message : String(err);
+  }
+
+  const autoRepair = await runSchemaAutoRepair();
+
+  const ok = constructionOk && autoRepair.ok;
+  const parts = [autoRepair.message];
+  if (constructionMessage) parts.push(constructionMessage);
+  const message = parts.join(" ");
+
+  return NextResponse.json(
+    {
+      ok,
       hasDatabaseUrl: true,
       message:
-        "表已创建或已存在。若仍提示找不到表，请到 Supabase 控制台 Project Settings → API 点击 Reload schema cache，然后刷新本页。",
-    });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json(
-      {
-        ok: false,
-        hasDatabaseUrl: true,
-        message: `创建表时出错：${msg}`,
+        message +
+        (ok ? " If you still see 'column not in schema cache', reload the schema cache in Supabase Dashboard → Project Settings → API." : ""),
+      construction: { ok: constructionOk, message: constructionMessage },
+      autoRepair: {
+        ok: autoRepair.ok,
+        applied: autoRepair.applied ?? 0,
+        ...(autoRepair.errors && autoRepair.errors.length > 0 && { errors: autoRepair.errors }),
       },
-      { status: 200 }
-    );
-  }
+    },
+    { status: 200 }
+  );
 }

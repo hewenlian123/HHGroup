@@ -175,18 +175,20 @@ export default function VendorsPage() {
       if (!window.confirm(`Delete vendor "${row.name}"?`)) return;
       setDeletingId(row.id);
       setMessage(null);
+      const prevRows = rows;
+      setRows((r) => r.filter((v) => v.id !== row.id));
       try {
         const { error } = await supabase.from("vendors").delete().eq("id", row.id);
         if (error) throw error;
-        await refresh();
       } catch (error: unknown) {
         const msg = error instanceof Error ? error.message : String(error);
         setMessage(msg || "Failed to delete vendor.");
+        setRows(prevRows);
       } finally {
         setDeletingId(null);
       }
     },
-    [configured, refresh, supabase]
+    [configured, rows, supabase]
   );
 
   return (
@@ -272,8 +274,8 @@ export default function VendorsPage() {
       ) : null}
 
       <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="table-responsive">
+          <table className="w-full min-w-[560px] text-sm md:min-w-0">
             <thead>
               <tr className="border-b border-zinc-200/40 bg-muted/30 dark:border-border/60">
                 <th className="table-head-label px-4 py-3 text-left">Name</th>

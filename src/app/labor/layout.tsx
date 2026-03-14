@@ -1,10 +1,10 @@
 import { ensureConstructionSchema } from "@/lib/ensure-construction-schema";
 
-export default async function LaborLayout({
+export default function LaborLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  await ensureConstructionSchema();
+  void ensureConstructionSchema();
   return <>{children}</>;
 }

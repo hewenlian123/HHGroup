@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { createBrowserClient } from "@/lib/supabase";
 import { getCompanyInitials, getCompanyProfile } from "@/lib/company-profile";
+import { useSystemHealth } from "@/contexts/system-health-context";
 import { cn } from "@/lib/utils";
 
 /** Map path segments to breadcrumb display labels (for last segment, or section names). */
@@ -84,6 +85,11 @@ const SEGMENT_LABELS: Record<string, string> = {
   permissions: "Permissions",
   categories: "Categories",
   subcontracts: "Subcontracts",
+  "system-health": "System Health",
+  "system-tests": "System Tests",
+  "system-metrics": "System Metrics",
+  "system-logs": "System Logs",
+  "worker-balances": "Worker Balances",
 };
 
 /** When under /labor, "payments" shows as "Worker Payments". */
@@ -111,6 +117,7 @@ export function Topbar({
   const [logoUrl, setLogoUrl] = React.useState<string | null>(null);
   const pathname = usePathname();
   const breadcrumbs = React.useMemo(() => buildBreadcrumbs(pathname ?? ""), [pathname]);
+  const { systemHealth } = useSystemHealth();
 
   React.useEffect(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -158,7 +165,7 @@ export function Topbar({
         <Button
           variant="ghost"
           size="icon"
-          className="hidden h-9 w-9 shrink-0 sm:flex"
+          className="hidden h-9 w-9 min-h-[44px] min-w-[44px] shrink-0 sm:flex"
           aria-label="Toggle sidebar"
           onClick={onToggleSidebar}
         >
@@ -221,7 +228,7 @@ export function Topbar({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
-              className="h-9 rounded-md bg-[#111] px-3.5 py-2.5 text-sm font-medium text-white hover:bg-[#333] hover:text-white"
+              className="h-9 min-h-[44px] rounded-md bg-[#111] px-3.5 py-2.5 text-sm font-medium text-white hover:bg-[#333] hover:text-white sm:min-h-0"
               size="sm"
             >
               <Plus className="mr-2 h-4 w-4" />
@@ -283,20 +290,28 @@ export function Topbar({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Notifications — future: overdue invoices, new tasks, worker submissions */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-9 w-9 shrink-0 rounded-full"
-          aria-label="Notifications"
-        >
-          <Bell className="h-4 w-4" />
-        </Button>
+        {/* Notifications — red dot when system health warning */}
+        <div className="relative inline-flex shrink-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 min-h-[44px] min-w-[44px] shrink-0 rounded-full sm:min-h-0 sm:min-w-0"
+            aria-label="Notifications"
+          >
+            <Bell className="h-4 w-4" />
+          </Button>
+          {systemHealth.status === "warning" && (
+            <span
+              className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500"
+              aria-hidden
+            />
+          )}
+        </div>
 
         {/* User avatar + dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-9 w-9 shrink-0 rounded-full p-0">
+            <Button variant="ghost" className="relative h-9 w-9 min-h-[44px] min-w-[44px] shrink-0 rounded-full p-0 sm:min-h-0 sm:min-w-0">
               <Avatar className="h-8 w-8">
                 {logoUrl ? (
                   <AvatarImage src={logoUrl} alt={orgName} className="object-contain" />

@@ -90,7 +90,13 @@ export type { ApBillRow, ApBillWithProject, ApBillPaymentRow, ApBillsFilters, Ap
 export { AP_BILL_TYPES, AP_BILL_STATUSES } from "../ap-bills-db";
 export type { DailyWorkEntry, DailyWorkEntryDraft, DayType, PayrollSummaryRow } from "../daily-work-db";
 export { dayPayForEntry, totalPayForEntry } from "../daily-work-db";
-export type { WorkerReimbursement, WorkerReimbursementDraft } from "../worker-reimbursements-db";
+export type {
+  WorkerReimbursement,
+  WorkerReimbursementDraft,
+  WorkerReimbursementStatus,
+  WorkerReimbursementPayment,
+  WorkerBalanceRow,
+} from "../worker-reimbursements-db";
 export type { WorkerInvoice, WorkerInvoiceDraft, WorkerInvoiceStatus } from "../worker-invoices-db";
 export type { WorkerPayment, CreateWorkerPaymentInput } from "../worker-payments-db";
 
@@ -894,14 +900,29 @@ export async function getDailyWorkEntriesForWorker(workerId: string, fromDate: s
 export async function getWorkerReimbursements() {
   return workerReimbursementsDb.getWorkerReimbursements();
 }
+export async function getWorkerReimbursementsByWorkerId(workerId: string) {
+  return workerReimbursementsDb.getWorkerReimbursementsByWorkerId(workerId);
+}
 export async function insertWorkerReimbursement(draft: import("../worker-reimbursements-db").WorkerReimbursementDraft) {
   return workerReimbursementsDb.insertWorkerReimbursement(draft);
 }
 export async function updateWorkerReimbursement(id: string, draft: Partial<import("../worker-reimbursements-db").WorkerReimbursementDraft>) {
   return workerReimbursementsDb.updateWorkerReimbursement(id, draft);
 }
+export async function approveWorkerReimbursement(id: string) {
+  return workerReimbursementsDb.approveWorkerReimbursement(id);
+}
 export async function deleteWorkerReimbursement(id: string) {
   return workerReimbursementsDb.deleteWorkerReimbursement(id);
+}
+export async function getWorkerReimbursementPayments(workerId: string) {
+  return workerReimbursementsDb.getWorkerReimbursementPayments(workerId);
+}
+export async function getWorkerReimbursementBalances() {
+  return workerReimbursementsDb.getWorkerReimbursementBalances();
+}
+export async function markReimbursementPaid(reimbursementId: string) {
+  return workerReimbursementsDb.markReimbursementPaid(reimbursementId);
 }
 export async function markWorkerReimbursementsPaid(workerId: string, projectId?: string | null) {
   return workerReimbursementsDb.markWorkerReimbursementsPaid(workerId, projectId);

@@ -1,8 +1,17 @@
 import { NextResponse } from "next/server";
-import { insertWorkerReceipt } from "@/lib/worker-receipts-db";
+import { getServerSupabase } from "@/lib/supabase-server";
+import { insertWorkerReceiptWithClient } from "@/lib/worker-receipts-db";
 
+/**
+ * Save receipt metadata + receipt_url to worker_receipts. Uses server Supabase client
+ * so insert runs with server env (no auth required).
+ */
 export async function POST(req: Request) {
   try {
+    const supabase = getServerSupabase();
+    if (!supabase) {
+      return NextResponse.json({ message: "Supabase not configured." }, { status: 500 });
+    }
     const body = await req.json();
     const workerId = typeof body.workerId === "string" ? body.workerId : null;
     const workerName = typeof body.workerName === "string" ? body.workerName.trim() : "";
@@ -35,7 +44,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Receipt photo is required." }, { status: 400 });
     }
 
-    const receipt = await insertWorkerReceipt({
+    const receipt = await insertWorkerReceiptWithClient(supabase, {
       workerId,
       workerName: workerName || "Unknown",
       projectId,
@@ -48,7 +57,7 @@ export async function POST(req: Request) {
       receiptDate,
       status: "Pending",
     });
-    return NextResponse.json({ ok: true, id: receipt.id });
+    return NextResponse.json({ ok: true, id: receipt.id, receipt_url: receipt.receiptUrl });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Submit failed";
     return NextResponse.json({ message }, { status: 500 });

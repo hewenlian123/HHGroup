@@ -165,8 +165,8 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                 </div>
                 <p className="text-xs text-gray-500 mt-0.5">Revenue, cost, profit, and margin by project.</p>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+              <div className="table-responsive">
+                <table className="w-full min-w-[520px] text-sm md:min-w-0">
                   <thead>
                     <tr className="border-b bg-gray-50">
                       <th className="py-2.5 px-4 text-left text-xs uppercase tracking-wide text-gray-500">Project</th>
@@ -364,8 +364,8 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
               </div>
               <p className="text-xs text-gray-500 mt-0.5">Subcontracts with balance due.</p>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+            <div className="table-responsive">
+              <table className="w-full min-w-[400px] text-sm md:min-w-0">
                 <thead>
                   <tr className="border-b bg-gray-50">
                     <th className="py-2.5 px-4 text-left text-xs uppercase tracking-wide text-gray-500">Subcontractor</th>
@@ -404,8 +404,8 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
               </div>
               <p className="text-xs text-gray-500 mt-0.5">Invoices past due with balance outstanding.</p>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+            <div className="table-responsive">
+              <table className="w-full min-w-[400px] text-sm md:min-w-0">
                 <thead>
                   <tr className="border-b bg-gray-50">
                     <th className="py-2.5 px-4 text-left text-xs uppercase tracking-wide text-gray-500">Project</th>

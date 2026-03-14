@@ -221,16 +221,18 @@ export default function SubcontractorDetailPage() {
   const handleUnlink = React.useCallback(
     async (linkId: string) => {
       if (!supabase) return;
+      const prevLinks = links;
+      setLinks((prev) => prev.filter((l) => l.id !== linkId));
       try {
         const { error } = await supabase.from("project_subcontractors").delete().eq("id", linkId);
         if (error) throw error;
-        await refresh();
       } catch (error: unknown) {
         const msg = error instanceof Error ? error.message : String(error);
         setMessage(msg || "Failed to unlink project.");
+        setLinks(prevLinks);
       }
     },
-    [refresh, supabase]
+    [links, supabase]
   );
 
   const handleUpload = React.useCallback(
@@ -284,18 +286,20 @@ export default function SubcontractorDetailPage() {
   const handleDeleteAttachment = React.useCallback(
     async (attachment: AttachmentRow) => {
       if (!supabase) return;
+      const prevAttachments = attachments;
+      setAttachments((prev) => prev.filter((a) => a.id !== attachment.id));
       try {
         const { error: storageError } = await supabase.storage.from("attachments").remove([attachment.file_path]);
         if (storageError) throw storageError;
         const { error: dbError } = await supabase.from("attachments").delete().eq("id", attachment.id);
         if (dbError) throw dbError;
-        await refresh();
       } catch (error: unknown) {
         const msg = error instanceof Error ? error.message : String(error);
         setMessage(msg || "Failed to delete attachment.");
+        setAttachments(prevAttachments);
       }
     },
-    [refresh, supabase]
+    [attachments, supabase]
   );
 
   if (loading) {

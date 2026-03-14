@@ -24,7 +24,7 @@ export function PageHeader({
           <p className="mt-0.5 text-xs text-[#6B7280]">{subtext}</p>
         )}
       </div>
-      {actions && <div className="mt-2 sm:mt-0">{actions}</div>}
+      {actions && <div className="mt-2 flex flex-col gap-2 sm:mt-0 sm:flex-row sm:flex-wrap">{actions}</div>}
     </div>
   );
 }

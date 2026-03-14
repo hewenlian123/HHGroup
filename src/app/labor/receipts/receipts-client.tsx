@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +35,8 @@ export function ReceiptsClient({ initialRows }: { initialRows: ReceiptRow[] }) {
   const [rejectId, setRejectId] = React.useState<string | null>(null);
   const [rejectReason, setRejectReason] = React.useState("");
   const [message, setMessage] = React.useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = React.useState<string | null>(null);
+  const [viewReceiptUrl, setViewReceiptUrl] = React.useState<string | null>(null);
 
   const refresh = React.useCallback(async () => {
     const res = await fetch("/api/worker-receipts");
@@ -49,13 +52,42 @@ export function ReceiptsClient({ initialRows }: { initialRows: ReceiptRow[] }) {
   const approve = async (id: string) => {
     setBusyId(id);
     setMessage(null);
+    setSuccessMessage(null);
     try {
       const res = await fetch(`/api/worker-receipts/${id}/approve`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message ?? "Approve failed");
-      await refresh();
+      // Update local row so we don't need full reload; keep existing projectName
+      setRows((prev) =>
+        prev.map((r) =>
+          r.id === id ? { ...data.receipt, projectName: r.projectName } : r
+        )
+      );
+      if (data.reimbursementCreated) {
+        setSuccessMessage("Approved. Added to Reimbursements.");
+      }
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Approve failed");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const resetToPending = async (id: string) => {
+    setBusyId(id);
+    setMessage(null);
+    setSuccessMessage(null);
+    try {
+      const res = await fetch(`/api/worker-receipts/${id}/reset-pending`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message ?? "Reset failed");
+      setRows((prev) =>
+        prev.map((r) =>
+          r.id === id ? { ...data.receipt, projectName: r.projectName } : r
+        )
+      );
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Reset failed");
     } finally {
       setBusyId(null);
     }
@@ -93,17 +125,21 @@ export function ReceiptsClient({ initialRows }: { initialRows: ReceiptRow[] }) {
     if (typeof window !== "undefined" && !window.confirm("Delete this receipt upload?")) return;
     setBusyId(id);
     setMessage(null);
+    const prevRows = rows;
+    setRows((r) => r.filter((x) => x.id !== id));
     try {
       const res = await fetch(`/api/worker-receipts/${id}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message ?? "Delete failed");
-      await refresh();
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Delete failed");
+      setRows(prevRows);
     } finally {
       setBusyId(null);
     }
   };
+
+  const isPdfReceipt = viewReceiptUrl != null && viewReceiptUrl.toLowerCase().endsWith(".pdf");
 
   return (
     <div className="page-container py-6">
@@ -114,6 +150,14 @@ export function ReceiptsClient({ initialRows }: { initialRows: ReceiptRow[] }) {
 
       {message && (
         <p className="text-sm text-destructive border-b border-border/60 pb-3 mb-3">{message}</p>
+      )}
+      {successMessage && (
+        <p className="text-sm text-muted-foreground border-b border-border/60 pb-3 mb-3">
+          {successMessage}{" "}
+          <Link href="/labor/reimbursements" className="underline hover:no-underline">
+            View Reimbursements
+          </Link>
+        </p>
       )}
 
       {/* Mobile: card layout */}
@@ -134,7 +178,13 @@ export function ReceiptsClient({ initialRows }: { initialRows: ReceiptRow[] }) {
               </span>
             </div>
             {r.receiptUrl && (
-              <a href={r.receiptUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-xs text-primary hover:underline">View receipt</a>
+              <button
+                type="button"
+                onClick={() => setViewReceiptUrl(r.receiptUrl)}
+                className="mt-2 inline-block text-xs text-primary hover:underline text-left"
+              >
+                View receipt
+              </button>
             )}
             {r.status === "Pending" && (
               <div className="mt-3 flex gap-2">
@@ -160,6 +210,20 @@ export function ReceiptsClient({ initialRows }: { initialRows: ReceiptRow[] }) {
                 </Button>
               </div>
             )}
+            {r.status === "Approved" && (
+              <div className="mt-3 flex gap-2">
+                <Button
+                  type="button"
+                  size="touch"
+                  variant="outline"
+                  className="min-h-[44px] rounded-sm"
+                  disabled={busyId === r.id}
+                  onClick={() => resetToPending(r.id)}
+                >
+                  {busyId === r.id ? "…" : "Reset to Pending"}
+                </Button>
+              </div>
+            )}
             <div className="mt-2 flex justify-end">
               <Button
                 type="button"
@@ -176,8 +240,8 @@ export function ReceiptsClient({ initialRows }: { initialRows: ReceiptRow[] }) {
         ))
         )}
       </div>
-      <div className="hidden overflow-x-auto rounded-sm border border-border/60 md:block">
-        <table className="w-full text-sm border-collapse table-row-compact min-w-[800px]">
+      <div className="table-responsive hidden rounded-sm border border-border/60 md:block">
+        <table className="w-full min-w-[700px] text-sm border-collapse table-row-compact md:min-w-0">
           <thead>
             <tr className="border-b border-border/60">
               <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Worker</th>
@@ -208,14 +272,13 @@ export function ReceiptsClient({ initialRows }: { initialRows: ReceiptRow[] }) {
                   <td className="py-2 px-3 text-right tabular-nums">${fmtUsd(r.amount)}</td>
                   <td className="py-2 px-3">
                     {r.receiptUrl ? (
-                      <a
-                        href={r.receiptUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <button
+                        type="button"
+                        onClick={() => setViewReceiptUrl(r.receiptUrl)}
                         className="text-primary hover:underline text-xs"
                       >
                         View
-                      </a>
+                      </button>
                     ) : (
                       <span className="text-muted-foreground text-xs">—</span>
                     )}
@@ -236,6 +299,18 @@ export function ReceiptsClient({ initialRows }: { initialRows: ReceiptRow[] }) {
                   </td>
                   <td className="py-2 px-3 text-right">
                     <div className="flex justify-end gap-1.5">
+                      {r.status === "Approved" && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs rounded-sm"
+                          disabled={busyId === r.id}
+                          onClick={() => resetToPending(r.id)}
+                        >
+                          {busyId === r.id ? "…" : "Reset to Pending"}
+                        </Button>
+                      )}
                       {r.status === "Pending" && (
                         <>
                           <Button
@@ -301,6 +376,23 @@ export function ReceiptsClient({ initialRows }: { initialRows: ReceiptRow[] }) {
               Reject
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!viewReceiptUrl} onOpenChange={(open) => !open && setViewReceiptUrl(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] border-border/60 rounded-sm p-2 flex flex-col">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Receipt</DialogTitle>
+          </DialogHeader>
+          {viewReceiptUrl && (
+            <div className="flex-1 min-h-0 overflow-auto flex items-center justify-center bg-muted/30 rounded-sm">
+              {isPdfReceipt ? (
+                <iframe src={viewReceiptUrl} title="Receipt" className="w-full min-h-[70vh] border-0 rounded-sm" />
+              ) : (
+                <img src={viewReceiptUrl} alt="Receipt" className="max-w-full max-h-[85vh] object-contain" />
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

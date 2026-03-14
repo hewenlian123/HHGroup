@@ -21,6 +21,10 @@ type ExpenseRow = {
   total: number | null;
   line_count: number | null;
   created_at: string | null;
+  worker_id?: string | null;
+  project_id?: string | null;
+  workers?: { id: string; name: string | null } | null;
+  projects?: { id: string; name: string | null } | null;
 };
 
 type LineMiniRow = {
@@ -58,13 +62,73 @@ export function ExpensesClient() {
     [configured, url, anon]
   );
 
+  const PAGE_SIZE = 80;
   const [loading, setLoading] = React.useState(true);
+  const [loadingMore, setLoadingMore] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [rows, setRows] = React.useState<ExpenseRow[]>([]);
   const [lines, setLines] = React.useState<LineMiniRow[]>([]);
+  const [hasMore, setHasMore] = React.useState(true);
   const [query, setQuery] = React.useState("");
   const [projectFilter, setProjectFilter] = React.useState("");
   const [categoryFilter, setCategoryFilter] = React.useState("");
+
+  const fetchPage = React.useCallback(
+    async (offset: number, append: boolean) => {
+      if (!supabase) return;
+      const setBusy = append ? setLoadingMore : setLoading;
+      setBusy(true);
+      if (!append) setError(null);
+      let expRes = await supabase
+        .from("expenses")
+        .select("id,expense_date,vendor_name,payment_method,reference_no,total,line_count,created_at,worker_id,project_id,workers(id,name),projects(id,name)")
+        .order("expense_date", { ascending: false })
+        .range(offset, offset + PAGE_SIZE - 1);
+      if (expRes.error) {
+        expRes = await supabase
+          .from("expenses")
+          .select("id,expense_date,vendor_name,payment_method,reference_no,total,line_count,created_at")
+          .order("expense_date", { ascending: false })
+          .range(offset, offset + PAGE_SIZE - 1);
+      }
+      if (expRes.error) {
+        setError(expRes.error.message || "Failed to load expenses.");
+        if (!append) {
+          setRows([]);
+          setLines([]);
+        }
+        setBusy(false);
+        return;
+      }
+      const rawExpenses = (expRes.data ?? []) as (ExpenseRow & { workers?: unknown; projects?: unknown })[];
+      const expenses: ExpenseRow[] = rawExpenses.map((r) => ({
+        ...r,
+        workers: one(r.workers as { id: string; name: string | null } | { id: string; name: string | null }[] | null) ?? undefined,
+        projects: one(r.projects as { id: string; name: string | null } | { id: string; name: string | null }[] | null) ?? undefined,
+      }));
+      setHasMore(expenses.length === PAGE_SIZE);
+      const ids = expenses.map((e) => e.id);
+      let lineRows: LineMiniRow[] = [];
+      if (ids.length > 0) {
+        const lineRes = await supabase
+          .from("expense_lines")
+          .select("expense_id,project_id,category,amount,projects(id,name)")
+          .in("expense_id", ids);
+        lineRows = lineRes.error
+          ? []
+          : ((lineRes.data ?? []) as unknown as LineMiniRowRaw[]).map((r) => ({ ...r, projects: one(r.projects) }));
+      }
+      if (append) {
+        setRows((prev) => [...prev, ...expenses]);
+        setLines((prev) => [...prev, ...lineRows]);
+      } else {
+        setRows(expenses);
+        setLines(lineRows);
+      }
+      setBusy(false);
+    },
+    [supabase]
+  );
 
   const refresh = React.useCallback(async () => {
     if (!supabase) {
@@ -72,39 +136,12 @@ export function ExpensesClient() {
       setRows([]);
       setLines([]);
       setLoading(false);
+      setHasMore(false);
       return;
     }
-    setLoading(true);
-    setError(null);
-
-    const [expRes, lineRes] = await Promise.all([
-      supabase
-        .from("expenses")
-        .select("id,expense_date,vendor_name,payment_method,reference_no,total,line_count,created_at")
-        .order("expense_date", { ascending: false })
-        .limit(300),
-      supabase
-        .from("expense_lines")
-        .select("expense_id,project_id,category,amount,projects(id,name)")
-        .order("created_at", { ascending: false })
-        .limit(4000),
-    ]);
-
-    if (expRes.error) {
-      setError(expRes.error.message || "Failed to load expenses.");
-      setRows([]);
-      setLines([]);
-      setLoading(false);
-      return;
-    }
-    const expenses = (expRes.data ?? []) as ExpenseRow[];
-    const lineRows = lineRes.error
-      ? ([] as LineMiniRow[])
-      : ((lineRes.data ?? []) as unknown as LineMiniRowRaw[]).map((r) => ({ ...r, projects: one(r.projects) }));
-    setRows(expenses);
-    setLines(lineRows);
-    setLoading(false);
-  }, [supabase]);
+    setHasMore(true);
+    await fetchPage(0, false);
+  }, [supabase, fetchPage]);
 
   React.useEffect(() => {
     void refresh();
@@ -117,10 +154,15 @@ export function ExpensesClient() {
       if (!pid) continue;
       if (!map.has(pid)) map.set(pid, l.projects?.name || pid);
     }
+    for (const e of rows) {
+      const pid = e.project_id;
+      if (!pid) continue;
+      if (!map.has(pid)) map.set(pid, e.projects?.name || pid);
+    }
     return Array.from(map.entries())
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [lines]);
+  }, [lines, rows]);
 
   const categoriesForFilter = React.useMemo(() => {
     const set = new Set<string>();
@@ -153,11 +195,9 @@ export function ExpensesClient() {
       if (projectFilter) {
         const meta = expenseMeta.get(e.id);
         const has = meta ? Array.from(meta.projects).some((nameOrId) => nameOrId === projectFilter) : false;
-        if (!has) {
-          // also allow filtering by raw project id
-          const hasId = lines.some((l) => l.expense_id === e.id && l.project_id === projectFilter);
-          if (!hasId) return false;
-        }
+        const hasLineProject = lines.some((l) => l.expense_id === e.id && l.project_id === projectFilter);
+        const hasExpenseProject = e.project_id === projectFilter;
+        if (!has && !hasLineProject && !hasExpenseProject) return false;
       }
       if (categoryFilter) {
         const hasCat = lines.some((l) => l.expense_id === e.id && (l.category ?? "") === categoryFilter);
@@ -174,12 +214,18 @@ export function ExpensesClient() {
   const handleDelete = async (id: string) => {
     if (!supabase) return;
     if (!window.confirm("Delete this expense?")) return;
+    const prevRows = rows;
+    const prevLines = lines;
+    setRows((r) => r.filter((e) => e.id !== id));
+    setLines((l) => l.filter((line) => line.expense_id !== id));
+    setError(null);
     const { error: delError } = await supabase.from("expenses").delete().eq("id", id);
     if (delError) {
       setError(delError.message || "Failed to delete expense.");
+      setRows(prevRows);
+      setLines(prevLines);
       return;
     }
-    await refresh();
   };
 
   type Row = ExpenseRow & { summary: string };
@@ -188,14 +234,14 @@ export function ExpensesClient() {
       const meta = expenseMeta.get(e.id);
       const projectCount = meta?.projects.size ?? 0;
       const categoryCount = meta?.categories.size ?? 0;
-      const summary =
-        projectCount === 0
-          ? "Overhead"
-          : projectCount === 1
+      const projectLabel =
+        projectCount > 0
+          ? projectCount === 1
             ? Array.from(meta!.projects.values())[0]!
-            : `${projectCount} projects`;
+            : `${projectCount} projects`
+          : e.projects?.name ?? "Overhead";
       const catSuffix = categoryCount === 0 ? "" : categoryCount === 1 ? ` • ${Array.from(meta!.categories.values())[0]}` : ` • ${categoryCount} categories`;
-      return { ...e, summary: `${summary}${catSuffix}` };
+      return { ...e, summary: `${projectLabel}${catSuffix}` };
     });
   }, [expenseMeta, filtered]);
 
@@ -213,6 +259,11 @@ export function ExpensesClient() {
           {row.vendor_name?.trim() || "Untitled Expense"}
         </Link>
       ),
+    },
+    {
+      key: "worker",
+      header: "Worker",
+      render: (row) => <span className="text-muted-foreground">{row.workers?.name?.trim() ?? "—"}</span>,
     },
     { key: "payment_method", header: "Payment", render: (row) => <span className="text-muted-foreground">{row.payment_method || "—"}</span> },
     {
@@ -248,13 +299,13 @@ export function ExpensesClient() {
         title="Expenses"
         subtitle="Track vendor receipts and split costs across projects."
         actions={
-          <div className="flex items-center gap-2">
-            <Button onClick={() => void handleNew()}>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <Button onClick={() => void handleNew()} className="min-h-[44px] sm:min-h-0 w-full sm:w-auto">
               <Plus className="h-4 w-4" />
               New Expense
             </Button>
-            <Button variant="outline" onClick={() => void refresh()} disabled={loading}>
-              Refresh
+            <Button variant="outline" onClick={() => void refresh()} disabled={loading} className="min-h-[44px] sm:min-h-0 w-full sm:w-auto">
+              {loading ? "Loading…" : "Refresh"}
             </Button>
           </div>
         }
@@ -314,7 +365,16 @@ export function ExpensesClient() {
             ))}
           </div>
         ) : (
-          <DataTable<Row> columns={columns} data={data} keyExtractor={(r) => r.id} emptyText="No data yet." />
+          <>
+            <DataTable<Row> columns={columns} data={data} keyExtractor={(r) => r.id} emptyText="No data yet." />
+            {hasMore && data.length > 0 && (
+              <div className="border-t border-border/60 p-3 flex justify-center">
+                <Button variant="outline" size="sm" disabled={loadingMore} onClick={() => fetchPage(rows.length, true)}>
+                  {loadingMore ? "Loading…" : "Load more"}
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </Card>
     </div>

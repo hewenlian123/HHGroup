@@ -17,7 +17,7 @@ function isMissingTable(err: { message?: string } | null): boolean {
 
 function isMissingColumn(err: { message?: string } | null): boolean {
   const m = err?.message ?? "";
-  return /column .* does not exist|does not exist.*column/i.test(m);
+  return /column .* does not exist|does not exist.*column|schema cache/i.test(m);
 }
 
 const DEFAULT_CATEGORIES = ["Materials", "Labor", "Equipment", "Permit", "Fuel", "Office", "Subcontractor", "Other"];
@@ -111,21 +111,33 @@ async function ensureVendorsExist(): Promise<void> {
   if (error && isMissingTable(error)) return;
   if (existing && existing.length > 0) return;
   for (const name of DEFAULT_VENDORS) {
-    await c.from("vendors").insert({ name, status: "active" });
+    const ins = await c.from("vendors").insert({ name, status: "active" });
+    if (ins.error && isMissingColumn(ins.error)) {
+      await c.from("vendors").insert({ name });
+    }
   }
 }
 
 export async function getVendors(includeDisabled = false): Promise<string[]> {
   const c = client();
   await ensureVendorsExist();
-  const { data: rows, error } = await c.from("vendors").select("name, status").order("name");
-  if (error) {
+  let rows: unknown[] | null = null;
+  let error: { message?: string } | null = null;
+  const res = await c.from("vendors").select("name, status").order("name");
+  error = res.error;
+  rows = res.data;
+  if (error && isMissingColumn(error)) {
+    const fallback = await c.from("vendors").select("name").order("name");
+    if (fallback.error && isMissingTable(fallback.error)) return [...DEFAULT_VENDORS];
+    if (fallback.error) throw new Error(fallback.error.message ?? "Failed to load vendors.");
+    rows = fallback.data;
+  } else if (error) {
     if (isMissingTable(error)) return [...DEFAULT_VENDORS];
     throw new Error(error.message ?? "Failed to load vendors.");
   }
-  const list = (rows ?? []) as { name: string; status: string }[];
+  const list = (rows ?? []) as { name: string; status?: string }[];
   if (includeDisabled) return list.map((r) => r.name);
-  return list.filter((r) => r.status === "active").map((r) => r.name);
+  return list.filter((r) => (r.status ?? "active") === "active").map((r) => r.name);
 }
 
 export async function addVendor(name: string): Promise<string> {
@@ -134,12 +146,15 @@ export async function addVendor(name: string): Promise<string> {
   const c = client();
   const { data: existing } = await c.from("vendors").select("name").ilike("name", trimmed).maybeSingle();
   if (existing) return (existing as { name: string }).name;
-  const { data: inactive } = await c.from("vendors").select("id").ilike("name", trimmed).eq("status", "inactive").maybeSingle();
-  if (inactive) {
-    await c.from("vendors").update({ status: "active" }).ilike("name", trimmed);
-    return trimmed;
+  const withStatus = await c.from("vendors").select("id").ilike("name", trimmed).eq("status", "inactive").maybeSingle();
+  if (!withStatus.error && withStatus.data) {
+    const upd = await c.from("vendors").update({ status: "active" }).ilike("name", trimmed);
+    if (!upd.error) return trimmed;
   }
-  await c.from("vendors").insert({ name: trimmed, status: "active" });
+  const ins = await c.from("vendors").insert({ name: trimmed, status: "active" });
+  if (ins.error && isMissingColumn(ins.error)) {
+    await c.from("vendors").insert({ name: trimmed });
+  }
   return trimmed;
 }
 

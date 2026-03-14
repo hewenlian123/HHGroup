@@ -32,17 +32,23 @@ import {
   Upload,
   Calculator,
   FilePen,
+  AlertTriangle,
+  Activity,
+  FlaskConical,
+  BarChart2,
+  ScrollText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { createBrowserClient } from "@/lib/supabase";
 import { getCompanyInitials, getCompanyProfile } from "@/lib/company-profile";
+import { useSystemHealth } from "@/contexts/system-health-context";
 
 const STORAGE_KEY = "hh.sidebarSections";
 
 type NavItem = { href: string; label: string; icon?: React.ComponentType<{ className?: string }> };
 
-const SECTION_KEYS = ["PROJECTS", "OPERATIONS", "FINANCE", "LABOR", "PEOPLE"] as const;
+const SECTION_KEYS = ["PROJECTS", "OPERATIONS", "FINANCE", "LABOR", "PEOPLE", "SYSTEM"] as const;
 
 const sections: { key: (typeof SECTION_KEYS)[number]; label: string; items: NavItem[] }[] = [
   {
@@ -83,13 +89,14 @@ const sections: { key: (typeof SECTION_KEYS)[number]; label: string; items: NavI
     key: "LABOR",
     label: "LABOR",
     items: [
-      { href: "/labor", label: "Daily Entry", icon: Clock },
       { href: "/workers", label: "Workers", icon: Users },
+      { href: "/labor", label: "Daily Entry", icon: Clock },
       { href: "/labor/reimbursements", label: "Reimbursements", icon: ReceiptText },
+      { href: "/labor/worker-balances", label: "Worker Balances", icon: Wallet },
+      { href: "/labor/payments", label: "Worker Payments", icon: CircleDollarSign },
       { href: "/labor/receipts", label: "Receipt Uploads", icon: Upload },
       { href: "/labor/worker-invoices", label: "Worker Invoices", icon: FileText },
       { href: "/labor/payroll", label: "Payroll Summary", icon: Calculator },
-      { href: "/labor/payments", label: "Worker Payments", icon: CircleDollarSign },
     ],
   },
   {
@@ -99,6 +106,16 @@ const sections: { key: (typeof SECTION_KEYS)[number]; label: string; items: NavI
       { href: "/workers", label: "Workers", icon: Users },
       { href: "/labor/subcontractors", label: "Vendors", icon: Users },
       { href: "/subcontractors", label: "Subcontractors", icon: Users },
+    ],
+  },
+  {
+    key: "SYSTEM",
+    label: "SYSTEM",
+    items: [
+      { href: "/system-health", label: "System Health", icon: Activity },
+      { href: "/system-tests", label: "System Tests", icon: FlaskConical },
+      { href: "/system-metrics", label: "System Metrics", icon: BarChart2 },
+      { href: "/system-logs", label: "System Logs", icon: ScrollText },
     ],
   },
 ];
@@ -188,12 +205,13 @@ export function Sidebar({
     });
   }, []);
 
+  const { systemHealth } = useSystemHealth();
   const isActive = (href: string) =>
     pathname === href || (href !== "/dashboard" && pathname.startsWith(href + "/"));
 
   const linkClass = (active: boolean) =>
     cn(
-      "flex h-8 items-center rounded-md text-sm transition-all duration-200 ease-out border-l-[3px] border-l-transparent",
+      "flex min-h-[44px] sm:h-8 sm:min-h-0 items-center rounded-md text-sm transition-all duration-200 ease-out border-l-[3px] border-l-transparent",
       collapsed ? "justify-center px-2" : "gap-2 px-2.5",
       active
         ? "bg-[#f5f5f5] text-[#111111] font-semibold border-l-[#111111]"
@@ -315,6 +333,21 @@ export function Sidebar({
               </div>
             );
           })}
+
+          {/* System Health warning indicator */}
+          {systemHealth.status === "warning" && (
+            <div className="flex flex-col gap-1">
+              <Link
+                href="/system-health"
+                onClick={onNavigate}
+                className={linkClass(isActive("/system-health"))}
+                title="System Health"
+              >
+                <AlertTriangle className="h-[18px] w-[18px] shrink-0 text-amber-500" aria-hidden />
+                {!collapsed && <span className="truncate">⚠ System Health</span>}
+              </Link>
+            </div>
+          )}
 
           {/* Documents & Settings */}
           <div className="flex flex-col gap-1">

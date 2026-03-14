@@ -16,6 +16,13 @@ export default function WorkerDetailPage() {
   const [message, setMessage] = React.useState<string | null>(null);
   const [worker, setWorker] = React.useState<Awaited<ReturnType<typeof getWorkerById>> | undefined>(undefined);
   const [usage, setUsage] = React.useState<Awaited<ReturnType<typeof getWorkerUsage>> | null>(null);
+  const [financialSummary, setFinancialSummary] = React.useState<{
+    totalLabor: number;
+    totalReimbursements: number;
+    totalWorkerInvoices: number;
+    totalPayments: number;
+    balance: number;
+  } | null>(null);
 
   const [name, setName] = React.useState("");
   const [phone, setPhone] = React.useState("");
@@ -51,6 +58,18 @@ export default function WorkerDetailPage() {
     });
     return () => { cancelled = true; };
   }, [id]);
+
+  React.useEffect(() => {
+    if (!id || worker === undefined || worker === null) return;
+    let cancelled = false;
+    fetch(`/api/labor/workers/${id}/financial-summary`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled && data && typeof data.totalLabor === "number") setFinancialSummary(data);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [id, worker]);
 
   const handleSave = async () => {
     if (!id) return;
@@ -123,9 +142,39 @@ export default function WorkerDetailPage() {
     );
   }
 
+  const fmt = (n: number) =>
+    new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(n);
+
   return (
     <div className="mx-auto max-w-[680px] flex flex-col gap-6 p-6">
       <PageHeader title="Worker Profile" description="View and edit worker details and half-day rate." />
+      {financialSummary !== null ? (
+        <section className="border-b border-border/60 pb-4">
+          <h2 className="text-xs uppercase tracking-wider text-muted-foreground mb-3">Financial summary</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-x-6 gap-y-2 text-sm">
+            <div>
+              <span className="text-muted-foreground">Total Labor</span>
+              <p className="font-medium tabular-nums">{fmt(financialSummary.totalLabor)}</p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Reimbursements</span>
+              <p className="font-medium tabular-nums">{fmt(financialSummary.totalReimbursements)}</p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Worker Invoices</span>
+              <p className="font-medium tabular-nums">{fmt(financialSummary.totalWorkerInvoices)}</p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Payments</span>
+              <p className="font-medium tabular-nums">{fmt(financialSummary.totalPayments)}</p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Balance</span>
+              <p className="font-medium tabular-nums">{fmt(financialSummary.balance)}</p>
+            </div>
+          </div>
+        </section>
+      ) : null}
       {message ? (
         <div className="rounded-lg border border-zinc-200/60 dark:border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
           {message}

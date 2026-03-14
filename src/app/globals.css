@@ -50,6 +50,30 @@
   .touch-target {
     @apply min-h-[44px] min-w-[44px];
   }
+  /* Tables: horizontal scroll on small screens, touch-friendly */
+  .table-responsive {
+    @apply overflow-x-auto -mx-3 sm:mx-0;
+    -webkit-overflow-scrolling: touch;
+  }
+  .table-responsive table {
+    @apply min-w-[480px] sm:min-w-0;
+  }
+  @media (max-width: 430px) {
+    .table-responsive th,
+    .table-responsive td {
+      @apply py-2 px-2;
+    }
+  }
+  /* Modals: full-width on iPhone, centered on desktop */
+  .modal-responsive {
+    @apply w-[calc(100vw-2rem)] max-w-lg sm:max-w-lg md:max-w-xl;
+  }
+  @media (max-width: 430px) {
+    .modal-responsive {
+      width: calc(100vw - 1rem);
+      max-width: none;
+    }
+  }
   /* Horizontal scroll for Kanban / boards on mobile; enables swipe */
   .scroll-touch-x {
     @apply overflow-x-auto overflow-y-hidden;

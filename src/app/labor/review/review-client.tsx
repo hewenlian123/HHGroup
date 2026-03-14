@@ -141,11 +141,14 @@ export default function LaborReviewClient() {
     if (!window.confirm("Delete this entry?")) return;
     setBusy(true);
     setError(null);
-    const { error: delErr } = await supabase.from("labor_entries").delete().eq("id", row.id);
-    if (delErr) setError(delErr.message);
-    else setMessage("Entry deleted.");
     if (selected?.id === row.id) setSelected(null);
-    await refresh();
+    const prevRows = rows;
+    setRows((r) => r.filter((e) => e.id !== row.id));
+    const { error: delErr } = await supabase.from("labor_entries").delete().eq("id", row.id);
+    if (delErr) {
+      setError(delErr.message);
+      setRows(prevRows);
+    } else setMessage("Entry deleted.");
     setBusy(false);
   };
 
@@ -217,8 +220,8 @@ export default function LaborReviewClient() {
 
       <div className="grid gap-4 lg:grid-cols-[1fr_440px]">
         <Card className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="table-responsive">
+            <table className="w-full min-w-[560px] text-sm md:min-w-0">
               <thead>
                 <tr className="border-b border-zinc-200/40 dark:border-border/60 bg-muted/30">
                   <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Date</th>
@@ -323,8 +326,8 @@ export default function LaborReviewClient() {
                 </p>
               </div>
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setSelected(null)} disabled={busy}>Close</Button>
-                <Button onClick={handleSaveSelected} disabled={busy}>Save changes</Button>
+                <Button variant="outline" onClick={() => setSelected(null)} disabled={busy} className="min-h-[44px] sm:min-h-0">Close</Button>
+                <Button onClick={handleSaveSelected} disabled={busy} className="min-h-[44px] sm:min-h-0">{busy ? "Saving…" : "Save changes"}</Button>
               </div>
             </div>
           )}

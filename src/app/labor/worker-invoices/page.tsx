@@ -288,8 +288,8 @@ export default function WorkerInvoicesPage() {
         </div>
       )}
 
-      <div className="overflow-x-auto border-b border-border/60">
-        <table className="w-full text-sm border-collapse">
+      <div className="table-responsive border-b border-border/60">
+        <table className="w-full min-w-[560px] text-sm border-collapse md:min-w-0">
           <thead>
             <tr className="border-b border-border/60">
               <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</th>

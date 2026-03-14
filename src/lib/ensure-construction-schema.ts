@@ -92,6 +92,10 @@ const CORE_DDL: string[] = [
   note text,
   created_at timestamptz DEFAULT now()
 )`,
+  `ALTER TABLE public.payments_received ADD COLUMN IF NOT EXISTS customer_name text NOT NULL DEFAULT ''`,
+  `ALTER TABLE public.payments_received ADD COLUMN IF NOT EXISTS deposit_account text`,
+  `ALTER TABLE public.payments_received ADD COLUMN IF NOT EXISTS notes text`,
+  `ALTER TABLE public.payments_received ADD COLUMN IF NOT EXISTS attachment_url text`,
   // ─── BILLS (vendor bills) ───
   `CREATE TABLE IF NOT EXISTS public.bills (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -112,6 +116,28 @@ const CORE_DDL: string[] = [
   receipt_url text,
   created_at timestamptz DEFAULT now()
 )`,
+  `CREATE TABLE IF NOT EXISTS public.expense_lines (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  expense_id uuid NOT NULL REFERENCES public.expenses(id) ON DELETE CASCADE,
+  project_id uuid REFERENCES public.projects(id) ON DELETE SET NULL,
+  category text NOT NULL DEFAULT 'Other',
+  cost_code text,
+  memo text,
+  amount numeric NOT NULL DEFAULT 0
+)`,
+  `ALTER TABLE public.expense_lines ADD COLUMN IF NOT EXISTS amount numeric NOT NULL DEFAULT 0`,
+  `ALTER TABLE public.expense_lines ADD COLUMN IF NOT EXISTS total numeric`,
+  `ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS vendor text`,
+  `ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS vendor_name text`,
+  `ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS payment_method text`,
+  `ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS total numeric`,
+  `ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS line_count integer`,
+  `ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS reference_no text`,
+  `ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS notes text`,
+  `ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS worker_id uuid`,
+  `ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS status text`,
+  `ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS source text`,
+  `ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS source_id text`,
   // ─── DAILY LABOR ───
   `CREATE TABLE IF NOT EXISTS public.daily_work_entries (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -201,6 +227,7 @@ const TABLES = [
   "payments_received",
   "bills",
   "expenses",
+  "expense_lines",
   "daily_work_entries",
   "worker_reimbursements",
   "worker_invoices",
@@ -223,15 +250,17 @@ export async function ensureConstructionSchema(): Promise<void> {
   if (!url) return;
   if (ensured) return;
 
-  const sql = postgres(url, { max: 1, connect_timeout: 10 });
   try {
-    for (const statement of ALL_DDL) {
-      await sql.unsafe(statement);
+    const sql = postgres(url, { max: 1, connect_timeout: 10 });
+    try {
+      for (const statement of ALL_DDL) {
+        await sql.unsafe(statement);
+      }
+      ensured = true;
+    } finally {
+      await sql.end();
     }
-    ensured = true;
-  } catch (err) {
-    throw err;
-  } finally {
-    await sql.end();
+  } catch {
+    // No-op on any error so layout never 500s; schema may be ensured elsewhere or DB not ready.
   }
 }

@@ -12,7 +12,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useAuth } from "@/components/auth/auth-provider";
 import { createPunchListItemAction } from "@/app/punch-list/actions";
 
 type PhotoRow = {
@@ -66,8 +65,7 @@ export default function SitePhotosPage() {
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = React.useState(false);
   const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = React.useState(false);
-  const { role } = useAuth();
-  const canDelete = role === "admin" || role === "owner";
+  const canDelete = true;
 
   const markPhotoFailed = React.useCallback((id: string) => {
     setFailedPhotoIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
@@ -198,11 +196,8 @@ export default function SitePhotosPage() {
       const res = await fetch(`/api/operations/site-photos/${id}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message ?? "Failed to delete");
-      // Refresh in background to ensure consistency (e.g. if filters changed).
-      void load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to delete photo.");
-      // If delete failed, reload to restore.
       void load();
     } finally {
       setDeleting(false);
@@ -345,10 +340,8 @@ export default function SitePhotosPage() {
       setSelectedIds(new Set());
       setEditMode(false);
       if (detailOpen && selectedPhoto && ids.includes(selectedPhoto.id)) setDetailOpen(false);
-      void load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Delete failed.");
-      // Reload to restore if anything failed.
       void load();
     } finally {
       setBulkDeleting(false);

@@ -186,18 +186,20 @@ export default function LaborWorkersPage() {
 
       setDeletingId(worker.id);
       setMessage(null);
+      const prevRows = rows;
+      setRows((r) => r.filter((w) => w.id !== worker.id));
       try {
         const { error } = await supabase.from("workers").delete().eq("id", worker.id);
         if (error) throw error;
-        await refresh();
       } catch (err: unknown) {
+        setRows(prevRows);
         const msg = err instanceof Error ? err.message : String(err);
         setMessage(msg || "Failed to delete worker.");
       } finally {
         setDeletingId(null);
       }
     },
-    [configured, refresh, supabase]
+    [configured, rows, supabase]
   );
 
   return (
@@ -284,10 +286,10 @@ export default function LaborWorkersPage() {
             </div>
           </div>
           <div className="mt-4 flex items-center justify-end gap-2 border-t border-zinc-200/60 pt-3 dark:border-border">
-            <Button onClick={handleSave} disabled={submitting}>
-              {submitting ? "Saving..." : editorMode === "create" ? "Create Worker" : "Save Changes"}
+            <Button onClick={handleSave} disabled={submitting} className="min-h-[44px] sm:min-h-0 w-full sm:w-auto">
+              {submitting ? "Saving…" : editorMode === "create" ? "Create Worker" : "Save Changes"}
             </Button>
-            <Button variant="outline" onClick={closeEditor} disabled={submitting}>
+            <Button variant="outline" onClick={closeEditor} disabled={submitting} className="min-h-[44px] sm:min-h-0 w-full sm:w-auto">
               Cancel
             </Button>
           </div>
@@ -295,8 +297,8 @@ export default function LaborWorkersPage() {
       ) : null}
 
       <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="table-responsive">
+          <table className="w-full min-w-[520px] text-sm md:min-w-0">
             <thead>
               <tr className="border-b border-zinc-200/40 bg-muted/30 dark:border-border/60">
                 <th className="table-head-label px-4 py-3 text-left">Name</th>

@@ -237,8 +237,8 @@ export function BillsListClient({ bills, summary, projects }: Props) {
             })}
           </div>
           {/* Desktop/tablet: table */}
-          <div className="hidden overflow-x-auto md:block">
-          <table className="min-w-[760px] w-full border-collapse text-sm">
+          <div className="table-responsive hidden md:block">
+          <table className="min-w-[640px] w-full border-collapse text-sm md:min-w-0">
             <thead>
               <tr className="border-b border-[#E5E7EB]">
                 <th className="table-head-label py-3 px-3 text-left">Vendor</th>

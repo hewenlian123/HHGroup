@@ -181,18 +181,20 @@ export default function CustomersPage() {
 
       setDeletingId(customer.id);
       setMessage(null);
+      const prevRows = rows;
+      setRows((r) => r.filter((c) => c.id !== customer.id));
       try {
         const { error } = await supabase.from("customers").delete().eq("id", customer.id);
         if (error) throw error;
-        await refresh();
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
         setMessage(msg || "Failed to delete customer.");
+        setRows(prevRows);
       } finally {
         setDeletingId(null);
       }
     },
-    [configured, refresh, supabase]
+    [configured, rows, supabase]
   );
 
   return (
@@ -306,8 +308,8 @@ export default function CustomersPage() {
       ) : null}
 
       <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="table-responsive">
+          <table className="w-full min-w-[560px] text-sm md:min-w-0">
             <thead>
               <tr className="border-b border-zinc-200/40 bg-muted/30 dark:border-border/60">
                 <th className="table-head-label px-4 py-3 text-left">Name</th>

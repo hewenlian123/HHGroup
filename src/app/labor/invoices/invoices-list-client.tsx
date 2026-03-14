@@ -135,13 +135,16 @@ export default function LaborInvoicesListClient() {
       if (!supabase) return;
       setBusyId(id);
       setError(null);
+      const prev = invoices;
+      setInvoices((inv) => inv.filter((r) => r.id !== id));
       const { error: delErr } = await supabase.from("labor_invoices").delete().eq("id", id);
-      if (delErr) setError(delErr.message);
-      else setMessage("Invoice deleted.");
-      await refresh();
+      if (delErr) {
+        setError(delErr.message);
+        setInvoices(prev);
+      } else setMessage("Invoice deleted.");
       setBusyId(null);
     },
-    [invoices, supabase, refresh]
+    [invoices, supabase]
   );
 
   const handleVoid = React.useCallback(
@@ -149,10 +152,12 @@ export default function LaborInvoicesListClient() {
       if (!supabase) return;
       setBusyId(id);
       setError(null);
+      setInvoices((inv) => inv.map((r) => (r.id === id ? { ...r, status: "void" as const } : r)));
       const { error: updateErr } = await supabase.from("labor_invoices").update({ status: "void" }).eq("id", id);
-      if (updateErr) setError(updateErr.message);
-      else setMessage("Invoice voided.");
-      await refresh();
+      if (updateErr) {
+        setError(updateErr.message);
+        void refresh();
+      } else setMessage("Invoice voided.");
       setVoidConfirmId(null);
       setBusyId(null);
     },
@@ -165,8 +170,8 @@ export default function LaborInvoicesListClient() {
         title="Labor Invoices"
         subtitle="Worker invoices/receipts with attachment and project split review."
         actions={
-          <Link href="/labor/invoices/new">
-            <Button className="rounded-lg">+ New Invoice</Button>
+          <Link href="/labor/invoices/new" className="w-full sm:w-auto block sm:inline-block">
+            <Button className="min-h-[44px] sm:min-h-9 w-full sm:w-auto rounded-lg">+ New Invoice</Button>
           </Link>
         }
       />
@@ -197,8 +202,8 @@ export default function LaborInvoicesListClient() {
         </Card>
       ) : null}
       <Card className="rounded-2xl border border-zinc-200/60 dark:border-border overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="table-responsive">
+          <table className="w-full min-w-[560px] text-sm md:min-w-0">
             <thead>
               <tr className="border-b border-zinc-200/40 dark:border-border/60 bg-muted/30">
                 <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Invoice #</th>

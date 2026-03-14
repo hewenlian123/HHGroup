@@ -28,7 +28,10 @@ export default async function CompanyFinancialDashboardPage() {
           title="Company Financial Dashboard"
           description="Portfolio totals: budget, spent, revenue, collected, profit, cashflow."
           actions={
-            <Link href="/financial" className="text-sm text-[#6B7280] hover:text-[#111111]">
+            <Link
+              href="/financial"
+              className="inline-flex min-h-[44px] sm:min-h-0 items-center text-sm text-[#6B7280] hover:text-[#111111]"
+            >
               Financial
             </Link>
           }
@@ -36,7 +39,7 @@ export default async function CompanyFinancialDashboardPage() {
       }
     >
       <SectionHeader label="Metrics" />
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6 mt-2">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 mt-2">
         {metrics.map((m) => (
           <div key={m.label} className="kpi-metric">
             <span className="kpi-metric-label">{m.label}</span>

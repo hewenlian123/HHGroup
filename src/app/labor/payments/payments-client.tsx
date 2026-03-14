@@ -212,9 +212,21 @@ export default function LaborPaymentsClient() {
     if (!window.confirm("Delete this payment?")) return;
     setBusy(true);
     setError(null);
+    const prevRows = rows;
+    setRows((prev) =>
+      prev.map((r) => {
+        const idx = r.payments.findIndex((p) => p.id === paymentId);
+        if (idx < 0) return r;
+        const newPayments = r.payments.filter((p) => p.id !== paymentId);
+        const newPaid = newPayments.reduce((s, p) => s + p.amount, 0);
+        return { ...r, payments: newPayments, paidTotal: newPaid, balance: Math.max(0, r.confirmedTotal - newPaid) };
+      })
+    );
     const { error: delErr } = await supabase.from("labor_payments").delete().eq("id", paymentId);
-    if (delErr) setError(delErr.message);
-    await refresh();
+    if (delErr) {
+      setError(delErr.message);
+      setRows(prevRows);
+    }
     setBusy(false);
   };
 
@@ -282,8 +294,8 @@ export default function LaborPaymentsClient() {
       ) : null}
 
       <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="table-responsive">
+          <table className="w-full min-w-[520px] text-sm md:min-w-0">
             <thead>
               <tr className="border-b border-zinc-200/40 dark:border-border/60 bg-muted/30">
                 <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Worker</th>

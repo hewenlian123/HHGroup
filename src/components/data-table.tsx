@@ -60,8 +60,8 @@ export function DataTable<T>({
   return (
     <>
       {/* Desktop/Tablet: table */}
-      <div className="relative w-full overflow-x-auto hidden md:block">
-        <Table className={cn("border-0", className)}>
+      <div className="table-responsive relative hidden w-full md:block">
+        <Table className={cn("min-w-[480px] md:min-w-0 border-0", className)}>
           <TableHeader>
             <TableRow className={cn("hover:bg-transparent", headerClassName)}>
               {columns.map((col) => (

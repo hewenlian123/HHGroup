@@ -2,7 +2,18 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 function isMissingColumn(err: { message?: string } | null): boolean {
   const m = err?.message ?? "";
-  return /column .* does not exist|does not exist.*column|schema cache/i.test(m);
+  return /column .* does not exist|does not exist.*column|schema cache|could not find the '.*' column/i.test(m);
+}
+
+/** Extract the offending column name from a PostgREST schema-cache error message. */
+function extractMissingColumnName(msg: string): string | null {
+  // "Could not find the 'address1' column of 'company_profile' in the schema cache"
+  const m1 = msg.match(/could not find the '([^']+)' column/i);
+  if (m1) return m1[1];
+  // "column \"address1\" does not exist"
+  const m2 = msg.match(/column "([^"]+)" does not exist/i);
+  if (m2) return m2[1];
+  return null;
 }
 
 export type CompanyProfile = {
@@ -76,22 +87,21 @@ export async function ensureCompanyProfile(client: SupabaseClient): Promise<Comp
   const existing = await getCompanyProfile(client);
   if (existing) return existing;
 
-  const { data, error } = await client
-    .from("company_profile")
-    .insert(DEFAULT_PROFILE)
-    .select("*")
-    .single();
-  if (!error) return data as CompanyProfile;
-
-  if (isMissingColumn(error)) {
-    // Retry without newer columns (e.g. default_tax_pct not yet migrated).
-    const { default_tax_pct: _omit, ...baseProfile } = DEFAULT_PROFILE;
-    void _omit;
-    const retry = await client.from("company_profile").insert(baseProfile).select("*").single();
-    if (retry.error) throw new Error(retry.error.message);
-    return retry.data as CompanyProfile;
+  // Retry up to 15 times, stripping whichever column the DB doesn't recognise each time.
+  const payload: Record<string, unknown> = { ...DEFAULT_PROFILE };
+  for (let i = 0; i < 15; i++) {
+    const { data, error } = await client.from("company_profile").insert(payload).select("*").single();
+    if (!error) return data as CompanyProfile;
+    if (isMissingColumn(error)) {
+      const col = extractMissingColumnName(error.message);
+      if (col && col in payload) {
+        delete payload[col];
+        continue;
+      }
+    }
+    throw new Error(error.message);
   }
-  throw new Error(error.message);
+  throw new Error("Failed to create company profile: too many unrecognised columns.");
 }
 
 export async function saveCompanyProfile(
@@ -99,28 +109,26 @@ export async function saveCompanyProfile(
   values: Partial<CompanyProfileInput>
 ): Promise<CompanyProfile> {
   const current = await ensureCompanyProfile(client);
-  const { data, error } = await client
-    .from("company_profile")
-    .update(values)
-    .eq("id", current.id)
-    .select("*")
-    .single();
-  if (!error) return data as CompanyProfile;
-
-  if (isMissingColumn(error)) {
-    // Retry without columns that may not exist yet (e.g. default_tax_pct).
-    const { default_tax_pct: _omit, ...safeValues } = values as Partial<CompanyProfileInput> & { default_tax_pct?: unknown };
-    void _omit;
-    const retry = await client
+  // Retry up to 15 times, stripping whichever column the DB doesn't recognise.
+  const payload: Record<string, unknown> = { ...values };
+  for (let i = 0; i < 15; i++) {
+    const { data, error } = await client
       .from("company_profile")
-      .update(safeValues)
+      .update(payload)
       .eq("id", current.id)
       .select("*")
       .single();
-    if (retry.error) throw new Error(retry.error.message);
-    return retry.data as CompanyProfile;
+    if (!error) return data as CompanyProfile;
+    if (isMissingColumn(error)) {
+      const col = extractMissingColumnName(error.message);
+      if (col && col in payload) {
+        delete payload[col];
+        continue;
+      }
+    }
+    throw new Error(error.message);
   }
-  throw new Error(error.message);
+  throw new Error("Failed to save company profile: too many unrecognised columns.");
 }
 
 export async function uploadCompanyLogo(

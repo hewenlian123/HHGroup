@@ -162,18 +162,20 @@ export default function CategoriesPage() {
       if (!window.confirm(`Delete category "${row.name}"?`)) return;
       setDeletingId(row.id);
       setMessage(null);
+      const prevRows = rows;
+      setRows((r) => r.filter((c) => c.id !== row.id));
       try {
         const { error } = await supabase.from("categories").delete().eq("id", row.id);
         if (error) throw error;
-        await refresh();
       } catch (error: unknown) {
         const msg = error instanceof Error ? error.message : String(error);
         setMessage(msg || "Failed to delete category.");
+        setRows(prevRows);
       } finally {
         setDeletingId(null);
       }
     },
-    [configured, refresh, supabase]
+    [configured, rows, supabase]
   );
 
   return (

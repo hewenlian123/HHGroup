@@ -12,6 +12,7 @@ import { CreatableSelect } from "@/components/ui/creatable-select";
 import { SplitLinesEditor, type SplitLineRow } from "@/components/split-lines-editor";
 import { AttachmentPreviewDialog } from "@/components/attachment-preview-dialog";
 import { createBrowserClient } from "@/lib/supabase";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 
 type ExpenseRow = {
   id: string;
@@ -177,21 +178,66 @@ export function ExpenseDetailClient({ id }: { id: string }) {
     [lines]
   );
 
-  const saveHeader = async (patch: Partial<ExpenseRow>) => {
-    if (!supabase || !expense) return;
-    setSaving(true);
-    setError(null);
-    setMessage(null);
-    const { error: upError } = await supabase.from("expenses").update(patch).eq("id", expense.id);
-    if (upError) {
-      setError(upError.message || "Failed to save expense.");
+  const saveHeader = React.useCallback(
+    async (patch: Partial<ExpenseRow>): Promise<boolean> => {
+      if (!supabase || !expense) return false;
+      setSaving(true);
+      setError(null);
+      setMessage(null);
+      const { error: upError } = await supabase.from("expenses").update(patch).eq("id", expense.id);
+      if (upError) {
+        setError(upError.message || "Failed to save expense.");
+        setSaving(false);
+        return false;
+      }
+      setExpense((prev) => (prev ? { ...prev, ...patch } : prev));
       setSaving(false);
+      setMessage("Saved.");
+      return true;
+    },
+    [expense, supabase]
+  );
+
+  const headerForSave = expense
+    ? {
+        expense_date: expense.expense_date ?? undefined,
+        vendor_name: toNullable(expense.vendor_name ?? "") ?? undefined,
+        payment_method: toNullable(expense.payment_method ?? "") ?? "ACH",
+        reference_no: toNullable(expense.reference_no ?? "") ?? undefined,
+        notes: toNullable(expense.notes ?? "") ?? undefined,
+      }
+    : null;
+  const debouncedHeader = useDebouncedValue(headerForSave, 800);
+  const lastSavedHeaderRef = React.useRef<typeof headerForSave>(null);
+  const initialLoadDoneRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (!expense || !supabase || !debouncedHeader) return;
+    if (!initialLoadDoneRef.current) {
+      initialLoadDoneRef.current = true;
+      lastSavedHeaderRef.current = debouncedHeader;
       return;
     }
-    await refresh();
-    setSaving(false);
-    setMessage("Saved.");
-  };
+    const prev = lastSavedHeaderRef.current;
+    if (
+      prev &&
+      prev.expense_date === debouncedHeader.expense_date &&
+      prev.vendor_name === debouncedHeader.vendor_name &&
+      prev.payment_method === debouncedHeader.payment_method &&
+      prev.reference_no === debouncedHeader.reference_no &&
+      prev.notes === debouncedHeader.notes
+    )
+      return;
+    void saveHeader({
+      expense_date: debouncedHeader.expense_date,
+      vendor_name: debouncedHeader.vendor_name ?? undefined,
+      payment_method: debouncedHeader.payment_method,
+      reference_no: debouncedHeader.reference_no ?? undefined,
+      notes: debouncedHeader.notes ?? undefined,
+    }).then((ok) => {
+      if (ok) lastSavedHeaderRef.current = debouncedHeader;
+    });
+  }, [debouncedHeader, expense, saveHeader, supabase]);
 
   const upsertLine = async (lineId: string, patch: Partial<SplitLineRow>) => {
     if (!supabase) return;
@@ -205,24 +251,37 @@ export function ExpenseDetailClient({ id }: { id: string }) {
       amount: patch.amount !== undefined ? patch.amount : existing.amount,
     };
     const { error: upError } = await supabase.from("expense_lines").update(payload).eq("id", lineId);
-    if (upError) setError(upError.message || "Failed to update line.");
-    else await refresh();
+    if (upError) {
+      setError(upError.message || "Failed to update line.");
+      return;
+    }
+    setLines((prev) =>
+      prev.map((l) => (l.id === lineId ? { ...l, ...payload } : l))
+    );
   };
 
   const addLine = async () => {
     if (!supabase) return;
-    const { error: insError } = await supabase.from("expense_lines").insert([
-      { expense_id: id, project_id: null, category: "Other", amount: 0 },
-    ]);
-    if (insError) setError(insError.message || "Failed to add line.");
-    else await refresh();
+    const { data: inserted, error: insError } = await supabase
+      .from("expense_lines")
+      .insert([{ expense_id: id, project_id: null, category: "Other", amount: 0 }])
+      .select("id, expense_id, project_id, category, cost_code, memo, amount")
+      .single();
+    if (insError) {
+      setError(insError.message || "Failed to add line.");
+      return;
+    }
+    setLines((prev) => [...prev, inserted as ExpenseLineRow]);
   };
 
   const deleteLine = async (lineId: string) => {
     if (!supabase) return;
     const { error: delError } = await supabase.from("expense_lines").delete().eq("id", lineId);
-    if (delError) setError(delError.message || "Failed to delete line.");
-    else await refresh();
+    if (delError) {
+      setError(delError.message || "Failed to delete line.");
+      return;
+    }
+    setLines((prev) => prev.filter((l) => l.id !== lineId));
   };
 
   const addVendor = async (name: string): Promise<string> => {
@@ -231,7 +290,11 @@ export function ExpenseDetailClient({ id }: { id: string }) {
     if (!v) return "";
     const { error: insError } = await supabase.from("vendors").insert([{ name: v, status: "active" }]);
     if (insError) setError(insError.message || "Failed to add vendor.");
-    await refresh();
+    else
+      setVendors((prev) => ({
+        ...prev,
+        options: Array.from(new Set([...prev.options, v])).sort((a, b) => a.localeCompare(b)),
+      }));
     return v;
   };
 
@@ -241,7 +304,11 @@ export function ExpenseDetailClient({ id }: { id: string }) {
     if (!v) return "";
     const { error: insError } = await supabase.from("categories").insert([{ name: v, type: "expense", status: "active" }]);
     if (insError) setError(insError.message || "Failed to add category.");
-    await refresh();
+    else
+      setCategories((prev) => ({
+        ...prev,
+        options: Array.from(new Set([...prev.options, v])).sort((a, b) => a.localeCompare(b)),
+      }));
     return v;
   };
 
@@ -251,7 +318,11 @@ export function ExpenseDetailClient({ id }: { id: string }) {
     if (!v) return "";
     const { error: insError } = await supabase.from("payment_methods").insert([{ name: v, status: "active" }]);
     if (insError) setError(insError.message || "Failed to add payment method.");
-    await refresh();
+    else
+      setPaymentMethods((prev) => ({
+        ...prev,
+        options: Array.from(new Set([...prev.options, v])).sort((a, b) => a.localeCompare(b)),
+      }));
     return v;
   };
 
@@ -439,21 +510,8 @@ export function ExpenseDetailClient({ id }: { id: string }) {
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Notes</p>
               <Input value={expense.notes ?? ""} onChange={(e) => setExpense((prev) => (prev ? { ...prev, notes: e.target.value } : prev))} placeholder="Optional" />
             </div>
-            <div className="flex justify-end">
-              <Button
-                onClick={() =>
-                  void saveHeader({
-                    expense_date: expense.expense_date,
-                    vendor_name: toNullable(expense.vendor_name ?? "") ?? "",
-                    payment_method: toNullable(expense.payment_method ?? "") ?? "ACH",
-                    reference_no: toNullable(expense.reference_no ?? ""),
-                    notes: toNullable(expense.notes ?? ""),
-                  })
-                }
-                disabled={saving}
-              >
-                {saving ? "Saving..." : "Save header"}
-              </Button>
+            <div className="flex justify-end text-xs text-muted-foreground">
+              {saving ? "Saving…" : message === "Saved." ? "Saved" : null}
             </div>
           </div>
         )}

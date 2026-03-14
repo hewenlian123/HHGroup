@@ -109,12 +109,18 @@ export async function getSumPaymentsReceivedByInvoiceId(invoiceId: string): Prom
  * Create a payment received. Inserts into payments_received and into invoice_payments
  * so the existing invoice trigger updates paid_total, balance_due, and status.
  */
+function isMissingColumn(err: { message?: string } | null): boolean {
+  const m = err?.message ?? "";
+  return /column .* does not exist|could not find the .* column|schema cache/i.test(m);
+}
+
 export async function createPaymentReceived(payload: CreatePaymentReceivedPayload): Promise<PaymentReceivedRow> {
   const c = client();
   const paymentDate = payload.payment_date.slice(0, 10);
-  const { data: row, error } = await c
-    .from("payments_received")
-    .insert({
+
+  // Full insert with all optional columns. If schema cache lags, retry stripping unknown columns.
+  const insertAttempts: Record<string, unknown>[] = [
+    {
       invoice_id: payload.invoice_id,
       project_id: payload.project_id ?? null,
       customer_name: payload.customer_name ?? "",
@@ -124,11 +130,74 @@ export async function createPaymentReceived(payload: CreatePaymentReceivedPayloa
       deposit_account: payload.deposit_account ?? null,
       notes: payload.notes ?? null,
       attachment_url: payload.attachment_url ?? null,
-    })
-    .select("id, invoice_id, project_id, customer_name, payment_date, amount, payment_method, deposit_account, notes, attachment_url, created_at")
-    .single();
-  if (error) throw new Error(error.message ?? "Failed to create payment.");
-  const payment = row as PaymentReceivedRow;
+    },
+    // Without attachment_url
+    {
+      invoice_id: payload.invoice_id,
+      project_id: payload.project_id ?? null,
+      customer_name: payload.customer_name ?? "",
+      payment_date: paymentDate,
+      amount: payload.amount,
+      payment_method: payload.payment_method || null,
+      deposit_account: payload.deposit_account ?? null,
+      notes: payload.notes ?? null,
+    },
+    // Without deposit_account + attachment_url
+    {
+      invoice_id: payload.invoice_id,
+      project_id: payload.project_id ?? null,
+      customer_name: payload.customer_name ?? "",
+      payment_date: paymentDate,
+      amount: payload.amount,
+      payment_method: payload.payment_method || null,
+      notes: payload.notes ?? null,
+    },
+    // Without customer_name (old schema)
+    {
+      invoice_id: payload.invoice_id,
+      project_id: payload.project_id ?? null,
+      payment_date: paymentDate,
+      amount: payload.amount,
+      payment_method: payload.payment_method || null,
+    },
+    // Minimal
+    {
+      invoice_id: payload.invoice_id,
+      payment_date: paymentDate,
+      amount: payload.amount,
+    },
+  ];
+
+  // Select columns: try full then fallback to minimal
+  const selectAttempts = [
+    "id, invoice_id, project_id, customer_name, payment_date, amount, payment_method, deposit_account, notes, attachment_url, created_at",
+    "id, invoice_id, project_id, payment_date, amount, payment_method, created_at",
+    "id, invoice_id, payment_date, amount, created_at",
+  ];
+
+  let row: PaymentReceivedRow | null = null;
+  let lastError: { message?: string } | null = null;
+
+  for (const insertRow of insertAttempts) {
+    for (const selectCols of selectAttempts) {
+      const { data, error } = await c
+        .from("payments_received")
+        .insert(insertRow)
+        .select(selectCols)
+        .single();
+      if (!error) {
+        row = data as PaymentReceivedRow;
+        break;
+      }
+      lastError = error as { message?: string };
+      if (!isMissingColumn(lastError)) break;
+    }
+    if (row) break;
+    if (lastError && !isMissingColumn(lastError)) break;
+  }
+
+  if (!row) throw new Error(lastError?.message ?? "Failed to create payment.");
+  const payment = row;
 
   // Auto-create deposit record (payment_id, invoice_id, project_id, customer_name, deposit_account, amount, payment_method, deposit_date)
   await createDepositFromPayment({

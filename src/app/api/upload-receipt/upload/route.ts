@@ -1,20 +1,18 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { getServerSupabase } from "@/lib/supabase-server";
 
 const BUCKET = "worker-receipts";
 
 /**
- * Upload receipt image to Supabase Storage. Bucket must exist and allow anon upload, or use service role.
+ * Upload receipt image to Supabase Storage. Uses server Supabase client so upload runs with server env.
  * Returns public URL for receipt_url.
  */
 export async function POST(req: Request) {
+  const supabase = getServerSupabase();
   if (!supabase) {
     return NextResponse.json({ ok: false, message: "Supabase not configured." }, { status: 500 });
   }
   try {
-    // Debug: API upload start
-    // eslint-disable-next-line no-console
-    console.log("[api/upload-receipt/upload] start");
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     if (!file?.size) {
@@ -28,22 +26,15 @@ export async function POST(req: Request) {
       upsert: false,
     });
     if (error) {
-      // eslint-disable-next-line no-console
-      console.error("[api/upload-receipt/upload] storage upload error", error);
       return NextResponse.json(
         { ok: false, message: error.message || "Upload failed. Ensure bucket 'worker-receipts' exists and policies allow upload." },
         { status: 500 }
       );
     }
     const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
-    // Debug: API upload success
-    // eslint-disable-next-line no-console
-    console.log("[api/upload-receipt/upload] success", { bucket: BUCKET, path, publicUrl: pub.publicUrl });
     return NextResponse.json({ ok: true as const, path, receipt_url: pub.publicUrl });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Upload failed.";
-    // eslint-disable-next-line no-console
-    console.error("[api/upload-receipt/upload] unexpected error", e);
     return NextResponse.json({ ok: false, message }, { status: 500 });
   }
 }
