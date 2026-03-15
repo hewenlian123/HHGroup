@@ -219,6 +219,27 @@ export default function TasksPage() {
     }
   };
 
+  const handleDeleteTask = async () => {
+    if (!selectedTask) return;
+    if (typeof window !== "undefined" && !window.confirm("Delete this task? This cannot be undone.")) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/tasks/${selectedTask.id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError((data as { message?: string }).message ?? "Failed to delete task.");
+        return;
+      }
+      setDrawerOpen(false);
+      setSelectedTask(null);
+      await load();
+      router.refresh();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const filterTabs: { value: Filter; label: string }[] = [
     { value: "all", label: "All" },
     { value: "today", label: "Today" },
@@ -442,9 +463,20 @@ export default function TasksPage() {
               </select>
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
-            <div className="flex gap-2 pt-2">
-              <Button size="sm" variant="outline" className="rounded-sm" onClick={() => setDrawerOpen(false)}>Cancel</Button>
-              <Button size="sm" className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90" onClick={handleSaveDrawer} disabled={submitting}>Save</Button>
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/60">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="rounded-sm text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={handleDeleteTask}
+                disabled={submitting}
+              >
+                Delete
+              </Button>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" className="rounded-sm" onClick={() => setDrawerOpen(false)} disabled={submitting}>Cancel</Button>
+                <Button size="sm" className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90" onClick={handleSaveDrawer} disabled={submitting}>Save</Button>
+              </div>
             </div>
           </div>
         )}

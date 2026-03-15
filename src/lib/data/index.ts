@@ -682,6 +682,12 @@ export async function updateProjectTask(taskId: string, patch: Parameters<typeof
 export async function deleteProjectTask(taskId: string) {
   return projectTasksDb.deleteProjectTask(taskId);
 }
+export async function deleteProjectTaskWithClient(
+  c: import("@supabase/supabase-js").SupabaseClient,
+  taskId: string
+) {
+  return projectTasksDb.deleteProjectTaskWithClient(c, taskId);
+}
 export async function getAllScheduleWithProject() {
   return projectScheduleDb.getAllScheduleWithProject();
 }

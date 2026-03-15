@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,7 @@ function statusDot(status: string) {
 export type ReceiptRow = WorkerReceipt & { projectName: string };
 
 export function ReceiptsClient({ initialRows }: { initialRows: ReceiptRow[] }) {
+  const router = useRouter();
   const [rows, setRows] = React.useState(initialRows);
   const [busyId, setBusyId] = React.useState<string | null>(null);
   const [rejectOpen, setRejectOpen] = React.useState(false);
@@ -129,10 +131,13 @@ export function ReceiptsClient({ initialRows }: { initialRows: ReceiptRow[] }) {
     setRows((r) => r.filter((x) => x.id !== id));
     try {
       const res = await fetch(`/api/worker-receipts/${id}`, { method: "DELETE" });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.message ?? "Delete failed");
+      router.refresh();
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Delete failed");
+      const errMsg = e instanceof Error ? e.message : "Delete failed";
+      console.error("Receipt delete failed:", e);
+      setMessage(errMsg);
       setRows(prevRows);
     } finally {
       setBusyId(null);
@@ -149,7 +154,17 @@ export function ReceiptsClient({ initialRows }: { initialRows: ReceiptRow[] }) {
       />
 
       {message && (
-        <p className="text-sm text-destructive border-b border-border/60 pb-3 mb-3">{message}</p>
+        <p className="text-sm text-destructive border-b border-border/60 pb-3 mb-3 flex items-center justify-between gap-2">
+          <span>{message}</span>
+          <button
+            type="button"
+            onClick={() => setMessage(null)}
+            className="text-muted-foreground hover:text-foreground shrink-0"
+            aria-label="Dismiss"
+          >
+            Dismiss
+          </button>
+        </p>
       )}
       {successMessage && (
         <p className="text-sm text-muted-foreground border-b border-border/60 pb-3 mb-3">
