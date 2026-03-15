@@ -17,8 +17,18 @@ export const TEST_DATA_PATTERNS = [
 
 export type CleanupResult = { deleted: Record<string, number>; errors: string[] };
 
-function orPatterns(column: string, patterns: string[]): string {
-  return patterns.map((p) => `${column}.ilike.%${p}%`).join(",");
+/** Return array of unique strings without using Set iteration (avoids downlevelIteration). */
+function uniqueStrings(arr: string[]): string[] {
+  const seen: Record<string, boolean> = {};
+  const out: string[] = [];
+  for (let i = 0; i < arr.length; i++) {
+    const s = arr[i];
+    if (!seen[s]) {
+      seen[s] = true;
+      out.push(s);
+    }
+  }
+  return out;
 }
 
 export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult> {
@@ -56,8 +66,8 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
     for (const pattern of TEST_DATA_PATTERNS) {
       const { data: proj } = await c.from("projects").select("id").ilike("name", `%${pattern}%`);
       const { data: work } = await c.from("workers").select("id").ilike("name", `%${pattern}%`);
-      testProjectIds = [...new Set([...testProjectIds, ...(proj ?? []).map((r: { id: string }) => r.id)])];
-      testWorkerIds = [...new Set([...testWorkerIds, ...(work ?? []).map((r: { id: string }) => r.id)])];
+      testProjectIds = uniqueStrings([...testProjectIds, ...(proj ?? []).map((r: { id: string }) => r.id)]);
+      testWorkerIds = uniqueStrings([...testWorkerIds, ...(work ?? []).map((r: { id: string }) => r.id)]);
     }
   } catch (e) {
     errors.push(`Resolve test ids: ${e instanceof Error ? e.message : String(e)}`);
@@ -70,7 +80,7 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
       const { data } = await c.from("project_tasks").select("id").ilike("title", `%${pattern}%`);
       ids.push(...(data ?? []).map((r: { id: string }) => r.id));
     }
-    return [...new Set(ids)];
+    return uniqueStrings(ids);
   });
 
   // 2. punch_list — by issue pattern
@@ -80,7 +90,7 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
       const { data } = await c.from("punch_list").select("id").ilike("issue", `%${pattern}%`);
       ids.push(...(data ?? []).map((r: { id: string }) => r.id));
     }
-    return [...new Set(ids)];
+    return uniqueStrings(ids);
   });
 
   // 3. project_schedule — by title pattern
@@ -90,7 +100,7 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
       const { data } = await c.from("project_schedule").select("id").ilike("title", `%${pattern}%`);
       ids.push(...(data ?? []).map((r: { id: string }) => r.id));
     }
-    return [...new Set(ids)];
+    return uniqueStrings(ids);
   });
 
   // 4. site_photos — by description pattern
@@ -100,7 +110,7 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
       const { data } = await c.from("site_photos").select("id").ilike("description", `%${pattern}%`);
       ids.push(...(data ?? []).map((r: { id: string }) => r.id));
     }
-    return [...new Set(ids)];
+    return uniqueStrings(ids);
   });
 
   // 5. inspection_log — by notes pattern
@@ -110,7 +120,7 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
       const { data } = await c.from("inspection_log").select("id").ilike("notes", `%${pattern}%`);
       ids.push(...(data ?? []).map((r: { id: string }) => r.id));
     }
-    return [...new Set(ids)];
+    return uniqueStrings(ids);
   });
 
   // 6. project_change_orders — by title pattern (or similar column if different)
@@ -120,7 +130,7 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
       const { data } = await c.from("project_change_orders").select("id").ilike("title", `%${pattern}%`);
       ids.push(...(data ?? []).map((r: { id: string }) => r.id));
     }
-    return [...new Set(ids)];
+    return uniqueStrings(ids);
   });
 
   // 7. worker_receipts — by test worker or test project
@@ -135,7 +145,7 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
         const { data } = await c.from("worker_receipts").select("id").in("project_id", testProjectIds);
         ids.push(...(data ?? []).map((r: { id: string }) => r.id));
       }
-      return [...new Set(ids)];
+      return uniqueStrings(ids);
     });
   }
 
@@ -154,7 +164,7 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
       const { data } = await c.from("worker_reimbursements").select("id").in("project_id", testProjectIds);
       ids.push(...(data ?? []).map((r: { id: string }) => r.id));
     }
-    return [...new Set(ids)];
+    return uniqueStrings(ids);
   });
 
   // 9. worker_payments — by test worker
@@ -174,12 +184,12 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
         ids.push(...(data ?? []).map((r: { id: string }) => r.id));
       }
       if (testProjectIds.length > 0) {
-        const { dataAm } = await c.from("labor_entries").select("id").in("project_am_id", testProjectIds);
-        const { dataPm } = await c.from("labor_entries").select("id").in("project_pm_id", testProjectIds);
+        const { data: dataAm } = await c.from("labor_entries").select("id").in("project_am_id", testProjectIds);
+        const { data: dataPm } = await c.from("labor_entries").select("id").in("project_pm_id", testProjectIds);
         ids.push(...(dataAm ?? []).map((r: { id: string }) => r.id));
         ids.push(...(dataPm ?? []).map((r: { id: string }) => r.id));
       }
-      return [...new Set(ids)];
+      return uniqueStrings(ids);
     });
   }
 
@@ -189,7 +199,7 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
     const { data } = await c.from("expenses").select("id").ilike("vendor_name", `%${pattern}%`);
     testExpenseIds.push(...(data ?? []).map((r: { id: string }) => r.id));
   }
-  const uniqueExpenseIds = [...new Set(testExpenseIds)];
+  const uniqueExpenseIds = uniqueStrings(testExpenseIds);
   if (uniqueExpenseIds.length > 0) {
     await tryDelete("expense_lines", async () => {
       const { data } = await c.from("expense_lines").select("id").in("expense_id", uniqueExpenseIds);
@@ -204,7 +214,7 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
       const { data } = await c.from("expenses").select("id").ilike("vendor_name", `%${pattern}%`);
       ids.push(...(data ?? []).map((r: { id: string }) => r.id));
     }
-    return [...new Set(ids)];
+    return uniqueStrings(ids);
   });
 
   // 13. payments_received — by customer_name pattern (before invoices so FK is clean)
@@ -214,7 +224,7 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
       const { data } = await c.from("payments_received").select("id").ilike("customer_name", `%${pattern}%`);
       ids.push(...(data ?? []).map((r: { id: string }) => r.id));
     }
-    return [...new Set(ids)];
+    return uniqueStrings(ids);
   });
 
   // 14. invoices — by customer_name pattern
@@ -224,7 +234,7 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
       const { data } = await c.from("invoices").select("id").ilike("customer_name", `%${pattern}%`);
       ids.push(...(data ?? []).map((r: { id: string }) => r.id));
     }
-    return [...new Set(ids)];
+    return uniqueStrings(ids);
   });
 
   // 15. estimates — by client pattern
@@ -234,7 +244,7 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
       const { data } = await c.from("estimates").select("id").ilike("client", `%${pattern}%`);
       ids.push(...(data ?? []).map((r: { id: string }) => r.id));
     }
-    return [...new Set(ids)];
+    return uniqueStrings(ids);
   });
 
   // 16. material_catalog — by material_name pattern
@@ -244,7 +254,7 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
       const { data } = await c.from("material_catalog").select("id").ilike("material_name", `%${pattern}%`);
       ids.push(...(data ?? []).map((r: { id: string }) => r.id));
     }
-    return [...new Set(ids)];
+    return uniqueStrings(ids);
   });
 
   // 17. activity_logs — by description pattern or test project (before deleting projects)
@@ -258,7 +268,7 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
       const { data } = await c.from("activity_logs").select("id").in("project_id", testProjectIds);
       ids.push(...(data ?? []).map((r: { id: string }) => r.id));
     }
-    return [...new Set(ids)];
+    return uniqueStrings(ids);
   });
 
   // 18. projects — by name pattern
@@ -268,7 +278,7 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
       const { data } = await c.from("projects").select("id").ilike("name", `%${pattern}%`);
       ids.push(...(data ?? []).map((r: { id: string }) => r.id));
     }
-    return [...new Set(ids)];
+    return uniqueStrings(ids);
   });
 
   // 19. workers — by name pattern
@@ -278,7 +288,7 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
       const { data } = await c.from("workers").select("id").ilike("name", `%${pattern}%`);
       ids.push(...(data ?? []).map((r: { id: string }) => r.id));
     }
-    return [...new Set(ids)];
+    return uniqueStrings(ids);
   });
 
   return { deleted, errors };
