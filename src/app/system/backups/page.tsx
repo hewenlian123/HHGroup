@@ -147,7 +147,7 @@ export default function SystemBackupsPage() {
             </p>
           )}
           {/* Offer download when file write failed but data was fetched */}
-          {!createResult.ok && createResult.data && createResult.filename && (
+          {!createResult.ok && createResult.data != null && createResult.filename ? (
             <button
               type="button"
               className="mt-1 w-fit text-xs underline underline-offset-2"
@@ -157,7 +157,7 @@ export default function SystemBackupsPage() {
             >
               Download backup data manually
             </button>
-          )}
+          ) : null}
         </div>
       )}
 

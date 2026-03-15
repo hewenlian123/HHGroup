@@ -105,7 +105,7 @@ async function runChecklist(origin: string, doCleanup: boolean) {
       body: JSON.stringify({}),
     });
     const crudData = (await crudRes.json().catch(() => ({}))) as { ok?: boolean; tests?: unknown[] };
-    const allPassed = crudRes.ok && crudData.ok === true && (crudData.tests ?? []).every((t: { ok?: boolean }) => t.ok);
+    const allPassed = crudRes.ok && crudData.ok === true && (crudData.tests ?? []).every((t) => (t as { ok?: boolean }).ok === true);
     report.crudFunctionality = allPassed ? "ok" : "error";
     report.crudDetails = crudData.tests;
     if (!allPassed) report.productionReadiness = "error";
