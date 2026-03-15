@@ -185,8 +185,8 @@ export function UploadReceiptClient() {
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6 pb-20">
-      <h1 className="text-xl font-semibold text-foreground">上传报销单</h1>
-      <p className="text-base text-muted-foreground mt-1">Upload Expense Receipt</p>
+      <h1 className="text-xl font-semibold text-foreground">Worker Receipt Upload</h1>
+      <p className="text-base text-muted-foreground mt-1">上传报销单 · Upload Expense Receipt</p>
       <p className="text-sm text-muted-foreground mt-4">请拍照上传发票</p>
       <p className="text-xs text-muted-foreground">Upload your receipt photo</p>
 
