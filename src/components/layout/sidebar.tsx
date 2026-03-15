@@ -37,6 +37,8 @@ import {
   FlaskConical,
   BarChart2,
   ScrollText,
+  MonitorCheck,
+  Archive,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -114,8 +116,10 @@ const sections: { key: (typeof SECTION_KEYS)[number]; label: string; items: NavI
     items: [
       { href: "/system-health", label: "System Health", icon: Activity },
       { href: "/system-tests", label: "System Tests", icon: FlaskConical },
+      { href: "/system-tests/ui", label: "UI Tests", icon: MonitorCheck },
       { href: "/system-metrics", label: "System Metrics", icon: BarChart2 },
       { href: "/system-logs", label: "System Logs", icon: ScrollText },
+      { href: "/system/backups", label: "Backups", icon: Archive },
     ],
   },
 ];

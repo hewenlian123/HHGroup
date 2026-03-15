@@ -183,6 +183,23 @@ export async function deleteWorkerReceipt(id: string): Promise<void> {
 }
 
 /**
+ * Delete a worker receipt using the given Supabase client (e.g. server client).
+ * Verifies that exactly one row was deleted.
+ */
+export async function deleteWorkerReceiptWithClient(
+  c: SupabaseClient,
+  id: string
+): Promise<void> {
+  const { data, error } = await c
+    .from("worker_receipts")
+    .delete()
+    .eq("id", id)
+    .select("id");
+  if (error) throw new Error(error.message ?? "Failed to delete receipt.");
+  if (!data?.length) throw new Error("Receipt not found or already deleted.");
+}
+
+/**
  * Resolve worker_id from receipt: use receipt.workerId if set, else find worker by worker_name.
  */
 async function resolveWorkerId(receipt: WorkerReceipt): Promise<string> {

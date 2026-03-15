@@ -10,8 +10,10 @@ import {
   createProjectTask,
   updateProjectTask,
   deleteProjectTask,
+  deleteProjectTaskWithClient,
   insertActivityLog,
 } from "@/lib/data";
+import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server";
 import type { ProjectUsageCounts } from "@/lib/data";
 import type { ProjectTaskStatus } from "@/lib/project-tasks-db";
 
@@ -150,7 +152,13 @@ export async function updateProjectTaskAction(
 export async function deleteProjectTaskAction(projectId: string, taskId: string): Promise<{ error?: string }> {
   if (!projectId?.trim() || !taskId?.trim()) return { error: "Project and task ID are required." };
   try {
-    await deleteProjectTask(taskId);
+    const admin = getServerSupabaseAdmin();
+    const server = admin ?? getServerSupabase();
+    if (server) {
+      await deleteProjectTaskWithClient(server, taskId);
+    } else {
+      await deleteProjectTask(taskId);
+    }
     revalidatePath(`/projects/${projectId}`);
     revalidatePath("/tasks");
     return {};

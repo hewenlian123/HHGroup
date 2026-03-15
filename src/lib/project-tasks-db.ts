@@ -1,8 +1,10 @@
 /**
  * Project tasks — Supabase only. Table: project_tasks.
  * Filter by project_id; indexes on project_id, created_at, status.
+ * Test data: tasks created by system tests use title prefix "Workflow Test" and are excluded from UI list / protected from UI delete.
  */
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
 export type ProjectTaskStatus = "todo" | "in_progress" | "done";
@@ -38,6 +40,14 @@ function client() {
 }
 
 const COLS = "id, project_id, title, description, status, assigned_worker_id, due_date, priority, created_at";
+
+/** Title prefix used by full-system-test for test tasks. Used to hide and protect test data from UI. */
+export const TEST_TASK_TITLE_PREFIX = "Workflow Test";
+
+/** Returns true if the task is test data (created by system test). */
+export function isTestTask(task: { title: string }): boolean {
+  return (task.title ?? "").trim().startsWith(TEST_TASK_TITLE_PREFIX);
+}
 
 function toTask(r: Record<string, unknown>): ProjectTask {
   return {
@@ -151,4 +161,15 @@ export async function deleteProjectTask(taskId: string): Promise<void> {
   const c = client();
   const { error } = await c.from("project_tasks").delete().eq("id", taskId);
   if (error) throw new Error(error.message ?? "Failed to delete task.");
+}
+
+/** Delete a task using the given Supabase client (e.g. server client). Verifies one row was deleted. */
+export async function deleteProjectTaskWithClient(c: SupabaseClient, taskId: string): Promise<void> {
+  const { data, error } = await c
+    .from("project_tasks")
+    .delete()
+    .eq("id", taskId)
+    .select("id");
+  if (error) throw new Error(error.message ?? "Failed to delete task.");
+  if (!data?.length) throw new Error("Task not found or already deleted.");
 }
