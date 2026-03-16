@@ -2,7 +2,7 @@
  * Project closeout: final punch list, warranty, completion certificate.
  */
 
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 
 export type PunchListItem = { item: string; status: "pending" | "done" };
 
@@ -42,8 +42,9 @@ export type CloseoutCompletion = {
 };
 
 function client() {
-  if (!supabase) throw new Error("Supabase is not configured.");
-  return supabase;
+  const c = getSupabaseClient();
+  if (!c) throw new Error("Supabase is not configured.");
+  return c;
 }
 
 export async function getCloseoutPunch(projectId: string): Promise<CloseoutPunch | null> {

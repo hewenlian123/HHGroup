@@ -60,6 +60,48 @@ async function checkStorage(c: SupabaseClient): Promise<GuardianCheck> {
   }
 }
 
+async function checkDataIntegrity(origin: string): Promise<GuardianCheck> {
+  try {
+    const res = await fetch(`${origin}/api/system/integrity`, { cache: "no-store" });
+    const data = (await res.json().catch(() => ({}))) as {
+      ok?: boolean;
+      orphanedTasks?: { count?: number };
+      ghostTasks?: { count?: number };
+      duplicateTasks?: { count?: number };
+      staleTestData?: { tasks?: { count?: number }; projects?: { count?: number } };
+      errors?: string[];
+    };
+    const orphanCount = data.orphanedTasks?.count ?? 0;
+    const ghostCount = data.ghostTasks?.count ?? 0;
+    const dupCount = data.duplicateTasks?.count ?? 0;
+    const staleTasks = data.staleTestData?.tasks?.count ?? 0;
+    const staleProjects = data.staleTestData?.projects?.count ?? 0;
+    const hasIssues = orphanCount > 0 || ghostCount > 0 || dupCount > 0 || staleTasks > 0 || staleProjects > 0;
+    if (res.status >= 500 || (data.ok === false && hasIssues)) {
+      const msg =
+        (data.errors?.length ?? 0) > 0
+          ? data.errors.join("; ")
+          : hasIssues
+            ? [orphanCount && `${orphanCount} orphan`, ghostCount && `${ghostCount} ghost`, dupCount && `${dupCount} duplicate`, (staleTasks + staleProjects) > 0 && "stale test data"]
+                .filter(Boolean)
+                .join("; ")
+            : "Integrity check failed";
+      return { name: "Data integrity", ok: false, error: msg };
+    }
+    if (hasIssues) {
+      const parts: string[] = [];
+      if (orphanCount > 0) parts.push(`${orphanCount} orphan`);
+      if (ghostCount > 0) parts.push(`${ghostCount} ghost`);
+      if (dupCount > 0) parts.push(`${dupCount} duplicate`);
+      if (staleTasks > 0 || staleProjects > 0) parts.push("stale test data");
+      return { name: "Data integrity", ok: false, error: parts.join("; ") };
+    }
+    return { name: "Data integrity", ok: true };
+  } catch (e) {
+    return { name: "Data integrity", ok: false, error: e instanceof Error ? e.message : "Unreachable" };
+  }
+}
+
 async function checkEndpoint(origin: string, urlPath: string, displayName: string): Promise<GuardianCheck> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 8000);
@@ -112,17 +154,28 @@ export async function GET(request: Request): Promise<NextResponse<GuardianResult
   });
 
   // Run all checks in parallel for speed
-  const [database, storage, receiptUpload, receipts, expenses, invoices, activityLogs] = await Promise.all([
-    c ? checkDatabase(c) : Promise.resolve(notConfigured("Database")),
-    c ? checkStorage(c) : Promise.resolve(notConfigured("Storage")),
-    checkEndpoint(origin, "/api/upload-receipt/options", "Receipt Upload"),
-    c ? checkTable(c, "worker_receipts", "Receipts Module") : Promise.resolve(notConfigured("Receipts Module")),
-    c ? checkTable(c, "expenses", "Expenses Module") : Promise.resolve(notConfigured("Expenses Module")),
-    c ? checkTable(c, "invoices", "Invoices Module") : Promise.resolve(notConfigured("Invoices Module")),
-    c ? checkTable(c, "activity_logs", "Activity Logs") : Promise.resolve(notConfigured("Activity Logs")),
-  ]);
+  const [database, storage, receiptUpload, receipts, expenses, invoices, activityLogs, dataIntegrity] =
+    await Promise.all([
+      c ? checkDatabase(c) : Promise.resolve(notConfigured("Database")),
+      c ? checkStorage(c) : Promise.resolve(notConfigured("Storage")),
+      checkEndpoint(origin, "/api/upload-receipt/options", "Receipt Upload"),
+      c ? checkTable(c, "worker_receipts", "Receipts Module") : Promise.resolve(notConfigured("Receipts Module")),
+      c ? checkTable(c, "expenses", "Expenses Module") : Promise.resolve(notConfigured("Expenses Module")),
+      c ? checkTable(c, "invoices", "Invoices Module") : Promise.resolve(notConfigured("Invoices Module")),
+      c ? checkTable(c, "activity_logs", "Activity Logs") : Promise.resolve(notConfigured("Activity Logs")),
+      checkDataIntegrity(origin),
+    ]);
 
-  const checks: GuardianCheck[] = [database, storage, receiptUpload, receipts, expenses, invoices, activityLogs];
+  const checks: GuardianCheck[] = [
+    database,
+    storage,
+    receiptUpload,
+    receipts,
+    expenses,
+    invoices,
+    activityLogs,
+    dataIntegrity,
+  ];
   const ok = checks.every((ch) => ch.ok);
 
   // Log every failure to System Logs so they appear on the logs page

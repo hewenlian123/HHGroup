@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 const BUCKET = "punch-photos";
 
 export async function POST(req: Request) {
+  const supabase = getServerSupabaseAdmin();
   if (!supabase) {
     return NextResponse.json({ ok: false, message: "Supabase not configured." }, { status: 500 });
   }

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 import { insertDocument } from "@/lib/data";
 import type { DocumentFileType } from "@/lib/documents-db";
 import { DOCUMENT_FILE_TYPES } from "@/lib/data";
@@ -37,6 +37,7 @@ export async function uploadProjectDocument(
     : "Other";
   const notes = (formData.get("notes") as string)?.trim() || null;
 
+  const supabase = getSupabaseClient();
   if (!supabase) return { ok: false, error: "Storage not configured." };
 
   const safeName = sanitizeFileName(file.name);

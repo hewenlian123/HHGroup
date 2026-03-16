@@ -53,6 +53,22 @@ const CORE_DDL: string[] = [
   status text DEFAULT 'active',
   created_at timestamptz DEFAULT now()
 )`,
+  // ─── PROJECT TASKS ───
+  `CREATE TABLE IF NOT EXISTS public.project_tasks (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  project_id uuid NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
+  title text NOT NULL DEFAULT '',
+  description text,
+  status text NOT NULL DEFAULT 'todo' CHECK (status IN ('todo', 'in_progress', 'done')),
+  assigned_worker_id uuid REFERENCES public.workers(id) ON DELETE SET NULL,
+  due_date date,
+  priority text NOT NULL DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high'))
+)`,
+  `CREATE INDEX IF NOT EXISTS idx_project_tasks_project_id ON public.project_tasks (project_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_project_tasks_created_at ON public.project_tasks (created_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_project_tasks_status ON public.project_tasks (status)`,
+  `ALTER TABLE public.project_tasks ADD COLUMN IF NOT EXISTS is_test boolean NOT NULL DEFAULT false`,
   // ─── VENDORS ───
   `CREATE TABLE IF NOT EXISTS public.vendors (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -221,6 +237,7 @@ const TABLES = [
   "company_profile",
   "projects",
   "workers",
+  "project_tasks",
   "vendors",
   "subcontractors",
   "invoices",

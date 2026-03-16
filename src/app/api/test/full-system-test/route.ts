@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSupabase } from "@/lib/supabase-server";
+import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server";
 import { createPaymentReceived, markInvoiceSent } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +10,15 @@ type TestResult = { name: string; ok: boolean; steps: string[] };
 function log(test: string, step: string) {
   if (typeof console !== "undefined" && console.log)
     console.log(`[full-system-test] ${test}: ${step}`);
+}
+
+/** Serialize caught value to a string for steps/messages (avoids [object Object]). */
+function toErrorString(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  if (typeof e === "string") return e;
+  if (e != null && typeof e === "object" && "message" in e && typeof (e as { message: unknown }).message === "string")
+    return (e as { message: string }).message;
+  return JSON.stringify(e);
 }
 
 const TEST_IDS = [
@@ -55,10 +64,11 @@ export async function POST(req: Request) {
     /* ignore */
   }
 
-  const c = getServerSupabase();
+  // Prefer service role so RLS does not block test data creation (workers, receipts, etc.)
+  const c = getServerSupabaseAdmin() ?? getServerSupabase();
   if (!c) {
     return NextResponse.json(
-      { ok: false, message: "Supabase not configured", tests: [] },
+      { ok: false, message: "Supabase not configured. Set SUPABASE_SERVICE_ROLE_KEY or anon key.", tests: [] },
       { status: 500 }
     );
   }
@@ -112,7 +122,7 @@ export async function POST(req: Request) {
 
   /** Detect "table not found" / schema cache errors and return a clear message for test results. */
   function tableMissingMessage(table: string, err: unknown): string {
-    const msg = err instanceof Error ? err.message : String(err);
+    const msg = toErrorString(err);
     if (/relation.*does not exist|table.*does not exist|could not find.*schema cache/i.test(msg))
       return `Table '${table}' not found. Run migrations or reload Supabase schema cache.`;
     return msg;
@@ -182,7 +192,7 @@ export async function POST(req: Request) {
       tests.push({ name: "workers_crud", ok: true, steps });
     } catch (e) {
       if (workerId) await safeDelete("workers", workerId);
-      const err = e instanceof Error ? e.message : String(e);
+      const err = toErrorString(e);
       log("workers_crud", `error: ${err}`);
       tests.push({ name: "workers_crud", ok: false, steps: [...steps, err] });
     }
@@ -236,7 +246,7 @@ export async function POST(req: Request) {
       tests.push({ name: "projects_crud", ok: true, steps });
     } catch (e) {
       if (projectId) await safeDelete("projects", projectId);
-      const err = e instanceof Error ? e.message : String(e);
+      const err = toErrorString(e);
       log("projects_crud", `error: ${err}`);
       tests.push({ name: "projects_crud", ok: false, steps: [...steps, err] });
     }
@@ -317,7 +327,7 @@ export async function POST(req: Request) {
     } catch (e) {
       if (receiptId) await safeDelete("worker_receipts", receiptId);
       if (receiptId2) await safeDelete("worker_receipts", receiptId2);
-      const err = e instanceof Error ? e.message : String(e);
+      const err = toErrorString(e);
       log("receipts_crud", `error: ${err}`);
       tests.push({ name: "receipts_crud", ok: false, steps: [...steps, err] });
     }
@@ -429,7 +439,7 @@ export async function POST(req: Request) {
       if (reimbId) await safeDelete("worker_reimbursements", reimbId);
       if (receiptId) await safeDelete("worker_receipts", receiptId);
       if (workflowWorkerId) await safeDelete("workers", workflowWorkerId);
-      const err = e instanceof Error ? e.message : String(e);
+      const err = toErrorString(e);
       log("receipt_actions_workflow", `error: ${err}`);
       tests.push({ name: "receipt_actions_workflow", ok: false, steps: [...steps, err] });
     }
@@ -522,7 +532,7 @@ export async function POST(req: Request) {
       if (reimbId) await safeDelete("worker_reimbursements", reimbId);
       if (receiptId) await safeDelete("worker_receipts", receiptId);
       if (workerId) await safeDelete("workers", workerId);
-      const err = e instanceof Error ? e.message : String(e);
+      const err = toErrorString(e);
       log("reimbursements_workflow", `error: ${err}`);
       tests.push({ name: "reimbursements_workflow", ok: false, steps: [...steps, err] });
     }
@@ -611,7 +621,7 @@ export async function POST(req: Request) {
     } catch (e) {
       if (lineId) await safeDelete("expense_lines", lineId);
       if (expenseId) await safeDelete("expenses", expenseId);
-      const err = e instanceof Error ? e.message : String(e);
+      const err = toErrorString(e);
       log("expenses_crud", `error: ${err}`);
       tests.push({ name: "expenses_crud", ok: false, steps: [...steps, err] });
     }
@@ -702,7 +712,7 @@ export async function POST(req: Request) {
       if (paymentId) await safeDelete("payments_received", paymentId);
       if (invoiceId) await safeDelete("invoices", invoiceId);
       if (projectId) await safeDelete("projects", projectId);
-      const err = e instanceof Error ? e.message : String(e);
+      const err = toErrorString(e);
       log("invoice_payment_workflow", `error: ${err}`);
       tests.push({ name: "invoice_payment_workflow", ok: false, steps: [...steps, err] });
     }
@@ -819,7 +829,7 @@ export async function POST(req: Request) {
       if (projectId) await safeDelete("projects", projectId);
       if (workerId) await safeDelete("labor_workers", workerId);
       if (workerId) await safeDelete("workers", workerId);
-      const err = e instanceof Error ? e.message : String(e);
+      const err = toErrorString(e);
       log("labor_workflow", `error: ${err}`);
       tests.push({ name: "labor_workflow", ok: false, steps: [...steps, err] });
     }
@@ -853,7 +863,7 @@ export async function POST(req: Request) {
       tests.push({ name: "estimates_crud", ok: true, steps });
     } catch (e) {
       if (estimateId) await safeDelete("estimates", estimateId);
-      const err = e instanceof Error ? e.message : String(e);
+      const err = toErrorString(e);
       log("estimates_crud", `error: ${err}`);
       tests.push({ name: "estimates_crud", ok: false, steps: [...steps, err] });
     }
@@ -889,7 +899,7 @@ export async function POST(req: Request) {
     } catch (e) {
       if (changeOrderId) await safeDelete("project_change_orders", changeOrderId);
       if (projectId) await safeDelete("projects", projectId);
-      const err = e instanceof Error ? e.message : String(e);
+      const err = toErrorString(e);
       log("change_orders_crud", `error: ${err}`);
       tests.push({ name: "change_orders_crud", ok: false, steps: [...steps, err] });
     }
@@ -907,7 +917,7 @@ export async function POST(req: Request) {
       projectId = (proj as { id: string }).id;
       const { data: created, error: createErr } = await c
         .from("project_tasks")
-        .insert({ project_id: projectId, title: "Workflow Test Task", status: "todo" })
+        .insert({ project_id: projectId, title: "Workflow Test Task", status: "todo", is_test: true })
         .select("id, title, status")
         .single();
       if (createErr || !created) throw new Error(createErr ? tableMissingMessage("project_tasks", createErr) : "Create failed");
@@ -930,7 +940,7 @@ export async function POST(req: Request) {
     } catch (e) {
       if (taskId) await safeDelete("project_tasks", taskId);
       if (projectId) await safeDelete("projects", projectId);
-      const err = e instanceof Error ? e.message : String(e);
+      const err = toErrorString(e);
       log("tasks_crud", `error: ${err}`);
       tests.push({ name: "tasks_crud", ok: false, steps: [...steps, err] });
     }
@@ -966,7 +976,7 @@ export async function POST(req: Request) {
     } catch (e) {
       if (punchId) await safeDelete("punch_list", punchId);
       if (projectId) await safeDelete("projects", projectId);
-      const err = e instanceof Error ? e.message : String(e);
+      const err = toErrorString(e);
       log("punch_list_crud", `error: ${err}`);
       tests.push({ name: "punch_list_crud", ok: false, steps: [...steps, err] });
     }
@@ -1002,7 +1012,7 @@ export async function POST(req: Request) {
     } catch (e) {
       if (scheduleId) await safeDelete("project_schedule", scheduleId);
       if (projectId) await safeDelete("projects", projectId);
-      const err = e instanceof Error ? e.message : String(e);
+      const err = toErrorString(e);
       log("schedule_crud", `error: ${err}`);
       tests.push({ name: "schedule_crud", ok: false, steps: [...steps, err] });
     }
@@ -1038,7 +1048,7 @@ export async function POST(req: Request) {
     } catch (e) {
       if (photoId) await safeDelete("site_photos", photoId);
       if (projectId) await safeDelete("projects", projectId);
-      const err = e instanceof Error ? e.message : String(e);
+      const err = toErrorString(e);
       log("site_photos_crud", `error: ${err}`);
       tests.push({ name: "site_photos_crud", ok: false, steps: [...steps, err] });
     }
@@ -1074,7 +1084,7 @@ export async function POST(req: Request) {
     } catch (e) {
       if (inspectionId) await safeDelete("inspection_log", inspectionId);
       if (projectId) await safeDelete("projects", projectId);
-      const err = e instanceof Error ? e.message : String(e);
+      const err = toErrorString(e);
       log("inspection_log_crud", `error: ${err}`);
       tests.push({ name: "inspection_log_crud", ok: false, steps: [...steps, err] });
     }
@@ -1103,7 +1113,7 @@ export async function POST(req: Request) {
       tests.push({ name: "material_catalog_crud", ok: true, steps });
     } catch (e) {
       if (catalogId) await safeDelete("material_catalog", catalogId);
-      const err = e instanceof Error ? e.message : String(e);
+      const err = toErrorString(e);
       log("material_catalog_crud", `error: ${err}`);
       tests.push({ name: "material_catalog_crud", ok: false, steps: [...steps, err] });
     }

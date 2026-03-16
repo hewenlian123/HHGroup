@@ -1,9 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { Trash2, Pencil, Download, ClipboardList } from "lucide-react";
+import { Trash2, Download, ClipboardList } from "lucide-react";
 import { PageLayout, PageHeader, Drawer } from "@/components/base";
 import { Button } from "@/components/ui/button";
+import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -96,19 +97,6 @@ export default function SitePhotosPage() {
         });
       }
 
-      // If there are no site photos at all, seed demo data once and reload.
-      if (!list.length) {
-        const seedRes = await fetch("/api/seed/operations", { method: "POST" });
-        const seedData = await seedRes.json();
-        if (seedData.ok && seedData.seeded?.sitePhotos) {
-          const again = await fetch(url);
-          const againData = await again.json();
-          if (againData.ok) {
-            setPhotos(againData.photos ?? []);
-            setProjects(againData.projects ?? []);
-          }
-        }
-      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load site photos.");
     } finally {
@@ -514,14 +502,25 @@ export default function SitePhotosPage() {
                       </div>
                     )}
                     {!editMode && (
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); openDetail(p); }}
-                        className="absolute top-1.5 left-1.5 z-10 p-1.5 rounded-sm bg-background/90 text-muted-foreground hover:bg-muted hover:text-foreground opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity focus:outline-none focus:ring-2 focus:ring-ring"
-                        aria-label="Edit details"
+                      <div
+                        className="absolute top-1.5 right-1.5 z-10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        <Pencil className="h-4 w-4" />
-                      </button>
+                        <RowActionsMenu
+                          ariaLabel={`Actions for photo`}
+                          touchFriendly={false}
+                          className="h-8 w-8 bg-background/90 hover:bg-muted rounded-sm"
+                          actions={[
+                            { label: "View", onClick: () => openViewer(p) },
+                            { label: "Edit", onClick: () => openDetail(p) },
+                            {
+                              label: "Create Punch Issue",
+                              onClick: () => openPunchIssueModal({ preventDefault: () => {}, stopPropagation: () => {} } as React.MouseEvent, p),
+                            },
+                            ...(canDelete ? [{ label: "Delete", onClick: () => setDeleteConfirmPhoto(p), destructive: true }] : []),
+                          ]}
+                        />
+                      </div>
                     )}
                     {failedPhotoIds.has(p.id) ? (
                       <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
@@ -535,16 +534,6 @@ export default function SitePhotosPage() {
                         onError={() => markPhotoFailed(p.id)}
                       />
                     )}
-                    {!editMode && canDelete && (
-                      <button
-                        type="button"
-                        onClick={(e) => handleDeleteClick(e, p)}
-                        className="absolute top-1.5 right-1.5 z-10 p-1.5 rounded-sm bg-background/90 text-destructive hover:bg-destructive hover:text-destructive-foreground opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity focus:outline-none focus:ring-2 focus:ring-ring"
-                        aria-label="Delete photo"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    )}
                   </div>
                   <div className="p-2 space-y-0.5">
                     <p className="text-xs font-medium text-foreground truncate">{p.project_name ?? "—"}</p>
@@ -553,18 +542,6 @@ export default function SitePhotosPage() {
                     <p className="text-xs text-muted-foreground tabular-nums">
                       {p.created_at ? new Date(p.created_at).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" }) : "—"}
                     </p>
-                    {!editMode && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="mt-1.5 h-8 w-full justify-start text-xs text-muted-foreground hover:text-foreground rounded-sm"
-                        onClick={(e) => openPunchIssueModal(e, p)}
-                      >
-                        <ClipboardList className="h-3.5 w-3.5 mr-1.5 shrink-0" />
-                        Create Punch Issue
-                      </Button>
-                    )}
                   </div>
                 </div>
               </div>

@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
+
+const NO_CACHE_HEADERS = {
+  "Cache-Control": "no-store, no-cache, must-revalidate",
+  Pragma: "no-cache",
+};
 
 export type WorkerBalanceRow = {
   workerId: string;
@@ -21,10 +26,10 @@ export type WorkerBalanceRow = {
  * One row per worker.
  */
 export async function GET() {
-  if (!supabase) {
+  const c = getServerSupabaseAdmin();
+  if (!c) {
     return NextResponse.json({ message: "Supabase not configured" }, { status: 500 });
   }
-  const c = supabase;
 
   try {
     const workersRes = await c.from("workers").select("id, name").order("name");
@@ -97,7 +102,7 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json({ balances });
+    return NextResponse.json({ balances }, { headers: NO_CACHE_HEADERS });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to load worker balances";
     return NextResponse.json({ message }, { status: 500 });

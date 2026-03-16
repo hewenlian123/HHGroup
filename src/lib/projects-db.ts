@@ -3,7 +3,7 @@
  * Table: projects.
  */
 
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 
 export type ProjectStatus = "active" | "pending" | "completed";
 
@@ -52,13 +52,78 @@ export type Project = {
 };
 
 function client() {
-  if (!supabase) throw new Error("Supabase is not configured.");
-  return supabase;
+  const c = getSupabaseClient();
+  if (!c) throw new Error("Supabase is not configured.");
+  return c;
 }
 
 function isMissingTable(err: { message?: string } | null): boolean {
   const m = err?.message ?? "";
   return /schema cache|relation.*does not exist|could not find the table/i.test(m);
+}
+
+/** Postgres FK violation code */
+const PG_FK_VIOLATION = "23503";
+
+/** Map DB table name -> dialog key (matches ProjectUsageCounts or extended config keys) */
+const FK_TABLE_TO_COUNT_KEY: Record<string, string> = {
+  project_tasks: "project_tasks",
+  labor_entries: "labor_entries",
+  expense_lines: "expenses",
+  expenses: "expenses",
+  ap_bills: "bills",
+  invoices: "invoices",
+  subcontracts: "subcontracts",
+  project_change_orders: "project_change_orders",
+  worker_receipts: "worker_receipts",
+  punch_list: "punch_list",
+  site_photos: "site_photos",
+  project_material_selections: "materials",
+  activity_logs: "activity_logs",
+  estimates: "estimates",
+  commitments: "commitments",
+  project_schedule: "project_schedule",
+  inspection_log: "inspection_log",
+  subcontract_bills: "subcontract_bills",
+  documents: "documents",
+  deposits: "deposits",
+  project_commissions: "project_commissions",
+  payments_received: "payments_received",
+};
+
+export type DeleteBlockedPayload = { __deleteBlocked: true; counts: Record<string, number> };
+
+/**
+ * Parse Supabase/Postgres error for FK violation; returns blocking key and count for dialog.
+ */
+async function parseForeignKeyError(
+  err: { message?: string; code?: string },
+  projectId: string,
+  c: ReturnType<typeof client>
+): Promise<DeleteBlockedPayload | null> {
+  const code = (err as { code?: string }).code;
+  const msg = err?.message ?? "";
+  if (code !== PG_FK_VIOLATION && !/foreign key|violates.*constraint/i.test(msg)) return null;
+
+  const onTableMatch = msg.match(/on table\s+["']?(\w+)["']?/i);
+  const table = onTableMatch?.[1];
+  if (!table) return null;
+
+  const blockingKey = FK_TABLE_TO_COUNT_KEY[table] ?? table;
+  let count = 0;
+  try {
+    if (table === "labor_entries") {
+      const { data } = await c.from("labor_entries").select("id").or(`project_am_id.eq.${projectId},project_pm_id.eq.${projectId}`);
+      count = (data ?? []).length;
+    } else {
+      const { count: n } = await c.from(table).select("id", { count: "exact", head: true }).eq("project_id", projectId);
+      count = n ?? 0;
+    }
+  } catch {
+    count = 1;
+  }
+  const n = count > 0 ? count : 1;
+  return { __deleteBlocked: true, counts: { [blockingKey]: n } };
 }
 
 const HINT = "Run supabase/migrations/202603081650_projects.sql in Supabase Dashboard → SQL Editor.";
@@ -278,9 +343,57 @@ export async function deleteProject(id: string): Promise<boolean> {
   const { error } = await c.from("projects").delete().eq("id", id);
   if (error) {
     if (isMissingTable(error)) throw new Error(`Projects table not found. ${HINT}`);
+    const blocked = await parseForeignKeyError(error, id, c);
+    if (blocked) throw blocked;
     throw new Error(error.message ?? HINT);
   }
   return true;
+}
+
+/** Tables to clear for force delete (child/dependent first). Column is project_id unless noted. */
+const FORCE_DELETE_ORDER: { table: string; column?: string; orColumns?: [string, string] }[] = [
+  { table: "project_budget_items" },
+  { table: "project_change_orders" },
+  { table: "expense_lines" },
+  { table: "labor_entries", orColumns: ["project_am_id", "project_pm_id"] },
+  { table: "worker_receipts" },
+  { table: "invoices" },
+  { table: "ap_bills" },
+  { table: "activity_logs" },
+  { table: "punch_list" },
+  { table: "site_photos" },
+  { table: "project_tasks" },
+  { table: "project_schedule" },
+  { table: "project_material_selections" },
+  { table: "commitments" },
+  { table: "subcontract_bills" },
+  { table: "subcontracts" },
+  { table: "project_commissions" },
+  { table: "commission_payment_records" },
+  { table: "project_closeout_punch" },
+  { table: "project_closeout_warranty" },
+  { table: "project_closeout_completion" },
+  { table: "inspection_log" },
+  { table: "documents" },
+  { table: "deposits" },
+  { table: "payments_received" },
+];
+
+/**
+ * Force delete project and all related data. Deletes in dependency order then the project.
+ * Use after user confirms in the "Cannot delete project" dialog.
+ */
+export async function forceDeleteProject(id: string): Promise<void> {
+  const c = client();
+  for (const { table, orColumns } of FORCE_DELETE_ORDER) {
+    if (orColumns) {
+      await c.from(table).delete().or(`project_am_id.eq.${id},project_pm_id.eq.${id}`);
+    } else {
+      await c.from(table).delete().eq("project_id", id);
+    }
+  }
+  const ok = await deleteProject(id);
+  if (!ok) throw new Error("Failed to delete project after clearing related data.");
 }
 
 export type ProjectUsageCounts = {

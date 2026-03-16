@@ -2,7 +2,7 @@
  * AP Bills module — ap_bills + ap_bill_payments. Internal payable tracking.
  */
 
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 
 export const AP_BILL_TYPES = ["Vendor", "Labor", "Overhead", "Utility", "Permit", "Equipment", "Other"] as const;
 export type ApBillType = (typeof AP_BILL_TYPES)[number];
@@ -55,8 +55,9 @@ export type ApBillsFilters = {
 };
 
 function client() {
-  if (!supabase) throw new Error("Supabase is not configured.");
-  return supabase;
+  const c = getSupabaseClient();
+  if (!c) throw new Error("Supabase is not configured.");
+  return c;
 }
 
 function isMissingTable(err: { message?: string } | null): boolean {

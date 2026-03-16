@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { createBrowserClient } from "@/lib/supabase";
 
 type PayRunRow = {
@@ -340,15 +341,21 @@ export default function LaborPaymentsClient() {
                           {row.balance > 0 ? "Outstanding" : "Paid"}
                         </span>
                       </td>
-                      <td className="py-3 px-4">
-                        <div className="flex justify-end gap-2">
-                          <Button size="sm" variant="outline" className="h-8" onClick={() => setExpandedWorkerId((prev) => (prev === row.workerId ? null : row.workerId))}>
-                            {expandedWorkerId === row.workerId ? "Hide History" : "History"}
-                          </Button>
-                          <Button size="sm" className="h-8" onClick={() => openModal(row.workerId, row.balance)} disabled={row.balance <= 0 || busy}>
-                            Record Payment
-                          </Button>
-                        </div>
+                      <td className="py-3 px-4 text-right">
+                        <RowActionsMenu
+                          ariaLabel={`Actions for ${row.workerName}`}
+                          actions={[
+                            {
+                              label: expandedWorkerId === row.workerId ? "Hide History" : "History",
+                              onClick: () => setExpandedWorkerId((prev) => (prev === row.workerId ? null : row.workerId)),
+                            },
+                            {
+                              label: "Record Payment",
+                              onClick: () => openModal(row.workerId, row.balance),
+                              disabled: row.balance <= 0 || busy,
+                            },
+                          ]}
+                        />
                       </td>
                     </tr>
                     {expandedWorkerId === row.workerId ? (
@@ -384,9 +391,11 @@ export default function LaborPaymentsClient() {
                                       <span className="tabular-nums">
                                         {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(p.amount)}
                                       </span>
-                                      <Button variant="ghost" size="sm" className="h-8 text-red-600 text-xs" onClick={() => deletePayment(p.id)} disabled={busy}>
-                                        Delete
-                                      </Button>
+                                      <RowActionsMenu
+                                        ariaLabel="Payment actions"
+                                        touchFriendly={false}
+                                        actions={[{ label: "Delete", onClick: () => deletePayment(p.id), destructive: true, disabled: busy }]}
+                                      />
                                     </li>
                                   ))}
                                 </ul>

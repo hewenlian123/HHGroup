@@ -2,7 +2,7 @@
  * Documents Center — canonical document metadata. Files stored in Supabase Storage (attachments bucket).
  */
 
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 
 export const DOCUMENT_FILE_TYPES = [
   "Contract",
@@ -62,8 +62,9 @@ export type DocumentDraft = {
 const BUCKET = "attachments";
 
 function client() {
-  if (!supabase) throw new Error("Supabase is not configured.");
-  return supabase;
+  const c = getSupabaseClient();
+  if (!c) throw new Error("Supabase is not configured.");
+  return c;
 }
 
 /** On any query error, return empty/list so app does not 500. */

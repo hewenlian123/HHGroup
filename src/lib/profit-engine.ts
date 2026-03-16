@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 
 export type CanonicalProjectProfit = {
   revenue: number;
@@ -15,8 +15,9 @@ export type CanonicalProjectProfit = {
 };
 
 function client() {
-  if (!supabase) throw new Error("Supabase is not configured.");
-  return supabase;
+  const c = getSupabaseClient();
+  if (!c) throw new Error("Supabase is not configured.");
+  return c;
 }
 
 /** Null-safe numeric conversion; returns 0 for null, undefined, or invalid numbers. */

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import {
   createProject,
   deleteProject,
+  forceDeleteProject,
   getProjectUsageCounts,
   updateProject,
   createProjectTask,
@@ -15,6 +16,7 @@ import {
 } from "@/lib/data";
 import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server";
 import type { ProjectUsageCounts } from "@/lib/data";
+import type { DeleteBlockedPayload } from "@/lib/projects-db";
 import type { ProjectTaskStatus } from "@/lib/project-tasks-db";
 
 export async function createProjectAction(prevState: { error?: string } | null, formData: FormData): Promise<{ error?: string } | null> {
@@ -71,7 +73,9 @@ export async function archiveProjectAction(projectId: string): Promise<{ error?:
   }
 }
 
-export async function deleteProjectAction(projectId: string): Promise<{ error?: string; blocked?: boolean; counts?: ProjectUsageCounts }> {
+export async function deleteProjectAction(projectId: string): Promise<
+  { error?: string; blocked?: boolean; counts?: Record<string, number> }
+> {
   if (!projectId?.trim()) return { error: "Project ID is required." };
   try {
     const usage = await getProjectUsageCounts(projectId);
@@ -96,7 +100,25 @@ export async function deleteProjectAction(projectId: string): Promise<{ error?: 
     revalidatePath("/dashboard");
     redirect("/projects");
   } catch (e) {
+    const payload = e as DeleteBlockedPayload | undefined;
+    if (payload && payload.__deleteBlocked === true && payload.counts) {
+      return { blocked: true, counts: payload.counts };
+    }
     const message = e instanceof Error ? e.message : "Failed to delete project.";
+    return { error: message };
+  }
+}
+
+/** Force delete project and all related data. Use after user confirms in the delete-blocked dialog. */
+export async function forceDeleteProjectAction(projectId: string): Promise<{ error?: string }> {
+  if (!projectId?.trim()) return { error: "Project ID is required." };
+  try {
+    await forceDeleteProject(projectId);
+    revalidatePath("/projects");
+    revalidatePath("/dashboard");
+    redirect("/projects");
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Force delete failed.";
     return { error: message };
   }
 }

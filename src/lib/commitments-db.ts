@@ -3,7 +3,7 @@
  * Table: commitments. Attachments: entity_type = 'commitment'.
  */
 
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 
 export type CommitmentType = "PO" | "Subcontract" | "Other";
 export type CommitmentStatus = "Open" | "Closed";
@@ -43,8 +43,9 @@ type CommitmentRow = {
 };
 
 function client() {
-  if (!supabase) throw new Error("Supabase is not configured.");
-  return supabase;
+  const c = getSupabaseClient();
+  if (!c) throw new Error("Supabase is not configured.");
+  return c;
 }
 
 function isMissingTable(err: { message?: string } | null): boolean {

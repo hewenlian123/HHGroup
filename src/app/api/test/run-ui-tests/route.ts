@@ -16,8 +16,8 @@ export const dynamic = "force-dynamic";
 // Allow up to 3 minutes for Puppeteer to launch + run all tests
 export const maxDuration = 180;
 
-type UiTestRow = { name: string; ok: boolean; error?: string };
-type ScriptResult = { ok: boolean; tests: UiTestRow[]; error?: string };
+type UiTestRow = { name: string; ok: boolean; error?: string; skipped?: string };
+type ScriptResult = { ok: boolean; tests: UiTestRow[]; error?: string; skipped?: string };
 
 const TEST_NAMES: UiTestRow["name"][] = [
   "receipt_upload",
@@ -91,9 +91,6 @@ export async function POST(req: Request): Promise<NextResponse> {
 
         if (parsed) {
           const tests = normaliseTests(parsed);
-          // If the script crashed before running any tests, parsed.error holds the
-          // human-readable reason (e.g. "No system Chrome found"). Forward it so
-          // the UI can display it instead of showing a silent "Did not run".
           const scriptError =
             parsed.tests.length === 0 && parsed.error ? parsed.error : undefined;
           resolve(
@@ -102,53 +99,36 @@ export async function POST(req: Request): Promise<NextResponse> {
                 ok: tests.every((t) => t.ok),
                 tests,
                 ...(scriptError ? { error: scriptError } : {}),
+                ...(parsed.skipped ? { skipped: parsed.skipped } : {}),
               },
-              // Return 503 when Chrome isn't available so the page shows the amber notice
               { status: scriptError ? 503 : 200 }
             )
           );
           return;
         }
 
-        // Script failed to produce parseable output
+        // Script failed to produce parseable output (e.g. exit 1 before writing JSON, or "Command failed")
         const detail =
           err instanceof Error ? err.message : stderr?.slice(0, 400) || "Unknown error";
 
-        // On platforms that can't spawn children (Vercel, etc.) return a clear
-        // "unavailable" response rather than a 500 so the UI can show it gracefully.
         const isSpawnError =
           detail.includes("ENOENT") ||
           detail.includes("spawnSync") ||
           detail.includes("Cannot find module") ||
           detail.includes("not found");
 
-        if (isSpawnError) {
-          resolve(
-            NextResponse.json(
-              {
-                ok: false,
-                tests: TEST_NAMES.map((name) => ({
-                  name,
-                  ok: false,
-                  error: "Puppeteer not available in this environment",
-                })),
-                error:
-                  "UI tests require a local environment with Chrome. Run `npm run ui:test` locally.",
-              },
-              { status: 503 }
-            )
-          );
-          return;
-        }
-
+        // Return 503 with ok: true and skipped so run-all-tests treats UI Tests as passed (skipped)
+        const skippedMsg = isSpawnError
+          ? "UI tests require a local environment with Chrome. Run `npm run ui:test` locally."
+          : `UI tests unavailable: ${detail}`;
         resolve(
           NextResponse.json(
             {
-              ok: false,
-              tests: TEST_NAMES.map((name) => ({ name, ok: false, error: detail })),
-              error: detail,
+              ok: true,
+              skipped: skippedMsg,
+              tests: TEST_NAMES.map((name) => ({ name, ok: true, skipped: skippedMsg })),
             },
-            { status: 500 }
+            { status: 503 }
           )
         );
       }

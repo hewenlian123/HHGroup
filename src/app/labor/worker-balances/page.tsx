@@ -32,7 +32,7 @@ export default function WorkerBalancesPage() {
     setLoading(true);
     setMessage(null);
     try {
-      const res = await fetch("/api/labor/worker-balances", { cache: "no-store" });
+      const res = await fetch(`/api/labor/worker-balances?t=${Date.now()}`, { cache: "no-store", headers: { Pragma: "no-cache" } });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message ?? "Failed to load.");
       setRows(data.balances ?? []);

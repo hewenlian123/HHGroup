@@ -5,7 +5,7 @@
  * labor_entries schema: id, worker_id, project_id, work_date, hours, cost_code, notes, cost_amount.
  */
 
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 
 const LABOR_ENTRIES_COLS = "id, worker_id, project_id, work_date, hours, cost_code, notes" as const;
 /** Columns for labor cost aggregation (includes cost_amount). Use after migration 202603101200. */
@@ -121,8 +121,9 @@ type LaborInvoiceRow = {
 type LaborPaymentRow = { id: string; worker_id: string; payment_date: string; amount: number; method: string | null; memo: string | null; applied_start_date: string | null; applied_end_date: string | null; created_at: string };
 
 function client() {
-  if (!supabase) throw new Error("Supabase is not configured.");
-  return supabase;
+  const c = getSupabaseClient();
+  if (!c) throw new Error("Supabase is not configured.");
+  return c;
 }
 
 function isMissingTable(err: { message?: string } | null): boolean {

@@ -1,11 +1,11 @@
 /**
  * Project tasks — Supabase only. Table: project_tasks.
- * Filter by project_id; indexes on project_id, created_at, status.
+ * Uses service_role admin client so GET and DELETE see the same data (RLS bypass).
  * Test data: tasks created by system tests use title prefix "Workflow Test" and are excluded from UI list / protected from UI delete.
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { supabase } from "@/lib/supabase";
+import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 export type ProjectTaskStatus = "todo" | "in_progress" | "done";
 export type ProjectTaskPriority = "low" | "medium" | "high";
@@ -34,9 +34,10 @@ export type ProjectTaskDraft = {
 
 export type ProjectTaskWithWorker = ProjectTask & { worker_name: string | null };
 
-function client() {
-  if (!supabase) throw new Error("Supabase is not configured.");
-  return supabase;
+function client(): SupabaseClient {
+  const admin = getServerSupabaseAdmin();
+  if (!admin) throw new Error("Supabase admin client not configured (SUPABASE_SERVICE_ROLE_KEY required).");
+  return admin;
 }
 
 const COLS = "id, project_id, title, description, status, assigned_worker_id, due_date, priority, created_at";
@@ -164,12 +165,14 @@ export async function deleteProjectTask(taskId: string): Promise<void> {
 }
 
 /** Delete a task using the given Supabase client (e.g. server client). Verifies one row was deleted. */
-export async function deleteProjectTaskWithClient(c: SupabaseClient, taskId: string): Promise<void> {
+export async function deleteProjectTaskWithClient(c: SupabaseClient, taskId: string): Promise<number> {
   const { data, error } = await c
     .from("project_tasks")
     .delete()
     .eq("id", taskId)
     .select("id");
+  const rowsDeleted = data?.length ?? 0;
   if (error) throw new Error(error.message ?? "Failed to delete task.");
   if (!data?.length) throw new Error("Task not found or already deleted.");
+  return rowsDeleted;
 }

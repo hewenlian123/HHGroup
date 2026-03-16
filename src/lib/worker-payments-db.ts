@@ -3,7 +3,7 @@
  * Table: worker_payments.
  */
 
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 
 export type WorkerPayment = {
   id: string;
@@ -26,8 +26,9 @@ export type CreateWorkerPaymentInput = {
 };
 
 function client() {
-  if (!supabase) throw new Error("Supabase is not configured.");
-  return supabase;
+  const c = getSupabaseClient();
+  if (!c) throw new Error("Supabase is not configured.");
+  return c;
 }
 
 function isMissingTable(err: { message?: string; code?: string } | null): boolean {

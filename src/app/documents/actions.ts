@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { deleteDocument, getDocumentById, getDocumentSignedUrl, insertDocument } from "@/lib/data";
 import type { DocumentFileType } from "@/lib/documents-db";
 import { DOCUMENT_FILE_TYPES } from "@/lib/data";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 
 const BUCKET = "attachments";
 const MAX_BYTES = 20 * 1024 * 1024;
@@ -58,6 +58,7 @@ export async function uploadDocument(formData: FormData): Promise<{ ok: boolean;
     : "Other";
   const notes = (formData.get("notes") as string)?.trim() || null;
 
+  const supabase = getSupabaseClient();
   if (!supabase) return { ok: false, error: "Storage not configured." };
 
   const safeName = sanitizeFileName(file.name);

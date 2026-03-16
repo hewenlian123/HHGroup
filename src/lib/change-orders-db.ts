@@ -6,7 +6,7 @@
  * Only Approved change orders affect revenue (canonical profit model: amount or total).
  */
 
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 
 export type ChangeOrderStatus = "Draft" | "Pending Approval" | "Approved" | "Rejected";
 
@@ -99,8 +99,9 @@ export type ProjectBudgetItemRow = {
 };
 
 function client() {
-  if (!supabase) throw new Error("Supabase is not configured.");
-  return supabase;
+  const c = getSupabaseClient();
+  if (!c) throw new Error("Supabase is not configured.");
+  return c;
 }
 
 function isMissingTable(err: { message?: string } | null): boolean {
@@ -114,8 +115,8 @@ function isMissingFunction(err: { message?: string } | null): boolean {
 }
 
 function isMissingColumn(err: { message?: string } | null): boolean {
-  const m = err?.message ?? "";
-  return /column .* does not exist|does not exist.*column|undefined column/i.test(m);
+  const m = (err?.message ?? "").toLowerCase();
+  return /column.*does not exist|does not exist.*column|undefined column|could not find the.*column|schema cache.*column/i.test(m);
 }
 
 function normalizeStatus(s: string | null | undefined): ChangeOrderStatus {
@@ -348,13 +349,22 @@ export async function createChangeOrder(projectId: string, input?: CreateChangeO
     const raw = first.error.message ? ` (${first.error.message})` : "";
     if (isMissingTable(first.error)) throw new Error(`Change orders table missing. ${HINT}${raw}`);
     if (isMissingColumn(first.error)) {
-      // Older schema: no `amount` column. Retry without it and select without it.
+      // Insert may have succeeded but select failed (e.g. approved_by missing). Fetch by project_id+number with legacy columns.
+      const fetched = await c
+        .from("project_change_orders")
+        .select(CO_COLS_LEGACY)
+        .eq("project_id", projectId)
+        .eq("number", number)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!fetched.error && fetched.data) return toChangeOrder(fetched.data as ChangeOrderRow);
+      // Otherwise insert failed too: retry without amount and select legacy columns.
       const payloadNoAmount = { ...payload };
       delete (payloadNoAmount as Record<string, unknown>).amount;
-      const retry = await c.from("project_change_orders").insert(payloadNoAmount).select(CO_COLS_NO_AMOUNT).single();
-      if (retry.error) throw new Error(retry.error.message ? `${retry.error.message} ${HINT}` : HINT);
-      if (!retry.data) throw new Error("Failed to create change order: no id returned.");
-      return toChangeOrder(retry.data as ChangeOrderRow);
+      const retry = await c.from("project_change_orders").insert(payloadNoAmount).select(CO_COLS_LEGACY).single();
+      if (!retry.error && retry.data) return toChangeOrder(retry.data as ChangeOrderRow);
+      throw new Error(retry.error?.message ? `${retry.error.message} ${HINT}` : HINT);
     }
     throw new Error(first.error.message);
   }

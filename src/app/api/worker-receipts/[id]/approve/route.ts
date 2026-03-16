@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { approveWorkerReceipt, approveWorkerReceiptWithClient } from "@/lib/worker-receipts-db";
-import { getServerSupabase } from "@/lib/supabase-server";
+import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const server = getServerSupabase();
+    // Prefer service role so approve (insert worker_reimbursements + update worker_receipts) is not blocked by RLS
+    const server = getServerSupabaseAdmin() ?? getServerSupabase();
     const { receipt, reimbursementCreated } = server
       ? await approveWorkerReceiptWithClient(server, id)
       : await approveWorkerReceipt(id);

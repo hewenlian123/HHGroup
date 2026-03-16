@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { createClient } from "@supabase/supabase-js";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,14 +35,6 @@ const EMPTY_FORM: WorkerForm = {
 };
 
 export default function LaborWorkersPage() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const configured = !!url && !!anon;
-  const supabase = React.useMemo(
-    () => (configured ? createClient(url as string, anon as string) : null),
-    [configured, url, anon]
-  );
-
   const [rows, setRows] = React.useState<WorkerRow[]>([]);
   const [query, setQuery] = React.useState("");
   const [message, setMessage] = React.useState<string | null>(null);
@@ -57,19 +48,24 @@ export default function LaborWorkersPage() {
   const refresh = React.useCallback(async () => {
     setLoading(true);
     setMessage(null);
-    if (!configured || !supabase) {
-      setMessage("Supabase is not configured.");
-      setRows([]);
-      setLoading(false);
-      return;
-    }
     try {
-      const { data, error } = await supabase
-        .from("workers")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      setRows((data ?? []) as WorkerRow[]);
+      const res = await fetch(`/api/labor/workers?t=${Date.now()}`, { cache: "no-store", headers: { Pragma: "no-cache" } });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message ?? "Failed to fetch workers.");
+      }
+      const data = await res.json();
+      const list = Array.isArray(data) ? data : (data.workers ?? []);
+      setRows(
+        list.map((w: Record<string, unknown>) => ({
+          id: (w.id as string) ?? "",
+          name: (w.name as string) ?? "",
+          role: (w.role ?? w.trade) as string | null,
+          phone: (w.phone as string | null) ?? null,
+          half_day_rate: Number(w.half_day_rate ?? w.daily_rate ?? 0) || 0,
+          status: (w.status === "active" || w.status === "inactive" ? w.status : "active") as "active" | "inactive" | null,
+        }))
+      );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       setMessage(msg || "Failed to fetch workers.");
@@ -77,7 +73,7 @@ export default function LaborWorkersPage() {
     } finally {
       setLoading(false);
     }
-  }, [configured, supabase]);
+  }, []);
 
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -121,11 +117,6 @@ export default function LaborWorkersPage() {
   }, [submitting]);
 
   const handleSave = React.useCallback(async () => {
-    if (!configured || !supabase) {
-      setMessage("Supabase is not configured.");
-      return;
-    }
-
     const name = form.name.trim();
     const rate = Number(form.half_day_rate);
     if (!name) {
@@ -141,29 +132,34 @@ export default function LaborWorkersPage() {
     setMessage(null);
     try {
       if (editorMode === "create") {
-        const { error } = await supabase.from("workers").insert([
-          {
+        const res = await fetch("/api/labor/workers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
             name,
             role: form.role.trim() || null,
             phone: form.phone.trim() || null,
             half_day_rate: rate,
             status: form.status,
-          },
-        ]);
-        if (error) throw error;
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message ?? "Failed to create worker.");
       } else {
         if (!form.id) throw new Error("Missing worker id.");
-        const { error } = await supabase
-          .from("workers")
-          .update({
+        const res = await fetch(`/api/labor/workers/${form.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
             name,
             role: form.role.trim() || null,
             phone: form.phone.trim() || null,
             half_day_rate: rate,
             status: form.status,
-          })
-          .eq("id", form.id);
-        if (error) throw error;
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message ?? "Failed to update worker.");
       }
       setEditorOpen(false);
       setForm(EMPTY_FORM);
@@ -174,14 +170,10 @@ export default function LaborWorkersPage() {
     } finally {
       setSubmitting(false);
     }
-  }, [configured, editorMode, form, refresh, supabase]);
+  }, [editorMode, form, refresh]);
 
   const handleDelete = React.useCallback(
     async (worker: WorkerRow) => {
-      if (!configured || !supabase) {
-        setMessage("Supabase is not configured.");
-        return;
-      }
       if (!window.confirm(`Delete worker "${worker.name || "Unnamed"}"?`)) return;
 
       setDeletingId(worker.id);
@@ -189,8 +181,9 @@ export default function LaborWorkersPage() {
       const prevRows = rows;
       setRows((r) => r.filter((w) => w.id !== worker.id));
       try {
-        const { error } = await supabase.from("workers").delete().eq("id", worker.id);
-        if (error) throw error;
+        const res = await fetch(`/api/labor/workers/${worker.id}`, { method: "DELETE" });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message ?? "Failed to delete worker.");
       } catch (err: unknown) {
         setRows(prevRows);
         const msg = err instanceof Error ? err.message : String(err);
@@ -199,7 +192,7 @@ export default function LaborWorkersPage() {
         setDeletingId(null);
       }
     },
-    [configured, rows, supabase]
+    [rows]
   );
 
   return (

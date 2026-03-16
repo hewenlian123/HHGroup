@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSitePhotoById, updateSitePhoto, deleteSitePhoto } from "@/lib/data";
-import { supabase } from "@/lib/supabase";
+import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 const STORAGE_BUCKET = "attachments";
 
@@ -53,6 +53,7 @@ export async function DELETE(
     if (!photo) {
       return NextResponse.json({ ok: false as const, message: "Not found." }, { status: 404 });
     }
+    const supabase = getServerSupabaseAdmin();
     if (supabase && photo.photo_url?.trim()) {
       await supabase.storage.from(STORAGE_BUCKET).remove([photo.photo_url.trim()]);
     }

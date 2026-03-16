@@ -2,7 +2,7 @@
  * Inspection log — Supabase only. Table: inspection_log.
  */
 
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 
 export type InspectionLogStatus = "passed" | "failed" | "pending";
 
@@ -31,8 +31,9 @@ export type InspectionLogDraft = {
 };
 
 function client() {
-  if (!supabase) throw new Error("Supabase is not configured.");
-  return supabase;
+  const c = getSupabaseClient();
+  if (!c) throw new Error("Supabase is not configured.");
+  return c;
 }
 
 const COLS = "id, project_id, inspection_type, inspector, inspection_date, status, notes, created_at";

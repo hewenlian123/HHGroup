@@ -46,9 +46,7 @@ function createBalanceMock(workerId: string, overrides: {
 }
 
 vi.mock("@/lib/supabase", () => ({
-  get supabase() {
-    return mockSupabaseGetter();
-  },
+  getSupabaseClient: () => mockSupabaseGetter(),
 }));
 
 describe("GET /api/labor/workers/[id]/balance", () => {

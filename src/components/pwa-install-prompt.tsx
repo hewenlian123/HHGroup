@@ -25,6 +25,7 @@ export function PWAInstallPrompt() {
   const [showInstall, setShowInstall] = React.useState(false);
   const [showIOSHint, setShowIOSHint] = React.useState(false);
   const [dismissed, setDismissed] = React.useState(false);
+  const [installError, setInstallError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     const key = "hh-pwa-install-dismissed";
@@ -70,18 +71,28 @@ export function PWAInstallPrompt() {
   }, [dismissed]);
 
   const handleInstall = async () => {
-    if (!deferredPrompt) return;
-    await deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === "accepted") {
-      setShowInstall(false);
-      setDeferredPrompt(null);
+    setInstallError(null);
+    if (!deferredPrompt) {
+      setInstallError("Install not available in this browser. Try Chrome on Android or desktop, or use the browser menu → Install app.");
+      return;
+    }
+    try {
+      await deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === "accepted") {
+        setShowInstall(false);
+        setDeferredPrompt(null);
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Install failed.";
+      setInstallError(msg);
     }
   };
 
   const handleDismiss = () => {
     setShowInstall(false);
     setShowIOSHint(false);
+    setInstallError(null);
     setDismissed(true);
     try {
       window.localStorage.setItem("hh-pwa-install-dismissed", "1");
@@ -116,6 +127,11 @@ export function PWAInstallPrompt() {
               <p className="mt-1 text-xs text-muted-foreground">
                 Install the app for a better experience and quick access from your home screen.
               </p>
+              {installError && (
+                <p className="mt-2 text-xs text-amber-600 dark:text-amber-400" role="alert">
+                  {installError}
+                </p>
+              )}
             </>
           )}
         </div>

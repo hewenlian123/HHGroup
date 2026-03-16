@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getProjectById, getSelectionsByProject, insertDocument } from "@/lib/data";
-import { supabase } from "@/lib/supabase";
+import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 const BUCKET = "attachments";
 
@@ -12,6 +12,7 @@ export async function POST(
   if (!projectId) return NextResponse.json({ ok: false, message: "Missing project id" }, { status: 400 });
 
   try {
+    const supabase = getServerSupabaseAdmin();
     const [project, selections] = await Promise.all([
       getProjectById(projectId),
       getSelectionsByProject(projectId),

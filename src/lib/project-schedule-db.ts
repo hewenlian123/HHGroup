@@ -3,7 +3,7 @@
  * Timeline items per project; indexes on project_id, start_date.
  */
 
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 
 export type ProjectScheduleItem = {
   id: string;
@@ -24,8 +24,9 @@ export type ProjectScheduleItemDraft = {
 };
 
 function client() {
-  if (!supabase) throw new Error("Supabase is not configured.");
-  return supabase;
+  const c = getSupabaseClient();
+  if (!c) throw new Error("Supabase is not configured.");
+  return c;
 }
 
 const COLS = "id, project_id, title, start_date, end_date, status, created_at";

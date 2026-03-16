@@ -102,11 +102,6 @@ export default function SchedulePage() {
       if (!data.ok) throw new Error(data.message || "Failed to load");
       setSchedule(data.schedule ?? []);
       setProjects(data.projects ?? []);
-      if ((data.schedule ?? []).length === 0) {
-        const seedRes = await fetch("/api/seed/operations", { method: "POST" });
-        const seedData = await seedRes.json();
-        if (seedData.ok && seedData.seeded?.schedule) await load();
-      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load schedule.");
     } finally {

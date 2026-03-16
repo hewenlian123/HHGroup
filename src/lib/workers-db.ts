@@ -6,7 +6,7 @@
  * exist yet (i.e. before migration 202603182000_workers_add_trade_rates.sql is applied).
  */
 
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 
 export type WorkerStatus = "Active" | "Inactive";
 
@@ -38,8 +38,9 @@ const COLS_EXT = "id, name, phone, trade, daily_rate, default_ot_rate, status, n
 const COLS_BASE = "id, name, phone, role, half_day_rate, status, notes, created_at";
 
 function client() {
-  if (!supabase) throw new Error("Supabase is not configured.");
-  return supabase;
+  const c = getSupabaseClient();
+  if (!c) throw new Error("Supabase is not configured.");
+  return c;
 }
 
 function isMissingTable(err: { message?: string } | null): boolean {

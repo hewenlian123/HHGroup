@@ -2,7 +2,7 @@
  * Site photos — Supabase only. Table: site_photos.
  */
 
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 
 export type SitePhoto = {
   id: string;
@@ -27,8 +27,9 @@ export type SitePhotoDraft = {
 };
 
 function client() {
-  if (!supabase) throw new Error("Supabase is not configured.");
-  return supabase;
+  const c = getSupabaseClient();
+  if (!c) throw new Error("Supabase is not configured.");
+  return c;
 }
 
 const COLS = "id, project_id, photo_url, description, tags, uploaded_by, created_at";

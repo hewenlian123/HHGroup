@@ -143,6 +143,10 @@ export async function deleteProject(id: string): Promise<boolean> {
   return projectsDb.deleteProject(id);
 }
 
+export async function forceDeleteProject(id: string): Promise<void> {
+  return projectsDb.forceDeleteProject(id);
+}
+
 export type ProjectUsageCounts = import("../projects-db").ProjectUsageCounts;
 
 export async function getProjectUsageCounts(projectId: string): Promise<ProjectUsageCounts> {

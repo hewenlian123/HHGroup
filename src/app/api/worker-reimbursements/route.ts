@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getWorkerReimbursements } from "@/lib/worker-reimbursements-db";
-import { supabase } from "@/lib/supabase";
+import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 import type { WorkerReimbursement } from "@/lib/worker-reimbursements-db";
 
 /** Force fresh list so status updates appear immediately */
@@ -18,6 +18,7 @@ export async function GET() {
     const list: WorkerReimbursement[] = all.filter((r) => r.status === "pending");
 
     const projectIds = Array.from(new Set(list.map((r) => r.projectId).filter(Boolean))) as string[];
+    const supabase = getServerSupabaseAdmin();
     if (projectIds.length > 0 && supabase) {
       const { data: projects } = await supabase.from("projects").select("id, name").in("id", projectIds);
       const nameById = new Map(((projects ?? []) as { id: string; name: string | null }[]).map((p) => [p.id, p.name ?? null]));

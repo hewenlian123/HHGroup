@@ -3,7 +3,7 @@
  * Tables: estimates, estimate_meta, estimate_categories, estimate_items.
  */
 
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 
 // —— Types ——
 
@@ -91,8 +91,9 @@ export type PaymentScheduleItem = {
 // —— Helpers ——
 
 function client() {
-  if (!supabase) throw new Error("Supabase is not configured.");
-  return supabase;
+  const c = getSupabaseClient();
+  if (!c) throw new Error("Supabase is not configured.");
+  return c;
 }
 
 function isMissingTable(err: { message?: string } | null): boolean {

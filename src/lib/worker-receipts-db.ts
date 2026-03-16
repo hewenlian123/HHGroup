@@ -4,7 +4,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 import * as workerReimbursementsDb from "./worker-reimbursements-db";
 import type { WorkerReimbursement } from "./worker-reimbursements-db";
 import * as laborDb from "./labor-db";
@@ -48,8 +48,9 @@ const COLS =
   "id, worker_id, worker_name, project_id, expense_type, vendor, amount, description, receipt_url, notes, receipt_date, status, rejection_reason, reimbursement_id, created_at";
 
 function client() {
-  if (!supabase) throw new Error("Supabase is not configured.");
-  return supabase;
+  const c = getSupabaseClient();
+  if (!c) throw new Error("Supabase is not configured.");
+  return c;
 }
 
 function fromRow(r: Record<string, unknown>): WorkerReceipt {

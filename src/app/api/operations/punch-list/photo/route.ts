@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 const BUCKET = "punch-photos";
 
@@ -10,6 +10,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, message: "Missing path." }, { status: 400 });
   }
   try {
+    const supabase = getServerSupabaseAdmin();
     if (!supabase) return NextResponse.json({ ok: false, message: "Storage not configured." }, { status: 500 });
     const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60);
     if (error || !data?.signedUrl) return NextResponse.json({ ok: false, message: "Failed to get URL." }, { status: 500 });

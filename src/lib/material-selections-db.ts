@@ -2,7 +2,7 @@
  * Project material selections — Supabase only. Table: project_material_selections.
  */
 
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 
 export type MaterialSelectionStatus = "Selected" | "Pending" | "Ordered";
 
@@ -35,8 +35,9 @@ export type ProjectMaterialSelectionDraft = {
 };
 
 function client() {
-  if (!supabase) throw new Error("Supabase is not configured.");
-  return supabase;
+  const c = getSupabaseClient();
+  if (!c) throw new Error("Supabase is not configured.");
+  return c;
 }
 
 const COLS = "id, project_id, item, category, material_id, material_name, supplier, status, notes, created_at";
