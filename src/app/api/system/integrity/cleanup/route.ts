@@ -53,7 +53,7 @@ export async function POST(request: Request) {
   const errors: string[] = [];
 
   async function deleteTaskIds(
-    sqlClient: { (strings: TemplateStringsArray, ...values: unknown[]): Promise<unknown[]>; end: () => Promise<void> },
+    sqlClient: postgres.Sql,
     ids: string[]
   ): Promise<void> {
     if (ids.length === 0) return;
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
   }
 
   async function deleteProjectIds(
-    sqlClient: { (strings: TemplateStringsArray, ...values: unknown[]): Promise<unknown[]>; end: () => Promise<void> },
+    sqlClient: postgres.Sql,
     ids: string[]
   ): Promise<void> {
     if (ids.length === 0) return;
@@ -95,7 +95,7 @@ export async function POST(request: Request) {
         LEFT JOIN public.projects p ON p.id = pt.project_id
         WHERE p.id IS NULL
       `;
-      const ids = (rows as { id: string }[]).map((r) => r.id);
+      const ids = (rows as unknown as { id: string }[]).map((r) => r.id);
       await deleteTaskIds(sql, ids);
       await sql.end();
     } else if (category === "ghost") {
@@ -103,7 +103,7 @@ export async function POST(request: Request) {
         SELECT id FROM public.project_tasks
         WHERE trim(coalesce(title, '')) = ''
       `;
-      const ids = (rows as { id: string }[]).map((r) => r.id);
+      const ids = (rows as unknown as { id: string }[]).map((r) => r.id);
       await deleteTaskIds(sql, ids);
       await sql.end();
     } else if (category === "duplicate") {
@@ -114,7 +114,7 @@ export async function POST(request: Request) {
         )
         SELECT id FROM dupes WHERE rn > 1
       `;
-      const ids = (rows as { id: string }[]).map((r) => r.id);
+      const ids = (rows as unknown as { id: string }[]).map((r) => r.id);
       await deleteTaskIds(sql, ids);
       await sql.end();
     } else {
@@ -126,11 +126,11 @@ export async function POST(request: Request) {
           WHERE ilike(title, ${"%" + kw + "%"})
              OR (description IS NOT NULL AND ilike(description, ${"%" + kw + "%"}))
         `;
-        (t as { id: string }[]).forEach((r) => staleTaskIds.push(r.id));
+        (t as unknown as { id: string }[]).forEach((r) => staleTaskIds.push(r.id));
         const p = await sql`
           SELECT id FROM public.projects WHERE ilike(name, ${"%" + kw + "%"})
         `;
-        (p as { id: string }[]).forEach((r) => staleProjectIds.push(r.id));
+        (p as unknown as { id: string }[]).forEach((r) => staleProjectIds.push(r.id));
       }
       const uniqueTaskIds = [...new Set(staleTaskIds)];
       const uniqueProjectIds = [...new Set(staleProjectIds)];

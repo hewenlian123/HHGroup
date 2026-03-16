@@ -213,7 +213,7 @@ export default function TasksPage() {
     }
     const result = await updateProjectTaskAction(task.project_id, task.id, { status: nextStatus });
     if (result.error) {
-      const isNotFound = /not found|already deleted/i.test(result.error) || result.status === 404;
+      const isNotFound = /not found|already deleted/i.test(result.error);
       if (isNotFound) {
         clearStaleTask(task.id);
         return;
@@ -223,7 +223,7 @@ export default function TasksPage() {
       );
       if (selectedTask?.id === task.id) {
         setSelectedTask((prev) => (prev?.id === task.id ? { ...prev, status: task.status } : prev));
-        setDrawerForm((prev) => ({ ...prev, status: task.status }));
+        setDrawerForm((prev) => ({ ...prev, status: task.status as "todo" | "in_progress" | "done" }));
       }
       setError(result.error);
       return;
@@ -245,7 +245,7 @@ export default function TasksPage() {
         status: drawerForm.status,
       });
       if (result.error) {
-        const isNotFound = /not found|already deleted/i.test(result.error) || result.status === 404;
+        const isNotFound = /not found|already deleted/i.test(result.error);
         if (isNotFound) {
           clearStaleTask(selectedTask.id);
           return;
