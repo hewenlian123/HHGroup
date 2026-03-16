@@ -13,6 +13,7 @@ export const TEST_DATA_PATTERNS = [
   "Test Project",
   "Example",
   "Demo",
+  "Untitled",
 ];
 
 export type CleanupResult = { deleted: Record<string, number>; errors: string[] };
@@ -72,6 +73,12 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
   } catch (e) {
     errors.push(`Resolve test ids: ${e instanceof Error ? e.message : String(e)}`);
   }
+
+  // 0. project_tasks — by is_test flag (bulk delete when migration has been applied)
+  await tryDelete("project_tasks", async () => {
+    const { data } = await c.from("project_tasks").select("id").eq("is_test", true);
+    return (data ?? []).map((r: { id: string }) => r.id);
+  });
 
   // 1. project_tasks — by title pattern
   await tryDelete("project_tasks", async () => {

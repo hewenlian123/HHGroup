@@ -24,7 +24,7 @@ export default function FinancialWorkersPage() {
     setLoading(true);
     setMessage(null);
     try {
-      const res = await fetch("/api/worker-reimbursements/balances");
+      const res = await fetch(`/api/worker-reimbursements/balances?t=${Date.now()}`, { cache: "no-store", headers: { Pragma: "no-cache" } });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message ?? "Failed to load");
       setBalances(data.balances ?? []);

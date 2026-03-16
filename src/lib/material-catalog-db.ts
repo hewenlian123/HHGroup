@@ -2,7 +2,7 @@
  * Material catalog — Supabase only. Table: material_catalog.
  */
 
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 
 export type MaterialCatalogRow = {
   id: string;
@@ -25,8 +25,9 @@ export type MaterialCatalogDraft = {
 };
 
 function client() {
-  if (!supabase) throw new Error("Supabase is not configured.");
-  return supabase;
+  const c = getSupabaseClient();
+  if (!c) throw new Error("Supabase is not configured.");
+  return c;
 }
 
 const COLS = "id, category, material_name, supplier, cost, photo_url, description, created_at";

@@ -1,6 +1,6 @@
 "use server";
 
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 import { deleteSubcontractor, updateSubcontractor } from "@/lib/data";
 
 const BUCKET = "attachments";
@@ -8,6 +8,7 @@ const W9_PREFIX = "w9/subcontractors";
 
 export async function uploadW9(subcontractorId: string, formData: FormData): Promise<{ ok: boolean; error?: string }> {
   const file = formData.get("file") as File | null;
+  const supabase = getSupabaseClient();
   if (!file?.size || !supabase) return { ok: false, error: "No file or Supabase not configured." };
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
   const path = `${W9_PREFIX}/${subcontractorId}/${Date.now()}-${safeName}`;
@@ -22,6 +23,7 @@ export async function uploadW9(subcontractorId: string, formData: FormData): Pro
 }
 
 export async function removeW9(subcontractorId: string, storagePath: string): Promise<{ ok: boolean; error?: string }> {
+  const supabase = getSupabaseClient();
   if (!supabase) return { ok: false, error: "Supabase not configured." };
   const { error: storageError } = await supabase.storage.from(BUCKET).remove([storagePath]);
   if (storageError) return { ok: false, error: storageError.message };
@@ -30,6 +32,7 @@ export async function removeW9(subcontractorId: string, storagePath: string): Pr
 }
 
 export async function getW9SignedUrl(storagePath: string): Promise<{ url: string | null; error?: string }> {
+  const supabase = getSupabaseClient();
   if (!supabase) return { url: null, error: "Supabase not configured." };
   const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(storagePath, 60);
   if (error) return { url: null, error: error.message };

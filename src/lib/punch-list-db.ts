@@ -3,7 +3,7 @@
  * Priority: Low | Medium | High | Urgent. Status: open | assigned | completed.
  */
 
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 
 export type PunchListPriority = "Low" | "Medium" | "High" | "Urgent";
 export type PunchListStatus = "open" | "assigned" | "completed";
@@ -49,8 +49,9 @@ export type PunchListDraft = {
 export type PunchListSummary = { open: number; assigned: number; completed: number };
 
 function client() {
-  if (!supabase) throw new Error("Supabase is not configured.");
-  return supabase;
+  const c = getSupabaseClient();
+  if (!c) throw new Error("Supabase is not configured.");
+  return c;
 }
 
 const COLS =
@@ -60,7 +61,7 @@ const COLS_BASE =
 
 function isMissingColumn(err: { message?: string } | null): boolean {
   const m = (err?.message ?? "").toLowerCase();
-  return /column.*does not exist|does not exist.*column|undefined column/i.test(m);
+  return /column.*does not exist|does not exist.*column|undefined column|could not find the.*column|schema cache.*column/i.test(m);
 }
 
 function toItem(r: Record<string, unknown>, extended = true): PunchListItem {

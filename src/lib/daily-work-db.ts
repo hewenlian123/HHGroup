@@ -3,7 +3,7 @@
  * Day type: full_day, half_day, absent. Pay = day pay + OT.
  */
 
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 
 export type DayType = "full_day" | "half_day" | "absent";
 
@@ -29,8 +29,9 @@ export type DailyWorkEntryDraft = {
 };
 
 function client() {
-  if (!supabase) throw new Error("Supabase is not configured.");
-  return supabase;
+  const c = getSupabaseClient();
+  if (!c) throw new Error("Supabase is not configured.");
+  return c;
 }
 
 const COLS = "id, work_date, worker_id, project_id, day_type, daily_rate, ot_hours, total_pay, notes, created_at";

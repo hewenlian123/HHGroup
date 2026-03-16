@@ -1,4 +1,3 @@
-import { PHASE_DEVELOPMENT_SERVER } from "next/constants.js";
 import withPWAInit from "@ducanh2912/next-pwa";
 
 const withPWA = withPWAInit({
@@ -20,7 +19,8 @@ const withPWA = withPWAInit({
 
 export default function nextConfig(phase) {
   const base = {
-    distDir: phase === PHASE_DEVELOPMENT_SERVER ? ".next-dev" : ".next",
+    // Use single distDir so "rm -rf .next" cleans dev and prod; avoids 404s from stale .next-dev
+    distDir: ".next",
     eslint: {
       ignoreDuringBuilds: true,
     },

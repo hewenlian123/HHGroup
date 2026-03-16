@@ -1,9 +1,14 @@
 import type { Metadata, Viewport } from "next";
+import dynamic from "next/dynamic";
 import localFont from "next/font/local";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { AppShell } from "@/components/layout/app-shell";
 import { ensureConstructionSchema } from "@/lib/ensure-construction-schema";
+
+const AppShell = dynamic(
+  () => import("@/components/layout/app-shell").then((m) => m.AppShell),
+  { ssr: false, loading: () => <div className="min-h-screen bg-[#F7F7F8] flex items-center justify-center text-sm text-muted-foreground">Loading…</div> }
+);
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",

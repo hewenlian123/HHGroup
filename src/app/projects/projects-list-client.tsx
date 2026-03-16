@@ -3,7 +3,8 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Search, Trash2 } from "lucide-react";
+import { Plus, Search } from "lucide-react";
+import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { PageLayout, PageHeader, ActionBar } from "@/components/base";
 import {
   Dialog,
@@ -16,10 +17,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { deleteProjectAction, getProjectUsageAction, archiveProjectAction } from "./actions";
+import { deleteProjectAction, getProjectUsageAction, archiveProjectAction, forceDeleteProjectAction } from "./actions";
+import {
+  DELETE_BLOCKED_RELATED_CONFIG,
+  getLabelForKey,
+  getViewPathForKey,
+  getRelatedLabelsList,
+  type DeleteBlockedCounts,
+} from "./delete-blocked-config";
 import { EmptyState } from "@/components/empty-state";
 import { useToast } from "@/components/toast/toast-provider";
-import type { ProjectUsageCounts } from "@/lib/data";
 
 export type ProjectsListRow = {
   id: string;
@@ -72,20 +79,24 @@ const ProjectStatusBadge = React.memo(function ProjectStatusBadge({ status }: { 
 const ProjectMobileCard = React.memo(function ProjectMobileCard({
   row,
   onNavigate,
+  onDelete,
+  deletingId,
 }: {
   row: ProjectsListRow;
   onNavigate: (id: string) => void;
+  onDelete: (id: string, name: string) => void;
+  deletingId: string | null;
 }) {
   const progress = Math.max(0, Math.min(100, row.progressPct));
   const barTone = progress >= 95 ? "bg-emerald-500" : progress >= 70 ? "bg-amber-500" : "bg-emerald-400";
   return (
-    <li className="border-b border-[#eee] last:border-b-0">
+    <li className="border-b border-[#eee] last:border-b-0 flex items-start gap-2">
       <div
         role="button"
         tabIndex={0}
         onClick={() => onNavigate(row.id)}
         onKeyDown={(e) => e.key === "Enter" && onNavigate(row.id)}
-        className="py-3 px-3 hover:bg-[#fafafa] transition-colors text-left"
+        className="flex-1 min-w-0 py-3 px-3 hover:bg-[#fafafa] transition-colors text-left"
       >
         <div className="font-medium text-foreground">{row.name}</div>
         <div className="text-sm text-muted-foreground mt-0.5">Client: {row.clientName ?? "—"}</div>
@@ -102,11 +113,20 @@ const ProjectMobileCard = React.memo(function ProjectMobileCard({
           </div>
         </div>
       </div>
+      <div className="pt-2 pr-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+        <RowActionsMenu
+          ariaLabel={`Actions for ${row.name}`}
+          actions={[
+            { label: "View", onClick: () => onNavigate(row.id) },
+            { label: "Delete", onClick: () => onDelete(row.id, row.name), destructive: true, disabled: deletingId === row.id },
+          ]}
+        />
+      </div>
     </li>
   );
 });
 
-/** Memoized table row with delete. */
+/** Memoized table row with row actions menu. */
 const ProjectTableRow = React.memo(function ProjectTableRow({
   row,
   onNavigate,
@@ -120,11 +140,6 @@ const ProjectTableRow = React.memo(function ProjectTableRow({
 }) {
   const progress = Math.max(0, Math.min(100, row.progressPct));
   const barTone = progress >= 95 ? "bg-emerald-500" : progress >= 70 ? "bg-amber-500" : "bg-emerald-400";
-  const handleDelete = React.useCallback((ev: React.MouseEvent) => {
-    ev.preventDefault();
-    ev.stopPropagation();
-    onDelete(row.id, row.name);
-  }, [row.id, row.name, onDelete]);
   return (
     <tr
       onClick={() => onNavigate(row.id)}
@@ -151,18 +166,14 @@ const ProjectTableRow = React.memo(function ProjectTableRow({
           <span className="text-xs tabular-nums text-muted-foreground">{progress.toFixed(0)}%</span>
         </div>
       </td>
-      <td className="py-2.5 px-3" onClick={(e) => e.stopPropagation()}>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
-          aria-label={`Delete ${row.name}`}
-          disabled={deletingId === row.id}
-          onClick={handleDelete}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+      <td className="py-2.5 px-3 w-10 text-right" onClick={(e) => e.stopPropagation()}>
+        <RowActionsMenu
+          ariaLabel={`Actions for ${row.name}`}
+          actions={[
+            { label: "View", onClick: () => onNavigate(row.id) },
+            { label: "Delete", onClick: () => onDelete(row.id, row.name), destructive: true, disabled: deletingId === row.id },
+          ]}
+        />
       </td>
     </tr>
   );
@@ -179,22 +190,9 @@ export function ProjectsListClient({
   const [query, setQuery] = React.useState("");
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
   const [deleteBlockedOpen, setDeleteBlockedOpen] = React.useState(false);
-  const [deleteBlockedCounts, setDeleteBlockedCounts] = React.useState<ProjectUsageCounts | null>(null);
+  const [deleteBlockedCounts, setDeleteBlockedCounts] = React.useState<DeleteBlockedCounts | null>(null);
   const [deleteBlockedProjectId, setDeleteBlockedProjectId] = React.useState<string | null>(null);
-
-  const deleteModalRelatedConfig: { key: keyof ProjectUsageCounts; label: string; viewPath: string }[] = [
-    { key: "project_tasks", label: "Tasks", viewPath: "/tasks" },
-    { key: "expenses", label: "Expenses", viewPath: "/financial/expenses" },
-    { key: "invoices", label: "Invoices", viewPath: "/financial/invoices" },
-    { key: "labor_entries", label: "Labor Entries", viewPath: "/labor" },
-    { key: "punch_list", label: "Punch List", viewPath: "/punch-list" },
-    { key: "site_photos", label: "Site Photos", viewPath: "/site-photos" },
-    { key: "project_change_orders", label: "Change Orders", viewPath: "/change-orders" },
-    { key: "bills", label: "Bills", viewPath: "/bills" },
-    { key: "worker_receipts", label: "Worker Receipts", viewPath: "/labor/receipts" },
-    { key: "subcontracts", label: "Subcontracts", viewPath: "/projects" },
-    { key: "materials", label: "Materials", viewPath: "/materials/catalog" },
-  ];
+  const [forceDeleteInProgress, setForceDeleteInProgress] = React.useState(false);
 
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -239,12 +237,13 @@ export function ProjectsListClient({
     setDeletingId(id);
     try {
       const result = await deleteProjectAction(id);
-      if (result?.error && !result?.blocked) {
-        const msg = String(result.error || "").trim();
-        const friendly =
-          /subcontract|contract|cannot|can'?t|关联|合同|不能/i.test(msg) ? msg : "Delete failed. Please try again.";
-        toast({ title: "Error", description: friendly, variant: "error" });
-      } else if (!result?.blocked) {
+      if (result?.blocked && result?.counts) {
+        setDeleteBlockedCounts(result.counts);
+        setDeleteBlockedProjectId(id);
+        setDeleteBlockedOpen(true);
+      } else if (result?.error) {
+        toast({ title: "Error", description: result.error, variant: "error" });
+      } else {
         router.refresh();
       }
     } finally {
@@ -387,7 +386,7 @@ export function ProjectsListClient({
           <div className="sm:hidden rounded-lg border border-[#eee] bg-white overflow-hidden">
             <ul className="divide-y divide-[#eee]">
               {filtered.map((r) => (
-                <ProjectMobileCard key={r.id} row={r} onNavigate={handleNavigate} />
+                <ProjectMobileCard key={r.id} row={r} onNavigate={handleNavigate} onDelete={handleDelete} deletingId={deletingId} />
               ))}
             </ul>
           </div>
@@ -427,52 +426,89 @@ export function ProjectsListClient({
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Cannot delete project</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
-              Cannot delete project because it contains related records.
+              This project has related records. Remove or reassign them first, or archive the project.
             </DialogDescription>
           </DialogHeader>
           {deleteBlockedCounts && deleteBlockedProjectId != null && (
             <ul className="text-sm text-foreground space-y-2">
-              {deleteModalRelatedConfig.map(({ key, label, viewPath }) => {
+              {DELETE_BLOCKED_RELATED_CONFIG.map(({ key }) => {
                 const n = deleteBlockedCounts[key] ?? 0;
                 if (n <= 0) return null;
-                const href = `${viewPath}?project_id=${deleteBlockedProjectId}`;
+                const label = getLabelForKey(key);
+                const viewPath = getViewPathForKey(key);
+                const href = viewPath ? `${viewPath}?project_id=${deleteBlockedProjectId}` : undefined;
                 return (
                   <li key={key} className="flex items-center justify-between gap-3 border-b border-border/60 pb-2 last:border-0 last:pb-0">
-                    <span>
-                      {label} ({n})
-                    </span>
-                    <Button variant="outline" size="sm" className="shrink-0 rounded-sm" asChild>
-                      <Link href={href} onClick={() => setDeleteBlockedOpen(false)}>
-                        View {label}
-                      </Link>
-                    </Button>
+                    <span>{label} ({n})</span>
+                    {href ? (
+                      <Button variant="outline" size="sm" className="shrink-0 rounded-sm" asChild>
+                        <Link href={href} onClick={() => setDeleteBlockedOpen(false)}>
+                          View {label}
+                        </Link>
+                      </Button>
+                    ) : null}
                   </li>
                 );
               })}
+              {Object.entries(deleteBlockedCounts)
+                .filter(([k, n]) => n > 0 && !DELETE_BLOCKED_RELATED_CONFIG.some((c) => c.key === k))
+                .map(([key, n]) => (
+                  <li key={key} className="flex items-center justify-between gap-3 border-b border-border/60 pb-2 last:border-0 last:pb-0">
+                    <span>{getLabelForKey(key)} ({n})</span>
+                  </li>
+                ))}
             </ul>
           )}
           <DialogFooter className="gap-2 pt-3 border-t border-border/60 flex-wrap">
-            <Button variant="ghost" size="sm" onClick={() => setDeleteBlockedOpen(false)}>
+            <Button variant="ghost" size="sm" onClick={() => setDeleteBlockedOpen(false)} disabled={forceDeleteInProgress}>
               Cancel
             </Button>
-            {deleteBlockedProjectId != null && (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={async () => {
-                  if (!deleteBlockedProjectId) return;
-                  const result = await archiveProjectAction(deleteBlockedProjectId);
-                  if (result?.error) {
-                    toast({ title: "Error", description: result.error, variant: "error" });
-                  } else {
-                    setDeleteBlockedOpen(false);
-                    setDeleteBlockedProjectId(null);
-                    router.refresh();
-                  }
-                }}
-              >
-                Archive project
-              </Button>
+            {deleteBlockedProjectId != null && deleteBlockedCounts && (
+              <>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={async () => {
+                    if (!deleteBlockedProjectId) return;
+                    const result = await archiveProjectAction(deleteBlockedProjectId);
+                    if (result?.error) {
+                      toast({ title: "Error", description: result.error, variant: "error" });
+                    } else {
+                      setDeleteBlockedOpen(false);
+                      setDeleteBlockedProjectId(null);
+                      router.refresh();
+                    }
+                  }}
+                  disabled={forceDeleteInProgress}
+                >
+                  Archive project
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={forceDeleteInProgress}
+                  onClick={async () => {
+                    if (!deleteBlockedProjectId || !deleteBlockedCounts) return;
+                    const labels = getRelatedLabelsList(deleteBlockedCounts);
+                    const listText = labels.length > 0 ? labels.join("、") : "";
+                    const msg = listText
+                      ? `确定要删除该项目及其所有关联数据（${listText}）？此操作不可撤销。`
+                      : "确定要删除该项目及其所有关联数据？此操作不可撤销。";
+                    if (!window.confirm(msg)) return;
+                    setForceDeleteInProgress(true);
+                    try {
+                      const result = await forceDeleteProjectAction(deleteBlockedProjectId);
+                      if (result?.error) {
+                        toast({ title: "Error", description: result.error, variant: "error" });
+                      }
+                    } finally {
+                      setForceDeleteInProgress(false);
+                    }
+                  }}
+                >
+                  {forceDeleteInProgress ? "Deleting…" : "Force Delete"}
+                </Button>
+              </>
             )}
           </DialogFooter>
         </DialogContent>

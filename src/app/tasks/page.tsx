@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { PageLayout, PageHeader, Drawer } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,6 +66,7 @@ function isOverdue(d: string | null): boolean {
 
 export default function TasksPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const [tasks, setTasks] = React.useState<TaskRow[]>([]);
   const [projects, setProjects] = React.useState<{ id: string; name: string }[]>([]);
   const [workers, setWorkers] = React.useState<{ id: string; name: string }[]>([]);
@@ -97,18 +98,13 @@ export default function TasksPage() {
   const load = React.useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/operations/tasks", { cache: "no-store" });
+      const res = await fetch(`/api/operations/tasks?t=${Date.now()}`, { cache: "no-store", headers: { Pragma: "no-cache" } });
       const data = await res.json();
       if (!data.ok) throw new Error(data.message || "Failed to load");
       const taskList = data.tasks ?? [];
       setTasks(taskList);
       setProjects(data.projects ?? []);
       setWorkers(data.workers ?? []);
-      if (taskList.length === 0) {
-        const seedRes = await fetch("/api/seed/operations", { method: "POST" });
-        const seedData = await seedRes.json();
-        if (seedData.ok && seedData.seeded?.tasks) await load();
-      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load tasks.");
     } finally {
@@ -119,6 +115,26 @@ export default function TasksPage() {
   React.useEffect(() => {
     load();
   }, [load]);
+
+  const clearStaleTask = React.useCallback(
+    (taskId: string) => {
+      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+      setSelectedTask(null);
+      setDrawerOpen(false);
+      setError("Task no longer exists.");
+      if (typeof window !== "undefined" && window.location.search) {
+        router.replace(pathname ?? "/tasks");
+      }
+      if (typeof window !== "undefined") window.setTimeout(() => setError(null), 4000);
+    },
+    [router, pathname]
+  );
+
+  React.useEffect(() => {
+    if (!selectedTask) return;
+    const exists = tasks.some((t) => t.id === selectedTask.id);
+    if (!exists) clearStaleTask(selectedTask.id);
+  }, [tasks, selectedTask, clearStaleTask]);
 
   const filtered = React.useMemo(() => {
     if (filter === "completed") return tasks.filter((t) => t.status === "done");
@@ -186,12 +202,33 @@ export default function TasksPage() {
 
   const handleToggleDone = async (e: React.MouseEvent, task: TaskRow) => {
     e.stopPropagation();
+    e.preventDefault();
     const nextStatus = task.status === "done" ? "todo" : "done";
-    const result = await updateProjectTaskAction(task.project_id, task.id, { status: nextStatus });
-    if (!result.error) {
-      await load();
-      router.refresh();
+    setTasks((prev) =>
+      prev.map((t) => (t.id === task.id ? { ...t, status: nextStatus } : t))
+    );
+    if (selectedTask?.id === task.id) {
+      setSelectedTask((prev) => (prev?.id === task.id ? { ...prev, status: nextStatus } : prev));
+      setDrawerForm((prev) => ({ ...prev, status: nextStatus }));
     }
+    const result = await updateProjectTaskAction(task.project_id, task.id, { status: nextStatus });
+    if (result.error) {
+      const isNotFound = /not found|already deleted/i.test(result.error) || result.status === 404;
+      if (isNotFound) {
+        clearStaleTask(task.id);
+        return;
+      }
+      setTasks((prev) =>
+        prev.map((t) => (t.id === task.id ? { ...t, status: task.status } : t))
+      );
+      if (selectedTask?.id === task.id) {
+        setSelectedTask((prev) => (prev?.id === task.id ? { ...prev, status: task.status } : prev));
+        setDrawerForm((prev) => ({ ...prev, status: task.status }));
+      }
+      setError(result.error);
+      return;
+    }
+    router.refresh();
   };
 
   const handleSaveDrawer = async () => {
@@ -208,6 +245,11 @@ export default function TasksPage() {
         status: drawerForm.status,
       });
       if (result.error) {
+        const isNotFound = /not found|already deleted/i.test(result.error) || result.status === 404;
+        if (isNotFound) {
+          clearStaleTask(selectedTask.id);
+          return;
+        }
         setError(result.error);
         return;
       }
@@ -222,12 +264,17 @@ export default function TasksPage() {
   const handleDeleteTask = async () => {
     if (!selectedTask) return;
     if (typeof window !== "undefined" && !window.confirm("Delete this task? This cannot be undone.")) return;
+    const taskIdToRemove = selectedTask.id;
     setSubmitting(true);
     setError(null);
     try {
-      const res = await fetch(`/api/tasks/${selectedTask.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/tasks/${taskIdToRemove}`, { method: "DELETE", cache: "no-store" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        if (res.status === 404) {
+          clearStaleTask(taskIdToRemove);
+          return;
+        }
         setError((data as { message?: string }).message ?? "Failed to delete task.");
         return;
       }
@@ -235,6 +282,8 @@ export default function TasksPage() {
       setSelectedTask(null);
       await load();
       router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to delete task.");
     } finally {
       setSubmitting(false);
     }

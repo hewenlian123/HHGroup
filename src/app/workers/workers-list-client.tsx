@@ -10,6 +10,7 @@ import type { WorkerRow, WorkerStatus } from "@/lib/workers-db";
 import { updateWorkerAction, deleteWorkerAction } from "./actions";
 import { AddWorkerModal } from "./add-worker-modal";
 import { EmptyState } from "@/components/empty-state";
+import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { UserPlus } from "lucide-react";
 
 function fmtRate(n: number): string {
@@ -118,9 +119,14 @@ export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
               <span className="tabular-nums text-muted-foreground">Daily {fmtRate(r.daily_rate)}</span>
               <span className={r.status === "Active" ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>{r.status}</span>
             </div>
-            <div className="mt-3 flex gap-2">
-              <Button variant="ghost" size="touch" className="min-h-[44px] flex-1 rounded-sm text-sm" onClick={() => setEditFor(r)} disabled={busy}>Edit</Button>
-              <Button variant="ghost" size="touch" className="min-h-[44px] flex-1 rounded-sm text-sm text-red-600" onClick={() => void onDelete(r)} disabled={busy}>Delete</Button>
+            <div className="mt-3 flex justify-end">
+              <RowActionsMenu
+                ariaLabel={`Actions for ${r.name}`}
+                actions={[
+                  { label: "Edit", onClick: () => setEditFor(r), disabled: busy },
+                  { label: "Delete", onClick: () => void onDelete(r), destructive: true, disabled: busy },
+                ]}
+              />
             </div>
           </div>
         ))}
@@ -135,7 +141,7 @@ export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
               <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider tabular-nums text-muted-foreground">Daily Rate</th>
               <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider tabular-nums text-muted-foreground">Default OT Rate</th>
               <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Status</th>
-              <th className="w-28 px-1" />
+              <th className="w-10 px-1 text-right" aria-label="Actions" />
             </tr>
           </thead>
           <tbody>
@@ -151,15 +157,14 @@ export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
                     {r.status}
                   </span>
                 </td>
-                <td className="px-1 py-1.5">
-                  <div className="flex items-center justify-end gap-1">
-                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setEditFor(r)} disabled={busy}>
-                      Edit
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-7 text-xs text-red-600" onClick={() => void onDelete(r)} disabled={busy}>
-                      Delete
-                    </Button>
-                  </div>
+                <td className="px-1 py-1.5 text-right" onClick={(e) => e.stopPropagation()}>
+                  <RowActionsMenu
+                    ariaLabel={`Actions for ${r.name}`}
+                    actions={[
+                      { label: "Edit", onClick: () => setEditFor(r), disabled: busy },
+                      { label: "Delete", onClick: () => void onDelete(r), destructive: true, disabled: busy },
+                    ]}
+                  />
                 </td>
               </tr>
             ))}

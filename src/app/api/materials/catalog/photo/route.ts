@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 const BUCKET = "material-images";
 
 export async function GET(req: Request) {
+  const supabase = getServerSupabaseAdmin();
   if (!supabase) {
     return NextResponse.json({ ok: false, message: "Supabase not configured." }, { status: 500 });
   }

@@ -2,7 +2,7 @@
  * Project commissions and commission payment records.
  */
 
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 
 export type CommissionRole = "Designer" | "Sales" | "Referral" | "Agent" | "Other";
 export type CalculationMode = "Auto" | "Manual";
@@ -42,8 +42,9 @@ export type CommissionWithPaid = ProjectCommission & {
 };
 
 function client() {
-  if (!supabase) throw new Error("Supabase is not configured.");
-  return supabase;
+  const c = getSupabaseClient();
+  if (!c) throw new Error("Supabase is not configured.");
+  return c;
 }
 
 const COLS =

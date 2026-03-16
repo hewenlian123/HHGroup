@@ -193,11 +193,6 @@ export default function PunchListPage() {
       setSummary(data.summary ?? { open: 0, assigned: 0, completed: 0 });
       setProjects(data.projects ?? []);
       setWorkers(data.workers ?? []);
-      if ((data.items ?? []).length === 0 && !projectFilter) {
-        const seedRes = await fetch("/api/seed/operations", { method: "POST" });
-        const seedData = await seedRes.json();
-        if (seedData.ok && seedData.seeded?.punchList) await load();
-      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load punch list.");
     } finally {

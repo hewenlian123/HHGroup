@@ -3,7 +3,8 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Search, Trash2 } from "lucide-react";
+import { Plus, Search } from "lucide-react";
+import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -287,9 +288,13 @@ export function ExpensesClient() {
       header: "",
       align: "right",
       render: (row) => (
-        <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive" onClick={() => void handleDelete(row.id)} aria-label="Delete">
-          <Trash2 className="h-4 w-4" />
-        </Button>
+        <RowActionsMenu
+          ariaLabel="Row actions"
+          actions={[
+            { label: "View", onClick: () => router.push(`/financial/expenses/${row.id}`) },
+            { label: "Delete", onClick: () => void handleDelete(row.id), destructive: true },
+          ]}
+        />
       ),
     },
   ];

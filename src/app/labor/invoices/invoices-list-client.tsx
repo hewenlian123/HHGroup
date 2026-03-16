@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,9 @@ import { Input } from "@/components/ui/input";
 import { FilterBar } from "@/components/filter-bar";
 import { StatusBadge } from "@/components/status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { RowActionsMenu } from "@/components/base/row-actions-menu";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { createBrowserClient } from "@/lib/supabase";
 
 type LaborInvoiceStatus = "draft" | "reviewed" | "confirmed" | "void";
@@ -35,6 +39,7 @@ function isMissingTableError(error: unknown): boolean {
 }
 
 export default function LaborInvoicesListClient() {
+  const router = useRouter();
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [invoices, setInvoices] = React.useState<LaborInvoiceRow[]>([]);
@@ -242,37 +247,20 @@ export default function LaborInvoicesListClient() {
                       <td className="py-3 px-4">
                         <StatusBadge status={row.status} />
                       </td>
-                      <td className="py-3 px-4">
-                        <div className="flex justify-end gap-2 opacity-0 transition-opacity duration-100 group-hover:opacity-100">
-                          <Link href={`/labor/invoices/${row.id}`}>
-                            <Button size="sm" variant="outline" className="rounded-lg h-8">View/Edit</Button>
-                          </Link>
-                          {row.status !== "void" ? (
-                            voidConfirmId === row.id ? (
-                              <>
-                                <Button size="sm" variant="outline" className="rounded-lg h-8" disabled={!!busyId} onClick={() => handleVoid(row.id)}>
-                                  Confirm Void
-                                </Button>
-                                <Button size="sm" variant="outline" className="rounded-lg h-8" disabled={!!busyId} onClick={() => setVoidConfirmId(null)}>
-                                  Cancel
-                                </Button>
-                              </>
-                            ) : (
-                              <Button size="sm" variant="outline" className="rounded-lg h-8" disabled={!!busyId} onClick={() => setVoidConfirmId(row.id)}>
-                                Void
-                              </Button>
-                            )
-                          ) : null}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="rounded-lg h-8"
-                            disabled={row.status === "confirmed" || !!busyId}
-                            onClick={() => handleDelete(row.id)}
-                          >
-                            Delete
-                          </Button>
-                        </div>
+                      <td className="py-3 px-4 text-right">
+                        <RowActionsMenu
+                          ariaLabel={`Actions for ${row.invoice_no}`}
+                          actions={[
+                            { label: "View", onClick: () => router.push(`/labor/invoices/${row.id}`) },
+                            ...(row.status !== "void" ? [{ label: "Void", onClick: () => setVoidConfirmId(row.id), disabled: !!busyId, destructive: true }] : []),
+                            {
+                              label: "Delete",
+                              onClick: () => handleDelete(row.id),
+                              disabled: row.status === "confirmed" || !!busyId,
+                              destructive: true,
+                            },
+                          ]}
+                        />
                       </td>
                     </tr>
                   ))}
@@ -289,6 +277,30 @@ export default function LaborInvoicesListClient() {
           </table>
         </div>
       </Card>
+
+      <Dialog open={!!voidConfirmId} onOpenChange={(open) => !open && setVoidConfirmId(null)}>
+        <DialogContent className="max-w-sm border-border/60 rounded-md">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold">Void invoice</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">This cannot be undone.</p>
+          <DialogFooter className="gap-2 pt-3 border-t border-border/60">
+            <Button variant="ghost" size="sm" onClick={() => setVoidConfirmId(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={!!busyId}
+              onClick={async () => {
+                if (!voidConfirmId) return;
+                await handleVoid(voidConfirmId);
+                setVoidConfirmId(null);
+              }}
+            >
+              Void
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -14,7 +14,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { createBrowserClient } from "@/lib/supabase";
 import { getInvoicesWithDerivedPaged } from "@/lib/data";
 import { deleteInvoiceAction } from "./actions";
-import { Plus, Eye, CreditCard, Copy, Trash2 } from "lucide-react";
+import { RowActionsMenu } from "@/components/base/row-actions-menu";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Plus } from "lucide-react";
 import { Pagination } from "@/components/ui/pagination";
 
 type InvoiceStatus = "Draft" | "Sent" | "Partially Paid" | "Paid" | "Void";
@@ -205,171 +207,81 @@ export function InvoicesClient() {
         key: "actions",
         header: "",
         align: "right",
-        className: "w-[220px]",
+        className: "w-10",
         render: (row) => {
           const isBusy = busyId === row.id;
-          return (
-            <div className="flex justify-end gap-1">
-              <Button asChild variant="ghost" size="sm" className="h-8" disabled={isBusy}>
-                <Link href={`/financial/invoices/${row.id}`}>
-                  <Eye className="h-4 w-4 mr-1" /> View
-                </Link>
-              </Button>
-              {row.status !== "Void" && row.status !== "Paid" ? (
-                <Button asChild variant="ghost" size="sm" className="h-8" disabled={isBusy}>
-                  <Link href={`/financial/invoices/${row.id}?recordPayment=1`}>
-                    <CreditCard className="h-4 w-4 mr-1" /> Pay
-                  </Link>
-                </Button>
-              ) : null}
-              {row.status !== "Void" ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8"
-                  disabled={isBusy}
-                  onClick={async () => {
-                    if (!supabase) return;
-                    setBusyId(row.id);
-                    setError(null);
-                    try {
-                      const { data: inv, error: invError } = await supabase
-                        .from("invoices")
-                        .select("*")
-                        .eq("id", row.id)
-                        .maybeSingle();
-                      if (invError) throw invError;
-                      if (!inv) throw new Error("Invoice not found.");
-
-                      const { data: items, error: itemsError } = await supabase
-                        .from("invoice_items")
-                        .select("description,qty,unit_price")
-                        .eq("invoice_id", row.id)
-                        .order("created_at", { ascending: true });
-                      if (itemsError && !isMissingTableError(itemsError)) throw itemsError;
-
-                      const invoice_no = await getNextInvoiceNo(supabase);
-                      const { data: created, error: createError } = await supabase
-                        .from("invoices")
-                        .insert({
-                          invoice_no,
-                          project_id: (inv as { project_id: string | null }).project_id,
-                          customer_id: (inv as { customer_id?: string | null }).customer_id ?? null,
-                          client_name: (inv as { client_name: string }).client_name,
-                          issue_date: new Date().toISOString().slice(0, 10),
-                          due_date: (inv as { due_date: string }).due_date,
-                          status: "Draft",
-                          notes: (inv as { notes?: string | null }).notes ?? null,
-                          tax_pct: safeNumber((inv as { tax_pct?: number | null }).tax_pct ?? 0),
-                        })
-                        .select("id")
-                        .single();
-                      if (createError) throw createError;
-
-                      const newId = (created as { id: string }).id;
-                      const rows = (items ?? []).map((it) => ({
-                        invoice_id: newId,
-                        description: (it as { description?: string }).description ?? "",
-                        qty: safeNumber((it as { qty?: number }).qty ?? 1),
-                        unit_price: safeNumber((it as { unit_price?: number }).unit_price ?? 0),
-                      }));
-                      if (rows.length > 0) {
-                        const { error: insertItemsError } = await supabase.from("invoice_items").insert(rows);
-                        if (insertItemsError) throw insertItemsError;
+          const actions = [
+            { label: "View", onClick: () => router.push(`/financial/invoices/${row.id}`) },
+            ...(row.status !== "Void" && row.status !== "Paid"
+              ? [{ label: "Record Payment", onClick: () => router.push(`/financial/invoices/${row.id}?recordPayment=1`) }]
+              : []),
+            ...(row.status !== "Void"
+              ? [
+                  {
+                    label: "Duplicate",
+                    onClick: async () => {
+                      if (!supabase) return;
+                      setBusyId(row.id);
+                      setError(null);
+                      try {
+                        const { data: inv, error: invError } = await supabase.from("invoices").select("*").eq("id", row.id).maybeSingle();
+                        if (invError) throw invError;
+                        if (!inv) throw new Error("Invoice not found.");
+                        const { data: items, error: itemsError } = await supabase
+                          .from("invoice_items")
+                          .select("description,qty,unit_price")
+                          .eq("invoice_id", row.id)
+                          .order("created_at", { ascending: true });
+                        if (itemsError && !isMissingTableError(itemsError)) throw itemsError;
+                        const invoice_no = await getNextInvoiceNo(supabase);
+                        const { data: created, error: createError } = await supabase
+                          .from("invoices")
+                          .insert({
+                            invoice_no,
+                            project_id: (inv as { project_id: string | null }).project_id,
+                            customer_id: (inv as { customer_id?: string | null }).customer_id ?? null,
+                            client_name: (inv as { client_name: string }).client_name,
+                            issue_date: new Date().toISOString().slice(0, 10),
+                            due_date: (inv as { due_date: string }).due_date,
+                            status: "Draft",
+                            notes: (inv as { notes?: string | null }).notes ?? null,
+                            tax_pct: safeNumber((inv as { tax_pct?: number | null }).tax_pct ?? 0),
+                          })
+                          .select("id")
+                          .single();
+                        if (createError) throw createError;
+                        const newId = (created as { id: string }).id;
+                        const itemRows = (items ?? []).map((it) => ({
+                          invoice_id: newId,
+                          description: (it as { description?: string }).description ?? "",
+                          qty: safeNumber((it as { qty?: number }).qty ?? 1),
+                          unit_price: safeNumber((it as { unit_price?: number }).unit_price ?? 0),
+                        }));
+                        if (itemRows.length > 0) {
+                          const { error: insertItemsError } = await supabase.from("invoice_items").insert(itemRows);
+                          if (insertItemsError) throw insertItemsError;
+                        }
+                        router.push(`/financial/invoices/${newId}`);
+                      } catch (e) {
+                        setError(e instanceof Error ? e.message : "Failed to duplicate invoice.");
+                      } finally {
+                        setBusyId(null);
                       }
-
-                      router.push(`/financial/invoices/${newId}`);
-                    } catch (e) {
-                      setError(e instanceof Error ? e.message : "Failed to duplicate invoice.");
-                    } finally {
-                      setBusyId(null);
-                    }
-                  }}
-                  title="Duplicate"
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-              ) : null}
-              {row.status !== "Void" ? (
-                voidConfirmId === row.id ? (
-                  <>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      className="h-8"
-                      disabled={isBusy}
-                      onClick={async () => {
-                        if (!supabase) return;
-                        setBusyId(row.id);
-                        setError(null);
-                        const { error: updateError } = await supabase.from("invoices").update({ status: "Void" }).eq("id", row.id);
-                        if (updateError) setError(updateError.message);
-                        await refresh();
-                        setBusyId(null);
-                      }}
-                    >
-                      Confirm Void
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-8" disabled={isBusy} onClick={() => setVoidConfirmId(null)}>
-                      Cancel
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 text-red-600 hover:text-red-700"
-                    disabled={isBusy}
-                    onClick={() => setVoidConfirmId(row.id)}
-                    title="Void"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )
-              ) : null}
-              {row.status === "Draft" || row.status === "Void" ? (
-                deleteConfirmId === row.id ? (
-                  <>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      className="h-8"
-                      disabled={isBusy}
-                      onClick={async () => {
-                        setBusyId(row.id);
-                        setError(null);
-                        const result = await deleteInvoiceAction(row.id);
-                        if (result.error) setError(result.error);
-                        else setDeleteConfirmId(null);
-                        await refresh();
-                        setBusyId(null);
-                      }}
-                    >
-                      Confirm Delete
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-8" disabled={isBusy} onClick={() => setDeleteConfirmId(null)}>
-                      Cancel
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 text-red-600 hover:text-red-700"
-                    disabled={isBusy}
-                    onClick={() => setDeleteConfirmId(row.id)}
-                    title={row.status === "Void" ? "Delete voided invoice" : "Delete draft"}
-                  >
-                    Delete
-                  </Button>
-                )
-              ) : null}
-            </div>
-          );
+                    },
+                    disabled: isBusy,
+                  },
+                ]
+              : []),
+            ...(row.status !== "Void" ? [{ label: "Void", onClick: () => setVoidConfirmId(row.id), disabled: isBusy, destructive: true }] : []),
+            ...(row.status === "Draft" || row.status === "Void"
+              ? [{ label: "Delete", onClick: () => setDeleteConfirmId(row.id), disabled: isBusy, destructive: true }]
+              : []),
+          ];
+          return <RowActionsMenu ariaLabel={`Actions for ${row.invoice_no}`} actions={actions} />;
         },
       },
     ];
-  }, [busyId, refresh, router, supabase, voidConfirmId, deleteConfirmId]);
+  }, [busyId, refresh, router, supabase]);
 
   return (
     <div className="page-container page-stack py-6">
@@ -443,6 +355,68 @@ export function InvoicesClient() {
         )}
         <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} className="px-4" />
       </Card>
+
+      <Dialog open={!!voidConfirmId} onOpenChange={(open) => !open && setVoidConfirmId(null)}>
+        <DialogContent className="max-w-sm border-border/60 rounded-md">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold">Void invoice</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">This cannot be undone. The invoice will be marked as Void.</p>
+          <DialogFooter className="gap-2 pt-3 border-t border-border/60">
+            <Button variant="ghost" size="sm" onClick={() => setVoidConfirmId(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={!!busyId}
+              onClick={async () => {
+                if (!voidConfirmId || !supabase) return;
+                setBusyId(voidConfirmId);
+                setError(null);
+                const { error: updateError } = await supabase.from("invoices").update({ status: "Void" }).eq("id", voidConfirmId);
+                if (updateError) setError(updateError.message);
+                await refresh();
+                setBusyId(null);
+                setVoidConfirmId(null);
+              }}
+            >
+              Void
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+        <DialogContent className="max-w-sm border-border/60 rounded-md">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold">Delete invoice</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">This cannot be undone. The invoice will be permanently deleted.</p>
+          <DialogFooter className="gap-2 pt-3 border-t border-border/60">
+            <Button variant="ghost" size="sm" onClick={() => setDeleteConfirmId(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={!!busyId}
+              onClick={async () => {
+                if (!deleteConfirmId) return;
+                setBusyId(deleteConfirmId);
+                setError(null);
+                const result = await deleteInvoiceAction(deleteConfirmId);
+                if (result.error) setError(result.error);
+                else setDeleteConfirmId(null);
+                await refresh();
+                setBusyId(null);
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

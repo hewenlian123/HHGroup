@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 const TABLE_NAME = "worker_reimbursements";
 
@@ -14,6 +14,7 @@ export async function DELETE(
   try {
     const { id } = await params;
     if (!id) return NextResponse.json({ message: "Missing id." }, { status: 400 });
+    const supabase = getServerSupabaseAdmin();
     if (!supabase) return NextResponse.json({ message: "Supabase not configured." }, { status: 500 });
 
     const { data, error } = await supabase

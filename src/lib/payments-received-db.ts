@@ -4,7 +4,7 @@
  * Creates a deposit record automatically for each payment (deposits table).
  */
 
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 import { createDepositFromPayment } from "@/lib/deposits-db";
 
 export const PAYMENT_METHODS = ["Check", "ACH", "Wire", "Cash", "Credit Card"] as const;
@@ -42,8 +42,9 @@ export type CreatePaymentReceivedPayload = {
 };
 
 function client() {
-  if (!supabase) throw new Error("Supabase is not configured.");
-  return supabase;
+  const c = getSupabaseClient();
+  if (!c) throw new Error("Supabase is not configured.");
+  return c;
 }
 
 function isMissingTable(err: { message?: string } | null): boolean {

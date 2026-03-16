@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCloseoutCompletion, getProjectById, insertDocument } from "@/lib/data";
-import { supabase } from "@/lib/supabase";
+import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 const BUCKET = "attachments";
 
@@ -47,6 +47,7 @@ export async function POST(
     const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
     const fileName = `completion-certificate-${ts}.pdf`;
     const filePath = `projects/${projectId}/closeout/${fileName}`;
+    const supabase = getServerSupabaseAdmin();
     if (!supabase) return NextResponse.json({ ok: false, message: "Supabase not configured" }, { status: 500 });
     const { error: uploadError } = await supabase.storage
       .from(BUCKET)

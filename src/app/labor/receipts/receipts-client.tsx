@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { WorkerReceipt } from "@/lib/worker-receipts-db";
+import { RowActionsMenu } from "@/components/base/row-actions-menu";
 
 function fmtUsd(n: number) {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -192,64 +193,23 @@ export function ReceiptsClient({ initialRows }: { initialRows: ReceiptRow[] }) {
                 {r.status}
               </span>
             </div>
-            {r.receiptUrl && (
-              <button
-                type="button"
-                onClick={() => setViewReceiptUrl(r.receiptUrl)}
-                className="mt-2 inline-block text-xs text-primary hover:underline text-left"
-              >
-                View receipt
-              </button>
-            )}
-            {r.status === "Pending" && (
-              <div className="mt-3 flex gap-2">
-                <Button
-                  type="button"
-                  size="touch"
-                  variant="outline"
-                  className="min-h-[44px] flex-1 rounded-sm"
-                  disabled={busyId === r.id}
-                  onClick={() => approve(r.id)}
-                >
-                  {busyId === r.id ? "…" : "Approve"}
-                </Button>
-                <Button
-                  type="button"
-                  size="touch"
-                  variant="ghost"
-                  className="min-h-[44px] flex-1 rounded-sm"
-                  disabled={busyId === r.id}
-                  onClick={() => openReject(r.id)}
-                >
-                  Reject
-                </Button>
-              </div>
-            )}
-            {r.status === "Approved" && (
-              <div className="mt-3 flex gap-2">
-                <Button
-                  type="button"
-                  size="touch"
-                  variant="outline"
-                  className="min-h-[44px] rounded-sm"
-                  disabled={busyId === r.id}
-                  onClick={() => resetToPending(r.id)}
-                >
-                  {busyId === r.id ? "…" : "Reset to Pending"}
-                </Button>
-              </div>
-            )}
             <div className="mt-2 flex justify-end">
-              <Button
-                type="button"
-                size="touch"
-                variant="ghost"
-                className="min-h-[32px] text-xs text-destructive"
-                disabled={busyId === r.id}
-                onClick={() => handleDelete(r.id)}
-              >
-                Delete
-              </Button>
+              <RowActionsMenu
+                ariaLabel={`Actions for receipt ${r.id}`}
+                actions={[
+                  ...(r.receiptUrl ? [{ label: "View receipt", onClick: () => setViewReceiptUrl(r.receiptUrl!) }] : []),
+                  ...(r.status === "Pending"
+                    ? [
+                        { label: "Approve", onClick: () => approve(r.id), disabled: busyId === r.id },
+                        { label: "Reject", onClick: () => openReject(r.id), disabled: busyId === r.id },
+                      ]
+                    : []),
+                  ...(r.status === "Approved"
+                    ? [{ label: "Reset to Pending", onClick: () => resetToPending(r.id), disabled: busyId === r.id }]
+                    : []),
+                  { label: "Delete", onClick: () => handleDelete(r.id), destructive: true, disabled: busyId === r.id },
+                ]}
+              />
             </div>
           </div>
         ))
@@ -267,7 +227,7 @@ export function ReceiptsClient({ initialRows }: { initialRows: ReceiptRow[] }) {
               <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Receipt</th>
               <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Status</th>
               <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Date</th>
-              <th className="w-40 text-right py-2 px-3" />
+              <th className="w-10 text-right py-2 px-3" aria-label="Actions" />
             </tr>
           </thead>
           <tbody>
@@ -312,55 +272,23 @@ export function ReceiptsClient({ initialRows }: { initialRows: ReceiptRow[] }) {
                   <td className="py-2 px-3 text-muted-foreground tabular-nums text-xs">
                     {r.createdAt.slice(0, 10)}
                   </td>
-                  <td className="py-2 px-3 text-right">
-                    <div className="flex justify-end gap-1.5">
-                      {r.status === "Approved" && (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs rounded-sm"
-                          disabled={busyId === r.id}
-                          onClick={() => resetToPending(r.id)}
-                        >
-                          {busyId === r.id ? "…" : "Reset to Pending"}
-                        </Button>
-                      )}
-                      {r.status === "Pending" && (
-                        <>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="h-7 text-xs rounded-sm"
-                            disabled={busyId === r.id}
-                            onClick={() => approve(r.id)}
-                          >
-                            {busyId === r.id ? "…" : "Approve"}
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 text-xs rounded-sm"
-                            disabled={busyId === r.id}
-                            onClick={() => openReject(r.id)}
-                          >
-                            Reject
-                          </Button>
-                        </>
-                      )}
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 text-xs rounded-sm text-destructive"
-                        disabled={busyId === r.id}
-                        onClick={() => handleDelete(r.id)}
-                      >
-                        Delete
-                      </Button>
-                    </div>
+                  <td className="py-2 px-3 text-right" onClick={(e) => e.stopPropagation()}>
+                    <RowActionsMenu
+                      ariaLabel={`Actions for receipt`}
+                      actions={[
+                        ...(r.receiptUrl ? [{ label: "View receipt", onClick: () => setViewReceiptUrl(r.receiptUrl!) }] : []),
+                        ...(r.status === "Pending"
+                          ? [
+                              { label: "Approve", onClick: () => approve(r.id), disabled: busyId === r.id },
+                              { label: "Reject", onClick: () => openReject(r.id), disabled: busyId === r.id },
+                            ]
+                          : []),
+                        ...(r.status === "Approved"
+                          ? [{ label: "Reset to Pending", onClick: () => resetToPending(r.id), disabled: busyId === r.id }]
+                          : []),
+                        { label: "Delete", onClick: () => handleDelete(r.id), destructive: true, disabled: busyId === r.id },
+                      ]}
+                    />
                   </td>
                 </tr>
               ))

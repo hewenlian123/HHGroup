@@ -3,7 +3,7 @@
  * Table: subcontracts (project_id, subcontractor_id, cost_code, contract_amount, etc.).
  */
 
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 
 export type SubcontractRow = {
   id: string;
@@ -34,8 +34,9 @@ export type SubcontractDraft = {
 };
 
 function client() {
-  if (!supabase) throw new Error("Supabase is not configured.");
-  return supabase;
+  const c = getSupabaseClient();
+  if (!c) throw new Error("Supabase is not configured.");
+  return c;
 }
 
 function isMissingColumn(err: { message?: string } | null): boolean {

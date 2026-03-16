@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
@@ -43,19 +43,10 @@ export async function GET(
   if (!workerId) {
     return NextResponse.json({ message: "Worker id required" }, { status: 400 });
   }
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!supabaseUrl || !supabaseKey) {
+  const c = getServerSupabaseAdmin();
+  if (!c) {
     return NextResponse.json({ message: "Supabase not configured" }, { status: 500 });
   }
-
-  const c = createClient(supabaseUrl, supabaseKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-    global: {
-      fetch: (input, init) =>
-        fetch(input as RequestInfo, { ...init, cache: "no-store" }),
-    },
-  });
 
   // Shared result shape — avoids TypeScript inferring per-column types from each .select() call.
   type RawResult = { data: Record<string, unknown>[] | null; error: { message?: string } | null };

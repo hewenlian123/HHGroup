@@ -36,9 +36,15 @@ import { ProjectCloseoutTab } from "./project-closeout-tab";
 import { ProjectMaterialsTab } from "./project-materials-tab";
 import { ProjectCommissionTab } from "./project-commission-tab";
 import { ProjectPunchListTab } from "./project-punch-list-tab";
-import { deleteProjectAction, getProjectUsageAction, archiveProjectAction } from "../actions";
+import { deleteProjectAction, getProjectUsageAction, archiveProjectAction, forceDeleteProjectAction } from "../actions";
+import {
+  DELETE_BLOCKED_RELATED_CONFIG,
+  getLabelForKey,
+  getViewPathForKey,
+  getRelatedLabelsList,
+  type DeleteBlockedCounts,
+} from "../delete-blocked-config";
 import { useToast } from "@/components/toast/toast-provider";
-import type { ProjectUsageCounts } from "@/lib/data";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export type ChangeOrderRow = { id: string; number: string; status: string; total: number; date: string };
@@ -171,22 +177,9 @@ export function ProjectDetailTabsClient({
   }, [tab, fetchTab]);
 
   const [deleteBlockedOpen, setDeleteBlockedOpen] = React.useState(false);
-  const [deleteBlockedCounts, setDeleteBlockedCounts] = React.useState<ProjectUsageCounts | null>(null);
+  const [deleteBlockedCounts, setDeleteBlockedCounts] = React.useState<DeleteBlockedCounts | null>(null);
   const [deleteInProgress, setDeleteInProgress] = React.useState(false);
-
-  const deleteModalRelatedConfig: { key: keyof ProjectUsageCounts; label: string; viewPath: string }[] = [
-    { key: "project_tasks", label: "Tasks", viewPath: "/tasks" },
-    { key: "expenses", label: "Expenses", viewPath: "/financial/expenses" },
-    { key: "invoices", label: "Invoices", viewPath: "/financial/invoices" },
-    { key: "labor_entries", label: "Labor Entries", viewPath: "/labor" },
-    { key: "punch_list", label: "Punch List", viewPath: "/punch-list" },
-    { key: "site_photos", label: "Site Photos", viewPath: "/site-photos" },
-    { key: "project_change_orders", label: "Change Orders", viewPath: "/change-orders" },
-    { key: "bills", label: "Bills", viewPath: "/bills" },
-    { key: "worker_receipts", label: "Worker Receipts", viewPath: "/labor/receipts" },
-    { key: "subcontracts", label: "Subcontracts", viewPath: "/projects" },
-    { key: "materials", label: "Materials", viewPath: "/materials/catalog" },
-  ];
+  const [forceDeleteInProgress, setForceDeleteInProgress] = React.useState(false);
 
   const firstTabForCounts = React.useMemo((): TabKey | null => {
     if (!deleteBlockedCounts) return null;
@@ -347,12 +340,12 @@ export function ProjectDetailTabsClient({
                 setDeleteInProgress(true);
                 try {
                   const result = await deleteProjectAction(projectId);
-                  if (result?.error && !result?.blocked) {
-                    const msg = String(result.error || "").trim();
-                    const friendly =
-                      /subcontract|contract|cannot|can'?t|关联|合同|不能/i.test(msg) ? msg : "Delete failed. Please try again.";
-                    toast({ title: "Error", description: friendly, variant: "error" });
-                  } else if (!result?.blocked) {
+                  if (result?.blocked && result?.counts) {
+                    setDeleteBlockedCounts(result.counts);
+                    setDeleteBlockedOpen(true);
+                  } else if (result?.error) {
+                    toast({ title: "Error", description: result.error, variant: "error" });
+                  } else {
                     router.refresh();
                   }
                 } finally {
@@ -1098,37 +1091,47 @@ export function ProjectDetailTabsClient({
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Cannot delete project</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
-              Cannot delete project because it contains related records.
+              This project has related records. Remove or reassign them first, or archive the project.
             </DialogDescription>
           </DialogHeader>
           {deleteBlockedCounts && (
             <ul className="text-sm text-foreground space-y-2">
-              {deleteModalRelatedConfig.map(({ key, label, viewPath }) => {
+              {DELETE_BLOCKED_RELATED_CONFIG.map(({ key }) => {
                 const n = deleteBlockedCounts[key] ?? 0;
                 if (n <= 0) return null;
-                const href = `${viewPath}?project_id=${projectId}`;
+                const label = getLabelForKey(key);
+                const viewPath = getViewPathForKey(key);
+                const href = viewPath ? `${viewPath}?project_id=${projectId}` : undefined;
                 return (
                   <li key={key} className="flex items-center justify-between gap-3 border-b border-border/60 pb-2 last:border-0 last:pb-0">
-                    <span>
-                      {label} ({n})
-                    </span>
-                    <Button variant="outline" size="sm" className="shrink-0 rounded-sm" asChild>
-                      <Link href={href} onClick={() => setDeleteBlockedOpen(false)}>
-                        View {label}
-                      </Link>
-                    </Button>
+                    <span>{label} ({n})</span>
+                    {href ? (
+                      <Button variant="outline" size="sm" className="shrink-0 rounded-sm" asChild>
+                        <Link href={href} onClick={() => setDeleteBlockedOpen(false)}>
+                          View {label}
+                        </Link>
+                      </Button>
+                    ) : null}
                   </li>
                 );
               })}
+              {Object.entries(deleteBlockedCounts)
+                .filter(([k, n]) => n > 0 && !DELETE_BLOCKED_RELATED_CONFIG.some((c) => c.key === k))
+                .map(([key, n]) => (
+                  <li key={key} className="flex items-center justify-between gap-3 border-b border-border/60 pb-2 last:border-0 last:pb-0">
+                    <span>{getLabelForKey(key)} ({n})</span>
+                  </li>
+                ))}
             </ul>
           )}
           <DialogFooter className="gap-2 pt-3 border-t border-border/60 flex-wrap">
-            <Button variant="ghost" size="sm" onClick={() => setDeleteBlockedOpen(false)}>
+            <Button variant="ghost" size="sm" onClick={() => setDeleteBlockedOpen(false)} disabled={forceDeleteInProgress}>
               Cancel
             </Button>
             <Button
               variant="secondary"
               size="sm"
+              disabled={forceDeleteInProgress}
               onClick={async () => {
                 const result = await archiveProjectAction(projectId);
                 if (result?.error) {
@@ -1141,6 +1144,32 @@ export function ProjectDetailTabsClient({
             >
               Archive project
             </Button>
+            {deleteBlockedCounts && (
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={forceDeleteInProgress}
+                onClick={async () => {
+                  const labels = getRelatedLabelsList(deleteBlockedCounts);
+                  const listText = labels.length > 0 ? labels.join("、") : "";
+                  const msg = listText
+                    ? `确定要删除该项目及其所有关联数据（${listText}）？此操作不可撤销。`
+                    : "确定要删除该项目及其所有关联数据？此操作不可撤销。";
+                  if (!window.confirm(msg)) return;
+                  setForceDeleteInProgress(true);
+                  try {
+                    const result = await forceDeleteProjectAction(projectId);
+                    if (result?.error) {
+                      toast({ title: "Error", description: result.error, variant: "error" });
+                    }
+                  } finally {
+                    setForceDeleteInProgress(false);
+                  }
+                }}
+              >
+                {forceDeleteInProgress ? "Deleting…" : "Force Delete"}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

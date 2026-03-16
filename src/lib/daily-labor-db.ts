@@ -3,7 +3,7 @@
  * labor_entries schema: id, worker_id, project_id, work_date, hours, cost_code, notes, cost_amount, status, submitted_at, approved_at, locked_at, etc.
  */
 
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 
 export type LaborEntryStatus = "Draft" | "Submitted" | "Approved" | "Locked";
 
@@ -40,8 +40,9 @@ export type DailyLaborEntryDraft = {
 };
 
 function client() {
-  if (!supabase) throw new Error("Supabase is not configured.");
-  return supabase;
+  const c = getSupabaseClient();
+  if (!c) throw new Error("Supabase is not configured.");
+  return c;
 }
 
 export type LaborEntryWithJoins = {

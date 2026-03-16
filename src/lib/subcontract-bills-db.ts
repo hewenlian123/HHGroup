@@ -3,7 +3,7 @@
  * Table: subcontract_bills.
  */
 
-import { supabase } from "@/lib/supabase";
+import { getSupabaseClient } from "@/lib/supabase";
 
 export type SubcontractBillRow = {
   id: string;
@@ -27,8 +27,9 @@ export type SubcontractBillDraft = {
 };
 
 function client() {
-  if (!supabase) throw new Error("Supabase is not configured.");
-  return supabase;
+  const c = getSupabaseClient();
+  if (!c) throw new Error("Supabase is not configured.");
+  return c;
 }
 
 function isMissingFunction(err: { message?: string } | null): boolean {

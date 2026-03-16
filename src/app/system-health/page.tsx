@@ -19,6 +19,18 @@ type GuardianResult = {
   checkedAt?: string;
 };
 
+type IntegrityCheck = { ok: boolean; count: number; ids?: string[] };
+
+type DataIntegrityResult = {
+  ok: boolean;
+  orphanedTasks: IntegrityCheck;
+  ghostTasks: IntegrityCheck;
+  duplicateTasks: IntegrityCheck;
+  overdueNotCompleted: { count: number };
+  staleTestData: { tasks: IntegrityCheck; projects: IntegrityCheck };
+  errors?: string[];
+};
+
 function StatusDot({ ok }: { ok: boolean }) {
   return (
     <span
@@ -44,12 +56,18 @@ function StatusLabel({ ok }: { ok: boolean }) {
   );
 }
 
+type CleanupCategory = "orphaned" | "ghost" | "duplicate" | "stale";
+
 export default function SystemHealthPage() {
   const [result, setResult] = React.useState<GuardianResult | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [refreshing, setRefreshing] = React.useState(false);
   const [lastRefreshed, setLastRefreshed] = React.useState<Date | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+
+  const [integrity, setIntegrity] = React.useState<DataIntegrityResult | null>(null);
+  const [integrityLoading, setIntegrityLoading] = React.useState(true);
+  const [cleanupBusy, setCleanupBusy] = React.useState<CleanupCategory | null>(null);
 
   const fetchGuardian = React.useCallback(async (isManual = false) => {
     if (isManual) setRefreshing(true);
@@ -68,16 +86,47 @@ export default function SystemHealthPage() {
     }
   }, []);
 
+  const fetchIntegrity = React.useCallback(async () => {
+    setIntegrityLoading(true);
+    try {
+      const res = await fetch("/api/system/integrity", { cache: "no-store" });
+      const data: DataIntegrityResult = await res.json();
+      setIntegrity(data);
+    } catch {
+      setIntegrity(null);
+    } finally {
+      setIntegrityLoading(false);
+    }
+  }, []);
+
+  const runCleanup = React.useCallback(async (category: CleanupCategory) => {
+    setCleanupBusy(category);
+    try {
+      const res = await fetch("/api/system/integrity/cleanup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category }),
+      });
+      if (res.ok) await fetchIntegrity();
+    } finally {
+      setCleanupBusy(null);
+    }
+  }, [fetchIntegrity]);
+
   // Initial load
   React.useEffect(() => {
     void fetchGuardian();
-  }, [fetchGuardian]);
+    void fetchIntegrity();
+  }, [fetchGuardian, fetchIntegrity]);
 
   // Auto-refresh every 30 seconds
   React.useEffect(() => {
-    const id = setInterval(() => void fetchGuardian(), REFRESH_INTERVAL_MS);
+    const id = setInterval(() => {
+      void fetchGuardian();
+      void fetchIntegrity();
+    }, REFRESH_INTERVAL_MS);
     return () => clearInterval(id);
-  }, [fetchGuardian]);
+  }, [fetchGuardian, fetchIntegrity]);
 
   const anyFailed = result !== null && !result.ok;
 
@@ -173,6 +222,145 @@ export default function SystemHealthPage() {
           </table>
         </div>
       )}
+
+      {/* Data Integrity */}
+      <div className="border-t border-border/60 pt-6">
+        <h2 className="text-sm font-medium text-foreground mb-3">Data Integrity</h2>
+        {integrityLoading && !integrity ? (
+          <p className="text-sm text-muted-foreground">Checking data integrity…</p>
+        ) : integrity?.errors?.length ? (
+          <p className="text-sm text-red-600 dark:text-red-400">{integrity.errors.join("; ")}</p>
+        ) : (
+          <div className="table-responsive">
+            <table className="w-full min-w-[360px] sm:min-w-0 border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-border/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                  <th className="py-2 pr-6 font-medium">Check</th>
+                  <th className="py-2 pr-6 font-medium">Status</th>
+                  <th className="py-2 font-medium">Detail</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-border/30">
+                  <td className="py-2.5 pr-6 font-medium">Orphaned tasks</td>
+                  <td className="py-2.5 pr-6">
+                    <StatusLabel ok={!(integrity?.orphanedTasks.count ?? 0)} />
+                  </td>
+                  <td className="py-2.5 text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                    {(integrity?.orphanedTasks.count ?? 0) > 0 ? (
+                      <>
+                        <span>{(integrity?.orphanedTasks.count ?? 0)} task(s) with missing project</span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="rounded-sm h-7"
+                          onClick={() => runCleanup("orphaned")}
+                          disabled={cleanupBusy !== null}
+                        >
+                          {cleanupBusy === "orphaned" ? "Cleaning…" : "Clean up"}
+                        </Button>
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                </tr>
+                <tr className="border-b border-border/30">
+                  <td className="py-2.5 pr-6 font-medium">Ghost tasks</td>
+                  <td className="py-2.5 pr-6">
+                    <StatusLabel ok={!(integrity?.ghostTasks.count ?? 0)} />
+                  </td>
+                  <td className="py-2.5 text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                    {(integrity?.ghostTasks.count ?? 0) > 0 ? (
+                      <>
+                        <span>{(integrity?.ghostTasks.count ?? 0)} task(s) with no title</span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="rounded-sm h-7"
+                          onClick={() => runCleanup("ghost")}
+                          disabled={cleanupBusy !== null}
+                        >
+                          {cleanupBusy === "ghost" ? "Cleaning…" : "Clean up"}
+                        </Button>
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                </tr>
+                <tr className="border-b border-border/30">
+                  <td className="py-2.5 pr-6 font-medium">Duplicate tasks</td>
+                  <td className="py-2.5 pr-6">
+                    <StatusLabel ok={!(integrity?.duplicateTasks.count ?? 0)} />
+                  </td>
+                  <td className="py-2.5 text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                    {(integrity?.duplicateTasks.count ?? 0) > 0 ? (
+                      <>
+                        <span>{(integrity?.duplicateTasks.count ?? 0)} duplicate(s) in same project</span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="rounded-sm h-7"
+                          onClick={() => runCleanup("duplicate")}
+                          disabled={cleanupBusy !== null}
+                        >
+                          {cleanupBusy === "duplicate" ? "Cleaning…" : "Clean up"}
+                        </Button>
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                </tr>
+                <tr className="border-b border-border/30">
+                  <td className="py-2.5 pr-6 font-medium">Overdue not completed</td>
+                  <td className="py-2.5 pr-6">
+                    <StatusLabel ok={(integrity?.overdueNotCompleted.count ?? 0) === 0} />
+                  </td>
+                  <td className="py-2.5 text-xs text-muted-foreground">
+                    {(integrity?.overdueNotCompleted.count ?? 0) > 0
+                      ? `${integrity?.overdueNotCompleted.count} task(s) past due`
+                      : "—"}
+                  </td>
+                </tr>
+                <tr className="border-b border-border/30">
+                  <td className="py-2.5 pr-6 font-medium">Stale test data</td>
+                  <td className="py-2.5 pr-6">
+                    <StatusLabel
+                      ok={
+                        ((integrity?.staleTestData.tasks.count ?? 0) + (integrity?.staleTestData.projects.count ?? 0)) ===
+                        0
+                      }
+                    />
+                  </td>
+                  <td className="py-2.5 text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                    {(integrity?.staleTestData.tasks.count ?? 0) + (integrity?.staleTestData.projects.count ?? 0) > 0 ? (
+                      <>
+                        <span>
+                          {(integrity?.staleTestData.tasks.count ?? 0)} task(s),{" "}
+                          {(integrity?.staleTestData.projects.count ?? 0)} project(s)
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="rounded-sm h-7"
+                          onClick={() => runCleanup("stale")}
+                          disabled={cleanupBusy !== null}
+                        >
+                          {cleanupBusy === "stale" ? "Cleaning…" : "Clean up"}
+                        </Button>
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       <Link href="/dashboard">
         <Button variant="outline" size="sm" className="min-h-[44px] sm:min-h-0 w-full sm:w-auto">
