@@ -109,7 +109,8 @@ export async function addChangeOrderAttachmentAction(
 ): Promise<{ ok: boolean; error?: string }> {
   const file = formData.get("file") as File | null;
   if (!file || !file.size) return { ok: false, error: "No file selected." };
-  const { supabase } = await import("@/lib/supabase");
+  const { getSupabaseClient } = await import("@/lib/supabase");
+  const supabase = getSupabaseClient();
   if (!supabase) return { ok: false, error: "Supabase not configured." };
   const bucket = "attachments";
   const ext = file.name.replace(/^.+\./, "") || "";
@@ -140,7 +141,8 @@ export async function deleteChangeOrderAttachmentAction(
   const list = await getChangeOrderAttachments(changeOrderId);
   const att = list.find((a) => a.id === attachmentId);
   if (att) {
-    const { supabase } = await import("@/lib/supabase");
+    const { getSupabaseClient } = await import("@/lib/supabase");
+    const supabase = getSupabaseClient();
     if (supabase) await supabase.storage.from("attachments").remove([att.storagePath]);
   }
   const ok = await deleteChangeOrderAttachment(attachmentId);

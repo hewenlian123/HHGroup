@@ -12,7 +12,6 @@ import { StatusBadge } from "@/components/status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { createBrowserClient } from "@/lib/supabase";
 
 type LaborInvoiceStatus = "draft" | "reviewed" | "confirmed" | "void";

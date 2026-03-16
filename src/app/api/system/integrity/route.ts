@@ -80,7 +80,7 @@ export async function GET(): Promise<NextResponse<DataIntegrityResult>> {
         LEFT JOIN public.projects p ON p.id = pt.project_id
         WHERE p.id IS NULL
       `;
-      const ids = (rows as { id: string }[]).map((r) => r.id);
+      const ids = (rows as unknown as { id: string }[]).map((r) => r.id);
       orphanedTasks = { ok: ids.length === 0, count: ids.length, ids };
     } catch (e) {
       errors.push(`Orphan: ${e instanceof Error ? e.message : String(e)}`);
@@ -93,7 +93,7 @@ export async function GET(): Promise<NextResponse<DataIntegrityResult>> {
         SELECT id FROM public.project_tasks
         WHERE trim(coalesce(title, '')) = ''
       `;
-      const ids = (rows as { id: string }[]).map((r) => r.id);
+      const ids = (rows as unknown as { id: string }[]).map((r) => r.id);
       ghostTasks = { ok: ids.length === 0, count: ids.length, ids };
     } catch (e) {
       errors.push(`Ghost: ${e instanceof Error ? e.message : String(e)}`);
@@ -110,7 +110,7 @@ export async function GET(): Promise<NextResponse<DataIntegrityResult>> {
         )
         SELECT id FROM dupes WHERE rn > 1
       `;
-      const ids = (rows as { id: string }[]).map((r) => r.id);
+      const ids = (rows as unknown as { id: string }[]).map((r) => r.id);
       duplicateTasks = { ok: ids.length === 0, count: ids.length, ids };
     } catch (e) {
       errors.push(`Duplicate: ${e instanceof Error ? e.message : String(e)}`);
@@ -139,12 +139,12 @@ export async function GET(): Promise<NextResponse<DataIntegrityResult>> {
           WHERE ilike(title, ${"%" + kw + "%"})
              OR (description IS NOT NULL AND ilike(description, ${"%" + kw + "%"}))
         `;
-        (t as { id: string }[]).forEach((r) => staleTaskIds.push(r.id));
+        (t as unknown as { id: string }[]).forEach((r) => staleTaskIds.push(r.id));
         const p = await sql`
           SELECT id FROM public.projects
           WHERE ilike(name, ${"%" + kw + "%"})
         `;
-        (p as { id: string }[]).forEach((r) => staleProjectIds.push(r.id));
+        (p as unknown as { id: string }[]).forEach((r) => staleProjectIds.push(r.id));
       }
       staleTaskIds = [...new Set(staleTaskIds)];
       staleProjectIds = [...new Set(staleProjectIds)];

@@ -80,7 +80,7 @@ async function checkDataIntegrity(origin: string): Promise<GuardianCheck> {
     if (res.status >= 500 || (data.ok === false && hasIssues)) {
       const msg =
         (data.errors?.length ?? 0) > 0
-          ? data.errors.join("; ")
+          ? (data.errors ?? []).join("; ")
           : hasIssues
             ? [orphanCount && `${orphanCount} orphan`, ghostCount && `${ghostCount} ghost`, dupCount && `${dupCount} duplicate`, (staleTasks + staleProjects) > 0 && "stale test data"]
                 .filter(Boolean)

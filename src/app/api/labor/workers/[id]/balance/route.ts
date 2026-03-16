@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
@@ -63,11 +64,12 @@ export async function GET(
    * instead of inferring a per-column response type from .select().
    */
   async function queryWorker(
+    client: SupabaseClient,
     table: string,
     cols: string,
     orderCol?: string
   ): Promise<RawResult> {
-    const base = c.from(table).select(cols).eq("worker_id", workerId);
+    const base = client.from(table).select(cols).eq("worker_id", workerId);
     const q = orderCol ? base.order(orderCol, { ascending: false }) : base;
     const { data, error } = await q;
     return {
@@ -90,7 +92,7 @@ export async function GET(
       "id, worker_id, project_id, work_date, cost_amount",
       "id, worker_id, project_id, work_date",
     ]) {
-      laborRes = await queryWorker("labor_entries", cols, "work_date");
+      laborRes = await queryWorker(c, "labor_entries", cols, "work_date");
       if (!laborRes.error || !isMissingColumn(laborRes.error)) break;
     }
 
@@ -101,14 +103,14 @@ export async function GET(
       "id, worker_id, payment_date, amount, notes",
       "id, worker_id, payment_date, amount",
     ]) {
-      paymentsRes = await queryWorker("worker_payments", cols, "payment_date");
+      paymentsRes = await queryWorker(c, "worker_payments", cols, "payment_date");
       if (!paymentsRes.error || !isMissingColumn(paymentsRes.error)) break;
     }
     if (paymentsRes.error) {
-      paymentsRes = await queryWorker("worker_payments", "id, worker_id, amount");
+      paymentsRes = await queryWorker(c, "worker_payments", "id, worker_id, amount");
     }
     if (paymentsRes.error) {
-      paymentsRes = await queryWorker("worker_payments", "id, amount");
+      paymentsRes = await queryWorker(c, "worker_payments", "id, amount");
     }
 
     const [reimbRes, projectsRes] = await Promise.all([
