@@ -550,6 +550,10 @@ export async function getLaborEntriesByProjectAndDate(projectId: string, workDat
   return laborDb.getLaborEntriesByProjectAndDate(projectId, workDate);
 }
 
+export async function getFullDayLaborEntriesByDate(workDate: string): Promise<LaborEntry[]> {
+  return laborDb.getFullDayLaborEntriesByDate(workDate);
+}
+
 export async function insertDailyLaborEntriesAmPm(
   projectId: string,
   workDate: string,
