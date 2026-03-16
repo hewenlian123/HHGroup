@@ -136,13 +136,13 @@ export async function GET(): Promise<NextResponse<DataIntegrityResult>> {
       for (const kw of TEST_KEYWORDS) {
         const t = await sql`
           SELECT id FROM public.project_tasks
-          WHERE ilike(title, ${"%" + kw + "%"})
-             OR (description IS NOT NULL AND ilike(description, ${"%" + kw + "%"}))
+          WHERE title ILIKE ${"%" + kw + "%"}
+             OR (description IS NOT NULL AND description ILIKE ${"%" + kw + "%"})
         `;
         (t as unknown as { id: string }[]).forEach((r) => staleTaskIds.push(r.id));
         const p = await sql`
           SELECT id FROM public.projects
-          WHERE ilike(name, ${"%" + kw + "%"})
+          WHERE name ILIKE ${"%" + kw + "%"}
         `;
         (p as unknown as { id: string }[]).forEach((r) => staleProjectIds.push(r.id));
       }
