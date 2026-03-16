@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import {
   getProjects,
   getLaborWorkers,
-  getLaborEntriesByProjectAndDate,
+  getFullDayLaborEntriesByDate,
   insertDailyLaborEntriesAmPm,
   type LaborWorker,
   type DailyLaborRowInput,
@@ -81,21 +81,25 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
   }, [open]);
 
   React.useEffect(() => {
-    if (!open || !projectId || !workDate) {
+    if (!open || !workDate) {
       setDisabledWorkerIds(new Set());
       return;
     }
     let cancelled = false;
-    getLaborEntriesByProjectAndDate(projectId, workDate).then((entries) => {
-      if (!cancelled) {
-        const ids = new Set(entries.map((e) => e.workerId));
-        setDisabledWorkerIds(ids);
-      }
-    });
+    getFullDayLaborEntriesByDate(workDate)
+      .then((entries) => {
+        if (!cancelled) {
+          const ids = new Set(entries.map((e) => e.workerId));
+          setDisabledWorkerIds(ids);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setDisabledWorkerIds(new Set());
+      });
     return () => {
       cancelled = true;
     };
-  }, [open, projectId, workDate]);
+  }, [open, workDate]);
 
   const toggleMorning = (workerId: string) => {
     if (disabledWorkerIds.has(workerId)) return;
@@ -201,8 +205,8 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
           </div>
           <div className="border-b border-border/60 pb-2">
             <p className="text-xs text-muted-foreground mb-2">
-              Workers with an existing entry for this project and date are
-              disabled.
+              Workers who have completed a full day (AM+PM) on this date are
+              disabled across all projects.
             </p>
           </div>
           <div className="flex-1 overflow-x-auto overflow-y-auto min-h-0 border-b border-border/60">

@@ -407,6 +407,27 @@ export async function getLaborEntriesByProjectAndDate(projectId: string, workDat
   return (rows ?? []).map((r) => toLaborEntry(r as LaborEntryRow));
 }
 
+/**
+ * Full-day entries (AM + PM) for a given date across all projects.
+ * Used to disable workers in the Add Daily modal once they have a full day logged.
+ */
+export async function getFullDayLaborEntriesByDate(workDate: string): Promise<LaborEntry[]> {
+  const c = client();
+  const date = workDate.slice(0, 10);
+  const { data: rows, error } = await c
+    .from("labor_entries")
+    .select(LABOR_ENTRIES_COLS_WITH_AMPM)
+    .eq("work_date", date)
+    .eq("morning", true)
+    .eq("afternoon", true)
+    .order("id");
+  if (error && isMissingColumn(error)) {
+    // Older schemas without AM/PM flags can't distinguish full days; treat as none.
+    return [];
+  }
+  return (rows ?? []).map((r) => toLaborEntry(r as LaborEntryRow));
+}
+
 export type DailyLaborRowInput = {
   workerId: string;
   morning: boolean;

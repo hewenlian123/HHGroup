@@ -15,6 +15,7 @@ import {
   getWorkers,
   insertDailyLaborEntries,
   getLaborEntriesByProjectAndDate,
+  getFullDayLaborEntriesByDate,
   getLaborEntriesWithJoins,
 } from "@/lib/data";
 import type { LaborEntryWithJoins } from "@/lib/data";
@@ -240,6 +241,7 @@ function QuickTimesheetModal({
   const [sections, setSections] = React.useState<ProjectSection[]>([]);
   const [submitting, setSubmitting] = React.useState(false);
   const [globalError, setGlobalError] = React.useState<string | null>(null);
+  const [fullDayWorkerIds, setFullDayWorkerIds] = React.useState<Set<string>>(new Set());
 
   // Helper to create a new blank section
   const createSection = React.useCallback(
@@ -273,42 +275,20 @@ function QuickTimesheetModal({
     });
   }, [open, defaultProjectId, createSection]);
 
-  // Load existing entries per project/date to avoid duplicates
+  // Load full-day workers by date (across all projects) to avoid double entries.
   React.useEffect(() => {
-    if (!open || !date || sections.length === 0) return;
-    async function loadExistingForSections() {
-      await Promise.all(
-        sections.map(async (section) => {
-          if (!section.projectId) {
-            return;
-          }
-          try {
-            const entries = await getLaborEntriesByProjectAndDate(
-              section.projectId,
-              date,
-            );
-            const ids = new Set(entries.map((e) => e.workerId));
-            setSections((prev) =>
-              prev.map((s) =>
-                s.id === section.id
-                  ? { ...s, existingWorkerIds: ids }
-                  : s,
-              ),
-            );
-          } catch {
-            setSections((prev) =>
-              prev.map((s) =>
-                s.id === section.id
-                  ? { ...s, existingWorkerIds: new Set<string>() }
-                  : s,
-              ),
-            );
-          }
-        }),
-      );
+    if (!open || !date) return;
+    async function loadFullDayWorkers() {
+      try {
+        const entries = await getFullDayLaborEntriesByDate(date);
+        const ids = new Set(entries.map((e) => e.workerId));
+        setFullDayWorkerIds(ids);
+      } catch {
+        setFullDayWorkerIds(new Set());
+      }
     }
-    void loadExistingForSections();
-  }, [open, date, sections]);
+    void loadFullDayWorkers();
+  }, [open, date]);
 
   const updateSection = React.useCallback(
     (id: string, updater: (s: ProjectSection) => ProjectSection) => {
@@ -370,7 +350,7 @@ function QuickTimesheetModal({
     const section = sections.find((s) => s.id === id);
     if (!section) return;
     const allowed = workers.filter(
-      (w) => !section.existingWorkerIds.has(w.id),
+      (w) => !fullDayWorkerIds.has(w.id),
     );
     updateSection(id, (s) => ({
       ...s,
@@ -397,7 +377,7 @@ function QuickTimesheetModal({
         const ids = new Set(
           entries
             .map((e) => e.workerId)
-            .filter((wid) => !section.existingWorkerIds.has(wid)),
+            .filter((wid) => !fullDayWorkerIds.has(wid)),
         );
         updateSection(id, (s) => ({ ...s, selectedWorkerIds: ids }));
       } catch {
@@ -662,8 +642,7 @@ function QuickTimesheetModal({
                       </p>
                     ) : (
                       workers.map((w) => {
-                        const disabled =
-                          section.existingWorkerIds.has(w.id) || false;
+                        const disabled = fullDayWorkerIds.has(w.id);
                         const checked =
                           section.selectedWorkerIds.has(w.id) || false;
                         const dailyRate =
@@ -701,10 +680,10 @@ function QuickTimesheetModal({
                       })
                     )}
                   </div>
-                  {section.existingWorkerIds.size > 0 ? (
+                  {fullDayWorkerIds.size > 0 ? (
                     <p className="text-[11px] text-gray-500">
-                      Workers already logged for this project and date are
-                      disabled.
+                      Workers who have completed a full day (AM+PM) on this
+                      date are disabled across all projects.
                     </p>
                   ) : null}
                 </div>
