@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -19,8 +18,8 @@ function fmtRate(n: number): string {
 }
 
 export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
-  const router = useRouter();
   const { toast } = useToast();
+  const [items, setItems] = React.useState<WorkerRow[]>(rows);
   const [addOpen, setAddOpen] = React.useState(false);
   const [editFor, setEditFor] = React.useState<WorkerRow | null>(null);
   const [busy, setBusy] = React.useState(false);
@@ -32,6 +31,10 @@ export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
   const [defaultOtRate, setDefaultOtRate] = React.useState("");
   const [status, setStatus] = React.useState<WorkerStatus>("Active");
   const [notes, setNotes] = React.useState("");
+
+  React.useEffect(() => {
+    setItems(rows);
+  }, [rows]);
 
   React.useEffect(() => {
     if (!editFor) return;
@@ -48,6 +51,19 @@ export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
     if (!editFor) return;
     if (busy) return;
     setBusy(true);
+    const original = editFor;
+    const patch: WorkerRow = {
+      ...editFor,
+      name: name.trim(),
+      phone: phone.trim() || null,
+      trade: trade.trim() || null,
+      daily_rate: Number(dailyRate) || 0,
+      default_ot_rate: Number(defaultOtRate) || 0,
+      status,
+      notes: notes.trim() || null,
+    };
+    // optimistic update
+    setItems((prev) => prev.map((w) => (w.id === editFor.id ? patch : w)));
     try {
       const res = await updateWorkerAction(editFor.id, {
         name: name.trim(),
@@ -59,12 +75,13 @@ export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
         notes: notes.trim() || null,
       });
       if (!res.ok) {
+        // rollback
+        setItems((prev) => prev.map((w) => (w.id === original.id ? original : w)));
         toast({ title: "Save failed", description: res.error ?? "Failed to update worker.", variant: "error" });
         return;
       }
       toast({ title: "Saved", variant: "success" });
       setEditFor(null);
-      router.refresh();
     } finally {
       setBusy(false);
     }
@@ -74,22 +91,27 @@ export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
     if (busy) return;
     if (!window.confirm(`Delete worker "${row.name}"?`)) return;
     setBusy(true);
+    // optimistic remove
+    setItems((prev) => prev.filter((w) => w.id !== row.id));
     try {
       const res = await deleteWorkerAction(row.id);
       if (!res.ok) {
+        // rollback
+        setItems((prev) => (prev.some((w) => w.id === row.id) ? prev : [...prev, row]).sort((a, b) => a.name.localeCompare(b.name)));
         toast({ title: "Delete failed", description: res.error ?? "Failed to delete worker.", variant: "error" });
         return;
       }
       toast({ title: "Deleted", variant: "success" });
-      router.refresh();
     } finally {
       setBusy(false);
     }
   };
 
-  const handleAddSuccess = () => router.refresh();
+  const handleAddSuccess = (worker: WorkerRow) => {
+    setItems((prev) => [...prev, worker].sort((a, b) => a.name.localeCompare(b.name)));
+  };
 
-  if (rows.length === 0) {
+  if (items.length === 0) {
     return (
       <>
         <EmptyState
@@ -111,7 +133,7 @@ export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
     <>
       {/* Mobile: card layout */}
       <div className="flex flex-col gap-3 md:hidden">
-        {rows.map((r) => (
+        {items.map((r) => (
           <div key={r.id} className="rounded-sm border border-border/60 bg-background p-4">
             <p className="font-medium text-foreground">{r.name}</p>
             <p className="text-sm text-muted-foreground">{r.trade ?? "—"} · {r.phone ?? "—"}</p>
@@ -145,7 +167,7 @@ export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
+            {items.map((r) => (
               <tr key={r.id} className="border-b border-border/40">
                 <td className="px-3 py-1.5 font-medium">{r.name}</td>
                 <td className="px-3 py-1.5 text-muted-foreground">{r.trade ?? "—"}</td>

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSupabase } from "@/lib/supabase-server";
+import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server";
 import { insertWorkerReceiptWithClient } from "@/lib/worker-receipts-db";
 
 /**
@@ -8,7 +8,8 @@ import { insertWorkerReceiptWithClient } from "@/lib/worker-receipts-db";
  */
 export async function POST(req: Request) {
   try {
-    const supabase = getServerSupabase();
+    // Prefer service role client so inserts are not blocked by RLS in production.
+    const supabase = getServerSupabaseAdmin() ?? getServerSupabase();
     if (!supabase) {
       return NextResponse.json({ message: "Supabase not configured." }, { status: 500 });
     }
@@ -44,20 +45,33 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Receipt photo is required." }, { status: 400 });
     }
 
-    const receipt = await insertWorkerReceiptWithClient(supabase, {
-      workerId,
-      workerName: workerName || "Unknown",
-      projectId,
-      expenseType,
-      vendor: vendor || null,
-      amount,
-      receiptUrl,
-      description: description || null,
-      notes: notes || null,
-      receiptDate,
-      status: "Pending",
-    });
-    return NextResponse.json({ ok: true, id: receipt.id, receipt_url: receipt.receiptUrl });
+    try {
+      const receipt = await insertWorkerReceiptWithClient(supabase, {
+        workerId,
+        workerName: workerName || "Unknown",
+        projectId,
+        expenseType,
+        vendor: vendor || null,
+        amount,
+        receiptUrl,
+        description: description || null,
+        notes: notes || null,
+        receiptDate,
+        status: "Pending",
+      });
+      return NextResponse.json({ ok: true, id: receipt.id, receipt_url: receipt.receiptUrl });
+    } catch (err) {
+      // Log detailed error for debugging in Vercel function logs.
+      // eslint-disable-next-line no-console
+      console.error("[upload-receipt/submit] insert failed", {
+        error: err instanceof Error ? err.message : String(err),
+        workerId,
+        projectId,
+        amount,
+        expenseType,
+      });
+      throw err;
+    }
   } catch (e) {
     const message = e instanceof Error ? e.message : "Submit failed";
     return NextResponse.json({ message }, { status: 500 });

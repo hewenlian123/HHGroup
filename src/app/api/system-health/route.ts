@@ -19,6 +19,7 @@ const MODULES: { name: string; table: string }[] = [
   { name: "expenses", table: "expenses" },
   { name: "worker_payments", table: "worker_payments" },
   { name: "invoices", table: "invoices" },
+  { name: "customers", table: "customers" },
 ];
 
 /**

@@ -217,6 +217,16 @@ interface QuickTimesheetModalProps {
   onSaved: (count: number) => void;
 }
 
+type ProjectSection = {
+  id: string;
+  projectId: string;
+  selectedWorkerIds: Set<string>;
+  dayType: DayType;
+  otHours: string;
+  existingWorkerIds: Set<string>;
+  error: string | null;
+};
+
 function QuickTimesheetModal({
   open,
   onOpenChange,
@@ -227,135 +237,300 @@ function QuickTimesheetModal({
   onSaved,
 }: QuickTimesheetModalProps) {
   const [date, setDate] = React.useState(workDate);
-  const [projectId, setProjectId] = React.useState(defaultProjectId || "");
-  const [selectedWorkerIds, setSelectedWorkerIds] = React.useState<Set<string>>(new Set());
-  const [dayType, setDayType] = React.useState<DayType>("full_day");
-  const [otHours, setOtHours] = React.useState<string>("");
+  const [sections, setSections] = React.useState<ProjectSection[]>([]);
   const [submitting, setSubmitting] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-  const [existingWorkerIds, setExistingWorkerIds] = React.useState<Set<string>>(new Set());
+  const [globalError, setGlobalError] = React.useState<string | null>(null);
+
+  // Helper to create a new blank section
+  const createSection = React.useCallback(
+    (projectId = ""): ProjectSection => ({
+      id: Math.random().toString(36).slice(2),
+      projectId,
+      selectedWorkerIds: new Set<string>(),
+      dayType: "full_day",
+      otHours: "",
+      existingWorkerIds: new Set<string>(),
+      error: null,
+    }),
+    [],
+  );
 
   React.useEffect(() => {
     setDate(workDate);
   }, [workDate, open]);
 
+  // Initialize sections when modal opens
   React.useEffect(() => {
     if (!open) {
-      setSelectedWorkerIds(new Set());
-      setError(null);
+      setSections([]);
+      setGlobalError(null);
       return;
     }
-    if (defaultProjectId) {
-      setProjectId(defaultProjectId);
-    }
-  }, [open, defaultProjectId]);
+    setSections((prev) => {
+      if (prev.length > 0) return prev;
+      // First section uses default project if provided
+      return [createSection(defaultProjectId || "")];
+    });
+  }, [open, defaultProjectId, createSection]);
 
-  // Load existing entries for this project/date to avoid duplicates.
+  // Load existing entries per project/date to avoid duplicates
   React.useEffect(() => {
-    async function loadExisting() {
-      if (!open || !projectId || !date) {
-        setExistingWorkerIds(new Set());
-        return;
-      }
-      try {
-        const entries = await getLaborEntriesByProjectAndDate(projectId, date);
-        setExistingWorkerIds(new Set(entries.map((e) => e.workerId)));
-      } catch {
-        setExistingWorkerIds(new Set());
-      }
+    if (!open || !date || sections.length === 0) return;
+    async function loadExistingForSections() {
+      await Promise.all(
+        sections.map(async (section) => {
+          if (!section.projectId) {
+            return;
+          }
+          try {
+            const entries = await getLaborEntriesByProjectAndDate(
+              section.projectId,
+              date,
+            );
+            const ids = new Set(entries.map((e) => e.workerId));
+            setSections((prev) =>
+              prev.map((s) =>
+                s.id === section.id
+                  ? { ...s, existingWorkerIds: ids }
+                  : s,
+              ),
+            );
+          } catch {
+            setSections((prev) =>
+              prev.map((s) =>
+                s.id === section.id
+                  ? { ...s, existingWorkerIds: new Set<string>() }
+                  : s,
+              ),
+            );
+          }
+        }),
+      );
     }
-    void loadExisting();
-  }, [open, projectId, date]);
+    void loadExistingForSections();
+  }, [open, date, sections]);
 
-  const selectAll = () => {
-    setSelectedWorkerIds(
-      new Set(workers.filter((w) => !existingWorkerIds.has(w.id)).map((w) => w.id))
-    );
+  const updateSection = React.useCallback(
+    (id: string, updater: (s: ProjectSection) => ProjectSection) => {
+      setSections((prev) => prev.map((s) => (s.id === id ? updater(s) : s)));
+    },
+    [],
+  );
+
+  const addSection = () => {
+    setSections((prev) => [...prev, createSection()]);
   };
-  const selectNone = () => setSelectedWorkerIds(new Set());
-  const selectYesterday = React.useCallback(async () => {
-    if (!projectId || !date) return;
-    const d = new Date(date);
-    d.setDate(d.getDate() - 1);
-    const yesterdayStr = d.toISOString().slice(0, 10);
-    try {
-      const entries = await getLaborEntriesByProjectAndDate(projectId, yesterdayStr);
-      setSelectedWorkerIds(new Set(entries.map((e) => e.workerId).filter((id) => !existingWorkerIds.has(id))));
-    } catch {
-      setSelectedWorkerIds(new Set());
-    }
-  }, [projectId, date, existingWorkerIds]);
 
-  const toggleWorker = (id: string) => {
-    setSelectedWorkerIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
+  const removeSection = (id: string) => {
+    setSections((prev) => {
+      if (prev.length <= 1) return prev;
+      return prev.filter((s) => s.id !== id);
     });
   };
 
-  const otNum = Number(otHours) || 0;
+  const handleProjectChange = (id: string, projectId: string) => {
+    // Prevent duplicate project selection
+    const duplicate = sections.some(
+      (s) => s.id !== id && s.projectId && s.projectId === projectId,
+    );
+    if (duplicate) {
+      updateSection(id, (s) => ({
+        ...s,
+        error: "This project is already used in another section.",
+      }));
+      return;
+    }
+    updateSection(id, (s) => ({
+      ...s,
+      projectId,
+      selectedWorkerIds: new Set<string>(),
+      existingWorkerIds: new Set<string>(),
+      error: null,
+    }));
+  };
+
+  const toggleWorker = (sectionId: string, workerId: string) => {
+    updateSection(sectionId, (s) => {
+      const next = new Set(s.selectedWorkerIds);
+      if (next.has(workerId)) next.delete(workerId);
+      else next.add(workerId);
+      return { ...s, selectedWorkerIds: next };
+    });
+  };
+
+  const setDayTypeForSection = (id: string, value: DayType) => {
+    updateSection(id, (s) => ({ ...s, dayType: value }));
+  };
+
+  const setOtHoursForSection = (id: string, value: string) => {
+    updateSection(id, (s) => ({ ...s, otHours: value }));
+  };
+
+  const selectAllInSection = (id: string) => {
+    const section = sections.find((s) => s.id === id);
+    if (!section) return;
+    const allowed = workers.filter(
+      (w) => !section.existingWorkerIds.has(w.id),
+    );
+    updateSection(id, (s) => ({
+      ...s,
+      selectedWorkerIds: new Set(allowed.map((w) => w.id)),
+    }));
+  };
+
+  const selectNoneInSection = (id: string) => {
+    updateSection(id, (s) => ({ ...s, selectedWorkerIds: new Set() }));
+  };
+
+  const selectYesterdayInSection = (id: string) => {
+    const section = sections.find((s) => s.id === id);
+    if (!section?.projectId || !date) return;
+    const d = new Date(date);
+    d.setDate(d.getDate() - 1);
+    const yesterdayStr = d.toISOString().slice(0, 10);
+    (async () => {
+      try {
+        const entries = await getLaborEntriesByProjectAndDate(
+          section.projectId,
+          yesterdayStr,
+        );
+        const ids = new Set(
+          entries
+            .map((e) => e.workerId)
+            .filter((wid) => !section.existingWorkerIds.has(wid)),
+        );
+        updateSection(id, (s) => ({ ...s, selectedWorkerIds: ids }));
+      } catch {
+        updateSection(id, (s) => ({ ...s, selectedWorkerIds: new Set() }));
+      }
+    })();
+  };
+
+  const otNumBySection = sections.reduce<Record<string, number>>(
+    (acc, s) => ({
+      ...acc,
+      [s.id]: Number(s.otHours) || 0,
+    }),
+    {},
+  );
+
   const totalPayPreview = React.useMemo(() => {
     let sum = 0;
-    for (const id of Array.from(selectedWorkerIds)) {
-      const worker = workers.find((w) => w.id === id);
-      const dailyRate = worker?.dailyRate ?? (worker?.halfDayRate ?? 0) * 2;
-      const basePay =
-        dayType === "full_day" ? dailyRate :
-        dayType === "half_day" ? dailyRate / 2 : 0;
-      const otRate = (dailyRate / 8) * 1.5;
-      sum += basePay + otNum * otRate;
+    for (const section of sections) {
+      const otNum = Number(section.otHours) || 0;
+      for (const id of Array.from(section.selectedWorkerIds)) {
+        const worker = workers.find((w) => w.id === id);
+        const dailyRate = worker?.dailyRate ?? worker?.halfDayRate ?? 0;
+        const basePay =
+          section.dayType === "full_day"
+            ? dailyRate
+            : section.dayType === "half_day"
+              ? dailyRate / 2
+              : 0;
+        const otRate = (dailyRate / 8) * 1.5;
+        sum += basePay + otNum * otRate;
+      }
     }
     return sum;
-  }, [selectedWorkerIds, workers, dayType, otNum]);
+  }, [sections, workers]);
 
   const handleSave = async () => {
     if (!date) {
-      setError("Select a date.");
-      return;
-    }
-    if (!projectId) {
-      setError("Select a project.");
-      return;
-    }
-    if (selectedWorkerIds.size === 0) {
-      setError("Select at least one worker.");
-      return;
-    }
-    const ot = Number(otHours) || 0;
-    if (ot < 0) {
-      setError("OT hours cannot be negative.");
+      setGlobalError("Select a date.");
       return;
     }
 
+    // Reset per-section errors
+    setSections((prev) => prev.map((s) => ({ ...s, error: null })));
+    setGlobalError(null);
+
+    // Validate duplicates between sections
+    const usedProjects = new Map<string, number>();
+    for (const s of sections) {
+      if (!s.projectId) continue;
+      usedProjects.set(s.projectId, (usedProjects.get(s.projectId) ?? 0) + 1);
+    }
+    const dupProjects = Array.from(usedProjects.entries())
+      .filter(([, count]) => count > 1)
+      .map(([id]) => id);
+    if (dupProjects.length > 0) {
+      setSections((prev) =>
+        prev.map((s) =>
+          dupProjects.includes(s.projectId)
+            ? {
+                ...s,
+                error: "Each project can only be used once per day.",
+              }
+            : s,
+        ),
+      );
+      setGlobalError("Each project can only be used once per day.");
+      return;
+    }
+
+    // Per-section validation
+    let hasError = false;
+    setSections((prev) =>
+      prev.map((s) => {
+        let error: string | null = null;
+        if (!s.projectId) {
+          error = "Select a project.";
+          hasError = true;
+        } else if (s.selectedWorkerIds.size === 0) {
+          error = "Select at least one worker.";
+          hasError = true;
+        } else {
+          const ot = Number(s.otHours) || 0;
+          if (ot < 0) {
+            error = "OT hours cannot be negative.";
+            hasError = true;
+          }
+        }
+        return { ...s, error };
+      }),
+    );
+    if (hasError) return;
+
     setSubmitting(true);
-    setError(null);
     try {
-      // Pay: Full Day = daily_rate, Half Day = daily_rate/2, Absent = 0. OT: (daily_rate/8)*1.5 per hour.
-      const rows: { worker_id: string; project_id: string; hours: number; cost_code: string | null; notes: string | null }[] = [];
-      for (const id of Array.from(selectedWorkerIds)) {
-        const worker = workers.find((w) => w.id === id);
-        const dailyRate = worker?.dailyRate ?? (worker?.halfDayRate ?? 0) * 2;
-        const basePay =
-          dayType === "full_day" ? dailyRate :
-          dayType === "half_day" ? dailyRate / 2 : 0;
-        const otRate = (dailyRate / 8) * 1.5;
-        const totalPay = basePay + ot * otRate;
-        if (totalPay <= 0) continue; // skip absent (or invalid)
-        const hourlyRate = dailyRate / 8;
-        const equivalentHours = hourlyRate > 0 ? totalPay / hourlyRate : 0;
-        rows.push({
-          worker_id: id,
-          project_id: projectId,
-          hours: Math.round(equivalentHours * 100) / 100,
-          cost_code: null,
-          notes: `day_type=${dayType}${ot > 0 ? `, ot_hours=${ot}` : ""}`,
-        });
+      const rows: {
+        worker_id: string;
+        project_id: string;
+        hours: number;
+        cost_code: string | null;
+        notes: string | null;
+      }[] = [];
+
+      for (const section of sections) {
+        const ot = Number(section.otHours) || 0;
+        for (const id of Array.from(section.selectedWorkerIds)) {
+          const worker = workers.find((w) => w.id === id);
+          const dailyRate = worker?.dailyRate ?? worker?.halfDayRate ?? 0;
+          const basePay =
+            section.dayType === "full_day"
+              ? dailyRate
+              : section.dayType === "half_day"
+                ? dailyRate / 2
+                : 0;
+          const otRate = (dailyRate / 8) * 1.5;
+          const totalPay = basePay + ot * otRate;
+          if (totalPay <= 0) continue;
+          const hourlyRate = dailyRate / 8;
+          const equivalentHours = hourlyRate > 0 ? totalPay / hourlyRate : 0;
+          rows.push({
+            worker_id: id,
+            project_id: section.projectId,
+            hours: Math.round(equivalentHours * 100) / 100,
+            cost_code: null,
+            notes: `day_type=${section.dayType}${
+              ot > 0 ? `, ot_hours=${ot}` : ""
+            }`,
+          });
+        }
       }
 
       if (rows.length === 0) {
-        setError("No entries to save (e.g. all Absent).");
+        setGlobalError("No entries to save (e.g. all Absent).");
         setSubmitting(false);
         return;
       }
@@ -364,7 +539,9 @@ function QuickTimesheetModal({
       onSaved(inserted.length);
       onOpenChange(false);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to save entries.");
+      setGlobalError(
+        e instanceof Error ? e.message : "Failed to save entries.",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -390,144 +567,274 @@ function QuickTimesheetModal({
             />
           </div>
 
-          <div className="flex flex-col gap-2">
-            <label className="text-xs font-medium text-gray-500">Project</label>
-            <select
-              value={projectId}
-              onChange={(e) => setProjectId(e.target.value)}
-              className="h-9 rounded-lg border border-[#E5E7EB] bg-white px-3 text-sm"
-            >
-              <option value="">Select project</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between gap-2">
-              <label className="text-xs font-medium text-gray-500">Workers</label>
-              <div className="flex items-center gap-1.5">
-                <Button type="button" variant="outline" size="sm" className="h-7 rounded-lg text-xs px-2" onClick={selectAll}>
-                  All
-                </Button>
-                <Button type="button" variant="outline" size="sm" className="h-7 rounded-lg text-xs px-2" onClick={selectNone}>
-                  None
-                </Button>
-                <Button type="button" variant="outline" size="sm" className="h-7 rounded-lg text-xs px-2" onClick={selectYesterday} disabled={!projectId || !date}>
-                  Yesterday
-                </Button>
-              </div>
-            </div>
-            <div className="max-h-80 overflow-y-auto rounded-lg border border-[#E5E7EB] bg-white divide-y divide-[#E5E7EB]">
-              {workers.length === 0 ? (
-                <p className="px-3 py-3 text-xs text-gray-500">No workers found.</p>
-              ) : (
-                workers.map((w) => {
-                  const disabled = existingWorkerIds.has(w.id);
-                  const checked = selectedWorkerIds.has(w.id);
-                  const dailyRate = w.dailyRate ?? (w.halfDayRate ?? 0) * 2;
-                  return (
-                    <label
-                      key={w.id}
-                      className={cn(
-                        "flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors",
-                        checked ? "bg-blue-50 border-l-4 border-blue-300" : "border-l-4 border-l-transparent",
-                        disabled && "opacity-60 cursor-not-allowed"
-                      )}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        disabled={disabled}
-                        onChange={() => toggleWorker(w.id)}
-                        className="h-4 w-4 rounded border-gray-300 shrink-0"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm font-medium text-[#111111]">{w.name}</div>
-                        <div className="text-xs text-gray-500">${dailyRate.toFixed(0)} / day</div>
-                      </div>
-                    </label>
-                  );
-                })
-              )}
-            </div>
-            {existingWorkerIds.size > 0 ? (
-              <p className="text-[11px] text-gray-500">
-                Workers already logged for this project and date are disabled.
-              </p>
-            ) : null}
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-medium text-gray-500">Day Type</label>
-              <select
-                value={dayType}
-                onChange={(e) => setDayType(e.target.value as DayType)}
-                className="h-9 rounded-lg border border-[#E5E7EB] bg-white px-3 text-sm"
+          {sections.map((section, index) => {
+            const otNum = otNumBySection[section.id] ?? 0;
+            const dayLabel =
+              section.dayType === "full_day"
+                ? "Full Day"
+                : section.dayType === "half_day"
+                  ? "Half Day"
+                  : "Absent";
+            return (
+              <div
+                key={section.id}
+                className="space-y-3 rounded-md border border-[#E5E7EB] bg-white px-3 py-3"
               >
-                <option value="full_day">Full Day</option>
-                <option value="half_day">Half Day</option>
-                <option value="absent">Absent</option>
-              </select>
-            </div>
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-medium text-gray-500">Overtime hours (optional)</label>
-              <Input
-                type="number"
-                min="0"
-                step="0.5"
-                value={otHours}
-                onChange={(e) => setOtHours(e.target.value)}
-                placeholder="0"
-                className="h-9 text-sm"
-              />
-            </div>
-          </div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium text-gray-500">
+                      Project
+                    </label>
+                    <select
+                      value={section.projectId}
+                      onChange={(e) =>
+                        handleProjectChange(section.id, e.target.value)
+                      }
+                      className="h-9 min-w-[200px] rounded-lg border border-[#E5E7EB] bg-white px-3 text-sm"
+                    >
+                      <option value="">Select project</option>
+                      {projects.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-gray-500">
+                      Section {index + 1}
+                    </span>
+                    {sections.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8 rounded-sm text-xs"
+                        onClick={() => removeSection(section.id)}
+                        disabled={submitting}
+                      >
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+                </div>
 
-          {selectedWorkerIds.size > 0 ? (
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-medium text-gray-500">Attendance</label>
-              <div className="overflow-x-auto rounded-lg border border-[#E5E7EB]">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-[#E5E7EB] bg-gray-50">
-                      <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-gray-500">Worker</th>
-                      <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-gray-500">Day Type</th>
-                      <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-gray-500 tabular-nums">OT</th>
-                      <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-gray-500 tabular-nums">Pay</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Array.from(selectedWorkerIds).map((id) => {
-                      const worker = workers.find((w) => w.id === id);
-                      const dailyRate = worker?.dailyRate ?? (worker?.halfDayRate ?? 0) * 2;
-                      const basePay =
-                        dayType === "full_day" ? dailyRate :
-                        dayType === "half_day" ? dailyRate / 2 : 0;
-                      const otRate = (dailyRate / 8) * 1.5;
-                      const pay = basePay + otNum * otRate;
-                      const dayLabel = dayType === "full_day" ? "Full Day" : dayType === "half_day" ? "Half Day" : "Absent";
-                      return (
-                        <tr key={id} className="border-b border-[#E5E7EB] last:border-b-0">
-                          <td className="py-2 px-3 font-medium text-[#111111]">{worker?.name ?? id}</td>
-                          <td className="py-2 px-3 text-gray-600">{dayLabel}</td>
-                          <td className="py-2 px-3 text-right tabular-nums text-gray-600">{otNum > 0 ? otNum : "—"}</td>
-                          <td className="py-2 px-3 text-right tabular-nums font-medium">${pay.toFixed(2)}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="text-xs font-medium text-gray-500">
+                      Workers
+                    </label>
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 rounded-lg px-2 text-xs"
+                        onClick={() => selectAllInSection(section.id)}
+                      >
+                        All
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 rounded-lg px-2 text-xs"
+                        onClick={() => selectNoneInSection(section.id)}
+                      >
+                        None
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 rounded-lg px-2 text-xs"
+                        onClick={() => selectYesterdayInSection(section.id)}
+                        disabled={!section.projectId || !date}
+                      >
+                        Yesterday
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="max-h-80 overflow-y-auto rounded-lg border border-[#E5E7EB] bg-white divide-y divide-[#E5E7EB]">
+                    {workers.length === 0 ? (
+                      <p className="px-3 py-3 text-xs text-gray-500">
+                        No workers found.
+                      </p>
+                    ) : (
+                      workers.map((w) => {
+                        const disabled =
+                          section.existingWorkerIds.has(w.id) || false;
+                        const checked =
+                          section.selectedWorkerIds.has(w.id) || false;
+                        const dailyRate =
+                          w.dailyRate ?? w.halfDayRate ?? 0;
+                        return (
+                          <label
+                            key={w.id}
+                            className={cn(
+                              "flex cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors",
+                              checked
+                                ? "bg-blue-50 border-l-4 border-blue-300"
+                                : "border-l-4 border-l-transparent",
+                              disabled && "cursor-not-allowed opacity-60",
+                            )}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              disabled={disabled}
+                              onChange={() =>
+                                toggleWorker(section.id, w.id)
+                              }
+                              className="h-4 w-4 shrink-0 rounded border-gray-300"
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="text-sm font-medium text-[#111111]">
+                                {w.name}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                ${dailyRate.toFixed(0)} / day
+                              </div>
+                            </div>
+                          </label>
+                        );
+                      })
+                    )}
+                  </div>
+                  {section.existingWorkerIds.size > 0 ? (
+                    <p className="text-[11px] text-gray-500">
+                      Workers already logged for this project and date are
+                      disabled.
+                    </p>
+                  ) : null}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-medium text-gray-500">
+                      Day Type
+                    </label>
+                    <select
+                      value={section.dayType}
+                      onChange={(e) =>
+                        setDayTypeForSection(
+                          section.id,
+                          e.target.value as DayType,
+                        )
+                      }
+                      className="h-9 rounded-lg border border-[#E5E7EB] bg-white px-3 text-sm"
+                    >
+                      <option value="full_day">Full Day</option>
+                      <option value="half_day">Half Day</option>
+                      <option value="absent">Absent</option>
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-medium text-gray-500">
+                      Overtime hours (optional)
+                    </label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      value={section.otHours}
+                      onChange={(e) =>
+                        setOtHoursForSection(section.id, e.target.value)
+                      }
+                      placeholder="0"
+                      className="h-9 text-sm"
+                    />
+                  </div>
+                </div>
+
+                {section.selectedWorkerIds.size > 0 ? (
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-medium text-gray-500">
+                      Attendance
+                    </label>
+                    <div className="overflow-x-auto rounded-lg border border-[#E5E7EB]">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-[#E5E7EB] bg-gray-50">
+                            <th className="py-2 px-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                              Worker
+                            </th>
+                            <th className="py-2 px-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                              Day Type
+                            </th>
+                            <th className="py-2 px-3 text-right text-xs font-medium uppercase tracking-wide text-gray-500 tabular-nums">
+                              OT
+                            </th>
+                            <th className="py-2 px-3 text-right text-xs font-medium uppercase tracking-wide text-gray-500 tabular-nums">
+                              Pay
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {Array.from(section.selectedWorkerIds).map(
+                            (id) => {
+                              const worker = workers.find(
+                                (w) => w.id === id,
+                              );
+                              const dailyRate =
+                                worker?.dailyRate ??
+                                worker?.halfDayRate ??
+                                0;
+                              const basePay =
+                                section.dayType === "full_day"
+                                  ? dailyRate
+                                  : section.dayType === "half_day"
+                                    ? dailyRate / 2
+                                    : 0;
+                              const otRate = (dailyRate / 8) * 1.5;
+                              const pay = basePay + otNum * otRate;
+                              return (
+                                <tr
+                                  key={id}
+                                  className="border-b border-[#E5E7EB] last:border-b-0"
+                                >
+                                  <td className="py-2 px-3 font-medium text-[#111111]">
+                                    {worker?.name ?? id}
+                                  </td>
+                                  <td className="py-2 px-3 text-gray-600">
+                                    {dayLabel}
+                                  </td>
+                                  <td className="py-2 px-3 text-right tabular-nums text-gray-600">
+                                    {otNum > 0 ? otNum : "—"}
+                                  </td>
+                                  <td className="py-2 px-3 text-right tabular-nums font-medium">
+                                    ${pay.toFixed(2)}
+                                  </td>
+                                </tr>
+                              );
+                            },
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : null}
+
+                {section.error ? (
+                  <p className="text-xs text-red-600">{section.error}</p>
+                ) : null}
               </div>
-            </div>
-          ) : null}
+            );
+          })}
 
-          {error ? (
-            <p className="text-xs text-red-600">{error}</p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 rounded-sm text-xs"
+            onClick={addSection}
+            disabled={submitting}
+          >
+            + Add Another Project
+          </Button>
+
+          {globalError ? (
+            <p className="text-xs text-red-600">{globalError}</p>
           ) : null}
         </div>
 

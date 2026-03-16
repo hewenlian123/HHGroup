@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server";
 import { createPaymentReceived, markInvoiceSent } from "@/lib/data";
+import postgres from "postgres";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -31,6 +32,7 @@ const TEST_IDS = [
   "invoice_payment_workflow",
   "labor_workflow",
   "estimates_crud",
+  "customers_crud",
   "change_orders_crud",
   "tasks_crud",
   "punch_list_crud",
@@ -75,11 +77,15 @@ export async function POST(req: Request) {
 
   const tests: TestResult[] = [];
   const run = (id: TestId) => !only || only === id;
+  /** Worker/project IDs created by reimbursement-related tests (receipt_actions_workflow, reimbursements_workflow) for final cleanup. */
+  const testCreatedWorkerIds = new Set<string>();
+  const testCreatedProjectIds = new Set<string>();
 
   // Required tables that must exist before running tests (detect missing migration/schema cache)
   const REQUIRED_TABLES = [
     "projects",
     "workers",
+    "customers",
     "worker_receipts",
     "expenses",
     "invoices",
@@ -118,6 +124,31 @@ export async function POST(req: Request) {
   /** Safe delete — Supabase builder is PromiseLike but not a full Promise, so no .catch() */
   async function safeDelete(table: string, id: string) {
     try { await c!.from(table).delete().eq("id", id); } catch { /* ignore */ }
+  }
+
+  /** Delete a worker_reimbursement by id using admin client; if 0 rows deleted, try direct SQL so the row is actually removed. */
+  async function deleteWorkerReimbursementById(id: string) {
+    const { data, error } = await c!
+      .from("worker_reimbursements")
+      .delete()
+      .eq("id", id)
+      .select("id");
+    if (error) log("cleanup", `worker_reimbursements delete error: ${error.message}`);
+    const deleted = (data ?? []).length;
+    if (deleted > 0) return;
+    const dbUrl = process.env.SUPABASE_DATABASE_URL ?? process.env.DATABASE_URL;
+    if (dbUrl) {
+      try {
+        const sql = postgres(dbUrl, { max: 1, connect_timeout: 5 });
+        try {
+          await sql`DELETE FROM public.worker_reimbursements WHERE id = ${id}::uuid`;
+        } finally {
+          await sql.end();
+        }
+      } catch (e) {
+        log("cleanup", `worker_reimbursements direct SQL delete failed: ${toErrorString(e)}`);
+      }
+    }
   }
 
   /** Detect "table not found" / schema cache errors and return a clear message for test results. */
@@ -252,6 +283,88 @@ export async function POST(req: Request) {
     }
   }
 
+  // ── 3. Customers CRUD + links ────────────────────────────────────────────
+  if (run("customers_crud")) {
+    log("customers_crud", "start");
+    const steps: string[] = [];
+    let customerId: string | null = null;
+    try {
+      // Create
+      const { data: created, error: createErr } = await c
+        .from("customers")
+        .insert({ name: "Workflow Test Customer", notes: "Workflow Test" })
+        .select("id, name")
+        .single();
+      if (createErr || !created) throw new Error(`Create failed: ${createErr?.message}`);
+      customerId = (created as { id: string }).id;
+      steps.push("customer created");
+      log("customers_crud", `created id=${customerId}`);
+
+      // Read
+      const { data: fetched, error: fetchErr } = await c
+        .from("customers")
+        .select("id, name")
+        .eq("id", customerId)
+        .maybeSingle();
+      if (fetchErr || !fetched) throw new Error(`Fetch failed: ${fetchErr?.message ?? "not found"}`);
+      steps.push("customer fetched");
+
+      // Update
+      const { error: updateErr } = await c
+        .from("customers")
+        .update({ name: "Workflow Test Customer Updated" })
+        .eq("id", customerId);
+      if (updateErr) throw new Error(`Update failed: ${updateErr.message}`);
+      steps.push("customer updated");
+
+      // Verify update
+      const { data: updated, error: verifyErr } = await c
+        .from("customers")
+        .select("id, name")
+        .eq("id", customerId)
+        .maybeSingle();
+      if (verifyErr || !updated) throw new Error(`Verify failed: ${verifyErr?.message ?? "not found"}`);
+      if ((updated as { name?: string }).name !== "Workflow Test Customer Updated") {
+        throw new Error("Update not reflected on fetch");
+      }
+      steps.push("customer verified");
+
+      // Link checks: projects.customer_id and estimates.customer_id columns exist
+      {
+        const { error: projErr } = await c
+          .from("projects")
+          .select("id, customer_id")
+          .limit(1)
+          .maybeSingle();
+        if (projErr) throw new Error(tableMissingMessage("projects.customer_id", projErr));
+        steps.push("projects.customer_id column ok");
+      }
+      {
+        const { error: estErr } = await c
+          .from("estimates")
+          .select("id, customer_id")
+          .limit(1)
+          .maybeSingle();
+        if (estErr) throw new Error(tableMissingMessage("estimates.customer_id", estErr));
+        steps.push("estimates.customer_id column ok");
+      }
+
+      // Delete
+      const { error: deleteErr } = await c.from("customers").delete().eq("id", customerId);
+      if (deleteErr) throw new Error(`Delete failed: ${deleteErr.message}`);
+      customerId = null;
+      steps.push("customer deleted");
+      log("customers_crud", "deleted");
+
+      tests.push({ name: "customers_crud", ok: true, steps });
+    } catch (e) {
+      if (customerId) await safeDelete("customers", customerId);
+      const err = toErrorString(e);
+      log("customers_crud", `error: ${err}`);
+      tests.push({ name: "customers_crud", ok: false, steps: [...steps, err] });
+    }
+  }
+
   // ── 3. Worker Receipts CRUD ───────────────────────────────────────────────
   if (run("receipts_crud")) {
     log("receipts_crud", "start");
@@ -349,6 +462,7 @@ export async function POST(req: Request) {
         .single();
       if (workerErr || !workflowWorker) throw new Error(`Worker create failed: ${workerErr?.message}`);
       workflowWorkerId = (workflowWorker as { id: string }).id;
+      testCreatedWorkerIds.add(workflowWorkerId);
       steps.push("worker created for receipt");
 
       // 1. Create receipt directly in DB (same as UI form POST)
@@ -436,7 +550,7 @@ export async function POST(req: Request) {
 
       tests.push({ name: "receipt_actions_workflow", ok: true, steps });
     } catch (e) {
-      if (reimbId) await safeDelete("worker_reimbursements", reimbId);
+      if (reimbId) await deleteWorkerReimbursementById(reimbId);
       if (receiptId) await safeDelete("worker_receipts", receiptId);
       if (workflowWorkerId) await safeDelete("workers", workflowWorkerId);
       const err = toErrorString(e);
@@ -461,6 +575,7 @@ export async function POST(req: Request) {
         .single();
       if (wErr || !w) throw new Error(`Worker create failed: ${wErr?.message}`);
       workerId = (w as { id: string }).id;
+      testCreatedWorkerIds.add(workerId);
 
       // Create receipt
       const { data: receipt, error: rErr } = await c
@@ -518,7 +633,7 @@ export async function POST(req: Request) {
       log("reimbursements_workflow", "marked paid");
 
       // Cleanup
-      await safeDelete("worker_reimbursements", reimbId);
+      await deleteWorkerReimbursementById(reimbId);
       reimbId = null;
       await safeDelete("worker_receipts", receiptId);
       receiptId = null;
@@ -529,7 +644,7 @@ export async function POST(req: Request) {
 
       tests.push({ name: "reimbursements_workflow", ok: true, steps });
     } catch (e) {
-      if (reimbId) await safeDelete("worker_reimbursements", reimbId);
+      if (reimbId) await deleteWorkerReimbursementById(reimbId);
       if (receiptId) await safeDelete("worker_receipts", receiptId);
       if (workerId) await safeDelete("workers", workerId);
       const err = toErrorString(e);
@@ -1117,6 +1232,45 @@ export async function POST(req: Request) {
       log("material_catalog_crud", `error: ${err}`);
       tests.push({ name: "material_catalog_crud", ok: false, steps: [...steps, err] });
     }
+  }
+
+  // Final cleanup: remove any worker_reimbursements rows created by this test run (by test worker/project ids or test description)
+  try {
+    const dbUrl = process.env.SUPABASE_DATABASE_URL ?? process.env.DATABASE_URL;
+    if (dbUrl && (testCreatedWorkerIds.size > 0 || testCreatedProjectIds.size > 0)) {
+      const sql = postgres(dbUrl, { max: 1, connect_timeout: 5 });
+      try {
+        if (testCreatedWorkerIds.size > 0) {
+          const workerIds = Array.from(testCreatedWorkerIds);
+          await sql`DELETE FROM public.worker_reimbursements WHERE worker_id IN ${sql(workerIds)}`;
+        }
+        if (testCreatedProjectIds.size > 0) {
+          const projectIds = Array.from(testCreatedProjectIds);
+          await sql`DELETE FROM public.worker_reimbursements WHERE project_id IN ${sql(projectIds)}`;
+        }
+      } finally {
+        await sql.end();
+      }
+    } else {
+      if (testCreatedWorkerIds.size > 0) {
+        const workerIds = Array.from(testCreatedWorkerIds);
+        const { error: e1 } = await c.from("worker_reimbursements").delete().in("worker_id", workerIds);
+        if (e1) log("cleanup", `final worker_reimbursements by worker_id failed: ${e1.message}`);
+      }
+      if (testCreatedProjectIds.size > 0) {
+        const projectIds = Array.from(testCreatedProjectIds);
+        const { error: e2 } = await c.from("worker_reimbursements").delete().in("project_id", projectIds);
+        if (e2) log("cleanup", `final worker_reimbursements by project_id failed: ${e2.message}`);
+      }
+    }
+    // Orphaned test rows (e.g. worker already deleted): delete by exact test descriptions
+    const { error: e3 } = await c.from("worker_reimbursements").delete().eq("description", "Workflow Test reimbursement");
+    if (e3) log("cleanup", `final worker_reimbursements by description failed: ${e3.message}`);
+    // receipt_actions_workflow approve creates reimbursement with description "Other" and amount 75
+    const { error: e4 } = await c.from("worker_reimbursements").delete().eq("description", "Other").eq("amount", 75);
+    if (e4) log("cleanup", `final worker_reimbursements by description Other failed: ${e4.message}`);
+  } catch (e) {
+    log("cleanup", `final worker_reimbursements cleanup failed: ${toErrorString(e)}`);
   }
 
   const allOk = tests.every((t) => t.ok);

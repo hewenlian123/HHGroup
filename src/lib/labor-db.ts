@@ -138,7 +138,10 @@ function isMissingColumn(err: { message?: string } | null): boolean {
 
 function toWorker(r: WorkerRow): Worker {
   const halfDay = Number(r.half_day_rate) || 0;
-  const dailyRate = r.daily_rate != null && Number(r.daily_rate) > 0 ? Number(r.daily_rate) : halfDay * 2;
+  const dailyRate =
+    r.daily_rate != null && Number(r.daily_rate) > 0
+      ? Number(r.daily_rate)
+      : halfDay;
   return {
     id: r.id,
     name: r.name ?? "",

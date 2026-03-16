@@ -42,7 +42,7 @@ export function ReceiptsClient({ initialRows }: { initialRows: ReceiptRow[] }) {
   const [viewReceiptUrl, setViewReceiptUrl] = React.useState<string | null>(null);
 
   const refresh = React.useCallback(async () => {
-    const res = await fetch("/api/worker-receipts");
+    const res = await fetch("/api/worker-receipts", { cache: "no-store" });
     const data = await res.json();
     if (!res.ok) {
       setMessage(data.message ?? "Failed to refresh");
