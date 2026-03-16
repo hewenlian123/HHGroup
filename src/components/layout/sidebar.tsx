@@ -60,6 +60,7 @@ const sections: { key: (typeof SECTION_KEYS)[number]; label: string; items: NavI
       { href: "/projects", label: "Projects", icon: FolderKanban },
       { href: "/estimates", label: "Estimates", icon: FileText },
       { href: "/change-orders", label: "Change Orders", icon: FilePen },
+      { href: "/customers", label: "Customers", icon: Users },
     ],
   },
   {
@@ -96,6 +97,7 @@ const sections: { key: (typeof SECTION_KEYS)[number]; label: string; items: NavI
       { href: "/labor/reimbursements", label: "Reimbursements", icon: ReceiptText },
       { href: "/labor/worker-balances", label: "Worker Balances", icon: Wallet },
       { href: "/labor/payments", label: "Worker Payments", icon: CircleDollarSign },
+      { href: "/labor/advances", label: "Worker Advances", icon: CircleDollarSign },
       { href: "/labor/receipts", label: "Receipt Uploads", icon: Upload },
       { href: "/labor/worker-invoices", label: "Worker Invoices", icon: FileText },
       { href: "/labor/payroll", label: "Payroll Summary", icon: Calculator },

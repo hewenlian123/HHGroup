@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSupabase } from "@/lib/supabase-server";
+import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 const BUCKET = "worker-receipts";
 
@@ -8,7 +8,8 @@ const BUCKET = "worker-receipts";
  * Returns public URL for receipt_url.
  */
 export async function POST(req: Request) {
-  const supabase = getServerSupabase();
+  // Prefer service role client for storage uploads; fall back to anon if needed.
+  const supabase = getServerSupabaseAdmin() ?? getServerSupabase();
   if (!supabase) {
     return NextResponse.json({ ok: false, message: "Supabase not configured." }, { status: 500 });
   }

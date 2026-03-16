@@ -2,7 +2,9 @@ import { getWorkerReceipts } from "@/lib/worker-receipts-db";
 import { getProjects } from "@/lib/data";
 import { ReceiptsClient, type ReceiptRow } from "./receipts-client";
 
+// Always render with fresh data — no static cache.
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 type Props = { searchParams: Promise<{ project_id?: string }> };
 

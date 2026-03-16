@@ -14,6 +14,7 @@ import * as dailyWorkDb from "../daily-work-db";
 import * as workerReimbursementsDb from "../worker-reimbursements-db";
 import * as workerInvoicesDb from "../worker-invoices-db";
 import * as workerPaymentsDb from "../worker-payments-db";
+import * as workerAdvancesDb from "../worker-advances-db";
 import * as commitmentsDb from "../commitments-db";
 import * as refDataDb from "../reference-data-db";
 import * as subcontractorsDb from "../subcontractors-db";
@@ -970,6 +971,34 @@ export async function getWorkerPaymentById(id: string) {
 }
 export async function deleteWorkerPayment(id: string) {
   return workerPaymentsDb.deleteWorkerPayment(id);
+}
+
+// Worker advances
+export async function createWorkerAdvance(
+  input: Parameters<typeof workerAdvancesDb.createWorkerAdvance>[0],
+) {
+  return workerAdvancesDb.createWorkerAdvance(input);
+}
+
+export async function getWorkerAdvances(
+  filters?: Parameters<typeof workerAdvancesDb.getWorkerAdvances>[0],
+) {
+  return workerAdvancesDb.getWorkerAdvances(filters);
+}
+
+export async function getWorkerAdvanceById(id: string) {
+  return workerAdvancesDb.getWorkerAdvanceById(id);
+}
+
+export async function updateWorkerAdvance(
+  id: string,
+  patch: Parameters<typeof workerAdvancesDb.updateWorkerAdvance>[1],
+) {
+  return workerAdvancesDb.updateWorkerAdvance(id, patch);
+}
+
+export async function deleteWorkerAdvance(id: string) {
+  return workerAdvancesDb.deleteWorkerAdvance(id);
 }
 
 export async function getLaborActualByProject(projectId: string): Promise<number> {

@@ -9,12 +9,12 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { createWorkerAction } from "./actions";
-import type { WorkerStatus } from "@/lib/workers-db";
+import type { WorkerStatus, WorkerRow } from "@/lib/workers-db";
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
+  onSuccess: (worker: WorkerRow) => void;
 };
 
 export function AddWorkerModal({ open, onOpenChange, onSuccess }: Props) {
@@ -66,7 +66,7 @@ export function AddWorkerModal({ open, onOpenChange, onSuccess }: Props) {
         return;
       }
       onOpenChange(false);
-      onSuccess();
+      onSuccess(res.worker);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add worker.");
     } finally {

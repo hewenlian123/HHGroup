@@ -15,6 +15,7 @@ import {
   markWorkerInvoicesPaid,
   getProjects,
 } from "@/lib/data";
+import { WorkerAdvanceSelector, type WorkerAdvanceOption } from "@/components/labor/worker-advance-selector";
 
 const METHODS = ["Cash", "Check", "Bank Transfer", "Zelle", "Other"] as const;
 
@@ -43,6 +44,8 @@ export function PayWorkerModal({
   const [notes, setNotes] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
+  const [advances, setAdvances] = React.useState<WorkerAdvanceOption[]>([]);
+  const [selectedAdvanceIds, setSelectedAdvanceIds] = React.useState<string[]>([]);
 
   const reset = React.useCallback(() => {
     setProjectId("");
@@ -60,8 +63,29 @@ export function PayWorkerModal({
       try {
         const p = await getProjects();
         setProjects(p);
+        const url = new URL("/api/labor/advances", window.location.origin);
+        url.searchParams.set("workerId", workerId);
+        url.searchParams.set("status", "pending");
+        const res = await fetch(url.toString(), { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          const list = (data.advances ?? []) as any[];
+          setAdvances(
+            list.map((r) => ({
+              id: r.id as string,
+              amount: Number(r.amount) || 0,
+              advanceDate: String(r.advanceDate ?? "").slice(0, 10),
+              projectName: (r.projectName as string | null) ?? null,
+              notes: (r.notes as string | null) ?? null,
+              status: (r.status as "pending" | "deducted" | "cancelled") ?? "pending",
+            })),
+          );
+        } else {
+          setAdvances([]);
+        }
       } catch {
         setProjects([]);
+        setAdvances([]);
       }
     })();
   }, [open, reset]);
@@ -76,6 +100,10 @@ export function PayWorkerModal({
     setError(null);
     setBusy(true);
     try {
+      const totalSelectedAdvances = advances
+        .filter((a) => selectedAdvanceIds.includes(a.id))
+        .reduce((sum, a) => sum + a.amount, 0);
+
       await createWorkerPayment({
         workerId,
         projectId: projectId || null,
@@ -88,6 +116,15 @@ export function PayWorkerModal({
       await Promise.all([
         markWorkerReimbursementsPaid(workerId, projectId || null),
         markWorkerInvoicesPaid(workerId, projectId || null),
+        ...(totalSelectedAdvances > 0
+          ? selectedAdvanceIds.map((id) =>
+              fetch(`/api/labor/advances/${id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: "deducted" }),
+              }),
+            )
+          : []),
       ]);
 
       onOpenChange(false);
@@ -163,6 +200,15 @@ export function PayWorkerModal({
           <div className="space-y-2">
             <label className="text-xs font-medium text-muted-foreground">Notes</label>
             <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" className="h-9 text-sm" />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-muted-foreground">Apply advances (optional)</label>
+            <WorkerAdvanceSelector
+              advances={advances}
+              selectedIds={selectedAdvanceIds}
+              onChange={setSelectedAdvanceIds}
+            />
           </div>
 
           {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
