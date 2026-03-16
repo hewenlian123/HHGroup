@@ -200,12 +200,18 @@ export default function WorkerReimbursementsPage() {
   const handleDelete = async (id: string) => {
     if (!window.confirm("Delete this reimbursement?")) return;
     setMessage(null);
+    const removeFromList = () => setRows((prev) => prev.filter((r) => r.id !== id));
     try {
       const res = await fetch(`/api/worker-reimbursements/${id}`, { method: "DELETE" });
+      if (res.status === 404) {
+        setTimeout(removeFromList, 0);
+        return;
+      }
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.message ?? "Delete failed.");
       }
+      setTimeout(removeFromList, 0);
       await load();
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Delete failed.");
@@ -233,6 +239,14 @@ export default function WorkerReimbursementsPage() {
         body: JSON.stringify({ method: payMethod.trim() || null, note: payNote.trim() || null }),
       });
       const data = await res.json();
+      if (res.status === 404) {
+        const msg = (data.message ?? "").toLowerCase();
+        if (msg.includes("not found") || msg.includes("already deleted")) {
+          setPayModal(null);
+          await load();
+          return;
+        }
+      }
       if (!res.ok) {
         setPayError(data.message ?? "Pay failed.");
         return;
