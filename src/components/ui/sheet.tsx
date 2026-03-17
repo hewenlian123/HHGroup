@@ -61,7 +61,11 @@ const SheetContent = React.forwardRef<
     <SheetOverlay />
     <SheetPrimitive.Content
       ref={ref}
-      className={cn(sheetVariants({ side }), className)}
+      className={cn(
+        sheetVariants({ side }),
+        side === "bottom" && "pt-[env(safe-area-inset-top,0px)] [&>button]:top-[calc(0.25rem+env(safe-area-inset-top,0px))]",
+        className
+      )}
       {...props}
     >
       <SheetPrimitive.Close className="absolute right-4 top-4 flex items-center justify-center rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none touch-manipulation data-[state=open]:bg-secondary max-lg:min-h-[44px] max-lg:min-w-[44px] lg:min-h-0 lg:min-w-0">

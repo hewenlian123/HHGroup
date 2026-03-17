@@ -75,15 +75,15 @@ function DepositsPageInner() {
               <TableBody>
                 {deposits.map((row) => (
                   <TableRow key={row.id} className="border-b border-border/30">
-                    <TableCell className="tabular-nums text-foreground">{row.deposit_date}</TableCell>
-                    <TableCell className="text-foreground">{row.customer_name || "—"}</TableCell>
+                    <TableCell className="tabular-nums text-foreground">{row.date ?? "—"}</TableCell>
+                    <TableCell className="text-foreground">{row.description ?? "—"}</TableCell>
                     <TableCell className="text-muted-foreground">{row.project_name ?? "—"}</TableCell>
                     <TableCell className="text-muted-foreground">{row.invoice_no ?? "—"}</TableCell>
                     <TableCell className="text-right tabular-nums font-medium text-emerald-600/90 dark:text-emerald-400/90">
                       {money(row.amount)}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{row.payment_method ?? "—"}</TableCell>
-                    <TableCell className="text-muted-foreground">{row.deposit_account ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">—</TableCell>
+                    <TableCell className="text-muted-foreground">{row.account ?? "—"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

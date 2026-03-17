@@ -1,8 +1,11 @@
 /**
- * AP Bills module — ap_bills + ap_bill_payments. Internal payable tracking.
+ * Bills module — uses `bills` table (id, vendor_id, project_id, amount, status, due_date, vendor_name, bill_type, issue_date, notes, category, updated_at, created_at).
+ * Payments use ap_bill_payments when present.
  */
 
 import { getSupabaseClient } from "@/lib/supabase";
+
+const BILLS_TABLE = "bills";
 
 export const AP_BILL_TYPES = ["Vendor", "Labor", "Overhead", "Utility", "Permit", "Equipment", "Other"] as const;
 export type ApBillType = (typeof AP_BILL_TYPES)[number];
@@ -72,6 +75,7 @@ function toNum(v: unknown): number {
 }
 
 function mapBill(r: Record<string, unknown>): ApBillRow {
+  const amount = toNum(r.amount);
   return {
     id: (r.id as string) ?? "",
     bill_no: (r.bill_no as string | null) ?? null,
@@ -80,9 +84,9 @@ function mapBill(r: Record<string, unknown>): ApBillRow {
     project_id: (r.project_id as string | null) ?? null,
     issue_date: r.issue_date != null ? String(r.issue_date).slice(0, 10) : null,
     due_date: r.due_date != null ? String(r.due_date).slice(0, 10) : null,
-    amount: toNum(r.amount),
+    amount,
     paid_amount: toNum(r.paid_amount),
-    balance_amount: toNum(r.balance_amount),
+    balance_amount: r.balance_amount != null ? toNum(r.balance_amount) : amount,
     status: (r.status as ApBillStatus) ?? "Draft",
     category: (r.category as string | null) ?? null,
     notes: (r.notes as string | null) ?? null,
@@ -111,8 +115,8 @@ function mapPayment(r: Record<string, unknown>): ApBillPaymentRow {
 export async function getApBillById(id: string): Promise<ApBillWithProject | null> {
   const c = client();
   const { data: row, error } = await c
-    .from("ap_bills")
-    .select("id, bill_no, bill_type, vendor_name, project_id, issue_date, due_date, amount, paid_amount, balance_amount, status, category, notes, attachment_url, created_at, updated_at, created_by, projects(name)")
+    .from(BILLS_TABLE)
+    .select("id, bill_type, vendor_name, project_id, issue_date, due_date, amount, status, category, notes, created_at, updated_at, projects(name)")
     .eq("id", id)
     .maybeSingle();
   if (error) {
@@ -125,12 +129,12 @@ export async function getApBillById(id: string): Promise<ApBillWithProject | nul
   return { ...mapBill(r), project_name: proj?.name ?? null };
 }
 
-/** List ap_bills with optional filters and project name join. */
+/** List bills with optional filters and project name join. */
 export async function getApBills(filters: ApBillsFilters = {}): Promise<ApBillWithProject[]> {
   const c = client();
   let q = c
-    .from("ap_bills")
-    .select("id, bill_no, bill_type, vendor_name, project_id, issue_date, due_date, amount, paid_amount, balance_amount, status, category, notes, attachment_url, created_at, updated_at, created_by, projects(name)")
+    .from(BILLS_TABLE)
+    .select("id, bill_type, vendor_name, project_id, issue_date, due_date, amount, status, category, notes, created_at, updated_at, projects(name)")
     .order("created_at", { ascending: false });
 
   if (filters.status) q = q.eq("status", filters.status);
@@ -173,8 +177,8 @@ export async function getApBillsByProject(projectId: string): Promise<ApBillWith
 export async function getApBillsRecent(limit: number): Promise<ApBillWithProject[]> {
   const c = client();
   const { data: rows, error } = await c
-    .from("ap_bills")
-    .select("id, bill_no, bill_type, vendor_name, project_id, issue_date, due_date, amount, paid_amount, balance_amount, status, category, notes, attachment_url, created_at, updated_at, created_by, projects(name)")
+    .from(BILLS_TABLE)
+    .select("id, bill_type, vendor_name, project_id, issue_date, due_date, amount, status, category, notes, created_at, updated_at, projects(name)")
     .order("created_at", { ascending: false })
     .limit(Math.max(1, Math.min(limit, 100)));
   if (error) {
@@ -220,22 +224,19 @@ export async function createApBill(draft: {
   if (!(draft.amount > 0)) throw new Error("Amount must be greater than 0");
   const amount = draft.amount;
   const payload = {
-    bill_no: draft.bill_no?.trim() || null,
     bill_type: AP_BILL_TYPES.includes(draft.bill_type!) ? draft.bill_type : "Vendor",
     vendor_name: vendorName,
     project_id: draft.project_id || null,
     issue_date: draft.issue_date?.slice(0, 10) || null,
     due_date: draft.due_date?.slice(0, 10) || null,
     amount,
-    paid_amount: 0,
-    balance_amount: amount,
     status: "Draft" as const,
     category: draft.category?.trim() || null,
     notes: draft.notes?.trim() || null,
   };
-  const { data: row, error } = await c.from("ap_bills").insert(payload).select("*").single();
+  const { data: row, error } = await c.from(BILLS_TABLE).insert(payload).select("*").single();
   if (error) {
-    if (isMissingTable(error)) throw new Error("AP Bills table not found. Please run the ap_bills migration in Supabase.");
+    if (isMissingTable(error)) throw new Error("Bills table not found. Please ensure the bills table exists in Supabase.");
     throw new Error(error.message ?? "Failed to create bill.");
   }
   return mapBill(row as Record<string, unknown>);
@@ -260,7 +261,6 @@ export async function updateApBill(
 ): Promise<ApBillRow | null> {
   const c = client();
   const updates: Record<string, unknown> = {};
-  if (patch.bill_no !== undefined) updates.bill_no = patch.bill_no?.trim() || null;
   if (patch.bill_type !== undefined) updates.bill_type = AP_BILL_TYPES.includes(patch.bill_type) ? patch.bill_type : "Vendor";
   if (patch.vendor_name !== undefined) updates.vendor_name = patch.vendor_name.trim();
   if (patch.project_id !== undefined) updates.project_id = patch.project_id || null;
@@ -269,10 +269,9 @@ export async function updateApBill(
   if (patch.amount !== undefined) updates.amount = Math.max(0, patch.amount);
   if (patch.category !== undefined) updates.category = patch.category?.trim() || null;
   if (patch.notes !== undefined) updates.notes = patch.notes?.trim() || null;
-  if (patch.attachment_url !== undefined) updates.attachment_url = patch.attachment_url?.trim() || null;
   if (patch.status !== undefined) updates.status = AP_BILL_STATUSES.includes(patch.status) ? patch.status : "Draft";
   if (Object.keys(updates).length === 0) return getApBillById(id).then((b) => (b ? mapBill(b as unknown as Record<string, unknown>) : null));
-  const { data: row, error } = await c.from("ap_bills").update(updates).eq("id", id).select("*").single();
+  const { data: row, error } = await c.from(BILLS_TABLE).update(updates).eq("id", id).select("*").single();
   if (error) {
     if (isMissingTable(error)) return null;
     throw new Error(error.message ?? "Failed to update bill.");
@@ -313,18 +312,18 @@ export async function addApBillPayment(billId: string, payment: {
 export async function setApBillPending(id: string): Promise<void> {
   const bill = await getApBillById(id);
   if (!bill || bill.status !== "Draft") return;
-  await client().from("ap_bills").update({ status: "Pending" }).eq("id", id);
+  await client().from(BILLS_TABLE).update({ status: "Pending" }).eq("id", id);
 }
 
 /** Mark bill as Void. */
 export async function voidApBill(id: string): Promise<void> {
-  await client().from("ap_bills").update({ status: "Void" }).eq("id", id);
+  await client().from(BILLS_TABLE).update({ status: "Void" }).eq("id", id);
 }
 
 /** Delete a Draft bill with no payments. */
 export async function deleteApBillDraft(id: string): Promise<void> {
   const c = client();
-  const { data: bill, error: billErr } = await c.from("ap_bills").select("id,status").eq("id", id).single();
+  const { data: bill, error: billErr } = await c.from(BILLS_TABLE).select("id,status").eq("id", id).single();
   if (billErr) {
     if (isMissingTable(billErr)) return;
     throw new Error(billErr.message ?? "Failed to load bill.");
@@ -332,14 +331,18 @@ export async function deleteApBillDraft(id: string): Promise<void> {
   const status = ((bill as { status?: unknown })?.status ?? "").toString();
   if (status !== "Draft") throw new Error("Only Draft bills can be deleted");
 
-  const { count, error: payErr } = await c
-    .from("ap_bill_payments")
-    .select("id", { count: "exact", head: true })
-    .eq("bill_id", id);
-  if (payErr) throw new Error(payErr.message ?? "Failed to check bill payments.");
-  if ((count ?? 0) > 0) throw new Error("Cannot delete a bill with payments");
+  try {
+    const { count, error: payErr } = await c
+      .from("ap_bill_payments")
+      .select("id", { count: "exact", head: true })
+      .eq("bill_id", id);
+    if (!payErr && (count ?? 0) > 0) throw new Error("Cannot delete a bill with payments");
+  } catch (e) {
+    if (e instanceof Error && e.message === "Cannot delete a bill with payments") throw e;
+    // ap_bill_payments may not exist; allow delete
+  }
 
-  const { error: delErr } = await c.from("ap_bills").delete().eq("id", id);
+  const { error: delErr } = await c.from(BILLS_TABLE).delete().eq("id", id);
   if (delErr) throw new Error(delErr.message ?? "Failed to delete bill.");
 }
 
@@ -347,7 +350,7 @@ export async function deleteApBillDraft(id: string): Promise<void> {
 export async function getTotalBillsAmount(): Promise<number> {
   const c = client();
   const { data: rows, error } = await c
-    .from("ap_bills")
+    .from(BILLS_TABLE)
     .select("amount")
     .not("status", "eq", "Void");
   if (error && isMissingTable(error)) return 0;
@@ -376,14 +379,14 @@ export async function getApBillsSummary(): Promise<{
   const startOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
 
   const { data: bills, error } = await c
-    .from("ap_bills")
-    .select("id, amount, paid_amount, balance_amount, status, due_date")
+    .from(BILLS_TABLE)
+    .select("id, amount, status, due_date")
     .not("status", "eq", "Void");
   if (error) {
     // Table missing or other error — return zeroed summary rather than crashing.
     return { totalOutstanding: 0, overdueCount: 0, overdueAmount: 0, dueThisWeekCount: 0, dueThisWeekAmount: 0, paidThisMonthAmount: 0 };
   }
-  const list = (bills ?? []) as Array<{ balance_amount?: number; due_date?: string | null; amount?: number; paid_amount?: number }>;
+  const list = (bills ?? []) as Array<{ due_date?: string | null; amount?: number }>;
 
   let totalOutstanding = 0;
   let overdueCount = 0;
@@ -392,7 +395,8 @@ export async function getApBillsSummary(): Promise<{
   let dueThisWeekAmount = 0;
 
   for (const b of list) {
-    const balance = toNum(b.balance_amount);
+    const balance = toNum(b.amount);
+    if (balance <= 0) continue;
     totalOutstanding += balance;
     const due = b.due_date ?? "";
     if (due && balance > 0 && due < today) {
@@ -405,12 +409,17 @@ export async function getApBillsSummary(): Promise<{
     }
   }
 
-  const { data: payments } = await c
-    .from("ap_bill_payments")
-    .select("amount")
-    .gte("payment_date", startOfMonth)
-    .lte("payment_date", new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10));
-  const paidThisMonthAmount = (payments ?? []).reduce((s, p) => s + toNum((p as { amount?: number }).amount), 0);
+  let paidThisMonthAmount = 0;
+  try {
+    const { data: payments } = await c
+      .from("ap_bill_payments")
+      .select("amount")
+      .gte("payment_date", startOfMonth)
+      .lte("payment_date", new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10));
+    paidThisMonthAmount = (payments ?? []).reduce((s, p) => s + toNum((p as { amount?: number }).amount), 0);
+  } catch {
+    // ap_bill_payments may not exist
+  }
 
   return {
     totalOutstanding,

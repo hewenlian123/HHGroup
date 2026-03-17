@@ -211,11 +211,11 @@ export default function NewInvoiceClient() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Issue date</label>
-                <Input type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} className="mt-1" />
+                <Input type="date" value={issueDate} onChange={(e) => setIssueDate((e.target.value || issueDate).slice(0, 10))} className="mt-1" />
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Due date</label>
-                <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="mt-1" />
+                <Input type="date" value={dueDate} onChange={(e) => setDueDate((e.target.value || dueDate).slice(0, 10))} className="mt-1" />
               </div>
             </div>
 

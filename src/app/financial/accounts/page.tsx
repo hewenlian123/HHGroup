@@ -12,7 +12,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getAccounts, createAccount, type Account, type AccountType } from "@/lib/data";
+import { getAccounts, type Account, type AccountType } from "@/lib/data";
+import { createAccountAction } from "./actions";
 import { Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/toast/toast-provider";
@@ -70,12 +71,20 @@ function AccountsPageInner() {
     }
     setSaving(true);
     try {
-      await createAccount({
+      const result = await createAccountAction({
         name: trimmedName,
         type,
         lastFour: lastFour.trim() || null,
         notes: notes.trim() || null,
       });
+      if (result.error) {
+        toast({
+          title: "Failed to create account",
+          description: result.error,
+          variant: "error",
+        });
+        return;
+      }
       await load();
       setModalOpen(false);
       toast({ title: "Account created", variant: "success" });
