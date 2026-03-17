@@ -45,7 +45,7 @@ export default async function ProjectDetailPage({
   if (!project) notFound();
 
   /** Wrap a fetch in try/catch so missing tables or other DB errors don't crash the page. */
-  const safe = async <T>(fn: () => Promise<T>, fallback: T): Promise<T> => {
+  const safe = async <T,>(fn: () => Promise<T>, fallback: T): Promise<T> => {
     try {
       return await fn();
     } catch {
