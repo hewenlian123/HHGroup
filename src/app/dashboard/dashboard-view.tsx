@@ -141,7 +141,8 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
           <div className="bg-white rounded-xl shadow-sm px-4 py-3 transition-shadow hover:shadow-md">
             <p className="text-xs uppercase tracking-wide text-gray-500">Profit</p>
             <p className={cn("text-base font-semibold mt-0.5 tabular-nums", projectProfitSummary >= 0 ? "text-green-600" : "text-red-600")}>
-              ${projectProfitSummary >= 0 ? "" : "−"}${fmtUsd(Math.abs(projectProfitSummary))}
+              {projectProfitSummary >= 0 ? "$" : "−$"}
+              {fmtUsd(Math.abs(projectProfitSummary))}
             </p>
           </div>
         </div>
@@ -313,7 +314,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                   <div className="mt-0.5 flex items-center justify-between text-xs text-gray-500">
                     <span>Total profit</span>
                     <span className={cn("tabular-nums font-medium", profitPositive ? "text-green-600" : "text-red-600")}>
-                      ${stats.totalProfit.toLocaleString()}
+                      {profitPositive ? "" : "−"}${stats.totalProfit.toLocaleString()}
                     </span>
                   </div>
                 </div>

@@ -18,6 +18,7 @@ import {
   type LaborWorker,
   type DailyLaborRowInput,
 } from "@/lib/data";
+import { cn } from "@/lib/utils";
 
 type Props = {
   open: boolean;
@@ -209,103 +210,91 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
               disabled across all projects.
             </p>
           </div>
-          <div className="flex-1 overflow-x-auto overflow-y-auto min-h-0 border-b border-border/60">
-            <table className="w-full text-sm table-fixed sm:table-auto min-w-[420px]">
-              <thead>
-                <tr className="border-b border-border/60">
-                  <th className="text-left py-2 text-xs font-medium text-muted-foreground">
-                    Worker
-                  </th>
-                  <th className="text-left py-2 text-xs font-medium text-muted-foreground whitespace-nowrap w-20 sm:w-24">
-                    Rate
-                  </th>
-                  <th className="text-center py-2 text-xs font-medium text-muted-foreground w-24">
-                    AM
-                  </th>
-                  <th className="text-center py-2 text-xs font-medium text-muted-foreground w-24">
-                    PM
-                  </th>
-                  <th className="text-center py-2 text-xs font-medium text-muted-foreground w-16 sm:w-20">
-                    OT
-                  </th>
-                  <th className="text-right py-2 text-xs font-medium text-muted-foreground whitespace-nowrap w-20 sm:w-24">
-                    Total Pay
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {workers.map((worker) => {
-                  const sel = selections.find((s) => s.workerId === worker.id);
-                  const disabled = disabledWorkerIds.has(worker.id);
-                  const rate = worker.dailyRate != null && Number(worker.dailyRate) >= 0 ? Number(worker.dailyRate) : 0;
-                  const total = sel
-                    ? computeTotalPay(rate, sel.morning, sel.afternoon, sel.otHours)
-                    : 0;
-                  return (
-                    <tr
-                      key={worker.id}
-                      className={
-                        disabled
-                          ? "border-b border-border/30 opacity-60"
-                          : "border-b border-border/30"
-                      }
-                    >
-                      <td className="py-2 pr-2 min-w-0">
-                        <span className="font-medium truncate block">{worker.name}</span>
-                        {disabled ? (
-                          <span className="block text-xs text-muted-foreground">
-                            Already has entry
-                          </span>
-                        ) : null}
-                      </td>
-                      <td className="py-2 text-muted-foreground whitespace-nowrap text-xs sm:text-sm">
-                        ${Math.round(rate)}/day
-                      </td>
-                      <td className="py-2 text-center">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant={sel?.morning ? "default" : "outline"}
-                          className="h-8 rounded-sm min-w-[44px] w-full sm:min-w-[44px]"
-                          onClick={() => toggleMorning(worker.id)}
-                          disabled={disabled}
-                        >
-                          AM
-                        </Button>
-                      </td>
-                      <td className="py-2 text-center">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant={sel?.afternoon ? "default" : "outline"}
-                          className="h-8 rounded-sm min-w-[44px] w-full sm:min-w-[44px]"
-                          onClick={() => toggleAfternoon(worker.id)}
-                          disabled={disabled}
-                        >
-                          PM
-                        </Button>
-                      </td>
-                      <td className="py-2 px-1">
-                        <Input
-                          type="number"
-                          min={0}
-                          step={0.5}
-                          value={sel?.otHours ?? 0}
-                          onChange={(e) => setOtHours(worker.id, parseFloat(e.target.value) || 0)}
-                          disabled={disabled}
-                          className="h-8 w-full min-w-0 text-center text-sm tabular-nums"
-                        />
-                      </td>
-                      <td className="py-2 text-right text-muted-foreground tabular-nums text-xs sm:text-sm">
-                        {((sel?.morning || sel?.afternoon) || ((sel?.otHours ?? 0) > 0))
-                          ? `$${total.toFixed(2)}`
-                          : "—"}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="flex-1 overflow-x-auto overflow-y-auto min-h-0 border-b border-border/60 min-w-0">
+            <div className="text-sm w-full min-w-0">
+              {/* Flex-based header: Worker flex-2, others flex-1 to avoid clipping on small screens */}
+              <div
+                className="flex border-b border-border/60 shrink-0 text-xs font-medium text-muted-foreground [&>div]:py-2 [&>div]:min-w-0"
+                role="row"
+              >
+                <div className="flex-[2] pl-0 pr-2 text-left overflow-visible">
+                  <span className="truncate block" title="Worker">Worker</span>
+                </div>
+                <div className="flex-1 text-left whitespace-nowrap pr-1">Rate</div>
+                <div className="flex-1 text-center shrink-0 w-[52px] sm:w-14">AM</div>
+                <div className="flex-1 text-center shrink-0 w-[52px] sm:w-14">PM</div>
+                <div className="flex-1 text-center shrink-0 w-12 sm:w-14">OT</div>
+                <div className="flex-1 text-right whitespace-nowrap pl-1">Total</div>
+              </div>
+              {workers.map((worker) => {
+                const sel = selections.find((s) => s.workerId === worker.id);
+                const disabled = disabledWorkerIds.has(worker.id);
+                const rate = worker.dailyRate != null && Number(worker.dailyRate) >= 0 ? Number(worker.dailyRate) : 0;
+                const total = sel
+                  ? computeTotalPay(rate, sel.morning, sel.afternoon, sel.otHours)
+                  : 0;
+                return (
+                  <div
+                    key={worker.id}
+                    className={cn(
+                      "flex border-b border-border/30 [&>div]:py-2 [&>div]:min-w-0",
+                      disabled && "opacity-60"
+                    )}
+                    role="row"
+                  >
+                    <div className="flex-[2] pl-0 pr-2 min-w-0">
+                      <span className="font-medium truncate block" title={worker.name}>{worker.name}</span>
+                      {disabled ? (
+                        <span className="block text-xs text-muted-foreground">Already has entry</span>
+                      ) : null}
+                    </div>
+                    <div className="flex-1 text-muted-foreground whitespace-nowrap text-xs sm:text-sm pr-1 shrink-0">
+                      ${Math.round(rate)}/d
+                    </div>
+                    <div className="flex-1 flex justify-center shrink-0 w-[52px] sm:w-14">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={sel?.morning ? "default" : "outline"}
+                        className="h-8 rounded-sm min-w-[44px] w-full max-w-[52px] sm:min-w-[44px] sm:max-w-none"
+                        onClick={() => toggleMorning(worker.id)}
+                        disabled={disabled}
+                      >
+                        AM
+                      </Button>
+                    </div>
+                    <div className="flex-1 flex justify-center shrink-0 w-[52px] sm:w-14">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={sel?.afternoon ? "default" : "outline"}
+                        className="h-8 rounded-sm min-w-[44px] w-full max-w-[52px] sm:min-w-[44px] sm:max-w-none"
+                        onClick={() => toggleAfternoon(worker.id)}
+                        disabled={disabled}
+                      >
+                        PM
+                      </Button>
+                    </div>
+                    <div className="flex-1 px-1 shrink-0 w-12 sm:w-14">
+                      <Input
+                        type="number"
+                        min={0}
+                        step={0.5}
+                        value={sel?.otHours ?? 0}
+                        onChange={(e) => setOtHours(worker.id, parseFloat(e.target.value) || 0)}
+                        disabled={disabled}
+                        className="h-8 w-full min-w-0 text-center text-sm tabular-nums"
+                      />
+                    </div>
+                    <div className="flex-1 text-right text-muted-foreground tabular-nums text-xs sm:text-sm pl-1 shrink-0">
+                      {((sel?.morning || sel?.afternoon) || ((sel?.otHours ?? 0) > 0))
+                        ? `$${total.toFixed(2)}`
+                        : "—"}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">

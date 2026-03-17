@@ -77,6 +77,20 @@ export function CreatableSelect({
     setIsOpen(true);
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value;
+    setQuery(v);
+    onChange(v);
+    if (!isOpen) setIsOpen(true);
+  };
+
+  const handleBlur = () => {
+    if (!showAddOption && filtered.length === 0) {
+      setIsOpen(false);
+      setQuery(value);
+    }
+  };
+
   return (
     <div ref={containerRef} className="relative">
       {label ? (
@@ -88,14 +102,9 @@ export function CreatableSelect({
         ref={inputRef}
         type="text"
         value={displayValue}
-        onChange={(e) => {
-          setQuery(e.target.value);
-          if (!isOpen) setIsOpen(true);
-        }}
+        onChange={handleInputChange}
         onFocus={openDropdown}
-        onBlur={() => {
-          if (!showAddOption && filtered.length === 0) setIsOpen(false);
-        }}
+        onBlur={handleBlur}
         placeholder={value ? undefined : placeholder}
         className={cn(
           "flex h-9 min-h-[44px] w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",

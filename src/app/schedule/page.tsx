@@ -48,6 +48,100 @@ function formatDateRange(start: string | null, end: string | null): string {
   return start && end ? `${s} → ${e}` : s;
 }
 
+/** Simple month calendar grid: one row per week, items under their start_date. */
+function ScheduleCalendarGrid({
+  schedule,
+  statusStyle,
+  statusLabel,
+}: {
+  schedule: ScheduleRow[];
+  statusStyle: (s: string) => string;
+  statusLabel: (s: string) => string;
+}) {
+  const [viewDate, setViewDate] = React.useState(() => new Date());
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const startPad = firstDay.getDay();
+  const daysInMonth = lastDay.getDate();
+  const totalCells = Math.ceil((startPad + daysInMonth) / 7) * 7;
+  const itemsByDate = React.useMemo(() => {
+    const map = new Map<string, ScheduleRow[]>();
+    for (const s of schedule) {
+      const d = s.start_date?.slice(0, 10) ?? "";
+      if (!d) continue;
+      if (!map.has(d)) map.set(d, []);
+      map.get(d)!.push(s);
+    }
+    return map;
+  }, [schedule]);
+
+  const prevMonth = () => setViewDate((d) => new Date(d.getFullYear(), d.getMonth() - 1));
+  const nextMonth = () => setViewDate((d) => new Date(d.getFullYear(), d.getMonth() + 1));
+  const monthLabel = viewDate.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+
+  const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const cells: { day: number | null; dateKey: string }[] = [];
+  for (let i = 0; i < totalCells; i++) {
+    if (i < startPad) {
+      cells.push({ day: null, dateKey: "" });
+    } else if (i < startPad + daysInMonth) {
+      const day = i - startPad + 1;
+      const dateKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      cells.push({ day, dateKey });
+    } else {
+      cells.push({ day: null, dateKey: "" });
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <button type="button" onClick={prevMonth} className="text-sm font-medium text-muted-foreground hover:text-foreground px-2 py-1 rounded">←</button>
+        <span className="text-sm font-semibold text-foreground">{monthLabel}</span>
+        <button type="button" onClick={nextMonth} className="text-sm font-medium text-muted-foreground hover:text-foreground px-2 py-1 rounded">→</button>
+      </div>
+      <div className="grid grid-cols-7 gap-px border border-[#eee] rounded-lg overflow-hidden bg-[#eee]">
+        {weekDays.map((w) => (
+          <div key={w} className="bg-white py-1.5 text-center text-xs font-medium text-muted-foreground">
+            {w}
+          </div>
+        ))}
+        {cells.map((c, i) => (
+          <div
+            key={i}
+            className={cn(
+              "min-h-[72px] bg-white p-1.5 text-left",
+              c.day == null && "bg-muted/30"
+            )}
+          >
+            {c.day != null && (
+              <>
+                <span className="text-xs font-medium text-muted-foreground">{c.day}</span>
+                <div className="mt-1 space-y-1">
+                  {(itemsByDate.get(c.dateKey) ?? []).map((s) => (
+                    <div
+                      key={s.id}
+                      className={cn(
+                        "text-xs truncate rounded px-1 py-0.5",
+                        statusStyle(s.status)
+                      )}
+                      title={`${s.title} — ${statusLabel(s.status)}`}
+                    >
+                      {s.title || "—"}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const ScheduleListRow = React.memo(function ScheduleListRow({
   item,
   statusStyle,
@@ -258,9 +352,9 @@ export default function SchedulePage() {
                     </div>
                   ))}
                 </div>
-                {/* Desktop: full calendar placeholder */}
-                <div className="hidden lg:block p-6 text-center text-sm text-muted-foreground">
-                  Calendar view — schedule items: {schedule.length}
+                {/* Desktop: month calendar grid */}
+                <div className="hidden lg:block p-4">
+                  <ScheduleCalendarGrid schedule={schedule} statusStyle={statusStyle} statusLabel={statusLabel} />
                 </div>
               </>
             )}

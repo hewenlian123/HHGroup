@@ -12,24 +12,30 @@ import {
 import type { ChangeOrderStatus } from "@/lib/data";
 
 export async function createChangeOrderAction(projectId: string, formData: FormData): Promise<void> {
-  const title = (formData.get("title") as string)?.trim() || null;
-  const description = (formData.get("description") as string)?.trim() || null;
-  const amountRaw = formData.get("amount");
-  const amount = amountRaw != null && amountRaw !== "" ? Number(amountRaw) : null;
-  const costImpactRaw = formData.get("costImpact");
-  const costImpact = costImpactRaw != null && costImpactRaw !== "" ? Number(costImpactRaw) : null;
-  const scheduleImpactDaysRaw = formData.get("scheduleImpactDays");
-  const scheduleImpactDays =
-    scheduleImpactDaysRaw != null && scheduleImpactDaysRaw !== "" ? Number(scheduleImpactDaysRaw) : null;
-  const co = await createChangeOrder(projectId, {
-    title,
-    description,
-    amount: amount != null && Number.isFinite(amount) ? amount : null,
-    costImpact: costImpact != null && Number.isFinite(costImpact) ? costImpact : null,
-    scheduleImpactDays: scheduleImpactDays != null && Number.isFinite(scheduleImpactDays) ? scheduleImpactDays : null,
-  });
-  revalidatePath(`/projects/${projectId}`);
-  redirect(`/projects/${projectId}/change-orders/${co.id}`);
+  try {
+    const title = (formData.get("title") as string)?.trim() || "";
+    const description = (formData.get("description") as string)?.trim() || null;
+    const amountRaw = formData.get("amount");
+    const amount = amountRaw != null && amountRaw !== "" ? Number(amountRaw) : null;
+    const costImpactRaw = formData.get("costImpact");
+    const costImpact = costImpactRaw != null && costImpactRaw !== "" ? Number(costImpactRaw) : null;
+    const scheduleImpactDaysRaw = formData.get("scheduleImpactDays");
+    const scheduleImpactDays =
+      scheduleImpactDaysRaw != null && scheduleImpactDaysRaw !== "" ? Number(scheduleImpactDaysRaw) : null;
+    const co = await createChangeOrder(projectId, {
+      title: title || null,
+      description,
+      amount: amount != null && Number.isFinite(amount) ? amount : null,
+      costImpact: costImpact != null && Number.isFinite(costImpact) ? costImpact : null,
+      scheduleImpactDays: scheduleImpactDays != null && Number.isFinite(scheduleImpactDays) ? scheduleImpactDays : null,
+    });
+    revalidatePath(`/projects/${projectId}`);
+    redirect(`/projects/${projectId}/change-orders/${co.id}`);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (typeof (e as { digest?: string })?.digest === "string") throw e;
+    throw new Error(`Change order could not be created: ${msg}`);
+  }
 }
 
 export async function updateChangeOrderStatus(

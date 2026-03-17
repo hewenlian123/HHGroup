@@ -1,6 +1,6 @@
 /**
- * Deposits — auto-created from payments_received. Used for Cash In on dashboard.
- * Table: deposits.
+ * Deposits — table: deposits.
+ * Columns (per DB): id, payment_id, amount, account, date, description, project_id, created_at.
  */
 
 import { getSupabaseClient } from "@/lib/supabase";
@@ -8,13 +8,11 @@ import { getSupabaseClient } from "@/lib/supabase";
 export type DepositRow = {
   id: string;
   payment_id: string;
-  invoice_id: string;
-  project_id: string | null;
-  customer_name: string;
-  deposit_account: string | null;
   amount: number;
-  payment_method: string | null;
-  deposit_date: string;
+  account: string | null;
+  date: string;
+  description: string | null;
+  project_id: string | null;
   created_at: string;
 };
 
@@ -34,47 +32,32 @@ function isMissingTable(err: { message?: string } | null): boolean {
   return /relation.*does not exist|table.*does not exist|could not find/i.test(m);
 }
 
-/** List all deposits with invoice_no and project name. Newest first. */
+/** List all deposits. Newest first. Uses columns: id, payment_id, amount, account, date, description, project_id, created_at. */
 export async function getDeposits(): Promise<DepositWithMeta[]> {
   const c = client();
   const { data: rows, error } = await c
     .from("deposits")
-    .select("id, payment_id, invoice_id, project_id, customer_name, deposit_account, amount, payment_method, deposit_date, created_at")
-    .order("deposit_date", { ascending: false });
+    .select("id, payment_id, amount, account, date, description, project_id, created_at")
+    .order("date", { ascending: false });
   if (error) {
     if (isMissingTable(error)) return [];
     throw new Error(error.message ?? "Failed to load deposits.");
   }
   const list = (rows ?? []) as DepositRow[];
-  if (list.length === 0) return [];
-  const invoiceIds = Array.from(new Set(list.map((r) => r.invoice_id)));
+  if (list.length === 0) return list.map((r) => ({ ...r, invoice_no: null, project_name: null }));
   const projectIds = Array.from(new Set(list.map((r) => r.project_id).filter(Boolean))) as string[];
-  const [invRes, projRes] = await Promise.all([
-    c.from("invoices").select("id, invoice_no").in("id", invoiceIds),
-    projectIds.length ? c.from("projects").select("id, name").in("id", projectIds) : Promise.resolve({ data: [] }),
-  ]);
-  const invoiceNoById = new Map((invRes.data ?? []).map((r: { id: string; invoice_no?: string }) => [r.id, r.invoice_no ?? null]));
+  const projRes = projectIds.length ? await c.from("projects").select("id, name").in("id", projectIds) : { data: [] };
   const projectNameById = new Map((projRes.data ?? []).map((r: { id: string; name?: string }) => [r.id, r.name ?? null]));
   return list.map((r) => ({
     ...r,
-    invoice_no: invoiceNoById.get(r.invoice_id) ?? null,
+    invoice_no: null,
     project_name: r.project_id ? projectNameById.get(r.project_id) ?? null : null,
   }));
 }
 
-/** Get deposits for a single invoice. */
-export async function getDepositsByInvoiceId(invoiceId: string): Promise<DepositRow[]> {
-  const c = client();
-  const { data: rows, error } = await c
-    .from("deposits")
-    .select("id, payment_id, invoice_id, project_id, customer_name, deposit_account, amount, payment_method, deposit_date, created_at")
-    .eq("invoice_id", invoiceId)
-    .order("deposit_date", { ascending: false });
-  if (error) {
-    if (isMissingTable(error)) return [];
-    throw new Error(error.message ?? "Failed to load deposits.");
-  }
-  return (rows ?? []) as DepositRow[];
+/** Get deposits for a single invoice. deposits table has no invoice_id; returns [] unless schema has it. */
+export async function getDepositsByInvoiceId(_invoiceId: string): Promise<DepositRow[]> {
+  return [];
 }
 
 /** Sum of deposits.amount (Cash In for dashboard). */
@@ -86,33 +69,29 @@ export async function getTotalDepositsAmount(): Promise<number> {
 }
 
 /**
- * Create a deposit record from a payment received row. Called by createPaymentReceived.
+ * Create a deposit record. Table columns: payment_id, amount, account, date, description, project_id.
  */
 export async function createDepositFromPayment(payment: {
   id: string;
-  invoice_id: string;
-  project_id: string | null;
-  customer_name: string;
-  payment_date: string;
+  project_id?: string | null;
   amount: number;
-  payment_method: string | null;
-  deposit_account: string | null;
+  payment_date?: string;
+  deposit_account?: string | null;
+  description?: string | null;
 }): Promise<DepositRow | null> {
   const c = client();
-  const depositDate = payment.payment_date.slice(0, 10);
+  const date = payment.payment_date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
   const { data: row, error } = await c
     .from("deposits")
     .insert({
       payment_id: payment.id,
-      invoice_id: payment.invoice_id,
-      project_id: payment.project_id ?? null,
-      customer_name: payment.customer_name ?? "",
-      deposit_account: payment.deposit_account ?? null,
       amount: payment.amount,
-      payment_method: payment.payment_method ?? null,
-      deposit_date: depositDate,
+      account: payment.deposit_account ?? null,
+      date,
+      description: payment.description ?? null,
+      project_id: payment.project_id ?? null,
     })
-    .select("id, payment_id, invoice_id, project_id, customer_name, deposit_account, amount, payment_method, deposit_date, created_at")
+    .select("id, payment_id, amount, account, date, description, project_id, created_at")
     .single();
   if (error) return null;
   return row as DepositRow;
