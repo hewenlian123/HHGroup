@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { useTransition } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
@@ -16,6 +17,7 @@ export function NewChangeOrderForm({
   projectName: string;
 }) {
   const [pending, startTransition] = useTransition();
+  const [error, setError] = React.useState<string | null>(null);
 
   return (
     <>
@@ -34,8 +36,12 @@ export function NewChangeOrderForm({
       <Divider />
       <form
         action={(formData) => {
+          setError(null);
           startTransition(async () => {
-            await createChangeOrderAction(projectId, formData);
+            const res = await createChangeOrderAction(projectId, formData);
+            if (res && res.ok === false) {
+              setError(res.error ?? "Failed to create change order.");
+            }
           });
         }}
         className="max-w-xl space-y-4"
@@ -70,6 +76,7 @@ export function NewChangeOrderForm({
             </div>
           </div>
         </div>
+        {error ? <p className="text-sm text-destructive">{error}</p> : null}
         <div className="flex gap-2 border-t border-border/60 pt-4">
           <Button type="submit" disabled={pending}>
             {pending ? "Creating…" : "Create change order"}
