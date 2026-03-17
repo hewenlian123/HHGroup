@@ -28,6 +28,7 @@ import { ProjectCloseoutTab } from "./project-closeout-tab";
 import { ProjectMaterialsTab } from "./project-materials-tab";
 import { ProjectCommissionTab } from "./project-commission-tab";
 import { ProjectPunchListTab } from "./project-punch-list-tab";
+import { RecentExpenseLines } from "./recent-expense-lines";
 import {
   archiveProjectAction,
   deleteProjectAction,
@@ -63,6 +64,23 @@ export interface ProjectDetailTabsClientProps {
   };
   canonicalProfit: CanonicalProjectProfit;
   initialTab: TabKey;
+  tasks: import("@/lib/data").ProjectTaskWithWorker[];
+  workers: import("@/lib/labor-db").Worker[];
+  recentExpenseLines: import("./recent-expense-lines").RecentExpenseLineRow[];
+  laborEntries: import("@/lib/daily-labor-db").LaborEntryWithJoins[];
+  documents: import("@/lib/data").DocumentRow[];
+  commissions: import("@/lib/data").ProjectCommission[];
+  materialSelections: import("@/lib/data").ProjectMaterialSelectionWithMaterial[];
+  materialCatalog: import("@/lib/data").MaterialCatalogRow[];
+  punchItems: import("@/lib/punch-list-db").PunchListItemWithJoins[];
+  subcontracts: import("@/lib/subcontracts-db").SubcontractWithSubcontractor[];
+  bills: import("@/lib/ap-bills-db").ApBillWithProject[];
+  activityLogs: import("@/lib/activity-logs-db").ActivityLog[];
+  changeOrders: import("@/lib/change-orders-db").ChangeOrder[];
+  budgetItems: import("@/lib/data").ProjectBudgetItem[];
+  closeoutPunch: import("@/lib/data").CloseoutPunch | null;
+  closeoutWarranty: import("@/lib/data").CloseoutWarranty | null;
+  closeoutCompletion: import("@/lib/data").CloseoutCompletion | null;
 }
 
 const skeletonTable = (
@@ -80,6 +98,23 @@ export function ProjectDetailTabsClient({
   billingSummary,
   canonicalProfit,
   initialTab,
+  tasks,
+  workers,
+  recentExpenseLines,
+  laborEntries,
+  documents,
+  commissions,
+  materialSelections,
+  materialCatalog,
+  punchItems,
+  subcontracts,
+  bills,
+  activityLogs,
+  changeOrders,
+  budgetItems,
+  closeoutPunch,
+  closeoutWarranty,
+  closeoutCompletion,
 }: ProjectDetailTabsClientProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -409,7 +444,6 @@ export function ProjectDetailTabsClient({
             </div>
           </div>
 
-          {/* Simple stubs for detailed sections so page is not empty */}
           <div className="grid gap-4 lg:grid-cols-2">
             <div className="rounded-sm border border-border/60 bg-background px-3 py-3">
               <SectionHeader
@@ -417,9 +451,19 @@ export function ProjectDetailTabsClient({
                 className="text-[11px] tracking-[0.08em] text-[#9CA3AF] font-medium"
               />
               <Divider />
-              <p className="py-4 text-xs text-muted-foreground">
-                Detailed expense lines are available in the Expenses tab.
-              </p>
+              <div className="mt-2">
+                <RecentExpenseLines rows={recentExpenseLines} />
+              </div>
+              {recentExpenseLines.length > 0 && (
+                <div className="mt-2 border-t border-border/60 pt-2">
+                  <Link
+                    href={`/projects/${projectId}?tab=expenses`}
+                    className="text-xs font-medium text-muted-foreground hover:text-foreground"
+                  >
+                    View all in Expenses tab →
+                  </Link>
+                </div>
+              )}
             </div>
             <div className="rounded-sm border border-border/60 bg-background px-3 py-3">
               <SectionHeader
@@ -427,9 +471,29 @@ export function ProjectDetailTabsClient({
                 className="text-[11px] tracking-[0.08em] text-[#9CA3AF] font-medium"
               />
               <Divider />
-              <p className="py-4 text-xs text-muted-foreground">
-                Full activity history is available in the Activity tab.
-              </p>
+              {activityLogs.length === 0 ? (
+                <p className="py-4 text-xs text-muted-foreground">No recent activity.</p>
+              ) : (
+                <ul className="space-y-2 py-2">
+                  {activityLogs.slice(0, 5).map((log) => (
+                    <li key={log.id} className="text-xs text-foreground">
+                      <span className="text-muted-foreground">{log.created_at?.slice(0, 16).replace("T", " ")}</span>
+                      {" — "}
+                      {log.description ?? log.type}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {activityLogs.length > 0 && (
+                <div className="mt-2 border-t border-border/60 pt-2">
+                  <Link
+                    href={`/projects/${projectId}?tab=activity`}
+                    className="text-xs font-medium text-muted-foreground hover:text-foreground"
+                  >
+                    View all in Activity tab →
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         </TabsContent>
@@ -437,8 +501,8 @@ export function ProjectDetailTabsClient({
         <TabsContent value="tasks" className="mt-4">
           <ProjectTasksTab
             projectId={projectId}
-            tasks={[]}
-            workers={[]}
+            tasks={tasks}
+            workers={workers}
             onTaskCreated={() => router.refresh()}
             onTaskUpdated={() => router.refresh()}
           />
@@ -463,21 +527,99 @@ export function ProjectDetailTabsClient({
         </TabsContent>
 
         <TabsContent value="documents" className="mt-4">
-          <ProjectDocumentsTab projectId={projectId} documents={[]} />
+          <ProjectDocumentsTab projectId={projectId} documents={documents} />
         </TabsContent>
 
-        {/* 占位，避免未知值时报错 */}
-        <TabsContent value="expenses" className="mt-4" />
-        <TabsContent value="budget" className="mt-4" />
-        <TabsContent value="activity" className="mt-4" />
-        <TabsContent value="change-orders" className="mt-4" />
+        <TabsContent value="expenses" className="mt-4">
+          <SectionHeader label="Expenses" className="text-[11px] tracking-[0.08em] text-muted-foreground font-medium" />
+          <Divider />
+          <div className="mt-2">
+            <RecentExpenseLines rows={recentExpenseLines} />
+          </div>
+          <div className="mt-3">
+            <Link href={`/financial/expenses?project_id=${encodeURIComponent(projectId)}`} className="text-xs font-medium text-muted-foreground hover:text-foreground">
+              View all expenses →
+            </Link>
+          </div>
+        </TabsContent>
+        <TabsContent value="budget" className="mt-4">
+          <SectionHeader label="Budget" className="text-[11px] tracking-[0.08em] text-muted-foreground font-medium" />
+          <Divider />
+          {budgetItems.length === 0 ? (
+            <p className="py-6 text-sm text-muted-foreground">No budget items for this project.</p>
+          ) : (
+            <div className="border border-border/60 rounded-sm overflow-hidden mt-2">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b border-border/60 bg-muted/10">
+                    <th className="text-left py-2 px-3 font-medium">Cost code</th>
+                    <th className="text-right py-2 px-3 font-medium">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {budgetItems.map((b) => (
+                    <tr key={b.id} className="border-b border-border/30">
+                      <td className="py-2 px-3">{b.costCode ?? "—"}</td>
+                      <td className="py-2 px-3 text-right tabular-nums">${Number(b.total || 0).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </TabsContent>
+        <TabsContent value="activity" className="mt-4">
+          <SectionHeader label="Activity" className="text-[11px] tracking-[0.08em] text-muted-foreground font-medium" />
+          <Divider />
+          {activityLogs.length === 0 ? (
+            <p className="py-6 text-sm text-muted-foreground">No activity for this project.</p>
+          ) : (
+            <ul className="space-y-2 py-2">
+              {activityLogs.map((log) => (
+                <li key={log.id} className="text-sm border-b border-border/30 pb-2">
+                  <span className="text-muted-foreground">{log.created_at?.slice(0, 19).replace("T", " ")}</span>
+                  {" — "}
+                  {log.description ?? log.type}
+                </li>
+              ))}
+            </ul>
+          )}
+        </TabsContent>
+        <TabsContent value="change-orders" className="mt-4">
+          <SectionHeader label="Change Orders" className="text-[11px] tracking-[0.08em] text-muted-foreground font-medium" />
+          <Divider />
+          {changeOrders.length === 0 ? (
+            <p className="py-6 text-sm text-muted-foreground">No change orders for this project.</p>
+          ) : (
+            <div className="border border-border/60 rounded-sm overflow-hidden mt-2">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b border-border/60 bg-muted/10">
+                    <th className="text-left py-2 px-3 font-medium">Number</th>
+                    <th className="text-left py-2 px-3 font-medium">Status</th>
+                    <th className="text-right py-2 px-3 font-medium">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {changeOrders.map((co) => (
+                    <tr key={co.id} className="border-b border-border/30">
+                      <td className="py-2 px-3">{co.number ?? "—"}</td>
+                      <td className="py-2 px-3">{co.status ?? "—"}</td>
+                      <td className="py-2 px-3 text-right tabular-nums">${Number(co.total ?? co.amount ?? 0).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </TabsContent>
         <TabsContent value="materials" className="mt-4">
           <ProjectMaterialsTab
             projectId={projectId}
             projectName={project.name}
             clientName={(project as { client_name?: string }).client_name}
-            selections={[]}
-            catalog={[]}
+            selections={materialSelections}
+            catalog={materialCatalog}
             onRefresh={() => router.refresh()}
           />
         </TabsContent>
@@ -487,25 +629,111 @@ export function ProjectDetailTabsClient({
             projectName={project.name}
             billingSummary={billingSummary}
             contractValue={canonicalProfit.revenue}
-            punch={null}
-            warranty={null}
-            completion={null}
+            punch={closeoutPunch}
+            warranty={closeoutWarranty}
+            completion={closeoutCompletion}
             onRefresh={() => router.refresh()}
           />
         </TabsContent>
         <TabsContent value="commission" className="mt-4">
           <ProjectCommissionTab
             projectId={projectId}
-            commissions={[]}
+            commissions={commissions}
             onRefresh={() => router.refresh()}
           />
         </TabsContent>
         <TabsContent value="punch-list" className="mt-4">
-          <ProjectPunchListTab projectId={projectId} punchItems={[]} />
+          <ProjectPunchListTab projectId={projectId} punchItems={punchItems} />
         </TabsContent>
-        <TabsContent value="subcontracts" className="mt-4" />
-        <TabsContent value="bills" className="mt-4" />
-        <TabsContent value="labor" className="mt-4" />
+        <TabsContent value="subcontracts" className="mt-4">
+          <SectionHeader label="Subcontracts" className="text-[11px] tracking-[0.08em] text-muted-foreground font-medium" />
+          <Divider />
+          {subcontracts.length === 0 ? (
+            <p className="py-6 text-sm text-muted-foreground">No subcontracts for this project.</p>
+          ) : (
+            <div className="border border-border/60 rounded-sm overflow-hidden mt-2">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b border-border/60 bg-muted/10">
+                    <th className="text-left py-2 px-3 font-medium">Subcontractor</th>
+                    <th className="text-right py-2 px-3 font-medium">Contract amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {subcontracts.map((s) => (
+                    <tr key={s.id} className="border-b border-border/30">
+                      <td className="py-2 px-3">{s.subcontractor_name ?? "—"}</td>
+                      <td className="py-2 px-3 text-right tabular-nums">${Number(s.contract_amount ?? 0).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </TabsContent>
+        <TabsContent value="bills" className="mt-4">
+          <SectionHeader label="Bills (AP)" className="text-[11px] tracking-[0.08em] text-muted-foreground font-medium" />
+          <Divider />
+          {bills.length === 0 ? (
+            <p className="py-6 text-sm text-muted-foreground">No bills for this project.</p>
+          ) : (
+            <div className="border border-border/60 rounded-sm overflow-hidden mt-2">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b border-border/60 bg-muted/10">
+                    <th className="text-left py-2 px-3 font-medium">Vendor</th>
+                    <th className="text-left py-2 px-3 font-medium">Bill no</th>
+                    <th className="text-right py-2 px-3 font-medium">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bills.map((b) => (
+                    <tr key={b.id} className="border-b border-border/30">
+                      <td className="py-2 px-3">{b.vendor_name ?? "—"}</td>
+                      <td className="py-2 px-3">{b.bill_no ?? "—"}</td>
+                      <td className="py-2 px-3 text-right tabular-nums">${Number(b.amount ?? 0).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </TabsContent>
+        <TabsContent value="labor" className="mt-4">
+          <SectionHeader label="Labor" className="text-[11px] tracking-[0.08em] text-muted-foreground font-medium" />
+          <Divider />
+          {laborEntries.length === 0 ? (
+            <p className="py-6 text-sm text-muted-foreground">No labor entries for this project.</p>
+          ) : (
+            <>
+              <div className="border border-border/60 rounded-sm overflow-hidden mt-2">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="border-b border-border/60 bg-muted/10">
+                      <th className="text-left py-2 px-3 font-medium">Worker</th>
+                      <th className="text-left py-2 px-3 font-medium">Date</th>
+                      <th className="text-right py-2 px-3 font-medium">Cost</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {laborEntries.slice(0, 20).map((e) => (
+                      <tr key={e.id} className="border-b border-border/30">
+                        <td className="py-2 px-3">{e.worker_name ?? "—"}</td>
+                        <td className="py-2 px-3">{e.work_date?.slice(0, 10)}</td>
+                        <td className="py-2 px-3 text-right tabular-nums">${Number(e.cost_amount ?? 0).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-3">
+                <Link href={`/projects/${projectId}/labor`} className="text-xs font-medium text-muted-foreground hover:text-foreground">
+                  View full labor log →
+                </Link>
+              </div>
+            </>
+          )}
+        </TabsContent>
       </Tabs>
         </div>
       </div>

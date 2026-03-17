@@ -185,11 +185,14 @@ export async function getCanonicalProjectProfit(projectId: string): Promise<Cano
     devLogFail("project_change_orders", approvedChangeOrdersRes.error);
   }
 
-  // Labor cost: only Approved and Locked entries count
+  // Labor cost: all entries for this project count (Draft, Submitted, Approved, Locked).
+  // Exclude only paid/void if present so "Spent" reflects actual labor cost.
   let laborCost = 0;
   if (!laborCostRes.error && Array.isArray(laborCostRes.data)) {
+    const excludeStatus = new Set(["paid", "void"]);
     for (const l of laborCostRes.data as Array<{ cost_amount?: unknown; status?: unknown }>) {
-      if (l?.status !== "Approved" && l?.status !== "Locked") continue;
+      const s = l?.status != null ? String(l.status) : "";
+      if (excludeStatus.has(s.toLowerCase())) continue;
       laborCost += toNum(l?.cost_amount);
     }
   } else if (laborCostRes.error) {
@@ -245,11 +248,13 @@ export async function getCanonicalProjectProfitBatch(
   let expenseByProject = new Map<string, number>();
   expenseByProject = await getExpenseCostBatch(projectIds);
 
-  // Aggregate labor by project
+  // Aggregate labor by project (all statuses except paid/void)
   const laborByProject = new Map<string, number>();
+  const excludeStatus = new Set(["paid", "void"]);
   if (!laborRes.error && Array.isArray(laborRes.data)) {
     for (const l of laborRes.data as Array<{ project_id?: string; cost_amount?: unknown; status?: unknown }>) {
-      if (l.status !== "Approved" && l.status !== "Locked") continue;
+      const s = l.status != null ? String(l.status).toLowerCase() : "";
+      if (excludeStatus.has(s)) continue;
       const pid = l.project_id ?? "";
       laborByProject.set(pid, (laborByProject.get(pid) ?? 0) + toNum(l.cost_amount));
     }
