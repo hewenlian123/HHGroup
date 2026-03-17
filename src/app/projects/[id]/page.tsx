@@ -2,11 +2,29 @@ import { notFound } from "next/navigation";
 import {
   getProjectById,
   getProjectBillingSummary,
+  getProjectTasks,
+  getWorkers,
+  getExpenseLinesByProject,
+  getLaborEntriesWithJoins,
+  getDocumentsByProject,
+  getCommissionsByProject,
+  getSelectionsByProject,
+  getMaterialCatalog,
+  getPunchListByProject,
+  getSubcontractsByProject,
+  getApBillsByProject,
+  getActivityLogsByProject,
+  getChangeOrdersByProject,
+  getProjectBudgetItems,
+  getCloseoutPunch,
+  getCloseoutWarranty,
+  getCloseoutCompletion,
 } from "@/lib/data";
 import { getCanonicalProjectProfit } from "@/lib/profit-engine";
 import {
   ProjectDetailTabsClient,
 } from "./project-detail-tabs-client";
+import type { RecentExpenseLineRow } from "./recent-expense-lines";
 
 type TabKey = "overview" | "tasks" | "schedule" | "financial" | "budget" | "expenses" | "labor" | "subcontracts" | "bills" | "documents" | "activity" | "change-orders" | "materials" | "closeout" | "commission" | "punch-list";
 
@@ -26,36 +44,104 @@ export default async function ProjectDetailPage({
   const project = await getProjectById(id);
   if (!project) notFound();
 
-  const [canonical, billingSummary] = await Promise.all([
-    getCanonicalProjectProfit(id),
-    getProjectBillingSummary(id),
+  /** Wrap a fetch in try/catch so missing tables or other DB errors don't crash the page. */
+  const safe = async <T>(fn: () => Promise<T>, fallback: T): Promise<T> => {
+    try {
+      return await fn();
+    } catch {
+      return fallback;
+    }
+  };
+
+  const [
+    canonical,
+    billingSummary,
+    tasks,
+    workers,
+    expenseLinesRaw,
+    laborEntries,
+    documents,
+    commissions,
+    materialSelections,
+    materialCatalog,
+    punchItems,
+    subcontracts,
+    bills,
+    activityLogs,
+    changeOrders,
+    budgetItems,
+    closeoutPunch,
+    closeoutWarranty,
+    closeoutCompletion,
+  ] = await Promise.all([
+    safe(() => getCanonicalProjectProfit(id), { revenue: 0, actualCost: 0, profit: 0, margin: 0, budget: 0, approvedChangeOrders: 0, laborCost: 0, expenseCost: 0, subcontractCost: 0 }),
+    safe(() => getProjectBillingSummary(id), { paidTotal: 0, invoicedTotal: 0, arBalance: 0, lastPaymentDate: null }),
+    safe(() => getProjectTasks(id), []),
+    safe(() => getWorkers(), []),
+    safe(() => getExpenseLinesByProject(id, 10), []),
+    safe(() => getLaborEntriesWithJoins({ project_id: id }), []),
+    safe(() => getDocumentsByProject(id), []),
+    safe(() => getCommissionsByProject(id), []),
+    safe(() => getSelectionsByProject(id), []),
+    safe(() => getMaterialCatalog(), []),
+    safe(() => getPunchListByProject(id), []),
+    safe(() => getSubcontractsByProject(id), []),
+    safe(() => getApBillsByProject(id), []),
+    safe(() => getActivityLogsByProject(id, 20), []),
+    safe(() => getChangeOrdersByProject(id), []),
+    safe(() => getProjectBudgetItems(id), []),
+    safe(() => getCloseoutPunch(id), null),
+    safe(() => getCloseoutWarranty(id), null),
+    safe(() => getCloseoutCompletion(id), null),
   ]);
 
-  // Summary uses canonical profit: revenue = budget + approved CO, actual cost = labor + expense + approved subcontract bills.
-  const actualRevenue = canonical.revenue;
-  const actualCost = canonical.actualCost;
-  const actualProfit = canonical.profit;
-  const actualMarginPct = canonical.margin * 100;
+  // Map expense lines to Overview recent-expense-lines shape
+  const recentExpenseLines: RecentExpenseLineRow[] = (expenseLinesRaw ?? []).map(({ expenseId, date, vendorName, line }) => ({
+    id: line.id,
+    expenseId,
+    date,
+    vendorName,
+    category: line.category ?? "Other",
+    memo: line.memo ?? null,
+    amount: line.amount ?? 0,
+  }));
 
   const financialSummary = {
     budget: project.budget ?? 0,
-    revenue: actualRevenue,
-    spent: actualCost,
-    profit: actualProfit,
-    marginPct: actualMarginPct,
+    revenue: canonical.revenue,
+    spent: canonical.actualCost,
+    profit: canonical.profit,
+    marginPct: canonical.margin * 100,
     collected: billingSummary.paidTotal,
     outstanding: Math.max(0, billingSummary.invoicedTotal - billingSummary.paidTotal),
-    cashflow: billingSummary.paidTotal - actualCost,
+    cashflow: billingSummary.paidTotal - canonical.actualCost,
   };
 
   return (
     <ProjectDetailTabsClient
-        projectId={id}
-        project={project}
-        financialSummary={financialSummary}
-        billingSummary={billingSummary}
-        canonicalProfit={canonical}
-        initialTab={tab}
-      />
+      projectId={id}
+      project={project}
+      financialSummary={financialSummary}
+      billingSummary={billingSummary}
+      canonicalProfit={canonical}
+      initialTab={tab}
+      tasks={tasks ?? []}
+      workers={workers ?? []}
+      recentExpenseLines={recentExpenseLines}
+      laborEntries={laborEntries ?? []}
+      documents={documents ?? []}
+      commissions={commissions ?? []}
+      materialSelections={materialSelections ?? []}
+      materialCatalog={materialCatalog ?? []}
+      punchItems={punchItems ?? []}
+      subcontracts={subcontracts ?? []}
+      bills={bills ?? []}
+      activityLogs={activityLogs ?? []}
+      changeOrders={changeOrders ?? []}
+      budgetItems={budgetItems ?? []}
+      closeoutPunch={closeoutPunch ?? null}
+      closeoutWarranty={closeoutWarranty ?? null}
+      closeoutCompletion={closeoutCompletion ?? null}
+    />
   );
 }
