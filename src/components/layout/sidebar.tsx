@@ -93,7 +93,7 @@ const sections: { key: (typeof SECTION_KEYS)[number]; label: string; items: NavI
     label: "LABOR",
     items: [
       { href: "/workers", label: "Workers", icon: Users },
-      { href: "/labor", label: "Daily Entry", icon: Clock },
+      { href: "/labor", label: "Labor", icon: Clock },
       { href: "/labor/reimbursements", label: "Reimbursements", icon: ReceiptText },
       { href: "/labor/worker-balances", label: "Worker Balances", icon: Wallet },
       { href: "/labor/payments", label: "Worker Payments", icon: CircleDollarSign },

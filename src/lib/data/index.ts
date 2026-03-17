@@ -546,6 +546,13 @@ export async function clearLaborEntry(id: string): Promise<void> {
   return laborDb.deleteLaborEntry(id);
 }
 
+export async function updateLaborEntry(
+  entryId: string,
+  updates: Parameters<typeof laborDb.updateLaborEntry>[1]
+) {
+  return laborDb.updateLaborEntry(entryId, updates);
+}
+
 export async function getLaborEntriesByProjectAndDate(projectId: string, workDate: string): Promise<LaborEntry[]> {
   return laborDb.getLaborEntriesByProjectAndDate(projectId, workDate);
 }

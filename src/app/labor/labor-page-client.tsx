@@ -10,10 +10,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { getProjects, getLaborEntriesWithJoins, getLaborWorkersList } from "@/lib/data";
+import { clearLaborEntry, getProjects, getLaborEntriesWithJoins, getLaborWorkersList } from "@/lib/data";
 import type { LaborEntryWithJoins } from "@/lib/daily-labor-db";
 import { cn } from "@/lib/utils";
 import { AddDailyEntryModal as QuickTimesheetModal } from "./add-daily-entry-modal";
+import { EditEntryModal, sessionLabel } from "./edit-entry-modal";
+import type { LaborSession } from "./edit-entry-modal";
+import { Pencil, Trash2 } from "lucide-react";
+
+function sessionBadgeClass(session: LaborSession): string {
+  if (session === "morning") return "bg-amber-50 text-amber-800 ring-1 ring-amber-200/60";
+  if (session === "afternoon") return "bg-blue-50 text-blue-800 ring-1 ring-blue-200/60";
+  return "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/60";
+}
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const HIGH_COST_THRESHOLD = 1000;
@@ -130,6 +139,22 @@ export default function LaborPageClient() {
   const [expandedDate, setExpandedDate] = React.useState<string | null>(null);
   const [view, setView] = React.useState<"list" | "calendar">("list");
   const [selectedDayForDetail, setSelectedDayForDetail] = React.useState<string | null>(null);
+  const [editOpen, setEditOpen] = React.useState(false);
+  const [editing, setEditing] = React.useState<LaborEntryWithJoins | null>(null);
+
+  const sessionFromFlags = React.useCallback((e: LaborEntryWithJoins): LaborSession => {
+    const m = (e as any).morning === true;
+    const a = (e as any).afternoon === true;
+    if (m && a) return "full_day";
+    if (m && !a) return "morning";
+    if (!m && a) return "afternoon";
+    return "full_day";
+  }, []);
+
+  const openEdit = React.useCallback((e: LaborEntryWithJoins) => {
+    setEditing(e);
+    setEditOpen(true);
+  }, []);
 
   const loadProjects = React.useCallback(async () => {
     setLoadingProjects(true);
@@ -186,6 +211,24 @@ export default function LaborPageClient() {
     setError(null);
     void loadMonthEntries();
   }, [loadMonthEntries]);
+
+  const handleDelete = React.useCallback(
+    async (e: LaborEntryWithJoins) => {
+      const ok = window.confirm(
+        `Delete entry for ${e.worker_name ?? "worker"} on ${e.work_date?.slice(0, 10) ?? "date"}?`
+      );
+      if (!ok) return;
+      try {
+        await clearLaborEntry(e.id);
+        setMessage("Entry deleted.");
+        setError(null);
+        void loadMonthEntries();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to delete.");
+      }
+    },
+    [loadMonthEntries]
+  );
 
   const summary = React.useMemo(() => {
     const totalLaborCost = monthEntries.reduce((sum, e) => sum + (e.cost_amount ?? 0), 0);
@@ -344,24 +387,22 @@ export default function LaborPageClient() {
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
           Monthly Summary · {formatMonthLabel(selectedMonth)}
         </p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="rounded-sm border border-border/60 bg-background px-3 py-2">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Labor Cost</p>
-            <p className="mt-1 text-xl font-semibold tabular-nums">
-              ${summary.totalLaborCost.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-            </p>
-          </div>
-          <div className="rounded-sm border border-border/60 bg-background px-3 py-2">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Work Days</p>
-            <p className="mt-1 text-xl font-semibold tabular-nums">
-              {summary.totalWorkDays.toLocaleString("en-US")}
-            </p>
-          </div>
-          <div className="rounded-sm border border-border/60 bg-background px-3 py-2">
-            <p className="text-xs text-muted-foreground uppercase tracking-wide">Entries</p>
-            <p className="mt-1 text-xl font-semibold tabular-nums">
-              {summary.totalEntries.toLocaleString("en-US")}
-            </p>
+        <div className="rounded-sm border border-border/70 bg-background overflow-hidden">
+          <div className="grid grid-cols-1 sm:grid-cols-3">
+            <div className="px-3 py-2.5 border-b border-border/60 sm:border-b-0 sm:border-r border-border/60">
+              <p className="text-[11px] text-muted-foreground/70 uppercase tracking-widest">Total Labor Cost</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums">
+                ${summary.totalLaborCost.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              </p>
+            </div>
+            <div className="px-3 py-2.5 border-b border-border/60 sm:border-b-0 sm:border-r border-border/60">
+              <p className="text-[11px] text-muted-foreground/70 uppercase tracking-widest">Work Days</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums">{summary.totalWorkDays.toLocaleString("en-US")}</p>
+            </div>
+            <div className="px-3 py-2.5">
+              <p className="text-[11px] text-muted-foreground/70 uppercase tracking-widest">Entries</p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums">{summary.totalEntries.toLocaleString("en-US")}</p>
+            </div>
           </div>
         </div>
 
@@ -398,9 +439,13 @@ export default function LaborPageClient() {
             <p className="py-4 text-sm text-muted-foreground">Loading…</p>
           ) : datesInMonth.length === 0 ? (
             <p className="py-4 text-sm text-muted-foreground">No dates.</p>
+          ) : datesInMonth.filter((d) => (entriesByDate.get(d) ?? []).length > 0).length === 0 ? (
+            <p className="py-2 text-sm text-muted-foreground/70">No entries for this month.</p>
           ) : (
-            <div className="flex flex-col divide-y divide-border/60 rounded-lg border border-border/60 overflow-hidden">
-              {datesInMonth.map((date) => {
+            <div className="flex flex-col divide-y divide-border/60 rounded-sm border border-border/70 overflow-hidden">
+              {datesInMonth
+                .filter((d) => (entriesByDate.get(d) ?? []).length > 0)
+                .map((date) => {
                 const entries = entriesByDate.get(date) ?? [];
                 const totalPay = entries.reduce((s, e) => s + (e.cost_amount ?? 0), 0);
                 const isHighCost = totalPay > HIGH_COST_THRESHOLD;
@@ -411,16 +456,24 @@ export default function LaborPageClient() {
                       type="button"
                       onClick={() => setExpandedDate((prev) => (prev === date ? null : date))}
                       className={cn(
-                        "flex w-full items-center justify-between gap-3 rounded-none px-2.5 py-2.5 text-left transition-colors hover:bg-[#fafafa]",
-                        isExpanded && "bg-[#fafafa]"
+                        "flex w-full items-center justify-between gap-3 rounded-none px-3 py-2 text-left transition-colors bg-[#fafafa] hover:bg-[#f6f6f6]",
+                        isExpanded && "bg-[#f6f6f6]"
                       )}
                     >
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm font-medium text-foreground">{formatShortDate(date)}</span>
-                        <span className="text-sm text-muted-foreground">
-                          {entries.length === 0
-                            ? "No entries"
-                            : `${entries.length} entries   $${totalPay.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
+                      <div className="flex items-baseline gap-3 min-w-0">
+                        <span className="text-[15px] font-semibold text-foreground shrink-0">
+                          {formatShortDate(date)}
+                        </span>
+                        <span className="text-xs text-muted-foreground/80 truncate">
+                          {entries.length} entries
+                        </span>
+                        <span
+                          className={cn(
+                            "ml-auto text-sm font-semibold tabular-nums shrink-0",
+                            isHighCost ? "text-amber-700" : "text-emerald-700"
+                          )}
+                        >
+                          ${totalPay.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                         </span>
                       </div>
                       <span
@@ -440,35 +493,57 @@ export default function LaborPageClient() {
                       )}
                     >
                       <div className="border-t border-border/60 bg-background">
-                        {entries.length === 0 ? (
-                          <p className="py-2.5 px-2.5 text-sm text-muted-foreground">
-                            No entries. Use &quot;+ Add Entry&quot; to add workers.
-                          </p>
-                        ) : (
-                          <table className="w-full text-sm border-collapse">
+                        <table className="w-full text-sm border-collapse">
                             <thead>
                               <tr className="border-b border-border/60">
-                                <th className="text-left py-2.5 px-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">Worker</th>
-                                <th className="text-left py-2.5 px-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">Project</th>
-                                <th className="text-right py-2.5 px-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground tabular-nums">Total Pay</th>
+                                <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">Worker</th>
+                                <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">Project</th>
+                                <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">Session</th>
+                                <th className="text-right py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70 tabular-nums">Total Pay</th>
+                                <th className="w-[84px] py-2 px-3" />
                               </tr>
                             </thead>
                             <tbody>
                               {entries.map((e) => {
                                 const pay = e.cost_amount != null ? Number(e.cost_amount) : 0;
+                                const session = sessionFromFlags(e);
                                 return (
-                                  <tr key={e.id} className="border-b border-border/30 last:border-b-0 hover:bg-[#fafafa]">
-                                    <td className="py-2.5 px-2.5 font-medium text-foreground">{e.worker_name ?? "—"}</td>
-                                    <td className="py-2.5 px-2.5 text-muted-foreground">{e.project_name ?? "—"}</td>
-                                    <td className="py-2.5 px-2.5 text-right tabular-nums font-medium">
+                                  <tr key={e.id} className="group border-b border-border/30 last:border-b-0 hover:bg-[#fafafa]">
+                                    <td className="py-2 px-3 font-semibold text-foreground">{e.worker_name ?? "—"}</td>
+                                    <td className="py-2 px-3 text-muted-foreground/80">{e.project_name ?? "—"}</td>
+                                    <td className="py-2 px-3">
+                                      <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", sessionBadgeClass(session))}>
+                                        {sessionLabel(session)}
+                                      </span>
+                                    </td>
+                                    <td className="py-2 px-3 text-right tabular-nums font-semibold">
                                       {pay > 0 ? `$${pay.toFixed(2)}` : "—"}
+                                    </td>
+                                    <td className="py-2 px-3 text-right">
+                                      <div className="flex items-center justify-end gap-2 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity max-sm:opacity-100 max-sm:pointer-events-auto">
+                                        <button
+                                          type="button"
+                                          className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50/60"
+                                          onClick={() => openEdit(e)}
+                                          aria-label="Edit"
+                                        >
+                                          <Pencil className="h-4 w-4" />
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-red-600 hover:text-red-700 hover:bg-red-50/60"
+                                          onClick={() => void handleDelete(e)}
+                                          aria-label="Delete"
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </button>
+                                      </div>
                                     </td>
                                   </tr>
                                 );
                               })}
                             </tbody>
                           </table>
-                        )}
                       </div>
                     </div>
                   </div>
@@ -558,6 +633,17 @@ export default function LaborPageClient() {
         onSuccess={handleSaved}
       />
 
+      <EditEntryModal
+        open={editOpen}
+        onOpenChange={(open) => {
+          setEditOpen(open);
+          if (!open) setEditing(null);
+        }}
+        entry={editing}
+        projects={projects}
+        onSaved={handleSaved}
+      />
+
       {/* Day detail (Calendar View) */}
       <Dialog open={!!selectedDayForDetail} onOpenChange={(open) => !open && setSelectedDayForDetail(null)}>
         <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col border-border/60 rounded-sm">
@@ -580,25 +666,51 @@ export default function LaborPageClient() {
                 <table className="w-full text-sm border-collapse">
                   <thead>
                     <tr className="border-b border-border/60">
-                      <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Worker</th>
-                      <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Project</th>
-                      <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Day Type</th>
-                      <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground tabular-nums">OT</th>
-                      <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground tabular-nums">Total Pay</th>
+                      <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">Worker</th>
+                      <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">Project</th>
+                      <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">Session</th>
+                      <th className="text-right py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70 tabular-nums">OT</th>
+                      <th className="text-right py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70 tabular-nums">Total Pay</th>
+                      <th className="w-[84px] py-2 px-3" />
                     </tr>
                   </thead>
                   <tbody>
                     {dayEntries.map((e) => {
-                      const { dayType, otHours } = parseDayTypeAndOt(e.notes);
+                      const { otHours } = parseDayTypeAndOt(e.notes);
                       const pay = e.cost_amount != null ? Number(e.cost_amount) : 0;
+                      const session = sessionFromFlags(e);
                       return (
-                        <tr key={e.id} className="border-b border-border/60 last:border-b-0">
-                          <td className="py-2 px-3 font-medium text-foreground">{e.worker_name ?? "—"}</td>
-                          <td className="py-2 px-3 text-muted-foreground">{e.project_name ?? "—"}</td>
-                          <td className="py-2 px-3 text-muted-foreground">{dayType}</td>
+                        <tr key={e.id} className="group border-b border-border/60 last:border-b-0 hover:bg-[#fafafa]">
+                          <td className="py-2 px-3 font-semibold text-foreground">{e.worker_name ?? "—"}</td>
+                          <td className="py-2 px-3 text-muted-foreground/80">{e.project_name ?? "—"}</td>
+                          <td className="py-2 px-3">
+                            <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", sessionBadgeClass(session))}>
+                              {sessionLabel(session)}
+                            </span>
+                          </td>
                           <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">{otHours}</td>
-                          <td className="py-2 px-3 text-right tabular-nums font-medium">
+                          <td className="py-2 px-3 text-right tabular-nums font-semibold">
                             {pay > 0 ? `$${pay.toFixed(2)}` : "—"}
+                          </td>
+                          <td className="py-2 px-3 text-right">
+                            <div className="flex items-center justify-end gap-2 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity max-sm:opacity-100 max-sm:pointer-events-auto">
+                              <button
+                                type="button"
+                                className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50/60"
+                                onClick={() => openEdit(e)}
+                                aria-label="Edit"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-red-600 hover:text-red-700 hover:bg-red-50/60"
+                                onClick={() => void handleDelete(e)}
+                                aria-label="Delete"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
