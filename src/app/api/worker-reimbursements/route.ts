@@ -110,13 +110,17 @@ export async function POST(req: Request) {
       res = await supabase
         .from("worker_reimbursements")
         .insert({ ...payloadBase, vendor_name: vendor || null })
-        .select(COLS)
+        // Select * so this works even if COLS doesn't match schema exactly (e.g. vendor_name vs vendor).
+        .select("*")
         .single();
     }
     if (res.error || !res.data) {
       return NextResponse.json({ message: res.error?.message ?? "Failed to create reimbursement." }, { status: 500 });
     }
-    return NextResponse.json({ reimbursement: fromRow(res.data as Record<string, unknown>) });
+    const row = res.data as Record<string, unknown>;
+    // Map vendor_name -> vendor for client shape compatibility
+    if (row.vendor == null && row.vendor_name != null) row.vendor = row.vendor_name;
+    return NextResponse.json({ reimbursement: fromRow(row) });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to create reimbursement.";
     return NextResponse.json({ message }, { status: 500 });

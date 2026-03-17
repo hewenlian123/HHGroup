@@ -86,6 +86,7 @@ export default function TasksPage() {
     priority: "medium" as "low" | "medium" | "high",
     status: "todo" as "todo" | "in_progress" | "done",
   });
+  const titleInputRef = React.useRef<HTMLInputElement>(null);
   const [drawerForm, setDrawerForm] = React.useState({
     title: "",
     description: "",
@@ -180,8 +181,11 @@ export default function TasksPage() {
     setSubmitting(true);
     setError(null);
     try {
+      // Defensive: if for any reason state doesn't reflect the visible input (e.g. extension/IME issues),
+      // prefer the actual input value to avoid creating a blank title.
+      const rawTitle = (form.title || titleInputRef.current?.value || "").trim();
       const result = await createProjectTaskAction(form.project_id, {
-        title: form.title || "Untitled",
+        title: rawTitle || "Untitled",
         description: form.description || null,
         assigned_worker_id: form.assigned_worker_id || null,
         due_date: form.due_date || null,
@@ -558,6 +562,7 @@ export default function TasksPage() {
                 onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
                 placeholder="Task title"
                 className="mt-1.5 h-9 rounded-sm border-border/60"
+                ref={titleInputRef}
               />
             </div>
             <div>
