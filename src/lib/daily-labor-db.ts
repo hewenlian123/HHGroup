@@ -65,6 +65,43 @@ export type LaborEntryWithJoins = {
   project_name: string | null;
 };
 
+export type LaborSession = "morning" | "afternoon" | "full_day";
+
+function parseSessionFromNotes(notes: unknown): LaborSession | null {
+  const n = typeof notes === "string" ? notes : "";
+  const m = /(?:^|\s)session=(morning|afternoon|full_day)(?:\s|$)/i.exec(n);
+  if (!m) return null;
+  const v = m[1]?.toLowerCase();
+  if (v === "morning" || v === "afternoon" || v === "full_day") return v;
+  return null;
+}
+
+async function assertNoDuplicateSession(params: {
+  entryIdToExclude?: string;
+  workerId: string;
+  workDate: string;
+  session: LaborSession;
+}): Promise<void> {
+  const c = client();
+  const date = params.workDate.slice(0, 10);
+  const { data: rows, error } = await c
+    .from("labor_entries")
+    .select("id, notes")
+    .eq("worker_id", params.workerId)
+    .eq("work_date", date);
+  if (error) throw new Error(error.message ?? "Failed to validate duplicates.");
+  const list = (rows ?? []) as Array<{ id: string; notes: string | null }>;
+  const dup = list.find((r) => {
+    if (params.entryIdToExclude && r.id === params.entryIdToExclude) return false;
+    const s = parseSessionFromNotes(r.notes);
+    return s === params.session;
+  });
+  if (dup) {
+    const label = params.session === "full_day" ? "full day" : params.session;
+    throw new Error(`This worker already has a ${label} entry for this date.`);
+  }
+}
+
 export type LaborEntriesFilters = {
   date_from?: string;
   date_to?: string;
@@ -486,6 +523,60 @@ export async function deleteDailyLaborEntry(entryId: string): Promise<void> {
   const c = client();
   const { error: delError } = await c.from("labor_entries").delete().eq("id", entryId);
   if (delError) throw new Error(delError.message ?? "Failed to delete labor entry.");
+}
+
+export async function updateLaborEntry(
+  entryId: string,
+  updates: {
+    project_id?: string | null;
+    session?: LaborSession;
+    amount?: number;
+    overtime_hours?: number;
+  }
+): Promise<void> {
+  const c = client();
+  const { data: current, error: curErr } = await c
+    .from("labor_entries")
+    .select("id, worker_id, work_date, notes, status")
+    .eq("id", entryId)
+    .maybeSingle();
+  if (curErr) throw new Error(curErr.message ?? "Failed to load labor entry.");
+  if (!current) throw new Error("Labor entry not found.");
+  const status = (current as { status?: string } | null)?.status;
+  if (status === "Locked") throw new Error("Cannot edit a locked labor entry.");
+
+  const workerId = (current as { worker_id: string }).worker_id;
+  const workDate = (current as { work_date: string }).work_date;
+  const existingNotes = ((current as { notes?: string | null }).notes ?? "") as string;
+
+  const session = updates.session ?? parseSessionFromNotes(existingNotes);
+  if (session) {
+    await assertNoDuplicateSession({
+      entryIdToExclude: entryId,
+      workerId,
+      workDate,
+      session,
+    });
+  }
+
+  const payload: Record<string, unknown> = {};
+  if (updates.project_id !== undefined) payload.project_id = updates.project_id ?? null;
+  if (updates.amount !== undefined) payload.cost_amount = Number(updates.amount) || 0;
+
+  const ot = updates.overtime_hours;
+  if (session || ot !== undefined) {
+    const tokens = existingNotes
+      .split(/\s+/)
+      .filter(Boolean)
+      .filter((t) => !/^session=(morning|afternoon|full_day)$/i.test(t) && !/^ot_hours=/i.test(t));
+    if (session) tokens.push(`session=${session}`);
+    if (ot !== undefined && Number.isFinite(Number(ot)) && Number(ot) > 0) tokens.push(`ot_hours=${Number(ot)}`);
+    payload.notes = tokens.length ? tokens.join(" ") : null;
+  }
+
+  if (Object.keys(payload).length === 0) return;
+  const { error } = await c.from("labor_entries").update(payload).eq("id", entryId);
+  if (error) throw new Error(error.message ?? "Failed to update labor entry.");
 }
 
 export type ProjectLaborBreakdownRow = {

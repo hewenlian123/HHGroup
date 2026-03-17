@@ -17,6 +17,8 @@ import {
   getLaborEntriesByProjectAndDate,
   getFullDayLaborEntriesByDate,
   getLaborEntriesWithJoins,
+  updateLaborEntry,
+  clearLaborEntry,
 } from "@/lib/data";
 import type { LaborEntryWithJoins } from "@/lib/data";
 import {
@@ -27,6 +29,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { Button as UiButton } from "@/components/ui/button";
+import { Pencil, Trash2 } from "lucide-react";
 
 type DayType = "full_day" | "half_day" | "absent";
 
@@ -42,6 +46,30 @@ function parseDayTypeAndOt(notes: string | null): { dayType: string; otHours: st
   };
 }
 
+type Session = "morning" | "afternoon" | "full_day";
+
+function sessionLabel(s: Session): string {
+  if (s === "morning") return "Morning";
+  if (s === "afternoon") return "Afternoon";
+  return "Full Day";
+}
+
+function sessionTag(s: Session): string {
+  if (s === "morning") return "🌅";
+  if (s === "afternoon") return "🌇";
+  return "🟩";
+}
+
+function sessionFromFlags(morning: unknown, afternoon: unknown): Session {
+  const m = morning === true;
+  const a = afternoon === true;
+  if (m && a) return "full_day";
+  if (m && !a) return "morning";
+  if (!m && a) return "afternoon";
+  // default (legacy rows): treat as full day for display
+  return "full_day";
+}
+
 export default function DailyLaborLogPage() {
   const today = React.useMemo(() => new Date().toISOString().slice(0, 10), []);
   const [workDate, setWorkDate] = React.useState(() => new Date().toISOString().slice(0, 10));
@@ -54,6 +82,15 @@ export default function DailyLaborLogPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [message, setMessage] = React.useState<string | null>(null);
   const [modalOpen, setModalOpen] = React.useState(false);
+  const [editOpen, setEditOpen] = React.useState(false);
+  const [editing, setEditing] = React.useState<LaborEntryWithJoins | null>(null);
+  const [editBusy, setEditBusy] = React.useState(false);
+  const [editError, setEditError] = React.useState<string | null>(null);
+  const [editProjectId, setEditProjectId] = React.useState<string>("");
+  const [editSession, setEditSession] = React.useState<Session>("full_day");
+  const [editAmount, setEditAmount] = React.useState<string>("");
+  const [editHours, setEditHours] = React.useState<string>("");
+  const [editNotes, setEditNotes] = React.useState<string>("");
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -97,6 +134,71 @@ export default function DailyLaborLogPage() {
     setError(null);
     void loadEntries();
   }, [loadEntries]);
+
+  const openEdit = React.useCallback((entry: LaborEntryWithJoins) => {
+    setEditing(entry);
+    setEditProjectId(entry.project_id ?? "");
+    setEditSession(sessionFromFlags((entry as any).morning, (entry as any).afternoon));
+    setEditAmount(String(entry.cost_amount != null ? Number(entry.cost_amount) : 0));
+    setEditHours(String(entry.hours != null ? Number(entry.hours) : 0));
+    setEditNotes(entry.notes ?? "");
+    setEditError(null);
+    setEditOpen(true);
+  }, []);
+
+  const closeEdit = React.useCallback(() => {
+    setEditOpen(false);
+    setEditing(null);
+    setEditError(null);
+  }, []);
+
+  const handleDelete = React.useCallback(async (entry: LaborEntryWithJoins) => {
+    if (!window.confirm("Are you sure you want to delete this entry?")) return;
+    setError(null);
+    setMessage(null);
+    const prev = dayEntries;
+    setDayEntries((p) => p.filter((x) => x.id !== entry.id));
+    try {
+      await clearLaborEntry(entry.id);
+      setMessage("Entry deleted.");
+      void loadEntries();
+    } catch (e) {
+      setDayEntries(prev);
+      setError(e instanceof Error ? e.message : "Failed to delete.");
+    }
+  }, [dayEntries, loadEntries]);
+
+  const handleSaveEdit = React.useCallback(async () => {
+    if (!editing) return;
+    const amt = Number(editAmount);
+    if (!Number.isFinite(amt) || amt < 0) {
+      setEditError("Enter a valid amount.");
+      return;
+    }
+    const hrs = Number(editHours);
+    if (!Number.isFinite(hrs) || hrs < 0) {
+      setEditError("Enter valid hours.");
+      return;
+    }
+    setEditBusy(true);
+    setEditError(null);
+    try {
+      await updateLaborEntry(editing.id, {
+        project_id: editProjectId || null,
+        session: editSession,
+        cost_amount: amt,
+        hours: hrs,
+        notes: editNotes.trim() || null,
+      });
+      closeEdit();
+      setMessage("Entry updated.");
+      void loadEntries();
+    } catch (e) {
+      setEditError(e instanceof Error ? e.message : "Failed to update.");
+    } finally {
+      setEditBusy(false);
+    }
+  }, [editing, editAmount, editHours, editNotes, editProjectId, editSession, closeEdit, loadEntries]);
 
   return (
     <PageLayout
@@ -173,19 +275,54 @@ export default function DailyLaborLogPage() {
                   <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-gray-500">Day Type</th>
                   <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-gray-500 tabular-nums">OT</th>
                   <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-gray-500 tabular-nums">Total Pay</th>
+                  <th className="w-20" />
                 </tr>
               </thead>
               <tbody>
                 {dayEntries.map((e) => {
                   const { dayType, otHours } = parseDayTypeAndOt(e.notes);
+                  const sess = sessionFromFlags((e as any).morning, (e as any).afternoon);
                   const pay = e.cost_amount != null ? Number(e.cost_amount) : 0;
                   return (
-                    <tr key={e.id} className="border-b border-[#E5E7EB] last:border-b-0">
+                    <tr key={e.id} className="group border-b border-[#E5E7EB] last:border-b-0">
                       <td className="py-2 px-3 font-medium text-[#111111]">{e.worker_name ?? "—"}</td>
                       <td className="py-2 px-3 text-gray-600">{e.project_name ?? "—"}</td>
-                      <td className="py-2 px-3 text-gray-600">{dayType}</td>
+                      <td className="py-2 px-3 text-gray-600">
+                        <span className="mr-1">{sessionTag(sess)}</span>
+                        {dayType}
+                      </td>
                       <td className="py-2 px-3 text-right tabular-nums text-gray-600">{otHours}</td>
                       <td className="py-2 px-3 text-right tabular-nums font-medium">${pay.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right">
+                        <div className="flex justify-end gap-1">
+                          <UiButton
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className={cn(
+                              "h-8 w-8 text-muted-foreground hover:text-foreground",
+                              "opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                            )}
+                            onClick={() => openEdit(e)}
+                            aria-label="Edit entry"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </UiButton>
+                          <UiButton
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className={cn(
+                              "h-8 w-8 text-muted-foreground hover:text-destructive",
+                              "opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                            )}
+                            onClick={() => void handleDelete(e)}
+                            aria-label="Delete entry"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </UiButton>
+                        </div>
+                      </td>
                     </tr>
                   );
                 })}
@@ -204,6 +341,85 @@ export default function DailyLaborLogPage() {
         projects={projects}
         onSaved={handleSaved}
       />
+
+      <Dialog open={editOpen} onOpenChange={(o) => (o ? null : closeEdit())}>
+        <DialogContent className="border-border/60 p-0 sm:p-6 max-sm:h-[100dvh] max-sm:w-[100vw] max-sm:max-w-none max-sm:rounded-none">
+          <DialogHeader className="px-6 pt-6 pb-4 max-sm:px-4 max-sm:pt-4 max-sm:pb-3 border-b border-border/60">
+            <DialogTitle className="text-base font-semibold">Edit Entry</DialogTitle>
+          </DialogHeader>
+          <div className="px-6 py-4 max-sm:px-4 max-sm:py-3 space-y-4">
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">Worker</label>
+              <Input value={editing?.worker_name ?? "—"} readOnly className="h-9" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">Project</label>
+              <select
+                value={editProjectId}
+                onChange={(e) => setEditProjectId(e.target.value)}
+                className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+              >
+                <option value="">—</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">Date</label>
+              <Input value={editing?.work_date ?? workDate} readOnly className="h-9 tabular-nums" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">Session</label>
+              <select
+                value={editSession}
+                onChange={(e) => setEditSession(e.target.value as Session)}
+                className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+              >
+                <option value="morning">Morning</option>
+                <option value="afternoon">Afternoon</option>
+                <option value="full_day">Full Day</option>
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground">Cost Amount</label>
+                <Input
+                  value={editAmount}
+                  onChange={(e) => setEditAmount(e.target.value)}
+                  className="h-9 tabular-nums"
+                  inputMode="decimal"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground">Hours</label>
+                <Input
+                  value={editHours}
+                  onChange={(e) => setEditHours(e.target.value)}
+                  className="h-9 tabular-nums"
+                  inputMode="decimal"
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">Notes (optional)</label>
+              <Input
+                value={editNotes}
+                onChange={(e) => setEditNotes(e.target.value)}
+                className="h-9"
+                placeholder="Optional"
+              />
+            </div>
+            {editError ? <p className="text-sm text-destructive">{editError}</p> : null}
+          </div>
+          <DialogFooter className="px-6 pb-6 max-sm:px-4 max-sm:pb-4 border-t border-border/60 pt-4">
+            <Button variant="outline" size="sm" className="rounded-sm" onClick={closeEdit} disabled={editBusy}>Cancel</Button>
+            <Button size="sm" className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90" onClick={() => void handleSaveEdit()} disabled={editBusy}>
+              {editBusy ? "Saving…" : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageLayout>
   );
 }

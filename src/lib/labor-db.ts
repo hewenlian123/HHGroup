@@ -553,6 +553,99 @@ export async function deleteLaborEntry(id: string): Promise<void> {
   await c.from("labor_entries").delete().eq("id", id);
 }
 
+export type LaborSession = "morning" | "afternoon" | "full_day";
+
+function toSessionFlags(session: LaborSession): { morning: boolean; afternoon: boolean } {
+  if (session === "morning") return { morning: true, afternoon: false };
+  if (session === "afternoon") return { morning: false, afternoon: true };
+  return { morning: true, afternoon: true };
+}
+
+async function assertNoDuplicateSession(params: {
+  entryIdToExclude: string;
+  workerId: string;
+  workDate: string;
+  session: LaborSession;
+}): Promise<void> {
+  const c = client();
+  const date = params.workDate.slice(0, 10);
+  const { morning, afternoon } = toSessionFlags(params.session);
+  const { data: rows, error } = await c
+    .from("labor_entries")
+    .select("id")
+    .eq("worker_id", params.workerId)
+    .eq("work_date", date)
+    .eq("morning", morning)
+    .eq("afternoon", afternoon)
+    .neq("id", params.entryIdToExclude)
+    .limit(1);
+  if (error) throw new Error(error.message ?? "Failed to validate duplicates.");
+  if ((rows ?? []).length > 0) {
+    throw new Error("该工人在这一天已有相同时段的记录");
+  }
+}
+
+export async function updateLaborEntry(
+  entryId: string,
+  updates: {
+    project_id?: string | null;
+    session?: LaborSession;
+    cost_amount?: number;
+    hours?: number;
+    notes?: string | null;
+  }
+): Promise<void> {
+  const c = client();
+  const { data: current, error: curErr } = await c
+    .from("labor_entries")
+    .select("id, worker_id, work_date, morning, afternoon, status")
+    .eq("id", entryId)
+    .maybeSingle();
+  if (curErr) throw new Error(curErr.message ?? "Failed to load labor entry.");
+  if (!current) throw new Error("Labor entry not found.");
+  const status = (current as { status?: string } | null)?.status;
+  if (status === "Locked") throw new Error("Cannot edit a locked labor entry.");
+
+  const workerId = (current as { worker_id: string }).worker_id;
+  const workDate = (current as { work_date: string }).work_date;
+  const currentMorning = Boolean((current as { morning?: boolean | null }).morning);
+  const currentAfternoon = Boolean((current as { afternoon?: boolean | null }).afternoon);
+
+  const session: LaborSession | null =
+    updates.session ??
+    (currentMorning && currentAfternoon
+      ? "full_day"
+      : currentMorning
+        ? "morning"
+        : currentAfternoon
+          ? "afternoon"
+          : null);
+
+  if (session) {
+    await assertNoDuplicateSession({
+      entryIdToExclude: entryId,
+      workerId,
+      workDate,
+      session,
+    });
+  }
+
+  const payload: Record<string, unknown> = {};
+  if (updates.project_id !== undefined) payload.project_id = updates.project_id ?? null;
+  if (updates.cost_amount !== undefined) payload.cost_amount = Number(updates.cost_amount) || 0;
+  if (updates.hours !== undefined) payload.hours = Number(updates.hours) || 0;
+  if (updates.notes !== undefined) payload.notes = updates.notes ?? null;
+  if (updates.session !== undefined && session) {
+    const flags = toSessionFlags(session);
+    payload.morning = flags.morning;
+    payload.afternoon = flags.afternoon;
+  }
+  if (Object.keys(payload).length === 0) return;
+
+  const { error } = await c.from("labor_entries").update(payload).eq("id", entryId);
+  if (error) throw new Error(error.message ?? "Failed to update labor entry.");
+}
+
 /** No-op: labor_entries has no status column. Returns current entry. */
 export async function confirmLaborEntry(id: string): Promise<LaborEntry | null> {
   return getLaborEntryById(id);
