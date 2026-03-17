@@ -229,7 +229,7 @@ export function InvoicesClient() {
                         if (!inv) throw new Error("Invoice not found.");
                         const { data: items, error: itemsError } = await supabase
                           .from("invoice_items")
-                          .select("description,qty,unit_price")
+                          .select("description,quantity,qty,unit_price")
                           .eq("invoice_id", row.id)
                           .order("created_at", { ascending: true });
                         if (itemsError && !isMissingTableError(itemsError)) throw itemsError;
@@ -254,7 +254,7 @@ export function InvoicesClient() {
                         const itemRows = (items ?? []).map((it) => ({
                           invoice_id: newId,
                           description: (it as { description?: string }).description ?? "",
-                          qty: safeNumber((it as { qty?: number }).qty ?? 1),
+                          quantity: safeNumber((it as { quantity?: number; qty?: number }).quantity ?? (it as { qty?: number }).qty ?? 1),
                           unit_price: safeNumber((it as { unit_price?: number }).unit_price ?? 0),
                         }));
                         if (itemRows.length > 0) {

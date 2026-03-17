@@ -37,21 +37,10 @@ function isMissingTable(err: { message?: string } | null): boolean {
 export async function getAccounts(): Promise<Account[]> {
   const c = client();
   try {
-    // If accounts is user-scoped, prefer filtering by current user_id.
-    // This also avoids "created but not visible" issues when RLS expects user_id = auth.uid().
-    let userId: string | null = null;
-    try {
-      const { data } = await c.auth.getUser();
-      userId = data?.user?.id ?? null;
-    } catch {
-      userId = null;
-    }
-
     let q = c
       .from("accounts")
       .select("id, name, type, last_four, notes, created_at, updated_at")
       .order("name");
-    if (userId) q = q.eq("user_id", userId);
 
     const { data: rows, error } = await q;
     if (error) {

@@ -61,7 +61,8 @@ export async function createServerSupabaseClient(): Promise<SupabaseClient | nul
 
   // Dynamic import to avoid bundling next/headers into non-server graphs.
   const { cookies } = await import("next/headers");
-  const cookieStore = await cookies();
+  // Next.js 14: cookies() is synchronous. (Next 15 made it async.)
+  const cookieStore = cookies();
 
   return createServerClient(url, anon, {
     cookies: {

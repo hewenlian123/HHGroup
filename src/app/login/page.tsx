@@ -11,7 +11,8 @@ export default async function LoginPage({
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (url && anonKey) {
-    const cookieStore = await cookies();
+    // Next.js 14: cookies() is synchronous. (Next 15 made it async.)
+    const cookieStore = cookies();
     const supabase = createServerClient(url, anonKey, {
       cookies: {
         getAll() {
