@@ -457,12 +457,12 @@ export default function InvoiceDetailPage() {
               <tbody>
                 {deposits.map((d) => (
                   <tr key={d.id} className="border-b border-zinc-100/50 dark:border-border/30">
-                    <td className="py-3 px-4 tabular-nums">{d.deposit_date}</td>
+                    <td className="py-3 px-4 tabular-nums">{(d as { date?: string }).date ?? "—"}</td>
                     <td className="py-3 px-4 text-right tabular-nums font-medium text-emerald-600/90 dark:text-emerald-400/90">
                       ${d.amount.toLocaleString()}
                     </td>
-                    <td className="py-3 px-4 text-muted-foreground">{d.payment_method ?? "—"}</td>
-                    <td className="py-3 px-4 text-muted-foreground">{d.deposit_account ?? "—"}</td>
+                    <td className="py-3 px-4 text-muted-foreground">—</td>
+                    <td className="py-3 px-4 text-muted-foreground">{(d as { account?: string | null }).account ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>
