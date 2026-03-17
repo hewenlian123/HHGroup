@@ -330,7 +330,6 @@ export default function InvoiceDetailPage() {
             </tbody>
           </table>
         </div>
-        <p className="text-xs text-muted-foreground px-4 pb-2">Line items editable only in Draft (mock).</p>
       </Card>
 
       <Card className="rounded-2xl border border-zinc-200/60 dark:border-border p-6">

@@ -11,7 +11,10 @@ import {
 } from "@/lib/data";
 import type { ChangeOrderStatus } from "@/lib/data";
 
-export async function createChangeOrderAction(projectId: string, formData: FormData): Promise<void> {
+export async function createChangeOrderAction(
+  projectId: string,
+  formData: FormData
+): Promise<{ ok: boolean; error?: string }> {
   try {
     const title = (formData.get("title") as string)?.trim() || "";
     const description = (formData.get("description") as string)?.trim() || null;
@@ -32,10 +35,12 @@ export async function createChangeOrderAction(projectId: string, formData: FormD
     revalidatePath(`/projects/${projectId}`);
     redirect(`/projects/${projectId}/change-orders/${co.id}`);
   } catch (e) {
+    // Never throw here — throwing causes Next to render the error boundary with a Digest.
     const msg = e instanceof Error ? e.message : String(e);
-    if (typeof (e as { digest?: string })?.digest === "string") throw e;
-    throw new Error(`Change order could not be created: ${msg}`);
+    return { ok: false, error: msg || "Failed to create change order." };
   }
+  // Unreachable after redirect(), but keep TS happy.
+  return { ok: true };
 }
 
 export async function updateChangeOrderStatus(
