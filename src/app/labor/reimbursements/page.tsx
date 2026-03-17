@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import {
   getWorkers,
   getProjects,
-  insertWorkerReimbursement,
   updateWorkerReimbursement,
   type WorkerReimbursement,
   type WorkerReimbursementStatus,
@@ -180,15 +179,23 @@ export default function WorkerReimbursementsPage() {
           status: form.status,
         });
       } else {
-        await insertWorkerReimbursement({
-          workerId: form.workerId,
-          projectId: form.projectId || null,
-          vendor: form.vendor.trim() || null,
-          amount,
-          receiptUrl: form.receiptUrl.trim() || null,
-          description: form.description.trim() || null,
-          status: form.status,
+        const res = await fetch("/api/worker-reimbursements", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            workerId: form.workerId,
+            projectId: form.projectId || null,
+            vendor: form.vendor.trim() || null,
+            amount,
+            receiptUrl: form.receiptUrl.trim() || null,
+            description: form.description.trim() || null,
+            status: form.status,
+          }),
         });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.message ?? "Failed to create reimbursement.");
+        }
       }
       resetForm();
       await load();

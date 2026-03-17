@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getAccounts, type Account, type AccountType } from "@/lib/data";
-import { createAccountAction } from "./actions";
+import { createAccountAction, getAccountsAction } from "./actions";
 import { Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/toast/toast-provider";
@@ -41,8 +41,23 @@ function AccountsPageInner() {
   const [notes, setNotes] = React.useState("");
 
   const load = React.useCallback(async () => {
-    const list = await getAccounts();
-    setAccounts(list);
+    const res = await getAccountsAction();
+    if (res.error) {
+      // Keep the page functional even if auth is missing.
+      setAccounts([]);
+      return;
+    }
+    setAccounts(
+      res.accounts.map((a) => ({
+        id: a.id,
+        name: a.name,
+        type: a.type as AccountType,
+        lastFour: a.lastFour,
+        notes: a.notes,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }))
+    );
   }, []);
 
   React.useEffect(() => {
