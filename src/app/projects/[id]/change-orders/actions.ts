@@ -35,7 +35,16 @@ export async function createChangeOrderAction(
     revalidatePath(`/projects/${projectId}`);
     redirect(`/projects/${projectId}/change-orders/${co.id}`);
   } catch (e) {
-    // Never throw here — throwing causes Next to render the error boundary with a Digest.
+    // Let Next handle redirects/notFound; those are implemented as exceptions.
+    const digest = (e as { digest?: unknown } | null)?.digest;
+    if (typeof digest === "string" && (digest.startsWith("NEXT_REDIRECT") || digest.startsWith("NEXT_NOT_FOUND"))) {
+      throw e;
+    }
+
+    // Never throw here — throwing would render the error boundary with a Digest.
+    // Log for server-side debugging.
+    // eslint-disable-next-line no-console
+    console.error("[createChangeOrderAction] failed", e);
     const msg = e instanceof Error ? e.message : String(e);
     return { ok: false, error: msg || "Failed to create change order." };
   }

@@ -66,3 +66,59 @@ export async function GET() {
     return NextResponse.json({ message }, { status: 500 });
   }
 }
+
+/**
+ * POST: Create a worker reimbursement using admin client (bypass RLS),
+ * so create + list are consistent.
+ *
+ * Accepts: { workerId, projectId?, vendor?, amount, description?, receiptUrl?, status? }
+ * Handles vendor column name differences (vendor vs vendor_name).
+ */
+export async function POST(req: Request) {
+  const supabase = getServerSupabaseAdmin();
+  if (!supabase) {
+    return NextResponse.json({ message: "Supabase not configured." }, { status: 500 });
+  }
+  try {
+    const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
+    if (!body) return NextResponse.json({ message: "Invalid JSON body." }, { status: 400 });
+
+    const workerId = typeof body.workerId === "string" ? body.workerId.trim() : "";
+    if (!workerId) return NextResponse.json({ message: "workerId is required." }, { status: 400 });
+    const projectId = typeof body.projectId === "string" ? body.projectId.trim() : "";
+    const vendor = typeof body.vendor === "string" ? body.vendor.trim() : "";
+    const amount = Number(body.amount);
+    if (!Number.isFinite(amount) || amount < 0) return NextResponse.json({ message: "amount is invalid." }, { status: 400 });
+
+    const payloadBase: Record<string, unknown> = {
+      worker_id: workerId,
+      project_id: projectId || null,
+      amount,
+      description: typeof body.description === "string" ? body.description.trim() || null : null,
+      receipt_url: typeof body.receiptUrl === "string" ? body.receiptUrl.trim() || null : null,
+      status: typeof body.status === "string" ? body.status : "pending",
+    };
+
+    // Try vendor column first.
+    let res = await supabase
+      .from("worker_reimbursements")
+      .insert({ ...payloadBase, vendor: vendor || null })
+      .select(COLS)
+      .single();
+    if (res.error && /column .*vendor.*does not exist|schema cache/i.test(res.error.message ?? "")) {
+      // Fallback: vendor_name column
+      res = await supabase
+        .from("worker_reimbursements")
+        .insert({ ...payloadBase, vendor_name: vendor || null })
+        .select(COLS)
+        .single();
+    }
+    if (res.error || !res.data) {
+      return NextResponse.json({ message: res.error?.message ?? "Failed to create reimbursement." }, { status: 500 });
+    }
+    return NextResponse.json({ reimbursement: fromRow(res.data as Record<string, unknown>) });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Failed to create reimbursement.";
+    return NextResponse.json({ message }, { status: 500 });
+  }
+}

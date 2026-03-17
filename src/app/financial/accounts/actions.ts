@@ -49,3 +49,26 @@ export async function createAccountAction(
     },
   };
 }
+
+export async function getAccountsAction(): Promise<{ accounts: Array<{ id: string; name: string; type: string; lastFour: string | null; notes: string | null }>; error?: string }> {
+  const supabase = await createServerSupabaseClient();
+  if (!supabase) return { accounts: [], error: "Supabase is not configured." };
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) return { accounts: [], error: "You must be signed in." };
+
+  const { data: rows, error } = await supabase
+    .from("accounts")
+    .select("id, name, type, last_four, notes, created_at, updated_at")
+    .eq("user_id", user.id)
+    .order("name");
+  if (error) return { accounts: [], error: error.message ?? "Failed to load accounts." };
+  return {
+    accounts: (rows ?? []).map((r) => ({
+      id: r.id as string,
+      name: (r.name as string) ?? "",
+      type: (r.type as string) ?? "Other",
+      lastFour: (r.last_four as string | null) ?? null,
+      notes: (r.notes as string | null) ?? null,
+    })),
+  };
+}
