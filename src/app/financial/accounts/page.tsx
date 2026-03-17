@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,11 +14,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getAccounts, type Account, type AccountType } from "@/lib/data";
-import { createAccountAction, getAccountsAction } from "./actions";
+import { createAccountAction, deleteAccountAction, getAccountsAction, updateAccountAction } from "./actions";
 import { Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/toast/toast-provider";
 import { EmptyState } from "@/components/empty-state";
+import { RowActionsMenu } from "@/components/base/row-actions-menu";
 
 const ACCOUNT_TYPES: AccountType[] = ["Credit Card", "Debit Card", "Bank", "Cash", "Other"];
 
@@ -30,6 +32,7 @@ export default function AccountsPage() {
 }
 
 function AccountsPageInner() {
+  const router = useRouter();
   const { toast } = useToast();
   const [accounts, setAccounts] = React.useState<Account[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -39,6 +42,8 @@ function AccountsPageInner() {
   const [type, setType] = React.useState<AccountType>("Credit Card");
   const [lastFour, setLastFour] = React.useState("");
   const [notes, setNotes] = React.useState("");
+  const nameInputRef = React.useRef<HTMLInputElement>(null);
+  const [editingId, setEditingId] = React.useState<string | null>(null);
 
   const load = React.useCallback(async () => {
     const res = await getAccountsAction();
@@ -73,39 +78,109 @@ function AccountsPageInner() {
     setType("Credit Card");
     setLastFour("");
     setNotes("");
+    setEditingId(null);
     setModalOpen(true);
+  };
+
+  const openEdit = (acc: Account) => {
+    setName(acc.name ?? "");
+    setType((acc.type as AccountType) ?? "Other");
+    setLastFour(acc.lastFour ?? "");
+    setNotes(acc.notes ?? "");
+    setEditingId(acc.id);
+    setModalOpen(true);
+    // focus on next tick
+    setTimeout(() => nameInputRef.current?.focus(), 0);
+  };
+
+  const handleDelete = async (acc: Account) => {
+    if (!window.confirm(`Delete account "${acc.name}"?`)) return;
+    const prev = accounts;
+    setAccounts((p) => p.filter((a) => a.id !== acc.id));
+    const res = await deleteAccountAction(acc.id);
+    if (!res.ok) {
+      setAccounts(prev);
+      toast({ title: "Failed to delete account", description: res.error, variant: "error" });
+      return;
+    }
+    await load();
+    router.refresh();
+    toast({ title: "Account deleted", variant: "success" });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (saving) return;
-    const trimmedName = name.trim();
+    // Defensive: avoid "DOM shows value but state is empty" edge cases.
+    const trimmedName = (nameInputRef.current?.value ?? name).trim();
     if (!trimmedName) {
       toast({ title: "Account name required", variant: "error" });
       return;
     }
     setSaving(true);
     try {
-      const result = await createAccountAction({
-        name: trimmedName,
-        type,
-        lastFour: lastFour.trim() || null,
-        notes: notes.trim() || null,
-      });
-      if (result.error) {
-        toast({
-          title: "Failed to create account",
-          description: result.error,
-          variant: "error",
+      if (editingId) {
+        const res = await updateAccountAction({
+          id: editingId,
+          name: trimmedName,
+          type,
+          lastFour: lastFour.trim() || null,
+          notes: notes.trim() || null,
         });
-        return;
+        if (!res.ok) {
+          toast({ title: "Failed to update account", description: res.error, variant: "error" });
+          return;
+        }
+        setModalOpen(false);
+        setEditingId(null);
+        await load();
+        router.refresh();
+        toast({ title: "Account updated", variant: "success" });
+      } else {
+        const result = await createAccountAction({
+          name: trimmedName,
+          type,
+          lastFour: lastFour.trim() || null,
+          notes: notes.trim() || null,
+        });
+        if (result.error) {
+          toast({
+            title: "Failed to create account",
+            description: result.error,
+            variant: "error",
+          });
+          return;
+        }
+        // Close immediately on success even if refresh/load fails.
+        setModalOpen(false);
+        // Optimistic insert so the user sees it instantly.
+        if (result.data?.id) {
+          setAccounts((prev) => {
+            const exists = prev.some((a) => a.id === result.data!.id);
+            if (exists) return prev;
+            const now = new Date().toISOString();
+            return [
+              {
+                id: result.data!.id,
+                name: trimmedName,
+                type,
+                lastFour: lastFour.trim() || null,
+                notes: notes.trim() || null,
+                createdAt: now,
+                updatedAt: now,
+              },
+              ...prev,
+            ];
+          });
+        }
+        // Refresh from server so the list reflects canonical data.
+        await load();
+        router.refresh();
+        toast({ title: "Account created", variant: "success" });
       }
-      await load();
-      setModalOpen(false);
-      toast({ title: "Account created", variant: "success" });
     } catch (err) {
       toast({
-        title: "Failed to create account",
+        title: editingId ? "Failed to save account" : "Failed to create account",
         description: err instanceof Error ? err.message : undefined,
         variant: "error",
       });
@@ -150,6 +225,7 @@ function AccountsPageInner() {
                   <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Account Name</TableHead>
                   <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Type</TableHead>
                   <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">Last 4</TableHead>
+                  <TableHead className="w-10" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -158,6 +234,15 @@ function AccountsPageInner() {
                     <TableCell className="font-medium text-foreground">{row.name}</TableCell>
                     <TableCell className="text-muted-foreground">{row.type}</TableCell>
                     <TableCell className="text-right tabular-nums text-muted-foreground">{row.lastFour ?? "—"}</TableCell>
+                    <TableCell className="text-right">
+                      <RowActionsMenu
+                        ariaLabel={`Actions for ${row.name}`}
+                        actions={[
+                          { label: "Edit", onClick: () => openEdit(row) },
+                          { label: "Delete", onClick: () => void handleDelete(row), destructive: true },
+                        ]}
+                      />
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -169,7 +254,7 @@ function AccountsPageInner() {
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="max-w-md border-border/60">
           <DialogHeader className="border-b border-border/60 pb-3">
-            <DialogTitle className="text-base font-medium">Add Account</DialogTitle>
+            <DialogTitle className="text-base font-medium">{editingId ? "Edit Account" : "Add Account"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4 pt-3">
             <div className="space-y-2">
@@ -180,6 +265,7 @@ function AccountsPageInner() {
                 placeholder="e.g. Chase Ink, BoA Bank"
                 className="h-9"
                 required
+                ref={nameInputRef}
               />
             </div>
             <div className="space-y-2">
@@ -216,11 +302,20 @@ function AccountsPageInner() {
               />
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="ghost" size="sm" className="h-8" onClick={() => setModalOpen(false)}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8"
+                onClick={() => {
+                  setModalOpen(false);
+                  setEditingId(null);
+                }}
+              >
                 Cancel
               </Button>
               <Button type="submit" size="sm" className="h-8" disabled={saving}>
-                {saving ? "Saving…" : "Save account"}
+                {saving ? "Saving…" : editingId ? "Save changes" : "Save account"}
               </Button>
             </div>
           </form>

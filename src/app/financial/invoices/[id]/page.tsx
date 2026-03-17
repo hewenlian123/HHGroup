@@ -63,13 +63,16 @@ export default function InvoiceDetailPage() {
 
   const refresh = React.useCallback(async () => {
     if (!id) return;
-    const [inv, pays, received, depositList] = await Promise.all([
-      getInvoiceByIdWithDerived(id),
+    const [invRes, pays, received, depositList] = await Promise.all([
+      fetch(`/api/invoices/${encodeURIComponent(id)}?t=${Date.now()}`, { cache: "no-store" })
+        .then((r) => r.json())
+        .catch(() => ({ ok: false as const })),
       getPaymentsByInvoiceId(id),
       getPaymentsReceivedByInvoiceId(id),
       getDepositsByInvoiceId(id).catch(() => []),
     ]);
-    setInvoice(inv ?? null);
+    const inv = (invRes && invRes.ok ? (invRes.invoice as InvoiceWithDerived) : null) as InvoiceWithDerived | null;
+    setInvoice(inv);
     setPayments(pays);
     setPaymentsReceived(received ?? []);
     setDeposits(Array.isArray(depositList) ? depositList : []);

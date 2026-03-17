@@ -63,7 +63,8 @@ type InvoiceItemRow = {
   id: string;
   invoice_id: string;
   description: string;
-  qty: number;
+  quantity?: number;
+  qty?: number;
   unit_price: number;
   amount: number;
 };
@@ -107,9 +108,10 @@ function throwInvoiceError(error: { message?: string } | null, fallbackHint: str
 const HINT = "Run supabase/migrations/202602280009_create_invoices.sql";
 
 function toLineItem(r: InvoiceItemRow): InvoiceLineItem {
+  const q = Number(r.quantity ?? r.qty) || 0;
   return {
     description: r.description ?? "",
-    qty: Number(r.qty) || 0,
+    qty: q,
     unitPrice: Number(r.unit_price) || 0,
     amount: Number(r.amount) || 0,
   };
@@ -527,12 +529,14 @@ export async function createInvoice(payload: {
     if (!invErr && invRow) {
       const inv = invRow as InvoiceRow;
       for (const item of payload.lineItems) {
+        const quantity = Number(item.qty) || 0;
+        const unitPrice = Number(item.unitPrice) || 0;
         await c.from("invoice_items").insert({
           invoice_id: inv.id,
           description: item.description,
-          qty: item.qty,
-          unit_price: item.unitPrice,
-          amount: item.amount,
+          quantity,
+          unit_price: unitPrice,
+          amount: quantity * unitPrice,
         });
       }
       const itemRows = await getInvoiceItemsOrEmpty(inv.id);
@@ -564,12 +568,14 @@ export async function updateInvoice(
   if (payload.lineItems != null) {
     await c.from("invoice_items").delete().eq("invoice_id", invoiceId);
     for (const item of payload.lineItems) {
+      const quantity = Number(item.qty) || 0;
+      const unitPrice = Number(item.unitPrice) || 0;
       await c.from("invoice_items").insert({
         invoice_id: invoiceId,
         description: item.description,
-        qty: item.qty,
-        unit_price: item.unitPrice,
-        amount: item.amount,
+        quantity,
+        unit_price: unitPrice,
+        amount: quantity * unitPrice,
       });
     }
   }

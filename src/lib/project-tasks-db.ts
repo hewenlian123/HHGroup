@@ -5,7 +5,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 export type ProjectTaskStatus = "todo" | "in_progress" | "done";
 export type ProjectTaskPriority = "low" | "medium" | "high";
@@ -35,9 +35,12 @@ export type ProjectTaskDraft = {
 export type ProjectTaskWithWorker = ProjectTask & { worker_name: string | null };
 
 function client(): SupabaseClient {
+  // Prefer admin (service role) when configured; otherwise fall back to server client (anon/service role depending on env).
   const admin = getServerSupabaseAdmin();
-  if (!admin) throw new Error("Supabase admin client not configured (SUPABASE_SERVICE_ROLE_KEY required).");
-  return admin;
+  const server = getServerSupabase();
+  const c = admin ?? server;
+  if (!c) throw new Error("Supabase client not configured.");
+  return c;
 }
 
 const COLS = "id, project_id, title, description, status, assigned_worker_id, due_date, priority, created_at";

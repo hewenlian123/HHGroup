@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server";
 import type { WorkerReimbursement } from "@/lib/worker-reimbursements-db";
 
 /** Force fresh list so status updates appear immediately */
@@ -29,17 +29,33 @@ function fromRow(r: Record<string, unknown>): WorkerReimbursement {
  * GET: List worker reimbursements using the same admin client as DELETE, so list and delete see the same data.
  */
 export async function GET() {
-  const supabase = getServerSupabaseAdmin();
+  const supabase = getServerSupabaseAdmin() ?? getServerSupabase();
   if (!supabase) {
     return NextResponse.json({ message: "Supabase not configured." }, { status: 500 });
   }
   try {
-    const { data: raw, error } = await supabase
+    // Some schemas use vendor_name instead of vendor, and some don't have payment_id.
+    // Use a tolerant SELECT first; fall back to minimal columns if needed.
+    let raw: Record<string, unknown>[] = [];
+    const resFull = await supabase
       .from("worker_reimbursements")
       .select(COLS)
       .order("created_at", { ascending: false });
-    if (error) throw new Error(error.message ?? "Failed to load reimbursements.");
-    const all = ((raw ?? []) as Record<string, unknown>[]).map(fromRow);
+    if (resFull.error) {
+      const resFallback = await supabase
+        .from("worker_reimbursements")
+        .select("id, worker_id, project_id, amount, description, receipt_url, status, created_at, paid_at")
+        .order("created_at", { ascending: false });
+      if (resFallback.error) throw new Error(resFallback.error.message ?? "Failed to load reimbursements.");
+      raw = (resFallback.data ?? []) as Record<string, unknown>[];
+    } else {
+      raw = (resFull.data ?? []) as Record<string, unknown>[];
+    }
+
+    const all = raw.map((r) => {
+      if (r.vendor == null && (r as any).vendor_name != null) (r as any).vendor = (r as any).vendor_name;
+      return fromRow(r);
+    });
     const list = all.filter((r) => r.status === "pending");
 
     const workerIds = Array.from(new Set(list.map((r) => r.workerId).filter(Boolean))) as string[];
@@ -75,7 +91,7 @@ export async function GET() {
  * Handles vendor column name differences (vendor vs vendor_name).
  */
 export async function POST(req: Request) {
-  const supabase = getServerSupabaseAdmin();
+  const supabase = getServerSupabaseAdmin() ?? getServerSupabase();
   if (!supabase) {
     return NextResponse.json({ message: "Supabase not configured." }, { status: 500 });
   }
