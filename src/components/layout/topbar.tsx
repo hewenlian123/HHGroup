@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bell, ChevronRight, PanelLeft, Plus, Search } from "lucide-react";
+import { Bell, PanelLeft, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -182,17 +182,23 @@ export function Topbar({
           </span>
           {breadcrumbs.length > 0 && (
             <>
-              <ChevronRight className="h-4 w-4 shrink-0 text-[#9ca3af]" aria-hidden />
+              <svg className="h-[10px] w-[10px] shrink-0 opacity-30 text-[#9ca3af] dark:text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden>
+                <path d="M9 18l6-6-6-6" />
+              </svg>
               <div className="flex min-w-0 items-center gap-1">
                 {breadcrumbs.map((label, i) => (
                   <React.Fragment key={`${label}-${i}`}>
-                    {i > 0 && <ChevronRight className="h-4 w-4 shrink-0 text-[#9ca3af]" aria-hidden />}
+                    {i > 0 && (
+                      <svg className="h-[10px] w-[10px] shrink-0 opacity-30 text-[#9ca3af] dark:text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden>
+                        <path d="M9 18l6-6-6-6" />
+                      </svg>
+                    )}
                     <span
                       className={cn(
                         "truncate",
                         i === breadcrumbs.length - 1
-                          ? "font-semibold text-[#111111]"
-                          : "text-[#6b7280]"
+                          ? "font-medium text-[#111111] dark:text-foreground"
+                          : "text-[#6b7280] dark:text-muted-foreground"
                       )}
                     >
                       {label}
@@ -206,21 +212,34 @@ export function Topbar({
       </div>
 
       {/* Global Search — 320px desktop, shrunk on tablet/mobile */}
-      <div className="flex min-w-0 shrink items-center">
+      <div className="flex min-w-0 shrink items-center gap-2">
         <label className="relative w-[120px] sm:w-[200px] md:w-[260px] lg:w-[320px]" htmlFor="topbar-search">
           <span className="sr-only">Search</span>
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 shrink-0 text-[#6b7280]" aria-hidden />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 shrink-0 text-[#6b7280] dark:text-muted-foreground" aria-hidden />
           <input
             id="topbar-search"
             type="search"
             placeholder="Search projects, workers, invoices..."
             className={cn(
-              "h-9 w-full rounded-md bg-[#f5f5f5] pl-9 pr-3 text-sm text-[#111111] placeholder:text-[#6b7280]",
-              "border-0 outline-none focus:ring-2 focus:ring-[#111] focus:ring-offset-0",
+              "h-9 w-full rounded-md bg-[#f5f5f5] dark:bg-muted pl-9 pr-3 text-sm text-[#111111] dark:text-foreground placeholder:text-[#6b7280] dark:placeholder:text-muted-foreground",
+              "border-0 outline-none focus:ring-2 focus:ring-[#111] dark:focus:ring-foreground focus:ring-offset-0",
               "min-w-0 max-sm:placeholder:opacity-0"
             )}
           />
         </label>
+        <div className="relative inline-flex shrink-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-[30px] w-[30px] shrink-0 rounded-lg border border-gray-200 dark:border-border hover:bg-gray-50 dark:hover:bg-muted flex items-center justify-center"
+            aria-label="Notifications"
+          >
+            <Bell className="h-4 w-4 text-[#6b7280] dark:text-muted-foreground" />
+          </Button>
+          {systemHealth.status === "warning" && (
+            <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-red-500" aria-hidden />
+          )}
+        </div>
       </div>
 
       <div className="flex shrink-0 items-center gap-1">
@@ -289,24 +308,6 @@ export function Topbar({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-
-        {/* Notifications — red dot when system health warning */}
-        <div className="relative inline-flex shrink-0">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 min-h-[44px] min-w-[44px] shrink-0 rounded-full sm:min-h-0 sm:min-w-0"
-            aria-label="Notifications"
-          >
-            <Bell className="h-4 w-4" />
-          </Button>
-          {systemHealth.status === "warning" && (
-            <span
-              className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500"
-              aria-hidden
-            />
-          )}
-        </div>
 
         {/* User avatar + dropdown */}
         <DropdownMenu>

@@ -13,8 +13,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { createProjectTaskAction, updateProjectTaskAction } from "@/app/projects/actions";
 import { cn } from "@/lib/utils";
+import { MoreHorizontal } from "lucide-react";
 
 type TaskRow = {
   id: string;
@@ -267,16 +274,19 @@ export default function TasksPage() {
 
   const handleDeleteTask = async () => {
     if (!selectedTask) return;
-    if (typeof window !== "undefined" && !window.confirm("Delete this task? This cannot be undone.")) return;
-    const taskIdToRemove = selectedTask.id;
+    await handleDeleteTaskById(selectedTask.id);
+  };
+
+  const handleDeleteTaskById = async (taskId: string) => {
+    if (typeof window !== "undefined" && !window.confirm("Are you sure you want to delete this task?")) return;
     setSubmitting(true);
     setError(null);
     try {
-      const res = await fetch(`/api/tasks/${taskIdToRemove}`, { method: "DELETE", cache: "no-store" });
+      const res = await fetch(`/api/tasks/${taskId}`, { method: "DELETE", cache: "no-store" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         if (res.status === 404) {
-          clearStaleTask(taskIdToRemove);
+          clearStaleTask(taskId);
           return;
         }
         const msg = (data as { message?: string }).message ?? "Failed to delete task.";
@@ -284,9 +294,11 @@ export default function TasksPage() {
         setError(msg);
         return;
       }
-      setDrawerOpen(false);
-      setSelectedTask(null);
-      await load();
+      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+      if (selectedTask?.id === taskId) {
+        setDrawerOpen(false);
+        setSelectedTask(null);
+      }
       router.refresh();
     } catch (e) {
       const errMsg = e instanceof Error ? e.message : "Failed to delete task.";
@@ -354,36 +366,69 @@ export default function TasksPage() {
               {/* Mobile: card layout */}
               <div className="flex flex-col gap-2 md:hidden divide-y divide-border/60">
                 {filtered.map((t) => (
-                  <button
+                  <div
                     key={t.id}
-                    type="button"
-                    onClick={() => openDrawer(t)}
-                    className="flex min-h-[44px] w-full touch-manipulation items-center gap-3 border-0 bg-transparent px-4 py-3 text-left transition-colors active:bg-muted/50"
+                    className="flex min-h-[44px] w-full touch-manipulation items-center gap-3 border-0 bg-transparent px-4 py-3 transition-colors active:bg-muted/50"
                   >
-                    <span
-                      className={cn(
-                        "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-sm border",
-                        t.status === "done" ? "border-[#111111] bg-[#111111] text-white" : "border-border"
-                      )}
-                      onClick={(e) => { e.stopPropagation(); handleToggleDone(e, t); }}
+                    <button
+                      type="button"
+                      onClick={() => openDrawer(t)}
+                      className="flex min-w-0 flex-1 items-center gap-3 text-left"
                     >
-                      {t.status === "done" ? "✓" : null}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className={cn("font-medium truncate", t.status === "done" && "text-muted-foreground line-through")}>{t.title || "—"}</p>
-                      <p className="text-xs text-muted-foreground truncate">{t.project_name ?? "—"} · Due {t.due_date ? new Date(t.due_date).toLocaleDateString() : "—"}</p>
+                      <span
+                        className={cn(
+                          "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-sm border",
+                          t.status === "done" ? "border-[#111111] bg-[#111111] text-white" : "border-border"
+                        )}
+                        onClick={(e) => { e.stopPropagation(); handleToggleDone(e, t); }}
+                      >
+                        {t.status === "done" ? "✓" : null}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className={cn("font-medium truncate", t.status === "done" && "text-muted-foreground line-through")}>{t.title || "—"}</p>
+                        <p className="text-xs text-muted-foreground truncate">{t.project_name ?? "—"} · Due {t.due_date ? new Date(t.due_date).toLocaleDateString() : "—"}</p>
+                      </div>
+                      <span
+                        className={cn(
+                          "shrink-0 rounded-sm px-1.5 py-0.5 text-xs font-medium",
+                          t.priority === "high" && "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
+                          t.priority === "medium" && "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+                          t.priority === "low" && "bg-muted text-muted-foreground"
+                        )}
+                      >
+                        {PRIORITY_LABEL[t.priority] ?? t.priority}
+                      </span>
+                    </button>
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 min-h-[44px] min-w-[44px] rounded-sm touch-manipulation"
+                            aria-label="Task actions"
+                            disabled={submitting}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className="min-w-[160px] rounded-md border border-border/60 bg-popover text-xs shadow-[var(--shadow-popover)]"
+                        >
+                          <DropdownMenuItem onSelect={() => openDrawer(t)} className="cursor-pointer">
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onSelect={() => handleDeleteTaskById(t.id)}
+                            className="cursor-pointer text-destructive focus:text-destructive"
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-                    <span
-                      className={cn(
-                        "shrink-0 rounded-sm px-1.5 py-0.5 text-xs font-medium",
-                        t.priority === "high" && "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
-                        t.priority === "medium" && "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
-                        t.priority === "low" && "bg-muted text-muted-foreground"
-                      )}
-                    >
-                      {PRIORITY_LABEL[t.priority] ?? t.priority}
-                    </span>
-                  </button>
+                  </div>
                 ))}
               </div>
               {/* Desktop: table */}
@@ -396,6 +441,7 @@ export default function TasksPage() {
                   <th className="hidden md:table-cell text-left py-2 px-3 font-medium text-muted-foreground">Assigned</th>
                   <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground">Due</th>
                   <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground">Priority</th>
+                  <th className="w-9 text-right py-2 px-2 sm:px-3" aria-label="Actions" />
                 </tr>
               </thead>
               <tbody>
@@ -443,6 +489,35 @@ export default function TasksPage() {
                       >
                         {PRIORITY_LABEL[t.priority] ?? t.priority}
                       </span>
+                    </td>
+                    <td className="py-2 px-2 sm:px-3 text-right" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 rounded-sm"
+                            aria-label="Task actions"
+                            disabled={submitting}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className="min-w-[160px] rounded-md border border-border/60 bg-popover text-xs shadow-[var(--shadow-popover)]"
+                        >
+                          <DropdownMenuItem onSelect={() => openDrawer(t)} className="cursor-pointer">
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onSelect={() => handleDeleteTaskById(t.id)}
+                            className="cursor-pointer text-destructive focus:text-destructive"
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </td>
                   </tr>
                 ))}
