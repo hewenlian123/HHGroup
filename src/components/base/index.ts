@@ -26,6 +26,8 @@ export {
   type ConfirmDialogProps,
 } from "./confirm-dialog";
 
+export { DeleteRowAction } from "./delete-row-action";
+
 export {
   SectionHeader,
   type SectionHeaderProps,

@@ -15,6 +15,8 @@ import { getPaymentsReceived, type PaymentReceivedWithMeta } from "@/lib/data";
 import { Plus } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { ReceivePaymentModal } from "./receive-payment-modal";
+import { DeleteRowAction } from "@/components/base";
+import { deletePaymentReceivedAction } from "./actions";
 
 function money(n: number): string {
   return `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -87,11 +89,12 @@ function PaymentsReceivedPageInner() {
                   <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Payment Method</TableHead>
                   <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Account</TableHead>
                   <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Notes</TableHead>
+                  <TableHead className="w-10" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {payments.map((row) => (
-                  <TableRow key={row.id} className="border-b border-border/30">
+                  <TableRow key={row.id} className="group border-b border-border/30 hover:bg-muted/20">
                     <TableCell className="tabular-nums text-foreground">{row.payment_date}</TableCell>
                     <TableCell className="text-foreground">{row.customer_name || "—"}</TableCell>
                     <TableCell className="text-muted-foreground">{row.project_name ?? "—"}</TableCell>
@@ -103,6 +106,14 @@ function PaymentsReceivedPageInner() {
                     <TableCell className="text-muted-foreground">{row.deposit_account ?? "—"}</TableCell>
                     <TableCell className="text-muted-foreground max-w-[200px] truncate" title={row.notes ?? undefined}>
                       {row.notes ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DeleteRowAction
+                        onDelete={async () => {
+                          const res = await deletePaymentReceivedAction(row.id);
+                          if (res.ok) await load();
+                        }}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}

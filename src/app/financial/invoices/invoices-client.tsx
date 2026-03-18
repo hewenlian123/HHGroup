@@ -16,6 +16,7 @@ import { getInvoicesWithDerivedPaged } from "@/lib/data";
 import { deleteInvoiceAction } from "./actions";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DeleteRowAction } from "@/components/base";
 import { Plus } from "lucide-react";
 import { Pagination } from "@/components/ui/pagination";
 
@@ -88,7 +89,6 @@ export function InvoicesClient() {
   const [page, setPage] = React.useState(1);
   const pageSize = 20;
   const [voidConfirmId, setVoidConfirmId] = React.useState<string | null>(null);
-  const [deleteConfirmId, setDeleteConfirmId] = React.useState<string | null>(null);
   const [busyId, setBusyId] = React.useState<string | null>(null);
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -111,7 +111,6 @@ export function InvoicesClient() {
     setLoading(true);
     setError(null);
     setVoidConfirmId(null);
-    setDeleteConfirmId(null);
 
     try {
       const [{ rows: list, total: totalCount }, { data: projectData, error: projectError }] = await Promise.all([
@@ -273,11 +272,26 @@ export function InvoicesClient() {
                 ]
               : []),
             ...(row.status !== "Void" ? [{ label: "Void", onClick: () => setVoidConfirmId(row.id), disabled: isBusy, destructive: true }] : []),
-            ...(row.status === "Draft" || row.status === "Void"
-              ? [{ label: "Delete", onClick: () => setDeleteConfirmId(row.id), disabled: isBusy, destructive: true }]
-              : []),
           ];
-          return <RowActionsMenu ariaLabel={`Actions for ${row.invoice_no}`} actions={actions} />;
+          const canDelete = row.status === "Draft" || row.status === "Void";
+          return (
+            <div className="flex items-center justify-end gap-2">
+              {canDelete ? (
+                <DeleteRowAction
+                  busy={isBusy}
+                  onDelete={async () => {
+                    setBusyId(row.id);
+                    setError(null);
+                    const result = await deleteInvoiceAction(row.id);
+                    if (result.error) setError(result.error);
+                    await refresh();
+                    setBusyId(null);
+                  }}
+                />
+              ) : null}
+              <RowActionsMenu ariaLabel={`Actions for ${row.invoice_no}`} actions={actions} />
+            </div>
+          );
         },
       },
     ];
@@ -351,6 +365,7 @@ export function InvoicesClient() {
             data={invoices}
             keyExtractor={(r) => r.id}
             emptyText={configured ? "No data yet." : "Supabase is not configured."}
+            rowClassName="group"
           />
         )}
         <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} className="px-4" />
@@ -387,36 +402,6 @@ export function InvoicesClient() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
-        <DialogContent className="max-w-sm border-border/60 rounded-md">
-          <DialogHeader>
-            <DialogTitle className="text-base font-semibold">Delete invoice</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">This cannot be undone. The invoice will be permanently deleted.</p>
-          <DialogFooter className="gap-2 pt-3 border-t border-border/60">
-            <Button variant="ghost" size="sm" onClick={() => setDeleteConfirmId(null)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              disabled={!!busyId}
-              onClick={async () => {
-                if (!deleteConfirmId) return;
-                setBusyId(deleteConfirmId);
-                setError(null);
-                const result = await deleteInvoiceAction(deleteConfirmId);
-                if (result.error) setError(result.error);
-                else setDeleteConfirmId(null);
-                await refresh();
-                setBusyId(null);
-              }}
-            >
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

@@ -10,6 +10,7 @@ import { updateWorkerAction, deleteWorkerAction } from "./actions";
 import { AddWorkerModal } from "./add-worker-modal";
 import { EmptyState } from "@/components/empty-state";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
+import { DeleteRowAction } from "@/components/base";
 import { UserPlus } from "lucide-react";
 
 function fmtRate(n: number): string {
@@ -89,7 +90,6 @@ export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
 
   const onDelete = async (row: WorkerRow) => {
     if (busy) return;
-    if (!window.confirm(`Delete worker "${row.name}"?`)) return;
     setBusy(true);
     // optimistic remove
     setItems((prev) => prev.filter((w) => w.id !== row.id));
@@ -134,7 +134,7 @@ export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
       {/* Mobile: card layout */}
       <div className="flex flex-col gap-3 md:hidden">
         {items.map((r) => (
-          <div key={r.id} className="rounded-sm border border-border/60 bg-background p-4">
+          <div key={r.id} className="group rounded-sm border border-border/60 bg-background p-4">
             <p className="font-medium text-foreground">{r.name}</p>
             <p className="text-sm text-muted-foreground">{r.trade ?? "—"} · {r.phone ?? "—"}</p>
             <div className="mt-2 flex items-center justify-between gap-2 text-sm">
@@ -142,13 +142,13 @@ export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
               <span className={r.status === "Active" ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>{r.status}</span>
             </div>
             <div className="mt-3 flex justify-end">
-              <RowActionsMenu
-                ariaLabel={`Actions for ${r.name}`}
-                actions={[
-                  { label: "Edit", onClick: () => setEditFor(r), disabled: busy },
-                  { label: "Delete", onClick: () => void onDelete(r), destructive: true, disabled: busy },
-                ]}
-              />
+              <div className="flex items-center justify-end gap-2">
+                <DeleteRowAction disabled={busy} onDelete={() => onDelete(r)} />
+                <RowActionsMenu
+                  ariaLabel={`Actions for ${r.name}`}
+                  actions={[{ label: "Edit", onClick: () => setEditFor(r), disabled: busy }]}
+                />
+              </div>
             </div>
           </div>
         ))}
@@ -168,7 +168,7 @@ export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
           </thead>
           <tbody>
             {items.map((r) => (
-              <tr key={r.id} className="border-b border-border/40">
+              <tr key={r.id} className="group border-b border-border/40 hover:bg-muted/10">
                 <td className="px-3 py-1.5 font-medium">{r.name}</td>
                 <td className="px-3 py-1.5 text-muted-foreground">{r.trade ?? "—"}</td>
                 <td className="px-3 py-1.5 text-muted-foreground">{r.phone ?? "—"}</td>
@@ -180,13 +180,13 @@ export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
                   </span>
                 </td>
                 <td className="px-1 py-1.5 text-right" onClick={(e) => e.stopPropagation()}>
-                  <RowActionsMenu
-                    ariaLabel={`Actions for ${r.name}`}
-                    actions={[
-                      { label: "Edit", onClick: () => setEditFor(r), disabled: busy },
-                      { label: "Delete", onClick: () => void onDelete(r), destructive: true, disabled: busy },
-                    ]}
-                  />
+                  <div className="flex items-center justify-end gap-2">
+                    <DeleteRowAction disabled={busy} onDelete={() => onDelete(r)} />
+                    <RowActionsMenu
+                      ariaLabel={`Actions for ${r.name}`}
+                      actions={[{ label: "Edit", onClick: () => setEditFor(r), disabled: busy }]}
+                    />
+                  </div>
                 </td>
               </tr>
             ))}
