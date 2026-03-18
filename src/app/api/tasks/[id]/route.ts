@@ -50,6 +50,18 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
     if (message.includes("not found") || message.includes("already deleted")) {
       return NextResponse.json({ ok: true, rowsDeleted: 0 });
     }
+    const isFkError =
+      /foreign key|violates foreign key|referential integrity|referenced by/i.test(message);
+    if (isFkError) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            "This task cannot be deleted because it is referenced by other records. Remove those references first, or try again later.",
+        },
+        { status: 409 }
+      );
+    }
     return NextResponse.json({ ok: false, message }, { status: 500 });
   }
 }

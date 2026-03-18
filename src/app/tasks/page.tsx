@@ -279,7 +279,9 @@ export default function TasksPage() {
           clearStaleTask(taskIdToRemove);
           return;
         }
-        setError((data as { message?: string }).message ?? "Failed to delete task.");
+        const msg = (data as { message?: string }).message ?? "Failed to delete task.";
+        console.error("[Tasks] Delete failed:", res.status, msg, data);
+        setError(msg);
         return;
       }
       setDrawerOpen(false);
@@ -287,7 +289,9 @@ export default function TasksPage() {
       await load();
       router.refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to delete task.");
+      const errMsg = e instanceof Error ? e.message : "Failed to delete task.";
+      console.error("[Tasks] Delete error:", e);
+      setError(errMsg);
     } finally {
       setSubmitting(false);
     }
