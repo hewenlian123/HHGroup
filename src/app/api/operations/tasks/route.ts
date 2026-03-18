@@ -9,6 +9,14 @@ const NO_CACHE_HEADERS = {
   Pragma: "no-cache",
 };
 
+const GET_TIMEOUT_MS = 15_000;
+
+function timeoutReject<T>(ms: number, message: string): Promise<T> {
+  return new Promise((_, reject) => {
+    setTimeout(() => reject(new Error(message)), ms);
+  });
+}
+
 /** GET: Tasks, projects, workers — query with admin client directly so UI sees same data as DELETE/clear-data. */
 export async function GET() {
   const admin = getServerSupabaseAdmin();
@@ -16,10 +24,17 @@ export async function GET() {
     return NextResponse.json({ ok: false as const, message: "Supabase not configured" }, { status: 500 });
   }
   try {
-    const [tasksRes, projectsRes, workersRes] = await Promise.all([
-      admin.from("project_tasks").select("id, project_id, title, description, status, assigned_worker_id, due_date, priority, created_at").order("created_at", { ascending: false }),
-      admin.from("projects").select("id, name").order("name"),
-      admin.from("workers").select("id, name").order("name"),
+    const fetchData = async () => {
+      const [tasksRes, projectsRes, workersRes] = await Promise.all([
+        admin.from("project_tasks").select("id, project_id, title, description, status, assigned_worker_id, due_date, priority, created_at").order("created_at", { ascending: false }),
+        admin.from("projects").select("id, name").order("name"),
+        admin.from("workers").select("id, name").order("name"),
+      ]);
+      return { tasksRes, projectsRes, workersRes };
+    };
+    const { tasksRes, projectsRes, workersRes } = await Promise.race([
+      fetchData(),
+      timeoutReject<Awaited<ReturnType<typeof fetchData>>>(GET_TIMEOUT_MS, "Request timed out."),
     ]);
     if (tasksRes.error) throw new Error(tasksRes.error.message ?? "Failed to load tasks");
     if (projectsRes.error) throw new Error(projectsRes.error.message ?? "Failed to load projects");
@@ -56,6 +71,7 @@ export async function GET() {
     );
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to load tasks.";
-    return NextResponse.json({ ok: false as const, message }, { status: 500 });
+    const status = message === "Request timed out." ? 504 : 500;
+    return NextResponse.json({ ok: false as const, message }, { status });
   }
 }
