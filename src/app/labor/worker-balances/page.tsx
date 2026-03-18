@@ -20,6 +20,7 @@ type WorkerBalanceRow = {
   laborOwed: number;
   reimbursements: number;
   payments: number;
+  advances: number;
   balance: number;
 };
 
@@ -32,7 +33,10 @@ export default function WorkerBalancesPage() {
     setLoading(true);
     setMessage(null);
     try {
-      const res = await fetch(`/api/labor/worker-balances?t=${Date.now()}`, { cache: "no-store", headers: { Pragma: "no-cache" } });
+      const res = await fetch(`/api/labor/worker-balances?t=${Date.now()}`, {
+        cache: "no-store",
+        headers: { Pragma: "no-cache" },
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message ?? "Failed to load.");
       setRows(data.balances ?? []);
@@ -54,16 +58,20 @@ export default function WorkerBalancesPage() {
         title="Worker Balances"
         subtitle="Labor owed, reimbursements, payments, and balance per worker."
         actions={
-          <Button size="sm" variant="outline" className="min-h-[44px] sm:min-h-9 w-full sm:w-auto" onClick={load} disabled={loading}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="min-h-[44px] sm:min-h-9 w-full sm:w-auto"
+            onClick={load}
+            disabled={loading}
+          >
             {loading ? "Loading…" : "Refresh"}
           </Button>
         }
       />
-
       {message ? (
         <p className="text-sm text-muted-foreground border-b border-border/60 pb-3">{message}</p>
       ) : null}
-
       <div className="table-responsive border-b border-border/60">
         <table className="w-full text-sm border-collapse min-w-[480px] sm:min-w-0">
           <thead>
@@ -81,6 +89,9 @@ export default function WorkerBalancesPage() {
                 Payments
               </th>
               <th className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Advances
+              </th>
+              <th className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
                 Balance
               </th>
             </tr>
@@ -88,13 +99,13 @@ export default function WorkerBalancesPage() {
           <tbody>
             {loading ? (
               <tr className="border-b border-border/40">
-                <td colSpan={5} className="py-6 px-4 text-center text-muted-foreground text-xs">
+                <td colSpan={6} className="py-6 px-4 text-center text-muted-foreground text-xs">
                   Loading…
                 </td>
               </tr>
             ) : rows.length === 0 ? (
               <tr className="border-b border-border/40">
-                <td colSpan={5} className="py-6 px-4 text-center text-muted-foreground text-xs">
+                <td colSpan={6} className="py-6 px-4 text-center text-muted-foreground text-xs">
                   No workers yet.
                 </td>
               </tr>
@@ -114,6 +125,9 @@ export default function WorkerBalancesPage() {
                   </td>
                   <td className="py-2 px-4 text-right tabular-nums text-muted-foreground">
                     {fmtUsd(r.payments)}
+                  </td>
+                  <td className="py-2 px-4 text-right tabular-nums text-muted-foreground">
+                    {fmtUsd(r.advances)}
                   </td>
                   <td className="py-2 px-4 text-right tabular-nums font-medium">
                     {fmtUsd(r.balance)}
