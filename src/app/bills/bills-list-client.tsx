@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { StatusBadge, ConfirmDialog } from "@/components/base";
+import { StatusBadge, ConfirmDialog, DeleteRowAction } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -57,7 +57,6 @@ export function BillsListClient({ bills, summary, projects }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [voidConfirmId, setVoidConfirmId] = React.useState<string | null>(null);
-  const [deleteConfirmId, setDeleteConfirmId] = React.useState<string | null>(null);
 
   const search = searchParams.get("search") ?? "";
   const status = searchParams.get("status") ?? "";
@@ -92,7 +91,6 @@ export function BillsListClient({ bills, summary, projects }: Props) {
   const handleDeleteDraft = React.useCallback(async (id: string) => {
     const result = await deleteBillDraftAction(id);
     if (result.ok) {
-      setDeleteConfirmId(null);
       router.refresh();
     }
   }, [router]);
@@ -216,23 +214,35 @@ export function BillsListClient({ bills, summary, projects }: Props) {
             {bills.map((bill) => {
               const s = statusPill(bill);
               return (
-                <Link
-                  key={bill.id}
-                  href={`/bills/${bill.id}`}
-                  className="block rounded-sm border border-border/60 bg-background p-4 transition-colors hover:bg-muted/30 active:bg-muted/50"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-foreground truncate">{bill.vendor_name}</p>
-                      <p className="mt-0.5 text-sm text-muted-foreground truncate">{bill.project_name ?? "—"}</p>
-                      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                        <span className="tabular-nums font-medium">{fmtUsd(bill.amount)}</span>
-                        <span className="text-muted-foreground">Due {formatDate(bill.due_date)}</span>
+                <div key={bill.id} className="group relative">
+                  <Link
+                    href={`/bills/${bill.id}`}
+                    className="block rounded-sm border border-border/60 bg-background p-4 transition-colors hover:bg-muted/30 active:bg-muted/50"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1 pr-8">
+                        <p className="font-medium text-foreground truncate">{bill.vendor_name}</p>
+                        <p className="mt-0.5 text-sm text-muted-foreground truncate">{bill.project_name ?? "—"}</p>
+                        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                          <span className="tabular-nums font-medium">{fmtUsd(bill.amount)}</span>
+                          <span className="text-muted-foreground">Due {formatDate(bill.due_date)}</span>
+                        </div>
                       </div>
+                      <StatusBadge label={s.label} variant={s.variant} />
                     </div>
-                    <StatusBadge label={s.label} variant={s.variant} />
-                  </div>
-                </Link>
+                  </Link>
+                  {bill.status === "Draft" && bill.paid_amount <= 0 ? (
+                    <div
+                      className="absolute right-2 top-2"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                    >
+                      <DeleteRowAction onDelete={() => handleDeleteDraft(bill.id)} />
+                    </div>
+                  ) : null}
+                </div>
               );
             })}
           </div>
@@ -253,7 +263,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
               {bills.map((bill) => (
                 <tr
                   key={bill.id}
-                  className="h-12 border-b border-[#E5E7EB] last:border-b-0"
+                  className="group h-12 border-b border-[#E5E7EB] last:border-b-0 hover:bg-gray-50"
                 >
                   <td className="py-0 px-3 align-middle">
                     <Link
@@ -279,54 +289,50 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                     })()}
                   </td>
                   <td className="py-0 px-1 align-middle">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="min-w-[140px]">
-                        <DropdownMenuItem asChild>
-                          <Link href={`/bills/${bill.id}`}>Open</Link>
-                        </DropdownMenuItem>
-                        {bill.status !== "Paid" && bill.status !== "Void" && (
-                          <DropdownMenuItem asChild>
-                            <Link href={`/bills/${bill.id}?addPayment=1`}>Add payment</Link>
-                          </DropdownMenuItem>
-                        )}
-                        {bill.status !== "Void" && (
-                          <DropdownMenuItem asChild>
-                            <Link href={`/bills/${bill.id}/edit`}>Edit</Link>
-                          </DropdownMenuItem>
-                        )}
-                        {bill.status !== "Void" && (
-                          <DropdownMenuItem
-                            className="text-muted-foreground"
-                            onSelect={(e) => {
-                              e.preventDefault();
-                              setVoidConfirmId(bill.id);
-                            }}
+                    <div className="flex items-center justify-end gap-2">
+                      {bill.status === "Draft" && bill.paid_amount <= 0 ? (
+                        <DeleteRowAction
+                          onDelete={() => handleDeleteDraft(bill.id)}
+                        />
+                      ) : null}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
                           >
-                            Void
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="min-w-[140px]">
+                          <DropdownMenuItem asChild>
+                            <Link href={`/bills/${bill.id}`}>Open</Link>
                           </DropdownMenuItem>
-                        )}
-                        {bill.status === "Draft" && bill.paid_amount <= 0 && (
-                          <DropdownMenuItem
-                            className="text-red-600 focus:text-red-600"
-                            onSelect={(e) => {
-                              e.preventDefault();
-                              setDeleteConfirmId(bill.id);
-                            }}
-                          >
-                            Delete
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                          {bill.status !== "Paid" && bill.status !== "Void" && (
+                            <DropdownMenuItem asChild>
+                              <Link href={`/bills/${bill.id}?addPayment=1`}>Add payment</Link>
+                            </DropdownMenuItem>
+                          )}
+                          {bill.status !== "Void" && (
+                            <DropdownMenuItem asChild>
+                              <Link href={`/bills/${bill.id}/edit`}>Edit</Link>
+                            </DropdownMenuItem>
+                          )}
+                          {bill.status !== "Void" && (
+                            <DropdownMenuItem
+                              className="text-muted-foreground"
+                              onSelect={(e) => {
+                                e.preventDefault();
+                                setVoidConfirmId(bill.id);
+                              }}
+                            >
+                              Void
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -344,15 +350,6 @@ export function BillsListClient({ bills, summary, projects }: Props) {
         confirmLabel="Void"
         destructive
         onConfirm={() => { if (voidConfirmId) void handleVoid(voidConfirmId); }}
-      />
-      <ConfirmDialog
-        open={deleteConfirmId !== null}
-        onOpenChange={(open) => !open && setDeleteConfirmId(null)}
-        title="Delete draft?"
-        description="This bill has no payments and will be permanently removed."
-        confirmLabel="Delete"
-        destructive
-        onConfirm={() => { if (deleteConfirmId) void handleDeleteDraft(deleteConfirmId); }}
       />
     </div>
   );

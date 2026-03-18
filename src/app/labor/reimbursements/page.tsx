@@ -22,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal } from "lucide-react";
+import { DeleteRowAction } from "@/components/base";
 
 function fmtUsd(n: number): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -205,7 +206,6 @@ export default function WorkerReimbursementsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Delete this reimbursement?")) return;
     setMessage(null);
     const removeFromList = () => setRows((prev) => prev.filter((r) => r.id !== id));
     try {
@@ -371,32 +371,35 @@ export default function WorkerReimbursementsPage() {
   function ActionsDropdown({ r }: { r: WorkerReimbursement }) {
     const isBusy = busyId === r.id;
     return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8 min-h-[44px] min-w-[44px] rounded-sm touch-manipulation" aria-label="Actions">
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="min-w-[10rem]">
-          {r.status === "pending" && (
-            <>
-              <DropdownMenuItem disabled={isBusy} onSelect={() => openPayModal(r)}>
-                {isBusy ? "…" : "Mark as Paid"}
-              </DropdownMenuItem>
-              {r.receiptUrl && (
-                <DropdownMenuItem onSelect={() => setViewReceiptUrl(r.receiptUrl)}>
-                  View Receipt
+      <div className="flex items-center justify-end gap-2">
+        <DeleteRowAction disabled={isBusy} onDelete={() => handleDelete(r.id)} />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8 min-h-[44px] min-w-[44px] rounded-sm touch-manipulation" aria-label="Actions">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-[10rem]">
+            {r.status === "pending" && (
+              <>
+                <DropdownMenuItem disabled={isBusy} onSelect={() => openPayModal(r)}>
+                  {isBusy ? "…" : "Mark as Paid"}
                 </DropdownMenuItem>
-              )}
-              <DropdownMenuItem onSelect={() => handleEdit(r)}>Edit</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => handleDelete(r.id)}>
-                Delete
-              </DropdownMenuItem>
-            </>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+                {r.receiptUrl && (
+                  <DropdownMenuItem onSelect={() => setViewReceiptUrl(r.receiptUrl)}>
+                    View Receipt
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onSelect={() => handleEdit(r)}>Edit</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => handleDelete(r.id)}>
+                  Delete
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     );
   }
 
@@ -606,7 +609,7 @@ export default function WorkerReimbursementsPage() {
               <tr className="border-b border-border/40"><td colSpan={8} className="py-6 px-3 text-center text-muted-foreground text-xs">No reimbursements yet.</td></tr>
             ) : (
               paged.map((r) => (
-                <tr key={r.id} className="border-b border-border/40 hover:bg-muted/10">
+                <tr key={r.id} className="group border-b border-border/40 hover:bg-muted/10">
                   <td className="w-10 py-2 px-2 text-center">
                     {r.status === "pending" ? (
                       <input

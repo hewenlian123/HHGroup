@@ -20,6 +20,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useToast } from "@/components/toast/toast-provider";
 import { EmptyState } from "@/components/empty-state";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
+import { DeleteRowAction } from "@/components/base";
 
 const ACCOUNT_TYPES: AccountType[] = ["Credit Card", "Debit Card", "Bank", "Cash", "Other"];
 
@@ -94,7 +95,6 @@ function AccountsPageInner() {
   };
 
   const handleDelete = async (acc: Account) => {
-    if (!window.confirm(`Delete account "${acc.name}"?`)) return;
     const prev = accounts;
     setAccounts((p) => p.filter((a) => a.id !== acc.id));
     const res = await deleteAccountAction(acc.id);
@@ -230,18 +230,22 @@ function AccountsPageInner() {
               </TableHeader>
               <TableBody>
                 {accounts.map((row) => (
-                  <TableRow key={row.id} className="border-b border-border/30">
+                  <TableRow key={row.id} className="group border-b border-border/30 hover:bg-muted/20">
                     <TableCell className="font-medium text-foreground">{row.name}</TableCell>
                     <TableCell className="text-muted-foreground">{row.type}</TableCell>
                     <TableCell className="text-right tabular-nums text-muted-foreground">{row.lastFour ?? "—"}</TableCell>
                     <TableCell className="text-right">
-                      <RowActionsMenu
-                        ariaLabel={`Actions for ${row.name}`}
-                        actions={[
-                          { label: "Edit", onClick: () => openEdit(row) },
-                          { label: "Delete", onClick: () => void handleDelete(row), destructive: true },
-                        ]}
-                      />
+                      <div className="flex items-center justify-end gap-2">
+                        <DeleteRowAction
+                          onDelete={async () => {
+                            await handleDelete(row);
+                          }}
+                        />
+                        <RowActionsMenu
+                          ariaLabel={`Actions for ${row.name}`}
+                          actions={[{ label: "Edit", onClick: () => openEdit(row) }]}
+                        />
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
