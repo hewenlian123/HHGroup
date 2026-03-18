@@ -85,6 +85,7 @@ const sections: { key: (typeof SECTION_KEYS)[number]; label: string; items: NavI
       { href: "/financial/deposits", label: "Deposits", icon: Banknote },
       { href: "/bills", label: "Bills", icon: Receipt },
       { href: "/financial/expenses", label: "Expenses", icon: ShoppingCart },
+      { href: "/finance/advances", label: "Worker Advances", icon: CircleDollarSign },
       { href: "/financial/accounts", label: "Accounts", icon: Wallet },
     ],
   },
@@ -217,11 +218,11 @@ export function Sidebar({
 
   const linkClass = (active: boolean) =>
     cn(
-      "flex min-h-[44px] sm:h-8 sm:min-h-0 items-center rounded-md text-sm transition-all duration-200 ease-out border-l-[3px] border-l-transparent",
-      collapsed ? "justify-center px-2" : "gap-2 px-2.5",
+      "relative flex min-h-[44px] sm:h-8 sm:min-h-0 items-center rounded-md text-sm transition-all duration-200 ease-out",
+      collapsed ? "justify-center px-2" : "gap-2 pl-3 pr-2.5",
       active
-        ? "bg-[#f5f5f5] text-[#111111] font-semibold border-l-[#111111]"
-        : "text-[#6B7280] hover:bg-[#fafafa] hover:text-[#111111]"
+        ? "bg-[#f5f5f5] dark:bg-muted text-[#111111] dark:text-foreground font-medium"
+        : "text-[#6B7280] dark:text-muted-foreground hover:bg-[#fafafa] dark:hover:bg-muted/50 hover:text-[#111111] dark:hover:text-foreground"
     );
 
   return (
@@ -264,7 +265,10 @@ export function Sidebar({
             aria-label={collapsed ? "Dashboard" : undefined}
             className={linkClass(isActive("/dashboard"))}
           >
-            <LayoutDashboard className="h-[18px] w-[18px] shrink-0" />
+            {isActive("/dashboard") && (
+              <span className="absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-r-sm bg-gray-900 dark:bg-foreground" aria-hidden />
+            )}
+            <LayoutDashboard className={cn("h-[13px] w-[13px] shrink-0 opacity-60", isActive("/dashboard") && "opacity-100")} strokeWidth={1.5} />
             {!collapsed && <span className="truncate">Dashboard</span>}
           </Link>
         </div>
@@ -288,7 +292,10 @@ export function Sidebar({
                         aria-label={item.label}
                         className={linkClass(active)}
                       >
-                        {Icon ? <Icon className="h-[18px] w-[18px] shrink-0" /> : null}
+                        {active && (
+                          <span className="absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-r-sm bg-gray-900 dark:bg-foreground" aria-hidden />
+                        )}
+                        {Icon ? <Icon className={cn("h-[13px] w-[13px] shrink-0 opacity-60", active && "opacity-100")} strokeWidth={1.5} /> : null}
                       </Link>
                     );
                   })}
@@ -328,7 +335,10 @@ export function Sidebar({
                             aria-label={collapsed ? item.label : undefined}
                             className={linkClass(active)}
                           >
-                            {Icon ? <Icon className="h-[18px] w-[18px] shrink-0" /> : null}
+                            {active && (
+                              <span className="absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-r-sm bg-gray-900 dark:bg-foreground" aria-hidden />
+                            )}
+                            {Icon ? <Icon className={cn("h-[13px] w-[13px] shrink-0 opacity-60", active && "opacity-100")} strokeWidth={1.5} /> : null}
                             {!collapsed && <span className="truncate">{item.label}</span>}
                           </Link>
                         );
@@ -349,7 +359,10 @@ export function Sidebar({
                 className={linkClass(isActive("/system-health"))}
                 title="System Health"
               >
-                <AlertTriangle className="h-[18px] w-[18px] shrink-0 text-amber-500" aria-hidden />
+                {isActive("/system-health") && (
+                  <span className="absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-r-sm bg-gray-900 dark:bg-foreground" aria-hidden />
+                )}
+                <AlertTriangle className={cn("h-[13px] w-[13px] shrink-0 text-amber-500 opacity-60", isActive("/system-health") && "opacity-100")} strokeWidth={1.5} aria-hidden />
                 {!collapsed && <span className="truncate">⚠ System Health</span>}
               </Link>
             </div>
@@ -369,7 +382,10 @@ export function Sidebar({
                   aria-label={collapsed ? item.label : undefined}
                   className={linkClass(active)}
                 >
-                  {Icon ? <Icon className="h-[18px] w-[18px] shrink-0" /> : null}
+                  {active && (
+                    <span className="absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-r-sm bg-gray-900 dark:bg-foreground" aria-hidden />
+                  )}
+                  {Icon ? <Icon className={cn("h-[13px] w-[13px] shrink-0 opacity-60", active && "opacity-100")} strokeWidth={1.5} /> : null}
                   {!collapsed && <span className="truncate">{item.label}</span>}
                 </Link>
               );
@@ -378,8 +394,23 @@ export function Sidebar({
         </div>
       </nav>
 
+      {/* User footer */}
+      {!collapsed && (
+        <div className="border-t border-gray-100 dark:border-border px-5 py-3.5">
+          <div className="flex items-center gap-3">
+            <div className="h-6 w-6 shrink-0 rounded-full bg-gray-100 dark:bg-muted border border-gray-200 dark:border-border flex items-center justify-center">
+              <span className="text-[10px] font-medium text-gray-500 dark:text-muted-foreground">U</span>
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-[12px] font-medium text-gray-900 dark:text-foreground">User</p>
+              <p className="text-[10px] text-gray-400 dark:text-muted-foreground">Admin</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Collapse button at bottom */}
-      <div className="border-t border-[#E5E7EB] p-2">
+      <div className="border-t border-[#E5E7EB] dark:border-border p-2">
         <button
           type="button"
           onClick={onToggleCollapsed}
