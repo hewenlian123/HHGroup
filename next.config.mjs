@@ -24,6 +24,13 @@ export default function nextConfig(phase) {
     eslint: {
       ignoreDuringBuilds: true,
     },
+    // Avoid ENOENT/rename errors in .next/cache/webpack (path with spaces, concurrent access)
+    webpack: (config, { dev }) => {
+      if (dev) {
+        config.cache = { type: "memory" };
+      }
+      return config;
+    },
   };
   return withPWA(base);
 }

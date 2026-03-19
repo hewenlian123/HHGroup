@@ -11,15 +11,17 @@ import postgres from "postgres";
 
 export const dynamic = "force-dynamic";
 
+/** Must match integrity/route.ts: only specific test terms, word-boundary matching. */
 const TEST_KEYWORDS = [
   "Workflow Test",
-  "Test",
-  "Test Vendor",
   "Test Worker",
   "Test Project",
-  "Example",
-  "Demo",
-  "Untitled",
+  "Test Vendor",
+];
+
+/** Must match integrity/route.ts: real projects never deleted by stale cleanup. */
+const WHITELIST_PROJECT_IDS = [
+  "9d14a300-a682-498a-9e5e-3bd4a7e070c4",
 ];
 
 type CleanupCategory = "orphaned" | "ghost" | "duplicate" | "stale";
@@ -121,20 +123,32 @@ export async function POST(request: Request) {
       const staleTaskIds: string[] = [];
       const staleProjectIds: string[] = [];
       for (const kw of TEST_KEYWORDS) {
+        const pattern = `\\m${kw}\\M`;
         const t = await sql`
           SELECT id FROM public.project_tasks
-          WHERE title ILIKE ${"%" + kw + "%"}
-             OR (description IS NOT NULL AND description ILIKE ${"%" + kw + "%"})
+          WHERE title ~* ${pattern}
+             OR (description IS NOT NULL AND description ~* ${pattern})
         `;
         (t as unknown as { id: string }[]).forEach((r) => staleTaskIds.push(r.id));
         const p = await sql`
-          SELECT id FROM public.projects WHERE name ILIKE ${"%" + kw + "%"}
+          SELECT id FROM public.projects WHERE name ~* ${pattern}
         `;
         (p as unknown as { id: string }[]).forEach((r) => staleProjectIds.push(r.id));
       }
       const uniqueTaskIds = [...new Set(staleTaskIds)];
-      const uniqueProjectIds = [...new Set(staleProjectIds)];
+      const uniqueProjectIds = [...new Set(staleProjectIds)].filter(
+        (id) => !WHITELIST_PROJECT_IDS.includes(id)
+      );
       await deleteTaskIds(sql, uniqueTaskIds);
+      // Delete all tasks belonging to stale projects so project delete can succeed (FK / CASCADE)
+      if (uniqueProjectIds.length > 0) {
+        const tasksInStaleProjects = await sql`
+          SELECT id FROM public.project_tasks
+          WHERE project_id IN ${sql(uniqueProjectIds)}
+        `;
+        const idsToDelete = (tasksInStaleProjects as unknown as { id: string }[]).map((r) => r.id);
+        await deleteTaskIds(sql, idsToDelete);
+      }
       await deleteProjectIds(sql, uniqueProjectIds);
       await sql.end();
     }

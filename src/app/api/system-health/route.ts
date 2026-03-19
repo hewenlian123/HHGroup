@@ -12,14 +12,27 @@ export type SystemHealthModule = {
 };
 
 const MODULES: { name: string; table: string }[] = [
-  { name: "database", table: "projects" },
-  { name: "projects", table: "projects" },
-  { name: "labor", table: "labor_entries" },
-  { name: "reimbursements", table: "worker_reimbursements" },
-  { name: "expenses", table: "expenses" },
-  { name: "worker_payments", table: "worker_payments" },
-  { name: "invoices", table: "invoices" },
-  { name: "customers", table: "customers" },
+  { name: "Database", table: "projects" },
+  { name: "Projects", table: "projects" },
+  { name: "Labor", table: "labor_entries" },
+  { name: "Reimbursements", table: "worker_reimbursements" },
+  { name: "Expenses", table: "expenses" },
+  { name: "Worker Payments", table: "worker_payments" },
+  { name: "Invoices", table: "invoices" },
+  { name: "Customers", table: "customers" },
+  { name: "Commission Payments", table: "project_commissions" },
+  { name: "Payments Received", table: "payments_received" },
+  { name: "Deposits", table: "deposits" },
+  { name: "Bills", table: "bills" },
+  { name: "Worker Advances", table: "worker_advances" },
+  { name: "Accounts", table: "accounts" },
+  { name: "Worker Invoices", table: "worker_invoices" },
+  { name: "Vendors", table: "vendors" },
+  { name: "Subcontractors", table: "subcontractors" },
+  { name: "Receipt Uploads", table: "worker_receipts" },
+  { name: "Documents", table: "documents" },
+  { name: "Workers", table: "workers" },
+  { name: "Activity Logs", table: "activity_logs" },
 ];
 
 /**
