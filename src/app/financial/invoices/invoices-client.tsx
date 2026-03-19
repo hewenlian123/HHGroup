@@ -260,7 +260,8 @@ export function InvoicesClient() {
                           const { error: insertItemsError } = await supabase.from("invoice_items").insert(itemRows);
                           if (insertItemsError) throw insertItemsError;
                         }
-                        router.push(`/financial/invoices/${newId}`);
+                        // Defer navigation so dropdown can unmount first and avoid React removeChild error
+                        setTimeout(() => router.push(`/financial/invoices/${newId}`), 0);
                       } catch (e) {
                         setError(e instanceof Error ? e.message : "Failed to duplicate invoice.");
                       } finally {

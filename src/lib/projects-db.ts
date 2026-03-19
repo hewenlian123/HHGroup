@@ -17,6 +17,7 @@ export type ProjectRow = {
   updated_at: string | null;
   client: string | null;
   client_name: string | null;
+  customer_id: string | null;
   address: string | null;
   project_manager: string | null;
   start_date: string | null;
@@ -39,6 +40,7 @@ export type Project = {
   created_at?: string | null;
   updated_at?: string | null;
   client?: string;
+  customerId?: string | null;
   address?: string;
   projectManager?: string;
   startDate?: string;
@@ -141,6 +143,7 @@ function toProject(r: ProjectRow): Project {
     created_at: r.created_at ?? null,
     updated_at: r.updated_at ?? null,
     ...(clientVal != null && clientVal !== "" ? { client: clientVal } : {}),
+    ...(r.customer_id != null && r.customer_id !== "" ? { customerId: r.customer_id } : {}),
     ...(r.address != null && r.address !== "" ? { address: r.address } : {}),
     ...(r.project_manager != null && r.project_manager !== "" ? { projectManager: r.project_manager } : {}),
     ...(r.start_date != null ? { startDate: String(r.start_date).slice(0, 10) } : {}),
@@ -156,7 +159,7 @@ function toProject(r: ProjectRow): Project {
   };
 }
 
-const COLS = "id,name,status,budget,spent,created_at,updated_at,client,client_name,address,project_manager,start_date,end_date,notes,estimate_ref,source_estimate_id,snapshot_revenue,snapshot_budget_cost,snapshot_breakdown";
+const COLS = "id,name,status,budget,spent,created_at,updated_at,client,client_name,customer_id,address,project_manager,start_date,end_date,notes,estimate_ref,source_estimate_id,snapshot_revenue,snapshot_budget_cost,snapshot_breakdown";
 
 export async function getProjects(): Promise<Project[]> {
   const c = client();
@@ -285,6 +288,7 @@ export type UpdateProjectPatch = Partial<{
   budget: number;
   spent: number;
   client: string;
+  customerId: string | null;
   address: string;
   projectManager: string;
   startDate: string;
@@ -308,6 +312,7 @@ export async function updateProject(id: string, patch: UpdateProjectPatch): Prom
     row.client = patch.client.trim();
     row.client_name = patch.client.trim();
   }
+  if (patch.customerId !== undefined) row.customer_id = patch.customerId?.trim() || null;
   if (patch.address !== undefined) row.address = patch.address.trim();
   if (patch.projectManager !== undefined) row.project_manager = patch.projectManager.trim();
   if (patch.startDate !== undefined) row.start_date = patch.startDate;

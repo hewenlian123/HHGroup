@@ -33,6 +33,7 @@ import {
   archiveProjectAction,
   deleteProjectAction,
 } from "../actions";
+import { EditProjectModal } from "./edit-project-modal";
 
 type TabKey =
   | "overview"
@@ -119,6 +120,7 @@ export function ProjectDetailTabsClient({
   const router = useRouter();
   const { toast } = useToast();
   const [tab, setTab] = React.useState<TabKey>(initialTab);
+  const [editModalOpen, setEditModalOpen] = React.useState(false);
 
   const subtitle = [
     `Budget $${(financialSummary?.budget ?? project.budget ?? 0).toLocaleString()}`,
@@ -183,7 +185,7 @@ export function ProjectDetailTabsClient({
                 <DropdownMenuItem
                   onSelect={(e) => {
                     e.preventDefault();
-                    router.push(`/projects/${projectId}/edit`);
+                    setEditModalOpen(true);
                   }}
                 >
                   Edit project
@@ -242,6 +244,15 @@ export function ProjectDetailTabsClient({
         />
       }
     >
+      <EditProjectModal
+        open={editModalOpen}
+        onOpenChange={setEditModalOpen}
+        project={{ id: projectId, name: project.name, address: project.address, budget: project.budget, customerId: project.customerId ?? null }}
+        onSaved={() => {
+          router.refresh();
+          toast({ title: "Project updated" });
+        }}
+      />
       <div className="bg-[#F9FAFB] -mx-4 -mb-4 px-4 pb-6 sm:-mx-6 sm:px-6">
         <div className="bg-white rounded-sm px-4 py-3 sm:px-5 sm:py-4 space-y-4">
       <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)} className="w-full">
