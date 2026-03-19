@@ -13,6 +13,7 @@ import {
 import { clearLaborEntry, getProjects, getLaborEntriesWithJoins, getLaborWorkersList } from "@/lib/data";
 import type { LaborEntryWithJoins } from "@/lib/daily-labor-db";
 import { cn } from "@/lib/utils";
+import { useRegisterLaborOpenDailyEntry } from "@/contexts/labor-add-entry-context";
 import { AddDailyEntryModal as QuickTimesheetModal } from "./add-daily-entry-modal";
 import { EditEntryModal, sessionLabel } from "./edit-entry-modal";
 import type { LaborSession } from "./edit-entry-modal";
@@ -136,6 +137,8 @@ export default function LaborPageClient() {
   const [message, setMessage] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [modalOpen, setModalOpen] = React.useState(false);
+  const openAddEntryModal = React.useCallback(() => setModalOpen(true), []);
+  useRegisterLaborOpenDailyEntry(openAddEntryModal);
   const [expandedDate, setExpandedDate] = React.useState<string | null>(null);
   const [view, setView] = React.useState<"list" | "calendar">("list");
   const [selectedDayForDetail, setSelectedDayForDetail] = React.useState<string | null>(null);

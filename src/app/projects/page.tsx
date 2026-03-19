@@ -36,7 +36,7 @@ export default async function ProjectsPage() {
   );
 
   return (
-    <div className="page-container py-6">
+    <div className="page-container py-4">
       <ProjectsListClient rows={rows} />
     </div>
   );
