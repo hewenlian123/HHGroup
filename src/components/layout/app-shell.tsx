@@ -10,6 +10,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { ToastProvider } from "../toast/toast-provider";
 import { PWAInstallPrompt } from "../pwa-install-prompt";
 import { SystemHealthProvider } from "@/contexts/system-health-context";
+import { LaborAddEntryProvider } from "@/contexts/labor-add-entry-context";
 import { SystemHealthPoller } from "@/components/system-health/system-health-poller";
 import { cn } from "@/lib/utils";
 
@@ -50,6 +51,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <ToastProvider>
       <SystemHealthProvider>
+        <LaborAddEntryProvider>
         <SystemHealthPoller />
         <div className="app-shell flex h-screen overflow-hidden bg-[#F7F7F8]">
           {/* Tablet/Desktop (640px+): sidebar fixed left, collapsible. */}
@@ -78,6 +80,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         <PWAInstallPrompt />
+        </LaborAddEntryProvider>
       </SystemHealthProvider>
     </ToastProvider>
   );

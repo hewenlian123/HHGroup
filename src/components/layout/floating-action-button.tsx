@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { useLaborAddEntry } from "@/contexts/labor-add-entry-context";
 
 /**
  * FAB: mobile and tablet only (screen width < 1024px).
@@ -21,10 +22,12 @@ import { cn } from "@/lib/utils";
  * Opens bottom sheet menu with quick actions.
  * Desktop layout unchanged (hidden lg:).
  */
-const ACTIONS = [
+const LINK_ACTIONS_TOP = [
   { label: "Upload Photo", href: "/site-photos/upload", icon: Camera },
   { label: "Upload Receipt", href: "/upload-receipt", icon: Receipt },
-  { label: "Add Labor Entry", href: "/labor/new", icon: Hammer },
+] as const;
+
+const LINK_ACTIONS_REST = [
   { label: "New Task", href: "/tasks/new", icon: CheckCircle },
   { label: "New Punch Issue", href: "/punch-list/new", icon: AlertTriangle },
   { label: "Create Change Order", href: "/projects/change-orders/new", icon: FilePen },
@@ -33,6 +36,7 @@ const ACTIONS = [
 
 export function FloatingActionButton() {
   const [open, setOpen] = React.useState(false);
+  const laborAddEntry = useLaborAddEntry();
 
   return (
     <>
@@ -70,7 +74,35 @@ export function FloatingActionButton() {
             <SheetTitle className="text-base font-semibold">Quick actions</SheetTitle>
           </SheetHeader>
           <nav className="flex flex-col py-2" aria-label="Quick actions">
-            {ACTIONS.map(({ label, href, icon: Icon }) => (
+            {LINK_ACTIONS_TOP.map(({ label, href, icon: Icon }) => (
+              <Link
+                key={href}
+                href={href}
+                onClick={() => setOpen(false)}
+                className={cn(
+                  "flex min-h-[48px] items-center gap-3 px-4 py-3 text-left text-sm font-medium text-foreground",
+                  "transition-colors active:bg-muted/50 hover:bg-muted/30"
+                )}
+              >
+                <Icon className="h-5 w-5 shrink-0 text-muted-foreground" />
+                {label}
+              </Link>
+            ))}
+            <button
+              type="button"
+              onClick={() => {
+                laborAddEntry?.triggerOpenDailyEntry();
+                setOpen(false);
+              }}
+              className={cn(
+                "flex min-h-[48px] w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-foreground",
+                "transition-colors active:bg-muted/50 hover:bg-muted/30"
+              )}
+            >
+              <Hammer className="h-5 w-5 shrink-0 text-muted-foreground" />
+              Add Labor Entry
+            </button>
+            {LINK_ACTIONS_REST.map(({ label, href, icon: Icon }) => (
               <Link
                 key={href}
                 href={href}

@@ -85,6 +85,24 @@ export async function updateProjectAction(
   }
 }
 
+/** Update project status only (active | pending | completed). */
+export async function updateProjectStatusAction(
+  projectId: string,
+  status: "active" | "pending" | "completed"
+): Promise<{ error?: string }> {
+  if (!projectId?.trim()) return { error: "Project ID is required." };
+  try {
+    await updateProject(projectId, { status });
+    revalidatePath("/projects");
+    revalidatePath(`/projects/${projectId}`);
+    revalidatePath("/dashboard");
+    return {};
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Failed to update status.";
+    return { error: message };
+  }
+}
+
 /** Archive project (set status to completed). */
 export async function archiveProjectAction(projectId: string): Promise<{ error?: string }> {
   if (!projectId?.trim()) return { error: "Project ID is required." };

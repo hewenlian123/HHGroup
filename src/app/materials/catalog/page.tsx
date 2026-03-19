@@ -24,8 +24,21 @@ type MaterialRow = {
   created_at: string;
 };
 
+const EMPTY_FORM = {
+  category: "",
+  material_name: "",
+  supplier: "",
+  cost: "",
+  photo_url: null as string | null,
+  description: "",
+};
+
 function photoUrl(path: string): string {
   return `/api/materials/catalog/photo?path=${encodeURIComponent(path)}`;
+}
+
+function revokePreviewIfBlob(url: string | null) {
+  if (url?.startsWith("blob:")) URL.revokeObjectURL(url);
 }
 
 export default function MaterialCatalogPage() {
@@ -33,16 +46,12 @@ export default function MaterialCatalogPage() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [modalOpen, setModalOpen] = React.useState(false);
+  const [editingMaterial, setEditingMaterial] = React.useState<MaterialRow | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
   const [uploading, setUploading] = React.useState(false);
-  const [form, setForm] = React.useState({
-    category: "",
-    material_name: "",
-    supplier: "",
-    cost: "",
-    photo_url: null as string | null,
-    description: "",
-  });
+  const [form, setForm] = React.useState({ ...EMPTY_FORM });
+  const [photoFile, setPhotoFile] = React.useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const load = React.useCallback(async () => {
@@ -63,15 +72,55 @@ export default function MaterialCatalogPage() {
     load();
   }, [load]);
 
-  const openModal = () => {
+  React.useEffect(() => {
+    if (!modalOpen || !editingMaterial) return;
     setForm({
-      category: "",
-      material_name: "",
-      supplier: "",
-      cost: "",
-      photo_url: null,
-      description: "",
+      category: editingMaterial.category ?? "",
+      material_name: editingMaterial.material_name ?? "",
+      supplier: editingMaterial.supplier ?? "",
+      cost: editingMaterial.cost != null ? String(editingMaterial.cost) : "",
+      photo_url: editingMaterial.photo_url,
+      description: editingMaterial.description ?? "",
     });
+  }, [modalOpen, editingMaterial]);
+
+  React.useEffect(() => {
+    if (!modalOpen || !editingMaterial) return;
+    if (editingMaterial.photo_url) {
+      setPreviewUrl(photoUrl(editingMaterial.photo_url));
+    } else {
+      setPreviewUrl(null);
+    }
+  }, [modalOpen, editingMaterial]);
+
+  React.useEffect(() => {
+    return () => {
+      revokePreviewIfBlob(previewUrl);
+    };
+  }, [previewUrl]);
+
+  const handleModalOpenChange = (open: boolean) => {
+    setModalOpen(open);
+    if (!open) {
+      setEditingMaterial(null);
+      setForm({ ...EMPTY_FORM });
+      setPhotoFile(null);
+      setPreviewUrl(null);
+      setError(null);
+    }
+  };
+
+  const openModal = () => {
+    setEditingMaterial(null);
+    setForm({ ...EMPTY_FORM });
+    setPhotoFile(null);
+    setPreviewUrl(null);
+    setError(null);
+    setModalOpen(true);
+  };
+
+  const handleEdit = (material: MaterialRow) => {
+    setEditingMaterial(material);
     setError(null);
     setModalOpen(true);
   };
@@ -79,6 +128,11 @@ export default function MaterialCatalogPage() {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setPhotoFile(file);
+    setPreviewUrl((prev) => {
+      revokePreviewIfBlob(prev);
+      return URL.createObjectURL(file);
+    });
     setUploading(true);
     setError(null);
     try {
@@ -104,24 +158,42 @@ export default function MaterialCatalogPage() {
     setSubmitting(true);
     setError(null);
     try {
-      const res = await fetch("/api/materials/catalog", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          category: form.category.trim() || "Uncategorized",
-          material_name: form.material_name.trim(),
-          supplier: form.supplier.trim() || null,
-          cost: form.cost !== "" ? Number(form.cost) : null,
-          photo_url: form.photo_url,
-          description: form.description.trim() || null,
-        }),
-      });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.message || "Failed to create");
-      setModalOpen(false);
+      if (editingMaterial) {
+        const res = await fetch("/api/materials/catalog", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: editingMaterial.id,
+            category: form.category.trim() || "Uncategorized",
+            material_name: form.material_name.trim(),
+            supplier: form.supplier.trim() || null,
+            cost: form.cost !== "" ? Number(form.cost) : null,
+            photo_url: form.photo_url,
+            description: form.description.trim() || null,
+          }),
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.message || "Failed to update");
+      } else {
+        const res = await fetch("/api/materials/catalog", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            category: form.category.trim() || "Uncategorized",
+            material_name: form.material_name.trim(),
+            supplier: form.supplier.trim() || null,
+            cost: form.cost !== "" ? Number(form.cost) : null,
+            photo_url: form.photo_url,
+            description: form.description.trim() || null,
+          }),
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.message || "Failed to create");
+      }
+      handleModalOpenChange(false);
       load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to create.");
+      setError(e instanceof Error ? e.message : editingMaterial ? "Failed to update." : "Failed to create.");
     } finally {
       setSubmitting(false);
     }
@@ -158,6 +230,7 @@ export default function MaterialCatalogPage() {
                   <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground">Material name</th>
                   <th className="hidden sm:table-cell text-left py-2 px-3 font-medium text-muted-foreground">Supplier</th>
                   <th className="text-right py-2 px-2 sm:px-3 font-medium text-muted-foreground">Cost</th>
+                  <th className="text-right py-2 px-2 sm:px-3 font-medium text-muted-foreground w-[140px]">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -181,11 +254,38 @@ export default function MaterialCatalogPage() {
                         <span className="block w-10 h-10 rounded-sm border border-border/60 bg-muted/30" aria-hidden />
                       )}
                     </td>
-                    <td className="py-2 px-2 sm:px-3 text-muted-foreground">{m.category || "—"}</td>
-                    <td className="py-2 px-2 sm:px-3 font-medium">{m.material_name || "—"}</td>
+                    <td className="py-2 px-2 sm:px-3 text-muted-foreground">
+                      <button
+                        type="button"
+                        onClick={() => handleEdit(m)}
+                        className="text-left w-full bg-transparent p-0 font-inherit text-inherit cursor-pointer hover:underline"
+                      >
+                        {m.category || "—"}
+                      </button>
+                    </td>
+                    <td className="py-2 px-2 sm:px-3 font-medium">
+                      <button
+                        type="button"
+                        onClick={() => handleEdit(m)}
+                        className="text-left w-full bg-transparent p-0 font-inherit text-inherit cursor-pointer hover:underline"
+                      >
+                        {m.material_name || "—"}
+                      </button>
+                    </td>
                     <td className="hidden sm:table-cell py-2 px-3 text-muted-foreground">{m.supplier ?? "—"}</td>
                     <td className="py-2 px-2 sm:px-3 text-right tabular-nums text-muted-foreground">
                       {m.cost != null ? `$${Number(m.cost).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "—"}
+                    </td>
+                    <td className="py-2 px-2 sm:px-3 text-right align-middle">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="rounded-sm h-8 px-2"
+                        onClick={() => handleEdit(m)}
+                      >
+                        Edit
+                      </Button>
                     </td>
                   </tr>
                 ))}
@@ -195,10 +295,12 @@ export default function MaterialCatalogPage() {
         </div>
       </div>
 
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+      <Dialog open={modalOpen} onOpenChange={handleModalOpenChange}>
         <DialogContent className="max-w-lg rounded-sm border-border/60 p-6">
           <DialogHeader>
-            <DialogTitle className="text-base font-semibold">Add Material</DialogTitle>
+            <DialogTitle className="text-base font-semibold">
+              {editingMaterial ? "Edit Material" : "Add Material"}
+            </DialogTitle>
             <DialogDescription>Add a material to the catalog.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -264,6 +366,13 @@ export default function MaterialCatalogPage() {
                 </Button>
                 {form.photo_url && <span className="text-xs text-muted-foreground">Uploaded</span>}
               </div>
+              {previewUrl ? (
+                <img
+                  src={previewUrl}
+                  alt="Preview"
+                  className="mt-2 w-full h-40 object-cover rounded-lg border border-border/60"
+                />
+              ) : null}
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Description</label>
@@ -278,8 +387,17 @@ export default function MaterialCatalogPage() {
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
           <DialogFooter className="border-t border-border/60 pt-4">
-            <Button variant="outline" size="sm" className="rounded-sm" onClick={() => setModalOpen(false)}>Cancel</Button>
-            <Button size="sm" className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90" onClick={handleSave} disabled={submitting}>Add</Button>
+            <Button variant="outline" size="sm" className="rounded-sm" onClick={() => handleModalOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90"
+              onClick={() => void handleSave()}
+              disabled={submitting}
+            >
+              {submitting ? "Saving…" : editingMaterial ? "Save" : "Add"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
