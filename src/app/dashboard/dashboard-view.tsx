@@ -322,7 +322,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="truncate text-sm font-medium text-[#111111] dark:text-foreground">{tx.projectName}</span>
                           <span className="bg-gray-100 dark:bg-muted text-gray-500 dark:text-muted-foreground text-[9px] px-1.5 py-0.5 rounded-full capitalize shrink-0">
-                            {tx.type === "invoice" ? "Invoice" : tx.type === "bill" ? "Bill" : tx.type === "payment" ? "Payment" : tx.type === "expense" ? "Expense" : tx.type}
+                            {tx.type === "invoice" ? "Invoice" : tx.type === "bill" ? "Bill" : tx.type === "expense" ? "Expense" : "Labor"}
                           </span>
                         </div>
                         <div className="truncate text-xs text-gray-500 dark:text-muted-foreground mt-0.5">{tx.description}</div>

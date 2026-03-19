@@ -295,7 +295,7 @@ export function Sidebar({
                         {active && (
                           <span className="absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-r-sm bg-gray-900 dark:bg-foreground" aria-hidden />
                         )}
-                        {Icon ? <Icon className={cn("h-[13px] w-[13px] shrink-0 opacity-60", active && "opacity-100")} strokeWidth={1.5} /> : null}
+                        {Icon ? <Icon className={cn("h-[13px] w-[13px] shrink-0 opacity-60", active && "opacity-100")} /> : null}
                       </Link>
                     );
                   })}
@@ -338,7 +338,7 @@ export function Sidebar({
                             {active && (
                               <span className="absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-r-sm bg-gray-900 dark:bg-foreground" aria-hidden />
                             )}
-                            {Icon ? <Icon className={cn("h-[13px] w-[13px] shrink-0 opacity-60", active && "opacity-100")} strokeWidth={1.5} /> : null}
+                            {Icon ? <Icon className={cn("h-[13px] w-[13px] shrink-0 opacity-60", active && "opacity-100")} /> : null}
                             {!collapsed && <span className="truncate">{item.label}</span>}
                           </Link>
                         );
@@ -362,7 +362,7 @@ export function Sidebar({
                 {isActive("/system-health") && (
                   <span className="absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-r-sm bg-gray-900 dark:bg-foreground" aria-hidden />
                 )}
-                <AlertTriangle className={cn("h-[13px] w-[13px] shrink-0 text-amber-500 opacity-60", isActive("/system-health") && "opacity-100")} strokeWidth={1.5} aria-hidden />
+                <AlertTriangle className={cn("h-[13px] w-[13px] shrink-0 text-amber-500 opacity-60", isActive("/system-health") && "opacity-100")} aria-hidden />
                 {!collapsed && <span className="truncate">⚠ System Health</span>}
               </Link>
             </div>
@@ -385,7 +385,7 @@ export function Sidebar({
                   {active && (
                     <span className="absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-r-sm bg-gray-900 dark:bg-foreground" aria-hidden />
                   )}
-                  {Icon ? <Icon className={cn("h-[13px] w-[13px] shrink-0 opacity-60", active && "opacity-100")} strokeWidth={1.5} /> : null}
+                  {Icon ? <Icon className={cn("h-[13px] w-[13px] shrink-0 opacity-60", active && "opacity-100")} /> : null}
                   {!collapsed && <span className="truncate">{item.label}</span>}
                 </Link>
               );
