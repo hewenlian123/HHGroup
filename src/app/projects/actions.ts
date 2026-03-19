@@ -58,6 +58,33 @@ export async function getProjectUsageAction(projectId: string): Promise<
   }
 }
 
+/** Update project name, address, budget, customer_id. */
+export async function updateProjectAction(
+  projectId: string,
+  patch: { name: string; address?: string; budget: number; customerId?: string | null }
+): Promise<{ error?: string }> {
+  if (!projectId?.trim()) return { error: "Project ID is required." };
+  const name = patch.name?.trim();
+  if (!name) return { error: "Project name is required." };
+  const budget = Number(patch.budget);
+  if (!Number.isFinite(budget) || budget < 0) return { error: "Budget must be 0 or greater." };
+  try {
+    await updateProject(projectId, {
+      name,
+      address: patch.address?.trim() ?? "",
+      budget,
+      ...(patch.customerId !== undefined ? { customerId: patch.customerId?.trim() || null } : {}),
+    });
+    revalidatePath("/projects");
+    revalidatePath(`/projects/${projectId}`);
+    revalidatePath("/dashboard");
+    return {};
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Failed to update project.";
+    return { error: message };
+  }
+}
+
 /** Archive project (set status to completed). */
 export async function archiveProjectAction(projectId: string): Promise<{ error?: string }> {
   if (!projectId?.trim()) return { error: "Project ID is required." };
