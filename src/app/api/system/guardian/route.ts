@@ -3,15 +3,7 @@
  *
  * System Guardian: probes each critical module independently and returns a
  * structured health report. Failures are also written to System Logs.
- *
- * Checks:
- *   1. Database          — Supabase SELECT 1 via the projects table
- *   2. Storage           — Supabase Storage: list worker-receipts bucket (1 item)
- *   3. Receipt Upload    — GET /api/upload-receipt/options (route liveness)
- *   4. Receipts Module   — Supabase SELECT from worker_receipts
- *   5. Expenses Module   — Supabase SELECT from expenses
- *   6. Invoices Module   — Supabase SELECT from invoices
- *   7. Activity Logs     — Supabase SELECT from activity_logs
+ * Covers all sidebar modules (projects, labor, finance, workers, system).
  *
  * Returns:
  *   { ok: boolean, checks: [{ name, ok, error? }], checkedAt: ISO string }
@@ -143,55 +135,128 @@ async function checkTable(
 // ── route handler ─────────────────────────────────────────────────────────────
 
 export async function GET(request: Request): Promise<NextResponse<GuardianResult>> {
-  const origin = new URL(request.url).origin;
+  const safeResult = (checks: GuardianCheck[], ok: boolean): NextResponse<GuardianResult> =>
+    NextResponse.json({
+      ok,
+      checks,
+      checkedAt: new Date().toISOString(),
+    });
 
-  const c = getServerSupabase();
+  try {
+    const origin = new URL(request.url).origin;
+    const c = getServerSupabase();
 
-  const notConfigured = (name: string): GuardianCheck => ({
-    name,
-    ok: false,
-    error: "Supabase not configured",
-  });
+    const notConfigured = (name: string): GuardianCheck => ({
+      name,
+      ok: false,
+      error: "Supabase not configured",
+    });
 
-  // Run all checks in parallel for speed
-  const [database, storage, receiptUpload, receipts, expenses, invoices, activityLogs, dataIntegrity] =
-    await Promise.all([
+    // Run all checks in parallel (one per sidebar module / table)
+    const [
+      database,
+      storage,
+      receiptUpload,
+      projects,
+      workers,
+      labor,
+      reimbursements,
+      expenses,
+      workerPayments,
+      invoices,
+      customers,
+      commissionPayments,
+      paymentsReceived,
+      deposits,
+      bills,
+      workerAdvances,
+      accounts,
+      workerInvoices,
+      vendors,
+      subcontractors,
+      receiptUploads,
+      documents,
+      activityLogs,
+      backups,
+      dataIntegrity,
+    ] = await Promise.all([
       c ? checkDatabase(c) : Promise.resolve(notConfigured("Database")),
       c ? checkStorage(c) : Promise.resolve(notConfigured("Storage")),
       checkEndpoint(origin, "/api/upload-receipt/options", "Receipt Upload"),
-      c ? checkTable(c, "worker_receipts", "Receipts Module") : Promise.resolve(notConfigured("Receipts Module")),
-      c ? checkTable(c, "expenses", "Expenses Module") : Promise.resolve(notConfigured("Expenses Module")),
-      c ? checkTable(c, "invoices", "Invoices Module") : Promise.resolve(notConfigured("Invoices Module")),
+      c ? checkTable(c, "projects", "Projects") : Promise.resolve(notConfigured("Projects")),
+      c ? checkTable(c, "workers", "Workers") : Promise.resolve(notConfigured("Workers")),
+      c ? checkTable(c, "labor_entries", "Labor") : Promise.resolve(notConfigured("Labor")),
+      c ? checkTable(c, "worker_reimbursements", "Reimbursements") : Promise.resolve(notConfigured("Reimbursements")),
+      c ? checkTable(c, "expenses", "Expenses") : Promise.resolve(notConfigured("Expenses")),
+      c ? checkTable(c, "worker_payments", "Worker Payments") : Promise.resolve(notConfigured("Worker Payments")),
+      c ? checkTable(c, "invoices", "Invoices") : Promise.resolve(notConfigured("Invoices")),
+      c ? checkTable(c, "customers", "Customers") : Promise.resolve(notConfigured("Customers")),
+      c ? checkTable(c, "project_commissions", "Commission Payments") : Promise.resolve(notConfigured("Commission Payments")),
+      c ? checkTable(c, "payments_received", "Payments Received") : Promise.resolve(notConfigured("Payments Received")),
+      c ? checkTable(c, "deposits", "Deposits") : Promise.resolve(notConfigured("Deposits")),
+      c ? checkTable(c, "bills", "Bills") : Promise.resolve(notConfigured("Bills")),
+      c ? checkTable(c, "worker_advances", "Worker Advances") : Promise.resolve(notConfigured("Worker Advances")),
+      c ? checkTable(c, "accounts", "Accounts") : Promise.resolve(notConfigured("Accounts")),
+      c ? checkTable(c, "worker_invoices", "Worker Invoices") : Promise.resolve(notConfigured("Worker Invoices")),
+      c ? checkTable(c, "vendors", "Vendors") : Promise.resolve(notConfigured("Vendors")),
+      c ? checkTable(c, "subcontractors", "Subcontractors") : Promise.resolve(notConfigured("Subcontractors")),
+      c ? checkTable(c, "worker_receipts", "Receipt Uploads") : Promise.resolve(notConfigured("Receipt Uploads")),
+      c ? checkTable(c, "documents", "Documents") : Promise.resolve(notConfigured("Documents")),
       c ? checkTable(c, "activity_logs", "Activity Logs") : Promise.resolve(notConfigured("Activity Logs")),
+      checkEndpoint(origin, "/api/system/backup", "Backups"),
       checkDataIntegrity(origin),
     ]);
 
-  const checks: GuardianCheck[] = [
-    database,
-    storage,
-    receiptUpload,
-    receipts,
-    expenses,
-    invoices,
-    activityLogs,
-    dataIntegrity,
-  ];
-  const ok = checks.every((ch) => ch.ok);
+    const checks: GuardianCheck[] = [
+      database,
+      storage,
+      receiptUpload,
+      projects,
+      workers,
+      labor,
+      reimbursements,
+      expenses,
+      workerPayments,
+      invoices,
+      customers,
+      commissionPayments,
+      paymentsReceived,
+      deposits,
+      bills,
+      workerAdvances,
+      accounts,
+      workerInvoices,
+      vendors,
+      subcontractors,
+      receiptUploads,
+      documents,
+      activityLogs,
+      backups,
+      dataIntegrity,
+    ];
+    const ok = checks.every((ch) => ch.ok);
 
-  // Log every failure to System Logs so they appear on the logs page
-  for (const ch of checks) {
-    if (!ch.ok) {
-      addSystemLog({
-        module: "Guardian",
-        type: "Error",
-        message: `${ch.name} check failed: ${ch.error ?? "unknown"}`,
-      });
+    // Log every failure to System Logs so they appear on the logs page
+    try {
+      for (const ch of checks) {
+        if (!ch.ok) {
+          addSystemLog({
+            module: "Guardian",
+            type: "Error",
+            message: `${ch.name} check failed: ${ch.error ?? "unknown"}`,
+          });
+        }
+      }
+    } catch {
+      // avoid failing the response if logging fails
     }
-  }
 
-  return NextResponse.json({
-    ok,
-    checks,
-    checkedAt: new Date().toISOString(),
-  });
+    return safeResult(checks, ok);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    const checks: GuardianCheck[] = [
+      { name: "Guardian", ok: false, error: message },
+    ];
+    return safeResult(checks, false);
+  }
 }

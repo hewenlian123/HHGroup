@@ -9,3 +9,12 @@ begin
     on conflict (id) do update set name = excluded.name;
   end if;
 end $$;
+test('open daily entry page', async ({ page }) => {
+  await page.goto('https://hhprojectgroup.com');
+
+  // 点击 Daily Entry（根据你左侧菜单）
+  await page.getByText('Daily Entry').click();
+
+  // 检查页面加载
+  await expect(page.getByText('Daily Entry')).toBeVisible();
+});

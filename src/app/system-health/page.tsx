@@ -107,11 +107,14 @@ export default function SystemHealthPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ category }),
       });
-      if (res.ok) await fetchIntegrity();
+      if (res.ok) {
+        await fetchIntegrity();
+        await fetchGuardian();
+      }
     } finally {
       setCleanupBusy(null);
     }
-  }, [fetchIntegrity]);
+  }, [fetchIntegrity, fetchGuardian]);
 
   // Initial load
   React.useEffect(() => {
@@ -199,10 +202,22 @@ export default function SystemHealthPage() {
               </tr>
             </thead>
             <tbody>
-              {result?.checks.length === 0 ? (
+              {!result?.checks?.length ? (
                 <tr>
                   <td colSpan={3} className="py-6 text-center text-muted-foreground">
-                    No data.
+                    <span className="block">Module status could not be loaded.</span>
+                    <span className="block mt-1 text-xs">
+                      Ensure <code className="rounded bg-muted px-1">/api/system/guardian</code> is available, then{" "}
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7 rounded-sm inline-flex"
+                        onClick={() => fetchGuardian(true)}
+                      >
+                        Refresh Now
+                      </Button>
+                    </span>
                   </td>
                 </tr>
               ) : (
