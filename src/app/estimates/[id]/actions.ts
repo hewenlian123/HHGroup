@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createNewVersionFromSnapshot, convertEstimateSnapshotToProject, convertEstimateToProjectWithSetup, addLineItem, setEstimateStatus, updateEstimateStatus, updateEstimateMeta, updateLineItem, duplicateLineItem, deleteLineItem, addPaymentMilestone, updatePaymentMilestone, deletePaymentMilestone, markPaymentMilestonePaid, reorderPaymentSchedule, createPaymentTemplate, applyPaymentTemplateToEstimate } from "@/lib/data";
+import { revalidateEstimatePaths } from "@/app/estimates/revalidate-estimate-paths";
+import { createNewVersionFromSnapshot, convertEstimateSnapshotToProject, convertEstimateToProjectWithSetup, addLineItem, createCustomEstimateCategory, createEstimateCategoryWithExplicitCode, updateEstimateCategoryDisplayName, setEstimateStatus, updateEstimateStatus, updateEstimateMeta, updateLineItem, duplicateLineItem, deleteLineItem, moveEstimateItemsToCostCode, reorderEstimateCategories, addPaymentMilestone, updatePaymentMilestone, deletePaymentMilestone, markPaymentMilestonePaid, reorderPaymentSchedule, createPaymentTemplate, applyPaymentTemplateToEstimate } from "@/lib/data";
 
 export type EstimateStatus = "Draft" | "Sent" | "Approved" | "Rejected" | "Converted";
 
@@ -12,7 +13,7 @@ export async function approveEstimateAction(formData: FormData) {
   try {
     const ok = await setEstimateStatus(estimateId, "Approved");
     if (!ok) return;
-    revalidatePath(`/estimates/${estimateId}`);
+    revalidateEstimatePaths(estimateId);
     revalidatePath("/estimates");
     redirect(`/estimates/${estimateId}`);
   } catch {
@@ -26,7 +27,7 @@ export async function createNewVersionAction(formData: FormData) {
   try {
     const ok = await createNewVersionFromSnapshot(estimateId);
     if (!ok) return;
-    revalidatePath(`/estimates/${estimateId}`);
+    revalidateEstimatePaths(estimateId);
     revalidatePath("/estimates");
     redirect(`/estimates/${estimateId}`);
   } catch {
@@ -40,7 +41,7 @@ export async function convertToProjectAction(formData: FormData) {
   try {
     const record = await convertEstimateSnapshotToProject(estimateId);
     if (!record) return;
-    revalidatePath(`/estimates/${estimateId}`);
+    revalidateEstimatePaths(estimateId);
     revalidatePath("/estimates");
     revalidatePath("/projects");
     redirect(`/projects/${record.projectId}`);
@@ -55,7 +56,7 @@ export async function sendEstimateAction(formData: FormData) {
   try {
     const ok = await setEstimateStatus(estimateId, "Sent");
     if (!ok) return;
-    revalidatePath(`/estimates/${estimateId}`);
+    revalidateEstimatePaths(estimateId);
     revalidatePath("/estimates");
     redirect(`/estimates/${estimateId}`);
   } catch {
@@ -69,7 +70,7 @@ export async function rejectEstimateAction(formData: FormData) {
   try {
     const ok = await setEstimateStatus(estimateId, "Rejected");
     if (!ok) return;
-    revalidatePath(`/estimates/${estimateId}`);
+    revalidateEstimatePaths(estimateId);
     revalidatePath("/estimates");
     redirect(`/estimates/${estimateId}`);
   } catch {
@@ -85,7 +86,7 @@ export async function changeEstimateStatusAction(formData: FormData) {
   try {
     const ok = await updateEstimateStatus(estimateId, newStatus as "Draft" | "Sent" | "Approved" | "Rejected" | "Converted");
     if (!ok) return;
-    revalidatePath(`/estimates/${estimateId}`);
+    revalidateEstimatePaths(estimateId);
     revalidatePath("/estimates");
     redirect(`/estimates/${estimateId}`);
   } catch {
@@ -99,7 +100,7 @@ export async function changeEstimateStatusInlineAction(estimateId: string, newSt
   try {
     const ok = await updateEstimateStatus(estimateId, newStatus);
     if (ok) {
-      revalidatePath(`/estimates/${estimateId}`);
+      revalidateEstimatePaths(estimateId);
       revalidatePath("/estimates");
     }
     return { ok: Boolean(ok) };
@@ -112,7 +113,7 @@ export async function sendEstimateInlineAction(estimateId: string): Promise<{ ok
   try {
     const ok = await setEstimateStatus(estimateId, "Sent");
     if (ok) {
-      revalidatePath(`/estimates/${estimateId}`);
+      revalidateEstimatePaths(estimateId);
       revalidatePath("/estimates");
     }
     return { ok: Boolean(ok) };
@@ -125,7 +126,7 @@ export async function approveEstimateInlineAction(estimateId: string): Promise<{
   try {
     const ok = await setEstimateStatus(estimateId, "Approved");
     if (ok) {
-      revalidatePath(`/estimates/${estimateId}`);
+      revalidateEstimatePaths(estimateId);
       revalidatePath("/estimates");
     }
     return { ok: Boolean(ok) };
@@ -138,7 +139,7 @@ export async function rejectEstimateInlineAction(estimateId: string): Promise<{ 
   try {
     const ok = await setEstimateStatus(estimateId, "Rejected");
     if (ok) {
-      revalidatePath(`/estimates/${estimateId}`);
+      revalidateEstimatePaths(estimateId);
       revalidatePath("/estimates");
     }
     return { ok: Boolean(ok) };
@@ -151,7 +152,7 @@ export async function convertToProjectInlineAction(estimateId: string): Promise<
   try {
     const record = await convertEstimateSnapshotToProject(estimateId);
     if (record) {
-      revalidatePath(`/estimates/${estimateId}`);
+      revalidateEstimatePaths(estimateId);
       revalidatePath("/estimates");
       revalidatePath("/projects");
       return { ok: true, projectId: record.projectId };
@@ -178,7 +179,7 @@ export async function convertToProjectWithSetupAction(formData: FormData): Promi
       estimateRef: (formData.get("estimateRef") as string)?.trim() || undefined,
     });
     if (record) {
-      revalidatePath(`/estimates/${estimateId}`);
+      revalidateEstimatePaths(estimateId);
       revalidatePath("/estimates");
       revalidatePath("/projects");
       return { ok: true, projectId: record.projectId };
@@ -217,7 +218,7 @@ export async function saveEstimateMetaInlineAction(formData: FormData): Promise<
       ...(salesPerson != null ? { salesPerson: salesPerson || undefined } : {}),
     });
     if (ok) {
-      revalidatePath(`/estimates/${estimateId}`);
+      revalidateEstimatePaths(estimateId);
       revalidatePath("/estimates");
     }
     return { ok: Boolean(ok) };
@@ -238,11 +239,11 @@ export async function addPaymentMilestoneAction(formData: FormData) {
   const notes = (formData.get("notes") as string)?.trim() || undefined;
   try {
     await addPaymentMilestone(estimateId, { title, amountType, value, dueRule, dueDate, notes });
-    revalidatePath(`/estimates/${estimateId}`);
+    revalidateEstimatePaths(estimateId);
     revalidatePath("/estimates");
     redirect(`/estimates/${estimateId}`);
   } catch {
-    revalidatePath(`/estimates/${estimateId}`);
+    revalidateEstimatePaths(estimateId);
     redirect(`/estimates/${estimateId}`);
   }
 }
@@ -267,10 +268,10 @@ export async function updatePaymentMilestoneAction(formData: FormData) {
       ...(dueDate !== undefined ? { dueDate } : {}),
       ...(notes !== undefined ? { notes: notes || null } : {}),
     });
-    revalidatePath(`/estimates/${estimateId}`);
+    revalidateEstimatePaths(estimateId);
     redirect(`/estimates/${estimateId}`);
   } catch {
-    revalidatePath(`/estimates/${estimateId}`);
+    revalidateEstimatePaths(estimateId);
     redirect(`/estimates/${estimateId}`);
   }
 }
@@ -281,10 +282,10 @@ export async function deletePaymentMilestoneAction(formData: FormData) {
   if (typeof estimateId !== "string" || typeof itemId !== "string") return;
   try {
     await deletePaymentMilestone(estimateId, itemId);
-    revalidatePath(`/estimates/${estimateId}`);
+    revalidateEstimatePaths(estimateId);
     redirect(`/estimates/${estimateId}`);
   } catch {
-    revalidatePath(`/estimates/${estimateId}`);
+    revalidateEstimatePaths(estimateId);
     redirect(`/estimates/${estimateId}`);
   }
 }
@@ -295,10 +296,10 @@ export async function markPaymentMilestonePaidAction(formData: FormData) {
   if (typeof estimateId !== "string" || typeof itemId !== "string") return;
   try {
     await markPaymentMilestonePaid(estimateId, itemId);
-    revalidatePath(`/estimates/${estimateId}`);
+    revalidateEstimatePaths(estimateId);
     redirect(`/estimates/${estimateId}`);
   } catch {
-    revalidatePath(`/estimates/${estimateId}`);
+    revalidateEstimatePaths(estimateId);
     redirect(`/estimates/${estimateId}`);
   }
 }
@@ -312,10 +313,10 @@ export async function reorderPaymentScheduleAction(formData: FormData) {
     if (!Array.isArray(orderedItemIds) || orderedItemIds.length === 0) return;
     const ok = await reorderPaymentSchedule(estimateId, orderedItemIds);
     if (!ok) return;
-    revalidatePath(`/estimates/${estimateId}`);
+    revalidateEstimatePaths(estimateId);
     redirect(`/estimates/${estimateId}`);
   } catch {
-    revalidatePath(`/estimates/${estimateId}`);
+    revalidateEstimatePaths(estimateId);
     redirect(`/estimates/${estimateId}`);
   }
 }
@@ -327,7 +328,7 @@ export async function applyPaymentTemplateAction(formData: FormData) {
   try {
     const ok = await applyPaymentTemplateToEstimate(estimateId, templateId);
     if (!ok) return;
-    revalidatePath(`/estimates/${estimateId}`);
+    revalidateEstimatePaths(estimateId);
     redirect(`/estimates/${estimateId}`);
   } catch {
     // no-op
@@ -351,7 +352,7 @@ export async function createPaymentTemplateAction(formData: FormData) {
     }));
     const template = await createPaymentTemplate(name, items);
     if (!template) return;
-    revalidatePath(`/estimates/${estimateId}`);
+    revalidateEstimatePaths(estimateId);
     redirect(`/estimates/${estimateId}`);
   } catch {
     // no-op
@@ -362,6 +363,7 @@ export async function addLineItemAction(formData: FormData) {
   const estimateId = formData.get("estimateId");
   const costCode = formData.get("costCode");
   if (typeof estimateId !== "string" || typeof costCode !== "string") return;
+  const categoryDisplayName = (formData.get("categoryDisplayName") as string)?.trim() || "";
   try {
     const item = await addLineItem(estimateId, {
       costCode,
@@ -372,10 +374,79 @@ export async function addLineItemAction(formData: FormData) {
       markupPct: Number(formData.get("markupPct")) || 0.1,
     });
     if (!item) return;
-    revalidatePath(`/estimates/${estimateId}`);
+    if (categoryDisplayName) {
+      await updateEstimateMeta(estimateId, { costCategoryNames: { [costCode]: categoryDisplayName } });
+    }
+    revalidateEstimatePaths(estimateId);
     redirect(`/estimates/${estimateId}`);
   } catch {
     // no-op
+  }
+}
+
+/** Add first line for a catalog cost code from the Cost Breakdown UI — no full-page redirect. */
+export async function addLineItemCatalogInlineAction(
+  estimateId: string,
+  costCode: string,
+  categoryDisplayName: string
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const item = await addLineItem(estimateId, {
+      costCode,
+      desc: "New item",
+      qty: 1,
+      unit: "EA",
+      unitCost: 0,
+      markupPct: 0.1,
+    });
+    if (!item) return { ok: false, error: "Could not add line item." };
+    if (categoryDisplayName.trim()) {
+      await updateEstimateMeta(estimateId, { costCategoryNames: { [costCode]: categoryDisplayName.trim() } });
+    }
+    revalidateEstimatePaths(estimateId);
+    revalidatePath("/estimates");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not add line item." };
+  }
+}
+
+export async function createCustomEstimateCategoryAction(
+  estimateId: string,
+  displayName: string
+): Promise<{ ok: boolean; costCode?: string; error?: string }> {
+  if (!estimateId.trim()) return { ok: false, error: "Estimate id is required." };
+  try {
+    const out = await createCustomEstimateCategory(estimateId, displayName);
+    if (!out.ok) return { ok: false, error: out.error };
+    revalidateEstimatePaths(estimateId);
+    revalidatePath("/estimates");
+    return { ok: true, costCode: out.costCode };
+  } catch (e) {
+    console.error(e);
+    console.log(e instanceof Error ? e.message : "Could not create category.");
+    console.log((e as { details?: unknown })?.details);
+    return { ok: false, error: e instanceof Error ? e.message : "Could not create category." };
+  }
+}
+
+export async function createEstimateCategoryWithCodeAction(
+  estimateId: string,
+  costCode: string,
+  displayName: string
+): Promise<{ ok: boolean; costCode?: string; error?: string }> {
+  if (!estimateId.trim()) return { ok: false, error: "Estimate id is required." };
+  try {
+    const out = await createEstimateCategoryWithExplicitCode(estimateId, costCode, displayName);
+    if (!out.ok) return { ok: false, error: out.error };
+    revalidateEstimatePaths(estimateId);
+    revalidatePath("/estimates");
+    return { ok: true, costCode: out.costCode };
+  } catch (e) {
+    console.error(e);
+    console.log(e instanceof Error ? e.message : "Could not create category.");
+    console.log((e as { details?: unknown })?.details);
+    return { ok: false, error: e instanceof Error ? e.message : "Could not create category." };
   }
 }
 
@@ -396,10 +467,38 @@ export async function updateLineItemAction(formData: FormData) {
       ...(unitCost != null && unitCost !== "" ? { unitCost: Number(unitCost) } : {}),
       ...(markupPct != null && markupPct !== "" ? { markupPct: Number(markupPct) / 100 } : {}),
     });
-    revalidatePath(`/estimates/${estimateId}`);
+    revalidateEstimatePaths(estimateId);
     redirect(`/estimates/${estimateId}`);
   } catch {
     // no-op
+  }
+}
+
+/** Same payload as update line item form, without redirect — for client-driven saves (e.g. description modal). */
+export async function updateLineItemInlineAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+  const estimateId = formData.get("estimateId");
+  const itemId = formData.get("itemId");
+  if (typeof estimateId !== "string" || typeof itemId !== "string") return { ok: false, error: "Missing estimate or item id" };
+  try {
+    const desc = formData.get("desc") as string | null;
+    const qty = formData.get("qty");
+    const unit = formData.get("unit") as string | null;
+    const unitCost = formData.get("unitCost");
+    const markupPct = formData.get("markupPct");
+    const ok = await updateLineItem(estimateId, itemId, {
+      ...(desc != null ? { desc } : {}),
+      ...(qty != null && qty !== "" ? { qty: Number(qty) } : {}),
+      ...(unit != null ? { unit } : {}),
+      ...(unitCost != null && unitCost !== "" ? { unitCost: Number(unitCost) } : {}),
+      ...(markupPct != null && markupPct !== "" ? { markupPct: Number(markupPct) / 100 } : {}),
+    });
+    if (ok) {
+      revalidateEstimatePaths(estimateId);
+      return { ok: true };
+    }
+    return { ok: false, error: "Could not update line item" };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Update failed" };
   }
 }
 
@@ -410,7 +509,7 @@ export async function duplicateLineItemAction(formData: FormData) {
   try {
     const item = await duplicateLineItem(estimateId, itemId);
     if (!item) return;
-    revalidatePath(`/estimates/${estimateId}`);
+    revalidateEstimatePaths(estimateId);
     redirect(`/estimates/${estimateId}`);
   } catch {
     // no-op
@@ -423,7 +522,7 @@ export async function deleteLineItemAction(formData: FormData) {
   if (typeof estimateId !== "string" || typeof itemId !== "string") return;
   try {
     await deleteLineItem(estimateId, itemId);
-    revalidatePath(`/estimates/${estimateId}`);
+    revalidateEstimatePaths(estimateId);
     redirect(`/estimates/${estimateId}`);
   } catch {
     // no-op
@@ -457,11 +556,11 @@ export async function saveEstimateMetaAction(formData: FormData) {
       ...(notes != null ? { notes: notes || undefined } : {}),
       ...(salesPerson != null ? { salesPerson: salesPerson || undefined } : {}),
     });
-    revalidatePath(`/estimates/${estimateId}`);
+    revalidateEstimatePaths(estimateId);
     revalidatePath("/estimates");
     redirect(ok ? `/estimates/${estimateId}?saved=1` : `/estimates/${estimateId}`);
   } catch {
-    revalidatePath(`/estimates/${estimateId}`);
+    revalidateEstimatePaths(estimateId);
     redirect(`/estimates/${estimateId}`);
   }
 }
@@ -473,9 +572,65 @@ export async function saveCostCategoryNameAction(formData: FormData) {
   if (typeof estimateId !== "string" || typeof costCode !== "string" || displayName == null) return;
   try {
     await updateEstimateMeta(estimateId, { costCategoryNames: { [costCode]: displayName } });
-    revalidatePath(`/estimates/${estimateId}`);
+    revalidateEstimatePaths(estimateId);
     redirect(`/estimates/${estimateId}`);
   } catch {
     // no-op
+  }
+}
+
+export async function reorderEstimateCategoriesAction(
+  estimateId: string,
+  orderedCostCodes: string[],
+  displayNamesByCode: Record<string, string>
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    if (orderedCostCodes.length === 0) return { ok: true };
+    const ok = await reorderEstimateCategories(estimateId, orderedCostCodes, displayNamesByCode);
+    if (!ok) return { ok: false, error: "Could not save category order." };
+    revalidateEstimatePaths(estimateId);
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not save category order." };
+  }
+}
+
+export async function moveEstimateItemsToCostCodeAction(
+  estimateId: string,
+  itemIds: string[],
+  newCostCode: string,
+  displayNameHint?: string
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    if (itemIds.length === 0) return { ok: true };
+    const ok = await moveEstimateItemsToCostCode(estimateId, itemIds, newCostCode, displayNameHint);
+    if (!ok) return { ok: false, error: "Could not move items to this category." };
+    revalidateEstimatePaths(estimateId);
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not move items to this category." };
+  }
+}
+
+/** Inline rename: no redirect; use from client after click-to-edit. */
+export async function saveCostCategoryNameInlineAction(
+  estimateId: string,
+  costCode: string,
+  displayName: string
+): Promise<{ ok: boolean; error?: string }> {
+  const trimmed = displayName.trim();
+  if (!trimmed) return { ok: false, error: "Name cannot be empty." };
+  try {
+    const ok = await updateEstimateCategoryDisplayName(estimateId, costCode, trimmed);
+    if (!ok) {
+      // Fallback: legacy path in case direct category upsert fails in some environments.
+      const legacyOk = await updateEstimateMeta(estimateId, { costCategoryNames: { [costCode]: trimmed } });
+      if (!legacyOk) return { ok: false, error: "Could not save category name." };
+    }
+    revalidateEstimatePaths(estimateId);
+    return { ok: true };
+  } catch (e) {
+    console.error(e);
+    return { ok: false, error: e instanceof Error ? e.message : "Could not save category name." };
   }
 }

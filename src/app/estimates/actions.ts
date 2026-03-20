@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { revalidateEstimatePaths } from "@/app/estimates/revalidate-estimate-paths";
 import { createEstimateWithItems, updateEstimateStatus } from "@/lib/data";
 import { deleteEstimate } from "@/lib/data";
 
@@ -27,7 +28,7 @@ export async function createTestEstimateAction() {
       redirect("/estimates?error=approve");
     }
     revalidatePath("/estimates");
-    revalidatePath(`/estimates/${id}`);
+    revalidateEstimatePaths(id);
     redirect(`/estimates/${id}`);
   } catch {
     revalidatePath("/estimates");

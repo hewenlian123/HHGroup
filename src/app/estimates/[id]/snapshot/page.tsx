@@ -1,10 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import {
-  getEstimateById,
-  getEstimateItems,
-  getEstimateMeta,
-} from "@/lib/data";
+import { getEstimateById, getEstimateItems, getEstimateMeta, getEstimateCategories } from "@/lib/data";
 import { EstimateReadOnlyContent } from "../estimate-read-only";
 import { Download } from "lucide-react";
 
@@ -17,8 +13,9 @@ export default async function EstimateSnapshotPage({
   const estimate = await getEstimateById(id);
   if (!estimate) notFound();
 
-  const meta = await getEstimateMeta(id);
-  const items = await getEstimateItems(id);
+  const [meta, items, categories] = await Promise.all([getEstimateMeta(id), getEstimateItems(id), getEstimateCategories(id)]);
+
+  const estimateCategories = [...categories].sort((a, b) => a.costCode.localeCompare(b.costCode));
 
   const payload = {
     estimateId: id,
@@ -32,6 +29,7 @@ export default async function EstimateSnapshotPage({
     projectName: meta?.project.name ?? "",
     projectAddress: meta?.project.siteAddress ?? "",
     items,
+    estimateCategories,
   };
 
   return (

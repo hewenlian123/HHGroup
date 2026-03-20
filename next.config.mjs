@@ -24,6 +24,10 @@ export default function nextConfig(phase) {
     eslint: {
       ignoreDuringBuilds: true,
     },
+    // Avoid broken server chunks like `vendor-chunks/@supabase.js` (MODULE_NOT_FOUND) on App Router pages.
+    experimental: {
+      serverComponentsExternalPackages: ["@supabase/supabase-js", "@supabase/ssr"],
+    },
     // Avoid ENOENT/rename errors in .next/cache/webpack (path with spaces, concurrent access)
     webpack: (config, { dev }) => {
       if (dev) {

@@ -13,6 +13,10 @@ import { Plus, Copy, Trash2, ChevronRight, ChevronDown } from "lucide-react";
 import { useToast } from "@/components/toast/toast-provider";
 import { createBrowserClient } from "@/lib/supabase";
 import { getCompanyProfile } from "@/lib/company-profile";
+import {
+  CustomerSelectWithAdd,
+  type CustomerOption,
+} from "@/components/customers/customer-select-with-add";
 
 type CostCodeType = "material" | "labor" | "subcontractor";
 
@@ -49,6 +53,9 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
   const [clientName, setClientName] = React.useState("");
   const [projectName, setProjectName] = React.useState("");
   const [address, setAddress] = React.useState("");
+  const [phone, setPhone] = React.useState("");
+  const [email, setEmail] = React.useState("");
+  const [selectedCustomer, setSelectedCustomer] = React.useState<CustomerOption | null>(null);
   const [estimateDate] = React.useState(today);
   const [validUntil, setValidUntil] = React.useState("");
   const [salesPerson, setSalesPerson] = React.useState("");
@@ -62,8 +69,19 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
   const [categoryNames, setCategoryNames] = React.useState<Record<string, string>>({});
   const [lineItems, setLineItems] = React.useState<LineItem[]>([]);
   const [saving, setSaving] = React.useState(false);
-  /** On /estimates/new, keep Estimate Information expanded by default. */
-  const [infoOpen, setInfoOpen] = React.useState(true);
+  /** Estimate Information: read-only summary by default; Edit opens the form. */
+  const [isEditing, setIsEditing] = React.useState(false);
+  const infoSnapshotRef = React.useRef<{
+    clientName: string;
+    projectName: string;
+    address: string;
+    phone: string;
+    email: string;
+    validUntil: string;
+    salesPerson: string;
+    notes: string;
+    selectedCustomer: CustomerOption | null;
+  } | null>(null);
   const [paymentMilestones, setPaymentMilestones] = React.useState<PaymentMilestoneLocal[]>([]);
   const [scheduleOpen, setScheduleOpen] = React.useState(false);
   const [pmTitle, setPmTitle] = React.useState("");
@@ -192,6 +210,57 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
     setCategoryNames((prev) => ({ ...prev, [code]: name }));
   };
 
+  const applyCustomerSelection = React.useCallback((customer: CustomerOption) => {
+    setSelectedCustomer(customer);
+    setClientName(customer.name ?? "");
+    setAddress((prev) => (!prev.trim() ? (customer.address ?? "") : prev));
+    setPhone((prev) => (!prev.trim() ? (customer.phone ?? "") : prev));
+    setEmail((prev) => (!prev.trim() ? (customer.email ?? "") : prev));
+  }, []);
+
+  const handleCustomerPickerChange = React.useCallback(
+    (customerId: string | null, customer?: CustomerOption | null) => {
+      if (!customerId || !customer) {
+        setSelectedCustomer(null);
+        return;
+      }
+      applyCustomerSelection(customer);
+    },
+    [applyCustomerSelection]
+  );
+
+  const beginEstimateInfoEdit = () => {
+    infoSnapshotRef.current = {
+      clientName,
+      projectName,
+      address,
+      phone,
+      email,
+      validUntil,
+      salesPerson,
+      notes,
+      selectedCustomer: selectedCustomer ? { ...selectedCustomer } : null,
+    };
+    setIsEditing(true);
+  };
+
+  const cancelEstimateInfoEdit = () => {
+    const snap = infoSnapshotRef.current;
+    if (snap) {
+      setClientName(snap.clientName);
+      setProjectName(snap.projectName);
+      setAddress(snap.address);
+      setPhone(snap.phone);
+      setEmail(snap.email);
+      setValidUntil(snap.validUntil);
+      setSalesPerson(snap.salesPerson);
+      setNotes(snap.notes);
+      setSelectedCustomer(snap.selectedCustomer);
+    }
+    infoSnapshotRef.current = null;
+    setIsEditing(false);
+  };
+
   const handleSave = async () => {
     const client = clientName.trim();
     if (!client) {
@@ -210,6 +279,8 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
         clientName,
         projectName,
         address,
+        clientPhone: phone,
+        clientEmail: email,
         estimateDate: estimateDate || undefined,
         validUntil: validUntil || undefined,
         notes: notes.trim() || undefined,
@@ -242,6 +313,8 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
         toast({ title: "Create failed", description: res.error ?? "操作失败", variant: "error" });
         return;
       }
+      setIsEditing(false);
+      infoSnapshotRef.current = null;
       toast({ title: "Created", description: "Estimate created.", variant: "success" });
       router.push(`/estimates/${res.estimateId}?created=1`);
     } finally {
@@ -297,7 +370,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
       </header>
 
       {/* B. Compact Estimate Information */}
-      <section className="border border-zinc-200/70 dark:border-border rounded-lg overflow-hidden bg-background">
+      <section className="border border-zinc-200/70 dark:border-border rounded-lg overflow-hidden bg-background transition-all duration-200 ease-in-out">
         <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-zinc-200/60 dark:border-border bg-muted/20">
           <div className="min-w-0">
             <h2 className="text-sm font-semibold text-foreground">Estimate Information</h2>
@@ -305,17 +378,42 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
               {clientName || "Client"} • {projectName || "Project"} • Draft
             </p>
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="rounded-md h-8 text-muted-foreground hover:text-foreground"
-            onClick={() => setInfoOpen((v) => !v)}
-            aria-expanded={infoOpen}
-          >
-            {infoOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-            {infoOpen ? "Hide details" : "Edit details"}
-          </Button>
+          <div className="flex shrink-0 items-center gap-2">
+            {isEditing ? (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-md h-8"
+                  onClick={cancelEstimateInfoEdit}
+                  disabled={saving}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="default"
+                  size="sm"
+                  className="rounded-md h-8"
+                  onClick={() => void handleSave()}
+                  disabled={saving}
+                >
+                  {saving ? "Saving…" : "Save"}
+                </Button>
+              </>
+            ) : (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="rounded-md h-8 text-muted-foreground hover:text-foreground"
+                onClick={beginEstimateInfoEdit}
+              >
+                Edit
+              </Button>
+            )}
+          </div>
         </div>
 
         <div className="px-4 py-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
@@ -340,6 +438,14 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
             <div className="truncate text-muted-foreground">{address || "—"}</div>
           </div>
           <div className="min-w-0">
+            <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">Phone</div>
+            <div className="truncate text-muted-foreground">{phone || "—"}</div>
+          </div>
+          <div className="min-w-0">
+            <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">Email</div>
+            <div className="truncate text-muted-foreground">{email || "—"}</div>
+          </div>
+          <div className="min-w-0">
             <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">Estimate Date</div>
             <div className="tabular-nums text-muted-foreground">{estimateDate}</div>
           </div>
@@ -357,8 +463,15 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
           </div>
         </div>
 
-        {infoOpen && (
-          <div className="p-4 pt-0 space-y-4">
+        {isEditing && (
+          <div className="p-4 pt-0 space-y-4 border-t border-zinc-200/60 dark:border-border animate-in fade-in-0 transition-all duration-200 ease-in-out">
+            <div className="border-b border-zinc-200/60 dark:border-border pb-4">
+              <CustomerSelectWithAdd
+                label="Select customer"
+                value={selectedCustomer?.id ?? null}
+                onChange={handleCustomerPickerChange}
+              />
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="clientName" className="text-xs">Client / Customer</Label>
@@ -372,6 +485,30 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
             <div className="space-y-1.5 pt-2 border-t border-zinc-200/60 dark:border-border">
               <Label htmlFor="address" className="text-xs">Address</Label>
               <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Site or client address" className="h-8 rounded-md text-sm" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-zinc-200/60 dark:border-border">
+              <div className="space-y-1.5">
+                <Label htmlFor="clientPhone" className="text-xs">Phone</Label>
+                <Input
+                  id="clientPhone"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="Phone"
+                  className="h-8 rounded-md text-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="clientEmail" className="text-xs">Email</Label>
+                <Input
+                  id="clientEmail"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email"
+                  className="h-8 rounded-md text-sm"
+                />
+              </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-zinc-200/60 dark:border-border">
               <div className="space-y-1.5">

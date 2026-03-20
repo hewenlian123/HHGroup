@@ -2206,7 +2206,16 @@ function estimateCodeToType(code: string): "material" | "labor" | "subcontractor
   return (c as { type: "material" | "labor" | "subcontractor" }).type;
 }
 
-export type { EstimateListItem, EstimateItemRow, EstimateMetaRecord, EstimateSummary, PaymentScheduleItem, PaymentScheduleTemplate } from "../estimates-db";
+export type {
+  EstimateListItem,
+  EstimateItemRow,
+  EstimateMetaRecord,
+  EstimateSummary,
+  PaymentScheduleItem,
+  PaymentScheduleTemplate,
+  EstimateCategorySectionRow,
+} from "../estimates-db";
+export { groupEstimateItemsByCategoryId } from "../estimates-db";
 
 export function getEstimateSnapshots(estimateId: string): Promise<{ snapshotId: string; estimateId: string; version: number; createdAt: string; statusAtSnapshot: string; frozenPayload: unknown }[]> {
   return estDb.listEstimateSnapshots(estimateId).then((rows) =>
@@ -2504,12 +2513,33 @@ export function addLineItem(
   return estDb.addLineItem(estimateId, item);
 }
 
+export function createCustomEstimateCategory(estimateId: string, displayName: string) {
+  return estDb.createCustomEstimateCategory(estimateId, displayName);
+}
+
+export function createEstimateCategoryWithExplicitCode(estimateId: string, costCode: string, displayName: string) {
+  return estDb.createEstimateCategoryWithExplicitCode(estimateId, costCode, displayName);
+}
+
+export function updateEstimateCategoryDisplayName(estimateId: string, costCode: string, displayName: string) {
+  return estDb.updateEstimateCategoryDisplayName(estimateId, costCode, displayName);
+}
+
 export function updateLineItem(
   estimateId: string,
   itemId: string,
   payload: { desc?: string; qty?: number; unit?: string; unitCost?: number; markupPct?: number }
 ): Promise<boolean> {
   return estDb.updateLineItem(estimateId, itemId, payload);
+}
+
+export function moveEstimateItemsToCostCode(
+  estimateId: string,
+  itemIds: string[],
+  newCostCode: string,
+  displayNameHint?: string
+): Promise<boolean> {
+  return estDb.moveEstimateItemsToCostCode(estimateId, itemIds, newCostCode, displayNameHint);
 }
 
 export function deleteLineItem(estimateId: string, itemId: string): Promise<boolean> {
@@ -2520,6 +2550,14 @@ export function duplicateLineItem(estimateId: string, itemId: string): Promise<E
   return estDb.duplicateLineItem(estimateId, itemId);
 }
 
+export function reorderEstimateCategories(
+  estimateId: string,
+  orderedCostCodes: string[],
+  displayNamesByCode: Record<string, string>
+): Promise<boolean> {
+  return estDb.reorderEstimateCategories(estimateId, orderedCostCodes, displayNamesByCode);
+}
+
 export function deleteEstimate(estimateId: string): Promise<boolean> {
   return estDb.deleteEstimate(estimateId);
 }
@@ -2528,6 +2566,8 @@ export function createEstimate(payload: {
   clientName: string;
   projectName: string;
   address: string;
+  clientPhone?: string;
+  clientEmail?: string;
   estimateDate?: string;
   validUntil?: string;
   notes?: string;
@@ -2540,6 +2580,8 @@ export function createEstimateWithItems(payload: {
   clientName: string;
   projectName: string;
   address: string;
+  clientPhone?: string;
+  clientEmail?: string;
   estimateDate?: string;
   validUntil?: string;
   notes?: string;

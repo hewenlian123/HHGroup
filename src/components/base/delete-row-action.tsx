@@ -35,9 +35,8 @@ export function DeleteRowAction(props: {
       <button
         type="button"
         className={cn(
-          "h-8 w-8 inline-flex items-center justify-center rounded-sm text-red-600 hover:text-red-700 hover:bg-red-50/60",
-          "opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity",
-          "max-sm:opacity-100 max-sm:pointer-events-auto",
+          "h-8 w-8 inline-flex items-center justify-center rounded-sm touch-manipulation text-red-600 hover:text-red-700 hover:bg-red-50/60",
+          "transition-colors duration-75 ease-out active:opacity-80",
           className
         )}
         onClick={() => setOpen(true)}

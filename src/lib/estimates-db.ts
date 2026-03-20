@@ -4,6 +4,7 @@
  */
 
 import { getSupabaseClient } from "@/lib/supabase";
+import { generateCode } from "@/lib/estimate-cost-code-suggest";
 
 // —— Types ——
 
@@ -33,7 +34,7 @@ export type EstimateMetaRecord = {
   salesPerson: string | null;
 };
 
-export type EstimateCategoryRecord = { costCode: string; displayName: string };
+export type EstimateCategoryRecord = { costCode: string; displayName: string; orderIndex: number };
 
 export type EstimateItemRow = {
   id: string;
@@ -106,6 +107,74 @@ export function lineTotal(item: EstimateItemRow): number {
   return item.qty * item.unitCost * (1 + item.markupPct);
 }
 
+/** One section of the cost breakdown: items share the same category id (DB: estimate_items.cost_code). */
+export type EstimateCategorySectionRow = {
+  categoryId: string;
+  title: string;
+  rows: EstimateItemRow[];
+  /** Sum of line totals (qty × unitCost × (1+markup)) for rows in this category */
+  sectionTotal: number;
+};
+
+/**
+ * Group line items by category id (cost_code). Does not use array index or display name for matching.
+ * Order: persisted estimate_categories (by orderIndex, then costCode), then item codes not in that set (sorted).
+ */
+export function groupEstimateItemsByCategoryId(
+  items: EstimateItemRow[],
+  categories: ReadonlyArray<{ costCode: string; displayName: string; orderIndex?: number }>,
+  catalogNameByCode?: Readonly<Record<string, string>>
+): EstimateCategorySectionRow[] {
+  const byId = new Map<string, EstimateItemRow[]>();
+  for (const item of items) {
+    const id = item.costCode;
+    let list = byId.get(id);
+    if (!list) {
+      list = [];
+      byId.set(id, list);
+    }
+    list.push(item);
+  }
+
+  const persistedIds = new Set(categories.map((c) => c.costCode));
+  const sortedPersisted = [...categories].sort((a, b) => {
+    const oa = a.orderIndex ?? 0;
+    const ob = b.orderIndex ?? 0;
+    if (oa !== ob) return oa - ob;
+    return a.costCode.localeCompare(b.costCode);
+  });
+
+  const sections: EstimateCategorySectionRow[] = [];
+
+  for (const cat of sortedPersisted) {
+    const rows = byId.get(cat.costCode);
+    if (!rows?.length) continue;
+    const sectionTotal = rows.reduce((s, r) => s + lineTotal(r), 0);
+    sections.push({
+      categoryId: cat.costCode,
+      title: cat.displayName?.trim() || cat.costCode,
+      rows,
+      sectionTotal,
+    });
+  }
+
+  const orphanIds = [...byId.keys()].filter((id) => !persistedIds.has(id)).sort((a, b) => a.localeCompare(b));
+
+  for (const categoryId of orphanIds) {
+    const rows = byId.get(categoryId)!;
+    const sectionTotal = rows.reduce((s, r) => s + lineTotal(r), 0);
+    const catalogLabel = catalogNameByCode?.[categoryId]?.trim();
+    sections.push({
+      categoryId,
+      title: catalogLabel || categoryId,
+      rows,
+      sectionTotal,
+    });
+  }
+
+  return sections;
+}
+
 /** Compute summary from items and meta. Pass codeToType map (code -> 'material'|'labor'|'subcontractor') for breakdown. */
 export function computeSummary(
   items: EstimateItemRow[],
@@ -158,6 +227,8 @@ export async function createEstimate(payload: {
   clientName: string;
   projectName: string;
   address: string;
+  clientPhone?: string;
+  clientEmail?: string;
   estimateDate?: string;
   validUntil?: string;
   notes?: string;
@@ -194,6 +265,8 @@ export async function createEstimate(payload: {
     estimate_id: row.id,
     client_name: payload.clientName,
     client_address: payload.address,
+    client_phone: payload.clientPhone ?? "",
+    client_email: payload.clientEmail ?? "",
     project_name: payload.projectName,
     project_site_address: payload.address,
     estimate_date: now,
@@ -220,6 +293,8 @@ export async function createEstimateWithItems(payload: {
   clientName: string;
   projectName: string;
   address: string;
+  clientPhone?: string;
+  clientEmail?: string;
   estimateDate?: string;
   validUntil?: string;
   notes?: string;
@@ -236,6 +311,8 @@ export async function createEstimateWithItems(payload: {
     clientName: payload.clientName,
     projectName: payload.projectName,
     address: payload.address,
+    clientPhone: payload.clientPhone,
+    clientEmail: payload.clientEmail,
     estimateDate: payload.estimateDate,
     validUntil: payload.validUntil,
     notes: payload.notes,
@@ -247,8 +324,12 @@ export async function createEstimateWithItems(payload: {
   });
   const c = client();
   if (payload.categoryNames && Object.keys(payload.categoryNames).length > 0) {
+    let orderIdx = 0;
     for (const [cost_code, display_name] of Object.entries(payload.categoryNames)) {
-      await c.from("estimate_categories").upsert({ estimate_id: id, cost_code, display_name }, { onConflict: "estimate_id,cost_code" });
+      await c.from("estimate_categories").upsert(
+        { estimate_id: id, cost_code, display_name, order_index: orderIdx++ },
+        { onConflict: "estimate_id,cost_code" }
+      );
     }
   }
   for (const it of payload.items) {
@@ -361,14 +442,63 @@ export async function getEstimateMeta(estimateId: string): Promise<EstimateMetaR
   };
 }
 
+async function nextCategoryOrderIndex(c: ReturnType<typeof client>, estimateId: string): Promise<number> {
+  const { data } = await c
+    .from("estimate_categories")
+    .select("order_index")
+    .eq("estimate_id", estimateId);
+  let max = -1;
+  for (const r of data ?? []) {
+    const oi = Number((r as { order_index?: number }).order_index);
+    if (!Number.isNaN(oi)) max = Math.max(max, oi);
+  }
+  return max + 1;
+}
+
+function isMissingOrderIndexColumnError(err: unknown): boolean {
+  const msg =
+    typeof err === "object" && err !== null && "message" in err
+      ? String((err as { message?: unknown }).message ?? "")
+      : "";
+  return /order_index/i.test(msg) && /could not find|schema cache|column/i.test(msg);
+}
+
+async function upsertEstimateCategoryWithOrderFallback(
+  c: ReturnType<typeof client>,
+  row: { estimate_id: string; cost_code: string; display_name: string; order_index: number }
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await c.from("estimate_categories").upsert(row, { onConflict: "estimate_id,cost_code" });
+  if (!error) return { ok: true };
+  if (isMissingOrderIndexColumnError(error)) {
+    const { error: fallbackErr } = await c
+      .from("estimate_categories")
+      .upsert(
+        { estimate_id: row.estimate_id, cost_code: row.cost_code, display_name: row.display_name },
+        { onConflict: "estimate_id,cost_code" }
+      );
+    if (!fallbackErr) return { ok: true };
+    return { ok: false, error: fallbackErr.message || "Could not save category." };
+  }
+  return { ok: false, error: error.message || "Could not save category." };
+}
+
 export async function getEstimateCategories(estimateId: string): Promise<EstimateCategoryRecord[]> {
   const c = client();
-  const { data: rows, error } = await c.from("estimate_categories").select("cost_code, display_name").eq("estimate_id", estimateId);
+  const { data: rows, error } = await c
+    .from("estimate_categories")
+    .select("cost_code, display_name, order_index")
+    .eq("estimate_id", estimateId)
+    .order("order_index", { ascending: true })
+    .order("cost_code", { ascending: true });
   if (error) {
     if (isMissingTable(error)) return [];
     return [];
   }
-  return (rows ?? []).map((r: { cost_code: string; display_name: string }) => ({ costCode: r.cost_code, displayName: r.display_name }));
+  return (rows ?? []).map((r: { cost_code: string; display_name: string; order_index?: number | null }) => ({
+    costCode: r.cost_code,
+    displayName: r.display_name,
+    orderIndex: r.order_index != null ? Number(r.order_index) : 0,
+  }));
 }
 
 export async function getEstimateItems(estimateId: string): Promise<EstimateItemRow[]> {
@@ -597,10 +727,15 @@ export async function createNewVersionFromSnapshot(estimateId: string): Promise<
     })
     .eq("estimate_id", estimateId);
 
-  // Restore categories
+  // Restore categories (stable order from meta keys)
   const categoryNames = (m as { categoryNames?: Record<string, string> }).categoryNames ?? {};
-  for (const [cost_code, display_name] of Object.entries(categoryNames)) {
-    await c.from("estimate_categories").upsert({ estimate_id: estimateId, cost_code, display_name }, { onConflict: "estimate_id,cost_code" });
+  const catEntries = Object.entries(categoryNames);
+  for (let i = 0; i < catEntries.length; i++) {
+    const [cost_code, display_name] = catEntries[i];
+    await c.from("estimate_categories").upsert(
+      { estimate_id: estimateId, cost_code, display_name, order_index: i },
+      { onConflict: "estimate_id,cost_code" }
+    );
   }
 
   // Restore items: replace all
@@ -664,20 +799,66 @@ export async function updateEstimateMeta(
   if (Object.keys(updates).length > 0) {
     const { error: e1 } = await c.from("estimate_meta").update(updates).eq("estimate_id", estimateId);
     if (e1) return false;
-    if (payload.client?.name || payload.project?.name) {
-      const rowUp: Record<string, string> = {};
-      if (payload.client?.name) rowUp.client = payload.client.name;
-      if (payload.project?.name) rowUp.project = payload.project.name;
-      rowUp.updated_at = new Date().toISOString().slice(0, 10);
-      await c.from("estimates").update(rowUp).eq("id", estimateId);
-    }
+    const estRow: Record<string, string> = { updated_at: new Date().toISOString().slice(0, 10) };
+    if (payload.client?.name) estRow.client = payload.client.name;
+    if (payload.project?.name) estRow.project = payload.project.name;
+    await c.from("estimates").update(estRow).eq("id", estimateId);
   }
 
   if (payload.categoryNames && Object.keys(payload.categoryNames).length > 0) {
     for (const [cost_code, display_name] of Object.entries(payload.categoryNames)) {
-      await c.from("estimate_categories").upsert({ estimate_id: estimateId, cost_code, display_name }, { onConflict: "estimate_id,cost_code" });
+      const { data: existing } = await c
+        .from("estimate_categories")
+        .select("order_index")
+        .eq("estimate_id", estimateId)
+        .eq("cost_code", cost_code)
+        .maybeSingle();
+      const oi =
+        existing && (existing as { order_index?: number }).order_index != null
+          ? Number((existing as { order_index: number }).order_index)
+          : await nextCategoryOrderIndex(c, estimateId);
+      const up = await upsertEstimateCategoryWithOrderFallback(c, {
+        estimate_id: estimateId,
+        cost_code,
+        display_name,
+        order_index: oi,
+      });
+      if (!up.ok) return false;
     }
+    await c.from("estimates").update({ updated_at: new Date().toISOString().slice(0, 10) }).eq("id", estimateId);
   }
+  return true;
+}
+
+/** Persist category section order (Cost Breakdown). Upserts rows so orphans gain a category row. */
+export async function reorderEstimateCategories(
+  estimateId: string,
+  orderedCostCodes: string[],
+  displayNamesByCode: Record<string, string>
+): Promise<boolean> {
+  const c = client();
+  const { data: est } = await c.from("estimates").select("status").eq("id", estimateId).single();
+  if (!est || !["Draft", "Sent"].includes(est.status as string)) return false;
+
+  const { data: existingRows } = await c
+    .from("estimate_categories")
+    .select("cost_code, display_name")
+    .eq("estimate_id", estimateId);
+  const existingNames: Record<string, string> = Object.fromEntries(
+    (existingRows ?? []).map((r: { cost_code: string; display_name: string }) => [r.cost_code, r.display_name])
+  );
+
+  for (let i = 0; i < orderedCostCodes.length; i++) {
+    const cost_code = orderedCostCodes[i];
+    const fromMap = displayNamesByCode[cost_code]?.trim();
+    const display_name = (fromMap || existingNames[cost_code] || cost_code).trim() || cost_code;
+    const { error } = await c.from("estimate_categories").upsert(
+      { estimate_id: estimateId, cost_code, display_name, order_index: i },
+      { onConflict: "estimate_id,cost_code" }
+    );
+    if (error) return false;
+  }
+  await c.from("estimates").update({ updated_at: new Date().toISOString().slice(0, 10) }).eq("id", estimateId);
   return true;
 }
 
@@ -717,6 +898,238 @@ export async function addLineItem(
   };
 }
 
+async function generateUniqueCustomCostCode(c: ReturnType<typeof client>, estimateId: string): Promise<string> {
+  const { data: catRows } = await c
+    .from("estimate_categories")
+    .select("cost_code")
+    .eq("estimate_id", estimateId);
+  const { data: itemRows } = await c
+    .from("estimate_items")
+    .select("cost_code")
+    .eq("estimate_id", estimateId);
+
+  const used = new Set<string>();
+  for (const r of catRows ?? []) used.add(String((r as { cost_code?: string }).cost_code ?? "").trim());
+  for (const r of itemRows ?? []) used.add(String((r as { cost_code?: string }).cost_code ?? "").trim());
+
+  let candidate = generateCode(used);
+  for (let attempt = 0; attempt < 50; attempt++) {
+    if (!used.has(candidate)) return candidate;
+    const n = Number.parseInt(candidate, 10);
+    if (!Number.isFinite(n)) break;
+    candidate = String(Math.min(n + 10_000, 999_999)).padStart(6, "0");
+  }
+  return candidate;
+}
+
+/** Create a custom cost category (generated cost code + display name) and one placeholder line item. */
+export async function createCustomEstimateCategory(
+  estimateId: string,
+  displayName: string
+): Promise<{ ok: true; costCode: string; item: EstimateItemRow } | { ok: false; error: string }> {
+  const estimateIdSafe = estimateId.trim();
+  if (!estimateIdSafe) return { ok: false, error: "Estimate id is required." };
+  const trimmed = displayName.trim();
+  if (!trimmed) return { ok: false, error: "Name is required." };
+  const c = client();
+  const { data: est } = await c.from("estimates").select("status").eq("id", estimateIdSafe).single();
+  if (!est || !["Draft", "Sent"].includes(est.status as string)) {
+    return { ok: false, error: "Estimate cannot be edited." };
+  }
+
+  const costCode = await generateUniqueCustomCostCode(c, estimateIdSafe);
+  const orderIndex = await nextCategoryOrderIndex(c, estimateIdSafe);
+
+  const { error: eCat } = await c.from("estimate_categories").upsert(
+    { estimate_id: estimateIdSafe, cost_code: costCode, display_name: trimmed, order_index: orderIndex },
+    { onConflict: "estimate_id,cost_code" }
+  );
+  if (eCat && isMissingOrderIndexColumnError(eCat)) {
+    // Backward-compat guard: some environments haven't refreshed schema cache for order_index yet.
+    const { error: fallbackErr } = await c
+      .from("estimate_categories")
+      .upsert(
+        { estimate_id: estimateIdSafe, cost_code: costCode, display_name: trimmed },
+        { onConflict: "estimate_id,cost_code" }
+      );
+    if (!fallbackErr) {
+      const item = await addLineItem(estimateIdSafe, {
+        costCode,
+        desc: "New item",
+        qty: 1,
+        unit: "EA",
+        unitCost: 0,
+        markupPct: 0.1,
+      });
+      if (!item) {
+        await c.from("estimate_categories").delete().eq("estimate_id", estimateIdSafe).eq("cost_code", costCode);
+        return { ok: false, error: "Could not create category line item." };
+      }
+      return { ok: true, costCode, item };
+    }
+    console.error(fallbackErr);
+    console.log(fallbackErr.message);
+    console.log(fallbackErr.details);
+    return { ok: false, error: fallbackErr.message || "Could not create category." };
+  }
+  if (eCat) {
+    // Debug: log full Supabase error for quick-create failures.
+    console.error(eCat);
+    console.log(eCat.message);
+    console.log(eCat.details);
+    const msg = eCat.message ?? "";
+    if (/duplicate|unique/i.test(msg)) return { ok: false, error: "This code is already in use." };
+    return { ok: false, error: eCat.message || "Could not create category." };
+  }
+
+  const item = await addLineItem(estimateIdSafe, {
+    costCode,
+    desc: "New item",
+    qty: 1,
+    unit: "EA",
+    unitCost: 0,
+    markupPct: 0.1,
+  });
+  if (!item) {
+    await c.from("estimate_categories").delete().eq("estimate_id", estimateIdSafe).eq("cost_code", costCode);
+    return { ok: false, error: "Could not create category line item." };
+  }
+  return { ok: true, costCode, item };
+}
+
+/** Create category with an explicit cost code + display name and one placeholder line item. */
+export async function createEstimateCategoryWithExplicitCode(
+  estimateId: string,
+  costCodeRaw: string,
+  displayNameRaw: string
+): Promise<{ ok: true; costCode: string; item: EstimateItemRow } | { ok: false; error: string }> {
+  const estimateIdSafe = estimateId.trim();
+  if (!estimateIdSafe) return { ok: false, error: "Estimate id is required." };
+  const costCode = costCodeRaw.trim();
+  const displayName = displayNameRaw.trim();
+  if (!displayName) return { ok: false, error: "Name is required." };
+  if (!costCode) return { ok: false, error: "Code is required." };
+
+  const c = client();
+  const { data: est } = await c.from("estimates").select("status").eq("id", estimateIdSafe).single();
+  if (!est || !["Draft", "Sent"].includes(est.status as string)) {
+    return { ok: false, error: "Estimate cannot be edited." };
+  }
+
+  const { data: dupCat } = await c
+    .from("estimate_categories")
+    .select("cost_code")
+    .eq("estimate_id", estimateIdSafe)
+    .eq("cost_code", costCode)
+    .maybeSingle();
+  if (dupCat) return { ok: false, error: "This code is already in use." };
+
+  const { data: dupIt } = await c
+    .from("estimate_items")
+    .select("id")
+    .eq("estimate_id", estimateIdSafe)
+    .eq("cost_code", costCode)
+    .limit(1)
+    .maybeSingle();
+  if (dupIt) return { ok: false, error: "This code is already in use." };
+
+  const orderIndex = await nextCategoryOrderIndex(c, estimateIdSafe);
+
+  const { error: eCat } = await c.from("estimate_categories").insert({
+    estimate_id: estimateIdSafe,
+    cost_code: costCode,
+    display_name: displayName,
+    order_index: orderIndex,
+  });
+  if (eCat && isMissingOrderIndexColumnError(eCat)) {
+    // Backward-compat guard: retry without order_index when remote schema cache is stale.
+    const { error: fallbackErr } = await c.from("estimate_categories").insert({
+      estimate_id: estimateIdSafe,
+      cost_code: costCode,
+      display_name: displayName,
+    });
+    if (!fallbackErr) {
+      const item = await addLineItem(estimateIdSafe, {
+        costCode,
+        desc: "New item",
+        qty: 1,
+        unit: "EA",
+        unitCost: 0,
+        markupPct: 0.1,
+      });
+      if (!item) {
+        await c.from("estimate_categories").delete().eq("estimate_id", estimateIdSafe).eq("cost_code", costCode);
+        return { ok: false, error: "Could not create category line item." };
+      }
+      return { ok: true, costCode, item };
+    }
+    console.error(fallbackErr);
+    console.log(fallbackErr.message);
+    console.log(fallbackErr.details);
+    return { ok: false, error: fallbackErr.message || "Could not create category." };
+  }
+  if (eCat) {
+    // Debug: log full Supabase error for modal category create failures.
+    console.error(eCat);
+    console.log(eCat.message);
+    console.log(eCat.details);
+    const msg = eCat.message ?? "";
+    if (/duplicate|unique/i.test(msg)) return { ok: false, error: "This code is already in use." };
+    return { ok: false, error: eCat.message || "Could not create category." };
+  }
+
+  const item = await addLineItem(estimateIdSafe, {
+    costCode,
+    desc: "New item",
+    qty: 1,
+    unit: "EA",
+    unitCost: 0,
+    markupPct: 0.1,
+  });
+  if (!item) {
+    await c.from("estimate_categories").delete().eq("estimate_id", estimateIdSafe).eq("cost_code", costCode);
+    return { ok: false, error: "Could not create category line item." };
+  }
+  return { ok: true, costCode, item };
+}
+
+/** Update only one category display_name, without touching estimate meta fields. */
+export async function updateEstimateCategoryDisplayName(
+  estimateId: string,
+  costCode: string,
+  displayName: string
+): Promise<boolean> {
+  const estimateIdSafe = estimateId.trim();
+  const costCodeSafe = costCode.trim();
+  const nameSafe = displayName.trim();
+  if (!estimateIdSafe || !costCodeSafe || !nameSafe) return false;
+
+  const c = client();
+  const { data: est } = await c.from("estimates").select("status").eq("id", estimateIdSafe).single();
+  if (!est || !["Draft", "Sent"].includes(est.status as string)) return false;
+
+  const { data: existing } = await c
+    .from("estimate_categories")
+    .select("order_index")
+    .eq("estimate_id", estimateIdSafe)
+    .eq("cost_code", costCodeSafe)
+    .maybeSingle();
+  const oi =
+    existing && (existing as { order_index?: number }).order_index != null
+      ? Number((existing as { order_index: number }).order_index)
+      : await nextCategoryOrderIndex(c, estimateIdSafe);
+
+  const up = await upsertEstimateCategoryWithOrderFallback(c, {
+    estimate_id: estimateIdSafe,
+    cost_code: costCodeSafe,
+    display_name: nameSafe,
+    order_index: oi,
+  });
+  if (!up.ok) return false;
+  await c.from("estimates").update({ updated_at: new Date().toISOString().slice(0, 10) }).eq("id", estimateIdSafe);
+  return true;
+}
+
 export async function updateLineItem(
   estimateId: string,
   itemId: string,
@@ -733,6 +1146,44 @@ export async function updateLineItem(
   if (payload.markupPct != null) up.markup_pct = payload.markupPct;
   if (Object.keys(up).length === 0) return true;
   const { error } = await c.from("estimate_items").update(up).eq("id", itemId).eq("estimate_id", estimateId);
+  if (error) return false;
+  await c.from("estimates").update({ updated_at: new Date().toISOString().slice(0, 10) }).eq("id", estimateId);
+  return true;
+}
+
+/** Move line items to another cost code (category). Creates `estimate_categories` row if missing. */
+export async function moveEstimateItemsToCostCode(
+  estimateId: string,
+  itemIds: string[],
+  newCostCode: string,
+  displayNameHint?: string
+): Promise<boolean> {
+  const c = client();
+  const { data: est } = await c.from("estimates").select("status").eq("id", estimateId).single();
+  if (!est || !["Draft", "Sent"].includes(est.status as string)) return false;
+  if (itemIds.length === 0) return true;
+
+  const hint = (displayNameHint ?? newCostCode).trim() || newCostCode;
+  const { data: catRow } = await c
+    .from("estimate_categories")
+    .select("cost_code")
+    .eq("estimate_id", estimateId)
+    .eq("cost_code", newCostCode)
+    .maybeSingle();
+  if (!catRow) {
+    const oi = await nextCategoryOrderIndex(c, estimateId);
+    const { error: e2 } = await c.from("estimate_categories").upsert(
+      { estimate_id: estimateId, cost_code: newCostCode, display_name: hint, order_index: oi },
+      { onConflict: "estimate_id,cost_code" }
+    );
+    if (e2) return false;
+  }
+
+  const { error } = await c
+    .from("estimate_items")
+    .update({ cost_code: newCostCode })
+    .in("id", itemIds)
+    .eq("estimate_id", estimateId);
   if (error) return false;
   await c.from("estimates").update({ updated_at: new Date().toISOString().slice(0, 10) }).eq("id", estimateId);
   return true;

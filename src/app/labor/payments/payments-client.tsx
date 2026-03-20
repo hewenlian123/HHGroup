@@ -414,7 +414,7 @@ export default function LaborPaymentsClient() {
       </Card>
 
       {modalWorkerId ? (
-        <div className="fixed inset-0 z-50 bg-black/40 p-4 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm p-4 flex items-center justify-center">
           <Card className="w-full max-w-[560px] p-6">
             <h3 className="text-base font-semibold text-foreground">Record Payment — {modalWorker?.workerName ?? "Worker"}</h3>
             <p className="text-xs text-muted-foreground mt-1">Applied range: {startDate} to {endDate}</p>

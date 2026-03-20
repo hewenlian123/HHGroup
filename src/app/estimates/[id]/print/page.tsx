@@ -6,7 +6,7 @@ import {
   getEstimateCategories,
   getEstimateSummary,
   getPaymentSchedule,
-  type EstimateItemRow,
+  getCostCodes,
 } from "@/lib/data";
 import { EstimatePrintDocument } from "../../_components/estimate-print-document";
 import { AutoprintTrigger } from "./autoprint-trigger";
@@ -24,23 +24,20 @@ export default async function EstimatePrintPage({
   const { id } = await params;
   const { autoprint } = await searchParams;
 
-  const [estimate, meta, items, categories, summary, paymentSchedule] = await Promise.all([
+  const [estimate, meta, items, categories, summary, paymentSchedule, costCodes] = await Promise.all([
     getEstimateById(id),
     getEstimateMeta(id),
     getEstimateItems(id),
     getEstimateCategories(id),
     getEstimateSummary(id),
     getPaymentSchedule(id),
+    getCostCodes(),
   ]);
 
   if (!estimate || !meta) redirect("/estimates");
 
   const categoryList = [...categories].sort((a, b) => a.costCode.localeCompare(b.costCode));
-  const itemsByCode: Record<string, EstimateItemRow[]> = {};
-  for (const item of items) {
-    if (!itemsByCode[item.costCode]) itemsByCode[item.costCode] = [];
-    itemsByCode[item.costCode].push(item);
-  }
+  const catalogNameByCode = Object.fromEntries(costCodes.map((c) => [c.code, c.name]));
 
   return (
     <div
@@ -69,7 +66,8 @@ export default async function EstimatePrintPage({
         }}
         meta={meta}
         categories={categoryList}
-        itemsByCode={itemsByCode}
+        items={items}
+        catalogNameByCode={catalogNameByCode}
         paymentSchedule={paymentSchedule}
         summary={summary}
       />

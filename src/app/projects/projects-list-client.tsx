@@ -224,7 +224,7 @@ const ProjectMobileCard = React.memo(function ProjectMobileCard({
         </div>
       </div>
       <div
-        className="pt-1.5 pr-2 shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all duration-150"
+        className="pt-1.5 pr-2 shrink-0"
         onClick={(e) => e.stopPropagation()}
       >
         <RowActionsMenu
@@ -299,7 +299,7 @@ const ProjectTableRow = React.memo(function ProjectTableRow({
         </div>
       </td>
       <td className="py-2.5 px-3 w-10 text-right" onClick={(e) => e.stopPropagation()}>
-        <div className="flex justify-end opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all duration-150">
+        <div className="flex justify-end">
         <RowActionsMenu
           ariaLabel={`Actions for ${row.name}`}
           actions={[

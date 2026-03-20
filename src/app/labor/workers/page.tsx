@@ -325,7 +325,7 @@ export default function LaborWorkersPage() {
                       <StatusBadge status={w.status === "active" ? "active" : "inactive"} />
                     </td>
                     <td className="py-3 px-4">
-                      <div className="flex items-center justify-end gap-2 opacity-0 transition-opacity duration-100 group-hover:opacity-100">
+                      <div className="flex items-center justify-end gap-2">
                         <Button
                           variant="outline"
                           className="h-8 px-3"

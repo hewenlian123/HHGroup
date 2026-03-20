@@ -159,7 +159,12 @@ export default function VendorsPage() {
       setForm(EMPTY_FORM);
       await refresh();
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : String(error);
+      const msg =
+        error instanceof Error
+          ? error.message
+          : typeof error === "object" && error !== null && "message" in error
+            ? String((error as { message: unknown }).message)
+            : String(error);
       setMessage(msg || "Failed to save vendor.");
     } finally {
       setSubmitting(false);
@@ -180,9 +185,14 @@ export default function VendorsPage() {
       try {
         const { error } = await supabase.from("vendors").delete().eq("id", row.id);
         if (error) throw error;
-      } catch (error: unknown) {
-        const msg = error instanceof Error ? error.message : String(error);
-        setMessage(msg || "Failed to delete vendor.");
+    } catch (error: unknown) {
+      const msg =
+        error instanceof Error
+          ? error.message
+          : typeof error === "object" && error !== null && "message" in error
+            ? String((error as { message: unknown }).message)
+            : String(error);
+      setMessage(msg || "Failed to delete vendor.");
         setRows(prevRows);
       } finally {
         setDeletingId(null);
@@ -302,7 +312,7 @@ export default function VendorsPage() {
                   <td className="px-4 py-3 text-muted-foreground">{row.email || "—"}</td>
                   <td className="px-4 py-3"><StatusBadge status={row.status} /></td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-2 opacity-0 transition-opacity duration-100 group-hover:opacity-100">
+                    <div className="flex items-center justify-end gap-2">
                       <Button variant="outline" className="h-8 px-3" onClick={() => openEdit(row)}>Edit</Button>
                       <Button variant="outline" className="h-8 px-3" onClick={() => void handleDelete(row)} disabled={deletingId === row.id}>
                         {deletingId === row.id ? "Deleting..." : "Delete"}

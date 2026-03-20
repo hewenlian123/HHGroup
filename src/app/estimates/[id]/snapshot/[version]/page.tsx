@@ -37,6 +37,12 @@ export default async function EstimateSnapshotPage({
     : null;
 
   const categoryNames = snapshot.meta.categoryNames ?? {};
+  const sortedKeys = Object.keys(categoryNames).sort((a, b) => a.localeCompare(b));
+  const estimateCategories = sortedKeys.map((costCode, i) => ({
+    costCode,
+    displayName: categoryNames[costCode] ?? costCode,
+    orderIndex: i,
+  }));
 
   return (
     <div className="page-container page-stack py-6" data-read-only="true">
@@ -46,6 +52,7 @@ export default async function EstimateSnapshotPage({
         status={snapshot.statusAtSnapshot}
         meta={snapshot.meta}
         items={snapshot.items}
+        estimateCategories={estimateCategories}
         categoryNames={categoryNames}
         costCodes={costCodes}
         summary={summary}
