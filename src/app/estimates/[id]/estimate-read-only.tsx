@@ -1,10 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  getCostCodes,
-  estimateLineTotal,
-  type EstimateItemRow,
-  type CostCode,
-} from "@/lib/data";
+import { getCostCodes, estimateLineTotal, groupEstimateItemsByCategoryId, type EstimateItemRow, type CostCode } from "@/lib/data";
 import { ChevronRight } from "lucide-react";
 
 export type EstimateReadOnlyPayload = {
@@ -19,15 +14,15 @@ export type EstimateReadOnlyPayload = {
   projectName: string;
   projectAddress: string;
   items: EstimateItemRow[];
+  /** When set, section order and titles follow estimate_categories + orphans (same as preview). */
+  estimateCategories?: { costCode: string; displayName: string }[];
 };
 
 export function EstimateReadOnlyContent({ payload }: { payload: EstimateReadOnlyPayload }) {
   const costCodes = getCostCodes();
-  const itemsByCode = costCodes.reduce<Record<string, EstimateItemRow[]>>((acc, cc) => {
-    const rows = payload.items.filter((i) => i.costCode === cc.code);
-    if (rows.length > 0) acc[cc.code] = rows;
-    return acc;
-  }, {});
+  const catalogNameByCode = Object.fromEntries(costCodes.map((c) => [c.code, c.name])) as Record<string, string>;
+  const estimateCategories = payload.estimateCategories ?? [];
+  const costSections = groupEstimateItemsByCategoryId(payload.items, estimateCategories, catalogNameByCode);
 
   const subtotal = payload.items.reduce((s, r) => s + estimateLineTotal(r), 0);
   const overheadPct = 0.05;
@@ -64,13 +59,16 @@ export function EstimateReadOnlyContent({ payload }: { payload: EstimateReadOnly
       <section>
         <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">Cost Code Sections</h2>
         <div className="space-y-4">
-          {Object.entries(itemsByCode).map(([code, rows]) => {
-            const cc = costCodes.find((c) => c.code === code)!;
-            const sectionSubtotal = rows.reduce((s, r) => s + estimateLineTotal(r), 0);
-            return (
-              <CostCodeSectionReadOnly key={code} code={cc} rows={rows} sectionSubtotal={sectionSubtotal} />
-            );
-          })}
+          {costSections.map(({ categoryId, title, rows, sectionTotal }) => (
+            <CostCodeSectionReadOnly
+              key={categoryId}
+              categoryId={categoryId}
+              title={title}
+              costCodes={costCodes}
+              rows={rows}
+              sectionSubtotal={sectionTotal}
+            />
+          ))}
         </div>
       </section>
 
@@ -95,23 +93,28 @@ export function EstimateReadOnlyContent({ payload }: { payload: EstimateReadOnly
 }
 
 function CostCodeSectionReadOnly({
-  code,
+  categoryId,
+  title,
+  costCodes,
   rows,
   sectionSubtotal,
 }: {
-  code: CostCode;
+  categoryId: string;
+  title: string;
+  costCodes: CostCode[];
   rows: EstimateItemRow[];
   sectionSubtotal: number;
 }) {
+  const cc = costCodes.find((c) => c.code === categoryId);
+  const headerLabel = cc ? `${cc.code} 00 00 – ${cc.name}` : `${categoryId} – ${title}`;
+
   return (
     <Card className="rounded-2xl border border-zinc-200/60 dark:border-border overflow-hidden">
       <details className="group" open>
         <summary className="flex list-none flex-wrap items-center justify-between gap-2 cursor-pointer px-6 py-4 hover:bg-zinc-50/50 dark:hover:bg-muted/30">
           <div className="flex items-center gap-2">
             <ChevronRight className="h-4 w-4 text-muted-foreground group-open:rotate-90 transition-transform" />
-            <span className="font-medium text-foreground">
-              {code.code} 00 00 – {code.name}
-            </span>
+            <span className="font-medium text-foreground">{headerLabel}</span>
           </div>
           <span className="tabular-nums text-sm font-medium text-foreground">
             ${sectionSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}

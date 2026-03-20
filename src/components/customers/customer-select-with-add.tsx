@@ -14,6 +14,8 @@ import {
 export type CustomerOption = {
   id: string;
   name: string;
+  address?: string | null;
+  phone?: string | null;
   email?: string | null;
 };
 
@@ -32,7 +34,21 @@ export function CustomerSelectWithAdd({ label = "Customer", value, onChange }: P
   const [addBusy, setAddBusy] = React.useState(false);
   const [addName, setAddName] = React.useState("");
   const [addEmail, setAddEmail] = React.useState("");
+  const [addPhone, setAddPhone] = React.useState("");
+  const [addAddress, setAddAddress] = React.useState("");
   const [addError, setAddError] = React.useState<string | null>(null);
+
+  const resetAddForm = React.useCallback(() => {
+    setAddName("");
+    setAddEmail("");
+    setAddPhone("");
+    setAddAddress("");
+    setAddError(null);
+  }, []);
+
+  React.useEffect(() => {
+    if (!addOpen) resetAddForm();
+  }, [addOpen, resetAddForm]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -50,7 +66,7 @@ export function CustomerSelectWithAdd({ label = "Customer", value, onChange }: P
     const q = search.trim().toLowerCase();
     if (!q) return options;
     return options.filter((c) => {
-      const hay = `${c.name} ${c.email ?? ""}`.toLowerCase();
+      const hay = `${c.name} ${c.email ?? ""} ${c.phone ?? ""}`.toLowerCase();
       return hay.includes(q);
     });
   }, [options, search]);
@@ -66,7 +82,12 @@ export function CustomerSelectWithAdd({ label = "Customer", value, onChange }: P
       const res = await fetch("/api/customers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: addName.trim(), email: addEmail.trim() || null }),
+        body: JSON.stringify({
+          name: addName.trim(),
+          email: addEmail.trim() || null,
+          phone: addPhone.trim() || null,
+          address: addAddress.trim() || null,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -76,7 +97,9 @@ export function CustomerSelectWithAdd({ label = "Customer", value, onChange }: P
       const created: CustomerOption = {
         id: data.id,
         name: data.name,
-        email: data.email,
+        address: data.address ?? "",
+        phone: data.phone ?? "",
+        email: data.email ?? "",
       };
       setOptions((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
       onChange(created.id, created);
@@ -172,28 +195,67 @@ export function CustomerSelectWithAdd({ label = "Customer", value, onChange }: P
       </Dialog>
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="max-w-sm border-border/60 rounded-md p-4 space-y-3">
-          <DialogHeader>
+        <DialogContent className="max-w-sm border-border/60 rounded-md p-4 flex flex-col gap-3">
+          <DialogHeader className="space-y-0">
             <DialogTitle className="text-sm font-semibold">New customer</DialogTitle>
           </DialogHeader>
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">Name</p>
-            <Input
-              value={addName}
-              onChange={(e) => setAddName(e.target.value)}
-              className="h-8 text-sm"
-            />
-          </div>
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">Email</p>
-            <Input
-              value={addEmail}
-              onChange={(e) => setAddEmail(e.target.value)}
-              className="h-8 text-sm"
-            />
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="new-customer-name" className="text-xs font-medium text-muted-foreground">
+                Name *
+              </label>
+              <Input
+                id="new-customer-name"
+                value={addName}
+                onChange={(e) => setAddName(e.target.value)}
+                className="h-8 rounded-md text-sm"
+                autoComplete="organization"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="new-customer-phone" className="text-xs font-medium text-muted-foreground">
+                Phone
+              </label>
+              <Input
+                id="new-customer-phone"
+                type="tel"
+                value={addPhone}
+                onChange={(e) => setAddPhone(e.target.value)}
+                className="h-8 rounded-md text-sm"
+                placeholder="Optional"
+                autoComplete="tel"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="new-customer-email" className="text-xs font-medium text-muted-foreground">
+                Email
+              </label>
+              <Input
+                id="new-customer-email"
+                type="email"
+                value={addEmail}
+                onChange={(e) => setAddEmail(e.target.value)}
+                className="h-8 rounded-md text-sm"
+                placeholder="Optional"
+                autoComplete="email"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="new-customer-address" className="text-xs font-medium text-muted-foreground">
+                Address
+              </label>
+              <Input
+                id="new-customer-address"
+                value={addAddress}
+                onChange={(e) => setAddAddress(e.target.value)}
+                className="h-8 rounded-md text-sm"
+                placeholder="Optional"
+                autoComplete="street-address"
+              />
+            </div>
           </div>
           {addError ? <p className="text-xs text-red-600">{addError}</p> : null}
-          <DialogFooter className="gap-2 pt-2">
+          <DialogFooter className="gap-2 pt-1 sm:justify-end">
             <Button
               type="button"
               variant="outline"
@@ -206,6 +268,7 @@ export function CustomerSelectWithAdd({ label = "Customer", value, onChange }: P
             </Button>
             <Button
               type="button"
+              variant="default"
               size="sm"
               className="h-8 rounded-sm"
               onClick={handleCreate}

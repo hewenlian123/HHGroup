@@ -131,7 +131,7 @@ export default function LaborInvoicesPage() {
                   <td className="py-3 px-4 text-right tabular-nums">{row.projectSplits.length}</td>
                   <td className="py-3 px-4"><StatusBadge status={row.status} /></td>
                   <td className="py-3 px-4">
-                    <div className="flex justify-end gap-2 opacity-0 transition-opacity duration-100 group-hover:opacity-100">
+                    <div className="flex justify-end gap-2">
                       <Link href={`/labor/invoices/${row.id}`}>
                         <Button size="sm" variant="outline" className="rounded-lg h-8">View/Edit</Button>
                       </Link>

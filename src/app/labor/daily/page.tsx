@@ -299,10 +299,7 @@ export default function DailyLaborLogPage() {
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className={cn(
-                              "h-8 w-8 text-muted-foreground hover:text-foreground",
-                              "opacity-100 md:opacity-0 md:group-hover:opacity-100"
-                            )}
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
                             onClick={() => openEdit(e)}
                             aria-label="Edit entry"
                           >
@@ -312,10 +309,7 @@ export default function DailyLaborLogPage() {
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className={cn(
-                              "h-8 w-8 text-muted-foreground hover:text-destructive",
-                              "opacity-100 md:opacity-0 md:group-hover:opacity-100"
-                            )}
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
                             onClick={() => void handleDelete(e)}
                             aria-label="Delete entry"
                           >

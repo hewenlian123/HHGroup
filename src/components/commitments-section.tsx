@@ -277,7 +277,7 @@ export function CommitmentsSection({
       </Card>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setOpen(false)}>
           <Card className="p-6 w-full max-w-xl mx-4" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-base font-semibold text-foreground mb-4">{editing ? "Edit Commitment" : "New Commitment"}</h3>
             <div className="grid gap-4 sm:grid-cols-2">

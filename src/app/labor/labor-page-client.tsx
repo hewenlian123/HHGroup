@@ -523,7 +523,7 @@ export default function LaborPageClient() {
                                       {pay > 0 ? `$${pay.toFixed(2)}` : "—"}
                                     </td>
                                     <td className="py-2 px-3 text-right">
-                                      <div className="flex items-center justify-end gap-2 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity max-sm:opacity-100 max-sm:pointer-events-auto">
+                                      <div className="flex items-center justify-end gap-2">
                                         <button
                                           type="button"
                                           className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50/60"
@@ -696,7 +696,7 @@ export default function LaborPageClient() {
                             {pay > 0 ? `$${pay.toFixed(2)}` : "—"}
                           </td>
                           <td className="py-2 px-3 text-right">
-                            <div className="flex items-center justify-end gap-2 opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity max-sm:opacity-100 max-sm:pointer-events-auto">
+                            <div className="flex items-center justify-end gap-2">
                               <button
                                 type="button"
                                 className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50/60"

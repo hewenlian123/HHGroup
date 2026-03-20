@@ -148,6 +148,12 @@ create policy estimate_categories_update_all on public.estimate_categories for u
 drop policy if exists estimate_categories_delete_all on public.estimate_categories;
 create policy estimate_categories_delete_all on public.estimate_categories for delete to anon using (true);
 
+-- 2b) Category display order (202603191200_estimate_categories_order_index.sql)
+alter table public.estimate_categories
+  add column if not exists order_index integer not null default 0;
+create index if not exists estimate_categories_estimate_order_idx
+  on public.estimate_categories (estimate_id, order_index);
+
 -- 3) sales_person on estimate_meta (202603081200_estimate_meta_sales_person.sql)
 alter table public.estimate_meta
   add column if not exists sales_person text null default '';

@@ -1,11 +1,21 @@
-import { estimateLineTotal, paymentMilestoneAmount, type EstimateItemRow, type EstimateSummaryResult, type PaymentScheduleItem } from "@/lib/data";
+import {
+  estimateLineTotal,
+  groupEstimateItemsByCategoryId,
+  paymentMilestoneAmount,
+  type EstimateItemRow,
+  type EstimateSummaryResult,
+  type PaymentScheduleItem,
+} from "@/lib/data";
 import type { EstimateMetaRecord } from "@/lib/data";
+import { splitLineItemDesc } from "@/lib/sanitize-line-item-html";
+import { LineItemDescriptionBodyPreview } from "@/app/estimates/_components/line-item-description-body-preview";
 
 export type EstimatePrintDocumentProps = {
   estimate: { number: string; status: string; updatedAt: string };
   meta: EstimateMetaRecord | null;
   categories: { costCode: string; displayName: string }[];
-  itemsByCode: Record<string, EstimateItemRow[]>;
+  items: EstimateItemRow[];
+  catalogNameByCode?: Record<string, string>;
   paymentSchedule: PaymentScheduleItem[];
   summary: EstimateSummaryResult | null;
 };
@@ -17,11 +27,13 @@ export function EstimatePrintDocument({
   estimate,
   meta,
   categories,
-  itemsByCode,
+  items,
+  catalogNameByCode,
   paymentSchedule,
   summary,
 }: EstimatePrintDocumentProps) {
   const estimateTotal = summary?.grandTotal ?? 0;
+  const costSections = groupEstimateItemsByCategoryId(items, categories, catalogNameByCode);
 
   return (
     <article className="bg-white text-zinc-900 mx-auto max-w-[8.5in] px-6 py-6 print:px-0 print:py-0 print:max-w-none">
@@ -72,92 +84,54 @@ export function EstimatePrintDocument({
       {/* Cost breakdown by category */}
       <section className="mb-8 print:break-inside-avoid">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-4">Cost Breakdown</h2>
-        {categories.length === 0 && Object.keys(itemsByCode).length === 0 ? (
+        {costSections.length === 0 ? (
           <p className="text-sm text-zinc-500 py-4">No line items.</p>
         ) : (
           <>
-            {categories.map((cat) => {
-              const rows = itemsByCode[cat.costCode] ?? [];
-              if (rows.length === 0) return null;
-              const sectionTotal = rows.reduce((s, r) => s + estimateLineTotal(r), 0);
-              return (
-                <div key={cat.costCode} className="mb-8 print:break-inside-avoid">
-                  <p className="text-sm font-semibold text-zinc-900 mb-3">{cat.displayName || cat.costCode}</p>
-                  <table className="w-full text-sm border-collapse">
-                    <thead>
-                      <tr className="border-b border-zinc-200 text-zinc-600">
-                        <th className="text-left py-2 pr-4 font-medium">Description</th>
-                        <th className="text-right py-2 px-2 font-medium tabular-nums w-16">Qty</th>
-                        <th className="text-left py-2 px-2 font-medium w-14">Unit</th>
-                        <th className="text-right py-2 px-2 font-medium tabular-nums">Unit Price</th>
-                        <th className="text-left py-2 px-2 font-medium text-zinc-600">Cost Code</th>
-                        <th className="text-right py-2 pl-4 font-medium tabular-nums">Total</th>
+            {costSections.map(({ categoryId, title, rows, sectionTotal }) => (
+              <div key={categoryId} className="mb-8 print:break-inside-avoid">
+                <p className="text-sm font-semibold text-zinc-900 mb-3">{title}</p>
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="border-b border-zinc-200 text-zinc-600">
+                      <th className="text-left py-2 pr-4 font-medium">Description</th>
+                      <th className="text-right py-2 px-2 font-medium tabular-nums w-16">Qty</th>
+                      <th className="text-left py-2 px-2 font-medium w-14">Unit</th>
+                      <th className="text-right py-2 px-2 font-medium tabular-nums">Unit Price</th>
+                      <th className="text-left py-2 px-2 font-medium text-zinc-600">Cost Code</th>
+                      <th className="text-right py-2 pl-4 font-medium tabular-nums">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((row) => {
+                      const { title: itemTitle, body } = splitLineItemDesc(row.desc ?? "");
+                      return (
+                      <tr key={row.id} className="border-b border-zinc-100">
+                        <td className="py-2.5 pr-4">
+                          <p className="font-medium text-zinc-900">{itemTitle || row.desc}</p>
+                          {body.trim() ? (
+                            <div className="mt-1 text-xs text-zinc-600">
+                              <LineItemDescriptionBodyPreview body={body} />
+                            </div>
+                          ) : null}
+                        </td>
+                        <td className="py-2.5 px-2 text-right tabular-nums text-zinc-900">{row.qty}</td>
+                        <td className="py-2.5 px-2 text-zinc-700">{row.unit}</td>
+                        <td className="py-2.5 px-2 text-right tabular-nums text-zinc-900">${fmt(row.unitCost)}</td>
+                        <td className="py-2.5 px-2 text-zinc-600 text-xs">{row.costCode}</td>
+                        <td className="py-2.5 pl-4 text-right tabular-nums font-medium text-zinc-900">
+                          ${fmt(estimateLineTotal(row))}
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {rows.map((row) => (
-                        <tr key={row.id} className="border-b border-zinc-100">
-                          <td className="py-2.5 pr-4">
-                            <p className="font-medium text-zinc-900">{row.desc}</p>
-                          </td>
-                          <td className="py-2.5 px-2 text-right tabular-nums text-zinc-900">{row.qty}</td>
-                          <td className="py-2.5 px-2 text-zinc-700">{row.unit}</td>
-                          <td className="py-2.5 px-2 text-right tabular-nums text-zinc-900">${fmt(row.unitCost)}</td>
-                          <td className="py-2.5 px-2 text-zinc-600 text-xs">{row.costCode}</td>
-                          <td className="py-2.5 pl-4 text-right tabular-nums font-medium text-zinc-900">
-                            ${fmt(estimateLineTotal(row))}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <p className="text-right text-sm font-medium tabular-nums text-zinc-900 mt-2">
-                    Section total: ${fmt(sectionTotal)}
-                  </p>
-                </div>
-              );
-            })}
-            {Object.entries(itemsByCode)
-              .filter(([code]) => !categories.some((c) => c.costCode === code))
-              .map(([code, rows]) => {
-                const sectionTotal = rows.reduce((s, r) => s + estimateLineTotal(r), 0);
-                return (
-                  <div key={code} className="mb-8 print:break-inside-avoid">
-                    <p className="text-sm font-semibold text-zinc-900 mb-3">{code}</p>
-                    <table className="w-full text-sm border-collapse">
-                      <thead>
-                        <tr className="border-b border-zinc-200 text-zinc-600">
-                          <th className="text-left py-2 pr-4 font-medium">Description</th>
-                          <th className="text-right py-2 px-2 font-medium tabular-nums w-16">Qty</th>
-                          <th className="text-left py-2 px-2 font-medium w-14">Unit</th>
-                          <th className="text-right py-2 px-2 font-medium tabular-nums">Unit Price</th>
-                          <th className="text-left py-2 px-2 font-medium">Cost Code</th>
-                          <th className="text-right py-2 pl-4 font-medium tabular-nums">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {rows.map((row) => (
-                          <tr key={row.id} className="border-b border-zinc-100">
-                            <td className="py-2.5 pr-4">
-                              <p className="font-medium text-zinc-900">{row.desc}</p>
-                            </td>
-                            <td className="py-2.5 px-2 text-right tabular-nums text-zinc-900">{row.qty}</td>
-                            <td className="py-2.5 px-2 text-zinc-700">{row.unit}</td>
-                            <td className="py-2.5 px-2 text-right tabular-nums text-zinc-900">${fmt(row.unitCost)}</td>
-                            <td className="py-2.5 px-2 text-zinc-600 text-xs">{row.costCode}</td>
-                            <td className="py-2.5 pl-4 text-right tabular-nums font-medium text-zinc-900">
-                              ${fmt(estimateLineTotal(row))}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    <p className="text-right text-sm font-medium tabular-nums text-zinc-900 mt-2">
-                      Section total: ${fmt(sectionTotal)}
-                    </p>
-                  </div>
-                );
-              })}
+                    );
+                    })}
+                  </tbody>
+                </table>
+                <p className="text-right text-sm font-medium tabular-nums text-zinc-900 mt-2">
+                  Section total: ${fmt(sectionTotal)}
+                </p>
+              </div>
+            ))}
           </>
         )}
       </section>

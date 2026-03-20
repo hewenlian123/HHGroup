@@ -474,7 +474,7 @@ export default function InvoiceDetailPage() {
       </Card>
 
       {showPaymentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowPaymentModal(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setShowPaymentModal(false)}>
           <Card
             className="rounded-2xl border border-zinc-200/60 dark:border-border p-6 w-full max-w-md mx-4"
             onClick={(e) => e.stopPropagation()}

@@ -19,9 +19,11 @@ import { EstimateEditor } from "../_components/estimate-editor";
 export function EstimateDetailClient({
   estimateId,
   estimateNumber,
+  estimateUpdatedAt,
   initialStatus,
   meta,
   items,
+  estimateCategories,
   categoryNames,
   costCodes,
   summary,
@@ -30,9 +32,12 @@ export function EstimateDetailClient({
 }: {
   estimateId: string;
   estimateNumber: string;
+  /** Bumps when server estimate row updates so editor remounts with fresh props after refresh. */
+  estimateUpdatedAt: string;
   initialStatus: EstimateStatus | string;
   meta: EstimateMetaRecord;
   items: EstimateItemRow[];
+  estimateCategories: { costCode: string; displayName: string }[];
   categoryNames: Record<string, string>;
   costCodes: CostCode[];
   summary: EstimateSummaryResult | null;
@@ -45,6 +50,8 @@ export function EstimateDetailClient({
   const [editing, setEditing] = React.useState(false);
   const [resetNonce, setResetNonce] = React.useState(0);
   const [convertDrawerOpen, setConvertDrawerOpen] = React.useState(false);
+  const [infoCollapseNonce, setInfoCollapseNonce] = React.useState(0);
+  const [costBreakdownCollapseNonce, setCostBreakdownCollapseNonce] = React.useState(0);
   const [pending, startTransition] = React.useTransition();
 
   const isLocked = !["Draft", "Sent"].includes(status);
@@ -55,21 +62,32 @@ export function EstimateDetailClient({
   };
 
   const onSave = () => {
+    const run = (form: HTMLFormElement) => {
+      const fd = new FormData(form);
+      startTransition(async () => {
+        const res = await saveEstimateMetaInlineAction(fd);
+        if (res.ok) {
+          toast({ title: "Saved", description: "Estimate updated.", variant: "success" });
+          setInfoCollapseNonce((n) => n + 1);
+          setCostBreakdownCollapseNonce((n) => n + 1);
+          router.refresh();
+          setEditing(false);
+        } else {
+          toast({ title: "Save failed", description: res.error ?? "Please try again.", variant: "error" });
+        }
+      });
+    };
+
     const form = document.getElementById("estimate-meta-form") as HTMLFormElement | null;
-    if (!form) {
-      toast({ title: "Nothing to save", description: "Estimate form not found.", variant: "error" });
+    if (form) {
+      run(form);
       return;
     }
-    const fd = new FormData(form);
-    startTransition(async () => {
-      const res = await saveEstimateMetaInlineAction(fd);
-      if (res.ok) {
-        toast({ title: "Saved", description: "Estimate updated.", variant: "success" });
-        router.refresh();
-        setEditing(false);
-      } else {
-        toast({ title: "Save failed", description: res.error ?? "Please try again.", variant: "error" });
-      }
+    // EstimateEditor expands Client/Project on edit in useEffect; one frame retry if Save is very fast.
+    requestAnimationFrame(() => {
+      const f = document.getElementById("estimate-meta-form") as HTMLFormElement | null;
+      if (f) run(f);
+      else toast({ title: "Nothing to save", description: "Estimate form not found.", variant: "error" });
     });
   };
 
@@ -125,18 +143,21 @@ export function EstimateDetailClient({
       />
 
       <EstimateEditor
-        key={`${estimateId}-${resetNonce}`}
+        key={`${estimateId}-${resetNonce}-${estimateUpdatedAt}`}
         estimateId={estimateId}
         estimateNumber={estimateNumber}
         status={status}
         meta={meta}
         items={items}
+        estimateCategories={estimateCategories}
         categoryNames={categoryNames}
         costCodes={costCodes}
         summary={summary}
         paymentSchedule={paymentSchedule}
         paymentTemplates={paymentTemplates}
         editing={editing && !isLocked}
+        infoCollapseNonce={infoCollapseNonce}
+        costBreakdownCollapseNonce={costBreakdownCollapseNonce}
       />
     </>
   );

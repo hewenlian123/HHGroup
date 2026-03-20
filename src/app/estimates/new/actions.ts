@@ -1,12 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidateEstimatePaths } from "@/app/estimates/revalidate-estimate-paths";
 import { createEstimateWithItems } from "@/lib/data";
 
 export type CreateEstimatePayload = {
   clientName: string;
   projectName: string;
   address: string;
+  clientPhone?: string;
+  clientEmail?: string;
   estimateDate?: string;
   validUntil?: string;
   notes?: string;
@@ -47,6 +50,8 @@ export async function createEstimateWithItemsAction(
       clientName,
       projectName,
       address: payload.address?.trim() ?? "",
+      clientPhone: payload.clientPhone?.trim() ?? "",
+      clientEmail: payload.clientEmail?.trim() ?? "",
       estimateDate: payload.estimateDate || undefined,
       validUntil: payload.validUntil || undefined,
       notes: payload.notes?.trim() || undefined,
@@ -68,7 +73,7 @@ export async function createEstimateWithItemsAction(
     });
 
     revalidatePath("/estimates");
-    revalidatePath(`/estimates/${id}`);
+    revalidateEstimatePaths(id);
     return { ok: true, estimateId: id };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : "操作失败" };

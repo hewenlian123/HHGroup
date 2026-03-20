@@ -300,7 +300,7 @@ export default function CategoriesPage() {
                   <td className="px-4 py-3 text-muted-foreground">{row.description || "—"}</td>
                   <td className="px-4 py-3"><StatusBadge status={row.status} /></td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center justify-end gap-2 opacity-0 transition-opacity duration-100 group-hover:opacity-100">
+                    <div className="flex items-center justify-end gap-2">
                       <Button variant="outline" className="h-8 px-3" onClick={() => openEdit(row)}>Edit</Button>
                       <Button variant="outline" className="h-8 px-3" onClick={() => void handleDelete(row)} disabled={deletingId === row.id}>
                         {deletingId === row.id ? "Deleting..." : "Delete"}

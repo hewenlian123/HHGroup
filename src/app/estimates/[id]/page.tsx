@@ -31,15 +31,18 @@ export default async function EstimateDetailPage({
     acc[c.costCode] = c.displayName;
     return acc;
   }, {});
+  const estimateCategories = [...categories].sort((a, b) => a.costCode.localeCompare(b.costCode));
 
   return (
     <div className="page-container page-stack py-6">
       <EstimateDetailClient
         estimateId={id}
         estimateNumber={estimate.number}
+        estimateUpdatedAt={estimate.updatedAt}
         initialStatus={estimate.status}
         meta={meta}
         items={items}
+        estimateCategories={estimateCategories}
         categoryNames={categoryNames}
         costCodes={costCodes}
         summary={summary}

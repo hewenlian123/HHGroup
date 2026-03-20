@@ -503,7 +503,7 @@ export default function SitePhotosPage() {
                     )}
                     {!editMode && (
                       <div
-                        className="absolute top-1.5 right-1.5 z-10 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                        className="absolute top-1.5 right-1.5 z-10"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <RowActionsMenu
@@ -783,7 +783,7 @@ export default function SitePhotosPage() {
         onChange={handleFileSelect}
       />
       {uploadOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={() => setUploadOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm" onClick={() => setUploadOpen(false)}>
           <div
             className="bg-background border border-border/60 rounded-sm p-4 w-full max-w-sm space-y-3"
             onClick={(e) => e.stopPropagation()}

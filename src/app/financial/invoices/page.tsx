@@ -227,7 +227,7 @@ function InvoicesPageInner() {
                     <TableCell className="text-right tabular-nums text-emerald-600/90 dark:text-emerald-400/90">${inv.paidTotal.toLocaleString()}</TableCell>
                     <TableCell className="text-right tabular-nums font-medium">${inv.balanceDue.toLocaleString()}</TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-1 opacity-0 transition-opacity duration-100 group-hover:opacity-100">
+                      <div className="flex justify-end gap-1">
                         <Button asChild variant="ghost" size="sm" className="h-8">
                           <Link href={`/financial/invoices/${inv.id}`}>
                             <Eye className="h-4 w-4 mr-1" /> View
