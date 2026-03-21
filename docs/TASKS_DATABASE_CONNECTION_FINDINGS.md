@@ -44,10 +44,10 @@ So there is no second “tasks” database in the app; only one `project_tasks` 
 
 ## 4. Which connection GET vs DELETE use
 
-| Operation | Handler | Client / source | URL | Key |
-|-----------|--------|------------------|-----|-----|
+| Operation                     | Handler                                 | Client / source                                                                                                                                         | URL                                                                     | Key                             |
+| ----------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | ------------------------------- |
 | **GET /api/operations/tasks** | `src/app/api/operations/tasks/route.ts` | `getAllTasksWithProject()` → `projectTasksDb.getAllTasksWithProject()` → `client()` in `project-tasks-db.ts` → **`supabase`** from **`@/lib/supabase`** | `NEXT_PUBLIC_SUPABASE_URL` (read when **lib/supabase** is first loaded) | `NEXT_PUBLIC_SUPABASE_ANON_KEY` |
-| **DELETE /api/tasks/[id]** | `src/app/api/tasks/[id]/route.ts` | **`getServerSupabaseAdmin()`** from **`@/lib/supabase-server`** | `NEXT_PUBLIC_SUPABASE_URL` (read when the handler runs) | `SUPABASE_SERVICE_ROLE_KEY` |
+| **DELETE /api/tasks/[id]**    | `src/app/api/tasks/[id]/route.ts`       | **`getServerSupabaseAdmin()`** from **`@/lib/supabase-server`**                                                                                         | `NEXT_PUBLIC_SUPABASE_URL` (read when the handler runs)                 | `SUPABASE_SERVICE_ROLE_KEY`     |
 
 So:
 

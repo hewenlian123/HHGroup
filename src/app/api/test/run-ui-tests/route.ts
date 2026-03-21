@@ -1,7 +1,7 @@
 /**
  * POST /api/test/run-ui-tests
  *
- * Runs `npm run ui:test` (tests/ui-tests.js via Puppeteer) in a child process,
+ * Runs `npm run ui:test` (tests/ui-tests.ts via Puppeteer) in a child process,
  * captures JSON output from stdout, and returns structured results.
  *
  * Works in local development where Chrome/Puppeteer is available.

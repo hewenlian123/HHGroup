@@ -26,7 +26,7 @@ export default function NewWorkerPage() {
       notes,
       status: "active",
     });
-    router.push(`/labor/workers/${next.id}`);
+    router.push(`/workers/${next.id}`);
   };
 
   return (
@@ -67,7 +67,7 @@ export default function NewWorkerPage() {
           </div>
         </div>
         <div className="mt-6 flex justify-end gap-2">
-          <Button variant="outline" className="rounded-lg" onClick={() => router.push("/labor/workers")}>
+          <Button variant="outline" className="rounded-lg" onClick={() => router.push("/workers")}>
             Cancel
           </Button>
           <Button className="rounded-lg" onClick={handleCreate} disabled={!name.trim()}>

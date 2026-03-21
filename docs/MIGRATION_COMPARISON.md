@@ -7,11 +7,11 @@ Excluded: `RUN_ESTIMATES_MIGRATIONS.sql` (convenience script; individual migrati
 
 ## Production applied migrations (before sync)
 
-| Version      | Name                              |
-|-------------|------------------------------------|
-| 20260309093225 | hh_production_core_schema_v1   |
-| 20260309093415 | enable_rls_and_dev_policies   |
-| 20260309093840 | projects_add_budget_spent_updated |
+| Version        | Name                                 |
+| -------------- | ------------------------------------ |
+| 20260309093225 | hh_production_core_schema_v1         |
+| 20260309093415 | enable_rls_and_dev_policies          |
+| 20260309093840 | projects_add_budget_spent_updated    |
 | 20260309094720 | project_change_orders_add_total_date |
 
 ## Production tables (before sync)
@@ -37,17 +37,17 @@ Applied migrations (in order):
 
 ## Verification (post-apply)
 
-| Table                 | Status   |
-|-----------------------|----------|
-| labor_invoices        | EXISTS   |
-| subcontractors        | EXISTS   |
-| subcontracts          | EXISTS   |
-| subcontract_bills     | EXISTS   |
-| subcontract_payments  | EXISTS   |
-| invoice_payments      | EXISTS   |
-| project_budget_items  | EXISTS   |
-| project_change_orders | EXISTS   |
-| project_change_order_items | EXISTS   |
+| Table                      | Status |
+| -------------------------- | ------ |
+| labor_invoices             | EXISTS |
+| subcontractors             | EXISTS |
+| subcontracts               | EXISTS |
+| subcontract_bills          | EXISTS |
+| subcontract_payments       | EXISTS |
+| invoice_payments           | EXISTS |
+| project_budget_items       | EXISTS |
+| project_change_orders      | EXISTS |
+| project_change_order_items | EXISTS |
 
 **Final schema status: PASS**
 

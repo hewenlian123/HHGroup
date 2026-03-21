@@ -1,18 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const mockSupabaseValue: { from: ReturnType<typeof createChained> } | null = null;
-let mockSupabaseGetter: () => typeof mockSupabaseValue = () => null;
+type MockSupabaseClient = { from: ReturnType<typeof createChained> } | null;
+let mockSupabaseGetter: () => MockSupabaseClient = () => null;
 
 function createChained<T>(data: T[], error: { message: string } | null = null) {
   const result = { data, error };
   const thenable = {
     order: () => Promise.resolve(result),
-    then: (resolve: (arg: { data: T[]; error: typeof error }) => void) => Promise.resolve(result).then(resolve),
+    then: (resolve: (arg: { data: T[]; error: typeof error }) => void) =>
+      Promise.resolve(result).then(resolve),
   };
   return {
     select: () => thenable,
     order: () => Promise.resolve(result),
-    then: (resolve: (arg: { data: T[]; error: typeof error }) => void) => Promise.resolve(result).then(resolve),
+    then: (resolve: (arg: { data: T[]; error: typeof error }) => void) =>
+      Promise.resolve(result).then(resolve),
   };
 }
 
@@ -41,16 +43,17 @@ describe("GET /api/labor/worker-balances", () => {
     const reimb = [{ worker_id: "w1", amount: 20, status: "pending" }];
     const payments = [{ worker_id: "w1", amount: 50 }];
 
-    mockSupabaseGetter = () => ({
-      from: (table: string) => {
-        if (table === "labor_workers") return createChained(workers) as never;
-        if (table === "labor_entries") return createChained(labor) as never;
-        if (table === "worker_reimbursements") return createChained(reimb) as never;
-        if (table === "worker_payments") return createChained(payments) as never;
-        if (table === "worker_advances") return createChained([]) as never;
-        return createChained([]) as never;
-      },
-    }) as never;
+    mockSupabaseGetter = () =>
+      ({
+        from: (table: string) => {
+          if (table === "labor_workers") return createChained(workers) as never;
+          if (table === "labor_entries") return createChained(labor) as never;
+          if (table === "worker_reimbursements") return createChained(reimb) as never;
+          if (table === "worker_payments") return createChained(payments) as never;
+          if (table === "worker_advances") return createChained([]) as never;
+          return createChained([]) as never;
+        },
+      }) as never;
 
     const { GET } = await import("@/app/api/labor/worker-balances/route");
     const res = await GET();

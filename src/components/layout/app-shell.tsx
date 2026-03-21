@@ -19,7 +19,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const barePage =
     pathname === "/receipt" ||
     pathname === "/upload-receipt" ||
-    pathname?.startsWith("/upload-receipt/");
+    pathname?.startsWith("/upload-receipt/") ||
+    pathname?.startsWith("/receipt/print/");
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [collapsed, setCollapsed] = React.useState(false);
 
@@ -41,9 +42,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [collapsed]);
 
   if (barePage) {
+    const printReceiptBg = pathname?.startsWith("/receipt/print/");
     return (
       <ToastProvider>
-        <div className="min-h-screen bg-[#F2F2F4]">{children}</div>
+        <div className={printReceiptBg ? "min-h-screen bg-[#f5f5f5]" : "min-h-screen bg-[#F2F2F4]"}>{children}</div>
       </ToastProvider>
     );
   }

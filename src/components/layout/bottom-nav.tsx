@@ -10,7 +10,7 @@ import { BOTTOM_NAV_ROUTES, prefetchRoutes, runWhenIdle } from "@/lib/route-pref
 const items: { href: string; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/projects", label: "Projects", icon: FolderKanban },
-  { href: "/labor", label: "Labor", icon: Clock },
+  { href: "/labor", label: "Time Entries", icon: Clock },
   { href: "/financial/expenses", label: "Expenses", icon: Receipt },
   { href: "/documents", label: "More", icon: MoreHorizontal },
 ];

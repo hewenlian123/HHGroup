@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ReceiptActions } from "./receipt-actions";
 import { getProjectById, getWorkerById, getWorkerPaymentById } from "@/lib/data";
 import { getWorkerPaymentReceiptPayload } from "@/lib/worker-payment-receipt-data";
+import { computeWorkerPaymentReceiptNo } from "@/lib/worker-payment-receipt-no";
 
 function fmtUsd(n: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -38,12 +39,13 @@ export default async function WorkerPaymentReceiptPage({ params }: { params: Pro
   const payment = await getWorkerPaymentById(id);
   if (!payment) notFound();
 
-  const [worker, project, receiptData] = await Promise.all([
+  const [worker, project, receiptData, receiptNo] = await Promise.all([
     getWorkerById(payment.workerId),
     payment.projectId ? getProjectById(payment.projectId) : Promise.resolve(undefined),
     getWorkerPaymentReceiptPayload(payment.id, payment.workerId, payment.amount, {
       laborEntryIdsFromPayment: payment.laborEntryIds,
     }),
+    computeWorkerPaymentReceiptNo(payment.id, payment.paymentDate),
   ]);
   if (!worker) notFound();
 
@@ -75,15 +77,17 @@ export default async function WorkerPaymentReceiptPage({ params }: { params: Pro
             <Link href="/labor/payments" className="text-sm text-zinc-600 underline-offset-4 hover:text-zinc-950 hover:underline">
               Back
             </Link>
-            <ReceiptActions />
+            <ReceiptActions paymentId={payment.id} />
           </div>
         </div>
 
         {/* Meta row */}
         <div className="mt-8 grid gap-6 border-b border-zinc-200 pb-8 sm:grid-cols-2">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400">Receipt ID</p>
-            <p className="mt-1 font-mono text-xs leading-relaxed text-zinc-800 break-all">{payment.id}</p>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400">Receipt No</p>
+            <p className="mt-1 text-sm font-semibold tabular-nums text-zinc-950">{receiptNo}</p>
+            <p className="mt-2 text-[10px] font-medium uppercase tracking-wider text-zinc-400">System reference</p>
+            <p className="mt-0.5 font-mono text-[10px] leading-relaxed text-zinc-500 break-all">{payment.id}</p>
           </div>
           <div className="sm:text-right">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-400">Payment date</p>

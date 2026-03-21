@@ -6,10 +6,10 @@
 
 写入数据库（或 Server Action）之后，客户端列表要能更新，靠两层机制：
 
-| 机制 | 作用 |
-|------|------|
-| `syncRouterAndClients(router)`（`src/lib/sync-router-client.ts`） | 先 `router.refresh()` 拉最新 RSC，再派发 `hh:app-sync`。 |
-| `useOnAppSync`（`src/hooks/use-on-app-sync.ts`） | 各「纯客户端拉数」页面监听 `hh:app-sync`，**防抖后重新 fetch**，避免 A 页改完 B 页还是旧数据。 |
+| 机制                                                              | 作用                                                                                           |
+| ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `syncRouterAndClients(router)`（`src/lib/sync-router-client.ts`） | 先 `router.refresh()` 拉最新 RSC，再派发 `hh:app-sync`。                                       |
+| `useOnAppSync`（`src/hooks/use-on-app-sync.ts`）                  | 各「纯客户端拉数」页面监听 `hh:app-sync`，**防抖后重新 fetch**，避免 A 页改完 B 页还是旧数据。 |
 
 **约定：** 凡 mutation 后原来只调 `router.refresh()` 的地方，应改为 `syncRouterAndClients`，以便依赖 API/Supabase 的页面一起刷新。
 
@@ -32,15 +32,15 @@ Vendor ──── Expenses, AP Bills
 
 ## 3. 主链路 UI 路由（按业务流）
 
-| 目的 | 典型路径 |
-|------|-----------|
-| 客户与项目 | `/customers` → `/projects` → `/projects/[id]` |
-| 对客发票 | `/financial/invoices` → `/financial/invoices/new` → `/financial/invoices/[id]` |
-| 劳工与余额 | `/labor/worker-balances` → `/labor/workers/[id]/balance` |
-| 工时/条目 | `/labor/entries`、`/labor/daily`、`/labor/review` |
-| 工人付款与收据 | `/labor/payments` → 收据页 |
-| 账单（AP） | `/bills` → `/bills/new` → `/bills/[id]` |
-| 任务（挂项目） | `/tasks` |
+| 目的           | 典型路径                                                                       |
+| -------------- | ------------------------------------------------------------------------------ |
+| 客户与项目     | `/customers` → `/projects` → `/projects/[id]`                                  |
+| 对客发票       | `/financial/invoices` → `/financial/invoices/new` → `/financial/invoices/[id]` |
+| 劳工与余额     | `/labor/worker-balances` → `/labor/workers/[id]/balance`                       |
+| 工时/条目      | `/labor/entries`、`/labor/daily`、`/labor/review`                              |
+| 工人付款与收据 | `/labor/payments` → 收据页                                                     |
+| 账单（AP）     | `/bills` → `/bills/new` → `/bills/[id]`                                        |
+| 任务（挂项目） | `/tasks`                                                                       |
 
 ## 4. 如何把「整条链」跑通
 
@@ -52,14 +52,14 @@ Vendor ──── Expenses, AP Bills
 
 ### 4.2 自动化测试分层（由浅到深）
 
-| 命令 | 内容 |
-|------|------|
-| `npm run test:e2e` | 全部 Playwright（含下面各文件）。 |
-| `npm run test:e2e:integration` | **串联导航 + 关联断言**（`tests/integration-data-flow.spec.ts`），不写库或极少写库。 |
-| `npm run test:e2e:delete-catalog` | 各列表 **删除入口** 是否存在（只读）。 |
-| `E2E_ALLOW_DELETE_MUTATIONS=1 npm run test:e2e:delete` | **创建 → 再删除**（vendor、category、worker、subcontractor、bill、customer、task…）。 |
-| Worker payment specs / `npm run test:e2e:payment-*` | **真付款 / 收据 / 删除回滚**。目标为 **localhost** 时默认允许写库；指向线上时请显式 `E2E_ALLOW_PAYMENT_MUTATIONS=1`，本地强制关闭可用 `=0`（见 `tests/e2e-env-helpers.ts`）。 |
-| `E2E_ALLOW_DELETE_MUTATIONS` | 同上：**本地默认**可跑 create→delete；线上需 `=1` 或勿设 `E2E_BASE_URL` 为外网。 |
+| 命令                                                   | 内容                                                                                                                                                                          |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run test:e2e`                                     | 全部 Playwright（含下面各文件）。                                                                                                                                             |
+| `npm run test:e2e:integration`                         | **串联导航 + 关联断言**（`tests/integration-data-flow.spec.ts`），不写库或极少写库。                                                                                          |
+| `npm run test:e2e:delete-catalog`                      | 各列表 **删除入口** 是否存在（只读）。                                                                                                                                        |
+| `E2E_ALLOW_DELETE_MUTATIONS=1 npm run test:e2e:delete` | **创建 → 再删除**（vendor、category、worker、subcontractor、bill、customer、task…）。                                                                                         |
+| Worker payment specs / `npm run test:e2e:payment-*`    | **真付款 / 收据 / 删除回滚**。目标为 **localhost** 时默认允许写库；指向线上时请显式 `E2E_ALLOW_PAYMENT_MUTATIONS=1`，本地强制关闭可用 `=0`（见 `tests/e2e-env-helpers.ts`）。 |
+| `E2E_ALLOW_DELETE_MUTATIONS`                           | 同上：**本地默认**可跑 create→delete；线上需 `=1` 或勿设 `E2E_BASE_URL` 为外网。                                                                                              |
 
 一起跑可以最大限度证明：**数据能连上、功能能点通、删改后相关页能刷新**。
 
@@ -76,4 +76,4 @@ Vendor ──── Expenses, AP Bills
 
 ---
 
-*维护：改大功能或数据模型时，请同步更新本页与 `tests/integration-data-flow.spec.ts`。*
+_维护：改大功能或数据模型时，请同步更新本页与 `tests/integration-data-flow.spec.ts`。_

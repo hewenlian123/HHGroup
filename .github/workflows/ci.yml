@@ -1,0 +1,74 @@
+# CI: Vitest + Prettier (scoped) + ESLint (unit tests) + Playwright + production deploy to Vercel (main only).
+# Secrets: VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID
+# Optional: vars.NEXT_PUBLIC_SUPABASE_URL, secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY (real app URLs improve E2E)
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NEXT_TELEMETRY_DISABLED: "1"
+  # Placeholders so `next build` / Playwright can run without repo secrets (E2E may skip routes that need data).
+  NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co' }}
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.ci1wbGFjZWhvbGRlcg' }}
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Unit tests (Vitest)
+        run: npm run test:unit
+
+      - name: Prettier (CI scope)
+        run: npm run format:check:ci
+
+      - name: ESLint (src/__tests__ only)
+        run: npm run lint:ci
+
+      - name: Install Playwright Chromium
+        run: npm run test:e2e:install:ci
+
+      - name: Build Next.js
+        run: npm run build
+
+      - name: E2E tests (Playwright — project chromium)
+        run: npm run test:e2e:ci
+        env:
+          CI: "true"
+
+  deploy-vercel:
+    name: Deploy to Vercel (production)
+    needs: ci
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: "--prod"

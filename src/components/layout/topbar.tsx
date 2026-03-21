@@ -46,6 +46,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   accounts: "Accounts",
   labor: "Labor",
   workers: "Workers",
+  summary: "Worker Summary",
   worker: "Worker",
   daily: "Daily Entry",
   receipts: "Receipt Uploads",

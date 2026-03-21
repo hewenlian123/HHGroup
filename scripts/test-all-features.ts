@@ -7,6 +7,7 @@
 
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 function loadEnvFile(filename: string) {
   const p = join(process.cwd(), filename);
@@ -204,15 +205,15 @@ async function run(): Promise<void> {
     });
     reimbursementId = created.id;
     const list = await data.getWorkerReimbursements();
-    const read = list.find((r) => r.id === reimbursementId);
+    const read = list.find((r: { id: string; amount: number }) => r.id === reimbursementId);
     if (!read || read.amount !== 30) throw new Error("Read back failed");
     await data.updateWorkerReimbursement(reimbursementId, { amount: 35 });
     const list2 = await data.getWorkerReimbursements();
-    const afterUpdate = list2.find((r) => r.id === reimbursementId);
+    const afterUpdate = list2.find((r: { id: string; amount: number }) => r.id === reimbursementId);
     if (!afterUpdate || afterUpdate.amount !== 35) throw new Error("Update failed");
     await data.deleteWorkerReimbursement(reimbursementId);
     const list3 = await data.getWorkerReimbursements();
-    if (list3.some((r) => r.id === reimbursementId)) throw new Error("Delete failed");
+    if (list3.some((r: { id: string }) => r.id === reimbursementId)) throw new Error("Delete failed");
     results.push({ module: "reimbursements", pass: true });
   } catch (e) {
     results.push({ module: "reimbursements", pass: false, detail: String(e instanceof Error ? e.message : e) });
@@ -224,15 +225,15 @@ async function run(): Promise<void> {
     const created = await data.createPunchListItem({ project_id: projectId, issue: "Test issue" });
     punchId = created.id;
     const list = await data.getPunchListByProject(projectId);
-    const read = list.find((p) => p.id === punchId);
+    const read = list.find((p: { id: string; issue?: string | null }) => p.id === punchId);
     if (!read || read.issue !== "Test issue") throw new Error("Read back failed");
     await data.updatePunchListItem(punchId, { issue: "Test issue Updated" });
     const list2 = await data.getPunchListByProject(projectId);
-    const afterUpdate = list2.find((p) => p.id === punchId);
+    const afterUpdate = list2.find((p: { id: string; issue?: string | null }) => p.id === punchId);
     if (!afterUpdate || afterUpdate.issue !== "Test issue Updated") throw new Error("Update failed");
     await data.deletePunchListItem(punchId);
     const list3 = await data.getPunchListByProject(projectId);
-    if (list3.some((p) => p.id === punchId)) throw new Error("Delete failed");
+    if (list3.some((p: { id: string }) => p.id === punchId)) throw new Error("Delete failed");
     results.push({ module: "punch_list", pass: true });
   } catch (e) {
     const msg = String(e instanceof Error ? e.message : e);
@@ -291,7 +292,7 @@ async function run(): Promise<void> {
     });
     paymentReceivedId = created.id;
     const list = await data.getPaymentsReceived();
-    const read = list.find((r) => r.id === paymentReceivedId);
+    const read = list.find((r: { id: string; amount: number }) => r.id === paymentReceivedId);
     if (!read || read.amount !== 50) throw new Error("Read back failed");
     results.push({ module: "payments", pass: true });
   } catch (e) {
@@ -350,11 +351,11 @@ async function run(): Promise<void> {
     });
     materialId = created.id;
     const list = await data.getMaterialCatalog();
-    const read = list.find((m) => m.id === materialId);
+    const read = list.find((m: { id: string; material_name?: string | null }) => m.id === materialId);
     if (!read || read.material_name !== "Test Material") throw new Error("Read back failed");
     await data.updateMaterial(materialId, { material_name: "Test Material Updated" });
     const list2 = await data.getMaterialCatalog();
-    const afterUpdate = list2.find((m) => m.id === materialId);
+    const afterUpdate = list2.find((m: { id: string; material_name?: string | null }) => m.id === materialId);
     if (!afterUpdate || afterUpdate.material_name !== "Test Material Updated") throw new Error("Update failed");
     results.push({ module: "material_catalog", pass: true });
   } catch (e) {
@@ -388,7 +389,7 @@ async function run(): Promise<void> {
   const { wipeAllData } = await import("../src/lib/wipe-database");
   const { createClient } = await import("@supabase/supabase-js");
   const client = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-  const { errors } = await wipeAllData(client);
+  const { errors } = await wipeAllData(client as unknown as SupabaseClient);
   if (errors.length > 0) {
     results.push({ module: "cleanup", pass: false, detail: errors.join("; ") });
   } else {

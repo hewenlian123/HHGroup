@@ -6,6 +6,17 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 - **Prove cross-page links work:** `npm run test:e2e:integration` (needs dev server + Supabase; uses `E2E_BASE_URL` if set).
 - **Delete surfaces / mutations:** see `package.json` scripts `test:e2e:delete-catalog`, `test:e2e:delete`, and payment specs.
 
+## Testing & code quality
+
+| Tool                 | Scripts                                                                     |
+| -------------------- | --------------------------------------------------------------------------- |
+| **Vitest** (unit)    | `npm run test:unit` / `npm test` (watch)                                    |
+| **Playwright** (E2E) | `npm run test:e2e:ci` (Chromium, safe specs), `npm run test:e2e:install`    |
+| **Prettier**         | `npm run format`, `npm run format:check`, CI: `npm run format:check:ci`     |
+| **ESLint**           | `npm run lint` (Next.js), CI gate: `npm run lint:ci` (`src/__tests__` only) |
+
+**GitHub Actions:** `.github/workflows/ci.yml` runs tests + build + Playwright, then deploys **production** to Vercel on `main` (requires `VERCEL_*` secrets). See [`docs/CI_GITHUB_VERCEL.md`](docs/CI_GITHUB_VERCEL.md).
+
 ## Getting Started
 
 First, run the development server:

@@ -67,7 +67,7 @@ This deletes every row from main tables in dependency-safe order (no DROP), then
 ## New API routes added for health check
 
 - `GET /api/projects` — project list
-- `GET /api/expenses` — expense list  
-- `GET /api/invoices` — invoice list  
+- `GET /api/expenses` — expense list
+- `GET /api/invoices` — invoice list
 
 These are used by the checklist and can be used by other clients.

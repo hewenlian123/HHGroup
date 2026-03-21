@@ -13,22 +13,11 @@
 import { createClient } from "@supabase/supabase-js";
 import postgres from "postgres";
 import { readFileSync, existsSync } from "fs";
-import { join, dirname } from "path";
-import { fileURLToPath } from "url";
-
-const scriptDir = dirname(fileURLToPath(import.meta.url));
+import { join } from "path";
 
 function loadEnvFile(filename: string) {
-  const projectRoot = join(scriptDir, "..");
-  const p = join(projectRoot, filename);
-  if (!existsSync(p)) {
-    const fromCwd = join(process.cwd(), filename);
-    if (existsSync(fromCwd)) {
-      parseEnv(readFileSync(fromCwd, "utf8"));
-      return;
-    }
-    return;
-  }
+  const p = join(process.cwd(), filename);
+  if (!existsSync(p)) return;
   parseEnv(readFileSync(p, "utf8"));
 }
 

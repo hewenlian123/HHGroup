@@ -1,0 +1,13 @@
+.next
+.next-dev
+node_modules
+package-lock.json
+public/sw.js
+coverage
+playwright-report
+test-results
+.vercel
+.cursor
+*.min.js
+pnpm-lock.yaml
+yarn.lock
