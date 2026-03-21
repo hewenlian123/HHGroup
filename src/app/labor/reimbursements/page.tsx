@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
@@ -99,6 +100,13 @@ export default function WorkerReimbursementsPage() {
   React.useEffect(() => {
     load();
   }, [load]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void load();
+    }, [load]),
+    [load]
+  );
 
   const workerById = React.useMemo(() => new Map(workers.map((w) => [w.id, w.name])), [workers]);
   const projectById = React.useMemo(() => new Map(projects.map((p) => [p.id, p.name])), [projects]);
@@ -207,20 +215,24 @@ export default function WorkerReimbursementsPage() {
 
   const handleDelete = async (id: string) => {
     setMessage(null);
-    const removeFromList = () => setRows((prev) => prev.filter((r) => r.id !== id));
+    let snapshot: WorkerReimbursement[] | undefined;
+    setRows((prev) => {
+      snapshot = prev;
+      return prev.filter((r) => r.id !== id);
+    });
     try {
       const res = await fetch(`/api/worker-reimbursements/${id}`, { method: "DELETE" });
       if (res.status === 404) {
-        setTimeout(removeFromList, 0);
+        void load();
         return;
       }
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.message ?? "Delete failed.");
       }
-      setTimeout(removeFromList, 0);
-      await load();
+      void load();
     } catch (e) {
+      if (snapshot) setRows(snapshot);
       setMessage(e instanceof Error ? e.message : "Delete failed.");
     }
   };

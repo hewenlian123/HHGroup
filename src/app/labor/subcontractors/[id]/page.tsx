@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { createBrowserClient } from "@/lib/supabase";
@@ -151,6 +152,13 @@ export default function SubcontractorDetailPage() {
   React.useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void refresh();
+    }, [refresh]),
+    [refresh]
+  );
 
   const handleSave = React.useCallback(async () => {
     if (!id || !supabase || !row) return;

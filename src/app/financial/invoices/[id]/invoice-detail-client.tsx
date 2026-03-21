@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
@@ -186,6 +187,13 @@ export default function InvoiceDetailClient() {
   React.useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void refresh();
+    }, [refresh]),
+    [refresh]
+  );
 
   React.useEffect(() => {
     if (searchParams.get("recordPayment") === "1" && invoice && invoice.status !== "Void" && invoice.status !== "Paid") {

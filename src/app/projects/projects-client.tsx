@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { Plus, Search } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -117,6 +118,13 @@ export function ProjectsClient() {
   React.useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void refresh();
+    }, [refresh]),
+    [refresh]
+  );
 
   React.useEffect(() => {
     setPage(1);

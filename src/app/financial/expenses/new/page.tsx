@@ -1,5 +1,7 @@
 "use client";
 
+import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
@@ -72,30 +74,37 @@ export default function NewExpensePage() {
     return url && anon ? createBrowserClient(url, anon) : null;
   }, []);
 
-  React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const [p, c, v, accs] = await Promise.all([
-          getProjects(),
-          getExpenseCategories(),
-          getVendors(),
-          getAccounts().catch(() => []),
-        ]);
-        if (cancelled) return;
-        setProjects(p as unknown as ProjectOption[]);
-        setCategories(c);
-        setVendors(v);
-        setAccounts(accs);
-      } catch (e: unknown) {
-        if (cancelled) return;
-        setError(e instanceof Error ? e.message : "Failed to load lookups.");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
+  const loadLookups = React.useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [p, c, v, accs] = await Promise.all([
+        getProjects(),
+        getExpenseCategories(),
+        getVendors(),
+        getAccounts().catch(() => []),
+      ]);
+      setProjects(p as unknown as ProjectOption[]);
+      setCategories(c);
+      setVendors(v);
+      setAccounts(accs);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to load lookups.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  React.useEffect(() => {
+    void loadLookups();
+  }, [loadLookups]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void loadLookups();
+    }, [loadLookups]),
+    [loadLookups]
+  );
 
   const total = React.useMemo(() => lines.reduce((s, l) => s + safeAmount(l.amount), 0), [lines]);
 
@@ -159,7 +168,7 @@ export default function NewExpensePage() {
       }
       toast({ title: "Created", description: "Expense created.", variant: "success" });
       router.push(`/financial/expenses/${created.id}`);
-      router.refresh();
+      void syncRouterAndClients(router);
     } catch (e2: unknown) {
       const msg = e2 instanceof Error ? e2.message : "Failed to create expense.";
       setError(msg);

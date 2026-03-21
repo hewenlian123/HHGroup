@@ -1,5 +1,7 @@
 "use client";
 
+import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import Image from "next/image";
 import { Upload, Image as ImageIcon, Trash2 } from "lucide-react";
@@ -127,6 +129,13 @@ export default function SettingsCompanyPage() {
     loadProfile();
   }, [loadProfile]);
 
+  useOnAppSync(
+    React.useCallback(() => {
+      void loadProfile();
+    }, [loadProfile]),
+    [loadProfile]
+  );
+
   const updateField = (key: keyof FormState, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
@@ -159,7 +168,7 @@ export default function SettingsCompanyPage() {
       setProfile(updated);
       setForm(toFormState(updated));
       toast({ title: "Saved", variant: "success" });
-      router.refresh();
+      void syncRouterAndClients(router);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       toast({ title: "Save failed", description: msg || "Failed to save profile.", variant: "error" });
@@ -175,7 +184,7 @@ export default function SettingsCompanyPage() {
       const result = await uploadCompanyLogo(supabase, file);
       setProfile(result.profile);
       toast({ title: "Logo uploaded", variant: "success" });
-      router.refresh();
+      void syncRouterAndClients(router);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       toast({ title: "Upload failed", description: msg || "Logo upload failed.", variant: "error" });
@@ -197,7 +206,7 @@ export default function SettingsCompanyPage() {
       const updated = await removeCompanyLogo(supabase);
       setProfile(updated);
       toast({ title: "Logo removed", variant: "success" });
-      router.refresh();
+      void syncRouterAndClients(router);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       toast({ title: "Remove failed", description: msg || "Failed to remove logo.", variant: "error" });

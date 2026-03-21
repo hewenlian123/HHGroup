@@ -30,6 +30,7 @@ import { useSearchParams } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { QuickExpenseModal } from "./quick-expense-modal";
 import { EditExpenseModal } from "./edit-expense-modal";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 
 type ProjectRow = { id: string; name: string | null };
 type WorkerRow = { id: string; name: string };
@@ -177,6 +178,22 @@ function ExpensesPageInner() {
     const list = await getExpenses();
     setExpenses(list);
   }, []);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void (async () => {
+        const [expList, cats, workerList] = await Promise.all([
+          getExpenses(),
+          getExpenseCategories(),
+          getWorkers(),
+        ]);
+        setExpenses(expList);
+        setCategoriesList(cats);
+        setWorkers(workerList as WorkerRow[]);
+      })();
+    }, []),
+    []
+  );
 
   const handleNew = async () => {
     router.push("/financial/expenses/new");

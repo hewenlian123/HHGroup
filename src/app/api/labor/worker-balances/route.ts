@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { isLaborUnpaidForWorkerPayroll } from "@/lib/labor-balance-shared";
 import postgres from "postgres";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +22,8 @@ export type WorkerBalanceRow = {
 
 /**
  * GET: Worker balances summary.
- * Labor Owed = SUM(labor_entries.cost_amount WHERE status != 'paid')
+ * Labor Owed = SUM(labor_entries.cost_amount WHERE worker_payment_id IS NULL)
+ * (When `worker_payment_id` exists, payout state follows the FK, not `status`.)
  * Reimbursements = SUM(worker_reimbursements.amount WHERE status != 'paid')
  * Payments = SUM(worker_payments.amount)
    * Advances = SUM(worker_advances.amount WHERE status IN ('pending','deducted'))
@@ -41,7 +43,7 @@ export async function GET() {
 
     // Prefer a single SQL aggregation when SUPABASE_DATABASE_URL is available:
     // SELECT lw.id, lw.name, SUM(le.cost_amount) FROM labor_workers lw
-    // LEFT JOIN labor_entries le ON le.worker_id = lw.id AND status != 'paid'
+    // LEFT JOIN labor_entries le ON le.worker_id = lw.id AND worker_payment_id IS NULL
     // GROUP BY lw.id, lw.name
     const laborOwedByWorker = new Map<string, number>();
     const dbUrl = process.env.SUPABASE_DATABASE_URL ?? process.env.DATABASE_URL;
@@ -60,7 +62,7 @@ export async function GET() {
           from labor_workers lw
           left join labor_entries le
             on le.worker_id = lw.id
-           and coalesce(lower(le.status), '') <> 'paid'
+           and le.worker_payment_id is null
           group by lw.id, lw.name
         `;
         for (const r of rows) {
@@ -74,27 +76,49 @@ export async function GET() {
       }
     } else {
       // Fallback to Supabase aggregation when direct DB access is not configured
-      let laborRows: { worker_id: string; cost_amount?: number | null; status?: string | null }[] = [];
-      let laborRes = await c.from("labor_entries").select("worker_id, cost_amount, status");
+      let laborRows: {
+        worker_id: string;
+        cost_amount?: number | null;
+        status?: string | null;
+        worker_payment_id?: string | null;
+      }[] = [];
+      let laborSettlementMode: "payment_link" | "status_fallback" = "payment_link";
+      const laborRes = await c.from("labor_entries").select("worker_id, cost_amount, status, worker_payment_id");
       if (laborRes.error && /column.*status|schema cache/i.test(laborRes.error.message ?? "")) {
-        const fallback = await c.from("labor_entries").select("worker_id, cost_amount");
-        laborRows = ((fallback.data ?? []) as { worker_id: string; cost_amount?: number | null }[]).map((r) => ({
+        const fallback = await c.from("labor_entries").select("worker_id, cost_amount, worker_payment_id");
+        laborRows = ((fallback.data ?? []) as {
+          worker_id: string;
+          cost_amount?: number | null;
+          worker_payment_id?: string | null;
+        }[]).map((r) => ({
           ...r,
           status: null,
         }));
+        laborSettlementMode = "payment_link";
+      } else if (laborRes.error && /column.*worker_payment_id|schema cache/i.test(laborRes.error.message ?? "")) {
+        const fallback = await c.from("labor_entries").select("worker_id, cost_amount, status");
+        laborRows = (fallback.data ?? []) as {
+          worker_id: string;
+          cost_amount?: number | null;
+          status?: string | null;
+          worker_payment_id?: string | null;
+        }[];
+        laborRows = laborRows.map((r) => ({ ...r, worker_payment_id: null }));
+        laborSettlementMode = "status_fallback";
       } else {
         laborRows = (laborRes.data ?? []) as {
           worker_id: string;
           cost_amount?: number | null;
           status?: string | null;
+          worker_payment_id?: string | null;
         }[];
+        laborSettlementMode = "payment_link";
       }
 
       for (const r of laborRows) {
         const wid = r.worker_id;
         if (!wid) continue;
-        const status = (r.status ?? "").toLowerCase();
-        if (status === "paid") continue;
+        if (!isLaborUnpaidForWorkerPayroll(r.status, r.worker_payment_id, laborSettlementMode)) continue;
         const amt = Number(r.cost_amount) || 0;
         laborOwedByWorker.set(wid, (laborOwedByWorker.get(wid) ?? 0) + amt);
       }

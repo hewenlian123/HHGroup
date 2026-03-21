@@ -1,5 +1,6 @@
 "use client";
 
+import { syncRouterAndClients } from "@/lib/sync-router-client";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { AddSubcontractorModal } from "./add-subcontractor-modal";
@@ -8,7 +9,7 @@ export function SubcontractorsActions() {
   const router = useRouter();
   const [modalOpen, setModalOpen] = React.useState(false);
 
-  const handleSuccess = () => router.refresh();
+  const handleSuccess = () => void syncRouterAndClients(router);
 
   return (
     <>

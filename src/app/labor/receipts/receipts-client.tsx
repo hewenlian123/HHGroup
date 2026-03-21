@@ -1,5 +1,7 @@
 "use client";
 
+import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -41,16 +43,40 @@ export function ReceiptsClient({ initialRows }: { initialRows: ReceiptRow[] }) {
   const [successMessage, setSuccessMessage] = React.useState<string | null>(null);
   const [viewReceiptUrl, setViewReceiptUrl] = React.useState<string | null>(null);
 
+  React.useEffect(() => {
+    setRows(initialRows);
+  }, [initialRows]);
+
   const refresh = React.useCallback(async () => {
-    const res = await fetch("/api/worker-receipts", { cache: "no-store" });
-    const data = await res.json();
-    if (!res.ok) {
-      setMessage(data.message ?? "Failed to refresh");
+    const [recRes, projRes] = await Promise.all([
+      fetch("/api/worker-receipts", { cache: "no-store" }),
+      fetch("/api/projects", { cache: "no-store" }),
+    ]);
+    const recData = await recRes.json();
+    if (!recRes.ok) {
+      setMessage(recData.message ?? "Failed to refresh");
       return;
     }
-    // Names not in API — reload page to get server-rendered names
-    window.location.reload();
+    const projData = projRes.ok ? await projRes.json() : { projects: [] };
+    const projectById = new Map<string, string>(
+      (projData.projects ?? []).map((p: { id: string; name: string | null }) => [p.id, p.name ?? ""])
+    );
+    const list = (recData.receipts ?? []) as WorkerReceipt[];
+    setRows(
+      list.map((r) => ({
+        ...r,
+        projectName: r.projectId ? projectById.get(r.projectId) ?? "" : "",
+      }))
+    );
+    setMessage(null);
   }, []);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void refresh();
+    }, [refresh]),
+    [refresh]
+  );
 
   const approve = async (id: string) => {
     setBusyId(id);
@@ -126,20 +152,23 @@ export function ReceiptsClient({ initialRows }: { initialRows: ReceiptRow[] }) {
 
   const handleDelete = async (id: string) => {
     if (typeof window !== "undefined" && !window.confirm("Delete this receipt upload?")) return;
-    setBusyId(id);
     setMessage(null);
-    const prevRows = rows;
-    setRows((r) => r.filter((x) => x.id !== id));
+    let snapshot: ReceiptRow[] | undefined;
+    setRows((r) => {
+      snapshot = r;
+      return r.filter((x) => x.id !== id);
+    });
+    setBusyId(id);
     try {
       const res = await fetch(`/api/worker-receipts/${id}`, { method: "DELETE" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.message ?? "Delete failed");
-      router.refresh();
+      void syncRouterAndClients(router);
     } catch (e) {
       const errMsg = e instanceof Error ? e.message : "Delete failed";
       console.error("Receipt delete failed:", e);
       setMessage(errMsg);
-      setRows(prevRows);
+      if (snapshot) setRows(snapshot);
     } finally {
       setBusyId(null);
     }

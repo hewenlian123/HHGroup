@@ -34,6 +34,12 @@ import {
 } from "@/lib/data";
 import { StatusBadge } from "@/components/base";
 import { Pagination } from "@/components/ui/pagination";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
+import {
+  getLaborPaymentStatus,
+  laborPaymentStatusUiLabel,
+  type LaborPaymentStatus,
+} from "@/lib/labor-balance-shared";
 
 export default function DailyEntriesPage() {
   return (
@@ -41,6 +47,22 @@ export default function DailyEntriesPage() {
       <DailyEntriesPageInner />
     </React.Suspense>
   );
+}
+
+function laborEntryPayrollLocked(row: LaborEntryWithJoins): boolean {
+  return (
+    getLaborPaymentStatus(
+      row.worker_payment_id ?? null,
+      row.workflowStatusRaw ?? null,
+      row.usesPaymentLinkForPayroll ? "payment_link" : "status_fallback"
+    ) === "paid"
+  );
+}
+
+function laborEntryPayrollStatusBadgeVariant(s: LaborPaymentStatus): "success" | "warning" | "muted" {
+  if (s === "paid") return "success";
+  if (s === "partial") return "warning";
+  return "muted";
 }
 
 function DailyEntriesPageInner() {
@@ -117,8 +139,16 @@ function DailyEntriesPageInner() {
     loadEntries();
   }, [loadEntries]);
 
+  useOnAppSync(
+    React.useCallback(() => {
+      void loadMeta();
+      void loadEntries();
+    }, [loadMeta, loadEntries]),
+    [loadMeta, loadEntries]
+  );
+
   const openEdit = (row: LaborEntryWithJoins) => {
-    if (row.status === "Locked") return;
+    if (row.status === "Locked" || laborEntryPayrollLocked(row)) return;
     setEditEntry(row);
     setEditDraft({
       worker_id: row.worker_id,
@@ -157,7 +187,7 @@ function DailyEntriesPageInner() {
   };
 
   const handleDelete = async (row: LaborEntryWithJoins) => {
-    if (row.status === "Locked") return;
+    if (row.status === "Locked" || laborEntryPayrollLocked(row)) return;
     if (!window.confirm("Delete this labor entry?")) return;
     setDeletingId(row.id);
     setError(null);
@@ -379,6 +409,12 @@ function DailyEntriesPageInner() {
               pageRows.map((row) => {
                 const rate = row.hours > 0 && row.cost_amount != null ? row.cost_amount / row.hours : null;
                 const cost = row.cost_amount ?? 0;
+                const payrollStatus = getLaborPaymentStatus(
+                  row.worker_payment_id ?? null,
+                  row.workflowStatusRaw ?? null,
+                  row.usesPaymentLinkForPayroll ? "payment_link" : "status_fallback"
+                );
+                const payrollLocked = payrollStatus === "paid";
                 return (
                 <tr key={row.id} className="border-b border-border/40">
                   <td className="py-1.5 px-1">
@@ -386,7 +422,7 @@ function DailyEntriesPageInner() {
                       type="checkbox"
                       checked={selectedIds.has(row.id)}
                       onChange={() => toggleSelect(row.id)}
-                      disabled={row.status === "Locked"}
+                      disabled={row.status === "Locked" || payrollLocked}
                       className="h-4 w-4 rounded border-input"
                     />
                   </td>
@@ -402,12 +438,8 @@ function DailyEntriesPageInner() {
                   </td>
                   <td className="py-1.5 px-3">
                     <StatusBadge
-                      label={row.status}
-                      variant={
-                        row.status === "Locked" ? "success" :
-                        row.status === "Approved" ? "success" :
-                        row.status === "Submitted" ? "warning" : "muted"
-                      }
+                      label={laborPaymentStatusUiLabel(payrollStatus)}
+                      variant={laborEntryPayrollStatusBadgeVariant(payrollStatus)}
                     />
                   </td>
                   <td className="py-1.5 px-3 max-w-[160px] truncate" title={row.notes ?? ""}>{row.notes ?? "—"}</td>
@@ -418,7 +450,7 @@ function DailyEntriesPageInner() {
                         size="sm"
                         className="h-7 text-xs"
                         onClick={() => openEdit(row)}
-                        disabled={row.status === "Locked"}
+                        disabled={row.status === "Locked" || payrollLocked}
                       >
                         Edit
                       </Button>
@@ -427,7 +459,7 @@ function DailyEntriesPageInner() {
                         size="sm"
                         className="h-7 text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                         onClick={() => handleDelete(row)}
-                        disabled={row.status === "Locked" || deletingId === row.id}
+                        disabled={row.status === "Locked" || payrollLocked || deletingId === row.id}
                       >
                         {deletingId === row.id ? "…" : "Delete"}
                       </Button>

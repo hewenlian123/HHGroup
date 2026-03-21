@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
@@ -65,6 +66,20 @@ export default function LaborInvoiceDetailPage() {
     });
     return () => { cancelled = true; };
   }, []);
+
+  const reloadLookups = React.useCallback(async () => {
+    const [w, p] = await Promise.all([getWorkers(), getProjects()]);
+    setWorkers(w);
+    setProjects(p);
+  }, []);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void refresh();
+      void reloadLookups();
+    }, [refresh, reloadLookups]),
+    [refresh, reloadLookups]
+  );
 
   if (!id || !invoice) {
     return (

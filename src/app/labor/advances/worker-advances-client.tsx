@@ -1,6 +1,9 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
+import { syncRouterAndClients } from "@/lib/sync-router-client";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,6 +33,7 @@ type Props = {
 };
 
 export function WorkerAdvancesClient({ workers, projects }: Props) {
+  const router = useRouter();
   const [rows, setRows] = React.useState<AdvanceRow[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [message, setMessage] = React.useState<string | null>(null);
@@ -84,6 +88,14 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
   React.useEffect(() => {
     void load();
   }, [load]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void syncRouterAndClients(router);
+      void load();
+    }, [router, load]),
+    [router, load]
+  );
 
   const filtered = React.useMemo(() => {
     return rows.filter((r) => {

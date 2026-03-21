@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -94,6 +95,13 @@ function WorkerReimbursementsPageInner() {
     });
     return () => { cancelled = true; };
   }, [load]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void load();
+    }, [load]),
+    [load]
+  );
 
   const workerNameById = React.useMemo(() => new Map(workers.map((w) => [w.id, w.name])), [workers]);
   const rows = React.useMemo(

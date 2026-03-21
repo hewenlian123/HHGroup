@@ -25,6 +25,11 @@ export interface ConfirmDialogProps {
   destructive?: boolean;
   /** Disable confirm while async onConfirm is running. */
   loading?: boolean;
+  /**
+   * When true (default), closes the dialog immediately on confirm, then runs onConfirm.
+   * Parent should perform optimistic UI updates inside onConfirm and handle rollback on failure.
+   */
+  dismissBeforeAsync?: boolean;
   children?: React.ReactNode;
   className?: string;
 }
@@ -40,20 +45,30 @@ export function ConfirmDialog({
   onConfirm,
   destructive,
   loading = false,
+  dismissBeforeAsync = true,
   children,
   className,
 }: ConfirmDialogProps) {
   const [busy, setBusy] = React.useState(false);
   const isBusy = loading || busy;
 
-  const handleConfirm = async () => {
-    setBusy(true);
-    try {
-      await Promise.resolve(onConfirm());
+  const handleConfirm = () => {
+    if (dismissBeforeAsync) {
       onOpenChange(false);
-    } finally {
-      setBusy(false);
+      void Promise.resolve(onConfirm()).catch((err) => {
+        console.error("[ConfirmDialog] onConfirm failed:", err);
+      });
+      return;
     }
+    void (async () => {
+      setBusy(true);
+      try {
+        await Promise.resolve(onConfirm());
+        onOpenChange(false);
+      } finally {
+        setBusy(false);
+      }
+    })();
   };
 
   return (

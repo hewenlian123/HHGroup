@@ -1,5 +1,7 @@
 "use client";
 
+import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -12,6 +14,8 @@ import { deleteSubcontractorAction, updateSubcontractorProfile } from "@/app/sub
 export function SubcontractorsTableClient({ rows }: { rows: SubcontractorRow[] }) {
   const router = useRouter();
   const { toast } = useToast();
+  const [localRows, setLocalRows] = React.useState<SubcontractorRow[]>(rows);
+  React.useEffect(() => setLocalRows(rows), [rows]);
   const [editFor, setEditFor] = React.useState<SubcontractorRow | null>(null);
   const [busy, setBusy] = React.useState(false);
 
@@ -32,6 +36,13 @@ export function SubcontractorsTableClient({ rows }: { rows: SubcontractorRow[] }
     setNotes(editFor.notes ?? "");
   }, [editFor]);
 
+  useOnAppSync(
+    React.useCallback(() => {
+      void syncRouterAndClients(router);
+    }, [router]),
+    [router]
+  );
+
   const onSave = async () => {
     if (!editFor) return;
     if (busy) return;
@@ -51,7 +62,7 @@ export function SubcontractorsTableClient({ rows }: { rows: SubcontractorRow[] }
       }
       toast({ title: "Saved", variant: "success" });
       setEditFor(null);
-      router.refresh();
+      void syncRouterAndClients(router);
     } finally {
       setBusy(false);
     }
@@ -60,15 +71,21 @@ export function SubcontractorsTableClient({ rows }: { rows: SubcontractorRow[] }
   const onDelete = async (row: SubcontractorRow) => {
     if (busy) return;
     if (!window.confirm(`Delete subcontractor "${row.name}"?`)) return;
+    let snapshot: SubcontractorRow[] | undefined;
+    setLocalRows((prev) => {
+      snapshot = prev;
+      return prev.filter((r) => r.id !== row.id);
+    });
     setBusy(true);
     try {
       const res = await deleteSubcontractorAction(row.id);
       if (!res.ok) {
+        if (snapshot) setLocalRows(snapshot);
         toast({ title: "Delete failed", description: res.error ?? "Failed to delete subcontractor.", variant: "error" });
         return;
       }
       toast({ title: "Deleted", variant: "success" });
-      router.refresh();
+      void syncRouterAndClients(router);
     } finally {
       setBusy(false);
     }
@@ -88,14 +105,14 @@ export function SubcontractorsTableClient({ rows }: { rows: SubcontractorRow[] }
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 ? (
+            {localRows.length === 0 ? (
               <tr className="border-b border-border/40">
                 <td colSpan={5} className="py-6 px-3 text-center text-muted-foreground text-xs">
                   No subcontractors yet.
                 </td>
               </tr>
             ) : (
-              rows.map((r) => (
+              localRows.map((r) => (
                 <tr key={r.id} className="border-b border-border/40">
                   <td className="py-1.5 px-3 font-medium">{r.name}</td>
                   <td className="py-1.5 px-3 text-muted-foreground">{r.phone ?? "—"}</td>

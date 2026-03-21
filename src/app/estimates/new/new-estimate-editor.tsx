@@ -11,6 +11,7 @@ import { createEstimateWithItemsAction } from "./actions";
 import type { CostCode } from "@/lib/data";
 import { Plus, Copy, Trash2, ChevronRight, ChevronDown } from "lucide-react";
 import { useToast } from "@/components/toast/toast-provider";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { createBrowserClient } from "@/lib/supabase";
 import { getCompanyProfile } from "@/lib/company-profile";
 import {
@@ -134,22 +135,27 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
     [configured, url, anon]
   );
 
-  React.useEffect(() => {
+  const loadCompanyTaxDefaults = React.useCallback(async () => {
     if (!supabase) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const profile = await getCompanyProfile(supabase);
-        const pct = Number(profile?.default_tax_pct ?? 0);
-        if (!cancelled && Number.isFinite(pct) && pct >= 0) setDefaultTaxPct(pct);
-      } catch {
-        // ignore
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    try {
+      const profile = await getCompanyProfile(supabase);
+      const pct = Number(profile?.default_tax_pct ?? 0);
+      if (Number.isFinite(pct) && pct >= 0) setDefaultTaxPct(pct);
+    } catch {
+      // ignore
+    }
   }, [supabase]);
+
+  React.useEffect(() => {
+    void loadCompanyTaxDefaults();
+  }, [loadCompanyTaxDefaults]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void loadCompanyTaxDefaults();
+    }, [loadCompanyTaxDefaults]),
+    [loadCompanyTaxDefaults]
+  );
 
   React.useEffect(() => {
     if (taxTouched) return;

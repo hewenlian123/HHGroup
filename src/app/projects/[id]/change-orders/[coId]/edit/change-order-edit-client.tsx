@@ -1,7 +1,9 @@
 "use client";
 
+import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { useRouter } from "next/navigation";
-import { useTransition, useState } from "react";
+import { useTransition, useState, useCallback, type FormEvent } from "react";
 import {
   SectionHeader,
   Divider,
@@ -31,13 +33,20 @@ export function ChangeOrderEditClient({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
-  const handleSaveDetails = (e: React.FormEvent<HTMLFormElement>) => {
+  useOnAppSync(
+    useCallback(() => {
+      void syncRouterAndClients(router);
+    }, [router]),
+    [router]
+  );
+
+  const handleSaveDetails = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
     const formData = new FormData(form);
     startTransition(async () => {
       await updateChangeOrderAction(changeOrderId, projectId, formData);
-      router.refresh();
+      void syncRouterAndClients(router);
     });
   };
 
@@ -62,7 +71,7 @@ export function ChangeOrderEditClient({
 
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  const handleAdd = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleAdd = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setValidationError(null);
     const form = e.currentTarget;
@@ -83,7 +92,7 @@ export function ChangeOrderEditClient({
         unit,
         unitPrice,
       });
-      router.refresh();
+      void syncRouterAndClients(router);
       form.reset();
     });
   };
@@ -91,7 +100,7 @@ export function ChangeOrderEditClient({
   const handleDelete = (itemId: string) => {
     startTransition(async () => {
       await deleteChangeOrderItemAction(changeOrderId, projectId, itemId);
-      router.refresh();
+      void syncRouterAndClients(router);
     });
   };
 

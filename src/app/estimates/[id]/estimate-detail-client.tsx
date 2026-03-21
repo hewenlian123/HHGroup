@@ -1,5 +1,7 @@
 "use client";
 
+import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import type { CostCode, EstimateItemRow, EstimateMetaRecord, EstimateSummaryResult, PaymentScheduleItem, PaymentScheduleTemplate } from "@/lib/data";
@@ -56,6 +58,17 @@ export function EstimateDetailClient({
 
   const isLocked = !["Draft", "Sent"].includes(status);
 
+  React.useEffect(() => {
+    setStatus(initialStatus);
+  }, [initialStatus]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void syncRouterAndClients(router);
+    }, [router]),
+    [router]
+  );
+
   const onCancelEditing = () => {
     setEditing(false);
     setResetNonce((n) => n + 1);
@@ -70,7 +83,7 @@ export function EstimateDetailClient({
           toast({ title: "Saved", description: "Estimate updated.", variant: "success" });
           setInfoCollapseNonce((n) => n + 1);
           setCostBreakdownCollapseNonce((n) => n + 1);
-          router.refresh();
+          void syncRouterAndClients(router);
           setEditing(false);
         } else {
           toast({ title: "Save failed", description: res.error ?? "Please try again.", variant: "error" });

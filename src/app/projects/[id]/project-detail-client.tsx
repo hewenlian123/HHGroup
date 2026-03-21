@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, FilePlus2, Receipt, Pencil, Users } from "lucide-react";
@@ -187,6 +188,13 @@ export function ProjectDetailClient({ id }: { id: string }) {
   React.useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void refresh();
+    }, [refresh]),
+    [refresh]
+  );
 
   const derived = React.useMemo(() => {
     const project = state.project;

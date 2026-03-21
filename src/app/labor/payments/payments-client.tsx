@@ -1,12 +1,14 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
+import { DeleteRowAction } from "@/components/base";
 import { createBrowserClient } from "@/lib/supabase";
 
 type PayRunRow = {
@@ -165,6 +167,13 @@ export default function LaborPaymentsClient() {
     void refresh();
   }, [refresh]);
 
+  useOnAppSync(
+    React.useCallback(() => {
+      void refresh();
+    }, [refresh]),
+    [refresh]
+  );
+
   React.useEffect(() => {
     if (!method && paymentMethods[0]) setMethod(paymentMethods[0]);
   }, [method, paymentMethods]);
@@ -210,7 +219,6 @@ export default function LaborPaymentsClient() {
 
   const deletePayment = async (paymentId: string) => {
     if (!supabase || busy) return;
-    if (!window.confirm("Delete this payment?")) return;
     setBusy(true);
     setError(null);
     const prevRows = rows;
@@ -391,10 +399,12 @@ export default function LaborPaymentsClient() {
                                       <span className="tabular-nums">
                                         {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(p.amount)}
                                       </span>
-                                      <RowActionsMenu
-                                        ariaLabel="Payment actions"
-                                        touchFriendly={false}
-                                        actions={[{ label: "Delete", onClick: () => deletePayment(p.id), destructive: true, disabled: busy }]}
+                                      <DeleteRowAction
+                                        title="Delete this labor payment?"
+                                        description="Removes this pay run record from the selected date range."
+                                        disabled={busy}
+                                        busy={busy}
+                                        onDelete={() => deletePayment(p.id)}
                                       />
                                     </li>
                                   ))}

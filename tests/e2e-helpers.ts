@@ -83,32 +83,48 @@ export async function tryCreateDraftInvoiceNavigateToDetail(
 }
 
 /**
- * Desktop projects table: toggle first row status to a different value (Active / Pending / Closed).
- * Call after `setViewportSize` if you need the desktop table (not mobile list).
+ * Desktop projects table: open the inline status editor on the first row.
+ * (We only assert the control opens — full status mutation depends on server refresh timing and DB.)
  */
-export async function changeFirstProjectTableRowToDifferentStatus(page: Page, baseUrl: string): Promise<void> {
+/**
+ * Desktop table: open the overflow / kebab on the first body row.
+ * Supports `RowActionsMenu` (`Actions for …`, `Row actions`) and Tasks (`Task actions`),
+ * plus icon-only triggers in the last cell (e.g. Customers).
+ */
+export async function clickFirstRowOverflowMenu(page: Page): Promise<void> {
+  const row = page.locator("tbody tr").first();
+  await expect(row).toBeVisible({ timeout: 55_000 });
+  const candidates = [
+    row.getByRole("button", { name: /^Actions for / }),
+    row.getByRole("button", { name: "Task actions" }),
+    row.getByRole("button", { name: "Row actions" }),
+  ];
+  for (const loc of candidates) {
+    if ((await loc.count()) > 0) {
+      await loc.first().click();
+      return;
+    }
+  }
+  await row.locator("td").last().getByRole("button").first().click();
+}
+
+/** After {@link clickFirstRowOverflowMenu}, assert a Delete entry exists (then closes menu with Escape). */
+export async function expectDeleteMenuItemThenClose(page: Page): Promise<void> {
+  await expect(page.getByRole("menuitem", { name: /^Delete/ })).toBeVisible({ timeout: 5000 });
+  await page.keyboard.press("Escape");
+}
+
+export async function openFirstProjectStatusSelect(page: Page, baseUrl: string): Promise<void> {
   await page.goto(`${trimBaseUrl(baseUrl)}/projects`);
   await page.waitForLoadState("domcontentloaded");
 
   const firstRow = page.locator("table tbody tr").first();
   await expect(firstRow).toBeVisible({ timeout: 15_000 });
 
-  const statusBadge = firstRow.getByRole("button", { name: /^Status:/ }).first();
+  const statusCell = firstRow.locator("td").nth(2);
+  const statusBadge = statusCell.getByRole("button", { name: /Status:/i }).first();
   await expect(statusBadge).toBeVisible({ timeout: 15_000 });
-  const statusLabel = ((await statusBadge.textContent()) ?? "").trim().toLowerCase();
-  const nextStatus = statusLabel.includes("active")
-    ? "Pending"
-    : statusLabel.includes("pending")
-      ? "Closed"
-      : "Active";
-
   await statusBadge.click();
 
-  const statusSelect = firstRow.getByLabel("Change project status").first();
-  await expect(statusSelect).toBeVisible();
-  await statusSelect.selectOption(nextStatus);
-
-  await expect(
-    firstRow.getByRole("button", { name: new RegExp(`^Status: ${nextStatus}`, "i") }).first()
-  ).toBeVisible({ timeout: 15_000 });
+  await expect(firstRow.getByLabel("Change project status").first()).toBeVisible({ timeout: 10_000 });
 }

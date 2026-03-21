@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { PageHeader } from "@/components/page-header";
 import {
   Table,
@@ -41,6 +42,13 @@ function DepositsPageInner() {
     });
     return () => { cancelled = true; };
   }, [load]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void load();
+    }, [load]),
+    [load]
+  );
 
   return (
     <div className="page-container page-stack py-6">

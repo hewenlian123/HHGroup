@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
@@ -99,21 +100,31 @@ export default function BankReconcilePage() {
   const [vendorsList, setVendorsList] = React.useState<string[]>([]);
   const [paymentMethodsList, setPaymentMethodsList] = React.useState<string[]>([]);
 
-  React.useEffect(() => {
-    let cancelled = false;
-    Promise.all([getBankTransactions(), getProjects(), getExpenseCategories(), getVendors(), getPaymentMethods()]).then(
-      ([txs, projs, cats, vendors, methods]) => {
-        if (!cancelled) {
-          setTransactions(txs);
-          setProjects(projs);
-          setCategories(cats);
-          setVendorsList(vendors);
-          setPaymentMethodsList(methods);
-        }
-      }
-    );
-    return () => { cancelled = true; };
+  const reloadAll = React.useCallback(async () => {
+    const [txs, projs, cats, vendors, methods] = await Promise.all([
+      getBankTransactions(),
+      getProjects(),
+      getExpenseCategories(),
+      getVendors(),
+      getPaymentMethods(),
+    ]);
+    setTransactions(txs);
+    setProjects(projs);
+    setCategories(cats);
+    setVendorsList(vendors);
+    setPaymentMethodsList(methods);
   }, []);
+
+  React.useEffect(() => {
+    void reloadAll();
+  }, [reloadAll]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void reloadAll();
+    }, [reloadAll]),
+    [reloadAll]
+  );
 
   const selected =
     selectedIds.size === 1

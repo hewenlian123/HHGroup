@@ -1,5 +1,6 @@
 "use client";
 
+import { syncRouterAndClients } from "@/lib/sync-router-client";
 import { useTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Paperclip, Trash2 } from "lucide-react";
@@ -37,7 +38,7 @@ export function ChangeOrderAttachmentsSection({
     startTransition(async () => {
       const result = await addChangeOrderAttachmentAction(changeOrderId, projectId, formData);
       if (result.ok) {
-        router.refresh();
+        void syncRouterAndClients(router);
         input.value = "";
       } else {
         setError(result.error ?? "Upload failed.");
@@ -48,7 +49,7 @@ export function ChangeOrderAttachmentsSection({
   const handleDelete = (attachmentId: string) => {
     startTransition(async () => {
       const { ok } = await deleteChangeOrderAttachmentAction(attachmentId, projectId, changeOrderId);
-      if (ok) router.refresh();
+      if (ok) void syncRouterAndClients(router);
     });
   };
 

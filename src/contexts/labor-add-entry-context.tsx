@@ -5,8 +5,11 @@ import * as React from "react";
 type LaborAddEntryContextValue = {
   /** Labor page registers `() => setModalOpen(true)` while mounted. */
   registerOpenDailyEntry: (fn: (() => void) | null) => void;
-  /** FAB / quick actions: opens the same modal as "+ Add Entry" on /labor when that page is active. */
-  triggerOpenDailyEntry: () => void;
+  /**
+   * FAB / quick actions: opens the Add Daily Entry modal when /labor is mounted.
+   * @returns true if a handler ran, false if user should navigate (e.g. `/labor?addDaily=1`).
+   */
+  triggerOpenDailyEntry: () => boolean;
 };
 
 const LaborAddEntryContext = React.createContext<LaborAddEntryContextValue | null>(null);
@@ -19,7 +22,12 @@ export function LaborAddEntryProvider({ children }: { children: React.ReactNode 
   }, []);
 
   const triggerOpenDailyEntry = React.useCallback(() => {
-    openRef.current?.();
+    const fn = openRef.current;
+    if (fn) {
+      fn();
+      return true;
+    }
+    return false;
   }, []);
 
   const value = React.useMemo(

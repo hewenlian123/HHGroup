@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
@@ -11,6 +12,7 @@ import { FilterBar } from "@/components/filter-bar";
 import { StatusBadge } from "@/components/status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
+import { DeleteRowAction } from "@/components/base";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { createBrowserClient } from "@/lib/supabase";
 
@@ -114,6 +116,13 @@ export default function LaborInvoicesListClient() {
     void refresh();
   }, [refresh]);
 
+  useOnAppSync(
+    React.useCallback(() => {
+      void refresh();
+    }, [refresh]),
+    [refresh]
+  );
+
   const workersMap = React.useMemo(() => new Map(workers.map((w) => [w.id, w.name])), [workers]);
 
   const filtered = React.useMemo(() => {
@@ -137,14 +146,17 @@ export default function LaborInvoicesListClient() {
         return;
       }
       if (!supabase) return;
-      setBusyId(id);
       setError(null);
-      const prev = invoices;
-      setInvoices((inv) => inv.filter((r) => r.id !== id));
+      let snapshot: LaborInvoiceRow[] | undefined;
+      setInvoices((inv) => {
+        snapshot = inv;
+        return inv.filter((r) => r.id !== id);
+      });
+      setBusyId(id);
       const { error: delErr } = await supabase.from("labor_invoices").delete().eq("id", id);
       if (delErr) {
         setError(delErr.message);
-        setInvoices(prev);
+        if (snapshot) setInvoices(snapshot);
       } else setMessage("Invoice deleted.");
       setBusyId(null);
     },
@@ -247,19 +259,23 @@ export default function LaborInvoicesListClient() {
                         <StatusBadge status={row.status} />
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <RowActionsMenu
-                          ariaLabel={`Actions for ${row.invoice_no}`}
-                          actions={[
-                            { label: "View", onClick: () => router.push(`/labor/invoices/${row.id}`) },
-                            ...(row.status !== "void" ? [{ label: "Void", onClick: () => setVoidConfirmId(row.id), disabled: !!busyId, destructive: true }] : []),
-                            {
-                              label: "Delete",
-                              onClick: () => handleDelete(row.id),
-                              disabled: row.status === "confirmed" || !!busyId,
-                              destructive: true,
-                            },
-                          ]}
-                        />
+                        <div className="inline-flex items-center justify-end gap-1">
+                          <DeleteRowAction
+                            disabled={row.status === "confirmed" || !!busyId}
+                            busy={busyId === row.id}
+                            title="Delete this labor invoice?"
+                            onDelete={() => handleDelete(row.id)}
+                          />
+                          <RowActionsMenu
+                            ariaLabel={`Actions for ${row.invoice_no}`}
+                            actions={[
+                              { label: "View", onClick: () => router.push(`/labor/invoices/${row.id}`) },
+                              ...(row.status !== "void"
+                                ? [{ label: "Void", onClick: () => setVoidConfirmId(row.id), disabled: !!busyId, destructive: true }]
+                                : []),
+                            ]}
+                          />
+                        </div>
                       </td>
                     </tr>
                   ))}

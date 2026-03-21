@@ -1,6 +1,9 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
+import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +35,7 @@ export function CommissionsClient({
   };
   rows: Row[];
 }) {
+  const router = useRouter();
   const [paymentModalOpen, setPaymentModalOpen] = React.useState(false);
   const [selectedCommission, setSelectedCommission] = React.useState<Row | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
@@ -43,6 +47,13 @@ export function CommissionsClient({
     reference_no: "",
     notes: "",
   });
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void syncRouterAndClients(router);
+    }, [router]),
+    [router]
+  );
 
   const openPaymentModal = (row: Row) => {
     setSelectedCommission(row);
@@ -81,7 +92,7 @@ export function CommissionsClient({
       if (!res.ok) throw new Error(data.message ?? "Failed to record payment");
       setPaymentModalOpen(false);
       setSelectedCommission(null);
-      window.location.reload();
+      void syncRouterAndClients(router);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
     } finally {

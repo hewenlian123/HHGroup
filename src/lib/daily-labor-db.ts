@@ -10,6 +10,8 @@ export type LaborEntryStatus = "Draft" | "Submitted" | "Approved" | "Locked";
 const LABOR_ENTRIES_COLS = "id, worker_id, project_id, work_date, hours, cost_code, notes, cost_amount" as const;
 const LABOR_ENTRIES_COLS_WITH_STATUS =
   "id, worker_id, project_id, work_date, hours, cost_code, notes, cost_amount, status, submitted_at, submitted_by, approved_at, approved_by, locked_at, locked_by" as const;
+const LABOR_ENTRIES_COLS_WITH_STATUS_AND_PAYMENT =
+  `${LABOR_ENTRIES_COLS_WITH_STATUS}, worker_payment_id` as const;
 /** Columns when cost_amount column does not exist (older schema). */
 const LABOR_ENTRIES_COLS_WITHOUT_COST = "id, worker_id, project_id, work_date, hours, cost_code, notes" as const;
 
@@ -61,6 +63,12 @@ export type LaborEntryWithJoins = {
   approved_by: string | null;
   locked_at: string | null;
   locked_by: string | null;
+  /** Set when `worker_payment_id` column exists; use getLaborPaymentStatus() for payroll UI. */
+  worker_payment_id?: string | null;
+  /** Raw DB `status` before workflow normalization; only needed for legacy payroll when FK column is missing. */
+  workflowStatusRaw?: string | null;
+  /** True when `worker_payment_id` column exists on this fetch (same for all rows in the list). */
+  usesPaymentLinkForPayroll: boolean;
   worker_name: string | null;
   project_name: string | null;
 };
@@ -135,25 +143,33 @@ function normalizeStatus(s: unknown): LaborEntryStatus {
 export async function getLaborEntriesWithJoins(filters: LaborEntriesFilters = {}): Promise<LaborEntryWithJoins[]> {
   const c = client();
   const statusFilter = filters.status;
-  let q = c
-    .from("labor_entries")
-    .select(LABOR_ENTRIES_COLS_WITH_STATUS)
-    .order("work_date", { ascending: false });
-  if (filters.date_from) q = q.gte("work_date", filters.date_from.slice(0, 10));
-  if (filters.date_to) q = q.lte("work_date", filters.date_to.slice(0, 10));
-  if (filters.worker_id) q = q.eq("worker_id", filters.worker_id);
-  if (filters.project_id) q = q.eq("project_id", filters.project_id);
-  if (statusFilter) q = q.eq("status", statusFilter);
+  let hasWorkerPaymentIdCol = true;
+
+  function buildQuery(selectCols: string) {
+    let q2 = c.from("labor_entries").select(selectCols).order("work_date", { ascending: false });
+    if (filters.date_from) q2 = q2.gte("work_date", filters.date_from.slice(0, 10));
+    if (filters.date_to) q2 = q2.lte("work_date", filters.date_to.slice(0, 10));
+    if (filters.worker_id) q2 = q2.eq("worker_id", filters.worker_id);
+    if (filters.project_id) q2 = q2.eq("project_id", filters.project_id);
+    if (statusFilter) q2 = q2.eq("status", statusFilter);
+    return q2;
+  }
 
   let rows: Array<Record<string, unknown>> | null = null;
   let error: { message?: string } | null = null;
   let usedStatusCols = true;
   let hasCostAmount = true;
 
-  const first = await q;
+  let first = await buildQuery(LABOR_ENTRIES_COLS_WITH_STATUS_AND_PAYMENT);
   error = first.error;
+  if (error && isMissingColumn(error) && /worker_payment_id/i.test(error.message ?? "")) {
+    hasWorkerPaymentIdCol = false;
+    first = await buildQuery(LABOR_ENTRIES_COLS_WITH_STATUS);
+    error = first.error;
+  }
 
   if (error && isAmbiguousRelationship(error)) {
+    hasWorkerPaymentIdCol = false;
     const baseCols = "id, worker_id, project_id, work_date, hours, cost_code, notes, cost_amount";
     let qSafe = c.from("labor_entries").select(baseCols).order("work_date", { ascending: false });
     if (filters.date_from) qSafe = qSafe.gte("work_date", filters.date_from.slice(0, 10));
@@ -168,6 +184,7 @@ export async function getLaborEntriesWithJoins(filters: LaborEntriesFilters = {}
 
   if (error && isMissingColumn(error)) {
     usedStatusCols = false;
+    hasWorkerPaymentIdCol = false;
     let qFallback = c
       .from("labor_entries")
       .select(LABOR_ENTRIES_COLS)
@@ -195,7 +212,7 @@ export async function getLaborEntriesWithJoins(filters: LaborEntriesFilters = {}
       error = res.error;
     }
   } else if (!error) {
-    rows = first.data as Array<Record<string, unknown>>;
+    rows = first.data as unknown as Array<Record<string, unknown>>;
   }
 
   if (error) throw new Error(error.message ?? "Failed to load labor entries.");
@@ -226,9 +243,16 @@ export async function getLaborEntriesWithJoins(filters: LaborEntriesFilters = {}
 
   return entries
     .map((r): LaborEntryWithJoins | null => {
-      const status = usedStatusCols ? normalizeStatus((r as Record<string, unknown>).status) : "Draft";
-      if (statusFilter && status !== statusFilter) return null;
       const row = r as Record<string, unknown>;
+      const rawStatusStr =
+        usedStatusCols && row.status != null && String(row.status).trim() !== ""
+          ? String(row.status)
+          : null;
+      const status = usedStatusCols ? normalizeStatus(row.status) : "Draft";
+      if (statusFilter && status !== statusFilter) return null;
+      const wpid = hasWorkerPaymentIdCol ? row.worker_payment_id : undefined;
+      const worker_payment_id =
+        hasWorkerPaymentIdCol && wpid != null && String(wpid).trim() !== "" ? String(wpid).trim() : null;
       return {
         id: (r.id ?? "") as string,
         worker_id: (r.worker_id ?? "") as string,
@@ -245,6 +269,9 @@ export async function getLaborEntriesWithJoins(filters: LaborEntriesFilters = {}
         approved_by: (row.approved_by ?? null) as string | null,
         locked_at: (row.locked_at ?? null) as string | null,
         locked_by: (row.locked_by ?? null) as string | null,
+        worker_payment_id,
+        workflowStatusRaw: rawStatusStr,
+        usesPaymentLinkForPayroll: hasWorkerPaymentIdCol,
         worker_name: workerNameById.get(r.worker_id as string) ?? null,
         project_name: r.project_id ? projectNameById.get(r.project_id as string) ?? null : null,
       };

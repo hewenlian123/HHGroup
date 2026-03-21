@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
@@ -63,45 +64,56 @@ export default function NewInvoiceClient() {
     [configured, url, anon]
   );
 
-  React.useEffect(() => {
-    const load = async () => {
-      if (!supabase) {
-        setLoading(false);
-        setError(configured ? "Supabase client unavailable." : "Supabase is not configured.");
-        return;
-      }
-      setLoading(true);
-      setError(null);
-
-      const [{ data: proj, error: projErr }, { data: cust, error: custErr }] = await Promise.all([
-        supabase.from("projects").select("id,name").order("created_at", { ascending: false }).limit(500),
-        supabase.from("customers").select("id,name").order("created_at", { ascending: false }).limit(500),
-      ]);
-
-      if (projErr) setError(projErr.message);
-      setProjects(((proj ?? []) as ProjectOption[]).filter((p) => p.id && p.name));
-      if (!projectId && (proj ?? []).length > 0) setProjectId(((proj ?? [])[0] as ProjectOption).id);
-
-      if (custErr) {
-        if (!isMissingTableError(custErr)) setError((prev) => prev ?? custErr.message);
-        setCustomers([]);
-      } else {
-        setCustomers((cust ?? []) as CustomerOption[]);
-      }
-
-      try {
-        const profile = await getCompanyProfile(supabase);
-        const pct = Number(profile?.default_tax_pct ?? 0);
-        if (!taxTouched && Number.isFinite(pct) && pct >= 0) setTaxPct(pct);
-      } catch {
-        // ignore
-      }
-
+  const load = React.useCallback(async () => {
+    if (!supabase) {
       setLoading(false);
-    };
+      setError(configured ? "Supabase client unavailable." : "Supabase is not configured.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+
+    const [{ data: proj, error: projErr }, { data: cust, error: custErr }] = await Promise.all([
+      supabase.from("projects").select("id,name").order("created_at", { ascending: false }).limit(500),
+      supabase.from("customers").select("id,name").order("created_at", { ascending: false }).limit(500),
+    ]);
+
+    if (projErr) setError(projErr.message);
+    setProjects(((proj ?? []) as ProjectOption[]).filter((p) => p.id && p.name));
+    setProjectId((prev) => {
+      if (prev) return prev;
+      const list = (proj ?? []) as ProjectOption[];
+      return list.length > 0 ? list[0].id : "";
+    });
+
+    if (custErr) {
+      if (!isMissingTableError(custErr)) setError((p) => p ?? custErr.message);
+      setCustomers([]);
+    } else {
+      setCustomers((cust ?? []) as CustomerOption[]);
+    }
+
+    try {
+      const profile = await getCompanyProfile(supabase);
+      const pct = Number(profile?.default_tax_pct ?? 0);
+      if (!taxTouched && Number.isFinite(pct) && pct >= 0) setTaxPct(pct);
+    } catch {
+      // ignore
+    }
+
+    setLoading(false);
+  }, [supabase, configured, taxTouched]);
+
+  React.useEffect(() => {
     void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supabase, taxTouched]);
+  }, [load]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void load();
+    }, [load]),
+    [load]
+  );
 
   React.useEffect(() => {
     const selected = customers.find((c) => c.id === customerId)?.name?.trim() ?? "";

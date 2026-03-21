@@ -16,6 +16,7 @@ import { createPunchListItemAction, updatePunchListItemAction } from "./actions"
 import { cn } from "@/lib/utils";
 import { Search } from "lucide-react";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 
 type ViewMode = "list" | "kanban";
 type PunchRow = {
@@ -203,6 +204,13 @@ export default function PunchListPage() {
   React.useEffect(() => {
     load();
   }, [load]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void load();
+    }, [load]),
+    [load]
+  );
 
   const debouncedSearch = useDebouncedValue(searchQuery, 200);
   const filteredItems = React.useMemo(() => {

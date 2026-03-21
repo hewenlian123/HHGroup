@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +17,7 @@ import { Plus } from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { ReceivePaymentModal } from "./receive-payment-modal";
 import { DeleteRowAction } from "@/components/base";
+import { useToast } from "@/components/toast/toast-provider";
 import { deletePaymentReceivedAction } from "./actions";
 
 function money(n: number): string {
@@ -31,6 +33,7 @@ export default function PaymentsReceivedPage() {
 }
 
 function PaymentsReceivedPageInner() {
+  const { toast } = useToast();
   const [payments, setPayments] = React.useState<PaymentReceivedWithMeta[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [modalOpen, setModalOpen] = React.useState(false);
@@ -47,6 +50,13 @@ function PaymentsReceivedPageInner() {
     });
     return () => { cancelled = true; };
   }, [load]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void load();
+    }, [load]),
+    [load]
+  );
 
   return (
     <div className="page-container page-stack py-6">
@@ -110,8 +120,23 @@ function PaymentsReceivedPageInner() {
                     <TableCell className="text-right">
                       <DeleteRowAction
                         onDelete={async () => {
-                          const res = await deletePaymentReceivedAction(row.id);
-                          if (res.ok) await load();
+                          const id = row.id;
+                          let snapshot: PaymentReceivedWithMeta[] | undefined;
+                          setPayments((prev) => {
+                            snapshot = prev;
+                            return prev.filter((p) => p.id !== id);
+                          });
+                          const res = await deletePaymentReceivedAction(id);
+                          if (!res.ok) {
+                            if (snapshot) setPayments(snapshot);
+                            toast({
+                              title: "Delete failed",
+                              description: res.error ?? "Could not delete payment.",
+                              variant: "error",
+                            });
+                            return;
+                          }
+                          void load();
                         }}
                       />
                     </TableCell>

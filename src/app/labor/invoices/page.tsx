@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
@@ -41,6 +42,19 @@ export default function LaborInvoicesPage() {
     const list = await getLaborInvoices();
     setRows(list);
   }, []);
+
+  const reloadWorkers = React.useCallback(async () => {
+    const list = await getWorkers();
+    setWorkers(list);
+  }, []);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void refresh();
+      void reloadWorkers();
+    }, [refresh, reloadWorkers]),
+    [refresh, reloadWorkers]
+  );
 
   const handleDelete = async (id: string) => {
     const target = rows.find((r) => r.id === id);

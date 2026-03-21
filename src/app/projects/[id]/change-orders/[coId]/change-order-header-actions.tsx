@@ -1,5 +1,6 @@
 "use client";
 
+import { syncRouterAndClients } from "@/lib/sync-router-client";
 import { useRouter } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,7 +27,7 @@ export function ChangeOrderStatusDropdown({
 
   const handleStatus = async (status: ChangeOrderStatus) => {
     const { ok } = await updateChangeOrderStatus(changeOrderId, projectId, status);
-    if (ok) router.refresh();
+    if (ok) void syncRouterAndClients(router);
   };
 
   if (currentStatus === "Approved") {

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import {
   PageLayout,
@@ -37,64 +38,69 @@ export default function LaborCostAllocationPage() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
-  React.useEffect(() => {
-    let cancelled = false;
-    getProjects()
-      .then((list) => {
-        if (cancelled) return;
-        setProjects(list.map((p) => ({ id: p.id, name: p.name ?? p.id })));
-        if (list.length > 0 && !projectId) setProjectId(list[0].id);
-      })
-      .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load projects");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [projectId]);
+  const loadProjects = React.useCallback(async () => {
+    try {
+      const list = await getProjects();
+      setProjects(list.map((p) => ({ id: p.id, name: p.name ?? p.id })));
+      setProjectId((prev) => prev || (list[0]?.id ?? ""));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load projects");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  React.useEffect(() => {
+  const loadReport = React.useCallback(async () => {
     if (!projectId) {
       setRows([]);
       setRevenue(0);
       return;
     }
-    let cancelled = false;
     setLoading(true);
     setError(null);
-    Promise.all([getProjectCostCodeSummary(projectId), getProjectForecastSummary(projectId)])
-      .then(([summaryRows, forecast]) => {
-        if (cancelled) return;
-        const mapped: CostRow[] = (summaryRows as ProjectCostCodeSummaryItem[]).map((r) => {
-          const budget = r.budget;
-          const actual = r.actual;
-          const variance = actual - budget;
-          const pct = budget !== 0 ? (actual / budget) * 100 : 0;
-          return {
-            code: r.costCode,
-            name: codeToName(r.costCode),
-            budget,
-            actual,
-            variance,
-            pct,
-          };
-        });
-        setRows(mapped);
-        setRevenue(forecast.revenue ?? 0);
-      })
-      .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load project data");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+    try {
+      const [summaryRows, forecast] = await Promise.all([
+        getProjectCostCodeSummary(projectId),
+        getProjectForecastSummary(projectId),
+      ]);
+      const mapped: CostRow[] = (summaryRows as ProjectCostCodeSummaryItem[]).map((r) => {
+        const budget = r.budget;
+        const actual = r.actual;
+        const variance = actual - budget;
+        const pct = budget !== 0 ? (actual / budget) * 100 : 0;
+        return {
+          code: r.costCode,
+          name: codeToName(r.costCode),
+          budget,
+          actual,
+          variance,
+          pct,
+        };
       });
-    return () => {
-      cancelled = true;
-    };
+      setRows(mapped);
+      setRevenue(forecast.revenue ?? 0);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load project data");
+    } finally {
+      setLoading(false);
+    }
   }, [projectId]);
+
+  React.useEffect(() => {
+    void loadProjects();
+  }, [loadProjects]);
+
+  React.useEffect(() => {
+    void loadReport();
+  }, [loadReport]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void loadProjects();
+      void loadReport();
+    }, [loadProjects, loadReport]),
+    [loadProjects, loadReport]
+  );
 
   const totals = React.useMemo(
     () => ({

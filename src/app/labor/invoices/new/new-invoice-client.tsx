@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
@@ -48,19 +49,34 @@ export default function NewLaborInvoiceClient() {
     [configured, url, anon]
   );
 
-  React.useEffect(() => {
+  const load = React.useCallback(async () => {
     if (!supabase) {
       setLoading(false);
       setError(configured ? "Supabase client unavailable." : "Supabase is not configured.");
       return;
     }
-    (async () => {
-      const { data, error: err } = await supabase.from("workers").select("id,name").eq("status", "active").order("created_at", { ascending: false }).limit(500);
-      if (err) setError(err.message);
-      else setWorkers((data ?? []).map((w) => ({ id: (w as { id: string }).id, name: (w as { name: string }).name ?? "" })));
-      setLoading(false);
-    })();
+    setLoading(true);
+    const { data, error: err } = await supabase
+      .from("workers")
+      .select("id,name")
+      .eq("status", "active")
+      .order("created_at", { ascending: false })
+      .limit(500);
+    if (err) setError(err.message);
+    else setWorkers((data ?? []).map((w) => ({ id: (w as { id: string }).id, name: (w as { name: string }).name ?? "" })));
+    setLoading(false);
   }, [supabase, configured]);
+
+  React.useEffect(() => {
+    void load();
+  }, [load]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void load();
+    }, [load]),
+    [load]
+  );
 
   React.useEffect(() => {
     if (!workerId && workers[0]?.id) setWorkerId(workers[0].id);

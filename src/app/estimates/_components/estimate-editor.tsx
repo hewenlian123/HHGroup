@@ -1,5 +1,6 @@
 "use client";
 
+import { syncRouterAndClients } from "@/lib/sync-router-client";
 import * as React from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -49,6 +50,7 @@ import { EstimatePaymentSchedule } from "./estimate-payment-schedule";
 import { LineItemDescriptionBodyPreview } from "./line-item-description-body-preview";
 import { CostCategoryTitleMenu, type CostCategoryOption } from "./cost-category-title-menu";
 import { pickNextUniqueCostCode } from "@/lib/estimate-cost-code-suggest";
+import type { LineItemDescriptionRichTextHandle } from "./line-item-description-rich-text";
 
 /** TipTap must not load on the server — Next 14 can emit a broken `vendor-chunks/@tiptap.js` ref and 500 the page. */
 const LineItemDescriptionRichText = dynamic(
@@ -359,7 +361,7 @@ export function EstimateEditor({
       }
       const res = await reorderEstimateCategoriesAction(estimateId, nextOrder, nameMap);
       if (res.ok) {
-        router.refresh();
+        void syncRouterAndClients(router);
       } else {
         toast({ title: "Could not save category order", description: res.error ?? "Try again.", variant: "error" });
         setLocalCategorySectionOrder(null);
@@ -397,6 +399,7 @@ export function EstimateEditor({
   const [modalItemName, setModalItemName] = React.useState("");
   const [modalItemDescription, setModalItemDescription] = React.useState("");
   const [descModalSaving, setDescModalSaving] = React.useState(false);
+  const lineDescEditorRef = React.useRef<LineItemDescriptionRichTextHandle | null>(null);
   const lineLiveValuesRef = React.useRef<Record<string, () => { qty: number; unit: string; unitCost: number; markupPct: number }>>({});
   const lineDescriptionApplyRef = React.useRef<Record<string, (name: string, desc: string) => void>>({});
 
@@ -421,7 +424,8 @@ export function EstimateEditor({
       const unit = live?.unit ?? row?.unit ?? "EA";
       const unitCost = live?.unitCost ?? row?.unitCost ?? 0;
       const markupPctVal = live?.markupPct ?? row?.markupPct ?? 0;
-      const combined = modalItemDescription.trim() ? `${modalItemName}\n${modalItemDescription}` : modalItemName;
+      const descBody = lineDescEditorRef.current?.getValue() ?? modalItemDescription;
+      const combined = descBody.trim() ? `${modalItemName}\n${descBody}` : modalItemName;
       const fd = new FormData();
       fd.set("estimateId", estimateId);
       fd.set("itemId", editingItem);
@@ -789,6 +793,7 @@ export function EstimateEditor({
               <div className="space-y-1.5">
                 <Label className="text-xs">Description</Label>
                 <LineItemDescriptionRichText
+                  ref={lineDescEditorRef}
                   key={editingItem ?? "closed"}
                   value={modalItemDescription}
                   onChange={setModalItemDescription}
@@ -970,6 +975,11 @@ function LineItemRow({
     setUnitCost(row.unitCost);
   }, [row.id, row.desc, row.qty, row.unit, row.unitCost]);
 
+  const lineTotalDisplay = React.useMemo(() => {
+    if (isLocked) return estimateLineTotal(row);
+    return estimateLineTotal({ ...row, qty, unit, unitCost });
+  }, [isLocked, row, qty, unit, unitCost]);
+
   const descColSpan = isLocked ? 6 : dragHandleProps ? 8 : 7;
 
   return (
@@ -1008,7 +1018,7 @@ function LineItemRow({
           )}
         </td>
         <td className="py-2 px-4 align-top text-muted-foreground text-xs">{categoryId}</td>
-        <td className="py-2 px-4 align-top text-right tabular-nums font-semibold">${estimateLineTotal(row).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+        <td className="py-2 px-4 align-top text-right tabular-nums font-semibold">${lineTotalDisplay.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
         {!isLocked && (
           <td className="py-2 px-2 align-top">
             <form action={duplicateLineItemAction} className="inline">
@@ -1094,6 +1104,7 @@ function AddCategoryBlock({
     [allCategoryCodes, getCategoryDisplayName]
   );
   const [search, setSearch] = React.useState("");
+  const deferredSearch = React.useDeferredValue(search);
   const [selectedCode, setSelectedCode] = React.useState<string | null>(null);
   /** When user uses “Create …”, store label for display + optional save with add category. */
   const [customCategoryLabel, setCustomCategoryLabel] = React.useState<string | null>(null);
@@ -1106,7 +1117,7 @@ function AddCategoryBlock({
   const inputRef = React.useRef<HTMLInputElement>(null);
   const [menuPos, setMenuPos] = React.useState<{ top: number; left: number; width: number; maxHeight: number } | null>(null);
 
-  const searchLower = search.trim().toLowerCase();
+  const searchLower = deferredSearch.trim().toLowerCase();
   const filtered = React.useMemo(
     () =>
       allCodesWithLabels.filter(
@@ -1209,7 +1220,7 @@ function AddCategoryBlock({
           setCustomCategoryLabel(trimmed);
           setSearch("");
           setOpen(false);
-          router.refresh();
+          void syncRouterAndClients(router);
           toast({ title: "Category created", variant: "success" });
         } else {
           toast({
@@ -1249,7 +1260,7 @@ function AddCategoryBlock({
           setSelectedCode(null);
           setCustomCategoryLabel(null);
           setOpen(false);
-          router.refresh();
+          void syncRouterAndClients(router);
           toast({ title: "Category added", variant: "success" });
         } else {
           toast({

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +14,8 @@ import { clearLaborEntry, getProjects, getLaborEntriesWithJoins, getLaborWorkers
 import type { LaborEntryWithJoins } from "@/lib/daily-labor-db";
 import { cn } from "@/lib/utils";
 import { useRegisterLaborOpenDailyEntry } from "@/contexts/labor-add-entry-context";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
+import { invalidateDataCache } from "@/lib/client-data-cache";
 import { AddDailyEntryModal as QuickTimesheetModal } from "./add-daily-entry-modal";
 import { EditEntryModal, sessionLabel } from "./edit-entry-modal";
 import type { LaborSession } from "./edit-entry-modal";
@@ -113,6 +115,7 @@ function getCalendarGrid(ym: string): (number | null)[][] {
 const MONTH_OPTIONS = buildMonthOptions();
 
 export default function LaborPageClient() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const now = new Date();
   const initialMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -129,9 +132,18 @@ export default function LaborPageClient() {
       appliedProjectIdFromUrl.current = true;
     }
   }, [searchParams]);
+
+  /** Mobile FAB: open Add Daily Entry after redirect from quick actions when /labor was not mounted. */
+  React.useEffect(() => {
+    if (searchParams.get("addDaily") !== "1") return;
+    setModalOpen(true);
+    router.replace("/labor", { scroll: false });
+  }, [searchParams, router]);
   const [projects, setProjects] = React.useState<Awaited<ReturnType<typeof getProjects>>>([]);
   const [workers, setWorkers] = React.useState<{ id: string; name: string }[]>([]);
   const [monthEntries, setMonthEntries] = React.useState<LaborEntryWithJoins[]>([]);
+  const monthEntriesRef = React.useRef(monthEntries);
+  monthEntriesRef.current = monthEntries;
   const [loadingProjects, setLoadingProjects] = React.useState(true);
   const [loadingEntries, setLoadingEntries] = React.useState(false);
   const [message, setMessage] = React.useState<string | null>(null);
@@ -209,6 +221,16 @@ export default function LaborPageClient() {
     void loadMonthEntries();
   }, [loadMonthEntries]);
 
+  useOnAppSync(
+    React.useCallback(() => {
+      invalidateDataCache("data:");
+      void loadMonthEntries();
+      void loadProjects();
+      void loadWorkers();
+    }, [loadMonthEntries, loadProjects, loadWorkers]),
+    [loadMonthEntries, loadProjects, loadWorkers]
+  );
+
   const handleSaved = React.useCallback(() => {
     setMessage("Entries saved.");
     setError(null);
@@ -221,12 +243,16 @@ export default function LaborPageClient() {
         `Delete entry for ${e.worker_name ?? "worker"} on ${e.work_date?.slice(0, 10) ?? "date"}?`
       );
       if (!ok) return;
+      const snapshot = monthEntriesRef.current;
+      setMonthEntries((prev) => prev.filter((x) => x.id !== e.id));
+      setMessage("Entry deleted.");
+      setError(null);
       try {
         await clearLaborEntry(e.id);
-        setMessage("Entry deleted.");
-        setError(null);
         void loadMonthEntries();
       } catch (err) {
+        setMonthEntries(snapshot);
+        setMessage(null);
         setError(err instanceof Error ? err.message : "Failed to delete.");
       }
     },

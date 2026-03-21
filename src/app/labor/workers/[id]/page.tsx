@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
@@ -31,45 +32,41 @@ export default function WorkerDetailPage() {
   const [halfDayRate, setHalfDayRate] = React.useState(0);
   const [notes, setNotes] = React.useState("");
 
-  React.useEffect(() => {
+  const refreshAll = React.useCallback(async () => {
     if (!id) return;
-    let cancelled = false;
-    getWorkerById(id).then((w) => {
-      if (!cancelled) {
-        setWorker(w);
-        if (w) {
-          setName(w.name);
-          setPhone(w.phone ?? "");
-          setTrade(w.trade ?? "");
-          setStatus(w.status);
-          setHalfDayRate(w.halfDayRate);
-          setNotes(w.notes ?? "");
-        }
+    const [w, u] = await Promise.all([getWorkerById(id), getWorkerUsage(id)]);
+    setWorker(w);
+    setUsage(u);
+    if (w) {
+      setName(w.name);
+      setPhone(w.phone ?? "");
+      setTrade(w.trade ?? "");
+      setStatus(w.status);
+      setHalfDayRate(w.halfDayRate);
+      setNotes(w.notes ?? "");
+      try {
+        const r = await fetch(`/api/labor/workers/${id}/financial-summary`);
+        const data = r.ok ? await r.json() : null;
+        if (data && typeof data.totalLabor === "number") setFinancialSummary(data);
+        else setFinancialSummary(null);
+      } catch {
+        setFinancialSummary(null);
       }
-    });
-    return () => { cancelled = true; };
+    } else {
+      setFinancialSummary(null);
+    }
   }, [id]);
 
   React.useEffect(() => {
-    if (!id) return;
-    let cancelled = false;
-    getWorkerUsage(id).then((u) => {
-      if (!cancelled) setUsage(u);
-    });
-    return () => { cancelled = true; };
-  }, [id]);
+    void refreshAll();
+  }, [refreshAll]);
 
-  React.useEffect(() => {
-    if (!id || worker === undefined || worker === null) return;
-    let cancelled = false;
-    fetch(`/api/labor/workers/${id}/financial-summary`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (!cancelled && data && typeof data.totalLabor === "number") setFinancialSummary(data);
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [id, worker]);
+  useOnAppSync(
+    React.useCallback(() => {
+      void refreshAll();
+    }, [refreshAll]),
+    [refreshAll]
+  );
 
   const handleSave = async () => {
     if (!id) return;

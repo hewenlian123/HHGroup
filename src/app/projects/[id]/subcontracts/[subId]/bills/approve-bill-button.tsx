@@ -1,5 +1,6 @@
 "use client";
 
+import { syncRouterAndClients } from "@/lib/sync-router-client";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { approveSubcontractBillAction } from "./actions";
@@ -16,7 +17,7 @@ export function ApproveBillButton({ billId }: Props) {
     setBusy(true);
     try {
       await approveSubcontractBillAction(billId);
-      router.refresh();
+      void syncRouterAndClients(router);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to approve bill.");
     } finally {

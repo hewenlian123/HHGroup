@@ -1,6 +1,9 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
+import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -19,6 +22,7 @@ function fmtRate(n: number): string {
 }
 
 export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
+  const router = useRouter();
   const { toast } = useToast();
   const [items, setItems] = React.useState<WorkerRow[]>(rows);
   const [addOpen, setAddOpen] = React.useState(false);
@@ -36,6 +40,13 @@ export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
   React.useEffect(() => {
     setItems(rows);
   }, [rows]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void syncRouterAndClients(router);
+    }, [router]),
+    [router]
+  );
 
   React.useEffect(() => {
     if (!editFor) return;

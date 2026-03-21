@@ -1,6 +1,10 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,6 +35,7 @@ type Draft = {
 };
 
 export function CustomersClient({ initialCustomers }: Props) {
+  const router = useRouter();
   const [items, setItems] = React.useState<Customer[]>(initialCustomers);
   const [search, setSearch] = React.useState("");
   const [busy, setBusy] = React.useState(false);
@@ -40,6 +45,17 @@ export function CustomersClient({ initialCustomers }: Props) {
   const [deleteTarget, setDeleteTarget] = React.useState<Customer | null>(null);
   const [deleteError, setDeleteError] = React.useState<string | null>(null);
   const [deleteBusy, setDeleteBusy] = React.useState(false);
+
+  React.useEffect(() => {
+    setItems(initialCustomers);
+  }, [initialCustomers]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void syncRouterAndClients(router);
+    }, [router]),
+    [router]
+  );
 
   const filtered = React.useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -116,21 +132,52 @@ export function CustomersClient({ initialCustomers }: Props) {
           [...prev, data as Customer].sort((a, b) => a.name.localeCompare(b.name)),
         );
       } else {
-        const res = await fetch(`/api/customers/${draft.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          setError(data?.message ?? "Failed to update customer.");
+        const id = draft.id;
+        const previous = items.find((c) => c.id === id);
+        if (!previous) {
+          setError("Customer not found.");
           return;
         }
+        const optimistic: Customer = {
+          ...previous,
+          ...payload,
+        };
+        const snapshot = items;
+        const draftSnapshot = draft;
         setItems((prev) =>
           prev
-            .map((c) => (c.id === data.id ? (data as Customer) : c))
+            .map((c) => (c.id === id ? optimistic : c))
             .sort((a, b) => a.name.localeCompare(b.name)),
         );
+        setModalOpen(false);
+        setDraft(null);
+        setBusy(false);
+        try {
+          const res = await fetch(`/api/customers/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            setItems(snapshot);
+            setDraft(draftSnapshot);
+            setModalOpen(true);
+            setError(data?.message ?? "Failed to update customer.");
+            return;
+          }
+          setItems((prev) =>
+            prev
+              .map((c) => (c.id === (data as Customer).id ? (data as Customer) : c))
+              .sort((a, b) => a.name.localeCompare(b.name)),
+          );
+        } catch {
+          setItems(snapshot);
+          setDraft(draftSnapshot);
+          setModalOpen(true);
+          setError("Failed to update customer.");
+        }
+        return;
       }
       setModalOpen(false);
       setDraft(null);
@@ -146,14 +193,23 @@ export function CustomersClient({ initialCustomers }: Props) {
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
+    const target = deleteTarget;
     setDeleteBusy(true);
     setDeleteError(null);
+    setDeleteTarget(null);
+    let snapshot: Customer[] | undefined;
+    setItems((prev) => {
+      snapshot = prev;
+      return prev.filter((c) => c.id !== target.id);
+    });
     try {
-      const res = await fetch(`/api/customers/${deleteTarget.id}`, {
+      const res = await fetch(`/api/customers/${target.id}`, {
         method: "DELETE",
       });
       if (res.status === 400) {
         const data = await res.json();
+        if (snapshot) setItems(snapshot);
+        setDeleteTarget(target);
         setDeleteError(
           data?.message ??
             "Customer has linked projects and cannot be deleted.",
@@ -162,11 +218,11 @@ export function CustomersClient({ initialCustomers }: Props) {
       }
       if (!res.ok && res.status !== 204) {
         const data = await res.json().catch(() => null);
+        if (snapshot) setItems(snapshot);
+        setDeleteTarget(target);
         setDeleteError(data?.message ?? "Failed to delete customer.");
         return;
       }
-      setItems((prev) => prev.filter((c) => c.id !== deleteTarget.id));
-      setDeleteTarget(null);
     } finally {
       setDeleteBusy(false);
     }
@@ -255,7 +311,14 @@ export function CustomersClient({ initialCustomers }: Props) {
                     key={c.id}
                     className="border-b border-border/40 last:border-b-0 hover:bg-muted/40"
                   >
-                    <td className="px-3 py-2 font-medium">{c.name}</td>
+                    <td className="px-3 py-2 font-medium">
+                      <Link
+                        href={`/customers/${c.id}`}
+                        className="text-foreground hover:underline underline-offset-2"
+                      >
+                        {c.name}
+                      </Link>
+                    </td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">
                       {c.email ?? "—"}
                     </td>

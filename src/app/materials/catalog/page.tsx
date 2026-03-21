@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { PageLayout, PageHeader } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,6 +72,13 @@ export default function MaterialCatalogPage() {
   React.useEffect(() => {
     load();
   }, [load]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void load();
+    }, [load]),
+    [load]
+  );
 
   React.useEffect(() => {
     if (!modalOpen || !editingMaterial) return;
@@ -191,7 +199,8 @@ export default function MaterialCatalogPage() {
         if (!data.ok) throw new Error(data.message || "Failed to create");
       }
       handleModalOpenChange(false);
-      load();
+      setSubmitting(false);
+      void load();
     } catch (e) {
       setError(e instanceof Error ? e.message : editingMaterial ? "Failed to update." : "Failed to create.");
     } finally {

@@ -1,5 +1,6 @@
 "use client";
 
+import { syncRouterAndClients } from "@/lib/sync-router-client";
 import { useCallback, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -27,7 +28,7 @@ export function EstimateListRow({
     formData.set("estimateId", row.id);
     startTransition(async () => {
       await deleteAction(formData);
-      router.refresh();
+      void syncRouterAndClients(router);
     });
   }, [row.id, deleteAction, router]);
 

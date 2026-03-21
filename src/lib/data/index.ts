@@ -972,6 +972,23 @@ export async function markWorkerInvoicesPaid(workerId: string, projectId?: strin
 
 // Worker payments
 export async function createWorkerPayment(input: import("../worker-payments-db").CreateWorkerPaymentInput) {
+  if (typeof window !== "undefined") {
+    const res = await fetch(`/api/labor/workers/${encodeURIComponent(input.workerId)}/pay`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        amount: input.amount,
+        payment_method: input.paymentMethod,
+        payment_date: input.paymentDate,
+        notes: input.notes,
+        project_id: input.projectId ?? null,
+      }),
+    });
+    const body = (await res.json().catch(() => ({}))) as { message?: string; payment?: import("../worker-payments-db").WorkerPayment };
+    if (!res.ok) throw new Error(typeof body.message === "string" ? body.message : "Failed to record payment.");
+    if (!body.payment) throw new Error("Invalid payment response.");
+    return body.payment;
+  }
   return workerPaymentsDb.createWorkerPayment(input);
 }
 export async function getWorkerPayments(filters?: Parameters<typeof workerPaymentsDb.getWorkerPayments>[0]) {
@@ -980,8 +997,13 @@ export async function getWorkerPayments(filters?: Parameters<typeof workerPaymen
 export async function getWorkerPaymentById(id: string) {
   return workerPaymentsDb.getWorkerPaymentById(id);
 }
-export async function deleteWorkerPayment(id: string) {
-  return workerPaymentsDb.deleteWorkerPayment(id);
+/** Deletes payout and reverses linked labor + reimbursements (see API). */
+export async function deleteWorkerPayment(id: string): Promise<void> {
+  const res = await fetch(`/api/labor/worker-payments/${encodeURIComponent(id)}`, { method: "DELETE" });
+  const body = (await res.json().catch(() => ({}))) as { message?: string };
+  if (!res.ok) {
+    throw new Error(body.message ?? "Failed to delete worker payment.");
+  }
 }
 
 // Worker advances
