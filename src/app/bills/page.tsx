@@ -43,7 +43,7 @@ export default async function BillsPage({ searchParams }: Props) {
           title="Bills"
           description="Track vendor, labor, and other payables"
           actions={
-            <Button asChild size="touch" className="min-h-[44px] rounded-sm border-[#E5E7EB] bg-white font-medium text-foreground hover:bg-gray-50">
+            <Button asChild size="sm">
               <Link href="/bills/new">+ New Bill</Link>
             </Button>
           }

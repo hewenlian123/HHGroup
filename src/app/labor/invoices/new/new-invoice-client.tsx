@@ -4,9 +4,9 @@ import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { createBrowserClient } from "@/lib/supabase";
 
 type WorkerOption = { id: string; name: string };
@@ -116,9 +116,9 @@ export default function NewLaborInvoiceClient() {
     return (
       <div className="mx-auto max-w-[680px] flex flex-col gap-6 p-6">
         <PageHeader title="New Labor Invoice" description="Create a worker invoice/receipt record." />
-        <Card className="rounded-2xl border border-zinc-200/60 dark:border-border p-6">
-          <div className="h-48 flex items-center justify-center text-muted-foreground">Loading…</div>
-        </Card>
+        <section className="border-b border-[#EBEBE9] py-12 text-center text-muted-foreground dark:border-border">
+          Loading…
+        </section>
       </div>
     );
   }
@@ -127,43 +127,54 @@ export default function NewLaborInvoiceClient() {
     <div className="mx-auto max-w-[680px] flex flex-col gap-6 p-6">
       <PageHeader title="New Labor Invoice" description="Create a worker invoice/receipt record." />
       {error ? (
-        <div className="rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 px-3 py-2 text-sm text-red-700 dark:text-red-300">
-          {error}
-        </div>
+        <p className="border-b border-red-200/80 pb-3 text-sm text-red-700 dark:border-red-900 dark:text-red-300">{error}</p>
       ) : null}
-      <Card className="rounded-2xl border border-zinc-200/60 dark:border-border p-6">
+      <section className="border-b border-[#EBEBE9] pb-6 dark:border-border">
         <div className="grid gap-4">
           <div className="grid gap-1.5">
-            <label className="text-xs uppercase tracking-wider text-muted-foreground">Worker</label>
-            <select
-              value={workerId}
-              onChange={(e) => setWorkerId(e.target.value)}
-              className="h-10 rounded-lg border border-input bg-transparent px-3 text-sm"
-            >
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Worker</label>
+            <Select value={workerId} onChange={(e) => setWorkerId(e.target.value)}>
               <option value="">Select worker</option>
               {workers.map((w) => (
-                <option key={w.id} value={w.id}>{w.name}</option>
+                <option key={w.id} value={w.id}>
+                  {w.name}
+                </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div className="grid gap-1.5">
-            <label className="text-xs uppercase tracking-wider text-muted-foreground">Invoice Date</label>
-            <Input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} className="rounded-lg" />
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Invoice Date</label>
+            <Input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} className="rounded-sm" />
           </div>
           <div className="grid gap-1.5">
-            <label className="text-xs uppercase tracking-wider text-muted-foreground">Amount</label>
-            <Input type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(Number(e.target.value) || 0)} className="rounded-lg" />
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Amount</label>
+            <Input
+              type="number"
+              min="0"
+              step="0.01"
+              value={amount}
+              onChange={(e) => setAmount(Number(e.target.value) || 0)}
+              className="rounded-sm"
+            />
           </div>
           <div className="grid gap-1.5">
-            <label className="text-xs uppercase tracking-wider text-muted-foreground">Memo</label>
-            <textarea value={memo} onChange={(e) => setMemo(e.target.value)} className="min-h-[88px] rounded-lg border border-input bg-transparent px-3 py-2 text-sm" />
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Memo</label>
+            <textarea
+              value={memo}
+              onChange={(e) => setMemo(e.target.value)}
+              className="min-h-[88px] rounded-sm border border-[#EBEBE9] bg-background px-3 py-2 text-sm dark:border-border"
+            />
           </div>
         </div>
         <div className="mt-6 flex justify-end gap-2">
-          <Button variant="outline" className="rounded-lg" onClick={() => router.push("/labor/invoices")} disabled={submitting}>Cancel</Button>
-          <Button className="rounded-lg" onClick={handleCreate} disabled={!workerId || submitting}>Create</Button>
+          <Button variant="outline" size="sm" className="rounded-sm" onClick={() => router.push("/labor/invoices")} disabled={submitting}>
+            Cancel
+          </Button>
+          <Button size="sm" className="rounded-sm" onClick={handleCreate} disabled={!workerId || submitting}>
+            Create
+          </Button>
         </div>
-      </Card>
+      </section>
     </div>
   );
 }

@@ -15,7 +15,7 @@ export function SectionHeader({ label, action, className }: SectionHeaderProps) 
   return (
     <div className={cn("flex flex-col gap-1", className)}>
       <div className="flex items-center justify-between gap-2">
-        <span className="text-sm font-medium uppercase tracking-wide text-gray-500">
+        <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
           {label}
         </span>
         {action}

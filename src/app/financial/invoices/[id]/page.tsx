@@ -4,9 +4,9 @@ import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -272,7 +272,7 @@ export default function InvoiceDetailPage() {
             </DropdownMenuContent>
           </DropdownMenu>
           {isDraft && (
-            <Button variant="outline" size="sm" className="rounded-lg" onClick={handleMarkSent} disabled={actionBusy}>
+            <Button variant="outline" size="sm" className="rounded-sm" onClick={handleMarkSent} disabled={actionBusy}>
               <Send className="h-4 w-4 mr-2" />
               Mark Sent
             </Button>
@@ -284,7 +284,7 @@ export default function InvoiceDetailPage() {
             </Button>
           )}
           {!isVoid && (
-            <Button variant="outline" size="sm" className="rounded-lg" onClick={() => setShowReceivePaymentModal(true)} disabled={actionBusy}>
+            <Button variant="outline" size="sm" className="rounded-sm" onClick={() => setShowReceivePaymentModal(true)} disabled={actionBusy}>
               <CircleDollarSign className="h-4 w-4 mr-2" />
               Receive Payment
             </Button>
@@ -292,8 +292,8 @@ export default function InvoiceDetailPage() {
         </div>
       </div>
 
-      <Card className="rounded-2xl border border-zinc-200/60 dark:border-border p-6">
-        <h2 className="text-sm font-semibold text-foreground mb-3">Client / Project</h2>
+      <section className="border-b border-[#EBEBE9] pb-6 dark:border-border">
+        <h2 className="mb-3 text-sm font-semibold text-foreground">Client / Project</h2>
         <p className="text-sm text-muted-foreground">
           <span className="font-medium text-foreground">{invoice.clientName}</span>
           {" — "}
@@ -302,28 +302,26 @@ export default function InvoiceDetailPage() {
         <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs">
           <span className="text-muted-foreground">Status</span>
           <InvoiceStatusBadge status={invoice.computedStatus} />
-          <span className="text-muted-foreground ml-2">Due date</span>
+          <span className="ml-2 text-muted-foreground">Due date</span>
           <span className={cn("tabular-nums", invoice.computedStatus === "Overdue" && "text-red-600 dark:text-red-400")}>
             {invoice.dueDate}
           </span>
           {invoice.daysOverdue > 0 && (
             <>
-              <span className="text-muted-foreground ml-2">Days overdue</span>
-              <span className="tabular-nums font-medium text-red-600 dark:text-red-400">{invoice.daysOverdue}</span>
+              <span className="ml-2 text-muted-foreground">Days overdue</span>
+              <span className="font-medium tabular-nums text-red-600 dark:text-red-400">{invoice.daysOverdue}</span>
             </>
           )}
         </div>
-        <p className="text-xs text-muted-foreground mt-1">
-          Issue: {invoice.issueDate}
-        </p>
-      </Card>
+        <p className="mt-1 text-xs text-muted-foreground">Issue: {invoice.issueDate}</p>
+      </section>
 
-      <Card className="rounded-2xl border border-zinc-200/60 dark:border-border overflow-hidden">
-        <h2 className="text-sm font-semibold text-foreground p-4 pb-2">Line items</h2>
+      <div className="overflow-hidden rounded-sm border border-[#EBEBE9] dark:border-border">
+        <h2 className="p-4 pb-2 text-sm font-semibold text-foreground">Line items</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-zinc-200/40 dark:border-border/60 bg-muted/30">
+              <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
                 <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Description</th>
                 <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Qty</th>
                 <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Unit price</th>
@@ -332,7 +330,10 @@ export default function InvoiceDetailPage() {
             </thead>
             <tbody>
               {invoice.lineItems.map((line, idx) => (
-                <tr key={idx} className="border-b border-zinc-100/50 dark:border-border/30">
+                <tr
+                  key={idx}
+                  className="border-b border-[#EBEBE9]/80 transition-colors hover:bg-[#F7F7F5] dark:border-border/40 dark:hover:bg-muted/20"
+                >
                   <td className="py-3 px-4 text-foreground">{line.description}</td>
                   <td className="py-3 px-4 text-right tabular-nums text-muted-foreground">{line.qty}</td>
                   <td className="py-3 px-4 text-right tabular-nums text-muted-foreground">${line.unitPrice.toLocaleString()}</td>
@@ -342,10 +343,10 @@ export default function InvoiceDetailPage() {
             </tbody>
           </table>
         </div>
-      </Card>
+      </div>
 
-      <Card className="rounded-2xl border border-zinc-200/60 dark:border-border p-6">
-        <h2 className="text-sm font-semibold text-foreground mb-3">Totals</h2>
+      <section className="border-b border-[#EBEBE9] pb-6 dark:border-border">
+        <h2 className="mb-3 text-sm font-semibold text-foreground">Totals</h2>
         <div className="space-y-1 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Subtotal</span>
@@ -357,7 +358,7 @@ export default function InvoiceDetailPage() {
               <span className="tabular-nums">${invoice.taxAmount.toLocaleString()}</span>
             </div>
           )}
-          <div className="flex justify-between font-medium pt-2 border-t border-zinc-200/60 dark:border-border">
+          <div className="flex justify-between border-t border-[#EBEBE9] pt-2 font-medium dark:border-border">
             <span>Total</span>
             <span className="tabular-nums">${invoice.total.toLocaleString()}</span>
           </div>
@@ -370,17 +371,17 @@ export default function InvoiceDetailPage() {
             <span className="tabular-nums">${invoice.balanceDue.toLocaleString()}</span>
           </div>
         </div>
-      </Card>
+      </section>
 
-      <Card className="rounded-2xl border border-zinc-200/60 dark:border-border overflow-hidden">
-        <h2 className="text-sm font-semibold text-foreground p-4 pb-2">Payments history</h2>
+      <div className="overflow-hidden rounded-sm border border-[#EBEBE9] dark:border-border">
+        <h2 className="p-4 pb-2 text-sm font-semibold text-foreground">Payments history</h2>
         {payments.length === 0 ? (
           <p className="text-sm text-muted-foreground px-4 pb-4">No payments recorded.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-zinc-200/40 dark:border-border/60 bg-muted/30">
+                <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
                   <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Date</th>
                   <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Amount</th>
                   <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Method</th>
@@ -390,7 +391,10 @@ export default function InvoiceDetailPage() {
               </thead>
               <tbody>
                 {payments.map((p) => (
-                  <tr key={p.id} className="border-b border-zinc-100/50 dark:border-border/30">
+                  <tr
+                    key={p.id}
+                    className="border-b border-[#EBEBE9]/80 transition-colors hover:bg-[#F7F7F5] dark:border-border/40 dark:hover:bg-muted/20"
+                  >
                     <td className="py-3 px-4 tabular-nums">{p.date}</td>
                     <td className="py-3 px-4 text-right tabular-nums font-medium text-emerald-600/90 dark:text-emerald-400/90">
                       ${p.amount.toLocaleString()}
@@ -414,17 +418,17 @@ export default function InvoiceDetailPage() {
             </table>
           </div>
         )}
-      </Card>
+      </div>
 
-      <Card className="rounded-2xl border border-zinc-200/60 dark:border-border overflow-hidden">
-        <h2 className="text-sm font-semibold text-foreground p-4 pb-2">Payments</h2>
+      <div className="overflow-hidden rounded-sm border border-[#EBEBE9] dark:border-border">
+        <h2 className="p-4 pb-2 text-sm font-semibold text-foreground">Payments</h2>
         {paymentsReceived.length === 0 ? (
           <p className="text-sm text-muted-foreground px-4 pb-4">No payments received yet.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-zinc-200/40 dark:border-border/60 bg-muted/30">
+                <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
                   <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Date</th>
                   <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Amount</th>
                   <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Method</th>
@@ -434,7 +438,10 @@ export default function InvoiceDetailPage() {
               </thead>
               <tbody>
                 {paymentsReceived.map((p) => (
-                  <tr key={p.id} className="border-b border-zinc-100/50 dark:border-border/30">
+                  <tr
+                    key={p.id}
+                    className="border-b border-[#EBEBE9]/80 transition-colors hover:bg-[#F7F7F5] dark:border-border/40 dark:hover:bg-muted/20"
+                  >
                     <td className="py-3 px-4 tabular-nums">{p.payment_date}</td>
                     <td className="py-3 px-4 text-right tabular-nums font-medium text-emerald-600/90 dark:text-emerald-400/90">
                       ${p.amount.toLocaleString()}
@@ -448,17 +455,17 @@ export default function InvoiceDetailPage() {
             </table>
           </div>
         )}
-      </Card>
+      </div>
 
-      <Card className="rounded-2xl border border-zinc-200/60 dark:border-border overflow-hidden">
-        <h2 className="text-sm font-semibold text-foreground p-4 pb-2">Deposits</h2>
+      <div className="overflow-hidden rounded-sm border border-[#EBEBE9] dark:border-border">
+        <h2 className="p-4 pb-2 text-sm font-semibold text-foreground">Deposits</h2>
         {deposits.length === 0 ? (
           <p className="text-sm text-muted-foreground px-4 pb-4">No deposits linked to this invoice.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-zinc-200/40 dark:border-border/60 bg-muted/30">
+                <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
                   <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Deposit Date</th>
                   <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Amount</th>
                   <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Payment Method</th>
@@ -467,7 +474,10 @@ export default function InvoiceDetailPage() {
               </thead>
               <tbody>
                 {deposits.map((d) => (
-                  <tr key={d.id} className="border-b border-zinc-100/50 dark:border-border/30">
+                  <tr
+                    key={d.id}
+                    className="border-b border-[#EBEBE9]/80 transition-colors hover:bg-[#F7F7F5] dark:border-border/40 dark:hover:bg-muted/20"
+                  >
                     <td className="py-3 px-4 tabular-nums">{(d as { date?: string }).date ?? "—"}</td>
                     <td className="py-3 px-4 text-right tabular-nums font-medium text-emerald-600/90 dark:text-emerald-400/90">
                       ${d.amount.toLocaleString()}
@@ -480,27 +490,27 @@ export default function InvoiceDetailPage() {
             </table>
           </div>
         )}
-      </Card>
+      </div>
 
       {showPaymentModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setShowPaymentModal(false)}>
-          <Card
-            className="rounded-2xl border border-zinc-200/60 dark:border-border p-6 w-full max-w-md mx-4"
+          <div
+            className="mx-4 w-full max-w-md rounded-sm border border-[#EBEBE9] bg-background p-6 dark:border-border"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-base font-semibold text-foreground mb-4">Record Payment</h3>
+            <h3 className="mb-4 text-base font-semibold text-foreground">Record Payment</h3>
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</label>
+                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Date</label>
                 <Input
                   type="date"
                   value={paymentDate}
                   onChange={(e) => setPaymentDate(e.target.value)}
-                  className="mt-1 rounded-lg"
+                  className="mt-1 rounded-sm"
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Amount</label>
+                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Amount</label>
                 <Input
                   type="number"
                   min="0"
@@ -508,42 +518,42 @@ export default function InvoiceDetailPage() {
                   value={paymentAmount}
                   onChange={(e) => setPaymentAmount(e.target.value)}
                   placeholder="0"
-                  className="mt-1 rounded-lg"
+                  className="mt-1 rounded-sm"
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Method</label>
-                <select
+                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Method</label>
+                <Select
                   value={paymentMethod}
                   onChange={(e) => setPaymentMethod(e.target.value)}
-                  className="mt-1 flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm"
+                  className="mt-1"
                 >
                   {methods.map((m) => (
                     <option key={m} value={m}>
                       {m}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Memo (optional)</label>
+                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Memo (optional)</label>
                 <Input
                   value={paymentMemo}
                   onChange={(e) => setPaymentMemo(e.target.value)}
                   placeholder="Memo"
-                  className="mt-1 rounded-lg"
+                  className="mt-1 rounded-sm"
                 />
               </div>
             </div>
-            <div className="flex gap-2 mt-6">
-              <Button onClick={handleRecordPayment} className="rounded-lg" disabled={!paymentAmount || parseFloat(paymentAmount) <= 0}>
+            <div className="mt-6 flex gap-2">
+              <Button size="sm" className="rounded-sm" onClick={handleRecordPayment} disabled={!paymentAmount || parseFloat(paymentAmount) <= 0}>
                 Record
               </Button>
-              <Button variant="outline" className="rounded-lg" onClick={() => setShowPaymentModal(false)}>
+              <Button variant="outline" size="sm" className="rounded-sm" onClick={() => setShowPaymentModal(false)}>
                 Cancel
               </Button>
             </div>
-          </Card>
+          </div>
         </div>
       )}
 

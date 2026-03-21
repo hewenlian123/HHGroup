@@ -70,8 +70,8 @@ export function SearchableSelect({
           setTimeout(() => inputRef.current?.focus(), 0);
         }}
         className={cn(
-          "flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 text-left text-sm text-foreground",
-          "min-w-[140px] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/40"
+          "flex h-10 w-full min-w-[140px] items-center justify-between rounded-lg border border-[#EBEBE9] bg-white px-3 text-left text-sm text-[#2D2D2D] shadow-sm",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2D2D2D]/10 dark:border-border dark:bg-card dark:text-foreground dark:focus-visible:ring-ring/30"
         )}
       >
         <span className={!displayLabel ? "text-muted-foreground/70" : ""}>
@@ -86,14 +86,14 @@ export function SearchableSelect({
           role="listbox"
           className="absolute z-[100] mt-1 w-full min-w-[200px] overflow-hidden rounded-md border border-border/60 bg-popover py-1 shadow-[var(--shadow-popover)]"
         >
-          <div className="border-b border-border/60 px-2 pb-2">
+          <div className="border-b border-[#EBEBE9] px-2 pb-2 dark:border-border">
             <input
               ref={inputRef}
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search…"
-              className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring/40"
+              className="h-8 w-full rounded-lg border border-[#EBEBE9] bg-white px-2 text-sm text-[#2D2D2D] shadow-sm focus:outline-none focus:ring-2 focus:ring-[#2D2D2D]/10 dark:border-border dark:bg-card dark:focus:ring-ring/30"
             />
           </div>
           <ul className="max-h-48 overflow-auto py-1">

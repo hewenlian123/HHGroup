@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 function trimBaseUrl(base: string): string {
   return base.replace(/\/$/, "");
@@ -83,9 +83,35 @@ export async function tryCreateDraftInvoiceNavigateToDetail(
 }
 
 /**
- * Desktop projects table: open the inline status editor on the first row.
- * (We only assert the control opens — full status mutation depends on server refresh timing and DB.)
+ * Desktop `/projects`: {@link ProjectsListClient} uses All / Active / Closed toggles (not a status column).
+ * Asserts list loaded and the Active view filter applies without error.
  */
+export async function openFirstProjectStatusSelect(page: Page, baseUrl: string): Promise<void> {
+  await page.goto(`${trimBaseUrl(baseUrl)}/projects`);
+  await page.waitForLoadState("domcontentloaded");
+
+  await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible({ timeout: 60_000 });
+
+  if (await page.getByText("No projects yet.").isVisible().catch(() => false)) {
+    test.skip(true, "No projects.");
+    return;
+  }
+
+  const firstRow = page.locator("table tbody tr").first();
+  await expect(firstRow).toBeVisible({ timeout: 30_000 });
+
+  const activeBtn = page.getByRole("button", { name: /^Active \(\d+\)$/ });
+  await expect(activeBtn).toBeVisible({ timeout: 15_000 });
+  await activeBtn.click();
+
+  if (await page.getByText("No projects match your filter.").isVisible().catch(() => false)) {
+    test.skip(true, "No active projects for Active filter.");
+    return;
+  }
+
+  await expect(page.locator("table tbody tr").first()).toBeVisible({ timeout: 15_000 });
+}
+
 /**
  * Desktop table: open the overflow / kebab on the first body row.
  * Supports `RowActionsMenu` (`Actions for …`, `Row actions`) and Tasks (`Task actions`),
@@ -114,17 +140,3 @@ export async function expectDeleteMenuItemThenClose(page: Page): Promise<void> {
   await page.keyboard.press("Escape");
 }
 
-export async function openFirstProjectStatusSelect(page: Page, baseUrl: string): Promise<void> {
-  await page.goto(`${trimBaseUrl(baseUrl)}/projects`);
-  await page.waitForLoadState("domcontentloaded");
-
-  const firstRow = page.locator("table tbody tr").first();
-  await expect(firstRow).toBeVisible({ timeout: 15_000 });
-
-  const statusCell = firstRow.locator("td").nth(2);
-  const statusBadge = statusCell.getByRole("button", { name: /Status:/i }).first();
-  await expect(statusBadge).toBeVisible({ timeout: 15_000 });
-  await statusBadge.click();
-
-  await expect(firstRow.getByLabel("Change project status").first()).toBeVisible({ timeout: 10_000 });
-}

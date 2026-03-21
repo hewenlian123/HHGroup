@@ -5,12 +5,15 @@ import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  Divider,
-  SectionHeader,
-} from "@/components/base";
 import { Button } from "@/components/ui/button";
+import { FilterBar } from "@/components/filter-bar";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import {
+  listTablePrimaryCellClassName,
+  listTableRowClassName,
+} from "@/lib/list-table-interaction";
 import {
   Dialog,
   DialogContent,
@@ -200,58 +203,54 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
 
   return (
     <>
-      <SectionHeader
-        label="Filters"
-        action={
+      <FilterBar>
+        <div className="flex w-full flex-col gap-4">
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" className="h-8" onClick={() => setUploadOpen(true)}>
+            <Button variant="outline" size="sm" onClick={() => setUploadOpen(true)}>
               Upload
             </Button>
-            <Input
-              type="text"
-              placeholder="Search by name"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              onBlur={() => setFilters({ search: searchInput })}
-              onKeyDown={(e) => e.key === "Enter" && setFilters({ search: searchInput })}
-              className="h-8 w-40 text-sm"
-            />
-            <select
-              value={projectId}
-              onChange={(e) => setFilters({ project_id: e.target.value })}
-              className="h-8 min-w-[140px] rounded border border-input bg-transparent px-2 text-xs"
-            >
-              <option value="">All projects</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-            <select
-              value={fileType}
-              onChange={(e) => setFilters({ file_type: e.target.value })}
-              className="h-8 min-w-[100px] rounded border border-input bg-transparent px-2 text-xs"
-            >
-              <option value="">All types</option>
-              {DOCUMENT_FILE_TYPES.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-            <Input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setFilters({ date_from: e.target.value })}
-              className="h-8 w-[130px] text-sm"
-            />
-            <Input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setFilters({ date_to: e.target.value })}
-              className="h-8 w-[130px] text-sm"
-            />
           </div>
-        }
-      />
-      <Divider />
+          <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-6">
+            <div className="space-y-1 sm:col-span-2">
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Search</p>
+              <Input
+                type="text"
+                placeholder="File name…"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                onBlur={() => setFilters({ search: searchInput })}
+                onKeyDown={(e) => e.key === "Enter" && setFilters({ search: searchInput })}
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Project</p>
+              <Select value={projectId} onChange={(e) => setFilters({ project_id: e.target.value })}>
+                <option value="">All projects</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Type</p>
+              <Select value={fileType} onChange={(e) => setFilters({ file_type: e.target.value })}>
+                <option value="">All types</option>
+                {DOCUMENT_FILE_TYPES.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">From</p>
+              <Input type="date" value={dateFrom} onChange={(e) => setFilters({ date_from: e.target.value })} />
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">To</p>
+              <Input type="date" value={dateTo} onChange={(e) => setFilters({ date_to: e.target.value })} />
+            </div>
+          </div>
+        </div>
+      </FilterBar>
       {localDocuments.length === 0 ? (
         <EmptyState
           title="No documents found"
@@ -264,10 +263,10 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
           }
         />
       ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto border-t border-[#EBEBE9] dark:border-border/60">
           <table className="w-full text-sm border-collapse">
             <thead>
-              <tr className="border-b border-border/60">
+              <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
                 <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">File</th>
                 <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Project</th>
                 <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Type</th>
@@ -280,13 +279,22 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
               {localDocuments.map((doc) => {
                 const relatedUrl = getRelatedRecordUrl(doc);
                 return (
-                <tr key={doc.id} className="border-b border-border/40">
-                  <td className="py-1.5 px-3 font-medium truncate max-w-[200px]" title={doc.file_name}>{doc.file_name}</td>
+                <tr
+                  key={doc.id}
+                  className={cn(listTableRowClassName, "border-b border-[#EBEBE9]/80 dark:border-border/40")}
+                  onClick={() => void handlePreview(doc)}
+                >
+                  <td
+                    className={cn("py-1.5 px-3 font-medium truncate max-w-[200px]", listTablePrimaryCellClassName)}
+                    title={doc.file_name}
+                  >
+                    {doc.file_name}
+                  </td>
                   <td className="py-1.5 px-3 text-muted-foreground">{doc.project_name ?? "—"}</td>
                   <td className="py-1.5 px-3 text-muted-foreground">{doc.file_type}</td>
                   <td className="py-1.5 px-3 text-right tabular-nums text-muted-foreground">{formatBytes(doc.size_bytes)}</td>
                   <td className="py-1.5 px-3 text-muted-foreground">{formatDate(doc.uploaded_at)}</td>
-                  <td className="py-1.5 px-1">
+                  <td className="py-1.5 px-1" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-1 flex-wrap">
                       <Button
                         variant="ghost"
@@ -363,27 +371,20 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Project (optional)</label>
-              <select
-                name="project_id"
-                className="mt-1 h-9 w-full rounded border border-input bg-transparent px-2 text-sm"
-              >
+              <Select name="project_id" className="mt-1 w-full">
                 <option value="">— General —</option>
                 {projects.map((p) => (
                   <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Type</label>
-              <select
-                name="file_type"
-                defaultValue="Other"
-                className="mt-1 h-9 w-full rounded border border-input bg-transparent px-2 text-sm"
-              >
+              <Select name="file_type" defaultValue="Other" className="mt-1 w-full">
                 {DOCUMENT_FILE_TYPES.map((t) => (
                   <option key={t} value={t}>{t}</option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Notes (optional)</label>

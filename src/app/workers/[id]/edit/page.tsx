@@ -7,6 +7,7 @@ import { useParams, useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { getWorkerById, updateWorker, getWorkerUsage, disableWorker, deleteWorker } from "@/lib/data";
 
 export default function WorkerProfileEditPage() {
@@ -140,23 +141,25 @@ export default function WorkerProfileEditPage() {
           </Link>
         }
       />
-      {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
-      <section className="border-b border-border/60 pb-6">
+      {message ? (
+        <p className="border-b border-[#EBEBE9] pb-3 text-sm text-muted-foreground dark:border-border">{message}</p>
+      ) : null}
+      <section className="border-b border-[#EBEBE9] pb-6 dark:border-border">
         <div className="grid gap-4">
           <div className="grid gap-1.5">
-            <label className="text-xs uppercase tracking-wider text-muted-foreground">Name *</label>
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Name *</label>
             <Input value={name} onChange={(e) => setName(e.target.value)} className="rounded-sm" />
           </div>
           <div className="grid gap-1.5">
-            <label className="text-xs uppercase tracking-wider text-muted-foreground">Phone</label>
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Phone</label>
             <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="rounded-sm" />
           </div>
           <div className="grid gap-1.5">
-            <label className="text-xs uppercase tracking-wider text-muted-foreground">Trade</label>
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Trade</label>
             <Input value={trade} onChange={(e) => setTrade(e.target.value)} className="rounded-sm" />
           </div>
           <div className="grid gap-1.5">
-            <label className="text-xs uppercase tracking-wider text-muted-foreground">Half-day Rate</label>
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Half-day Rate</label>
             <Input
               type="number"
               min="0"
@@ -167,18 +170,14 @@ export default function WorkerProfileEditPage() {
             />
           </div>
           <div className="grid gap-1.5">
-            <label className="text-xs uppercase tracking-wider text-muted-foreground">Status</label>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value as "active" | "inactive")}
-              className="h-10 rounded-sm border border-input bg-transparent px-3 text-sm"
-            >
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Status</label>
+            <Select value={status} onChange={(e) => setStatus(e.target.value as "active" | "inactive")}>
               <option value="active">active</option>
               <option value="inactive">inactive</option>
-            </select>
+            </Select>
           </div>
           <div className="grid gap-1.5">
-            <label className="text-xs uppercase tracking-wider text-muted-foreground">Notes</label>
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Notes</label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -191,20 +190,20 @@ export default function WorkerProfileEditPage() {
         </div>
         <div className="mt-6 flex flex-wrap justify-end gap-2">
           <Link href={`/workers/${id}`}>
-            <Button variant="outline" className="rounded-sm">
+            <Button variant="outline" size="sm" className="rounded-sm">
               Cancel
             </Button>
           </Link>
           {usageRes.used ? (
-            <Button variant="outline" className="rounded-sm" disabled={status === "inactive"} onClick={handleDisable}>
+            <Button variant="outline" size="sm" className="rounded-sm" disabled={status === "inactive"} onClick={handleDisable}>
               Disable
             </Button>
           ) : (
-            <Button variant="outline" className="rounded-sm" onClick={handleDelete}>
+            <Button variant="outline" size="sm" className="rounded-sm" onClick={handleDelete}>
               Delete
             </Button>
           )}
-          <Button className="rounded-sm" onClick={handleSave} disabled={!name.trim()}>
+          <Button size="sm" className="rounded-sm" onClick={handleSave} disabled={!name.trim()}>
             Save Changes
           </Button>
         </div>

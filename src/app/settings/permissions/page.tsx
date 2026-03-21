@@ -6,6 +6,8 @@ import { createBrowserClient } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { FilterBar } from "@/components/filter-bar";
+import { Select } from "@/components/ui/select";
 import {
   DEFAULT_ROLE_PERMISSIONS,
   PERMISSION_GROUPS,
@@ -108,33 +110,34 @@ export default function SettingsPermissionsPage() {
         title="Permissions"
         subtitle="Owner-only permission matrix for admin and assistant roles."
         actions={
-          <Button onClick={() => void save()} disabled={saving || loading}>
+          <Button size="sm" onClick={() => void save()} disabled={saving || loading}>
             {saving ? "Saving..." : "Save"}
           </Button>
         }
       />
       {message ? (
-        <div className="rounded-lg border border-zinc-200/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground dark:border-border">
+        <div className="rounded-lg border border-[#EBEBE9] bg-background px-3 py-2 text-sm text-muted-foreground dark:border-border">
           {message}
         </div>
       ) : null}
 
-      <Card className="rounded-2xl border border-zinc-200/60 dark:border-border p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <p className="text-sm text-muted-foreground">Role</p>
-          <select
+      <FilterBar className="flex-col items-stretch sm:items-stretch">
+        <div className="w-full max-w-xs space-y-1">
+          <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Role</p>
+          <Select
             value={targetRole}
             onChange={(event) => setTargetRole(event.target.value === "assistant" ? "assistant" : "admin")}
-            className="h-9 rounded-[10px] border border-input bg-muted/20 px-3 text-sm"
           >
             <option value="admin">admin</option>
             <option value="assistant">assistant</option>
-          </select>
+          </Select>
         </div>
+      </FilterBar>
 
+      <Card className="border-[#EBEBE9] p-5 dark:border-border">
         <div className="space-y-4">
           {PERMISSION_GROUPS.map((group) => (
-            <div key={group.title} className="rounded-xl border border-zinc-200/60 dark:border-border p-3">
+            <div key={group.title} className="rounded-sm border border-[#EBEBE9] p-3 dark:border-border/60">
               <p className="mb-2 text-sm font-semibold text-foreground">{group.title}</p>
               <div className="grid gap-2 md:grid-cols-2">
                 {group.keys.map((key) => (

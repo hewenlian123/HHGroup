@@ -4,6 +4,8 @@ import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
+import { FilterBar } from "@/components/filter-bar";
 import {
   Dialog,
   DialogContent,
@@ -307,36 +309,35 @@ export default function LaborPageClient() {
         title="Labor"
         subtitle="Daily labor entries by worker and project."
       />
-      {/* Filter bar — Month, Project, Worker (gap 12px, height 36px) */}
-      <div className="flex flex-col gap-3 border-b border-border/60 pb-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider shrink-0">Month</label>
-            <select
+      <FilterBar className="!flex-col !items-stretch gap-4 border-0 bg-transparent p-0 shadow-none dark:bg-transparent">
+        <div className="flex w-full flex-wrap items-end gap-4">
+          <div className="flex min-w-[140px] flex-1 flex-col gap-1 sm:min-w-[160px] sm:flex-initial">
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Month</label>
+            <Select
               value={selectedMonth}
               onChange={(e) => {
                 setSelectedMonth(e.target.value);
                 setExpandedDate(null);
                 setSelectedDayForDetail(null);
               }}
-              className="h-9 min-w-[160px] rounded-md border border-input bg-transparent px-3 text-sm"
+              className="h-9 min-h-[44px] min-w-0 sm:min-h-9 sm:w-[200px]"
             >
               {MONTH_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider shrink-0">Project</label>
-            <select
+          <div className="flex min-w-[140px] flex-1 flex-col gap-1 sm:min-w-[180px] sm:flex-initial">
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Project</label>
+            <Select
               value={projectFilter}
               onChange={(e) => {
                 setProjectFilter(e.target.value);
                 setExpandedDate(null);
               }}
-              className="h-9 min-w-[180px] rounded-md border border-input bg-transparent px-3 text-sm"
+              className="h-9 min-h-[44px] min-w-0 sm:min-h-9 sm:w-[220px]"
             >
               <option value="">All Projects</option>
               {projects.map((p) => (
@@ -344,17 +345,17 @@ export default function LaborPageClient() {
                   {p.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider shrink-0">Worker</label>
-            <select
+          <div className="flex min-w-[140px] flex-1 flex-col gap-1 sm:min-w-[180px] sm:flex-initial">
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Worker</label>
+            <Select
               value={workerFilter}
               onChange={(e) => {
                 setWorkerFilter(e.target.value);
                 setExpandedDate(null);
               }}
-              className="h-9 min-w-[180px] rounded-md border border-input bg-transparent px-3 text-sm"
+              className="h-9 min-h-[44px] min-w-0 sm:min-h-9 sm:w-[220px]"
             >
               <option value="">All Workers</option>
               {workers.map((w) => (
@@ -362,11 +363,10 @@ export default function LaborPageClient() {
                   {w.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         </div>
-        {/* Action buttons — below filters */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 border-t border-[#EBEBE9] pt-3 dark:border-border">
           <Button
             size="sm"
             className="rounded-sm h-9"
@@ -375,15 +375,15 @@ export default function LaborPageClient() {
           >
             + Add Entry
           </Button>
-          <div className="flex border border-border/60 rounded-sm overflow-hidden shrink-0 h-9">
+          <div className="flex h-9 shrink-0 overflow-hidden rounded-lg border border-[#EBEBE9] shadow-sm dark:border-border">
             <button
               type="button"
               onClick={() => setView("list")}
               className={cn(
-                "h-full px-3 text-xs font-medium transition-colors",
+                "h-full px-3 text-xs font-medium transition-all duration-150",
                 view === "list"
-                  ? "bg-foreground text-background"
-                  : "bg-transparent text-muted-foreground hover:text-foreground"
+                  ? "bg-[#2D2D2D] text-white dark:bg-foreground dark:text-background"
+                  : "bg-white text-gray-500 hover:bg-[#F7F7F5] hover:text-[#2D2D2D] dark:bg-card dark:hover:bg-muted"
               )}
             >
               List View
@@ -392,17 +392,17 @@ export default function LaborPageClient() {
               type="button"
               onClick={() => setView("calendar")}
               className={cn(
-                "h-full px-3 text-xs font-medium transition-colors border-l border-border/60",
+                "h-full border-l border-[#EBEBE9] px-3 text-xs font-medium transition-all duration-150 dark:border-border",
                 view === "calendar"
-                  ? "bg-foreground text-background"
-                  : "bg-transparent text-muted-foreground hover:text-foreground"
+                  ? "bg-[#2D2D2D] text-white dark:bg-foreground dark:text-background"
+                  : "bg-white text-gray-500 hover:bg-[#F7F7F5] hover:text-[#2D2D2D] dark:bg-card dark:hover:bg-muted"
               )}
             >
               Calendar View
             </button>
           </div>
         </div>
-      </div>
+      </FilterBar>
 
       {error ? (
         <p className="py-3 text-sm text-red-600">{error}</p>
@@ -413,18 +413,18 @@ export default function LaborPageClient() {
 
       {/* Monthly Summary */}
       <section className="border-b border-border/60 pb-4">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
+        <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
           Monthly Summary · {formatMonthLabel(selectedMonth)}
         </p>
-        <div className="rounded-sm border border-border/70 bg-background overflow-hidden">
+        <div className="overflow-hidden rounded-lg border border-[#EBEBE9] bg-white shadow-sm dark:border-border dark:bg-card dark:shadow-none">
           <div className="grid grid-cols-1 sm:grid-cols-3">
-            <div className="px-3 py-2.5 border-b border-border/60 sm:border-b-0 sm:border-r border-border/60">
+            <div className="border-b border-[#EBEBE9] px-3 py-2.5 sm:border-b-0 sm:border-r sm:border-[#EBEBE9] dark:border-border">
               <p className="text-[11px] text-muted-foreground/70 uppercase tracking-widest">Total Labor Cost</p>
               <p className="mt-1 text-2xl font-semibold tabular-nums">
                 ${summary.totalLaborCost.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               </p>
             </div>
-            <div className="px-3 py-2.5 border-b border-border/60 sm:border-b-0 sm:border-r border-border/60">
+            <div className="border-b border-[#EBEBE9] px-3 py-2.5 sm:border-b-0 sm:border-r sm:border-[#EBEBE9] dark:border-border">
               <p className="text-[11px] text-muted-foreground/70 uppercase tracking-widest">Work Days</p>
               <p className="mt-1 text-2xl font-semibold tabular-nums">{summary.totalWorkDays.toLocaleString("en-US")}</p>
             </div>
@@ -438,14 +438,14 @@ export default function LaborPageClient() {
         {/* PROJECT LABOR COST — labor cost per project for selected month, sorted by highest */}
         {projectLaborCost.length > 0 && (
           <div className="mt-4 pt-4 border-t border-border/60">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+            <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
               PROJECT LABOR COST
             </p>
-            <div className="rounded-lg border border-border/60 overflow-hidden">
+            <div className="overflow-hidden rounded-lg border border-[#EBEBE9] bg-white shadow-sm dark:border-border dark:bg-card dark:shadow-none">
               {projectLaborCost.map(({ id, name, total }) => (
                 <div
                   key={id}
-                  className="flex items-center justify-between gap-3 py-2.5 px-2.5 border-b border-border/60 last:border-b-0 hover:bg-[#fafafa]"
+                  className="flex items-center justify-between gap-3 border-b border-[#EBEBE9] px-2.5 py-2.5 last:border-b-0 hover:bg-[#F7F7F5] dark:border-border dark:hover:bg-muted/40"
                 >
                   <span className="text-sm font-medium text-foreground truncate">{name}</span>
                   <span className="text-sm tabular-nums font-medium text-foreground shrink-0">

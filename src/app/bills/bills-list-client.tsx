@@ -6,8 +6,17 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { StatusBadge, ConfirmDialog, DeleteRowAction } from "@/components/base";
+import { FilterBar } from "@/components/filter-bar";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import {
+  listTableAmountCellClassName,
+  listTablePrimaryCellClassName,
+  listTableRowClassName,
+} from "@/lib/list-table-interaction";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -124,98 +133,89 @@ export function BillsListClient({ bills, summary, projects }: Props) {
 
   return (
     <div className="flex flex-col gap-6 text-foreground [font-family:var(--font-inter),var(--font-geist-sans),sans-serif]">
-      {/* Summary row */}
-      <div className="grid grid-cols-2 gap-2 border-b border-border/60 pb-4 md:grid-cols-4">
-        <div className="rounded-sm border border-border/60 px-3 py-2">
-          <p className="text-xs font-medium text-muted-foreground">Outstanding</p>
-          <p className="mt-0.5 text-lg font-semibold tabular-nums">{fmtUsd(summary.totalOutstanding)}</p>
+      <Card className="overflow-hidden p-0">
+        <div className="grid divide-y divide-[#EBEBE9] sm:grid-cols-2 sm:divide-y-0 md:grid-cols-4 md:divide-x dark:divide-border/60">
+          <div className="p-4">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Outstanding</p>
+            <p className="mt-1 text-lg font-semibold tabular-nums text-[#2D2D2D] dark:text-foreground">{fmtUsd(summary.totalOutstanding)}</p>
+          </div>
+          <div className="p-4">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Overdue</p>
+            <p className="mt-1 text-lg font-semibold tabular-nums text-[#2D2D2D] dark:text-foreground">{fmtUsd(summary.overdueAmount)}</p>
+          </div>
+          <div className="p-4">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Due This Week</p>
+            <p className="mt-1 text-lg font-semibold tabular-nums text-[#2D2D2D] dark:text-foreground">{fmtUsd(summary.dueThisWeekAmount)}</p>
+          </div>
+          <div className="p-4">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Paid This Month</p>
+            <p className="mt-1 text-lg font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{fmtUsd(summary.paidThisMonthAmount)}</p>
+          </div>
         </div>
-        <div className="rounded-sm border border-border/60 px-3 py-2">
-          <p className="text-xs font-medium text-muted-foreground">Overdue</p>
-          <p className="mt-0.5 text-lg font-semibold tabular-nums">{fmtUsd(summary.overdueAmount)}</p>
-        </div>
-        <div className="rounded-sm border border-border/60 px-3 py-2">
-          <p className="text-xs font-medium text-muted-foreground">Due This Week</p>
-          <p className="mt-0.5 text-lg font-semibold tabular-nums">{fmtUsd(summary.dueThisWeekAmount)}</p>
-        </div>
-        <div className="rounded-sm border border-border/60 px-3 py-2">
-          <p className="text-xs font-medium text-muted-foreground">Paid This Month</p>
-          <p className="mt-0.5 text-lg font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{fmtUsd(summary.paidThisMonthAmount)}</p>
-        </div>
-      </div>
+      </Card>
 
-      {/* Search */}
-      <div className="space-y-3">
-        <Input
-          type="text"
-          placeholder="Search bills..."
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          onBlur={() => setFilters({ search: searchInput })}
-          onKeyDown={(e) => e.key === "Enter" && setFilters({ search: searchInput })}
-          className="w-full rounded-sm border border-border/60 bg-background"
-        />
-        {/* Filters: stack vertically on mobile */}
-        <div className="grid grid-cols-1 gap-3 border-b border-border/60 pb-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">Status</label>
-            <select
-              value={status}
-              onChange={(e) => setFilters({ status: e.target.value })}
-              className="mt-1 min-h-[44px] w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm md:min-h-0 md:h-9"
-            >
-              <option value="">All</option>
-              {AP_BILL_STATUSES.map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
+      <FilterBar>
+        <div className="flex w-full flex-col gap-4">
+          <div className="space-y-1">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Search</p>
+            <Input
+              type="text"
+              placeholder="Vendor, reference…"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onBlur={() => setFilters({ search: searchInput })}
+              onKeyDown={(e) => e.key === "Enter" && setFilters({ search: searchInput })}
+            />
           </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">Type</label>
-            <select
-              value={billType}
-              onChange={(e) => setFilters({ bill_type: e.target.value })}
-              className="mt-1 min-h-[44px] w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm md:min-h-0 md:h-9"
-            >
-              <option value="">All</option>
-              {AP_BILL_TYPES.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">Project</label>
-            <select
-              value={projectId}
-              onChange={(e) => setFilters({ project_id: e.target.value })}
-              className="mt-1 min-h-[44px] w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm md:min-h-0 md:h-9"
-            >
-              <option value="">All</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">Date range</label>
-            <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
-              <Input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setFilters({ date_from: e.target.value })}
-                className="w-full rounded-sm border border-border/60 bg-background sm:flex-1"
-              />
-              <span className="text-muted-foreground text-sm">–</span>
-              <Input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setFilters({ date_to: e.target.value })}
-                className="w-full rounded-sm border border-border/60 bg-background sm:flex-1"
-              />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="space-y-1">
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Status</p>
+              <Select value={status} onChange={(e) => setFilters({ status: e.target.value })} className="min-h-[44px] md:min-h-9">
+                <option value="">All</option>
+                {AP_BILL_STATUSES.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Type</p>
+              <Select value={billType} onChange={(e) => setFilters({ bill_type: e.target.value })} className="min-h-[44px] md:min-h-9">
+                <option value="">All</option>
+                {AP_BILL_TYPES.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Project</p>
+              <Select value={projectId} onChange={(e) => setFilters({ project_id: e.target.value })} className="min-h-[44px] md:min-h-9">
+                <option value="">All</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Date range</p>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
+                <Input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setFilters({ date_from: e.target.value })}
+                  className="w-full sm:flex-1"
+                />
+                <span className="text-muted-foreground text-sm shrink-0 hidden sm:inline">–</span>
+                <Input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setFilters({ date_to: e.target.value })}
+                  className="w-full sm:flex-1"
+                />
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </FilterBar>
 
       {/* Table or empty state */}
       {localBills.length === 0 ? (
@@ -235,7 +235,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                 <div key={bill.id} className="group relative">
                   <Link
                     href={`/bills/${bill.id}`}
-                    className="block rounded-sm border border-border/60 bg-background p-4 transition-colors hover:bg-muted/30 active:bg-muted/50"
+                    className="block rounded-sm border border-[#EBEBE9] bg-background p-4 transition-colors hover:bg-[#F7F7F5] active:bg-[#F7F7F5]/80 dark:border-border/60 dark:hover:bg-muted/30"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1 pr-8">
@@ -268,7 +268,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
           <div className="table-responsive hidden md:block">
           <table className="min-w-[640px] w-full border-collapse text-sm md:min-w-0">
             <thead>
-              <tr className="border-b border-[#E5E7EB]">
+              <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
                 <th className="table-head-label py-3 px-3 text-left">Vendor</th>
                 <th className="table-head-label py-3 px-3 text-left">Project</th>
                 <th className="table-head-label py-3 px-3 text-right tabular-nums">Amount</th>
@@ -281,20 +281,23 @@ export function BillsListClient({ bills, summary, projects }: Props) {
               {localBills.map((bill) => (
                 <tr
                   key={bill.id}
-                  className="group h-12 border-b border-[#E5E7EB] last:border-b-0 hover:bg-gray-50"
+                  className={cn(listTableRowClassName, "h-12 border-b border-[#EBEBE9]/80 last:border-b-0 dark:border-border/40")}
+                  onClick={() => router.push(`/bills/${bill.id}`)}
                 >
                   <td className="py-0 px-3 align-middle">
-                    <Link
-                      href={`/bills/${bill.id}`}
-                      className="block max-w-[220px] truncate font-medium text-foreground hover:underline"
+                    <span
+                      className={cn(
+                        "block max-w-[220px] truncate font-medium text-foreground hover:underline",
+                        listTablePrimaryCellClassName
+                      )}
                     >
                       {bill.vendor_name}
-                    </Link>
+                    </span>
                   </td>
                   <td className="py-0 px-3 align-middle text-muted-foreground">
                     <span className="block max-w-[240px] truncate">{bill.project_name ?? "—"}</span>
                   </td>
-                  <td className="py-0 px-3 text-right align-middle tabular-nums whitespace-nowrap">
+                  <td className={cn("py-0 px-3 text-right align-middle tabular-nums whitespace-nowrap", listTableAmountCellClassName)}>
                     {fmtUsd(bill.amount)}
                   </td>
                   <td className="py-0 px-3 align-middle text-muted-foreground tabular-nums whitespace-nowrap">
@@ -306,7 +309,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                       return <StatusBadge label={s.label} variant={s.variant} />;
                     })()}
                   </td>
-                  <td className="py-0 px-1 align-middle">
+                  <td className="py-0 px-1 align-middle" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-2">
                       {bill.status === "Draft" && bill.paid_amount <= 0 ? (
                         <DeleteRowAction

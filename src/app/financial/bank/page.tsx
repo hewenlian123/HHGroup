@@ -4,9 +4,9 @@ import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -380,16 +380,16 @@ export default function BankReconcilePage() {
         description="Import CSV and reconcile each transaction. Owner/internal only."
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Left: Bank lines */}
-        <Card
+        <div
           ref={bankListRef}
           tabIndex={0}
-          className="rounded-2xl border border-zinc-200/60 dark:border-border overflow-hidden p-4 outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          className="overflow-hidden border border-[#EBEBE9] p-4 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:border-border"
           onKeyDown={handleBankListKeyDown}
         >
-          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between mb-4">
-            <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="mb-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+            <div className="flex w-full items-center gap-2 sm:w-auto">
               <input
                 type="file"
                 accept=".csv"
@@ -397,8 +397,8 @@ export default function BankReconcilePage() {
                 id="bank-csv-upload"
                 onChange={handleFileChange}
               />
-              <Button variant="outline" size="sm" className="rounded-lg" onClick={() => document.getElementById("bank-csv-upload")?.click()}>
-                <Upload className="h-4 w-4 mr-2" />
+              <Button variant="outline" size="sm" className="rounded-sm" onClick={() => document.getElementById("bank-csv-upload")?.click()}>
+                <Upload className="mr-2 h-4 w-4" />
                 Upload CSV
               </Button>
             </div>
@@ -406,7 +406,7 @@ export default function BankReconcilePage() {
               placeholder="Search description..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="rounded-lg max-w-xs"
+              className="max-w-xs rounded-sm"
             />
           </div>
           {importMessage && (
@@ -415,15 +415,17 @@ export default function BankReconcilePage() {
           {toastMessage && (
             <p className="text-sm text-emerald-600 dark:text-emerald-400 mb-2">{toastMessage}</p>
           )}
-          <div className="flex gap-2 mb-3">
+          <div className="mb-3 flex flex-wrap gap-2">
             {(["unmatched", "reconciled", "all"] as const).map((t) => (
               <button
                 key={t}
                 type="button"
                 onClick={() => setTab(t)}
                 className={cn(
-                  "px-3 py-1.5 rounded-lg text-sm font-medium capitalize",
-                  tab === t ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  "rounded-sm border px-3 py-1.5 text-sm font-medium capitalize transition-colors",
+                  tab === t
+                    ? "border-[#2D2D2D]/25 bg-[#F7F7F5] text-[#2D2D2D] dark:border-border dark:bg-muted/40 dark:text-foreground"
+                    : "border-[#EBEBE9] bg-background text-muted-foreground hover:bg-[#F7F7F5]/60 dark:border-border"
                 )}
               >
                 {t}
@@ -434,18 +436,18 @@ export default function BankReconcilePage() {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="rounded-lg ml-auto"
+                className="ml-auto rounded-sm"
                 onClick={selectAllUnmatched}
               >
-                <CheckSquare className="h-4 w-4 mr-2" />
+                <CheckSquare className="mr-2 h-4 w-4" />
                 Select all Unmatched
               </Button>
             )}
           </div>
-          <div className="overflow-x-auto rounded-xl border border-zinc-200/60 dark:border-border">
+          <div className="overflow-x-auto rounded-sm border border-[#EBEBE9] dark:border-border">
             <Table>
               <TableHeader>
-                <TableRow className="border-b border-zinc-200/40 dark:border-border/60 bg-muted/30">
+                <TableRow className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border dark:bg-muted/30">
                   <TableHead className="w-10 text-center">
                     <span className="sr-only">Select</span>
                   </TableHead>
@@ -460,8 +462,8 @@ export default function BankReconcilePage() {
                   <TableRow
                     key={tx.id}
                     className={cn(
-                      "cursor-pointer border-b border-zinc-100/50 dark:border-border/30",
-                      selectedIds.has(tx.id) && "bg-primary/10"
+                      "cursor-pointer border-b border-[#EBEBE9]/80 transition-colors hover:bg-[#F7F7F5] dark:border-border/40 dark:hover:bg-muted/20",
+                      selectedIds.has(tx.id) && "bg-[#F7F7F5] dark:bg-muted/30"
                     )}
                     onClick={() => setSelectedIds(new Set([tx.id]))}
                   >
@@ -493,11 +495,11 @@ export default function BankReconcilePage() {
               </TableBody>
             </Table>
           </div>
-        </Card>
+        </div>
 
         {/* Right: Reconcile panel */}
-        <Card
-          className="rounded-2xl border border-zinc-200/60 dark:border-border overflow-hidden p-6"
+        <div
+          className="overflow-hidden border border-[#EBEBE9] p-6 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:border-border"
           onKeyDown={handlePanelKeyDown}
           tabIndex={0}
         >
@@ -523,20 +525,16 @@ export default function BankReconcilePage() {
                     if (id) setBulkCategory(name);
                   }}
                 />
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Project</label>
-                  <select
-                    className="mt-1 flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm"
-                    value={bulkProjectId}
-                    onChange={(e) => setBulkProjectId(e.target.value)}
-                  >
+                <div className="grid gap-1.5">
+                  <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Project</label>
+                  <Select value={bulkProjectId} onChange={(e) => setBulkProjectId(e.target.value)}>
                     <option value="">Overhead</option>
                     {projects.map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.name}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
                 <CreatableSelect
                   label="Vendor"
@@ -561,7 +559,7 @@ export default function BankReconcilePage() {
                   }}
                 />
               </div>
-              <Button className="mt-6 rounded-lg w-full" onClick={handleReconcileAll}>
+              <Button size="sm" className="mt-6 w-full rounded-sm" onClick={handleReconcileAll}>
                 Reconcile All
               </Button>
             </>
@@ -578,24 +576,30 @@ export default function BankReconcilePage() {
                 {isLinkedToExpense && selectedTxFromList?.linkedExpenseId && (
                   <p className="text-sm font-medium text-foreground mb-2">Linked to Expense #{selectedTxFromList.linkedExpenseId}</p>
                 )}
-                <span
-                  className={cn(
-                    "inline-block text-xs font-medium px-2 py-1 rounded mb-4",
-                    reconcileType === "Expense" && "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-400",
-                    reconcileType === "Income" && "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400",
-                    reconcileType === "Transfer" && "bg-zinc-100 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-300"
-                  )}
-                >
+                <span className="mb-4 inline-flex items-center gap-2 text-xs font-medium text-foreground">
+                  <span
+                    className={cn(
+                      "h-1.5 w-1.5 shrink-0 rounded-full",
+                      reconcileType === "Expense" && "bg-red-500/80",
+                      reconcileType === "Income" && "bg-emerald-500/80",
+                      reconcileType === "Transfer" && "bg-foreground/40"
+                    )}
+                  />
                   {reconcileType}
                 </span>
                 <div className="flex flex-col gap-2">
                   {selectedTxFromList?.linkedExpenseId && (
-                    <Button asChild variant="outline" className="rounded-lg">
+                    <Button asChild variant="outline" size="sm" className="rounded-sm">
                       <Link href={`/financial/expenses/${selectedTxFromList.linkedExpenseId}`}>Open Expense</Link>
                     </Button>
                   )}
                   {isLinkedToExpense && (
-                    <Button variant="outline" className="rounded-lg text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-600" onClick={handleUnlink}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-sm border-amber-300 text-amber-700 dark:border-amber-600 dark:text-amber-400"
+                      onClick={handleUnlink}
+                    >
                       Unlink
                     </Button>
                   )}
@@ -607,30 +611,29 @@ export default function BankReconcilePage() {
                 <p className="text-sm text-muted-foreground mb-4">
                   {selected.description} — {selected.amount >= 0 ? "+" : ""}${selected.amount.toLocaleString()}
                 </p>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Type</label>
-                  <select
-                    className="mt-1 flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm"
+                <div className="grid gap-1.5">
+                  <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Type</label>
+                  <Select
                     value={reconcileType}
                     onChange={(e) => setReconcileType(e.target.value as "Expense" | "Income" | "Transfer")}
                   >
                     <option value="Expense">Expense</option>
                     <option value="Income">Income</option>
                     <option value="Transfer">Transfer</option>
-                  </select>
+                  </Select>
                 </div>
 
                 {reconcileType === "Expense" && (
                   <>
                     {suggestions.length > 0 && (
-                      <Card className="mt-4 p-4 rounded-xl border border-zinc-200/60 dark:border-border">
-                        <h3 className="text-sm font-semibold text-foreground mb-3">Match Existing Expense</h3>
-                        <p className="text-xs text-muted-foreground mb-3">Link this bank line to an existing expense to avoid duplicates.</p>
-                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                      <div className="mt-4 border border-[#EBEBE9] p-4 dark:border-border">
+                        <h3 className="mb-3 text-sm font-semibold text-foreground">Match Existing Expense</h3>
+                        <p className="mb-3 text-xs text-muted-foreground">Link this bank line to an existing expense to avoid duplicates.</p>
+                        <div className="max-h-64 space-y-2 overflow-y-auto">
                           {suggestions.map((s) => (
                             <div
                               key={s.expense.id}
-                              className="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-200/60 dark:border-border p-2 text-sm"
+                              className="flex flex-wrap items-center gap-2 border border-[#EBEBE9] p-2 text-sm dark:border-border"
                             >
                               <span className="tabular-nums text-muted-foreground w-20">{s.expense.date}</span>
                               <span className="font-medium min-w-[100px]">{s.expense.vendorName}</span>
@@ -655,7 +658,7 @@ export default function BankReconcilePage() {
                             </div>
                           ))}
                         </div>
-                      </Card>
+                      </div>
                     )}
                     <div className="mt-6">
                     <SplitLinesEditor
@@ -695,8 +698,9 @@ export default function BankReconcilePage() {
 
                 <div className="mt-6 flex flex-col gap-2">
                   <Button
+                    size="sm"
+                    className="rounded-sm"
                     onClick={handleReconcile}
-                    className="rounded-lg"
                     disabled={!canReconcile}
                     title={
                       reconcileType === "Expense" && !canReconcile
@@ -716,7 +720,7 @@ export default function BankReconcilePage() {
               <p className="text-sm">Select a bank transaction to reconcile.</p>
             </div>
           )}
-        </Card>
+        </div>
       </div>
     </div>
   );

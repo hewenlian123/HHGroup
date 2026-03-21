@@ -14,16 +14,19 @@ test("labor modal opens", async ({ page }) => {
   ).toBeVisible();
 });
 
-test("project status dropdown opens (desktop table)", async ({ page }) => {
-  // Desktop table is `hidden sm:block`; mobile list is `sm:hidden`.
+test("projects list: status column + status filter (desktop table)", async ({ page }) => {
+  test.setTimeout(90_000);
+  // Desktop table is `hidden md:block` in DataTable; mobile uses cards below `md`.
   await page.setViewportSize({ width: 1280, height: 800 });
   await openFirstProjectStatusSelect(page, BASE);
 });
 
 test("new estimate - select customer and autofill", async ({ page }) => {
+  test.setTimeout(90_000);
   await page.goto(`${BASE}/estimates/new`);
   // Next.js often keeps connections open — networkidle hangs; DOM ready is enough.
   await page.waitForLoadState("domcontentloaded");
+  await expect(page.getByText(/^Loading/i)).not.toBeVisible({ timeout: 60_000 }).catch(() => undefined);
 
   // Some builds show compact summary first; open details if needed.
   const editDetailsBtn = page

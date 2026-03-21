@@ -147,7 +147,7 @@ export function Topbar({
   return (
     <header
       className={cn(
-        "sticky top-0 z-40 flex h-14 sm:h-16 shrink-0 items-center border-b border-[#eee] bg-white px-3 sm:px-4 lg:px-6",
+        "sticky top-0 z-40 flex h-14 sm:h-16 shrink-0 items-center border-b border-[#EBEBE9] bg-[#F7F7F5] px-3 sm:px-4 lg:px-6 dark:border-border dark:bg-background",
         "flex-row gap-3 sm:gap-4"
       )}
     >
@@ -178,7 +178,7 @@ export function Topbar({
           className="hidden min-w-0 items-center gap-1 text-sm sm:flex"
           aria-label="Breadcrumb"
         >
-          <span className="shrink-0 text-[13px] font-medium uppercase tracking-wide text-[#9ca3af]">
+          <span className="shrink-0 text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400">
             {orgName.replace(/\s+/g, " ").toUpperCase()}
           </span>
           {breadcrumbs.length > 0 && (
@@ -196,10 +196,10 @@ export function Topbar({
                     )}
                     <span
                       className={cn(
-                        "truncate",
+                        "truncate text-sm",
                         i === breadcrumbs.length - 1
-                          ? "font-medium text-[#111111] dark:text-foreground"
-                          : "text-[#6b7280] dark:text-muted-foreground"
+                          ? "font-semibold text-[#2D2D2D] dark:text-foreground"
+                          : "font-medium text-gray-500 dark:text-muted-foreground"
                       )}
                     >
                       {label}
@@ -216,14 +216,14 @@ export function Topbar({
       <div className="flex min-w-0 shrink items-center gap-2">
         <label className="relative w-[120px] sm:w-[200px] md:w-[260px] lg:w-[320px]" htmlFor="topbar-search">
           <span className="sr-only">Search</span>
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 shrink-0 text-[#6b7280] dark:text-muted-foreground" aria-hidden />
+          <Search className="absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 shrink-0 text-gray-500 dark:text-muted-foreground" strokeWidth={1.75} aria-hidden />
           <input
             id="topbar-search"
             type="search"
             placeholder="Search projects, workers, invoices..."
             className={cn(
-              "h-9 w-full rounded-md bg-[#f5f5f5] dark:bg-muted pl-9 pr-3 text-sm text-[#111111] dark:text-foreground placeholder:text-[#6b7280] dark:placeholder:text-muted-foreground",
-              "border-0 outline-none focus:ring-2 focus:ring-[#111] dark:focus:ring-foreground focus:ring-offset-0",
+              "h-9 w-full rounded-lg border border-[#EBEBE9] bg-white pl-9 pr-3 text-sm text-[#2D2D2D] shadow-sm dark:border-border dark:bg-card dark:text-foreground placeholder:text-gray-400 dark:placeholder:text-muted-foreground",
+              "outline-none transition-all duration-150 focus:border-[#2D2D2D]/20 focus:ring-2 focus:ring-[#2D2D2D]/10 dark:focus:ring-ring/30",
               "min-w-0 max-sm:placeholder:opacity-0"
             )}
           />
@@ -232,7 +232,7 @@ export function Topbar({
           <Button
             variant="ghost"
             size="icon"
-            className="h-[30px] w-[30px] shrink-0 rounded-lg border border-gray-200 dark:border-border hover:bg-gray-50 dark:hover:bg-muted flex items-center justify-center"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#EBEBE9] bg-white shadow-sm transition-all duration-150 hover:bg-white hover:shadow-md dark:border-border dark:bg-card dark:hover:bg-muted"
             aria-label="Notifications"
           >
             <Bell className="h-4 w-4 text-[#6b7280] dark:text-muted-foreground" />

@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { PageHeader } from "@/components/page-header";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -200,15 +199,17 @@ export default function SettingsListsPage() {
         description="Manage your custom categories, vendors, and payment methods."
       />
 
-      <div className="flex gap-2 border-b border-zinc-200/60 dark:border-border pb-2">
+      <div className="flex flex-wrap gap-2 border-b border-[#EBEBE9] pb-2 dark:border-border">
         {(["categories", "vendors", "paymentMethods"] as const).map((t) => (
           <button
             key={t}
             type="button"
             onClick={() => setTab(t)}
             className={cn(
-              "px-4 py-2 rounded-lg text-sm font-medium capitalize",
-              tab === t ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+              "rounded-sm border px-3 py-1.5 text-sm font-medium capitalize transition-colors",
+              tab === t
+                ? "border-[#2D2D2D]/25 bg-[#F7F7F5] text-[#2D2D2D] dark:border-border dark:bg-muted/40 dark:text-foreground"
+                : "border-[#EBEBE9] bg-background text-muted-foreground hover:bg-[#F7F7F5]/60 dark:border-border"
             )}
           >
             {t === "categories" ? "Expense categories" : t === "vendors" ? "Vendors" : "Payment methods"}
@@ -216,30 +217,30 @@ export default function SettingsListsPage() {
         ))}
       </div>
 
-      <Card className="rounded-2xl border border-zinc-200/60 dark:border-border p-6">
-        <h2 className="text-base font-semibold text-foreground mb-4">{sectionTitle}</h2>
-        <div className="flex flex-wrap gap-3 mb-4">
+      <section className="border-b border-[#EBEBE9] pb-6 dark:border-border">
+        <h2 className="mb-4 text-base font-semibold text-foreground">{sectionTitle}</h2>
+        <div className="mb-4 flex flex-wrap gap-3">
           <Input
             placeholder={`Add ${sectionTitle.toLowerCase()}...`}
             value={state.addValue}
             onChange={(e) => state.setAddValue(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-            className="max-w-[240px] rounded-lg"
+            className="max-w-[240px] rounded-sm"
           />
-          <Button onClick={handleAdd} className="rounded-lg" disabled={!state.addValue.trim()}>
+          <Button size="sm" className="rounded-sm" onClick={handleAdd} disabled={!state.addValue.trim()}>
             Add
           </Button>
           <Input
             placeholder="Search..."
             value={state.search}
             onChange={(e) => state.setSearch(e.target.value)}
-            className="max-w-[200px] rounded-lg ml-auto"
+            className="ml-auto max-w-[200px] rounded-sm"
           />
         </div>
-        <div className="rounded-xl border border-zinc-200/60 dark:border-border overflow-hidden">
+        <div className="overflow-hidden rounded-sm border border-[#EBEBE9] dark:border-border">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-zinc-200/60 dark:border-border bg-muted/30">
+              <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border dark:bg-muted/30">
                 <th className="text-left py-3 px-4 font-medium text-muted-foreground">Name</th>
                 <th className="text-right py-3 px-4 font-medium text-muted-foreground w-24">Used</th>
                 <th className="text-left py-3 px-4 font-medium text-muted-foreground w-24">Status</th>
@@ -248,7 +249,10 @@ export default function SettingsListsPage() {
             </thead>
             <tbody>
               {state.filtered.map((row) => (
-                <tr key={row.name} className="border-b border-zinc-100/50 dark:border-border/30">
+                <tr
+                  key={row.name}
+                  className="border-b border-[#EBEBE9]/80 transition-colors hover:bg-[#F7F7F5] dark:border-border/40 dark:hover:bg-muted/20"
+                >
                   <td className="py-2.5 px-4">
                     {state.renameFor === row.name ? (
                       <div className="flex items-center gap-2">
@@ -283,13 +287,14 @@ export default function SettingsListsPage() {
                     )}
                   </td>
                   <td className="py-2.5 px-4 text-right tabular-nums text-muted-foreground">{row.used}</td>
-                  <td className="py-2.5 px-4">
-                    <span
-                      className={cn(
-                        "text-xs font-medium px-2 py-0.5 rounded",
-                        row.disabled ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-400" : "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400"
-                      )}
-                    >
+                  <td className="px-4 py-2.5">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground">
+                      <span
+                        className={cn(
+                          "h-1.5 w-1.5 shrink-0 rounded-full",
+                          row.disabled ? "bg-amber-500/90" : "bg-emerald-500/90"
+                        )}
+                      />
                       {row.disabled ? "Disabled" : "Active"}
                     </span>
                   </td>
@@ -337,10 +342,10 @@ export default function SettingsListsPage() {
             </tbody>
           </table>
         </div>
-      </Card>
+      </section>
 
       <Dialog open={!!state.deleteBlocked} onOpenChange={(open) => !open && state.setDeleteBlocked(null)}>
-        <DialogContent className="rounded-2xl">
+        <DialogContent className="rounded-sm">
           <DialogHeader>
             <DialogTitle>Cannot delete</DialogTitle>
           </DialogHeader>
@@ -350,7 +355,7 @@ export default function SettingsListsPage() {
               : ""}
           </p>
           <div className="flex justify-end pt-2">
-            <Button onClick={() => state.setDeleteBlocked(null)} className="rounded-lg">
+            <Button size="sm" className="rounded-sm" onClick={() => state.setDeleteBlocked(null)}>
               OK
             </Button>
           </div>

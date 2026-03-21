@@ -4,9 +4,9 @@ import * as React from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { notFound } from "next/navigation";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import {
   getExpenseById,
   getProjects,
@@ -267,10 +267,8 @@ export default function ExpenseDetailPage() {
         </Link>
       </div>
 
-      <Card className="rounded-2xl border border-zinc-200/60 dark:border-border p-6">
-        {toastMessage && (
-          <p className="text-sm text-emerald-600 dark:text-emerald-400 mb-4">{toastMessage}</p>
-        )}
+      <section className="border-b border-[#EBEBE9] pb-6 dark:border-border">
+        {toastMessage && <p className="mb-4 text-sm text-emerald-600 dark:text-emerald-400">{toastMessage}</p>}
         <form data-expense-header-form className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
@@ -295,37 +293,33 @@ export default function ExpenseDetailPage() {
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</label>
-              <Input name="date" type="date" defaultValue={expense.date} className="mt-1 rounded-lg" />
+              <Input name="date" type="date" defaultValue={expense.date} className="mt-1 rounded-sm" />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Payment source</label>
-              <select
-                value={accountId}
-                onChange={(e) => setAccountId(e.target.value)}
-                className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
-              >
+              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Payment source</label>
+              <Select value={accountId} onChange={(e) => setAccountId(e.target.value)} className="mt-1">
                 <option value="">Select payment source</option>
                 {accounts.map((acc) => (
                   <option key={acc.id} value={acc.id}>
                     {acc.lastFour ? `${acc.name} •••• ${acc.lastFour}` : acc.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Reference #</label>
-              <Input name="referenceNo" defaultValue={expense.referenceNo ?? ""} className="mt-1 rounded-lg" placeholder="Optional" />
+              <Input name="referenceNo" defaultValue={expense.referenceNo ?? ""} className="mt-1 rounded-sm" placeholder="Optional" />
             </div>
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Notes</label>
-            <Input name="notes" defaultValue={expense.notes ?? ""} className="mt-1 rounded-lg" placeholder="Optional" />
+            <Input name="notes" defaultValue={expense.notes ?? ""} className="mt-1 rounded-sm" placeholder="Optional" />
           </div>
-          <Button type="button" onClick={handleSaveHeader}>
+          <Button type="button" size="sm" className="rounded-sm" onClick={handleSaveHeader}>
             Save header
           </Button>
         </form>
-      </Card>
+      </section>
 
       <section>
         <h2 className="text-sm font-semibold text-foreground mb-3">Receipt attachments</h2>
@@ -338,13 +332,16 @@ export default function ExpenseDetailPage() {
           className="hidden"
           onChange={handleFileChange}
         />
-        <Button variant="outline" size="lg" className="min-h-12" onClick={() => fileInputRef.current?.click()}>
+        <Button variant="outline" size="sm" className="rounded-sm" onClick={() => fileInputRef.current?.click()}>
           <Plus className="h-4 w-4 mr-2" />
           Add receipt
         </Button>
         <ul className="mt-3 space-y-2">
           {expense.attachments.map((att) => (
-            <li key={att.id} className="flex items-center gap-3 rounded-xl border border-zinc-200/60 dark:border-border p-3">
+            <li
+              key={att.id}
+              className="flex items-center gap-3 border border-[#EBEBE9] p-3 dark:border-border"
+            >
               <button
                 type="button"
                 className="flex items-center gap-3 min-w-0 flex-1 text-left"
@@ -377,7 +374,7 @@ export default function ExpenseDetailPage() {
       </section>
 
       <section>
-        <Card className="rounded-2xl border border-zinc-200/60 dark:border-border overflow-hidden p-6">
+        <div className="overflow-hidden rounded-sm border border-[#EBEBE9] p-6 dark:border-border">
           <SplitLinesEditor
             lines={expense.lines.map((l) => ({
               id: l.id,
@@ -406,14 +403,14 @@ export default function ExpenseDetailPage() {
             isPaymentMethodDisabled={() => false}
             minLines={1}
           />
-        </Card>
+        </div>
 
-        <div className="mt-4 flex flex-col sm:flex-row gap-4">
-          <div className="rounded-xl border border-zinc-200/60 dark:border-border bg-muted/20 px-4 py-3 min-w-[200px]">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Lines total</p>
-            <p className="text-xl font-bold tabular-nums text-red-600/90 dark:text-red-400/90 mt-0.5">${total.toLocaleString()}</p>
+        <div className="mt-4 flex flex-col gap-4 sm:flex-row">
+          <div className="min-w-[200px] border border-[#EBEBE9] bg-background px-4 py-3 dark:border-border">
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Lines total</p>
+            <p className="mt-0.5 text-xl font-bold tabular-nums text-red-600/90 dark:text-red-400/90">${total.toLocaleString()}</p>
           </div>
-          <div className="rounded-xl border border-zinc-200/60 dark:border-border bg-muted/20 px-4 py-3 flex-1">
+          <div className="flex-1 border border-[#EBEBE9] bg-background px-4 py-3 dark:border-border">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Per project</p>
             <ul className="space-y-1 text-sm">
               {Array.from(byProject.entries()).map(([projectId, amount]) => (

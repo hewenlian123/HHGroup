@@ -5,9 +5,9 @@ import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { createBrowserClient } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { FilterBar } from "@/components/filter-bar";
 import { StatusBadge } from "@/components/status-badge";
 
@@ -275,26 +275,23 @@ export default function SubcontractorsPage() {
             onChange={(event) => setQuery(event.target.value)}
             className="max-w-[360px]"
           />
-          <select
+          <Select
             value={statusFilter}
             onChange={(event) => setStatusFilter((event.target.value as "" | "active" | "inactive") ?? "")}
-            className="h-10 rounded-[10px] border border-input bg-muted/20 px-3 text-sm"
           >
             <option value="">All statuses</option>
             <option value="active">active</option>
             <option value="inactive">inactive</option>
-          </select>
+          </Select>
         </div>
       </FilterBar>
 
       {message ? (
-        <div className="rounded-lg border border-zinc-200/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground dark:border-border">
-          {message}
-        </div>
+        <p className="border-b border-[#EBEBE9] pb-3 text-sm text-muted-foreground dark:border-border">{message}</p>
       ) : null}
 
       {editorOpen ? (
-        <Card className="rounded-2xl border border-zinc-200/60 p-4 dark:border-border">
+        <section className="border-b border-[#EBEBE9] pb-4 dark:border-border">
           <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">Display Name</p>
@@ -381,18 +378,17 @@ export default function SubcontractorsPage() {
               />
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Status</p>
-              <select
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Status</p>
+              <Select
                 value={form.status}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, status: event.target.value === "inactive" ? "inactive" : "active" }))
                 }
-                className="h-10 w-full rounded-[10px] border border-input bg-muted/20 px-3 text-sm"
                 disabled={submitting}
               >
                 <option value="active">active</option>
                 <option value="inactive">inactive</option>
-              </select>
+              </Select>
             </div>
             <div className="space-y-1 md:col-span-2">
               <p className="text-xs text-muted-foreground">Address Line 1</p>
@@ -433,22 +429,22 @@ export default function SubcontractorsPage() {
               />
             </div>
           </div>
-          <div className="mt-4 flex items-center justify-end gap-2 border-t border-zinc-200/60 pt-3 dark:border-border">
-            <Button onClick={handleSave} disabled={submitting}>
-              {submitting ? "Saving..." : editorMode === "create" ? "Create Subcontractor" : "Save Changes"}
-            </Button>
-            <Button variant="outline" onClick={closeEditor} disabled={submitting}>
+          <div className="mt-4 flex flex-col-reverse justify-end gap-2 border-t border-[#EBEBE9] pt-3 sm:flex-row sm:items-center dark:border-border">
+            <Button variant="outline" size="sm" className="rounded-sm" onClick={closeEditor} disabled={submitting}>
               Cancel
             </Button>
+            <Button size="sm" className="rounded-sm" onClick={handleSave} disabled={submitting}>
+              {submitting ? "Saving..." : editorMode === "create" ? "Create Subcontractor" : "Save Changes"}
+            </Button>
           </div>
-        </Card>
+        </section>
       ) : null}
 
-      <Card className="overflow-hidden">
+      <div className="overflow-hidden rounded-sm border border-[#EBEBE9] dark:border-border">
         <div className="table-responsive">
           <table className="w-full min-w-[640px] text-sm md:min-w-0">
             <thead>
-              <tr className="border-b border-zinc-200/40 bg-muted/30 dark:border-border/60">
+              <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
                 <th className="table-head-label px-4 py-3 text-left">Name</th>
                 <th className="table-head-label px-4 py-3 text-left">Contact</th>
                 <th className="table-head-label px-4 py-3 text-left">Phone</th>
@@ -468,7 +464,10 @@ export default function SubcontractorsPage() {
                 </tr>
               ) : null}
               {filtered.map((row) => (
-                <tr key={row.id} className="group border-b border-zinc-100/50 dark:border-border/30">
+                <tr
+                  key={row.id}
+                  className="group border-b border-[#EBEBE9]/80 transition-colors hover:bg-[#F7F7F5] dark:border-border/40 dark:hover:bg-muted/20"
+                >
                   <td className="px-4 py-3 font-medium text-foreground">
                     <Link href={`/labor/subcontractors/${row.id}`} className="hover:underline">
                       {row.display_name}
@@ -486,7 +485,8 @@ export default function SubcontractorsPage() {
                     <div className="flex items-center justify-end gap-2">
                       <Button
                         variant="outline"
-                        className="h-8 px-3"
+                        size="sm"
+                        className="h-8 rounded-sm px-3"
                         onClick={() => openEdit(row)}
                         disabled={submitting || deletingId === row.id}
                       >
@@ -494,7 +494,8 @@ export default function SubcontractorsPage() {
                       </Button>
                       <Button
                         variant="outline"
-                        className="h-8 px-3"
+                        size="sm"
+                        className="h-8 rounded-sm px-3"
                         onClick={() => void handleDelete(row)}
                         disabled={submitting || deletingId === row.id}
                       >
@@ -514,7 +515,7 @@ export default function SubcontractorsPage() {
             </tbody>
           </table>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }

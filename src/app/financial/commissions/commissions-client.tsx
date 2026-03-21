@@ -6,7 +6,15 @@ import { syncRouterAndClients } from "@/lib/sync-router-client";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import {
+  listTableAmountCellClassName,
+  listTablePrimaryCellClassName,
+  listTableRowClassName,
+} from "@/lib/list-table-interaction";
 import {
   Dialog,
   DialogContent,
@@ -107,31 +115,32 @@ export function CommissionsClient({
         description="Track commissions and record payments."
       />
 
-      <section className="border-b border-border/60 pb-4">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="border border-border/60 rounded-sm px-3 py-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Total Commission</p>
-            <p className="text-base font-semibold mt-0.5 tabular-nums">${fmtUsd(summary.totalCommission)}</p>
+      <Card className="overflow-hidden p-0">
+        <div className="grid divide-y divide-[#EBEBE9] sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4 lg:divide-x dark:divide-border/60">
+          <div className="p-4">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Total Commission</p>
+            <p className="text-base font-semibold mt-1 tabular-nums text-[#2D2D2D] dark:text-foreground">${fmtUsd(summary.totalCommission)}</p>
           </div>
-          <div className="border border-border/60 rounded-sm px-3 py-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Paid Commission</p>
-            <p className="text-base font-semibold mt-0.5 tabular-nums">${fmtUsd(summary.paidCommission)}</p>
+          <div className="p-4">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Paid Commission</p>
+            <p className="text-base font-semibold mt-1 tabular-nums text-[#2D2D2D] dark:text-foreground">${fmtUsd(summary.paidCommission)}</p>
           </div>
-          <div className="border border-border/60 rounded-sm px-3 py-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Outstanding Commission</p>
-            <p className="text-base font-semibold mt-0.5 tabular-nums">${fmtUsd(summary.outstandingCommission)}</p>
+          <div className="p-4">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Outstanding</p>
+            <p className="text-base font-semibold mt-1 tabular-nums text-[#2D2D2D] dark:text-foreground">${fmtUsd(summary.outstandingCommission)}</p>
           </div>
-          <div className="border border-border/60 rounded-sm px-3 py-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">This Month Paid</p>
-            <p className="text-base font-semibold mt-0.5 tabular-nums">${fmtUsd(summary.thisMonthPaid)}</p>
+          <div className="p-4">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">This Month Paid</p>
+            <p className="text-base font-semibold mt-1 tabular-nums text-[#2D2D2D] dark:text-foreground">${fmtUsd(summary.thisMonthPaid)}</p>
           </div>
         </div>
-      </section>
+      </Card>
 
-      <div className="overflow-x-auto rounded-sm border border-border/60 mt-4">
+      <Card className="mt-4 overflow-hidden p-0">
+        <div className="overflow-x-auto">
         <table className="w-full text-sm border-collapse">
           <thead>
-            <tr className="border-b border-border/60">
+            <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
               <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Project</th>
               <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Person</th>
               <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Role</th>
@@ -151,21 +160,29 @@ export function CommissionsClient({
               </tr>
             ) : (
               rows.map((r) => (
-                <tr key={r.id} className="border-b border-border/60 last:border-b-0">
-                  <td className="py-2 px-3 font-medium text-foreground">{r.project_name || "—"}</td>
+                <tr
+                  key={r.id}
+                  className={cn(listTableRowClassName, "border-b border-[#EBEBE9]/80 last:border-b-0 dark:border-border/40")}
+                  onClick={() => router.push(`/projects/${r.project_id}`)}
+                >
+                  <td className="py-2 px-3">
+                    <span className={cn("font-medium text-foreground", listTablePrimaryCellClassName, "hover:underline")}>
+                      {r.project_name || "—"}
+                    </span>
+                  </td>
                   <td className="py-2 px-3 text-muted-foreground">{r.person_name || "—"}</td>
                   <td className="py-2 px-3 text-muted-foreground">{r.role}</td>
-                  <td className="py-2 px-3 text-right tabular-nums">${fmtUsd(r.commission_amount)}</td>
-                  <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">${fmtUsd(r.paid_amount)}</td>
-                  <td className="py-2 px-3 text-right tabular-nums font-medium">${fmtUsd(r.outstanding_amount)}</td>
+                  <td className={cn("py-2 px-3 text-right tabular-nums", listTableAmountCellClassName)}>${fmtUsd(r.commission_amount)}</td>
+                  <td className={cn("py-2 px-3 text-right tabular-nums text-muted-foreground", listTableAmountCellClassName)}>${fmtUsd(r.paid_amount)}</td>
+                  <td className={cn("py-2 px-3 text-right tabular-nums font-medium", listTableAmountCellClassName)}>${fmtUsd(r.outstanding_amount)}</td>
                   <td className="py-2 px-3 text-muted-foreground">{r.status}</td>
-                  <td className="py-2 px-3">
+                  <td className="py-2 px-3" onClick={(e) => e.stopPropagation()}>
                     {r.outstanding_amount > 0 && (
                       <Button
                         type="button"
                         size="sm"
                         variant="outline"
-                        className="h-7 text-xs rounded-sm"
+                        className="h-7 text-xs"
                         onClick={() => openPaymentModal(r)}
                       >
                         Record Payment
@@ -177,10 +194,11 @@ export function CommissionsClient({
             )}
           </tbody>
         </table>
-      </div>
+        </div>
+      </Card>
 
       <Dialog open={paymentModalOpen} onOpenChange={setPaymentModalOpen}>
-        <DialogContent className="max-w-md border-border/60 rounded-sm gap-4">
+        <DialogContent className="max-w-md gap-4">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Record Payment</DialogTitle>
           </DialogHeader>
@@ -214,15 +232,15 @@ export function CommissionsClient({
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground block mb-1">Payment Method</label>
-              <select
+              <Select
                 value={paymentForm.payment_method}
                 onChange={(e) => setPaymentForm((p) => ({ ...p, payment_method: e.target.value }))}
-                className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                className="h-9 w-full"
               >
                 {PAYMENT_METHODS.map((m) => (
                   <option key={m} value={m}>{m}</option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground block mb-1">Reference No</label>
@@ -245,10 +263,10 @@ export function CommissionsClient({
             {error && <p className="text-sm text-destructive">{error}</p>}
           </form>
           <DialogFooter className="border-t border-border/60 pt-3">
-            <Button type="button" variant="outline" size="sm" className="rounded-sm h-9" onClick={() => setPaymentModalOpen(false)}>
+            <Button type="button" variant="outline" size="sm" onClick={() => setPaymentModalOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" form="payment-form" size="sm" disabled={submitting} className="rounded-sm h-9">
+            <Button type="submit" form="payment-form" size="sm" disabled={submitting}>
               {submitting ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>

@@ -13,8 +13,13 @@ import { updateWorkerAction, deleteWorkerAction } from "./actions";
 import { AddWorkerModal } from "./add-worker-modal";
 import { EmptyState } from "@/components/empty-state";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
-import { DeleteRowAction } from "@/components/base";
+import {
+  listTableAmountCellClassName,
+  listTablePrimaryCellClassName,
+  listTableRowClassName,
+} from "@/lib/list-table-interaction";
 import { UserPlus } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 function fmtRate(n: number): string {
   if (n === 0) return "—";
@@ -153,19 +158,21 @@ export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
               <span className={r.status === "Active" ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>{r.status}</span>
             </div>
             <div className="mt-3 flex justify-end">
-              <div className="flex items-center justify-end gap-2">
-                <DeleteRowAction disabled={busy} onDelete={() => onDelete(r)} />
-                <RowActionsMenu
-                  ariaLabel={`Actions for ${r.name}`}
-                  actions={[{ label: "Edit", onClick: () => setEditFor(r), disabled: busy }]}
-                />
-              </div>
+              <RowActionsMenu
+                appearance="list"
+                ariaLabel={`Actions for ${r.name}`}
+                actions={[
+                  { label: "View", onClick: () => router.push(`/workers/${r.id}`), disabled: busy },
+                  { label: "Edit", onClick: () => setEditFor(r), disabled: busy },
+                  { label: "Delete", onClick: () => void onDelete(r), destructive: true, disabled: busy },
+                ]}
+              />
             </div>
           </div>
         ))}
       </div>
       <div className="table-responsive hidden md:block">
-        <table className="w-full min-w-[640px] border-collapse text-sm md:min-w-0">
+        <table className="w-full min-w-[640px] border-separate border-spacing-y-1.5 border-spacing-x-0 text-sm md:min-w-0">
           <thead>
             <tr className="border-b border-border/60">
               <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Name</th>
@@ -179,25 +186,40 @@ export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
           </thead>
           <tbody>
             {items.map((r) => (
-              <tr key={r.id} className="group border-b border-border/40 hover:bg-muted/10">
-                <td className="px-3 py-1.5 font-medium">{r.name}</td>
+              <tr
+                key={r.id}
+                tabIndex={0}
+                role="link"
+                aria-label={`Open worker ${r.name}`}
+                className={listTableRowClassName}
+                onClick={() => router.push(`/workers/${r.id}`)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    router.push(`/workers/${r.id}`);
+                  }
+                }}
+              >
+                <td className={cn("first:rounded-l-xl px-3 py-1.5 font-medium", listTablePrimaryCellClassName)}>{r.name}</td>
                 <td className="px-3 py-1.5 text-muted-foreground">{r.trade ?? "—"}</td>
                 <td className="px-3 py-1.5 text-muted-foreground">{r.phone ?? "—"}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums">{fmtRate(r.daily_rate)}</td>
-                <td className="px-3 py-1.5 text-right tabular-nums">{fmtRate(r.default_ot_rate)}</td>
+                <td className={cn("px-3 py-1.5 text-right tabular-nums", listTableAmountCellClassName)}>{fmtRate(r.daily_rate)}</td>
+                <td className={cn("px-3 py-1.5 text-right tabular-nums", listTableAmountCellClassName)}>{fmtRate(r.default_ot_rate)}</td>
                 <td className="px-3 py-1.5">
                   <span className={r.status === "Active" ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>
                     {r.status}
                   </span>
                 </td>
-                <td className="px-1 py-1.5 text-right" onClick={(e) => e.stopPropagation()}>
-                  <div className="flex items-center justify-end gap-2">
-                    <DeleteRowAction disabled={busy} onDelete={() => onDelete(r)} />
-                    <RowActionsMenu
-                      ariaLabel={`Actions for ${r.name}`}
-                      actions={[{ label: "Edit", onClick: () => setEditFor(r), disabled: busy }]}
-                    />
-                  </div>
+                <td className="last:rounded-r-xl px-1 py-1.5 text-right" onClick={(e) => e.stopPropagation()}>
+                  <RowActionsMenu
+                    appearance="list"
+                    ariaLabel={`Actions for ${r.name}`}
+                    actions={[
+                      { label: "View", onClick: () => router.push(`/workers/${r.id}`), disabled: busy },
+                      { label: "Edit", onClick: () => setEditFor(r), disabled: busy },
+                      { label: "Delete", onClick: () => void onDelete(r), destructive: true, disabled: busy },
+                    ]}
+                  />
                 </td>
               </tr>
             ))}

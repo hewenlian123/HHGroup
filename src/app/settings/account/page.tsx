@@ -3,7 +3,6 @@
 import * as React from "react";
 import { createBrowserClient } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
-import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/status-badge";
 
 type RoleLabel = "Owner" | "Admin" | "Assistant";
@@ -40,16 +39,16 @@ export default function SettingsAccountPage() {
         title="Account"
         subtitle="View your current signed-in account and access role."
       />
-      <Card className="rounded-2xl border border-zinc-200/60 dark:border-border p-5 space-y-3">
-        <div className="flex items-center justify-between">
+      <section className="border-b border-[#EBEBE9] dark:border-border">
+        <div className="flex items-center justify-between border-b border-[#EBEBE9] py-3 dark:border-border">
           <p className="text-sm text-muted-foreground">Email</p>
           <p className="text-sm font-medium text-foreground">{email || "—"}</p>
         </div>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between py-3">
           <p className="text-sm text-muted-foreground">Role</p>
           <StatusBadge status={roleLabel(null)} />
         </div>
-      </Card>
+      </section>
     </div>
   );
 }

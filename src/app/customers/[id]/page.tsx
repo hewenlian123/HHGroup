@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 
 type CustomerRow = {
   id: string;
@@ -146,7 +147,7 @@ export default function CustomerDetailPage() {
     return (
       <div className="page-container page-stack py-6">
         <PageHeader title="Customer not found" subtitle="The selected customer does not exist." />
-        <Button asChild variant="outline" className="w-fit">
+        <Button asChild variant="outline" size="sm" className="w-fit">
           <Link href="/customers">Back to Customers</Link>
         </Button>
       </div>
@@ -160,10 +161,10 @@ export default function CustomerDetailPage() {
         subtitle="View and edit customer profile."
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => router.push("/customers")}>
+            <Button variant="outline" size="sm" onClick={() => router.push("/customers")}>
               Back
             </Button>
-            <Button onClick={handleSave} disabled={saving}>
+            <Button size="sm" onClick={handleSave} disabled={saving}>
               {saving ? "Saving..." : "Save Changes"}
             </Button>
           </div>
@@ -171,15 +172,15 @@ export default function CustomerDetailPage() {
       />
 
       {message ? (
-        <div className="rounded-lg border border-zinc-200/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground dark:border-border">
+        <div className="rounded-lg border border-[#EBEBE9] bg-background px-3 py-2 text-sm text-muted-foreground dark:border-border">
           {message}
         </div>
       ) : null}
 
-      <Card className="rounded-2xl border border-zinc-200/60 p-4 dark:border-border">
+      <Card className="border-[#EBEBE9] p-4 dark:border-border">
         <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">Customer Name</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Customer Name</p>
             <Input value={form.name} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} placeholder="Optional" />
           </div>
           <div className="space-y-1">
@@ -191,31 +192,30 @@ export default function CustomerDetailPage() {
             />
           </div>
           <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">Phone</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Phone</p>
             <Input value={form.phone} onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))} placeholder="Optional" />
           </div>
           <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">Email</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Email</p>
             <Input value={form.email} onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))} placeholder="Optional" />
           </div>
           <div className="space-y-1 md:col-span-2">
-            <p className="text-xs text-muted-foreground">Address</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Address</p>
             <Input value={form.address} onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))} placeholder="Optional" />
           </div>
           <div className="space-y-1 md:col-span-2">
-            <p className="text-xs text-muted-foreground">Notes</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Notes</p>
             <Input value={form.notes} onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))} placeholder="Optional" />
           </div>
           <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">Status</p>
-            <select
-              className="h-10 w-full rounded-[10px] border border-input bg-muted/20 px-3 text-sm"
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Status</p>
+            <Select
               value={form.status}
               onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value === "inactive" ? "inactive" : "active" }))}
             >
               <option value="active">active</option>
               <option value="inactive">inactive</option>
-            </select>
+            </Select>
           </div>
         </div>
       </Card>

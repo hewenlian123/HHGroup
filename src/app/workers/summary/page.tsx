@@ -16,6 +16,15 @@ import {
   totalPayForEntry,
   type WorkerInvoice,
 } from "@/lib/data";
+import { RowActionsMenu } from "@/components/base/row-actions-menu";
+import { deleteWorkerAction } from "../actions";
+import { cn } from "@/lib/utils";
+import {
+  listTableAmountCellClassName,
+  listTablePrimaryCellClassName,
+  listTableRowClassName,
+} from "@/lib/list-table-interaction";
+import { useToast } from "@/components/toast/toast-provider";
 
 function fmtUsd(n: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -48,6 +57,7 @@ function SortGlyph({ active, dir }: { active: boolean; dir: "asc" | "desc" }) {
 
 export default function WorkerSummaryPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const today = new Date().toISOString().slice(0, 10);
   const startOfMonth = new Date();
   startOfMonth.setDate(1);
@@ -66,6 +76,7 @@ export default function WorkerSummaryPage() {
   const [rows, setRows] = React.useState<Row[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [message, setMessage] = React.useState<string | null>(null);
+  const [deletingId, setDeletingId] = React.useState<string | null>(null);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -250,7 +261,7 @@ export default function WorkerSummaryPage() {
       </div>
 
       <div className="table-responsive border-b border-border/60">
-        <table className="w-full min-w-[640px] border-collapse text-sm table-row-compact md:min-w-0">
+        <table className="w-full min-w-[720px] border-separate border-spacing-y-1.5 border-spacing-x-0 text-sm table-row-compact md:min-w-0">
           <thead>
             <tr className="border-b border-border/60">
               <th
@@ -293,18 +304,21 @@ export default function WorkerSummaryPage() {
                 Outstanding
                 <SortGlyph active={sort.key === "outstanding"} dir={sort.dir} />
               </th>
+              <th className="py-2.5 px-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground w-12">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr className="border-b border-border/40">
-                <td colSpan={5} className="py-6 px-3 text-center text-xs text-muted-foreground">
+                <td colSpan={6} className="py-6 px-3 text-center text-xs text-muted-foreground">
                   Loading…
                 </td>
               </tr>
             ) : paged.length === 0 ? (
               <tr className="border-b border-border/40">
-                <td colSpan={5} className="py-6 px-3 text-center text-xs text-muted-foreground">
+                <td colSpan={6} className="py-6 px-3 text-center text-xs text-muted-foreground">
                   No workers.
                 </td>
               </tr>
@@ -312,7 +326,7 @@ export default function WorkerSummaryPage() {
               paged.map((r) => (
                 <tr
                   key={r.workerId}
-                  className="cursor-pointer border-b border-border/40 transition-colors hover:bg-muted/10 focus-visible:bg-muted/10 focus-visible:outline-none"
+                  className={listTableRowClassName}
                   onClick={() => router.push(`/workers/${r.workerId}`)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
@@ -324,18 +338,48 @@ export default function WorkerSummaryPage() {
                   role="link"
                   aria-label={`Open ${r.workerName} dashboard`}
                 >
-                  <td className="py-1.5 px-3 font-medium">{r.workerName}</td>
+                  <td className={cn("first:rounded-l-xl py-1.5 px-3 font-medium", listTablePrimaryCellClassName)}>{r.workerName}</td>
                   <td className="py-1.5 px-3 text-right tabular-nums text-muted-foreground">{r.workDays}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums">{fmtUsd(r.earned)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums text-muted-foreground">{fmtUsd(r.paid)}</td>
+                  <td className={cn("py-1.5 px-3 text-right tabular-nums", listTableAmountCellClassName)}>{fmtUsd(r.earned)}</td>
+                  <td className={cn("py-1.5 px-3 text-right tabular-nums text-muted-foreground", listTableAmountCellClassName)}>
+                    {fmtUsd(r.paid)}
+                  </td>
                   <td
-                    className={
-                      r.outstanding > 0.005
-                        ? "py-1.5 px-3 text-right tabular-nums font-medium text-destructive"
-                        : "py-1.5 px-3 text-right tabular-nums font-medium text-foreground"
-                    }
+                    className={cn(
+                      "py-1.5 px-3 text-right tabular-nums font-medium",
+                      listTableAmountCellClassName,
+                      r.outstanding > 0.005 ? "text-destructive" : "text-foreground"
+                    )}
                   >
                     {fmtUsd(r.outstanding)}
+                  </td>
+                  <td className="last:rounded-r-xl py-1.5 px-3 text-right" onClick={(e) => e.stopPropagation()}>
+                    <RowActionsMenu
+                      appearance="list"
+                      ariaLabel={`Actions for ${r.workerName}`}
+                      actions={[
+                        { label: "View", onClick: () => router.push(`/workers/${r.workerId}`) },
+                        { label: "Edit", onClick: () => router.push("/workers") },
+                        {
+                          label: "Delete",
+                          onClick: async () => {
+                            if (deletingId) return;
+                            if (!window.confirm(`Delete worker "${r.workerName}"? This cannot be undone.`)) return;
+                            setDeletingId(r.workerId);
+                            const res = await deleteWorkerAction(r.workerId);
+                            if (!res.ok) {
+                              toast({ title: "Delete failed", description: res.error, variant: "error" });
+                            } else {
+                              toast({ title: "Deleted", variant: "success" });
+                            }
+                            setDeletingId(null);
+                            await load();
+                          },
+                          destructive: true,
+                          disabled: deletingId === r.workerId,
+                        },
+                      ]}
+                    />
                   </td>
                 </tr>
               ))

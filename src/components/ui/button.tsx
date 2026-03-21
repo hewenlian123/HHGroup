@@ -5,7 +5,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium touch-manipulation transition-[color,background-color,border-color,opacity,transform] duration-75 ease-out focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 active:opacity-90 active:scale-[0.98]",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium touch-manipulation transition-[color,background-color,border-color,box-shadow,opacity,transform] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2D2D2D]/15 dark:focus-visible:ring-ring/40 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 active:opacity-90 active:scale-[0.98]",
   {
     variants: {
       variant: {
@@ -18,11 +18,11 @@ const buttonVariants = cva(
         danger:
           "text-red-600 border border-red-200 bg-white hover:bg-red-50",
         outline:
-          "border border-[#E5E7EB] bg-white text-[#111111] hover:bg-gray-50",
+          "border border-[#EBEBE9] bg-white text-[#2D2D2D] shadow-sm hover:bg-white hover:shadow-md dark:border-border dark:bg-card dark:text-foreground dark:hover:bg-muted",
         secondary:
-          "border border-[#E5E7EB] bg-white text-[#111111] hover:bg-gray-50",
-        ghost: "text-[#6B7280] hover:bg-gray-100 hover:text-[#111111]",
-        link: "text-[#111111] underline-offset-4 hover:underline",
+          "border border-[#EBEBE9] bg-white text-[#2D2D2D] shadow-sm hover:bg-[#F7F7F5] hover:shadow-sm dark:border-border dark:bg-card dark:text-foreground dark:hover:bg-muted",
+        ghost: "text-gray-500 hover:bg-white hover:text-[#2D2D2D] hover:shadow-sm dark:text-muted-foreground dark:hover:bg-muted dark:hover:text-foreground",
+        link: "text-[#2D2D2D] underline-offset-4 hover:underline dark:text-foreground",
       },
       size: {
         /* Touch-friendly: min 44px on mobile/tablet (max-lg) */

@@ -6,7 +6,11 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import { listTablePrimaryCellClassName, listTableRowClassName } from "@/lib/list-table-interaction";
 import {
   Table,
   TableBody,
@@ -15,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getAccounts, type Account, type AccountType } from "@/lib/data";
+import { type Account, type AccountType } from "@/lib/data";
 import { createAccountAction, deleteAccountAction, getAccountsAction, updateAccountAction } from "./actions";
 import { Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -226,11 +230,11 @@ function AccountsPageInner() {
           }
         />
       ) : (
-        <section className="border-b border-border/60">
+        <Card className="overflow-hidden p-0">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="border-b border-border/60 hover:bg-transparent">
+                <TableRow className="border-b border-[#EBEBE9] bg-[#F7F7F5] hover:bg-transparent dark:border-border/60 dark:bg-muted/30">
                   <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Account Name</TableHead>
                   <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Type</TableHead>
                   <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">Last 4</TableHead>
@@ -239,11 +243,17 @@ function AccountsPageInner() {
               </TableHeader>
               <TableBody>
                 {accounts.map((row) => (
-                  <TableRow key={row.id} className="group border-b border-border/30 hover:bg-muted/20">
-                    <TableCell className="font-medium text-foreground">{row.name}</TableCell>
+                  <TableRow
+                    key={row.id}
+                    className={cn(listTableRowClassName, "group border-b border-[#EBEBE9]/80 dark:border-border/30")}
+                    onClick={() => openEdit(row)}
+                  >
+                    <TableCell className={cn("font-medium text-foreground", listTablePrimaryCellClassName, "hover:underline")}>
+                      {row.name}
+                    </TableCell>
                     <TableCell className="text-muted-foreground">{row.type}</TableCell>
                     <TableCell className="text-right tabular-nums text-muted-foreground">{row.lastFour ?? "—"}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-2">
                         <DeleteRowAction
                           onDelete={async () => {
@@ -251,6 +261,7 @@ function AccountsPageInner() {
                           }}
                         />
                         <RowActionsMenu
+                          appearance="list"
                           ariaLabel={`Actions for ${row.name}`}
                           actions={[{ label: "Edit", onClick: () => openEdit(row) }]}
                         />
@@ -261,11 +272,11 @@ function AccountsPageInner() {
               </TableBody>
             </Table>
           </div>
-        </section>
+        </Card>
       )}
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-md border-border/60">
+        <DialogContent className="max-w-md">
           <DialogHeader className="border-b border-border/60 pb-3">
             <DialogTitle className="text-base font-medium">{editingId ? "Edit Account" : "Add Account"}</DialogTitle>
           </DialogHeader>
@@ -283,17 +294,13 @@ function AccountsPageInner() {
             </div>
             <div className="space-y-2">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Type</label>
-              <select
-                value={type}
-                onChange={(e) => setType(e.target.value as AccountType)}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
-              >
+              <Select value={type} onChange={(e) => setType(e.target.value as AccountType)}>
                 {ACCOUNT_TYPES.map((t) => (
                   <option key={t} value={t}>
                     {t}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div className="space-y-2">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Last 4 digits (optional)</label>

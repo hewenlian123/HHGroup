@@ -19,6 +19,9 @@ const config: Config = {
   			touch: "44px",
   		},
   		colors: {
+  			graphite: "#2D2D2D",
+  			"warm-grey": "#F7F7F5",
+  			"border-soft": "#EBEBE9",
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			card: {
@@ -64,7 +67,11 @@ const config: Config = {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',
   			sm: 'calc(var(--radius) - 4px)'
-  		}
+  		},
+  		boxShadow: {
+  			"paper-card":
+  				"0 1px 3px rgba(0,0,0,0.05), 0 10px 40px -10px rgba(0,0,0,0.03)",
+  		},
   	}
   },
   plugins: [require("tailwindcss-animate")],

@@ -150,14 +150,16 @@ export function FinancialClient() {
       ) : null}
 
       <section>
-        <h2 className="text-lg font-semibold text-foreground mb-4">CASH OVERVIEW</h2>
+        <h2 className="mb-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+          CASH OVERVIEW
+        </h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {kpis.map(({ label, value, icon: Icon }) => (
-            <Card key={label} className="shadow-none">
+            <Card key={label}>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
-                <div className="rounded-lg bg-muted p-2">
-                  <Icon className="h-4 w-4 text-muted-foreground" />
+                <div className="rounded-lg border border-[#EBEBE9] bg-[#F7F7F5] p-2 dark:border-border dark:bg-muted">
+                  <Icon className="h-4 w-4 text-gray-500 dark:text-muted-foreground" />
                 </div>
               </CardHeader>
               <CardContent>
@@ -185,7 +187,9 @@ export function FinancialClient() {
         ) : null}
 
         <div className="mt-6">
-          <h3 className="text-sm font-semibold text-foreground mb-3">Recent Unreconciled Transactions</h3>
+          <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            Recent Unreconciled Transactions
+          </h3>
           <Card className="overflow-hidden">
             <div className="overflow-x-auto">
               <Table>
@@ -213,7 +217,7 @@ export function FinancialClient() {
                     </TableRow>
                   ) : (
                     recentUnreconciled.map((tx) => (
-                      <TableRow key={tx.id} className="border-b border-zinc-100/50 dark:border-border/30">
+                      <TableRow key={tx.id} className="border-b border-[#EBEBE9] dark:border-border/60">
                         <TableCell className="tabular-nums">{tx.txn_date}</TableCell>
                         <TableCell>{tx.description}</TableCell>
                         <TableCell
