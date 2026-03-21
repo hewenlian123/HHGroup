@@ -14,9 +14,90 @@ import {
   getWorkerPayments,
   type WorkerInvoice,
 } from "@/lib/data";
+import type { LaborEntryWithJoins } from "@/lib/daily-labor-db";
+import { formatLaborEntrySessionLabel } from "@/lib/daily-labor-db";
+import { ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 function fmtUsd(n: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(n);
+}
+
+function monthKeyFromDate(workDate: string): string {
+  return workDate.slice(0, 7);
+}
+
+function monthLabelEn(key: string): string {
+  const [ys, ms] = key.split("-");
+  const y = Number(ys);
+  const m = Number(ms);
+  if (!y || !m) return key;
+  return new Date(y, m - 1, 1).toLocaleString("en-US", { month: "short", year: "numeric" });
+}
+
+function entryEarned(e: Pick<LaborEntryWithJoins, "cost_amount">): number {
+  return Number(e.cost_amount ?? 0) || 0;
+}
+
+function buildMonthlyTotals(entries: LaborEntryWithJoins[]) {
+  const map = new Map<string, { count: number; earned: number }>();
+  for (const e of entries) {
+    const k = monthKeyFromDate(e.work_date);
+    const cur = map.get(k) ?? { count: 0, earned: 0 };
+    cur.count += 1;
+    cur.earned += entryEarned(e);
+    map.set(k, cur);
+  }
+  return Array.from(map.entries())
+    .map(([monthKey, v]) => ({
+      monthKey,
+      label: monthLabelEn(monthKey),
+      workDays: v.count,
+      earned: v.earned,
+    }))
+    .sort((a, b) => b.monthKey.localeCompare(a.monthKey));
+}
+
+function buildProjectTotals(entries: LaborEntryWithJoins[]) {
+  const map = new Map<string, { name: string; count: number; earned: number }>();
+  for (const e of entries) {
+    const pid = e.project_id ?? "";
+    const name = e.project_name?.trim() ? e.project_name : pid ? "(Unknown project)" : "—";
+    const cur = map.get(pid) ?? { name, count: 0, earned: 0 };
+    cur.count += 1;
+    cur.earned += entryEarned(e);
+    if (cur.name === "—" && name !== "—") cur.name = name;
+    map.set(pid, cur);
+  }
+  return Array.from(map.entries())
+    .map(([projectId, v]) => ({
+      projectId,
+      projectName: v.name,
+      workDays: v.count,
+      earned: v.earned,
+    }))
+    .sort((a, b) => b.earned - a.earned);
+}
+
+function groupEntriesByProjectForMonth(entries: LaborEntryWithJoins[]) {
+  const map = new Map<string, LaborEntryWithJoins[]>();
+  for (const e of entries) {
+    const pid = e.project_id ?? "";
+    const list = map.get(pid) ?? [];
+    list.push(e);
+    map.set(pid, list);
+  }
+  for (const list of map.values()) {
+    list.sort((a, b) => a.work_date.localeCompare(b.work_date) || a.id.localeCompare(b.id));
+  }
+  return Array.from(map.entries())
+    .map(([projectId, list]) => ({
+      projectId,
+      projectName: list[0]?.project_name?.trim() ? list[0].project_name! : projectId ? "(Unknown project)" : "—",
+      entries: list,
+      earned: list.reduce((s, x) => s + entryEarned(x), 0),
+    }))
+    .sort((a, b) => b.earned - a.earned);
 }
 
 export default function WorkerDashboardPage() {
@@ -25,6 +106,9 @@ export default function WorkerDashboardPage() {
 
   const [worker, setWorker] = React.useState<Awaited<ReturnType<typeof getWorkerById>> | undefined>(undefined);
   const [usage, setUsage] = React.useState<Awaited<ReturnType<typeof getWorkerUsage>> | null>(null);
+  const [laborLedgerEntries, setLaborLedgerEntries] = React.useState<LaborEntryWithJoins[] | null>(null);
+  const [expandedMonthKey, setExpandedMonthKey] = React.useState<string | null>(null);
+
   const [financialSummary, setFinancialSummary] = React.useState<{
     totalLabor: number;
     totalReimbursements: number;
@@ -47,6 +131,9 @@ export default function WorkerDashboardPage() {
     setWorker(w);
     setUsage(u);
     if (w) {
+      const ledger = await getLaborEntriesWithJoins({ worker_id: id }).catch(() => [] as LaborEntryWithJoins[]);
+      setLaborLedgerEntries(ledger);
+
       try {
         const r = await fetch(`/api/labor/workers/${id}/financial-summary`);
         const data = r.ok ? await r.json() : null;
@@ -61,13 +148,13 @@ export default function WorkerDashboardPage() {
       const from = start.toISOString().slice(0, 10);
       const to = new Date().toISOString().slice(0, 10);
       try {
-        const [entries, invoicesAll, payments] = await Promise.all([
-          getLaborEntriesWithJoins({ worker_id: id, date_from: from, date_to: to }).catch(() => []),
+        const [invoicesAll, payments] = await Promise.all([
           getWorkerInvoices().catch(() => [] as WorkerInvoice[]),
           getWorkerPayments({ workerId: id, fromDate: from, toDate: to, limit: 500 }).catch(() => []),
         ]);
         let labor = 0;
-        for (const e of entries) {
+        for (const e of ledger) {
+          if (e.work_date < from || e.work_date > to) continue;
           labor += Number(e.cost_amount ?? 0) || 0;
         }
         let inv = 0;
@@ -89,6 +176,7 @@ export default function WorkerDashboardPage() {
     } else {
       setFinancialSummary(null);
       setMonthly(null);
+      setLaborLedgerEntries(null);
     }
   }, [id]);
 
@@ -103,9 +191,29 @@ export default function WorkerDashboardPage() {
     [refreshAll]
   );
 
+  const monthlyTotals = React.useMemo(() => {
+    if (!laborLedgerEntries) return [];
+    return buildMonthlyTotals(laborLedgerEntries);
+  }, [laborLedgerEntries]);
+
+  const projectTotalsAll = React.useMemo(() => {
+    if (!laborLedgerEntries) return [];
+    return buildProjectTotals(laborLedgerEntries);
+  }, [laborLedgerEntries]);
+
+  const expandedMonthEntries = React.useMemo(() => {
+    if (!laborLedgerEntries || !expandedMonthKey) return [];
+    const inMonth = laborLedgerEntries.filter((e) => monthKeyFromDate(e.work_date) === expandedMonthKey);
+    return groupEntriesByProjectForMonth(inMonth);
+  }, [laborLedgerEntries, expandedMonthKey]);
+
+  const toggleMonth = (key: string) => {
+    setExpandedMonthKey((prev) => (prev === key ? null : key));
+  };
+
   if (!id) {
     return (
-      <div className="mx-auto flex max-w-[720px] flex-col gap-6 p-6">
+      <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6">
         <PageHeader title="Worker Not Found" description="This worker does not exist." />
         <Link href="/workers">
           <Button variant="outline" className="w-fit rounded-sm">
@@ -118,7 +226,7 @@ export default function WorkerDashboardPage() {
 
   if (worker === undefined) {
     return (
-      <div className="mx-auto flex max-w-[720px] flex-col gap-6 p-6">
+      <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6">
         <p className="text-muted-foreground">Loading…</p>
         <Link href="/workers">
           <Button variant="outline" className="w-fit rounded-sm">
@@ -131,7 +239,7 @@ export default function WorkerDashboardPage() {
 
   if (worker === null) {
     return (
-      <div className="mx-auto flex max-w-[720px] flex-col gap-6 p-6">
+      <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6">
         <PageHeader title="Worker Not Found" description="This worker does not exist." />
         <Link href="/workers">
           <Button variant="outline" className="w-fit rounded-sm">
@@ -145,10 +253,10 @@ export default function WorkerDashboardPage() {
   const usageRes = usage ?? { used: false };
 
   return (
-    <div className="mx-auto flex max-w-[720px] flex-col gap-6 p-6">
+    <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6">
       <PageHeader
         title={worker.name}
-        description="Worker dashboard — financial overview and quick links."
+        description="Worker dashboard — labor ledger, financial overview, and quick links."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Link href="/workers">
@@ -198,6 +306,167 @@ export default function WorkerDashboardPage() {
             {usageRes.used ? " · Used in labor records" : " · Not used yet"}
           </div>
         </dl>
+      </section>
+
+      <section className="border-b border-border/60 pb-4">
+        <h2 className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">Labor ledger</h2>
+        <p className="mb-3 text-xs text-muted-foreground">
+          From labor entries: work days = row count per period; earned = sum of <code className="text-[11px]">cost_amount</code>.
+        </p>
+        {laborLedgerEntries === null ? (
+          <p className="text-sm text-muted-foreground">Loading labor…</p>
+        ) : laborLedgerEntries.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No labor entries for this worker.</p>
+        ) : (
+          <div className="space-y-8">
+            <div>
+              <h3 className="mb-2 text-sm font-medium text-foreground">Monthly totals</h3>
+              <div className="table-responsive -mx-1">
+                <table className="w-full min-w-[360px] border-collapse text-sm table-row-compact md:min-w-0">
+                  <thead>
+                    <tr className="border-b border-border/60">
+                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                        Month
+                      </th>
+                      <th className="px-2 py-2 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                        Work days
+                      </th>
+                      <th className="px-2 py-2 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                        Earned
+                      </th>
+                      <th className="w-10 px-1" aria-hidden />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {monthlyTotals.map((row) => {
+                      const open = expandedMonthKey === row.monthKey;
+                      return (
+                        <React.Fragment key={row.monthKey}>
+                          <tr
+                            className="cursor-pointer border-b border-border/40 hover:bg-muted/10"
+                            onClick={() => toggleMonth(row.monthKey)}
+                          >
+                            <td className="px-2 py-1.5 font-medium">{row.label}</td>
+                            <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">{row.workDays}</td>
+                            <td className="px-2 py-1.5 text-right tabular-nums font-medium">{fmtUsd(row.earned)}</td>
+                            <td className="px-1 py-1.5 text-right">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 shrink-0 rounded-sm p-0"
+                                aria-expanded={open}
+                                aria-label={open ? `Collapse ${row.label}` : `Expand ${row.label}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleMonth(row.monthKey);
+                                }}
+                              >
+                                <ChevronRight
+                                  className={cn("h-4 w-4 transition-transform", open && "rotate-90")}
+                                  aria-hidden
+                                />
+                              </Button>
+                            </td>
+                          </tr>
+                          {open ? (
+                            <tr className="border-b border-border/40">
+                              <td colSpan={4} className="px-2 py-3 align-top">
+                                <p className="mb-3 text-xs text-muted-foreground">
+                                  By project — date, session (Full / Half / Absent; not raw hours), amount ({row.label})
+                                </p>
+                                {expandedMonthEntries.length === 0 ? (
+                                  <p className="text-sm text-muted-foreground">No rows.</p>
+                                ) : (
+                                  <div className="space-y-4">
+                                    {expandedMonthEntries.map((grp) => (
+                                      <div key={grp.projectId || "none"} className="border-b border-border/50 pb-3 last:border-0 last:pb-0">
+                                        <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                                          {grp.projectName}
+                                        </p>
+                                        <table className="w-full border-collapse text-sm table-row-compact">
+                                          <thead>
+                                            <tr className="border-b border-border/50">
+                                              <th className="py-1.5 pr-3 text-left text-xs font-medium text-muted-foreground">
+                                                Date
+                                              </th>
+                                              <th className="py-1.5 pr-3 text-left text-xs font-medium text-muted-foreground">
+                                                Session
+                                              </th>
+                                              <th className="py-1.5 text-right text-xs font-medium text-muted-foreground">
+                                                Amount
+                                              </th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {grp.entries.map((e) => (
+                                              <tr key={e.id} className="border-b border-border/30">
+                                                <td className="py-1 pr-3 tabular-nums text-muted-foreground">{e.work_date}</td>
+                                                <td className="py-1 pr-3">
+                                                  {formatLaborEntrySessionLabel(e.notes, e.hours, {
+                                                    costAmount: entryEarned(e),
+                                                    dailyRate: worker.dailyRate,
+                                                    halfDayRate: worker.halfDayRate,
+                                                    morning: e.morning,
+                                                    afternoon: e.afternoon,
+                                                  })}
+                                                </td>
+                                                <td className="py-1 text-right tabular-nums">{fmtUsd(entryEarned(e))}</td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          ) : null}
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="mb-1 text-sm font-medium text-foreground">Project totals</h3>
+              <p className="mb-2 text-xs text-muted-foreground">All time, by project · sorted by earned (high → low).</p>
+              {projectTotalsAll.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No project breakdown.</p>
+              ) : (
+                <div className="table-responsive -mx-1">
+                  <table className="w-full min-w-[360px] border-collapse text-sm table-row-compact md:min-w-0">
+                    <thead>
+                      <tr className="border-b border-border/60">
+                        <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                          Project
+                        </th>
+                        <th className="px-2 py-2 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                          Work days
+                        </th>
+                        <th className="px-2 py-2 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                          Earned
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {projectTotalsAll.map((row) => (
+                        <tr key={row.projectId || "none"} className="border-b border-border/40 hover:bg-muted/10">
+                          <td className="px-2 py-1.5 font-medium">{row.projectName}</td>
+                          <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">{row.workDays}</td>
+                          <td className="px-2 py-1.5 text-right tabular-nums">{fmtUsd(row.earned)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </section>
 
       {financialSummary !== null ? (

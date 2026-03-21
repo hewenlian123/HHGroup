@@ -1,19 +1,24 @@
 /**
  * Daily Labor Log — Supabase only. No mock.
  * labor_entries schema: id, worker_id, project_id, work_date, hours, cost_code, notes, cost_amount, status, submitted_at, approved_at, locked_at, etc.
+ *
+ * **Session display (ledger):** product default is **daily wage** (Full / Half / Absent). UI must not equate
+ * stored `hours` (e.g. equivalent hours) with pay — use `formatLaborEntrySessionLabel` + worker rates / notes / AM-PM flags.
  */
 
 import { getSupabaseClient } from "@/lib/supabase";
 
 export type LaborEntryStatus = "Draft" | "Submitted" | "Approved" | "Locked";
 
-const LABOR_ENTRIES_COLS = "id, worker_id, project_id, work_date, hours, cost_code, notes, cost_amount" as const;
+const LABOR_ENTRIES_COLS =
+  "id, worker_id, project_id, work_date, hours, cost_code, notes, cost_amount, morning, afternoon" as const;
 const LABOR_ENTRIES_COLS_WITH_STATUS =
-  "id, worker_id, project_id, work_date, hours, cost_code, notes, cost_amount, status, submitted_at, submitted_by, approved_at, approved_by, locked_at, locked_by" as const;
+  "id, worker_id, project_id, work_date, hours, cost_code, notes, cost_amount, status, submitted_at, submitted_by, approved_at, approved_by, locked_at, locked_by, morning, afternoon" as const;
 const LABOR_ENTRIES_COLS_WITH_STATUS_AND_PAYMENT =
   `${LABOR_ENTRIES_COLS_WITH_STATUS}, worker_payment_id` as const;
 /** Columns when cost_amount column does not exist (older schema). */
-const LABOR_ENTRIES_COLS_WITHOUT_COST = "id, worker_id, project_id, work_date, hours, cost_code, notes" as const;
+const LABOR_ENTRIES_COLS_WITHOUT_COST =
+  "id, worker_id, project_id, work_date, hours, cost_code, notes, morning, afternoon" as const;
 
 export type DailyLaborEntryRow = {
   id: string;
@@ -71,6 +76,9 @@ export type LaborEntryWithJoins = {
   usesPaymentLinkForPayroll: boolean;
   worker_name: string | null;
   project_name: string | null;
+  /** AM/PM flags (timesheet / labor-db); omitted when column not selected. */
+  morning?: boolean;
+  afternoon?: boolean;
 };
 
 export type LaborSession = "morning" | "afternoon" | "full_day";
@@ -82,6 +90,84 @@ function parseSessionFromNotes(notes: unknown): LaborSession | null {
   const v = m[1]?.toLowerCase();
   if (v === "morning" || v === "afternoon" || v === "full_day") return v;
   return null;
+}
+
+/** Parse `session=` token from labor entry notes (same rules as duplicate-session checks). */
+export function parseLaborSessionFromNotes(notes: unknown): LaborSession | null {
+  return parseSessionFromNotes(notes);
+}
+
+/** Optional context so session labels match daily-wage amounts (never raw `hours` like "1h"). */
+export type LaborEntrySessionDisplayOptions = {
+  costAmount?: number | null;
+  /** Full-day rate (2× half-day when applicable). */
+  dailyRate?: number | null;
+  halfDayRate?: number | null;
+  morning?: boolean | null;
+  afternoon?: boolean | null;
+};
+
+function parseDayTypeFromNotes(notes: string): "full_day" | "half_day" | "absent" | null {
+  const m = /day_type=(\w+)/i.exec(notes);
+  const v = m?.[1]?.toLowerCase();
+  if (v === "full_day" || v === "half_day" || v === "absent") return v;
+  return null;
+}
+
+function parseOtHoursFromNotes(notes: string): number {
+  const m = /(?:^|[\s,])ot_hours=([\d.]+)/i.exec(notes);
+  return m ? Number(m[1]) || 0 : 0;
+}
+
+function amountMatchesDailyWage(a: number, b: number): boolean {
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return false;
+  const tol = Math.max(0.02, Math.abs(b) * 0.002);
+  return Math.abs(a - b) <= tol;
+}
+
+/**
+ * Daily-wage ledger display: **Full** / **Half** / **Absent** / **—** only.
+ * Does not show raw `hours` (e.g. "1h") so labels stay consistent with `cost_amount`.
+ *
+ * Resolution order: `day_type=` → AM/PM columns → `session=` in notes → amount vs worker rates (OT stripped when possible).
+ */
+export function formatLaborEntrySessionLabel(
+  notes: string | null | undefined,
+  _hours: number,
+  opts?: LaborEntrySessionDisplayOptions
+): string {
+  void _hours;
+  const n = typeof notes === "string" ? notes : "";
+
+  const dayType = parseDayTypeFromNotes(n);
+  if (dayType === "full_day") return "Full";
+  if (dayType === "half_day") return "Half";
+  if (dayType === "absent") return "Absent";
+
+  if (/(?:^|\s)session=half_day(?:\s|$)/i.test(n)) return "Half";
+
+  const morn = opts?.morning === true;
+  const aft = opts?.afternoon === true;
+  if (morn && aft) return "Full";
+  if (morn || aft) return "Half";
+
+  const s = parseSessionFromNotes(notes);
+  if (s === "full_day") return "Full";
+  if (s === "morning" || s === "afternoon") return "Half";
+
+  const cost = Number(opts?.costAmount) || 0;
+  const daily = Number(opts?.dailyRate) || 0;
+  const halfFromWorker = Number(opts?.halfDayRate) || 0;
+  const half = halfFromWorker > 0 ? halfFromWorker : daily > 0 ? daily / 2 : 0;
+
+  const ot = parseOtHoursFromNotes(n);
+  const otRate = daily > 0 ? (daily / 8) * 1.5 : 0;
+  const baseCost = ot > 0 && otRate > 0 ? Math.max(0, cost - ot * otRate) : cost;
+
+  if (daily > 0 && amountMatchesDailyWage(baseCost, daily)) return "Full";
+  if (half > 0 && amountMatchesDailyWage(baseCost, half)) return "Half";
+
+  return "—";
 }
 
 async function assertNoDuplicateSession(params: {
@@ -170,7 +256,8 @@ export async function getLaborEntriesWithJoins(filters: LaborEntriesFilters = {}
 
   if (error && isAmbiguousRelationship(error)) {
     hasWorkerPaymentIdCol = false;
-    const baseCols = "id, worker_id, project_id, work_date, hours, cost_code, notes, cost_amount";
+    const baseCols =
+      "id, worker_id, project_id, work_date, hours, cost_code, notes, cost_amount, morning, afternoon";
     let qSafe = c.from("labor_entries").select(baseCols).order("work_date", { ascending: false });
     if (filters.date_from) qSafe = qSafe.gte("work_date", filters.date_from.slice(0, 10));
     if (filters.date_to) qSafe = qSafe.lte("work_date", filters.date_to.slice(0, 10));
@@ -274,6 +361,12 @@ export async function getLaborEntriesWithJoins(filters: LaborEntriesFilters = {}
         usesPaymentLinkForPayroll: hasWorkerPaymentIdCol,
         worker_name: workerNameById.get(r.worker_id as string) ?? null,
         project_name: r.project_id ? projectNameById.get(r.project_id as string) ?? null : null,
+        ...("morning" in row || "afternoon" in row
+          ? {
+              morning: row.morning === true,
+              afternoon: row.afternoon === true,
+            }
+          : {}),
       };
     })
     .filter((x): x is LaborEntryWithJoins => x != null);

@@ -29,10 +29,22 @@ function fmtUsd(n: number): string {
 type Row = {
   workerId: string;
   workerName: string;
+  workDays: number;
   earned: number;
   paid: number;
   outstanding: number;
 };
+
+type SortKey = keyof Omit<Row, "workerId">;
+
+function SortGlyph({ active, dir }: { active: boolean; dir: "asc" | "desc" }) {
+  if (!active) return <span className="ml-1 inline-block w-3" aria-hidden />;
+  return (
+    <span className="ml-0.5 inline-block w-3 text-[10px] font-normal text-muted-foreground" aria-hidden>
+      {dir === "asc" ? "↑" : "↓"}
+    </span>
+  );
+}
 
 export default function WorkerSummaryPage() {
   const router = useRouter();
@@ -67,17 +79,22 @@ export default function WorkerSummaryPage() {
       ]);
 
       const laborByWorker = new Map<string, number>();
+      const workDaysByWorker = new Map<string, number>();
       for (const e of laborEntries) {
         const wid = e.worker_id;
         if (!wid) continue;
         const amt = Number(e.cost_amount ?? 0) || 0;
         laborByWorker.set(wid, (laborByWorker.get(wid) ?? 0) + amt);
+        workDaysByWorker.set(wid, (workDaysByWorker.get(wid) ?? 0) + 1);
       }
 
       if (laborEntries.length === 0) {
         const daily = await getDailyWorkEntriesInRange(fromDate, toDate).catch(() => []);
         for (const e of daily) {
           laborByWorker.set(e.workerId, (laborByWorker.get(e.workerId) ?? 0) + totalPayForEntry(e));
+          if (e.dayType !== "absent") {
+            workDaysByWorker.set(e.workerId, (workDaysByWorker.get(e.workerId) ?? 0) + 1);
+          }
         }
       }
 
@@ -101,9 +118,11 @@ export default function WorkerSummaryPage() {
         const earned = labor + inv;
         const paid = paidByWorker.get(w.id) ?? 0;
         const outstanding = earned - paid;
+        const workDays = workDaysByWorker.get(w.id) ?? 0;
         return {
           workerId: w.id,
           workerName: nameById.get(w.id) ?? w.name ?? w.id,
+          workDays,
           earned,
           paid,
           outstanding,
@@ -144,12 +163,14 @@ export default function WorkerSummaryPage() {
     let earned = 0;
     let paid = 0;
     let outstanding = 0;
+    let workDays = 0;
     for (const r of filtered) {
       earned += r.earned;
       paid += r.paid;
       outstanding += r.outstanding;
+      workDays += r.workDays;
     }
-    return { earned, paid, outstanding };
+    return { earned, paid, outstanding, workDays };
   }, [filtered]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -163,15 +184,19 @@ export default function WorkerSummaryPage() {
     setPage(1);
   }, [query, sort, fromDate, toDate]);
 
-  const toggleSort = (key: keyof Omit<Row, "workerId">) => {
-    setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "desc" }));
+  const toggleSort = (key: SortKey) => {
+    setSort((s) => {
+      if (s.key === key) return { key, dir: s.dir === "asc" ? "desc" : "asc" };
+      const defaultDir: "asc" | "desc" = key === "workerName" ? "asc" : "desc";
+      return { key, dir: defaultDir };
+    });
   };
 
   return (
     <div className="page-container page-stack py-6">
       <PageHeader
         title="Worker Summary"
-        subtitle="Earned (labor + worker invoices) vs paid (worker payments) in the selected range."
+        subtitle="Labor entry count (work days), earned vs paid, and outstanding in the selected range. Click a row to open the worker dashboard."
         actions={
           <Link href="/workers" className="text-sm text-muted-foreground hover:text-foreground">
             Worker Profile
@@ -197,22 +222,26 @@ export default function WorkerSummaryPage() {
 
       {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
 
-      <div className="grid gap-4 border-b border-border/60 py-4 sm:grid-cols-3">
+      <div className="grid gap-4 border-b border-border/60 py-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Work days (entries)</p>
+          <p className="mt-1 text-lg font-semibold tabular-nums text-right">{totals.workDays}</p>
+        </div>
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total Earned</p>
-          <p className="mt-1 text-lg font-semibold tabular-nums">{fmtUsd(totals.earned)}</p>
+          <p className="mt-1 text-lg font-semibold tabular-nums text-right">{fmtUsd(totals.earned)}</p>
         </div>
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total Paid</p>
-          <p className="mt-1 text-lg font-semibold tabular-nums">{fmtUsd(totals.paid)}</p>
+          <p className="mt-1 text-lg font-semibold tabular-nums text-right">{fmtUsd(totals.paid)}</p>
         </div>
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total Outstanding</p>
           <p
             className={
               totals.outstanding > 0.005
-                ? "mt-1 text-lg font-semibold tabular-nums text-destructive"
-                : "mt-1 text-lg font-semibold tabular-nums"
+                ? "mt-1 text-lg font-semibold tabular-nums text-right text-destructive"
+                : "mt-1 text-lg font-semibold tabular-nums text-right"
             }
           >
             {fmtUsd(totals.outstanding)}
@@ -221,45 +250,61 @@ export default function WorkerSummaryPage() {
       </div>
 
       <div className="table-responsive border-b border-border/60">
-        <table className="w-full min-w-[520px] text-sm border-collapse md:min-w-0">
+        <table className="w-full min-w-[640px] border-collapse text-sm table-row-compact md:min-w-0">
           <thead>
             <tr className="border-b border-border/60">
               <th
-                className="cursor-pointer select-none py-2 px-4 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground"
+                className="cursor-pointer select-none py-2.5 px-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground"
                 onClick={() => toggleSort("workerName")}
+                aria-sort={sort.key === "workerName" ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
               >
                 Worker
+                <SortGlyph active={sort.key === "workerName"} dir={sort.dir} />
               </th>
               <th
-                className="cursor-pointer select-none py-2 px-4 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground tabular-nums"
+                className="cursor-pointer select-none py-2.5 px-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground tabular-nums w-[88px]"
+                onClick={() => toggleSort("workDays")}
+                aria-sort={sort.key === "workDays" ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
+              >
+                Work days
+                <SortGlyph active={sort.key === "workDays"} dir={sort.dir} />
+              </th>
+              <th
+                className="cursor-pointer select-none py-2.5 px-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground tabular-nums"
                 onClick={() => toggleSort("earned")}
+                aria-sort={sort.key === "earned" ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
               >
                 Earned
+                <SortGlyph active={sort.key === "earned"} dir={sort.dir} />
               </th>
               <th
-                className="cursor-pointer select-none py-2 px-4 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground tabular-nums"
+                className="cursor-pointer select-none py-2.5 px-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground tabular-nums"
                 onClick={() => toggleSort("paid")}
+                aria-sort={sort.key === "paid" ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
               >
                 Paid
+                <SortGlyph active={sort.key === "paid"} dir={sort.dir} />
               </th>
               <th
-                className="cursor-pointer select-none py-2 px-4 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground tabular-nums"
+                className="cursor-pointer select-none py-2.5 px-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground tabular-nums"
                 onClick={() => toggleSort("outstanding")}
+                aria-sort={sort.key === "outstanding" ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
               >
                 Outstanding
+                <SortGlyph active={sort.key === "outstanding"} dir={sort.dir} />
               </th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr className="border-b border-border/40">
-                <td colSpan={4} className="py-6 px-4 text-center text-xs text-muted-foreground">
+                <td colSpan={5} className="py-6 px-3 text-center text-xs text-muted-foreground">
                   Loading…
                 </td>
               </tr>
             ) : paged.length === 0 ? (
               <tr className="border-b border-border/40">
-                <td colSpan={4} className="py-6 px-4 text-center text-xs text-muted-foreground">
+                <td colSpan={5} className="py-6 px-3 text-center text-xs text-muted-foreground">
                   No workers.
                 </td>
               </tr>
@@ -267,7 +312,7 @@ export default function WorkerSummaryPage() {
               paged.map((r) => (
                 <tr
                   key={r.workerId}
-                  className="cursor-pointer border-b border-border/40 hover:bg-muted/10"
+                  className="cursor-pointer border-b border-border/40 transition-colors hover:bg-muted/10 focus-visible:bg-muted/10 focus-visible:outline-none"
                   onClick={() => router.push(`/workers/${r.workerId}`)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
@@ -277,16 +322,17 @@ export default function WorkerSummaryPage() {
                   }}
                   tabIndex={0}
                   role="link"
-                  aria-label={`Open ${r.workerName}`}
+                  aria-label={`Open ${r.workerName} dashboard`}
                 >
-                  <td className="py-2 px-4 font-medium">{r.workerName}</td>
-                  <td className="py-2 px-4 text-right tabular-nums">{fmtUsd(r.earned)}</td>
-                  <td className="py-2 px-4 text-right tabular-nums">{fmtUsd(r.paid)}</td>
+                  <td className="py-1.5 px-3 font-medium">{r.workerName}</td>
+                  <td className="py-1.5 px-3 text-right tabular-nums text-muted-foreground">{r.workDays}</td>
+                  <td className="py-1.5 px-3 text-right tabular-nums">{fmtUsd(r.earned)}</td>
+                  <td className="py-1.5 px-3 text-right tabular-nums text-muted-foreground">{fmtUsd(r.paid)}</td>
                   <td
                     className={
                       r.outstanding > 0.005
-                        ? "py-2 px-4 text-right tabular-nums font-medium text-destructive"
-                        : "py-2 px-4 text-right tabular-nums font-medium"
+                        ? "py-1.5 px-3 text-right tabular-nums font-medium text-destructive"
+                        : "py-1.5 px-3 text-right tabular-nums font-medium text-foreground"
                     }
                   >
                     {fmtUsd(r.outstanding)}
