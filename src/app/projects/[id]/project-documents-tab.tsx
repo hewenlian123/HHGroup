@@ -1,5 +1,6 @@
 "use client";
 
+import { syncRouterAndClients } from "@/lib/sync-router-client";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { SectionHeader, Divider } from "@/components/base";
@@ -60,7 +61,7 @@ export function ProjectDocumentsTab({ projectId, documents }: Props) {
           setDeleteError(res.error ?? "Delete failed.");
           return;
         }
-        router.refresh();
+        void syncRouterAndClients(router);
       } finally {
         setDeletingId(null);
       }
@@ -84,7 +85,7 @@ export function ProjectDocumentsTab({ projectId, documents }: Props) {
         const result = await uploadProjectDocument(projectId, formData);
         if (result.ok) {
           formRef.current?.reset();
-          router.refresh();
+          void syncRouterAndClients(router);
         } else {
           setUploadError(result.error ?? "Upload failed.");
         }

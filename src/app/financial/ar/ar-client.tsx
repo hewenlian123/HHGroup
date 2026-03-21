@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
@@ -147,6 +148,13 @@ export function ArClient() {
   React.useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void refresh();
+    }, [refresh]),
+    [refresh]
+  );
 
   const byBucket = React.useMemo(() => {
     const out: Record<string, OutstandingInvoiceRow[]> = {};

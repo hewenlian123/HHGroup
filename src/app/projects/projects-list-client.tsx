@@ -1,5 +1,7 @@
 "use client";
 
+import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -320,6 +322,8 @@ export function ProjectsListClient({
 }) {
   const router = useRouter();
   const { toast } = useToast();
+  const [localRows, setLocalRows] = React.useState<ProjectsListRow[]>(rows);
+  React.useEffect(() => setLocalRows(rows), [rows]);
   const [view, setView] = React.useState<"all" | "active" | "closed">("all");
   const [query, setQuery] = React.useState("");
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
@@ -329,6 +333,13 @@ export function ProjectsListClient({
   const [forceDeleteInProgress, setForceDeleteInProgress] = React.useState(false);
   const [editingStatusId, setEditingStatusId] = React.useState<string | null>(null);
   const [statusSavingId, setStatusSavingId] = React.useState<string | null>(null);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void syncRouterAndClients(router);
+    }, [router]),
+    [router]
+  );
 
   const handleStatusChange = React.useCallback(
     async (id: string, uiLabel: string) => {
@@ -341,7 +352,7 @@ export function ProjectsListClient({
           toast({ title: "Could not update status", description: result.error, variant: "error" });
         } else {
           setEditingStatusId(null);
-          router.refresh();
+          void syncRouterAndClients(router);
         }
       } finally {
         setStatusSavingId(null);
@@ -352,7 +363,7 @@ export function ProjectsListClient({
 
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();
-    return rows
+    return localRows
       .filter((r) => {
         if (view === "active") return r.status === "active";
         if (view === "closed") return r.status === "completed";
@@ -366,16 +377,16 @@ export function ProjectsListClient({
           (r.clientName ?? "").toLowerCase().includes(q)
         );
       });
-  }, [query, rows, view]);
+  }, [query, localRows, view]);
 
   /** Project overview: totals from all rows (not filtered). */
   const overview = React.useMemo(() => {
-    const totalProjects = rows.length;
-    const activeProjects = rows.filter((r) => r.status === "active").length;
-    const totalBudget = rows.reduce((s, r) => s + r.budget, 0);
-    const totalSpent = rows.reduce((s, r) => s + r.spent, 0);
+    const totalProjects = localRows.length;
+    const activeProjects = localRows.filter((r) => r.status === "active").length;
+    const totalBudget = localRows.reduce((s, r) => s + r.budget, 0);
+    const totalSpent = localRows.reduce((s, r) => s + r.spent, 0);
     return { totalProjects, activeProjects, totalBudget, totalSpent };
-  }, [rows]);
+  }, [localRows]);
 
   const handleNavigate = React.useCallback((id: string) => {
     router.push(`/projects/${id}`);
@@ -390,24 +401,31 @@ export function ProjectsListClient({
       return;
     }
     if (!window.confirm(`Delete project "${name}"? This cannot be undone.`)) return;
+    let snapshot: ProjectsListRow[] | undefined;
+    setLocalRows((prev) => {
+      snapshot = prev;
+      return prev.filter((r) => r.id !== id);
+    });
     setDeletingId(id);
     try {
       const result = await deleteProjectAction(id);
       if (result?.blocked && result?.counts) {
+        if (snapshot) setLocalRows(snapshot);
         setDeleteBlockedCounts(result.counts);
         setDeleteBlockedProjectId(id);
         setDeleteBlockedOpen(true);
       } else if (result?.error) {
+        if (snapshot) setLocalRows(snapshot);
         toast({ title: "Error", description: result.error, variant: "error" });
       } else {
-        router.refresh();
+        void syncRouterAndClients(router);
       }
     } finally {
       setDeletingId(null);
     }
   }, [router, toast]);
 
-  const totalCount = rows.length;
+  const totalCount = localRows.length;
   const subtitle =
     totalCount === 1 ? "1 project" : `${totalCount} projects`;
 
@@ -420,7 +438,7 @@ export function ProjectsListClient({
           title={
             <span className="inline-flex flex-wrap items-center gap-2 align-baseline">
               Projects
-              <HeaderViewBadge view={view} activeCount={rows.filter((r) => r.status === "active").length} />
+              <HeaderViewBadge view={view} activeCount={localRows.filter((r) => r.status === "active").length} />
             </span>
           }
           description={<span className="text-xs text-muted-foreground">{subtitle}</span>}
@@ -440,7 +458,7 @@ export function ProjectsListClient({
                 >
                   All
                   <span className="ml-2 text-xs tabular-nums text-muted-foreground">
-                    {rows.length}
+                    {localRows.length}
                   </span>
                 </Button>
                 <Button
@@ -452,7 +470,7 @@ export function ProjectsListClient({
                 >
                   Active
                   <span className="ml-2 text-xs tabular-nums text-muted-foreground">
-                    {rows.filter((r) => r.status === "active").length}
+                    {localRows.filter((r) => r.status === "active").length}
                   </span>
                 </Button>
                 <Button
@@ -464,7 +482,7 @@ export function ProjectsListClient({
                 >
                   Closed
                   <span className="ml-2 text-xs tabular-nums text-muted-foreground">
-                    {rows.filter((r) => r.status === "completed").length}
+                    {localRows.filter((r) => r.status === "completed").length}
                   </span>
                 </Button>
               </div>
@@ -678,7 +696,7 @@ export function ProjectsListClient({
                     } else {
                       setDeleteBlockedOpen(false);
                       setDeleteBlockedProjectId(null);
-                      router.refresh();
+                      void syncRouterAndClients(router);
                     }
                   }}
                   disabled={forceDeleteInProgress}
@@ -698,10 +716,17 @@ export function ProjectsListClient({
                       : "确定要删除该项目及其所有关联数据？此操作不可撤销。";
                     if (!window.confirm(msg)) return;
                     setForceDeleteInProgress(true);
+                    const pid = deleteBlockedProjectId;
                     try {
-                      const result = await forceDeleteProjectAction(deleteBlockedProjectId);
+                      const result = await forceDeleteProjectAction(pid);
                       if (result?.error) {
                         toast({ title: "Error", description: result.error, variant: "error" });
+                      } else {
+                        setLocalRows((prev) => prev.filter((r) => r.id !== pid));
+                        setDeleteBlockedOpen(false);
+                        setDeleteBlockedProjectId(null);
+                        void syncRouterAndClients(router);
+                        toast({ title: "Project deleted", variant: "success" });
                       }
                     } finally {
                       setForceDeleteInProgress(false);

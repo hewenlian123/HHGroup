@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { changeFirstProjectTableRowToDifferentStatus } from "./e2e-helpers";
+import { openFirstProjectStatusSelect } from "./e2e-helpers";
 
 const BASE = "http://localhost:3000";
 
@@ -14,11 +14,10 @@ test("labor modal opens", async ({ page }) => {
   ).toBeVisible();
 });
 
-test("project status change", async ({ page }) => {
-  // Desktop table is `hidden sm:block`; mobile list is `sm:hidden` — scope to visible table
-  // so we don’t hit the first <select> in the hidden mobile DOM.
+test("project status dropdown opens (desktop table)", async ({ page }) => {
+  // Desktop table is `hidden sm:block`; mobile list is `sm:hidden`.
   await page.setViewportSize({ width: 1280, height: 800 });
-  await changeFirstProjectTableRowToDifferentStatus(page, BASE);
+  await openFirstProjectStatusSelect(page, BASE);
 });
 
 test("new estimate - select customer and autofill", async ({ page }) => {

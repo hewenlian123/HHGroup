@@ -16,8 +16,8 @@ function createChained<T>(data: T[], error: { message: string } | null = null) {
   };
 }
 
-vi.mock("@/lib/supabase", () => ({
-  getSupabaseClient: () => mockSupabaseGetter(),
+vi.mock("@/lib/supabase-server", () => ({
+  getServerSupabaseAdmin: () => mockSupabaseGetter(),
 }));
 
 describe("GET /api/labor/worker-balances", () => {
@@ -43,10 +43,11 @@ describe("GET /api/labor/worker-balances", () => {
 
     mockSupabaseGetter = () => ({
       from: (table: string) => {
-        if (table === "workers") return createChained(workers) as never;
+        if (table === "labor_workers") return createChained(workers) as never;
         if (table === "labor_entries") return createChained(labor) as never;
         if (table === "worker_reimbursements") return createChained(reimb) as never;
         if (table === "worker_payments") return createChained(payments) as never;
+        if (table === "worker_advances") return createChained([]) as never;
         return createChained([]) as never;
       },
     }) as never;
@@ -63,6 +64,7 @@ describe("GET /api/labor/worker-balances", () => {
       laborOwed: 100,
       reimbursements: 20,
       payments: 50,
+      advances: 0,
       balance: 70,
     });
   });

@@ -1,11 +1,13 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { deleteWorkerPayment, getProjects, getWorkerPayments, getWorkers, type WorkerPayment } from "@/lib/data";
+import { dispatchClientDataSync } from "@/lib/sync-router-client";
 
 function fmtUsd(n: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -51,6 +53,13 @@ export default function WorkerPaymentsPage() {
     load();
   }, [load]);
 
+  useOnAppSync(
+    React.useCallback(() => {
+      void load();
+    }, [load]),
+    [load]
+  );
+
   const workerNameById = React.useMemo(() => new Map(workers.map((w) => [w.id, w.name] as const)), [workers]);
   const projectNameById = React.useMemo(() => new Map(projects.map((p) => [p.id, p.name] as const)), [projects]);
 
@@ -93,10 +102,17 @@ export default function WorkerPaymentsPage() {
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("Delete this payment record?")) return;
+    let snapshot: WorkerPayment[] | undefined;
+    setRows((prev) => {
+      snapshot = prev;
+      return prev.filter((r) => r.id !== id);
+    });
     try {
       await deleteWorkerPayment(id);
-      await load();
+      dispatchClientDataSync({ reason: "worker-payment-deleted" });
+      void load();
     } catch (e) {
+      if (snapshot) setRows(snapshot);
       setMessage(e instanceof Error ? e.message : "Delete failed.");
     }
   };

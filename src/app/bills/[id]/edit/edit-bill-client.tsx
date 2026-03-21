@@ -1,5 +1,6 @@
 "use client";
 
+import { syncRouterAndClients } from "@/lib/sync-router-client";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -55,7 +56,7 @@ export function EditBillClient({ bill, projects }: Props) {
         attachment_url: attachmentUrl.trim() || null,
       });
       router.push(`/bills/${bill.id}`);
-      router.refresh();
+      void syncRouterAndClients(router);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update bill.");
     } finally {

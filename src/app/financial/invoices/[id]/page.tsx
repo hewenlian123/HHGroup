@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
@@ -98,6 +99,14 @@ export default function InvoiceDetailPage() {
     if (invoice) getProjectById(invoice.projectId).then(setProject);
     else setProject(null);
   }, [invoice?.projectId, invoice]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void refresh();
+      void getPaymentMethods().then(setMethods);
+    }, [refresh]),
+    [refresh]
+  );
 
   const handleMarkSent = async () => {
     if (!id) return;

@@ -33,6 +33,7 @@ import { AttachmentPreviewDialog } from "@/components/attachment-preview-dialog"
 import { ArrowLeft, Plus, FileText, Download, Trash2 } from "lucide-react";
 import { createBrowserClient } from "@/lib/supabase";
 import { useToast } from "@/components/toast/toast-provider";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 
 function useAsyncDisabled(name: string | null, fn: (n: string) => Promise<boolean>): boolean {
   const [disabled, setDisabled] = React.useState(false);
@@ -125,6 +126,27 @@ export default function ExpenseDetailPage() {
     const e = await getExpenseById(id);
     if (e) setExpense(e);
   }, [id]);
+
+  const reloadLookups = React.useCallback(async () => {
+    const [p, c, v, accs] = await Promise.all([
+      getProjects(),
+      getExpenseCategories(),
+      getVendors(),
+      getAccounts(),
+    ]);
+    setProjects(p);
+    setCategories(c);
+    setVendorsList(v);
+    setAccounts(accs);
+  }, []);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void refresh();
+      void reloadLookups();
+    }, [refresh, reloadLookups]),
+    [refresh, reloadLookups]
+  );
 
   const byProject = React.useMemo(() => {
     if (!expense) return new Map<string | null, number>();

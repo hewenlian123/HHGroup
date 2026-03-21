@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -64,6 +65,13 @@ export default function WorkerInvoicesPage() {
   React.useEffect(() => {
     load();
   }, [load]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void load();
+    }, [load]),
+    [load]
+  );
 
   const workerById = React.useMemo(() => new Map(workers.map((w) => [w.id, w.name])), [workers]);
   const projectById = React.useMemo(() => new Map(projects.map((p) => [p.id, p.name])), [projects]);

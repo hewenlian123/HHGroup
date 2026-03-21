@@ -23,9 +23,12 @@ function createBalanceMock(workerId: string, overrides: {
   });
 
   const from = (table: string) => {
-    if (table === "workers") {
+    if (table === "labor_workers" || table === "workers") {
+      const row = worker === null ? null : { id: worker.id, name: worker.name };
       return {
-        select: () => ({ eq: () => ({ maybeSingle: () => thenable(worker) }) }),
+        select: () => ({
+          eq: () => ({ maybeSingle: () => thenable(row) }),
+        }),
       };
     }
     if (table === "labor_entries") {
@@ -37,6 +40,9 @@ function createBalanceMock(workerId: string, overrides: {
     if (table === "worker_payments") {
       return { select: () => ({ eq: () => ({ order: () => thenable(payments) }) }) };
     }
+    if (table === "worker_advances") {
+      return { select: () => ({ eq: () => thenable([]) }) };
+    }
     if (table === "projects") {
       return { select: () => thenable(projects) };
     }
@@ -45,8 +51,8 @@ function createBalanceMock(workerId: string, overrides: {
   return { from };
 }
 
-vi.mock("@/lib/supabase", () => ({
-  getSupabaseClient: () => mockSupabaseGetter(),
+vi.mock("@/lib/supabase-server", () => ({
+  getServerSupabaseAdmin: () => mockSupabaseGetter(),
 }));
 
 describe("GET /api/labor/workers/[id]/balance", () => {
@@ -90,8 +96,21 @@ describe("GET /api/labor/workers/[id]/balance", () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.worker).toEqual({ id: "w1", name: "Worker One" });
-    expect(json.summary).toMatchObject({ laborOwed: 100, reimbursements: 20, payments: 50, balance: 70 });
+    expect(json.summary).toMatchObject({
+      laborOwed: 100,
+      reimbursements: 20,
+      payments: 50,
+      advances: 0,
+      balance: 70,
+    });
     expect(Array.isArray(json.laborEntries)).toBe(true);
+    expect(json.laborEntries[0]).toMatchObject({
+      id: "l1",
+      date: "2025-01-01",
+      amount: 100,
+      session: null,
+      payrollSettled: false,
+    });
     expect(Array.isArray(json.reimbursements)).toBe(true);
     expect(Array.isArray(json.payments)).toBe(true);
   });

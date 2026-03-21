@@ -1,5 +1,6 @@
 "use client";
 
+import { syncRouterAndClients } from "@/lib/sync-router-client";
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -65,7 +66,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
       setPaymentRef("");
       setPaymentNotes("");
       setAddPaymentOpen(false);
-      router.refresh();
+      void syncRouterAndClients(router);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add payment.");
     } finally {
@@ -77,7 +78,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
     const result = await voidBillAction(bill.id);
     if (result.ok) {
       setVoidConfirm(false);
-      router.refresh();
+      void syncRouterAndClients(router);
     }
   };
 
@@ -85,7 +86,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
     const result = await deleteBillDraftAction(bill.id);
     if (result.ok) {
       router.push("/bills");
-      router.refresh();
+      void syncRouterAndClients(router);
     } else {
       setError(result.error ?? "Failed to delete bill.");
     }

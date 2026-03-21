@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,13 @@ export default function FinancialWorkersPage() {
   React.useEffect(() => {
     load();
   }, [load]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void load();
+    }, [load]),
+    [load]
+  );
 
   const openLedger = React.useCallback(async (row: WorkerBalanceRow) => {
     setLedgerWorker({ workerId: row.workerId, workerName: row.workerName });

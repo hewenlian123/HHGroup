@@ -1,5 +1,7 @@
 "use client";
 
+import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -56,6 +58,8 @@ type Props = {
 export function BillsListClient({ bills, summary, projects }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [localBills, setLocalBills] = React.useState<ApBillWithProject[]>(bills);
+  React.useEffect(() => setLocalBills(bills), [bills]);
   const [voidConfirmId, setVoidConfirmId] = React.useState<string | null>(null);
 
   const search = searchParams.get("search") ?? "";
@@ -67,6 +71,13 @@ export function BillsListClient({ bills, summary, projects }: Props) {
 
   const [searchInput, setSearchInput] = React.useState(search);
   React.useEffect(() => setSearchInput(search), [search]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void syncRouterAndClients(router);
+    }, [router]),
+    [router]
+  );
 
   const setFilters = React.useCallback(
     (updates: Record<string, string | boolean>) => {
@@ -84,14 +95,21 @@ export function BillsListClient({ bills, summary, projects }: Props) {
     const result = await voidBillAction(id);
     if (result.ok) {
       setVoidConfirmId(null);
-      router.refresh();
+      void syncRouterAndClients(router);
     }
   }, [router]);
 
   const handleDeleteDraft = React.useCallback(async (id: string) => {
+    let snapshot: ApBillWithProject[] | undefined;
+    setLocalBills((prev) => {
+      snapshot = prev;
+      return prev.filter((b) => b.id !== id);
+    });
     const result = await deleteBillDraftAction(id);
     if (result.ok) {
-      router.refresh();
+      void syncRouterAndClients(router);
+    } else {
+      if (snapshot) setLocalBills(snapshot);
     }
   }, [router]);
 
@@ -200,7 +218,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
       </div>
 
       {/* Table or empty state */}
-      {bills.length === 0 ? (
+      {localBills.length === 0 ? (
         <div className="flex min-h-[280px] flex-col items-center justify-center text-center">
           <p className="text-sm font-medium text-foreground">No bills yet</p>
           <Button asChild size="touch" className="mt-4 rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90">
@@ -211,7 +229,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
         <>
           {/* Mobile: card layout */}
           <div className="flex flex-col gap-3 md:hidden">
-            {bills.map((bill) => {
+            {localBills.map((bill) => {
               const s = statusPill(bill);
               return (
                 <div key={bill.id} className="group relative">
@@ -260,7 +278,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
               </tr>
             </thead>
             <tbody>
-              {bills.map((bill) => (
+              {localBills.map((bill) => (
                 <tr
                   key={bill.id}
                   className="group h-12 border-b border-[#E5E7EB] last:border-b-0 hover:bg-gray-50"

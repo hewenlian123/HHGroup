@@ -1,5 +1,7 @@
 "use client";
 
+import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -30,6 +32,13 @@ export function SubcontractorDetailClient({ subcontractor }: { subcontractor: Su
     setNotes(subcontractor.notes ?? "");
   }, [subcontractor]);
 
+  useOnAppSync(
+    React.useCallback(() => {
+      void syncRouterAndClients(router);
+    }, [router]),
+    [router]
+  );
+
   const handleSave = async () => {
     if (busy) return;
     setBusy(true);
@@ -44,7 +53,7 @@ export function SubcontractorDetailClient({ subcontractor }: { subcontractor: Su
     });
     if (res.ok) {
       setEditOpen(false);
-      router.refresh();
+      void syncRouterAndClients(router);
     } else {
       setError(res.error ?? "Failed to update.");
     }
@@ -59,7 +68,7 @@ export function SubcontractorDetailClient({ subcontractor }: { subcontractor: Su
     const res = await deleteSubcontractorAction(subcontractor.id);
     if (res.ok) {
       router.push("/subcontractors");
-      router.refresh();
+      void syncRouterAndClients(router);
       return;
     }
     setError(res.error ?? "Failed to delete.");

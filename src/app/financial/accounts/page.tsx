@@ -1,5 +1,7 @@
 "use client";
 
+import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
@@ -74,6 +76,13 @@ function AccountsPageInner() {
     return () => { cancelled = true; };
   }, [load]);
 
+  useOnAppSync(
+    React.useCallback(() => {
+      void load();
+    }, [load]),
+    [load]
+  );
+
   const openModal = () => {
     setName("");
     setType("Credit Card");
@@ -103,8 +112,8 @@ function AccountsPageInner() {
       toast({ title: "Failed to delete account", description: res.error, variant: "error" });
       return;
     }
-    await load();
-    router.refresh();
+    void load();
+    void syncRouterAndClients(router);
     toast({ title: "Account deleted", variant: "success" });
   };
 
@@ -134,7 +143,7 @@ function AccountsPageInner() {
         setModalOpen(false);
         setEditingId(null);
         await load();
-        router.refresh();
+        void syncRouterAndClients(router);
         toast({ title: "Account updated", variant: "success" });
       } else {
         const result = await createAccountAction({
@@ -175,7 +184,7 @@ function AccountsPageInner() {
         }
         // Refresh from server so the list reflects canonical data.
         await load();
-        router.refresh();
+        void syncRouterAndClients(router);
         toast({ title: "Account created", variant: "success" });
       }
     } catch (err) {

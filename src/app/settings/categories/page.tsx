@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { createBrowserClient } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
@@ -85,6 +86,13 @@ export default function CategoriesPage() {
     void refresh();
   }, [refresh]);
 
+  useOnAppSync(
+    React.useCallback(() => {
+      void refresh();
+    }, [refresh]),
+    [refresh]
+  );
+
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();
     return rows.filter((row) => {
@@ -162,20 +170,23 @@ export default function CategoriesPage() {
       if (!window.confirm(`Delete category "${row.name}"?`)) return;
       setDeletingId(row.id);
       setMessage(null);
-      const prevRows = rows;
-      setRows((r) => r.filter((c) => c.id !== row.id));
+      let snapshot: CategoryRow[] | undefined;
+      setRows((r) => {
+        snapshot = r;
+        return r.filter((c) => c.id !== row.id);
+      });
       try {
         const { error } = await supabase.from("categories").delete().eq("id", row.id);
         if (error) throw error;
       } catch (error: unknown) {
         const msg = error instanceof Error ? error.message : String(error);
         setMessage(msg || "Failed to delete category.");
-        setRows(prevRows);
+        if (snapshot) setRows(snapshot);
       } finally {
         setDeletingId(null);
       }
     },
-    [configured, rows, supabase]
+    [configured, supabase]
   );
 
   return (

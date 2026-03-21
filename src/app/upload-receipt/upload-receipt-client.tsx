@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -44,15 +45,27 @@ export function UploadReceiptClient() {
   const [done, setDone] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
-  React.useEffect(() => {
-    fetch("/api/upload-receipt/options")
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.workers) setWorkers(d.workers);
-        if (d.projects) setProjects(d.projects);
-      })
-      .catch(() => setMessage("无法加载 / Could not load"));
+  const loadOptions = React.useCallback(async () => {
+    try {
+      const r = await fetch("/api/upload-receipt/options");
+      const d = await r.json();
+      if (d.workers) setWorkers(d.workers);
+      if (d.projects) setProjects(d.projects);
+    } catch {
+      setMessage("无法加载 / Could not load");
+    }
   }, []);
+
+  React.useEffect(() => {
+    void loadOptions();
+  }, [loadOptions]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void loadOptions();
+    }, [loadOptions]),
+    [loadOptions]
+  );
 
   const workerName = React.useMemo(() => {
     const w = workers.find((x) => x.id === workerId);

@@ -29,6 +29,7 @@ import { InvoiceStatusBadge } from "@/components/invoice-status-badge";
 import { EmptyState } from "@/components/empty-state";
 import { Pagination } from "@/components/ui/pagination";
 import { useSearchParams } from "next/navigation";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 
 const STATUS_OPTIONS: { value: "" | InvoiceComputedStatus; label: string }[] = [
   { value: "", label: "All" },
@@ -113,6 +114,19 @@ function InvoicesPageInner() {
     setInvoices(list);
     setVoidConfirmId(null);
   }, []);
+
+  const reloadProjects = React.useCallback(async () => {
+    const list = await getProjects();
+    setProjects(list);
+  }, []);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void refresh();
+      void reloadProjects();
+    }, [refresh, reloadProjects]),
+    [refresh, reloadProjects]
+  );
 
   const handleVoid = async (id: string) => {
     await voidInvoice(id);

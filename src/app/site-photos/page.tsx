@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { Trash2, Download, ClipboardList } from "lucide-react";
 import { PageLayout, PageHeader, Drawer } from "@/components/base";
 import { Button } from "@/components/ui/button";
@@ -107,6 +108,13 @@ export default function SitePhotosPage() {
   React.useEffect(() => {
     load();
   }, [load]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void load();
+    }, [load]),
+    [load]
+  );
 
   const handleDeleteClick = (e: React.MouseEvent, photo: PhotoRow) => {
     e.preventDefault();

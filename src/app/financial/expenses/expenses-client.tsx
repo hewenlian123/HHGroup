@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus, Search } from "lucide-react";
@@ -148,6 +149,13 @@ export function ExpensesClient() {
   React.useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void refresh();
+    }, [refresh]),
+    [refresh]
+  );
 
   const projectsForFilter = React.useMemo(() => {
     const map = new Map<string, string>();

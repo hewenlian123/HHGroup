@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { createBrowserClient } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
@@ -70,6 +71,13 @@ export default function SettingsPermissionsPage() {
   React.useEffect(() => {
     void loadRole();
   }, [loadRole]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void loadRole();
+    }, [loadRole]),
+    [loadRole]
+  );
 
   const toggle = (key: PermissionKey) => {
     setPerms((prev) => ({ ...prev, [key]: !prev[key] }));

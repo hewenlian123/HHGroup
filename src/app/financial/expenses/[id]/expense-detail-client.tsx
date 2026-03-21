@@ -1,5 +1,6 @@
 "use client";
 
+import { syncRouterAndClients } from "@/lib/sync-router-client";
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -13,6 +14,7 @@ import { SplitLinesEditor, type SplitLineRow } from "@/components/split-lines-ed
 import { AttachmentPreviewDialog } from "@/components/attachment-preview-dialog";
 import { createBrowserClient } from "@/lib/supabase";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 
 type ExpenseRow = {
   id: string;
@@ -151,6 +153,13 @@ export function ExpenseDetailClient({ id }: { id: string }) {
   React.useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void refresh();
+    }, [refresh]),
+    [refresh]
+  );
 
   const linesTotal = React.useMemo(() => {
     return lines.reduce((s, l) => s + safeNumber(l.amount), 0);
@@ -439,7 +448,7 @@ export function ExpenseDetailClient({ id }: { id: string }) {
           <ArrowLeft className="h-4 w-4" />
           Expenses
         </Link>
-        <Button variant="outline" onClick={() => router.refresh()} disabled={saving}>
+        <Button variant="outline" onClick={() => void syncRouterAndClients(router)} disabled={saving}>
           Refresh
         </Button>
       </div>

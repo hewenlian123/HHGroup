@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -120,6 +121,13 @@ export function FinancialClient() {
   React.useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void refresh();
+    }, [refresh]),
+    [refresh]
+  );
 
   const kpis = [
     { label: "Bank Balance", value: bankBalance, icon: Banknote },

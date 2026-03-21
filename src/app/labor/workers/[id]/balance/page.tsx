@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
+import { dispatchClientDataSync } from "@/lib/sync-router-client";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
@@ -12,6 +14,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  getLaborPaymentStatus,
+  laborPaymentStatusUiLabel,
+  type LaborPayrollSettlementMode,
+} from "@/lib/labor-balance-shared";
 
 function fmtUsd(n: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -28,7 +35,13 @@ type LaborEntryRow = {
   projectId: string | null;
   projectName: string | null;
   amount: number;
+  /** Timesheet / workflow label (Draft, Approved, …) — not shown as payroll status in UI. */
   status: string;
+  workerPaymentId?: string | null;
+  /** True when linked to a worker payment (server); selection uses getLaborPaymentStatus. */
+  payrollSettled?: boolean;
+  /** Morning / afternoon / full day when available */
+  session?: string | null;
 };
 
 type ReimbursementRow = {
@@ -53,6 +66,8 @@ type Summary = {
   laborOwed: number;
   reimbursements: number;
   payments: number;
+  /** Pending + deducted advances (same as Worker Balances list). */
+  advances: number;
   balance: number;
 };
 
@@ -76,6 +91,7 @@ export default function WorkerBalanceDetailPage() {
   const [selectedReimbIds, setSelectedReimbIds] = React.useState<Set<string>>(new Set());
   const [paySubmitting, setPaySubmitting] = React.useState(false);
   const [payError, setPayError] = React.useState<string | null>(null);
+  const [laborPayrollMode, setLaborPayrollMode] = React.useState<LaborPayrollSettlementMode>("payment_link");
 
   const load = React.useCallback(async () => {
     if (!workerId) return;
@@ -85,9 +101,28 @@ export default function WorkerBalanceDetailPage() {
       const res = await fetch(`/api/labor/workers/${workerId}/balance`, { cache: "no-store" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message ?? "Failed to load.");
+      setLaborPayrollMode(
+        data.laborPayrollSettlementMode === "status_fallback" ? "status_fallback" : "payment_link"
+      );
       setWorker(data.worker ?? null);
-      setSummary(data.summary ?? null);
-      setLaborEntries(data.laborEntries ?? []);
+      setSummary(
+        data.summary
+          ? {
+              laborOwed: Number(data.summary.laborOwed) || 0,
+              reimbursements: Number(data.summary.reimbursements) || 0,
+              payments: Number(data.summary.payments) || 0,
+              advances: Number(data.summary.advances) || 0,
+              balance: Number(data.summary.balance) || 0,
+            }
+          : null
+      );
+      setLaborEntries(
+        (data.laborEntries ?? []).map((e: LaborEntryRow) => ({
+          ...e,
+          workerPaymentId: e.workerPaymentId ?? null,
+          payrollSettled: Boolean(e.payrollSettled),
+        }))
+      );
       setReimbursements(data.reimbursements ?? []);
       setPayments(data.payments ?? []);
     } catch (e) {
@@ -101,9 +136,19 @@ export default function WorkerBalanceDetailPage() {
     load();
   }, [load]);
 
+  useOnAppSync(
+    React.useCallback(() => {
+      void load();
+    }, [load]),
+    [load]
+  );
+
   const unpaidLabor = React.useMemo(
-    () => laborEntries.filter((e) => String(e.status).toLowerCase() !== "paid"),
-    [laborEntries]
+    () =>
+      laborEntries.filter(
+        (e) => getLaborPaymentStatus(e.workerPaymentId ?? null, e.status, laborPayrollMode) !== "paid"
+      ),
+    [laborEntries, laborPayrollMode]
   );
   const unpaidReimb = React.useMemo(
     () => reimbursements.filter((r) => String(r.status).toLowerCase() !== "paid"),
@@ -168,12 +213,15 @@ export default function WorkerBalanceDetailPage() {
           payment_method: method,
           payment_date: payDate.slice(0, 10),
           notes: payNotes.trim() || null,
+          labor_entry_ids: Array.from(selectedLaborIds),
+          reimbursement_ids: Array.from(selectedReimbIds),
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message ?? "Payment failed.");
       setPayModalOpen(false);
       await load();
+      dispatchClientDataSync({ reason: "worker-pay" });
     } catch (err) {
       setPayError(err instanceof Error ? err.message : "Payment failed.");
     } finally {
@@ -218,7 +266,7 @@ export default function WorkerBalanceDetailPage() {
         <>
           {/* D) Balance Summary */}
           {summary != null && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 border-b border-border/60 pb-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 border-b border-border/60 pb-4">
               <div>
                 <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Labor Owed</p>
                 <p className="text-lg font-medium tabular-nums">{fmtUsd(summary.laborOwed)}</p>
@@ -232,6 +280,10 @@ export default function WorkerBalanceDetailPage() {
                 <p className="text-lg font-medium tabular-nums">{fmtUsd(summary.payments)}</p>
               </div>
               <div>
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Advances</p>
+                <p className="text-lg font-medium tabular-nums">{fmtUsd(summary.advances)}</p>
+              </div>
+              <div className="col-span-2 sm:col-span-1 md:col-span-1">
                 <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Balance</p>
                 <p className="text-lg font-semibold tabular-nums">{fmtUsd(summary.balance)}</p>
               </div>
@@ -240,12 +292,21 @@ export default function WorkerBalanceDetailPage() {
 
           {/* A) Labor Entries */}
           <div className="border-b border-border/60 pb-4">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-2">Labor Entries</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-1">Labor Entries</h2>
+            <p className="text-xs text-muted-foreground mb-3 max-w-2xl">
+              One row per saved labor entry (same calendar date can appear more than once — e.g. different projects or
+              morning vs afternoon). Totals match{" "}
+              <Link href="/labor" className="underline underline-offset-2 hover:text-foreground">
+                Labor
+              </Link>{" "}
+              for this worker.
+            </p>
             <div className="table-responsive">
-              <table className="w-full text-sm border-collapse min-w-[320px] sm:min-w-0">
+              <table className="w-full text-sm border-collapse min-w-[400px] sm:min-w-0">
                 <thead>
                   <tr className="border-b border-border/60">
                     <th className="text-left py-2 px-2 sm:px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</th>
+                    <th className="text-left py-2 px-2 sm:px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Session</th>
                     <th className="text-left py-2 px-2 sm:px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Project</th>
                     <th className="text-right py-2 px-2 sm:px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Amount</th>
                     <th className="text-left py-2 px-2 sm:px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
@@ -254,17 +315,24 @@ export default function WorkerBalanceDetailPage() {
                 <tbody>
                   {laborEntries.length === 0 ? (
                     <tr className="border-b border-border/40">
-                      <td colSpan={4} className="py-4 px-4 text-center text-muted-foreground text-xs">No labor entries.</td>
+                      <td colSpan={5} className="py-4 px-4 text-center text-muted-foreground text-xs">No labor entries.</td>
                     </tr>
                   ) : (
-                    laborEntries.map((r) => (
+                    laborEntries.map((r) => {
+                      const paySt = getLaborPaymentStatus(r.workerPaymentId ?? null, r.status, laborPayrollMode);
+                      return (
                       <tr key={r.id} className="border-b border-border/40 hover:bg-muted/10">
                         <td className="py-2 px-4 tabular-nums">{r.date}</td>
+                        <td className="py-2 px-4 text-muted-foreground">{r.session ?? "—"}</td>
                         <td className="py-2 px-4 text-muted-foreground">{r.projectName ?? r.projectId ?? "—"}</td>
                         <td className="py-2 px-4 text-right tabular-nums">{fmtUsd(r.amount)}</td>
-                        <td className="py-2 px-4 text-muted-foreground">{r.status}</td>
+                        <td className="py-2 px-4 text-muted-foreground">
+                          <span className={paySt === "paid" ? "text-foreground" : ""}>
+                            {laborPaymentStatusUiLabel(paySt)}
+                          </span>
+                        </td>
                       </tr>
-                    ))
+                    );})
                   )}
                 </tbody>
               </table>

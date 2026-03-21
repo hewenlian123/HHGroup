@@ -1,5 +1,7 @@
 "use client";
 
+import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { PageLayout, PageHeader, Drawer } from "@/components/base";
@@ -124,6 +126,13 @@ export default function TasksPage() {
     load();
   }, [load]);
 
+  useOnAppSync(
+    React.useCallback(() => {
+      void load();
+    }, [load]),
+    [load]
+  );
+
   const clearStaleTask = React.useCallback(
     (taskId: string) => {
       setTasks((prev) => prev.filter((t) => t.id !== taskId));
@@ -205,7 +214,7 @@ export default function TasksPage() {
       }
       setModalOpen(false);
       await load();
-      router.refresh();
+      void syncRouterAndClients(router);
     } finally {
       setSubmitting(false);
     }
@@ -239,7 +248,7 @@ export default function TasksPage() {
       setError(result.error);
       return;
     }
-    router.refresh();
+    void syncRouterAndClients(router);
   };
 
   const handleSaveDrawer = async () => {
@@ -266,7 +275,7 @@ export default function TasksPage() {
       }
       setDrawerOpen(false);
       await load();
-      router.refresh();
+      void syncRouterAndClients(router);
     } finally {
       setSubmitting(false);
     }
@@ -299,7 +308,7 @@ export default function TasksPage() {
         setDrawerOpen(false);
         setSelectedTask(null);
       }
-      router.refresh();
+      void syncRouterAndClients(router);
     } catch (e) {
       const errMsg = e instanceof Error ? e.message : "Failed to delete task.";
       console.error("[Tasks] Delete error:", e);

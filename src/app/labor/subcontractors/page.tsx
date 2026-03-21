@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { createBrowserClient } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
@@ -123,6 +124,13 @@ export default function SubcontractorsPage() {
   React.useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void refresh();
+    }, [refresh]),
+    [refresh]
+  );
 
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();

@@ -415,20 +415,16 @@ export async function recordBatchReimbursementPayment(
   return { payment, updatedCount, reimbursements };
 }
 
+/**
+ * Legacy helper used by payroll UI after recording a payment.
+ * Reimbursements must be settled only via `worker_payments` (payment_id + paid status) in the pay API;
+ * bulk-updating all pending rows without a payment link caused accounting inconsistencies.
+ * @returns 0 — settlement is handled by POST /api/labor/workers/[id]/pay.
+ */
 export async function markWorkerReimbursementsPaid(workerId: string, projectId?: string | null): Promise<number> {
-  const c = client();
-  let q = c
-    .from(TABLE_NAME)
-    .update({ status: "paid", paid_at: new Date().toISOString() })
-    .eq("worker_id", workerId)
-    .eq("status", "pending");
-  if (projectId) q = q.eq("project_id", projectId);
-  const { data, error } = await q.select("id");
-  if (error) {
-    if (isTableMissingError(error)) throw new Error(TABLE_MISSING_MESSAGE);
-    throw new Error(error.message ?? "Failed to mark reimbursements paid.");
-  }
-  return Array.isArray(data) ? data.length : 0;
+  void workerId;
+  void projectId;
+  return 0;
 }
 
 export type WorkerBalanceRow = {

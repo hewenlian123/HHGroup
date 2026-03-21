@@ -1,5 +1,6 @@
 "use client";
 
+import { syncRouterAndClients } from "@/lib/sync-router-client";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -27,7 +28,7 @@ export function SubcontractorW9({
       formData.set("file", file);
       const result = await uploadW9(subcontractorId, formData);
       if (result.ok) {
-        router.refresh();
+        void syncRouterAndClients(router);
       } else {
         setMessage(result.error ?? "Upload failed.");
       }
@@ -53,7 +54,7 @@ export function SubcontractorW9({
     setMessage(null);
     const result = await removeW9(subcontractorId, w9StoragePath);
     if (result.ok) {
-      router.refresh();
+      void syncRouterAndClients(router);
     } else {
       setMessage(result.error ?? "Failed to remove.");
     }

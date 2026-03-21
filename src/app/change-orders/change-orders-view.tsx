@@ -1,6 +1,9 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
+import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { ChevronDown, Plus } from "lucide-react";
 import { PageLayout, PageHeader } from "@/components/base";
@@ -50,6 +53,14 @@ export function ChangeOrdersView({
   projects: { id: string; name: string }[];
   grouped: ProjectGroup[];
 }) {
+  const router = useRouter();
+  useOnAppSync(
+    React.useCallback(() => {
+      void syncRouterAndClients(router);
+    }, [router]),
+    [router]
+  );
+
   return (
     <PageLayout
       header={

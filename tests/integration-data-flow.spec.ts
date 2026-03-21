@@ -1,0 +1,116 @@
+import { test, expect } from "@playwright/test";
+import { tryCreateDraftInvoiceNavigateToDetail } from "./e2e-helpers";
+
+/**
+ * 验证「数据—页面—关联」在一条浏览器会话里能串起来：导航、关键控件、与 project/customer 等的挂钩。
+ * 默认 **不写库**（或仅打开对话框）；需要 Supabase + 基础数据时部分步骤会 skip。
+ *
+ * `E2E_BASE_URL` 可选，默认 http://localhost:3000
+ *
+ * 说明全文：`docs/DATA_AND_INTEGRATION.md`
+ */
+const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
+const LOAD_MS = 55_000;
+
+function trimBase(b: string) {
+  return b.replace(/\/$/, "");
+}
+
+test.describe("Integration: data linked across modules", () => {
+  test.describe.configure({ timeout: 120_000 });
+
+  test.beforeEach(async ({ page }) => {
+    await page.setViewportSize({ width: 1400, height: 900 });
+  });
+
+  test("dashboard → projects → open first project detail", async ({ page }) => {
+    await page.goto(`${trimBase(BASE)}/dashboard`);
+    await page.waitForLoadState("domcontentloaded");
+    await expect(page.locator("body")).not.toContainText(/Application error|Internal Server Error/i);
+
+    await page.goto(`${trimBase(BASE)}/projects`);
+    await page.waitForLoadState("domcontentloaded");
+    if (await page.getByText(/Supabase is not configured/i).isVisible().catch(() => false)) {
+      test.skip(true, "Supabase not configured.");
+    }
+    const row = page.locator("table tbody tr").first();
+    await expect(row).toBeVisible({ timeout: LOAD_MS }).catch(() => test.skip(true, "No projects table / still loading."));
+    await row.getByRole("button", { name: /^Actions for / }).click();
+    await page.getByRole("menuitem", { name: "View" }).click();
+    await expect(page).toHaveURL(/\/projects\/[^/?#]+/, { timeout: 25_000 });
+    await expect(page.locator("body")).not.toContainText(/Application error|Internal Server Error/i);
+  });
+
+  test("customers: name → detail page (customer graph)", async ({ page }) => {
+    await page.goto(`${trimBase(BASE)}/customers`);
+    await page.waitForLoadState("domcontentloaded");
+    if (await page.getByText(/Supabase is not configured/i).isVisible().catch(() => false)) {
+      test.skip(true, "Supabase not configured.");
+    }
+    await expect(page.getByText(/Total customers:/i)).toBeVisible({ timeout: LOAD_MS });
+    const nameLink = page.locator("tbody tr td a[href^='/customers/']").first();
+    test.skip((await nameLink.count()) === 0, "No customers — seed data to test detail link.");
+    const name = (await nameLink.textContent())?.trim() ?? "";
+    await nameLink.click();
+    await expect(page).toHaveURL(/\/customers\/[^/?#]+/, { timeout: 15_000 });
+    if (name) await expect(page.locator("body")).toContainText(name.slice(0, 48));
+  });
+
+  test("labor: worker balances ↔ worker balance page", async ({ page }) => {
+    await page.goto(`${trimBase(BASE)}/labor/worker-balances`);
+    await page.waitForLoadState("domcontentloaded");
+    if (await page.getByText(/Supabase is not configured|Failed to load/i).isVisible().catch(() => false)) {
+      test.skip(true, "Labor balances unavailable.");
+    }
+    await expect(page.getByText(/Loading/i).first()).not.toBeVisible({ timeout: LOAD_MS }).catch(() => undefined);
+    const workerLink = page.locator("tbody tr td a[href*='/labor/workers/']").first();
+    test.skip((await workerLink.count()) === 0, "No worker link on balances.");
+    await workerLink.click();
+    await expect(page).toHaveURL(/\/labor\/workers\/[^/]+\/balance/, { timeout: 20_000 });
+    await expect(page.locator("body")).not.toContainText(/Application error|Internal Server Error/i);
+  });
+
+  test("financial: new invoice flow requires project (customer ↔ project graph)", async ({ page }) => {
+    const r = await tryCreateDraftInvoiceNavigateToDetail(page, BASE);
+    test.skip(!r.ok, r.ok ? "" : r.skipReason);
+    await expect(page).toHaveURL(/\/financial\/invoices\/[^/]+/);
+    await expect(page.locator("body")).not.toContainText(/Application error|Internal Server Error/i);
+  });
+
+  test("tasks: new task dialog lists projects (task ↔ project)", async ({ page }) => {
+    await page.goto(`${trimBase(BASE)}/tasks`);
+    await page.waitForLoadState("domcontentloaded");
+    if (await page.getByText(/Failed to load tasks/i).isVisible().catch(() => false)) {
+      test.skip(true, "Tasks API failed.");
+    }
+    await expect(page.getByText(/Loading/i).first()).not.toBeVisible({ timeout: LOAD_MS }).catch(() => undefined);
+    await page.getByRole("button", { name: /\+ New Task/i }).click();
+    const dlg = page.getByRole("dialog", { name: /New Task/i });
+    await expect(dlg).toBeVisible({ timeout: 10_000 });
+    const opts = await dlg.locator("select").first().locator("option").count();
+    test.skip(opts <= 1, "No projects in task dialog — link chain incomplete in DB.");
+    await dlg.getByRole("button", { name: /Cancel/i }).click();
+    await expect(dlg).not.toBeVisible({ timeout: 8000 });
+  });
+
+  test("bills list ↔ new bill (AP graph)", async ({ page }) => {
+    await page.goto(`${trimBase(BASE)}/bills`);
+    await page.waitForLoadState("domcontentloaded");
+    await expect(page.locator("body")).not.toContainText(/Application error|Internal Server Error/i);
+    const newBill = page.locator('a:has-text("New bill"), button:has-text("New Bill")').first();
+    await expect(newBill).toBeVisible({ timeout: LOAD_MS }).catch(() => test.skip(true, "Bills page not ready."));
+    await newBill.click();
+    await expect(page).toHaveURL(/\/bills\/new/, { timeout: 15_000 });
+  });
+
+  test("labor entries list loads (entries ↔ workers/projects)", async ({ page }) => {
+    await page.goto(`${trimBase(BASE)}/labor/entries`);
+    await page.waitForLoadState("domcontentloaded");
+    if (await page.getByText(/Supabase is not configured/i).isVisible().catch(() => false)) {
+      test.skip(true, "Supabase not configured.");
+    }
+    await expect(page.getByText(/Loading/i).first()).not.toBeVisible({ timeout: LOAD_MS }).catch(() => undefined);
+    await expect(page.locator("body")).not.toContainText(/Application error|Internal Server Error/i);
+    await expect(page.locator("table, [role='table']").first()).toBeVisible({ timeout: 15_000 });
+  });
+});

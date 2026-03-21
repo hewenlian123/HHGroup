@@ -1,5 +1,7 @@
 "use client";
 
+import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -122,6 +124,13 @@ export function ProjectDetailTabsClient({
   const [tab, setTab] = React.useState<TabKey>(initialTab);
   const [editModalOpen, setEditModalOpen] = React.useState(false);
 
+  useOnAppSync(
+    React.useCallback(() => {
+      void syncRouterAndClients(router);
+    }, [router]),
+    [router]
+  );
+
   const subtitle = [
     `Budget $${(financialSummary?.budget ?? project.budget ?? 0).toLocaleString()}`,
     `Spent $${(financialSummary?.spent ?? canonicalProfit.actualCost).toLocaleString()}`,
@@ -202,7 +211,7 @@ export function ProjectDetailTabsClient({
                       });
                     } else {
                       toast({ title: "Project archived" });
-                      router.refresh();
+                      void syncRouterAndClients(router);
                     }
                   }}
                 >
@@ -249,7 +258,7 @@ export function ProjectDetailTabsClient({
         onOpenChange={setEditModalOpen}
         project={{ id: projectId, name: project.name, address: project.address, budget: project.budget, customerId: project.customerId ?? null }}
         onSaved={() => {
-          router.refresh();
+          void syncRouterAndClients(router);
           toast({ title: "Project updated" });
         }}
       />
@@ -514,8 +523,8 @@ export function ProjectDetailTabsClient({
             projectId={projectId}
             tasks={tasks}
             workers={workers}
-            onTaskCreated={() => router.refresh()}
-            onTaskUpdated={() => router.refresh()}
+            onTaskCreated={() => void syncRouterAndClients(router)}
+            onTaskUpdated={() => void syncRouterAndClients(router)}
           />
         </TabsContent>
 
@@ -631,7 +640,7 @@ export function ProjectDetailTabsClient({
             clientName={(project as { client_name?: string }).client_name}
             selections={materialSelections}
             catalog={materialCatalog}
-            onRefresh={() => router.refresh()}
+            onRefresh={() => void syncRouterAndClients(router)}
           />
         </TabsContent>
         <TabsContent value="closeout" className="mt-4">
@@ -643,14 +652,14 @@ export function ProjectDetailTabsClient({
             punch={closeoutPunch}
             warranty={closeoutWarranty}
             completion={closeoutCompletion}
-            onRefresh={() => router.refresh()}
+            onRefresh={() => void syncRouterAndClients(router)}
           />
         </TabsContent>
         <TabsContent value="commission" className="mt-4">
           <ProjectCommissionTab
             projectId={projectId}
             commissions={commissions}
-            onRefresh={() => router.refresh()}
+            onRefresh={() => void syncRouterAndClients(router)}
           />
         </TabsContent>
         <TabsContent value="punch-list" className="mt-4">

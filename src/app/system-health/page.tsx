@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -121,6 +122,14 @@ export default function SystemHealthPage() {
     void fetchGuardian();
     void fetchIntegrity();
   }, [fetchGuardian, fetchIntegrity]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void fetchGuardian();
+      void fetchIntegrity();
+    }, [fetchGuardian, fetchIntegrity]),
+    [fetchGuardian, fetchIntegrity]
+  );
 
   // Auto-refresh every 30 seconds
   React.useEffect(() => {

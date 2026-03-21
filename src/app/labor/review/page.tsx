@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,20 @@ export default function LaborReviewPage() {
   React.useEffect(() => {
     refresh();
   }, [refresh]);
+
+  const reloadMeta = React.useCallback(async () => {
+    const [w, p] = await Promise.all([getWorkers(), getProjects()]);
+    setWorkerOptions(w);
+    setProjectOptions(p);
+  }, []);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void refresh();
+      void reloadMeta();
+    }, [refresh, reloadMeta]),
+    [refresh, reloadMeta]
+  );
 
   const filteredRows = React.useMemo(() => {
     return rows.filter((row) => {

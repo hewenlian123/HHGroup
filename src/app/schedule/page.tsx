@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { PageLayout, PageHeader } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -206,6 +207,13 @@ export default function SchedulePage() {
   React.useEffect(() => {
     load();
   }, [load]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void load();
+    }, [load]),
+    [load]
+  );
 
   const openModal = React.useCallback(() => {
     setForm((prev) => ({

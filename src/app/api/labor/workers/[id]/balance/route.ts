@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
+import {
+  isLaborUnpaidForWorkerPayroll,
+  laborPayrollSettlementModeFromSelectList,
+  laborSessionLabel,
+  resolveLaborWorkerForBalance,
+} from "@/lib/labor-balance-shared";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +16,14 @@ type LaborEntryRow = {
   projectId: string | null;
   projectName: string | null;
   amount: number;
+  /** Timesheet / workflow status (Draft, Approved, …) — not used for payroll paid/unpaid display. */
   status: string;
+  /** FK to worker_payments when column exists; clients should derive payment UI via getLaborPaymentStatus. */
+  workerPaymentId: string | null;
+  /** Worker payout: true when linked to worker_payments (`worker_payment_id`); not inferred from workflow status. */
+  payrollSettled: boolean;
+  /** Morning / afternoon / full day when columns exist; explains duplicate dates. */
+  session: string | null;
 };
 
 type ReimbursementRow = {
@@ -79,22 +92,29 @@ export async function GET(
   }
 
   try {
-    const workerRes = await c
-      .from("workers")
-      .select("id, name")
-      .eq("id", workerId)
-      .maybeSingle();
+    // labor_entries.worker_id → labor_workers; keep names consistent with Worker Balances list.
+    const worker = await resolveLaborWorkerForBalance(c, workerId);
 
-    // labor_entries — progressively strip missing columns
+    // labor_entries — progressively strip missing columns (prefer session fields for display)
     let laborRes: RawResult = { data: null, error: null };
+    let laborColsApplied = "";
     for (const cols of [
+      "id, worker_id, project_id, work_date, cost_amount, status, worker_payment_id, morning, afternoon, hours, notes",
+      "id, worker_id, project_id, work_date, cost_amount, status, worker_payment_id, morning, afternoon",
+      "id, worker_id, project_id, work_date, cost_amount, status, worker_payment_id",
+      "id, worker_id, project_id, work_date, cost_amount, status, morning, afternoon, hours, notes",
+      "id, worker_id, project_id, work_date, cost_amount, status, morning, afternoon",
       "id, worker_id, project_id, work_date, cost_amount, status",
       "id, worker_id, project_id, work_date, cost_amount",
       "id, worker_id, project_id, work_date",
     ]) {
       laborRes = await queryWorker(c, "labor_entries", cols, "work_date");
-      if (!laborRes.error || !isMissingColumn(laborRes.error)) break;
+      if (!laborRes.error || !isMissingColumn(laborRes.error)) {
+        laborColsApplied = cols;
+        break;
+      }
     }
+    const laborSettlementMode = laborPayrollSettlementModeFromSelectList(laborColsApplied);
 
     // worker_payments — progressively strip missing columns, then drop ordering
     let paymentsRes: RawResult = { data: null, error: null };
@@ -122,7 +142,8 @@ export async function GET(
       c.from("projects").select("id, name"),
     ]);
 
-    const worker = workerRes.data as { id: string; name: string | null } | null;
+    const advancesRes = await c.from("worker_advances").select("worker_id, amount, status").eq("worker_id", workerId);
+
     if (!worker?.id) {
       return NextResponse.json({ message: "Worker not found" }, { status: 404 });
     }
@@ -136,15 +157,35 @@ export async function GET(
       work_date?: string;
       cost_amount?: number | null;
       status?: string | null;
+      worker_payment_id?: string | null;
+      morning?: boolean | null;
+      afternoon?: boolean | null;
     }[];
-    const laborEntries: LaborEntryRow[] = laborRaw.map((r) => ({
-      id: r.id,
-      date: (r.work_date ?? "").slice(0, 10),
-      projectId: r.project_id ?? null,
-      projectName: r.project_id ? (projectNameById.get(r.project_id) ?? null) : null,
-      amount: Number(r.cost_amount) || 0,
-      status: String(r.status ?? "") || "—",
-    }));
+    // Stable order: newest work date first, then id (same calendar day can have multiple rows).
+    const laborSorted = [...laborRaw].sort((a, b) => {
+      const da = (a.work_date ?? "").slice(0, 10);
+      const db = (b.work_date ?? "").slice(0, 10);
+      if (da !== db) return db.localeCompare(da);
+      return String(a.id).localeCompare(String(b.id));
+    });
+    const laborEntries: LaborEntryRow[] = laborSorted.map((r) => {
+      const workerPaymentId =
+        laborSettlementMode === "payment_link"
+          ? (r.worker_payment_id != null ? String(r.worker_payment_id).trim() || null : null)
+          : null;
+      const payrollSettled = !isLaborUnpaidForWorkerPayroll(r.status, r.worker_payment_id, laborSettlementMode);
+      return {
+        id: r.id,
+        date: (r.work_date ?? "").slice(0, 10),
+        projectId: r.project_id ?? null,
+        projectName: r.project_id ? (projectNameById.get(r.project_id) ?? null) : null,
+        amount: Number(r.cost_amount) || 0,
+        status: String(r.status ?? "").trim() || "—",
+        workerPaymentId,
+        payrollSettled,
+        session: laborSessionLabel(r),
+      };
+    });
 
     const reimbRaw = (reimbRes.data ?? []) as {
       id: string;
@@ -180,17 +221,36 @@ export async function GET(
     }));
 
     const laborOwed = laborRaw
-      .filter((r) => String(r.status ?? "").toLowerCase() !== "paid")
+      .filter((r) => isLaborUnpaidForWorkerPayroll(r.status, r.worker_payment_id, laborSettlementMode))
       .reduce((s, r) => s + (Number(r.cost_amount) || 0), 0);
     const reimbUnpaid = reimbRaw
       .filter((r) => String(r.status ?? "").toLowerCase() !== "paid")
       .reduce((s, r) => s + (Number(r.amount) || 0), 0);
     const totalPayments = payRaw.reduce((s, r) => s + (Number(r.amount) || 0), 0);
-    const balance = laborOwed + reimbUnpaid - totalPayments;
+    const advancesRows = !advancesRes.error
+      ? ((advancesRes.data ?? []) as {
+          worker_id: string;
+          amount?: number | null;
+          status?: string | null;
+        }[])
+      : [];
+    const advancesTotal = advancesRows.reduce((s, r) => {
+      const st = String(r.status ?? "").toLowerCase();
+      if (st !== "pending" && st !== "deducted") return s;
+      return s + (Number(r.amount) || 0);
+    }, 0);
+    const balance = laborOwed + reimbUnpaid - totalPayments - advancesTotal;
 
     return NextResponse.json({
-      worker: { id: worker.id, name: worker.name ?? "—" },
-      summary: { laborOwed, reimbursements: reimbUnpaid, payments: totalPayments, balance },
+      worker: { id: worker.id, name: worker.name },
+      laborPayrollSettlementMode: laborSettlementMode,
+      summary: {
+        laborOwed,
+        reimbursements: reimbUnpaid,
+        payments: totalPayments,
+        advances: advancesTotal,
+        balance,
+      },
       laborEntries,
       reimbursements,
       payments,

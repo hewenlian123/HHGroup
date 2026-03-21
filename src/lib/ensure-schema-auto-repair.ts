@@ -43,6 +43,8 @@ const AUTO_REPAIR_DDL: string[] = [
 
   // 5. labor_entries table columns
   `ALTER TABLE public.labor_entries ADD COLUMN IF NOT EXISTS status text DEFAULT 'pending'`,
+  `ALTER TABLE public.labor_entries ADD COLUMN IF NOT EXISTS worker_payment_id uuid`,
+  `ALTER TABLE public.worker_payments ADD COLUMN IF NOT EXISTS labor_entry_ids uuid[]`,
 ];
 
 export type SchemaAutoRepairResult = {

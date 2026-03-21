@@ -20,6 +20,8 @@ import {
   updateLaborEntry,
   clearLaborEntry,
 } from "@/lib/data";
+import { fetchCached, invalidateDataCache } from "@/lib/client-data-cache";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import type { LaborEntryWithJoins } from "@/lib/data";
 import {
   Dialog,
@@ -30,7 +32,10 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { Button as UiButton } from "@/components/ui/button";
+import { VirtualScrollList } from "@/components/ui/virtual-scroll-list";
 import { Pencil, Trash2 } from "lucide-react";
+
+const QUICK_TIMESHEET_VIRTUAL_THRESHOLD = 32;
 
 type DayType = "full_day" | "half_day" | "absent";
 
@@ -96,7 +101,10 @@ export default function DailyLaborLogPage() {
     setLoading(true);
     setError(null);
     try {
-      const [w, p] = await Promise.all([getWorkers(), getProjects()]);
+      const [w, p] = await Promise.all([
+        fetchCached("data:workers", getWorkers),
+        fetchCached("data:projects", getProjects),
+      ]);
       setWorkers(w);
       setProjects(p);
     } catch (e) {
@@ -128,6 +136,15 @@ export default function DailyLaborLogPage() {
   React.useEffect(() => {
     void loadEntries();
   }, [loadEntries]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      invalidateDataCache("data:");
+      void load();
+      void loadEntries();
+    }, [load, loadEntries]),
+    [load, loadEntries]
+  );
 
   const handleSaved = React.useCallback((count: number) => {
     setMessage(`Saved ${count} entr${count === 1 ? "y" : "ies"}.`);
@@ -438,6 +455,48 @@ type ProjectSection = {
   error: string | null;
 };
 
+type TimesheetWorker = Awaited<ReturnType<typeof getWorkers>>[number];
+
+const QuickTimesheetWorkerRow = React.memo(function QuickTimesheetWorkerRow({
+  worker,
+  sectionId,
+  checked,
+  disabled,
+  toggleWorker,
+}: {
+  worker: TimesheetWorker;
+  sectionId: string;
+  checked: boolean;
+  disabled: boolean;
+  toggleWorker: (sectionId: string, workerId: string) => void;
+}) {
+  const onToggle = React.useCallback(() => {
+    toggleWorker(sectionId, worker.id);
+  }, [toggleWorker, sectionId, worker.id]);
+  const dailyRate = worker.dailyRate ?? worker.halfDayRate ?? 0;
+  return (
+    <label
+      className={cn(
+        "flex cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors",
+        checked ? "bg-blue-50 border-l-4 border-blue-300" : "border-l-4 border-l-transparent",
+        disabled && "cursor-not-allowed opacity-60"
+      )}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={onToggle}
+        className="h-4 w-4 shrink-0 rounded border-gray-300"
+      />
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-medium text-[#111111]">{worker.name}</div>
+        <div className="text-xs text-gray-500">${dailyRate.toFixed(0)} / day</div>
+      </div>
+    </label>
+  );
+});
+
 function QuickTimesheetModal({
   open,
   onOpenChange,
@@ -539,14 +598,14 @@ function QuickTimesheetModal({
     }));
   };
 
-  const toggleWorker = (sectionId: string, workerId: string) => {
+  const toggleWorker = React.useCallback((sectionId: string, workerId: string) => {
     updateSection(sectionId, (s) => {
       const next = new Set(s.selectedWorkerIds);
       if (next.has(workerId)) next.delete(workerId);
       else next.add(workerId);
       return { ...s, selectedWorkerIds: next };
     });
-  };
+  }, [updateSection]);
 
   const setDayTypeForSection = (id: string, value: DayType) => {
     updateSection(id, (s) => ({ ...s, dayType: value }));
@@ -845,49 +904,46 @@ function QuickTimesheetModal({
                       </Button>
                     </div>
                   </div>
-                  <div className="max-h-80 overflow-y-auto rounded-lg border border-[#E5E7EB] bg-white divide-y divide-[#E5E7EB]">
+                  <div className="max-h-80 min-h-0 overflow-hidden rounded-lg border border-[#E5E7EB] bg-white">
                     {workers.length === 0 ? (
                       <p className="px-3 py-3 text-xs text-gray-500">
                         No workers found.
                       </p>
-                    ) : (
-                      workers.map((w) => {
-                        const disabled = fullDayWorkerIds.has(w.id);
-                        const checked =
-                          section.selectedWorkerIds.has(w.id) || false;
-                        const dailyRate =
-                          w.dailyRate ?? w.halfDayRate ?? 0;
-                        return (
-                          <label
-                            key={w.id}
-                            className={cn(
-                              "flex cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors",
-                              checked
-                                ? "bg-blue-50 border-l-4 border-blue-300"
-                                : "border-l-4 border-l-transparent",
-                              disabled && "cursor-not-allowed opacity-60",
-                            )}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              disabled={disabled}
-                              onChange={() =>
-                                toggleWorker(section.id, w.id)
-                              }
-                              className="h-4 w-4 shrink-0 rounded border-gray-300"
-                            />
-                            <div className="min-w-0 flex-1">
-                              <div className="text-sm font-medium text-[#111111]">
-                                {w.name}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                ${dailyRate.toFixed(0)} / day
-                              </div>
+                    ) : workers.length > QUICK_TIMESHEET_VIRTUAL_THRESHOLD ? (
+                      <VirtualScrollList
+                        count={workers.length}
+                        estimateSize={56}
+                        className="max-h-80 min-h-[120px]"
+                      >
+                        {(i) => {
+                          const w = workers[i];
+                          if (!w) return null;
+                          return (
+                            <div key={w.id} className="border-b border-[#E5E7EB] last:border-b-0">
+                              <QuickTimesheetWorkerRow
+                                worker={w}
+                                sectionId={section.id}
+                                checked={section.selectedWorkerIds.has(w.id)}
+                                disabled={fullDayWorkerIds.has(w.id)}
+                                toggleWorker={toggleWorker}
+                              />
                             </div>
-                          </label>
-                        );
-                      })
+                          );
+                        }}
+                      </VirtualScrollList>
+                    ) : (
+                      <div className="max-h-80 overflow-y-auto divide-y divide-[#E5E7EB]">
+                        {workers.map((w) => (
+                          <QuickTimesheetWorkerRow
+                            key={w.id}
+                            worker={w}
+                            sectionId={section.id}
+                            checked={section.selectedWorkerIds.has(w.id)}
+                            disabled={fullDayWorkerIds.has(w.id)}
+                            toggleWorker={toggleWorker}
+                          />
+                        ))}
+                      </div>
                     )}
                   </div>
                   {fullDayWorkerIds.size > 0 ? (

@@ -1,5 +1,6 @@
 "use client";
 
+import { syncRouterAndClients } from "@/lib/sync-router-client";
 import * as React from "react";
 import {
   DropdownMenu,
@@ -87,7 +88,7 @@ function AddCategoryModal({ open, onOpenChange, estimateId, categories, onCatego
       const res = await createEstimateCategoryWithCodeAction(estimateId, code, name);
       if (res.ok && res.costCode) {
         onCategoryCreated(res.costCode, name);
-        router.refresh();
+        void syncRouterAndClients(router);
         onOpenChange(false);
         toast({ title: "Category created", variant: "success" });
       } else {

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -51,6 +52,13 @@ export default function WorkerBalancesPage() {
   React.useEffect(() => {
     load();
   }, [load]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void load();
+    }, [load]),
+    [load]
+  );
 
   return (
     <div className="page-container page-stack py-6">

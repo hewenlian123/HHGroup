@@ -1,5 +1,7 @@
 "use client";
 
+import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -76,6 +78,8 @@ type Props = {
 export function DocumentsListClient({ documents, projects, total }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [localDocuments, setLocalDocuments] = React.useState<DocumentWithProject[]>(documents);
+  React.useEffect(() => setLocalDocuments(documents), [documents]);
   const [previewDoc, setPreviewDoc] = React.useState<DocumentWithProject | null>(null);
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
   const [loadingPreview, setLoadingPreview] = React.useState(false);
@@ -92,6 +96,13 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
 
   const [searchInput, setSearchInput] = React.useState(search);
   React.useEffect(() => setSearchInput(search), [search]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void syncRouterAndClients(router);
+    }, [router]),
+    [router]
+  );
 
   const [uploadOpen, setUploadOpen] = React.useState(false);
   const [uploading, setUploading] = React.useState(false);
@@ -138,14 +149,20 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
     async (doc: DocumentWithProject) => {
       if (!window.confirm("Delete this document?")) return;
       setDeleteError(null);
+      let snapshot: DocumentWithProject[] | undefined;
+      setLocalDocuments((prev) => {
+        snapshot = prev;
+        return prev.filter((d) => d.id !== doc.id);
+      });
       setDeletingId(doc.id);
       try {
         const res = await deleteDocumentAction(doc.id);
         if (!res.ok) {
+          if (snapshot) setLocalDocuments(snapshot);
           setDeleteError(res.error ?? "Delete failed.");
           return;
         }
-        router.refresh();
+        void syncRouterAndClients(router);
       } finally {
         setDeletingId(null);
       }
@@ -170,7 +187,7 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
         if (result.ok) {
           uploadFormRef.current?.reset();
           setUploadOpen(false);
-          router.refresh();
+          void syncRouterAndClients(router);
         } else {
           setUploadError(result.error ?? "Upload failed.");
         }
@@ -235,7 +252,7 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
         }
       />
       <Divider />
-      {documents.length === 0 ? (
+      {localDocuments.length === 0 ? (
         <EmptyState
           title="No documents found"
           description="Upload a document or adjust filters."
@@ -260,7 +277,7 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
               </tr>
             </thead>
             <tbody>
-              {documents.map((doc) => {
+              {localDocuments.map((doc) => {
                 const relatedUrl = getRelatedRecordUrl(doc);
                 return (
                 <tr key={doc.id} className="border-b border-border/40">

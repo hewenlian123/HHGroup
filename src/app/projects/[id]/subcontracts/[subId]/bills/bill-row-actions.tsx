@@ -1,5 +1,6 @@
 "use client";
 
+import { syncRouterAndClients } from "@/lib/sync-router-client";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -65,7 +66,7 @@ export function BillRowActions({
     });
     if (res.ok) {
       setEditOpen(false);
-      router.refresh();
+      void syncRouterAndClients(router);
     } else {
       setError(res.error ?? "Failed to update.");
     }
@@ -78,7 +79,7 @@ export function BillRowActions({
     setBusy(true);
     setError(null);
     const res = await deleteSubcontractBillDraftAction(projectId, subcontractId, bill.id);
-    if (res.ok) router.refresh();
+    if (res.ok) void syncRouterAndClients(router);
     else setError(res.error ?? "Failed to delete.");
     setBusy(false);
   };
@@ -89,7 +90,7 @@ export function BillRowActions({
     setBusy(true);
     setError(null);
     const res = await voidSubcontractBillAction(projectId, subcontractId, bill.id);
-    if (res.ok) router.refresh();
+    if (res.ok) void syncRouterAndClients(router);
     else setError(res.error ?? "Failed to void.");
     setBusy(false);
   };
@@ -116,7 +117,7 @@ export function BillRowActions({
       setPaymentAmount("");
       setPaymentMethod("");
       setPaymentNote("");
-      router.refresh();
+      void syncRouterAndClients(router);
     } else {
       setError(res.error ?? "Failed to record payment.");
     }

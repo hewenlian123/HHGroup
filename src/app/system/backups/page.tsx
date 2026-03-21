@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 
@@ -79,6 +80,13 @@ export default function SystemBackupsPage() {
   React.useEffect(() => {
     void loadList();
   }, [loadList]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void loadList();
+    }, [loadList]),
+    [loadList]
+  );
 
   // ── create backup ───────────────────────────────────────────────────────────
   const handleCreate = React.useCallback(async () => {
