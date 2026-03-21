@@ -7,7 +7,7 @@ import { ensureConstructionSchema } from "@/lib/ensure-construction-schema";
 
 const AppShell = dynamic(
   () => import("@/components/layout/app-shell").then((m) => m.AppShell),
-  { ssr: false, loading: () => <div className="min-h-screen bg-[#F7F7F8] flex items-center justify-center text-sm text-muted-foreground">Loading…</div> }
+  { ssr: false, loading: () => <div className="min-h-screen bg-warm-grey flex items-center justify-center text-sm text-muted-foreground">Loading…</div> }
 );
 
 const geistSans = localFont({

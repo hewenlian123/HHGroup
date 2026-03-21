@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,15 @@ import {
   type WorkerInvoice,
 } from "@/lib/data";
 import { PayWorkerModal } from "./pay-worker-modal";
+import { RowActionsMenu } from "@/components/base/row-actions-menu";
+import { deleteWorkerAction } from "@/app/workers/actions";
+import { cn } from "@/lib/utils";
+import {
+  listTableAmountCellClassName,
+  listTablePrimaryCellClassName,
+  listTableRowClassName,
+} from "@/lib/list-table-interaction";
+import { useToast } from "@/components/toast/toast-provider";
 
 function fmtUsd(n: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
@@ -33,6 +43,8 @@ type Row = {
 };
 
 export default function PayrollSummaryPage() {
+  const router = useRouter();
+  const { toast } = useToast();
   const today = new Date().toISOString().slice(0, 10);
   const startOfMonth = new Date();
   startOfMonth.setDate(1);
@@ -55,6 +67,7 @@ export default function PayrollSummaryPage() {
   const [message, setMessage] = React.useState<string | null>(null);
   const [payOpen, setPayOpen] = React.useState(false);
   const [payTarget, setPayTarget] = React.useState<Row | null>(null);
+  const [deletingId, setDeletingId] = React.useState<string | null>(null);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -216,7 +229,7 @@ export default function PayrollSummaryPage() {
       {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
 
       <div className="overflow-x-auto border-b border-border/60">
-        <table className="w-full text-sm border-collapse">
+        <table className="w-full text-sm border-separate border-spacing-y-1.5 border-spacing-x-0">
           <thead>
             <tr className="border-b border-border/60">
               <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer select-none" onClick={() => toggleSort("workerName")}>
@@ -234,31 +247,45 @@ export default function PayrollSummaryPage() {
               <th className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums cursor-pointer select-none" onClick={() => toggleSort("totalPayable")}>
                 Total Payable
               </th>
-              <th className="w-28" />
+              <th className="w-28 px-4 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Pay</th>
+              <th className="w-12 px-4 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr className="border-b border-border/40">
-                <td colSpan={5} className="py-6 px-4 text-center text-muted-foreground text-xs">
+                <td colSpan={7} className="py-6 px-4 text-center text-muted-foreground text-xs">
                   Loading…
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr className="border-b border-border/40">
-                <td colSpan={5} className="py-6 px-4 text-center text-muted-foreground text-xs">
+                <td colSpan={7} className="py-6 px-4 text-center text-muted-foreground text-xs">
                   No results.
                 </td>
               </tr>
             ) : (
               paged.map((r) => (
-                <tr key={r.workerId} className="border-b border-border/40 hover:bg-muted/10">
-                  <td className="py-2 px-4 font-medium">{r.workerName}</td>
-                  <td className="py-2 px-4 text-right tabular-nums">{fmtUsd(r.laborPay)}</td>
-                  <td className="py-2 px-4 text-right tabular-nums">{fmtUsd(r.reimbursements)}</td>
-                  <td className="py-2 px-4 text-right tabular-nums">{fmtUsd(r.invoices)}</td>
-                  <td className="py-2 px-4 text-right tabular-nums font-medium">{fmtUsd(r.totalPayable)}</td>
-                  <td className="py-2 px-4 text-right">
+                <tr
+                  key={r.workerId}
+                  className={listTableRowClassName}
+                  tabIndex={0}
+                  role="link"
+                  aria-label={`Open ${r.workerName}`}
+                  onClick={() => router.push(`/workers/${r.workerId}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      router.push(`/workers/${r.workerId}`);
+                    }
+                  }}
+                >
+                  <td className={cn("first:rounded-l-xl py-2 px-4 font-medium", listTablePrimaryCellClassName)}>{r.workerName}</td>
+                  <td className={cn("py-2 px-4 text-right tabular-nums", listTableAmountCellClassName)}>{fmtUsd(r.laborPay)}</td>
+                  <td className={cn("py-2 px-4 text-right tabular-nums", listTableAmountCellClassName)}>{fmtUsd(r.reimbursements)}</td>
+                  <td className={cn("py-2 px-4 text-right tabular-nums", listTableAmountCellClassName)}>{fmtUsd(r.invoices)}</td>
+                  <td className={cn("py-2 px-4 text-right tabular-nums font-medium", listTableAmountCellClassName)}>{fmtUsd(r.totalPayable)}</td>
+                  <td className="py-2 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                     <Button
                       size="sm"
                       variant="outline"
@@ -270,6 +297,34 @@ export default function PayrollSummaryPage() {
                     >
                       Pay Worker
                     </Button>
+                  </td>
+                  <td className="last:rounded-r-xl py-2 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                    <RowActionsMenu
+                      appearance="list"
+                      ariaLabel={`Actions for ${r.workerName}`}
+                      actions={[
+                        { label: "View", onClick: () => router.push(`/workers/${r.workerId}`) },
+                        { label: "Edit", onClick: () => router.push("/workers") },
+                        {
+                          label: "Delete",
+                          onClick: async () => {
+                            if (deletingId) return;
+                            if (!window.confirm(`Delete worker "${r.workerName}"? This cannot be undone.`)) return;
+                            setDeletingId(r.workerId);
+                            const res = await deleteWorkerAction(r.workerId);
+                            if (!res.ok) {
+                              toast({ title: "Delete failed", description: res.error, variant: "error" });
+                            } else {
+                              toast({ title: "Deleted", variant: "success" });
+                            }
+                            setDeletingId(null);
+                            await load();
+                          },
+                          destructive: true,
+                          disabled: deletingId === r.workerId,
+                        },
+                      ]}
+                    />
                   </td>
                 </tr>
               ))

@@ -4,9 +4,9 @@ import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { createBrowserClient } from "@/lib/supabase";
 import { ArrowLeft, Plus } from "lucide-react";
@@ -252,50 +252,60 @@ export default function LaborInvoiceDetailClient() {
       </div>
 
       {error ? (
-        <div className="rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 px-3 py-2 text-sm text-red-700 dark:text-red-300">
-          {error}
-        </div>
+        <p className="border-b border-red-200/80 pb-3 text-sm text-red-700 dark:border-red-900 dark:text-red-300">{error}</p>
       ) : null}
       {message ? (
-        <div className="rounded-lg border border-zinc-200/60 dark:border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
-          {message}
-        </div>
+        <p className="border-b border-[#EBEBE9] pb-3 text-sm text-muted-foreground dark:border-border">{message}</p>
       ) : null}
 
-      <Card className="rounded-2xl border border-zinc-200/60 dark:border-border p-6">
+      <section className="border-b border-[#EBEBE9] pb-6 dark:border-border">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">Invoice #</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Invoice #</p>
             <p className="text-lg font-semibold text-foreground">{invoice.invoiceNo}</p>
           </div>
-          <span className="inline-flex rounded-full px-2 py-0.5 text-xs bg-zinc-200/70 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">{invoice.status}</span>
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-foreground/50" />
+            {invoice.status}
+          </span>
         </div>
         <div className="mb-5 flex flex-wrap gap-2">
-          <Button className="rounded-lg" onClick={handleSaveDraft} disabled={isReadOnly}>Save</Button>
-          <Button variant="outline" className="rounded-lg" onClick={handleMarkReviewed} disabled={isReadOnly}>Mark Reviewed</Button>
-          <Button className="rounded-lg" onClick={handleConfirm} disabled={!canConfirm}>Confirm</Button>
-          <Button variant="outline" className="rounded-lg" onClick={handleVoid} disabled={invoice.status === "void"}>Void</Button>
+          <Button size="sm" className="rounded-sm" onClick={handleSaveDraft} disabled={isReadOnly}>
+            Save
+          </Button>
+          <Button variant="outline" size="sm" className="rounded-sm" onClick={handleMarkReviewed} disabled={isReadOnly}>
+            Mark Reviewed
+          </Button>
+          <Button size="sm" className="rounded-sm" onClick={handleConfirm} disabled={!canConfirm}>
+            Confirm
+          </Button>
+          <Button variant="outline" size="sm" className="rounded-sm" onClick={handleVoid} disabled={invoice.status === "void"}>
+            Void
+          </Button>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="grid gap-1.5">
-            <label className="text-xs uppercase tracking-wider text-muted-foreground">Worker</label>
-            <select
-              value={invoice.workerId}
-              onChange={(e) => handleHeaderSave({ workerId: e.target.value })}
-              disabled={isReadOnly}
-              className="h-10 rounded-lg border border-input bg-transparent px-3 text-sm"
-            >
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Worker</label>
+            <Select value={invoice.workerId} onChange={(e) => handleHeaderSave({ workerId: e.target.value })} disabled={isReadOnly}>
               {workers.map((w) => (
-                <option key={w.id} value={w.id}>{w.name}</option>
+                <option key={w.id} value={w.id}>
+                  {w.name}
+                </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div className="grid gap-1.5">
-            <label className="text-xs uppercase tracking-wider text-muted-foreground">Date</label>
-            <Input type="date" value={invoice.invoiceDate} onChange={(e) => handleHeaderSave({ invoiceDate: e.target.value })} className="rounded-lg" disabled={isReadOnly} />
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Date</label>
+            <Input
+              type="date"
+              value={invoice.invoiceDate}
+              onChange={(e) => handleHeaderSave({ invoiceDate: e.target.value })}
+              className="rounded-sm"
+              disabled={isReadOnly}
+            />
           </div>
           <div className="grid gap-1.5">
-            <label className="text-xs uppercase tracking-wider text-muted-foreground">Amount</label>
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Amount</label>
             <Input
               type="number"
               min="0"
@@ -303,61 +313,67 @@ export default function LaborInvoiceDetailClient() {
               value={invoice.amount}
               onChange={(e) => handleHeaderSave({ amount: Number(e.target.value) || 0 })}
               disabled={isReadOnly}
-              className="rounded-lg"
+              className="rounded-sm"
             />
           </div>
           <div className="grid gap-1.5">
-            <label className="text-xs uppercase tracking-wider text-muted-foreground">Status</label>
-            <div className="h-10 flex items-center">
-              <span className="inline-flex rounded-full px-2 py-0.5 text-xs bg-zinc-200/70 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">{invoice.status}</span>
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Status</label>
+            <div className="flex h-10 items-center">
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground">
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-foreground/50" />
+                {invoice.status}
+              </span>
             </div>
           </div>
         </div>
         <div className="mt-4 grid gap-1.5">
-          <label className="text-xs uppercase tracking-wider text-muted-foreground">Memo</label>
+          <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Memo</label>
           <textarea
             value={invoice.memo ?? ""}
             onChange={(e) => handleHeaderSave({ memo: e.target.value })}
             disabled={isReadOnly}
-            className="min-h-[88px] rounded-lg border border-input bg-transparent px-3 py-2 text-sm"
+            className="min-h-[88px] rounded-sm border border-[#EBEBE9] bg-background px-3 py-2 text-sm dark:border-border"
           />
         </div>
         <p className="mt-3 text-xs text-amber-600 dark:text-amber-400">
           Do not confirm invoice if the same labor is already confirmed via daily entries.
         </p>
-      </Card>
+      </section>
 
-      <Card className="rounded-2xl border border-zinc-200/60 dark:border-border p-6">
-        <h2 className="text-sm font-semibold text-foreground mb-3">Attachments</h2>
-        <Button variant="outline" className="rounded-lg" disabled={isReadOnly}>
-          <Plus className="h-4 w-4 mr-2" />
+      <section className="border-b border-[#EBEBE9] pb-6 dark:border-border">
+        <h2 className="mb-3 text-sm font-semibold text-foreground">Attachments</h2>
+        <Button variant="outline" size="sm" className="rounded-sm" disabled={isReadOnly}>
+          <Plus className="mr-2 h-4 w-4" />
           Add Attachment
         </Button>
         <p className="mt-2 text-xs text-muted-foreground">Attachment storage not yet configured.</p>
         {invoice.attachments.length === 0 ? (
           <p className="mt-2 text-sm text-muted-foreground">No attachments.</p>
         ) : null}
-      </Card>
+      </section>
 
-      <Card className="rounded-2xl border border-zinc-200/60 dark:border-border p-6">
+      <section className="border-b border-[#EBEBE9] pb-6 dark:border-border">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-foreground">Split Allocation</h2>
-          <Button size="sm" variant="outline" className="rounded-lg h-8" onClick={handleSplitAdd} disabled={isReadOnly}>+ Add line</Button>
+          <Button size="sm" variant="outline" className="h-8 rounded-sm" onClick={handleSplitAdd} disabled={isReadOnly}>
+            + Add line
+          </Button>
         </div>
         <div className="mt-4 space-y-3">
           {invoice.projectSplits.map((split, idx) => (
-            <div key={`${split.projectId}-${idx}`} className="grid grid-cols-1 sm:grid-cols-[1fr_160px_auto] gap-2 items-center">
-              <select
+            <div key={`${split.projectId}-${idx}`} className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[1fr_160px_auto]">
+              <Select
                 value={split.projectId}
                 onChange={(e) => handleSplitChange(idx, { projectId: e.target.value })}
                 disabled={isReadOnly}
-                className="h-10 rounded-lg border border-input bg-transparent px-3 text-sm"
               >
                 <option value="">Select project</option>
                 {projects.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
                 ))}
-              </select>
+              </Select>
               <Input
                 type="number"
                 min="0"
@@ -365,9 +381,11 @@ export default function LaborInvoiceDetailClient() {
                 value={split.amount}
                 onChange={(e) => handleSplitChange(idx, { amount: Number(e.target.value) || 0 })}
                 disabled={isReadOnly}
-                className="rounded-lg text-right tabular-nums"
+                className="rounded-sm text-right tabular-nums"
               />
-              <Button size="sm" variant="outline" className="rounded-lg h-10" onClick={() => handleSplitRemove(idx)} disabled={isReadOnly}>Remove</Button>
+              <Button size="sm" variant="outline" className="h-10 rounded-sm" onClick={() => handleSplitRemove(idx)} disabled={isReadOnly}>
+                Remove
+              </Button>
             </div>
           ))}
         </div>
@@ -376,14 +394,20 @@ export default function LaborInvoiceDetailClient() {
         </p>
         <p className="mt-4 text-sm text-muted-foreground">
           Remaining:{" "}
-          <span className={isRemainingZero ? "text-emerald-600 dark:text-emerald-400 font-medium" : "text-amber-600 dark:text-amber-400 font-medium"}>
+          <span
+            className={
+              isRemainingZero
+                ? "font-medium text-emerald-600 dark:text-emerald-400"
+                : "font-medium text-amber-600 dark:text-amber-400"
+            }
+          >
             {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(remaining)}
           </span>
         </p>
-      </Card>
+      </section>
 
-      <Card className="rounded-2xl border border-zinc-200/60 dark:border-border p-6">
-        <h2 className="text-sm font-semibold text-foreground mb-3">Review Checklist</h2>
+      <section className="pb-2">
+        <h2 className="mb-3 text-sm font-semibold text-foreground">Review Checklist</h2>
         <div className="space-y-2">
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={invoice.checklist.verifiedWorker} onChange={(e) => handleChecklist({ verifiedWorker: e.target.checked })} disabled={isReadOnly} />
@@ -403,14 +427,14 @@ export default function LaborInvoiceDetailClient() {
           </label>
         </div>
         <div className="mt-4">
-          <Button onClick={handleConfirm} disabled={!canConfirm} className="rounded-lg">
+          <Button size="sm" className="rounded-sm" onClick={handleConfirm} disabled={!canConfirm}>
             Confirm
           </Button>
           {!canConfirm ? (
-            <p className="text-xs text-muted-foreground mt-2">Confirm requires Remaining = 0 and all checklist items checked.</p>
+            <p className="mt-2 text-xs text-muted-foreground">Confirm requires Remaining = 0 and all checklist items checked.</p>
           ) : null}
         </div>
-      </Card>
+      </section>
     </div>
   );
 }

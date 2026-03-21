@@ -7,6 +7,13 @@ import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import {
+  listTableAmountCellClassName,
+  listTablePrimaryCellClassName,
+  listTableRowClassName,
+} from "@/lib/list-table-interaction";
 import {
   Table,
   TableBody,
@@ -144,7 +151,7 @@ function InvoicesPageInner() {
         title="Invoices"
         subtitle="Create and manage invoices. Record payments and track AR."
         actions={
-          <Button asChild className="rounded-lg" size="sm">
+          <Button asChild size="sm">
             <Link href="/financial/invoices/new">
               <Plus className="h-4 w-4 mr-2" />
               New Invoice
@@ -152,37 +159,40 @@ function InvoicesPageInner() {
           </Button>
         }
       />
-      <FilterBar className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        <div className="flex flex-wrap gap-2 items-center">
-          <Input
-            placeholder="Search invoice #, client, project..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-10 rounded-[10px] max-w-xs"
-          />
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as "" | InvoiceComputedStatus)}
-            className="flex h-10 rounded-[10px] border border-input bg-muted/20 px-3 text-sm"
-          >
-            {STATUS_OPTIONS.map((o) => (
-              <option key={o.value || "all"} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-          <select
-            value={projectFilter}
-            onChange={(e) => setProjectFilter(e.target.value)}
-            className="flex h-10 rounded-[10px] border border-input bg-muted/20 px-3 text-sm"
-          >
-            <option value="">All projects</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+      <FilterBar>
+        <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="space-y-1 sm:col-span-2 lg:col-span-1">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Search</p>
+            <Input
+              placeholder="Invoice #, client, project…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Status</p>
+            <Select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as "" | InvoiceComputedStatus)}
+            >
+              {STATUS_OPTIONS.map((o) => (
+                <option key={o.value || "all"} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Project</p>
+            <Select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)}>
+              <option value="">All projects</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </Select>
+          </div>
         </div>
       </FilterBar>
 
@@ -200,11 +210,11 @@ function InvoicesPageInner() {
           }
         />
       ) : (
-        <Card className="rounded-2xl border border-zinc-200/60 dark:border-border overflow-hidden">
+        <Card className="overflow-hidden p-0">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="border-b border-zinc-200/40 dark:border-border/60 bg-muted/30">
+              <TableRow className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
                 <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Invoice #</TableHead>
                 <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Project</TableHead>
                 <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Client</TableHead>
@@ -218,12 +228,16 @@ function InvoicesPageInner() {
             </TableHeader>
             <TableBody>
               {pageRows.map((inv) => (
-                  <TableRow key={inv.id} className="group border-b border-zinc-100/50 dark:border-border/30">
+                  <TableRow
+                    key={inv.id}
+                    className={cn(listTableRowClassName, "group border-b border-[#EBEBE9]/80 dark:border-border/30")}
+                    onClick={() => router.push(`/financial/invoices/${inv.id}`)}
+                  >
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
-                        <Link href={`/financial/invoices/${inv.id}`} className="text-primary hover:underline">
+                        <span className={cn("text-primary hover:underline", listTablePrimaryCellClassName)}>
                           {inv.invoiceNo}
-                        </Link>
+                        </span>
                         <InvoiceStatusBadge status={inv.computedStatus} />
                       </div>
                     </TableCell>
@@ -237,10 +251,10 @@ function InvoicesPageInner() {
                         <span className="text-muted-foreground">{inv.dueDate}</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums font-medium">${inv.total.toLocaleString()}</TableCell>
-                    <TableCell className="text-right tabular-nums text-emerald-600/90 dark:text-emerald-400/90">${inv.paidTotal.toLocaleString()}</TableCell>
-                    <TableCell className="text-right tabular-nums font-medium">${inv.balanceDue.toLocaleString()}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className={cn("text-right tabular-nums font-medium", listTableAmountCellClassName)}>${inv.total.toLocaleString()}</TableCell>
+                    <TableCell className={cn("text-right tabular-nums text-emerald-600/90 dark:text-emerald-400/90", listTableAmountCellClassName)}>${inv.paidTotal.toLocaleString()}</TableCell>
+                    <TableCell className={cn("text-right tabular-nums font-medium", listTableAmountCellClassName)}>${inv.balanceDue.toLocaleString()}</TableCell>
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-1">
                         <Button asChild variant="ghost" size="sm" className="h-8">
                           <Link href={`/financial/invoices/${inv.id}`}>

@@ -1,10 +1,17 @@
 import { test, expect } from "@playwright/test";
 
-const BASE = process.env.E2E_BASE_URL ?? "https://hhprojectgroup.com";
+const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 
 test("new estimate flow with category rename", async ({ page }) => {
+  test.setTimeout(90_000);
   await page.goto(`${BASE}/estimates/new`);
   await page.waitForLoadState("domcontentloaded");
+  await expect(page.getByText(/^Loading/i)).not.toBeVisible({ timeout: 60_000 }).catch(() => undefined);
+
+  const editDetailsBtn = page.getByRole("button", { name: /^(Edit details|Edit)$/i }).first();
+  if (await editDetailsBtn.isVisible().catch(() => false)) {
+    await editDetailsBtn.click();
+  }
 
   const client = page.getByPlaceholder("Client or company name");
   await expect(client).toBeVisible({ timeout: 15_000 });

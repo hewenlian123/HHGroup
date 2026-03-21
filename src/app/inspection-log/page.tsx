@@ -5,6 +5,8 @@ import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { PageLayout, PageHeader, Drawer } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { listTablePrimaryCellClassName, listTableRowClassName } from "@/lib/list-table-interaction";
 import {
   Dialog,
   DialogContent,
@@ -181,7 +183,7 @@ export default function InspectionLogPage() {
           title="Inspection Log"
           description="Track inspections by project."
           actions={
-            <Button size="sm" className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90" onClick={openModal}>
+            <Button size="sm" onClick={openModal}>
               + New Inspection
             </Button>
           }
@@ -189,22 +191,22 @@ export default function InspectionLogPage() {
       }
     >
       <div className="max-w-5xl space-y-3">
-        <div className="border border-border/60 rounded-sm overflow-hidden">
+        <div className="overflow-hidden border border-[#EBEBE9] dark:border-border/60">
           {loading ? (
             <div className="py-10 text-center text-sm text-muted-foreground">Loading…</div>
           ) : error ? (
-            <div className="py-10 text-center text-sm text-destructive">{error}</div>
+            <div className="py-10 text-center text-sm text-destructive px-3">{error}</div>
           ) : entries.length === 0 ? (
             <div className="py-10 text-center text-sm text-muted-foreground">No inspections yet.</div>
           ) : (
             <table className="w-full text-sm border-collapse">
               <thead>
-                <tr className="border-b border-border/60">
-                  <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground">Date</th>
-                  <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground">Project</th>
-                  <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground">Inspection Type</th>
-                  <th className="hidden md:table-cell text-left py-2 px-3 font-medium text-muted-foreground">Inspector</th>
-                  <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground">Status</th>
+                <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
+                  <th className="text-left py-2 px-2 sm:px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">Date</th>
+                  <th className="text-left py-2 px-2 sm:px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">Project</th>
+                  <th className="text-left py-2 px-2 sm:px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">Inspection Type</th>
+                  <th className="hidden md:table-cell text-left py-2 px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">Inspector</th>
+                  <th className="text-left py-2 px-2 sm:px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -212,13 +214,13 @@ export default function InspectionLogPage() {
                   <tr
                     key={row.id}
                     onClick={() => openDrawer(row)}
-                    className="border-b border-border/60 last:border-b-0 hover:bg-muted/40 cursor-pointer transition-colors"
+                    className={cn(listTableRowClassName, "border-b border-[#EBEBE9]/80 last:border-b-0 dark:border-border/40")}
                   >
                     <td className="py-2 px-2 sm:px-3 text-muted-foreground tabular-nums">
                       {row.inspection_date ? new Date(row.inspection_date).toLocaleDateString() : "—"}
                     </td>
                     <td className="py-2 px-2 sm:px-3 text-muted-foreground">{row.project_name ?? "—"}</td>
-                    <td className="py-2 px-2 sm:px-3 font-medium">{row.inspection_type || "—"}</td>
+                    <td className={cn("py-2 px-2 sm:px-3 font-medium", listTablePrimaryCellClassName, "hover:underline")}>{row.inspection_type || "—"}</td>
                     <td className="hidden md:table-cell py-2 px-3 text-muted-foreground">{row.inspector ?? "—"}</td>
                     <td className="py-2 px-2 sm:px-3">
                       <span
@@ -268,15 +270,15 @@ export default function InspectionLogPage() {
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Status</label>
-              <select
+              <Select
                 value={drawerForm.status}
                 onChange={(e) => setDrawerForm((f) => ({ ...f, status: e.target.value as "passed" | "failed" | "pending" }))}
-                className="mt-1 h-9 w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm"
+                className="mt-1 w-full"
               >
                 {STATUS_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Notes</label>
@@ -289,15 +291,15 @@ export default function InspectionLogPage() {
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <div className="flex gap-2 pt-2">
-              <Button size="sm" variant="outline" className="rounded-sm" onClick={() => setDrawerOpen(false)}>Cancel</Button>
-              <Button size="sm" className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90" onClick={handleSaveDrawer} disabled={submitting}>Save</Button>
+              <Button size="sm" variant="outline" onClick={() => setDrawerOpen(false)}>Cancel</Button>
+              <Button size="sm" onClick={handleSaveDrawer} disabled={submitting}>Save</Button>
             </div>
           </div>
         )}
       </Drawer>
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-lg rounded-sm border-border/60 p-6">
+        <DialogContent className="max-w-lg p-6">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">New Inspection</DialogTitle>
             <DialogDescription>Add an inspection log entry.</DialogDescription>
@@ -305,16 +307,16 @@ export default function InspectionLogPage() {
           <div className="space-y-4 py-2">
             <div>
               <label className="text-xs font-medium text-muted-foreground">Project</label>
-              <select
+              <Select
                 value={form.project_id}
                 onChange={(e) => setForm((f) => ({ ...f, project_id: e.target.value }))}
-                className="mt-1.5 h-9 w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm"
+                className="mt-1.5 w-full"
               >
                 <option value="">Select project</option>
                 {projects.map((p) => (
                   <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Inspection type</label>
@@ -345,15 +347,15 @@ export default function InspectionLogPage() {
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Status</label>
-              <select
+              <Select
                 value={form.status}
                 onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as "passed" | "failed" | "pending" }))}
-                className="mt-1.5 h-9 w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm"
+                className="mt-1.5 w-full"
               >
                 {STATUS_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Notes</label>
@@ -368,8 +370,8 @@ export default function InspectionLogPage() {
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
           <DialogFooter className="border-t border-border/60 pt-4">
-            <Button variant="outline" size="sm" className="rounded-sm" onClick={() => setModalOpen(false)}>Cancel</Button>
-            <Button size="sm" className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90" onClick={handleCreate} disabled={submitting}>Add</Button>
+            <Button variant="outline" size="sm" onClick={() => setModalOpen(false)}>Cancel</Button>
+            <Button size="sm" onClick={handleCreate} disabled={submitting}>Add</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

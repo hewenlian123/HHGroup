@@ -5,6 +5,7 @@ import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { PageLayout, PageHeader } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -103,9 +104,9 @@ function ScheduleCalendarGrid({
         <span className="text-sm font-semibold text-foreground">{monthLabel}</span>
         <button type="button" onClick={nextMonth} className="text-sm font-medium text-muted-foreground hover:text-foreground px-2 py-1 rounded">→</button>
       </div>
-      <div className="grid grid-cols-7 gap-px border border-[#eee] rounded-lg overflow-hidden bg-[#eee]">
+      <div className="grid grid-cols-7 gap-px border border-[#EBEBE9] rounded-sm overflow-hidden bg-[#EBEBE9] dark:border-border/60 dark:bg-border/40">
         {weekDays.map((w) => (
-          <div key={w} className="bg-white py-1.5 text-center text-xs font-medium text-muted-foreground">
+          <div key={w} className="bg-background py-1.5 text-center text-xs font-medium text-muted-foreground">
             {w}
           </div>
         ))}
@@ -113,8 +114,8 @@ function ScheduleCalendarGrid({
           <div
             key={i}
             className={cn(
-              "min-h-[72px] bg-white p-1.5 text-left",
-              c.day == null && "bg-muted/30"
+              "min-h-[72px] bg-background p-1.5 text-left",
+              c.day == null && "bg-[#F7F7F5]/80 dark:bg-muted/20"
             )}
           >
             {c.day != null && (
@@ -153,7 +154,7 @@ const ScheduleListRow = React.memo(function ScheduleListRow({
   statusLabel: (s: string) => string;
 }) {
   return (
-    <li className="py-2.5 px-3 border-b border-[#eee] last:border-b-0 hover:bg-[#fafafa] transition-colors">
+    <li className="py-2.5 px-3 border-b border-[#EBEBE9]/80 last:border-b-0 hover:bg-[#F7F7F5] transition-colors dark:border-border/40 dark:hover:bg-muted/30">
       <div className="font-medium text-foreground">{item.title || "—"}</div>
       <div className="text-sm text-muted-foreground mt-0.5">{item.project_name ?? "—"}</div>
       <div className="flex flex-wrap items-center gap-2 mt-1.5 text-sm">
@@ -277,7 +278,7 @@ export default function SchedulePage() {
     >
       <div className="max-w-5xl space-y-3">
         {/* View switch: List | Calendar */}
-        <div className="flex items-center gap-1 p-0.5 rounded-lg border border-[#eee] bg-white w-fit">
+        <div className="flex items-center gap-1 p-0.5 rounded-sm border border-[#EBEBE9] bg-background w-fit dark:border-border/60">
           <button
             type="button"
             onClick={() => setViewMode("list")}
@@ -306,7 +307,7 @@ export default function SchedulePage() {
 
         {/* List view — compact list */}
         {viewMode === "list" && (
-          <div className="rounded-lg border border-[#eee] bg-white overflow-hidden">
+          <div className="overflow-hidden border border-[#EBEBE9] bg-background dark:border-border/60">
             {loading ? (
               <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>
             ) : error ? (
@@ -319,7 +320,7 @@ export default function SchedulePage() {
                 </Button>
               </div>
             ) : (
-              <ul className="divide-y divide-[#eee]">
+              <ul className="divide-y divide-[#EBEBE9] dark:divide-border/60">
                 {schedule.map((s) => (
                   <ScheduleListRow
                     key={s.id}
@@ -335,7 +336,7 @@ export default function SchedulePage() {
 
         {/* Calendar view — placeholder */}
         {viewMode === "calendar" && (
-          <div className="rounded-lg border border-[#eee] bg-white overflow-hidden">
+          <div className="overflow-hidden border border-[#EBEBE9] bg-background dark:border-border/60">
             {loading ? (
               <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>
             ) : error ? (
@@ -350,7 +351,7 @@ export default function SchedulePage() {
             ) : (
               <>
                 {/* Mobile: simplified list (event title + date only) */}
-                <div className="lg:hidden divide-y divide-[#eee]">
+                <div className="lg:hidden divide-y divide-[#EBEBE9] dark:divide-border/60">
                   {schedule.map((s) => (
                     <div key={s.id} className="py-3 px-3 sm:px-4">
                       <div className="font-medium text-foreground">{s.title || "—"}</div>
@@ -371,7 +372,7 @@ export default function SchedulePage() {
       </div>
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-lg rounded-sm border-border/60 p-6">
+        <DialogContent className="max-w-lg p-6">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">New schedule item</DialogTitle>
             <DialogDescription>Add a task to the schedule.</DialogDescription>
@@ -379,16 +380,16 @@ export default function SchedulePage() {
           <div className="space-y-4 py-2">
             <div>
               <label className="text-xs font-medium text-muted-foreground">Project</label>
-              <select
+              <Select
                 value={form.project_id}
                 onChange={(e) => setForm((p) => ({ ...p, project_id: e.target.value }))}
-                className="mt-1.5 h-9 w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm"
+                className="mt-1.5 w-full"
               >
                 <option value="">Select project</option>
                 {projects.map((p) => (
                   <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Task</label>
@@ -421,22 +422,22 @@ export default function SchedulePage() {
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Status</label>
-              <select
+              <Select
                 value={form.status}
                 onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
-                className="mt-1.5 h-9 w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm"
+                className="mt-1.5 w-full"
               >
                 <option value="planned">Planned</option>
                 <option value="in_progress">In progress</option>
                 <option value="done">Done</option>
                 <option value="delayed">Delayed</option>
-              </select>
+              </Select>
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
           <DialogFooter className="border-t border-border/60 pt-4">
-            <Button variant="outline" size="sm" className="rounded-sm" onClick={() => setModalOpen(false)}>Cancel</Button>
-            <Button size="sm" className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90" onClick={handleCreate} disabled={submitting}>Add</Button>
+            <Button variant="outline" size="sm" onClick={() => setModalOpen(false)}>Cancel</Button>
+            <Button size="sm" onClick={handleCreate} disabled={submitting}>Add</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

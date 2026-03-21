@@ -6,7 +6,9 @@ import { Trash2, Download, ClipboardList } from "lucide-react";
 import { PageLayout, PageHeader, Drawer } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
+import { FilterBar } from "@/components/filter-bar";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -423,10 +425,10 @@ export default function SitePhotosPage() {
                 </>
               ) : (
                 <>
-                  <Button size="sm" variant="outline" className="rounded-sm" onClick={toggleEditMode}>
+                  <Button size="sm" variant="outline" onClick={toggleEditMode}>
                     Edit
                   </Button>
-                  <Button size="sm" className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90" onClick={openUpload}>
+                  <Button size="sm" onClick={openUpload}>
                     + Upload Photo
                   </Button>
                 </>
@@ -437,19 +439,21 @@ export default function SitePhotosPage() {
       }
     >
       <div className="max-w-5xl space-y-3">
-        <div className="flex flex-wrap items-center gap-2 border-b border-border/60 pb-2">
-          <label className="text-xs font-medium text-muted-foreground">Project</label>
-          <select
-            value={projectFilter}
-            onChange={(e) => setProjectFilter(e.target.value)}
-            className="h-9 rounded-sm border border-border/60 bg-background px-2.5 text-sm min-w-[160px]"
-          >
-            <option value="">All projects</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
-        </div>
+        <FilterBar className="flex-col items-stretch sm:items-stretch">
+          <div className="w-full max-w-md space-y-1">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Project</p>
+            <Select
+              value={projectFilter}
+              onChange={(e) => setProjectFilter(e.target.value)}
+              className="min-w-[160px]"
+            >
+              <option value="">All projects</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </Select>
+          </div>
+        </FilterBar>
 
         {loading ? (
           <div className="py-10 text-center text-sm text-muted-foreground">Loading…</div>
@@ -463,7 +467,7 @@ export default function SitePhotosPage() {
               <div
                 key={p.id}
                 className={`group relative text-left rounded-sm border overflow-hidden transition-colors focus-within:ring-2 focus-within:ring-ring ${
-                  editMode && selectedIds.has(p.id) ? "border-[#111111] ring-1 ring-[#111111]" : "border-border/60 hover:bg-muted/40"
+                  editMode && selectedIds.has(p.id) ? "border-foreground/80 ring-1 ring-foreground/20" : "border-[#EBEBE9] hover:bg-[#F7F7F5] dark:border-border/60 dark:hover:bg-muted/30"
                 }`}
               >
                 <div
@@ -495,7 +499,7 @@ export default function SitePhotosPage() {
                   }}
                   className="block w-full text-left cursor-pointer focus:outline-none"
                 >
-                  <div className="aspect-square bg-muted/50 relative">
+                  <div className="aspect-square bg-[#F7F7F5]/80 relative dark:bg-muted/30">
                     {editMode && (
                       <div
                         role="button"
@@ -515,9 +519,10 @@ export default function SitePhotosPage() {
                         onClick={(e) => e.stopPropagation()}
                       >
                         <RowActionsMenu
+                          appearance="list"
                           ariaLabel={`Actions for photo`}
                           touchFriendly={false}
-                          className="h-8 w-8 bg-background/90 hover:bg-muted rounded-sm"
+                          className="h-8 w-8 bg-background/90 hover:bg-background rounded-sm"
                           actions={[
                             { label: "View", onClick: () => openViewer(p) },
                             { label: "Edit", onClick: () => openDetail(p) },
@@ -680,37 +685,37 @@ export default function SitePhotosPage() {
                 </div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground">Priority</label>
-                  <select
+                  <Select
                     value={punchIssueForm.priority}
                     onChange={(e) => setPunchIssueForm((f) => ({ ...f, priority: e.target.value }))}
-                    className="mt-1 h-9 w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm"
+                    className="mt-1 w-full"
                   >
                     <option value="Low">Low</option>
                     <option value="Medium">Medium</option>
                     <option value="High">High</option>
                     <option value="Urgent">Urgent</option>
-                  </select>
+                  </Select>
                 </div>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground">Assigned Worker</label>
-                  <select
+                  <Select
                     value={punchIssueForm.assigned_worker_id}
                     onChange={(e) => setPunchIssueForm((f) => ({ ...f, assigned_worker_id: e.target.value }))}
-                    className="mt-1 h-9 w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm"
+                    className="mt-1 w-full"
                   >
                     <option value="">—</option>
                     {punchIssueWorkers.map((w) => (
                       <option key={w.id} value={w.id}>{w.name}</option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
                 {error && <p className="text-sm text-destructive">{error}</p>}
               </div>
               <DialogFooter className="gap-2 px-4 py-3 border-t border-border/60 shrink-0">
-                <Button variant="outline" size="sm" className="rounded-sm" onClick={() => setPunchIssuePhoto(null)} disabled={punchIssueSubmitting}>
+                <Button variant="outline" size="sm" onClick={() => setPunchIssuePhoto(null)} disabled={punchIssueSubmitting}>
                   Cancel
                 </Button>
-                <Button size="sm" className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90" onClick={handleCreatePunchIssue} disabled={punchIssueSubmitting || !punchIssueForm.issue.trim()}>
+                <Button size="sm" onClick={handleCreatePunchIssue} disabled={punchIssueSubmitting || !punchIssueForm.issue.trim()}>
                   {punchIssueSubmitting ? "Creating…" : "Create"}
                 </Button>
               </DialogFooter>
@@ -722,7 +727,7 @@ export default function SitePhotosPage() {
       <Drawer open={detailOpen} onOpenChange={setDetailOpen} title="Photo detail" description={selectedPhoto?.project_name ?? undefined}>
         {selectedPhoto && (
           <div className="space-y-4">
-            <div className="rounded-sm border border-border/60 overflow-hidden bg-muted/30 min-h-[8rem] flex items-center justify-center">
+            <div className="rounded-sm border border-[#EBEBE9] overflow-hidden bg-background min-h-[8rem] flex items-center justify-center dark:border-border/60">
               {failedPhotoIds.has(selectedPhoto.id) ? (
                 <span className="text-sm text-muted-foreground">Photo unavailable</span>
               ) : (
@@ -765,17 +770,16 @@ export default function SitePhotosPage() {
             </p>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <div className="flex flex-wrap gap-2 pt-2">
-              <Button size="sm" variant="outline" className="rounded-sm" onClick={() => setDetailOpen(false)}>Cancel</Button>
+              <Button size="sm" variant="outline" onClick={() => setDetailOpen(false)}>Cancel</Button>
               <Button
                 size="sm"
                 variant="destructive"
-                className="rounded-sm"
                 onClick={() => setDeleteConfirmPhoto(selectedPhoto)}
                 disabled={deleting}
               >
                 {deleting ? "Deleting…" : "Delete"}
               </Button>
-              <Button size="sm" className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90" onClick={handleSaveDetail} disabled={submitting}>Save</Button>
+              <Button size="sm" onClick={handleSaveDetail} disabled={submitting}>Save</Button>
             </div>
           </div>
         )}
@@ -793,22 +797,22 @@ export default function SitePhotosPage() {
       {uploadOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm" onClick={() => setUploadOpen(false)}>
           <div
-            className="bg-background border border-border/60 rounded-sm p-4 w-full max-w-sm space-y-3"
+            className="bg-background border border-[#EBEBE9] rounded-sm p-4 w-full max-w-sm space-y-3 dark:border-border/60"
             onClick={(e) => e.stopPropagation()}
           >
             <p className="text-sm font-medium">Upload Photo</p>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Project</label>
-              <select
+              <Select
                 value={uploadForm.project_id}
                 onChange={(e) => setUploadForm((f) => ({ ...f, project_id: e.target.value }))}
-                className="mt-1 h-9 w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm"
+                className="mt-1 w-full"
               >
                 <option value="">Select project</option>
                 {projects.map((p) => (
                   <option key={p.id} value={p.id}>{p.name}</option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Description</label>
@@ -839,10 +843,9 @@ export default function SitePhotosPage() {
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <div className="flex gap-2">
-              <Button size="sm" variant="outline" className="rounded-sm" onClick={() => { setUploadOpen(false); setError(null); }}>Cancel</Button>
+              <Button size="sm" variant="outline" onClick={() => { setUploadOpen(false); setError(null); }}>Cancel</Button>
               <Button
                 size="sm"
-                className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading || !uploadForm.project_id}
               >

@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { FilterBar } from "@/components/filter-bar";
 import { StatusBadge } from "@/components/status-badge";
 import { DataTable, type Column } from "@/components/data-table";
@@ -17,7 +18,6 @@ import { getInvoicesWithDerivedPaged } from "@/lib/data";
 import { deleteInvoiceAction } from "./actions";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { DeleteRowAction } from "@/components/base";
 import { Plus } from "lucide-react";
 import { Pagination } from "@/components/ui/pagination";
 
@@ -62,19 +62,6 @@ function money(n: number): string {
 function isMissingTableError(error: unknown): boolean {
   const code = (error as { code?: string } | null)?.code;
   return code === "42P01";
-}
-
-async function getNextInvoiceNo(supabase: NonNullable<ReturnType<typeof createBrowserClient>>): Promise<string> {
-  const { data, error } = await supabase.from("invoices").select("invoice_no").order("created_at", { ascending: false }).limit(50);
-  if (error) return `INV-${String(Date.now()).slice(-4)}`;
-  const maxSeq =
-    (data ?? []).reduce((max, row) => {
-      const invNo = (row as { invoice_no?: string }).invoice_no ?? "";
-      const m = /^INV-(\d+)$/.exec(invNo.trim());
-      if (!m) return max;
-      return Math.max(max, Number(m[1]));
-    }, 0) || 0;
-  return `INV-${String(maxSeq + 1).padStart(4, "0")}`;
 }
 
 export function InvoicesClient() {
@@ -174,11 +161,7 @@ export function InvoicesClient() {
       {
         key: "invoice_no",
         header: "Invoice #",
-        render: (row) => (
-          <Link href={`/financial/invoices/${row.id}`} className="font-medium text-primary hover:underline">
-            {row.invoice_no}
-          </Link>
-        ),
+        render: (row) => <span className="font-medium text-foreground">{row.invoice_no}</span>,
       },
       {
         key: "project",
@@ -217,94 +200,36 @@ export function InvoicesClient() {
         className: "w-10",
         render: (row) => {
           const isBusy = busyId === row.id;
-          const actions = [
-            { label: "View", onClick: () => router.push(`/financial/invoices/${row.id}`) },
-            ...(row.status !== "Void" && row.status !== "Paid"
-              ? [{ label: "Record Payment", onClick: () => router.push(`/financial/invoices/${row.id}?recordPayment=1`) }]
-              : []),
-            ...(row.status !== "Void"
-              ? [
-                  {
-                    label: "Duplicate",
-                    onClick: async () => {
-                      if (!supabase) return;
-                      setBusyId(row.id);
-                      setError(null);
-                      try {
-                        const { data: inv, error: invError } = await supabase.from("invoices").select("*").eq("id", row.id).maybeSingle();
-                        if (invError) throw invError;
-                        if (!inv) throw new Error("Invoice not found.");
-                        const { data: items, error: itemsError } = await supabase
-                          .from("invoice_items")
-                          .select("description,quantity,qty,unit_price")
-                          .eq("invoice_id", row.id)
-                          .order("created_at", { ascending: true });
-                        if (itemsError && !isMissingTableError(itemsError)) throw itemsError;
-                        const invoice_no = await getNextInvoiceNo(supabase);
-                        const { data: created, error: createError } = await supabase
-                          .from("invoices")
-                          .insert({
-                            invoice_no,
-                            project_id: (inv as { project_id: string | null }).project_id,
-                            customer_id: (inv as { customer_id?: string | null }).customer_id ?? null,
-                            client_name: (inv as { client_name: string }).client_name,
-                            issue_date: new Date().toISOString().slice(0, 10),
-                            due_date: (inv as { due_date: string }).due_date,
-                            status: "Draft",
-                            notes: (inv as { notes?: string | null }).notes ?? null,
-                            tax_pct: safeNumber((inv as { tax_pct?: number | null }).tax_pct ?? 0),
-                          })
-                          .select("id")
-                          .single();
-                        if (createError) throw createError;
-                        const newId = (created as { id: string }).id;
-                        const itemRows = (items ?? []).map((it) => ({
-                          invoice_id: newId,
-                          description: (it as { description?: string }).description ?? "",
-                          quantity: safeNumber((it as { quantity?: number; qty?: number }).quantity ?? (it as { qty?: number }).qty ?? 1),
-                          unit_price: safeNumber((it as { unit_price?: number }).unit_price ?? 0),
-                        }));
-                        if (itemRows.length > 0) {
-                          const { error: insertItemsError } = await supabase.from("invoice_items").insert(itemRows);
-                          if (insertItemsError) throw insertItemsError;
-                        }
-                        // Defer navigation so dropdown can unmount first and avoid React removeChild error
-                        setTimeout(() => router.push(`/financial/invoices/${newId}`), 0);
-                      } catch (e) {
-                        setError(e instanceof Error ? e.message : "Failed to duplicate invoice.");
-                      } finally {
-                        setBusyId(null);
-                      }
-                    },
-                    disabled: isBusy,
-                  },
-                ]
-              : []),
-            ...(row.status !== "Void" ? [{ label: "Void", onClick: () => setVoidConfirmId(row.id), disabled: isBusy, destructive: true }] : []),
-          ];
           const canDelete = row.status === "Draft" || row.status === "Void";
           return (
-            <div className="flex items-center justify-end gap-2">
-              {canDelete ? (
-                <DeleteRowAction
-                  busy={isBusy}
-                  onDelete={async () => {
+            <RowActionsMenu
+              appearance="list"
+              ariaLabel={`Actions for ${row.invoice_no}`}
+              actions={[
+                { label: "View", onClick: () => router.push(`/financial/invoices/${row.id}`) },
+                { label: "Edit", onClick: () => router.push(`/financial/invoices/${row.id}`) },
+                {
+                  label: "Delete",
+                  onClick: async () => {
+                    if (!canDelete || isBusy) return;
+                    if (!window.confirm(`Delete invoice "${row.invoice_no}"?`)) return;
                     setBusyId(row.id);
                     setError(null);
                     const result = await deleteInvoiceAction(row.id);
                     if (result.error) setError(result.error);
                     await refresh();
                     setBusyId(null);
-                  }}
-                />
-              ) : null}
-              <RowActionsMenu ariaLabel={`Actions for ${row.invoice_no}`} actions={actions} />
-            </div>
+                  },
+                  destructive: true,
+                  disabled: !canDelete || isBusy,
+                },
+              ]}
+            />
           );
         },
       },
     ];
-  }, [busyId, refresh, router, supabase]);
+  }, [busyId, refresh, router]);
 
   return (
     <div className="page-container page-stack py-6">
@@ -321,47 +246,50 @@ export function InvoicesClient() {
         }
       />
 
-      <FilterBar className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        <div className="flex flex-wrap gap-2 items-center">
-          <Input
-            placeholder="Search invoice #, client, project..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-10 max-w-xs"
-          />
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as "" | InvoiceStatus)}
-            className="flex h-10 rounded-[10px] border border-input bg-muted/20 px-3 text-sm"
-          >
-            {STATUS_OPTIONS.map((o) => (
-              <option key={o.value || "all"} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-          <select
-            value={projectFilter}
-            onChange={(e) => setProjectFilter(e.target.value)}
-            className="flex h-10 rounded-[10px] border border-input bg-muted/20 px-3 text-sm"
-          >
-            <option value="">All projects</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+      <FilterBar>
+        <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="space-y-1 sm:col-span-2 lg:col-span-1">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Search</p>
+            <Input
+              placeholder="Invoice #, client, project…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Status</p>
+            <Select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as "" | InvoiceStatus)}
+            >
+              {STATUS_OPTIONS.map((o) => (
+                <option key={o.value || "all"} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Project</p>
+            <Select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)}>
+              <option value="">All projects</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </Select>
+          </div>
         </div>
       </FilterBar>
 
       {error ? (
-        <Card className="p-5">
+        <div className="rounded-lg border border-border/60 bg-background px-4 py-3">
           <p className="text-sm text-red-600">{error}</p>
-        </Card>
+        </div>
       ) : null}
 
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden p-0">
         {loading ? (
           <div className="p-4 space-y-2">
             {Array.from({ length: 8 }).map((_, idx) => (
@@ -374,14 +302,16 @@ export function InvoicesClient() {
             data={invoices}
             keyExtractor={(r) => r.id}
             emptyText={configured ? "No data yet." : "Supabase is not configured."}
-            rowClassName="group"
+            onRowClick={(r) => router.push(`/financial/invoices/${r.id}`)}
+            primaryColumnKey="invoice_no"
+            amountColumnKeys={["total", "paidTotal", "balanceDue"]}
           />
         )}
         <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} className="px-4" />
       </Card>
 
       <Dialog open={!!voidConfirmId} onOpenChange={(open) => !open && setVoidConfirmId(null)}>
-        <DialogContent className="max-w-sm border-border/60 rounded-md">
+        <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Void invoice</DialogTitle>
           </DialogHeader>

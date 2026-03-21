@@ -5,10 +5,10 @@ import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { createBrowserClient } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FilterBar } from "@/components/filter-bar";
+import { Select } from "@/components/ui/select";
 import { StatusBadge } from "@/components/status-badge";
 
 type VendorRow = {
@@ -219,10 +219,10 @@ export default function VendorsPage() {
         subtitle="Manage material and service vendors used by AP bills."
         actions={
           <div className="flex items-center gap-2">
-            <Button asChild variant="outline">
+            <Button asChild variant="outline" size="sm" className="rounded-sm">
               <Link href="/settings/lists?tab=vendors">Open Lists View</Link>
             </Button>
-            <Button onClick={openCreate} disabled={submitting || !!deletingId}>
+            <Button size="sm" className="rounded-sm" onClick={openCreate} disabled={submitting || !!deletingId}>
               + New Vendor
             </Button>
           </div>
@@ -239,13 +239,11 @@ export default function VendorsPage() {
       </FilterBar>
 
       {message ? (
-        <div className="rounded-lg border border-zinc-200/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground dark:border-border">
-          {message}
-        </div>
+        <p className="border-b border-[#EBEBE9] pb-3 text-sm text-muted-foreground dark:border-border">{message}</p>
       ) : null}
 
       {editorOpen ? (
-        <Card className="rounded-2xl border border-zinc-200/60 p-4 dark:border-border">
+        <section className="border-b border-[#EBEBE9] pb-4 dark:border-border">
           <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">Name</p>
@@ -273,32 +271,31 @@ export default function VendorsPage() {
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">Status</p>
-              <select
-                className="h-10 w-full rounded-[10px] border border-input bg-muted/20 px-3 text-sm"
+              <Select
                 value={form.status}
                 onChange={(event) => setForm((prev) => ({ ...prev, status: event.target.value === "inactive" ? "inactive" : "active" }))}
               >
                 <option value="active">active</option>
                 <option value="inactive">inactive</option>
-              </select>
+              </Select>
             </div>
           </div>
-          <div className="mt-4 flex justify-end gap-2 border-t border-zinc-200/60 pt-3 dark:border-border">
-            <Button onClick={() => void handleSave()} disabled={submitting}>
-              {submitting ? "Saving..." : editorMode === "create" ? "Create Vendor" : "Save Changes"}
-            </Button>
-            <Button variant="outline" onClick={() => setEditorOpen(false)} disabled={submitting}>
+          <div className="mt-4 flex flex-col-reverse justify-end gap-2 border-t border-[#EBEBE9] pt-3 sm:flex-row sm:items-center dark:border-border">
+            <Button variant="outline" size="sm" className="rounded-sm" onClick={() => setEditorOpen(false)} disabled={submitting}>
               Cancel
             </Button>
+            <Button size="sm" className="rounded-sm" onClick={() => void handleSave()} disabled={submitting}>
+              {submitting ? "Saving..." : editorMode === "create" ? "Create Vendor" : "Save Changes"}
+            </Button>
           </div>
-        </Card>
+        </section>
       ) : null}
 
-      <Card className="overflow-hidden">
+      <div className="overflow-hidden rounded-sm border border-[#EBEBE9] dark:border-border">
         <div className="table-responsive">
           <table className="w-full min-w-[560px] text-sm md:min-w-0">
             <thead>
-              <tr className="border-b border-zinc-200/40 bg-muted/30 dark:border-border/60">
+              <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border dark:bg-muted/50">
                 <th className="table-head-label px-4 py-3 text-left">Name</th>
                 <th className="table-head-label px-4 py-3 text-left">Contact</th>
                 <th className="table-head-label px-4 py-3 text-left">Phone</th>
@@ -316,7 +313,10 @@ export default function VendorsPage() {
                 </tr>
               ) : null}
               {filtered.map((row) => (
-                <tr key={row.id} className="group border-b border-zinc-100/50 dark:border-border/30">
+                <tr
+                  key={row.id}
+                  className="group border-b border-[#EBEBE9]/80 transition-colors hover:bg-[#F7F7F5] dark:border-border/60 dark:hover:bg-muted/20"
+                >
                   <td className="px-4 py-3 font-medium text-foreground">{row.name}</td>
                   <td className="px-4 py-3 text-muted-foreground">{row.contact_name || "—"}</td>
                   <td className="px-4 py-3 text-muted-foreground">{row.phone || "—"}</td>
@@ -324,8 +324,16 @@ export default function VendorsPage() {
                   <td className="px-4 py-3"><StatusBadge status={row.status} /></td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-2">
-                      <Button variant="outline" className="h-8 px-3" onClick={() => openEdit(row)}>Edit</Button>
-                      <Button variant="outline" className="h-8 px-3" onClick={() => void handleDelete(row)} disabled={deletingId === row.id}>
+                      <Button variant="outline" size="sm" className="h-8 rounded-sm px-3" onClick={() => openEdit(row)}>
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 rounded-sm px-3"
+                        onClick={() => void handleDelete(row)}
+                        disabled={deletingId === row.id}
+                      >
                         {deletingId === row.id ? "Deleting..." : "Delete"}
                       </Button>
                     </div>
@@ -342,7 +350,7 @@ export default function VendorsPage() {
             </tbody>
           </table>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }

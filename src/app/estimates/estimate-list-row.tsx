@@ -33,7 +33,7 @@ export function EstimateListRow({
   }, [row.id, deleteAction, router]);
 
   return (
-    <TableRow className="border-b border-zinc-100/50 dark:border-border/30 hover:bg-zinc-50/30 dark:hover:bg-muted/5">
+    <TableRow className="border-b border-[#EBEBE9]/80 transition-colors hover:bg-[#F7F7F5] dark:border-border/40 dark:hover:bg-muted/20">
       <TableCell className="font-medium cursor-pointer" onClick={() => router.push(href)}>
         <Link href={href} className="block w-full text-foreground hover:underline focus:outline-none focus:underline" onClick={(e) => e.stopPropagation()}>
           {row.number}

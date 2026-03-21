@@ -5,8 +5,16 @@ import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
+import { FilterBar } from "@/components/filter-bar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import {
+  listTableAmountCellClassName,
+  listTablePrimaryCellClassName,
+  listTableRowClassName,
+} from "@/lib/list-table-interaction";
 import {
   getWorkers,
   getProjects,
@@ -422,38 +430,39 @@ export default function WorkerReimbursementsPage() {
         subtitle="Construction finance: approve, pay, and track worker reimbursements."
         actions={
           <>
-            <Link href="/financial/workers" className="inline-flex min-h-[44px] sm:min-h-0 items-center text-sm text-muted-foreground hover:text-foreground mr-2">
+            <Link href="/financial/workers" className="mr-2 text-sm text-muted-foreground hover:text-foreground">
               Worker Balances
             </Link>
-            <Link href="/labor/receipts" className="inline-flex min-h-[44px] sm:min-h-0 items-center text-sm text-muted-foreground hover:text-foreground mr-2">
+            <Link href="/labor/receipts" className="mr-2 text-sm text-muted-foreground hover:text-foreground">
               Receipt Uploads
             </Link>
-            <Link href="/labor" className="inline-flex min-h-[44px] sm:min-h-0 items-center text-sm text-muted-foreground hover:text-foreground mr-2">
+            <Link href="/labor" className="mr-2 text-sm text-muted-foreground hover:text-foreground">
               Labor
             </Link>
-            <Button size="sm" className="min-h-[44px] sm:min-h-9 w-full sm:w-auto rounded-sm" onClick={() => { setEditingId(null); setShowForm(true); }}>
+            <Button size="sm" className="w-full sm:w-auto" onClick={() => { setEditingId(null); setShowForm(true); }}>
               + New Reimbursement
             </Button>
           </>
         }
       />
-      {schemaWarning && (
-        <p className="text-sm text-amber-600 dark:text-amber-500 border-b border-border/60 pb-3">
+      {schemaWarning ? (
+        <div className="rounded-lg border border-amber-200/80 bg-background px-3 py-2 text-sm text-amber-700 dark:border-amber-900/40 dark:text-amber-500">
           {schemaWarning} Run Labor schema migration (e.g. ensure labor tables) or check Supabase Project Settings → API → Reload schema.
-        </p>
-      )}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search…"
-            className="h-9 min-w-[200px] rounded-sm"
-          />
+        </div>
+      ) : null}
+      <FilterBar>
+        <div className="flex w-full flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+          <div className="space-y-1 min-w-[200px] flex-1">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Search</p>
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Worker, project, vendor…"
+            />
+          </div>
           <Button
             size="sm"
             variant="outline"
-            className="h-9 rounded-sm"
             disabled={selectedIds.size === 0 || !selectedSameWorker || selectedRows.length === 0}
             onClick={openCreateWorkerPayment}
           >
@@ -461,42 +470,46 @@ export default function WorkerReimbursementsPage() {
             {selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}
           </Button>
         </div>
-        {message ? <p className="text-sm text-destructive">{message}</p> : null}
-      </div>
+      </FilterBar>
+      {message ? (
+        <div className="rounded-lg border border-[#EBEBE9] bg-background px-3 py-2 text-sm text-muted-foreground dark:border-border">
+          {message}
+        </div>
+      ) : null}
 
       {showForm && (
-        <div className="border-b border-border/60 pb-4">
+        <div className="border-b border-[#EBEBE9] pb-4 dark:border-border/60">
           <h2 className="text-sm font-semibold text-foreground mb-3">
             {editingId ? "Edit Reimbursement" : "New Reimbursement"}
           </h2>
           <form onSubmit={handleSubmit} className="flex flex-wrap gap-3 items-end">
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">Worker</label>
-              <select
+              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-[0.2em] block mb-1">Worker</label>
+              <Select
                 value={form.workerId}
                 onChange={(e) => setForm((f) => ({ ...f, workerId: e.target.value }))}
-                className="h-9 rounded-sm border border-input bg-transparent px-3 text-sm min-w-[140px]"
+                className="min-w-[140px]"
                 required
               >
                 <option value="">Select worker</option>
                 {workers.map((w) => (
                   <option key={w.id} value={w.id}>{w.name}</option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">Project</label>
-              <select
+              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-[0.2em] block mb-1">Project</label>
+              <Select
                 value={form.projectId ?? ""}
                 onChange={(e) => setForm((f) => ({ ...f, projectId: e.target.value }))}
-                className="h-9 rounded-sm border border-input bg-transparent px-3 text-sm min-w-[140px]"
+                className="min-w-[140px]"
                 aria-label="Project"
               >
                 <option value="">—</option>
                 {projects.map((p) => (
                   <option key={p.id} value={String(p.id)}>{p.name ?? p.id}</option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">Vendor</label>
@@ -540,19 +553,19 @@ export default function WorkerReimbursementsPage() {
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">Status</label>
-              <select
+              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-[0.2em] block mb-1">Status</label>
+              <Select
                 value={form.status}
                 onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as WorkerReimbursementStatus }))}
-                className="h-9 rounded-sm border border-input bg-transparent px-3 text-sm min-w-[100px]"
+                className="min-w-[100px]"
               >
                 {STATUS_OPTIONS.map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
-              </select>
+              </Select>
             </div>
-            <Button type="submit" size="sm" className="h-9 rounded-sm">Save</Button>
-            <Button type="button" variant="outline" size="sm" className="h-9 rounded-sm" onClick={resetForm}>Cancel</Button>
+            <Button type="submit" size="sm">Save</Button>
+            <Button type="button" variant="outline" size="sm" onClick={resetForm}>Cancel</Button>
           </form>
         </div>
       )}
@@ -565,7 +578,7 @@ export default function WorkerReimbursementsPage() {
           <p className="py-6 text-center text-muted-foreground text-xs">No reimbursements yet.</p>
         ) : (
           paged.map((r) => (
-            <div key={r.id} className="rounded-sm border border-border/60 p-3 space-y-2">
+            <div key={r.id} className="rounded-sm border border-[#EBEBE9] p-3 space-y-2 dark:border-border/60">
               <div className="flex justify-between items-start gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   {r.status === "pending" ? (
@@ -592,10 +605,10 @@ export default function WorkerReimbursementsPage() {
       </div>
 
       {/* Desktop: table */}
-      <div className="table-responsive hidden border-b border-border/60 md:block">
+      <div className="table-responsive hidden border-b border-[#EBEBE9] md:block dark:border-border/60">
         <table className="w-full min-w-[640px] text-sm border-collapse table-row-compact md:min-w-0">
           <thead>
-            <tr className="border-b border-border/60">
+            <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
               <th className="w-10 py-2 px-2 text-center">
                 <input
                   type="checkbox"
@@ -621,8 +634,12 @@ export default function WorkerReimbursementsPage() {
               <tr className="border-b border-border/40"><td colSpan={8} className="py-6 px-3 text-center text-muted-foreground text-xs">No reimbursements yet.</td></tr>
             ) : (
               paged.map((r) => (
-                <tr key={r.id} className="group border-b border-border/40 hover:bg-muted/10">
-                  <td className="w-10 py-2 px-2 text-center">
+                <tr
+                  key={r.id}
+                  className={cn(listTableRowClassName, "group border-b border-[#EBEBE9]/80 dark:border-border/40")}
+                  onClick={() => handleEdit(r)}
+                >
+                  <td className="w-10 py-2 px-2 text-center" onClick={(e) => e.stopPropagation()}>
                     {r.status === "pending" ? (
                       <input
                         type="checkbox"
@@ -635,19 +652,19 @@ export default function WorkerReimbursementsPage() {
                       <span className="text-muted-foreground">—</span>
                     )}
                   </td>
-                  <td className="py-2 px-3 font-medium">{workerName(r)}</td>
+                  <td className={cn("py-2 px-3 font-medium", listTablePrimaryCellClassName, "hover:underline")}>{workerName(r)}</td>
                   <td className="py-2 px-3 text-muted-foreground">{projectName(r)}</td>
                   <td className="py-2 px-3 text-muted-foreground max-w-[120px] truncate" title={r.vendor ?? undefined}>{r.vendor ?? "—"}</td>
-                  <td className="py-2 px-3 text-right tabular-nums font-medium">${fmtUsd(r.amount)}</td>
+                  <td className={cn("py-2 px-3 text-right tabular-nums font-medium", listTableAmountCellClassName)}>${fmtUsd(r.amount)}</td>
                   <td className="py-2 px-3 text-muted-foreground">{r.status}</td>
-                  <td className="py-2 px-3">
+                  <td className="py-2 px-3" onClick={(e) => e.stopPropagation()}>
                     {r.receiptUrl ? (
                       <button type="button" onClick={() => setViewReceiptUrl(r.receiptUrl)} className="text-primary hover:underline text-xs">View</button>
                     ) : (
                       <span className="text-muted-foreground">—</span>
                     )}
                   </td>
-                  <td className="py-2 px-3 text-right">
+                  <td className="py-2 px-3 text-right" onClick={(e) => e.stopPropagation()}>
                     <ActionsDropdown r={r} />
                   </td>
                 </tr>
@@ -669,10 +686,10 @@ export default function WorkerReimbursementsPage() {
 
       {/* Receipt preview modal */}
       <Dialog open={!!viewReceiptUrl} onOpenChange={(open) => !open && setViewReceiptUrl(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] border-border/60 rounded-sm p-2 flex flex-col">
+        <DialogContent className="max-w-4xl max-h-[90vh] p-2 flex flex-col">
           <DialogHeader className="sr-only"><DialogTitle>Receipt</DialogTitle></DialogHeader>
           {viewReceiptUrl && (
-            <div className="flex-1 min-h-0 overflow-auto flex items-center justify-center bg-muted/30 rounded-sm">
+            <div className="flex-1 min-h-0 overflow-auto flex items-center justify-center bg-background border-t border-[#EBEBE9] dark:border-border/60">
               {isPdfReceipt ? (
                 <iframe src={viewReceiptUrl} title="Receipt" className="w-full min-h-[70vh] border-0 rounded-sm" />
               ) : (
@@ -685,7 +702,7 @@ export default function WorkerReimbursementsPage() {
 
       {/* Create Worker Payment (batch) modal */}
       <Dialog open={!!batchPaymentModal} onOpenChange={(open) => !open && setBatchPaymentModal(null)}>
-        <DialogContent className="max-w-md border-border/60 rounded-sm gap-3">
+        <DialogContent className="max-w-md gap-3">
           <DialogHeader>
             <DialogTitle>Create Worker Payment</DialogTitle>
           </DialogHeader>
@@ -745,7 +762,7 @@ export default function WorkerReimbursementsPage() {
 
       {/* Mark as Paid modal */}
       <Dialog open={!!payModal} onOpenChange={(open) => !open && setPayModal(null)}>
-        <DialogContent className="max-w-sm border-border/60 rounded-sm gap-3">
+        <DialogContent className="max-w-sm gap-3">
           <DialogHeader>
             <DialogTitle>Mark as Paid</DialogTitle>
             <p className="text-xs text-muted-foreground font-normal mt-1">

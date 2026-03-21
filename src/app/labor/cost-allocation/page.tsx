@@ -3,13 +3,11 @@
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
-import {
-  PageLayout,
-  PageHeader,
-  Divider,
-  SectionHeader,
-} from "@/components/base";
+import { PageLayout, PageHeader, SectionHeader } from "@/components/base";
+import { FilterBar } from "@/components/filter-bar";
+import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { listTableAmountCellClassName } from "@/lib/list-table-interaction";
 import { getProjects, getProjectCostCodeSummary, getProjectForecastSummary } from "@/lib/data";
 import { costCodeMaster } from "@/lib/mock-data";
 import type { ProjectCostCodeSummaryItem } from "@/lib/data";
@@ -129,14 +127,15 @@ export default function LaborCostAllocationPage() {
         />
       }
     >
-      <SectionHeader
-        label="Select Project"
-        action={
-          <select
+      <div className="space-y-6">
+      <FilterBar className="flex-col items-stretch sm:items-stretch">
+        <div className="w-full max-w-md space-y-1">
+          <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Project</p>
+          <Select
             value={projectId}
             onChange={(e) => setProjectId(e.target.value)}
-            className="h-8 min-w-[200px] rounded border border-input bg-transparent px-2 text-sm"
             disabled={loading}
+            className="min-w-[200px]"
           >
             {projects.length === 0 ? (
               <option value="">—</option>
@@ -147,21 +146,21 @@ export default function LaborCostAllocationPage() {
                 </option>
               ))
             )}
-          </select>
-        }
-      />
-      <Divider />
+          </Select>
+        </div>
+      </FilterBar>
       {error ? (
-        <p className="text-sm text-destructive py-2">{error}</p>
+        <div className="rounded-lg border border-border/60 bg-background px-4 py-3 text-sm text-destructive">
+          {error}
+        </div>
       ) : null}
       <SectionHeader label="Summary" />
-      <Divider />
       <div className="grid grid-cols-3 gap-x-8 gap-y-2 py-3">
-        <div className="flex justify-between items-baseline border-b border-border/40 pb-1.5">
+        <div className="flex justify-between items-baseline border-b border-[#EBEBE9] pb-1.5 dark:border-border/40">
           <span className="text-sm text-muted-foreground">Revenue</span>
           <span className="tabular-nums text-right font-medium">${fmtUsd(revenue)}</span>
         </div>
-        <div className="flex justify-between items-baseline border-b border-border/40 pb-1.5">
+        <div className="flex justify-between items-baseline border-b border-[#EBEBE9] pb-1.5 dark:border-border/40">
           <span className="text-sm text-muted-foreground">Profit</span>
           <span
             className={cn(
@@ -172,18 +171,16 @@ export default function LaborCostAllocationPage() {
             {profit >= 0 ? "" : "−"}${fmtUsd(Math.abs(profit))}
           </span>
         </div>
-        <div className="flex justify-between items-baseline border-b border-border/40 pb-1.5">
+        <div className="flex justify-between items-baseline border-b border-[#EBEBE9] pb-1.5 dark:border-border/40">
           <span className="text-sm text-muted-foreground">Margin %</span>
           <span className="tabular-nums text-right font-medium">{fmtPct(marginPct)}</span>
         </div>
       </div>
-      <Divider />
       <SectionHeader label="Cost by code" />
-      <Divider />
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto border-t border-[#EBEBE9] dark:border-border/60">
         <table className="w-full text-sm border-collapse">
           <thead>
-            <tr className="border-b border-border/60">
+            <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
               <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Cost Code
               </th>
@@ -203,34 +200,35 @@ export default function LaborCostAllocationPage() {
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.code} className="border-b border-border/40">
+              <tr key={r.code} className="border-b border-[#EBEBE9]/80 dark:border-border/40">
                 <td className="py-1.5 px-3">
                   <span className="font-medium tabular-nums">{r.code}</span>
                   <span className="text-muted-foreground ml-2">{r.name}</span>
                 </td>
-                <td className="py-1.5 px-3 text-right tabular-nums">
+                <td className={cn("py-1.5 px-3 text-right tabular-nums", listTableAmountCellClassName)}>
                   ${fmtUsd(r.budget)}
                 </td>
-                <td className="py-1.5 px-3 text-right tabular-nums">
+                <td className={cn("py-1.5 px-3 text-right tabular-nums", listTableAmountCellClassName)}>
                   ${fmtUsd(r.actual)}
                 </td>
                 <td
                   className={cn(
                     "py-1.5 px-3 text-right tabular-nums font-medium",
+                    listTableAmountCellClassName,
                     r.actual > r.budget && "text-red-600 dark:text-red-400",
                     r.actual <= r.budget && "text-emerald-600 dark:text-emerald-400"
                   )}
                 >
                   {r.variance >= 0 ? "" : "−"}${fmtUsd(Math.abs(r.variance))}
                 </td>
-                <td className="py-1.5 px-3 text-right tabular-nums">
+                <td className={cn("py-1.5 px-3 text-right tabular-nums", listTableAmountCellClassName)}>
                   {fmtPct(r.pct)}
                 </td>
               </tr>
             ))}
           </tbody>
           <tfoot>
-            <tr className="border-t border-border/60 font-medium">
+            <tr className="border-t border-[#EBEBE9] font-medium dark:border-border/60">
               <td className="py-2 px-3">Total</td>
               <td className="py-2 px-3 text-right tabular-nums">${fmtUsd(totals.budget)}</td>
               <td className="py-2 px-3 text-right tabular-nums">${fmtUsd(totals.actual)}</td>
@@ -249,6 +247,7 @@ export default function LaborCostAllocationPage() {
             </tr>
           </tfoot>
         </table>
+      </div>
       </div>
     </PageLayout>
   );

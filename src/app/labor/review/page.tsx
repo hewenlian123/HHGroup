@@ -3,9 +3,9 @@
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { PageHeader } from "@/components/page-header";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import {
   clearLaborEntry,
   getLaborEntries,
@@ -114,41 +114,41 @@ export default function LaborReviewPage() {
       <PageHeader title="Labor Review" description="Review labor drafts and confirm entries for project actual labor." />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} max={new Date().toISOString().slice(0, 10)} className="rounded-lg" />
-        <select
-          value={workerFilter}
-          onChange={(e) => setWorkerFilter(e.target.value)}
-          className="h-10 rounded-lg border border-input bg-transparent px-3 text-sm"
-        >
+        <Input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          max={new Date().toISOString().slice(0, 10)}
+          className="rounded-sm"
+        />
+        <Select value={workerFilter} onChange={(e) => setWorkerFilter(e.target.value)}>
           <option value="">All workers</option>
           {workerOptions.map((w) => (
-            <option key={w.id} value={w.id}>{w.name}</option>
+            <option key={w.id} value={w.id}>
+              {w.name}
+            </option>
           ))}
-        </select>
-        <select
-          value={projectFilter}
-          onChange={(e) => setProjectFilter(e.target.value)}
-          className="h-10 rounded-lg border border-input bg-transparent px-3 text-sm"
-        >
+        </Select>
+        <Select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)}>
           <option value="">All projects</option>
           {projectOptions.map((p) => (
-            <option key={p.id} value={p.id}>{p.name}</option>
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       {message ? (
-        <div className="rounded-lg border border-zinc-200/60 dark:border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
-          {message}
-        </div>
+        <p className="border-b border-[#EBEBE9] pb-3 text-sm text-muted-foreground dark:border-border">{message}</p>
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_440px]">
-        <Card className="rounded-2xl border border-zinc-200/60 dark:border-border overflow-hidden">
+        <div className="overflow-hidden rounded-sm border border-[#EBEBE9] dark:border-border">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-zinc-200/40 dark:border-border/60 bg-muted/30">
+                <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
                   <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Date</th>
                   <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Worker</th>
                   <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Project</th>
@@ -160,7 +160,10 @@ export default function LaborReviewPage() {
               </thead>
               <tbody>
                 {filteredRows.map((row) => (
-                  <tr key={row.id} className="border-b border-zinc-100/50 dark:border-border/30">
+                  <tr
+                    key={row.id}
+                    className="border-b border-[#EBEBE9]/80 transition-colors hover:bg-[#F7F7F5] dark:border-border/40 dark:hover:bg-muted/20"
+                  >
                     <td className="py-3 px-4 tabular-nums">{row.date}</td>
                     <td className="py-3 px-4">{workers.get(row.workerId) ?? "Unknown worker"}</td>
                     <td className="py-3 px-4">{row.projectId ? projects.get(row.projectId) ?? row.projectId : "—"}</td>
@@ -171,10 +174,10 @@ export default function LaborReviewPage() {
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex justify-end gap-2">
-                        <Button size="sm" variant="outline" className="rounded-lg h-8" onClick={() => setSelected({ ...row })}>
+                        <Button size="sm" variant="outline" className="h-8 rounded-sm" onClick={() => setSelected({ ...row })}>
                           Review
                         </Button>
-                        <Button size="sm" variant="outline" className="rounded-lg h-8" onClick={() => handleDelete(row)}>
+                        <Button size="sm" variant="outline" className="h-8 rounded-sm" onClick={() => handleDelete(row)}>
                           Delete
                         </Button>
                       </div>
@@ -191,48 +194,51 @@ export default function LaborReviewPage() {
               </tbody>
             </table>
           </div>
-        </Card>
+        </div>
 
-        <Card className="rounded-2xl border border-zinc-200/60 dark:border-border p-5">
+        <div className="border border-[#EBEBE9] p-5 dark:border-border">
           {!selected ? (
             <p className="text-sm text-muted-foreground">Select an entry and click Review.</p>
           ) : (
             <div className="space-y-4">
               <h3 className="text-sm font-semibold text-foreground">Review Drawer</h3>
               <div className="grid gap-3">
-                <label className="text-xs font-medium text-muted-foreground">Project</label>
-                <select
+                <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Project</label>
+                <Select
                   value={selected.projectId ?? ""}
                   onChange={(e) => setSelected((prev) => (prev ? { ...prev, projectId: e.target.value } : prev))}
-                  className="h-10 rounded-lg border border-input bg-transparent px-3 text-sm"
                 >
                   <option value="">Select project</option>
-                  {projectOptions.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-                <label className="text-xs font-medium text-muted-foreground">Hours</label>
+                  {projectOptions.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </Select>
+                <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Hours</label>
                 <Input
                   type="number"
                   min="0"
                   step="0.25"
                   value={selected.hours ?? ""}
                   onChange={(e) => setSelected((prev) => (prev ? { ...prev, hours: Number(e.target.value) || 0 } : prev))}
-                  className="rounded-lg text-right tabular-nums"
+                  className="rounded-sm text-right tabular-nums"
                 />
-                <label className="text-xs font-medium text-muted-foreground">Cost Code</label>
+                <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Cost Code</label>
                 <Input
                   type="text"
                   value={selected.costCode ?? ""}
                   onChange={(e) => setSelected((prev) => (prev ? { ...prev, costCode: e.target.value } : prev))}
                   placeholder="Cost code"
-                  className="rounded-lg"
+                  className="rounded-sm"
                 />
-                <label className="text-xs font-medium text-muted-foreground">Notes</label>
+                <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Notes</label>
                 <Input
                   type="text"
                   value={selected.notes ?? ""}
                   onChange={(e) => setSelected((prev) => (prev ? { ...prev, notes: e.target.value } : prev))}
                   placeholder="Notes"
-                  className="rounded-lg"
+                  className="rounded-sm"
                 />
                 <p className="text-sm">
                   Total:{" "}
@@ -242,12 +248,16 @@ export default function LaborReviewPage() {
                 </p>
               </div>
               <div className="flex justify-end gap-2">
-                <Button variant="outline" className="rounded-lg" onClick={() => setSelected(null)}>Close</Button>
-                <Button className="rounded-lg" onClick={handleSaveSelected}>Save changes</Button>
+                <Button variant="outline" size="sm" className="rounded-sm" onClick={() => setSelected(null)}>
+                  Close
+                </Button>
+                <Button size="sm" className="rounded-sm" onClick={handleSaveSelected}>
+                  Save changes
+                </Button>
               </div>
             </div>
           )}
-        </Card>
+        </div>
       </div>
     </div>
   );

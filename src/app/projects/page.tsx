@@ -1,43 +1,50 @@
-import { getProjectDetailFinancial, getProjects, getProjectForecastRisk } from "@/lib/data";
+import { Manrope } from "next/font/google";
+import { getProjects } from "@/lib/data";
+import { getCanonicalProjectProfitBatch } from "@/lib/profit-engine";
 import { ProjectsListClient, type ProjectsListRow } from "./projects-list-client";
 
 export const dynamic = "force-dynamic";
 
-function riskFromForecast(forecastMarginPct: number, anyCostCodeVarianceOver10Pct: boolean): "red" | "yellow" | "green" {
-  if (anyCostCodeVarianceOver10Pct) return "red";
-  if (forecastMarginPct < 5) return "red";
-  if (forecastMarginPct < 15) return "yellow";
-  return "green";
-}
+const manrope = Manrope({
+  subsets: ["latin"],
+  weight: ["600", "700", "800"],
+  display: "swap",
+});
 
 export default async function ProjectsPage() {
   const projects = await getProjects();
-  const riskResults = await Promise.all(projects.map((p) => getProjectForecastRisk(p.id)));
-  const rows: ProjectsListRow[] = await Promise.all(
-    projects.map(async (p, i) => {
-      const fin = await getProjectDetailFinancial(p.id);
-      const spent = fin?.totalSpent ?? 0;
-      const budget = fin?.totalBudget ?? p.budget;
-      const progressPct = budget > 0 ? (spent / budget) * 100 : 0;
-      const { forecastMarginPct, anyCostCodeVarianceOver10Pct } = riskResults[i] ?? { forecastMarginPct: 0, anyCostCodeVarianceOver10Pct: false };
-      return {
-        id: p.id,
-        name: p.name,
-        clientName: p.client ?? null,
-        status: p.status,
-        budget,
-        spent,
-        progressPct,
-        startDate: p.startDate != null ? String(p.startDate).slice(0, 10) : null,
-        endDate: p.endDate != null ? String(p.endDate).slice(0, 10) : null,
-        risk: riskFromForecast(forecastMarginPct, anyCostCodeVarianceOver10Pct),
-      };
-    })
-  );
+  const profitMap = await getCanonicalProjectProfitBatch(projects.map((p) => p.id)).catch(() => new Map());
+
+  const rows: ProjectsListRow[] = projects.map((p) => {
+    const c = profitMap.get(p.id);
+    const revenue = c?.revenue ?? 0;
+    const laborCost = c?.laborCost ?? 0;
+    const expenseCost = c?.expenseCost ?? 0;
+    const subcontractCost = c?.subcontractCost ?? 0;
+    const totalCost = c?.actualCost ?? laborCost + expenseCost + subcontractCost;
+    /** Canonical profit (revenue − labor − expenses − subcontract); same as profit-engine. */
+    const profit = c?.profit ?? revenue - totalCost;
+    const updatedRaw = p.updated ?? p.updated_at ?? "";
+    const updatedAt =
+      typeof updatedRaw === "string" && updatedRaw.length >= 10 ? updatedRaw.slice(0, 10) : "—";
+
+    return {
+      id: p.id,
+      name: p.name,
+      clientName: p.client ?? null,
+      status: p.status,
+      revenue,
+      laborCost,
+      profit,
+      updatedAt,
+    };
+  });
 
   return (
-    <div className="page-container py-4">
-      <ProjectsListClient rows={rows} />
+    <div className="min-h-full bg-warm-grey dark:bg-background">
+      <div className="mx-auto max-w-[1440px] px-6 py-12 sm:px-10 sm:py-14 lg:px-12 lg:py-16">
+        <ProjectsListClient rows={rows} titleFontClassName={manrope.className} />
+      </div>
     </div>
   );
 }

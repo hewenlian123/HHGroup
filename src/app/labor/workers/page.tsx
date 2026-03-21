@@ -3,9 +3,9 @@
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { PageHeader } from "@/components/page-header";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { FilterBar } from "@/components/filter-bar";
 import { StatusBadge } from "@/components/status-badge";
 
@@ -225,12 +225,10 @@ export default function LaborWorkersPage() {
       </FilterBar>
 
       {message ? (
-        <div className="rounded-lg border border-zinc-200/60 dark:border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
-          {message}
-        </div>
+        <p className="border-b border-[#EBEBE9] pb-3 text-sm text-muted-foreground dark:border-border">{message}</p>
       ) : null}
       {editorOpen ? (
-        <Card className="rounded-2xl border border-zinc-200/60 dark:border-border p-4">
+        <section className="border-b border-[#EBEBE9] pb-4 dark:border-border">
           <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">Name</p>
@@ -272,9 +270,8 @@ export default function LaborWorkersPage() {
               />
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Status</p>
-              <select
-                className="h-10 w-full rounded-[10px] border border-input bg-muted/20 px-3 text-sm"
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Status</p>
+              <Select
                 value={form.status}
                 onChange={(e) =>
                   setForm((prev) => ({ ...prev, status: e.target.value === "inactive" ? "inactive" : "active" }))
@@ -283,25 +280,25 @@ export default function LaborWorkersPage() {
               >
                 <option value="active">active</option>
                 <option value="inactive">inactive</option>
-              </select>
+              </Select>
             </div>
           </div>
-          <div className="mt-4 flex items-center justify-end gap-2 border-t border-zinc-200/60 pt-3 dark:border-border">
-            <Button onClick={handleSave} disabled={submitting} className="min-h-[44px] sm:min-h-0 w-full sm:w-auto">
-              {submitting ? "Saving…" : editorMode === "create" ? "Create Worker" : "Save Changes"}
-            </Button>
-            <Button variant="outline" onClick={closeEditor} disabled={submitting} className="min-h-[44px] sm:min-h-0 w-full sm:w-auto">
+          <div className="mt-4 flex flex-col-reverse items-stretch justify-end gap-2 border-t border-[#EBEBE9] pt-3 sm:flex-row sm:items-center dark:border-border">
+            <Button variant="outline" size="sm" className="rounded-sm sm:w-auto" onClick={closeEditor} disabled={submitting}>
               Cancel
             </Button>
+            <Button size="sm" className="rounded-sm sm:w-auto" onClick={handleSave} disabled={submitting}>
+              {submitting ? "Saving…" : editorMode === "create" ? "Create Worker" : "Save Changes"}
+            </Button>
           </div>
-        </Card>
+        </section>
       ) : null}
 
-      <Card className="overflow-hidden">
+      <div className="overflow-hidden rounded-sm border border-[#EBEBE9] dark:border-border">
         <div className="table-responsive">
           <table className="w-full min-w-[520px] text-sm md:min-w-0">
             <thead>
-              <tr className="border-b border-zinc-200/40 bg-muted/30 dark:border-border/60">
+              <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
                 <th className="table-head-label px-4 py-3 text-left">Name</th>
                 <th className="table-head-label px-4 py-3 text-left">Role</th>
                 <th className="table-head-label px-4 py-3 text-left">Phone</th>
@@ -322,7 +319,7 @@ export default function LaborWorkersPage() {
                 return (
                   <tr
                     key={w.id}
-                    className="group table-row-compact cursor-pointer border-b border-zinc-100/50 dark:border-border/30"
+                    className="group table-row-compact cursor-pointer border-b border-[#EBEBE9]/80 transition-colors hover:bg-[#F7F7F5] dark:border-border/40 dark:hover:bg-muted/20"
                     onClick={() => openEdit(w)}
                   >
                     <td className="py-3 px-4 font-medium text-foreground">{w.name || "—"}</td>
@@ -336,7 +333,8 @@ export default function LaborWorkersPage() {
                       <div className="flex items-center justify-end gap-2">
                         <Button
                           variant="outline"
-                          className="h-8 px-3"
+                          size="sm"
+                          className="h-8 rounded-sm px-3"
                           onClick={(e) => {
                             e.stopPropagation();
                             openEdit(w);
@@ -347,7 +345,8 @@ export default function LaborWorkersPage() {
                         </Button>
                         <Button
                           variant="outline"
-                          className="h-8 px-3"
+                          size="sm"
+                          className="h-8 rounded-sm px-3"
                           onClick={(e) => {
                             e.stopPropagation();
                             void handleDelete(w);
@@ -371,7 +370,7 @@ export default function LaborWorkersPage() {
             </tbody>
           </table>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }

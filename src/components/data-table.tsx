@@ -8,6 +8,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import {
+  listTableAmountCellClassName,
+  listTablePrimaryCellClassName,
+  listTableRowClassName,
+} from "@/lib/list-table-interaction";
 
 export interface Column<T> {
   key: string;
@@ -31,6 +36,14 @@ interface DataTableProps<T> {
   zebra?: boolean;
   /** Column key to use as card title on mobile (default: first column). */
   mobileTitleKey?: string;
+  /** Row click → detail (skips clicks on links, buttons, menus). */
+  onRowClick?: (row: T) => void;
+  /** Adds `group-hover:opacity-80` to this column’s cells. */
+  primaryColumnKey?: string;
+  /** Adds amount emphasis on row hover. */
+  amountColumnKeys?: string[];
+  /** Stops row click when interacting with this column (default `actions`). */
+  actionsColumnKey?: string;
 }
 
 function getCellContent<T>(row: T, col: Column<T>): React.ReactNode {
@@ -51,9 +64,13 @@ export function DataTable<T>({
   cellClassName,
   zebra = false,
   mobileTitleKey,
+  onRowClick,
+  primaryColumnKey,
+  amountColumnKeys,
+  actionsColumnKey = "actions",
 }: DataTableProps<T>) {
-  const dataColumns = columns.filter((c) => c.key !== "actions");
-  const actionsColumn = columns.find((c) => c.key === "actions");
+  const dataColumns = columns.filter((c) => c.key !== actionsColumnKey);
+  const actionsColumn = columns.find((c) => c.key === actionsColumnKey);
   const titleKey = mobileTitleKey ?? dataColumns[0]?.key;
   const cardColumns = actionsColumn ? [...dataColumns, actionsColumn] : dataColumns;
 
@@ -61,9 +78,15 @@ export function DataTable<T>({
     <>
       {/* Desktop/Tablet: table */}
       <div className="table-responsive relative hidden w-full md:block">
-        <Table className={cn("min-w-[480px] md:min-w-0 border-0", className)}>
+        <Table
+          className={cn(
+            "min-w-[480px] md:min-w-0 border-0",
+            onRowClick && "border-separate border-spacing-y-1.5 border-spacing-x-0 [&_tbody_tr]:border-b-0",
+            className
+          )}
+        >
           <TableHeader>
-            <TableRow className={cn("hover:bg-transparent", headerClassName)}>
+            <TableRow className={cn("hover:bg-transparent border-b-0", headerClassName)}>
               {columns.map((col) => (
                 <TableHead key={col.key} className={cn(col.align === "right" && "text-right", col.className)}>
                   {col.header}
@@ -86,25 +109,58 @@ export function DataTable<T>({
                 </TableCell>
               </TableRow>
             ) : null}
-            {!loading && data.map((row, index) => (
-              <TableRow
-                key={keyExtractor(row)}
-                className={cn(
-                  "border-b border-zinc-100/50 transition-colors duration-100 hover:bg-muted/20 dark:border-border/30",
-                  zebra && index % 2 === 1 && "bg-muted/10",
-                  rowClassName
-                )}
-              >
-                {columns.map((col) => (
-                  <TableCell
-                    key={col.key}
-                    className={cn(col.align === "right" && "text-right", cellClassName, col.className)}
-                  >
-                    {col.render ? col.render(row) : (row as Record<string, unknown>)[col.key] as React.ReactNode}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
+            {!loading &&
+              data.map((row, index) => (
+                <TableRow
+                  key={keyExtractor(row)}
+                  tabIndex={onRowClick ? 0 : undefined}
+                  role={onRowClick ? "link" : undefined}
+                  onClick={
+                    onRowClick
+                      ? (e) => {
+                          const el = e.target as HTMLElement;
+                          if (el.closest("a,button,[role=menuitem],[data-radix-popper-content-wrapper]")) return;
+                          onRowClick(row);
+                        }
+                      : undefined
+                  }
+                  onKeyDown={
+                    onRowClick
+                      ? (e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            onRowClick(row);
+                          }
+                        }
+                      : undefined
+                  }
+                  className={cn(
+                    onRowClick
+                      ? listTableRowClassName
+                      : "border-b border-zinc-100/50 transition-colors duration-100 hover:bg-muted/20 dark:border-border/30",
+                    zebra && index % 2 === 1 && !onRowClick && "bg-muted/10",
+                    rowClassName
+                  )}
+                >
+                  {columns.map((col) => (
+                    <TableCell
+                      key={col.key}
+                      onClick={onRowClick && col.key === actionsColumnKey ? (e) => e.stopPropagation() : undefined}
+                      className={cn(
+                        col.align === "right" && "text-right",
+                        onRowClick && col.key === primaryColumnKey && listTablePrimaryCellClassName,
+                        onRowClick && col.key === columns[0]?.key && "first:rounded-l-xl",
+                        onRowClick && col.key === columns[columns.length - 1]?.key && "last:rounded-r-xl",
+                        cellClassName,
+                        col.className,
+                        onRowClick && amountColumnKeys?.includes(col.key) && listTableAmountCellClassName
+                      )}
+                    >
+                      {col.render ? col.render(row) : (row as Record<string, unknown>)[col.key] as React.ReactNode}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
           </TableBody>
         </Table>
       </div>

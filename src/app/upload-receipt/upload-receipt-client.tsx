@@ -4,6 +4,7 @@ import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 type Option = { id: string; name: string };
@@ -187,8 +188,10 @@ export function UploadReceiptClient() {
         <p className="text-sm text-muted-foreground mt-0.5">Waiting for approval</p>
         <Button
           type="button"
+          variant="outline"
+          size="sm"
           onClick={resetForm}
-          className="mt-10 h-14 w-full max-w-sm text-base font-medium rounded-lg"
+          className="mt-10 w-full max-w-sm"
         >
           再提交一张 / Upload Another
         </Button>
@@ -206,11 +209,11 @@ export function UploadReceiptClient() {
       <form onSubmit={submit} className="mt-8 flex flex-col gap-6">
         <div>
           <Label zh="工人姓名" en="Worker Name" />
-          <select
+          <Select
             value={workerId}
             onChange={(e) => setWorkerId(e.target.value)}
             required
-            className="h-12 w-full rounded-lg border border-input bg-background px-4 text-base"
+            className="text-base px-4 min-h-12"
           >
             <option value="">请选择 / Select</option>
             {workers.map((w) => (
@@ -218,15 +221,15 @@ export function UploadReceiptClient() {
                 {w.name}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <div>
           <Label zh="工地" en="Project" />
-          <select
+          <Select
             value={projectId}
             onChange={(e) => setProjectId(e.target.value)}
-            className="h-12 w-full rounded-lg border border-input bg-background px-4 text-base"
+            className="text-base px-4 min-h-12"
           >
             <option value="">请选择 / Optional</option>
             {projects.map((p) => (
@@ -234,22 +237,22 @@ export function UploadReceiptClient() {
                 {p.name}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <div>
           <Label zh="开销类型" en="Expense Type" />
-          <select
+          <Select
             value={expenseType}
             onChange={(e) => setExpenseType(e.target.value)}
-            className="h-12 w-full rounded-lg border border-input bg-background px-4 text-base"
+            className="text-base px-4 min-h-12"
           >
             {EXPENSE_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.zh} / {o.en}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <div>
@@ -293,7 +296,7 @@ export function UploadReceiptClient() {
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            className="w-full min-h-[64px] rounded-lg border-2 border-dashed border-border bg-muted/30 px-4 py-4 text-center text-base text-muted-foreground active:bg-muted/50"
+            className="w-full min-h-[64px] rounded-sm border border-dashed border-[#EBEBE9] bg-background px-4 py-4 text-center text-base text-muted-foreground dark:border-border"
           >
             {file ? (
               <span className="text-foreground font-medium">{file.name}</span>
@@ -367,19 +370,21 @@ export function UploadReceiptClient() {
         </div>
 
         {message && (
-          <p className="text-sm text-destructive text-center">{message}</p>
+          <div className="rounded-lg border border-border/60 bg-background px-3 py-2 text-center text-sm text-destructive">
+            {message}
+          </div>
         )}
 
         <Button
           type="submit"
-          className="h-14 w-full rounded-lg text-base font-semibold mt-2"
+          className="mt-2 w-full min-h-12 text-base font-medium sm:min-h-10"
           disabled={uploading || submitting}
         >
           {uploading ? "上传中…" : submitting ? "提交中…" : "提交报销 / Submit Receipt"}
         </Button>
       </form>
       <Dialog open={previewOpen && !!previewUrl} onOpenChange={(open) => setPreviewOpen(open)}>
-        <DialogContent className="max-w-full sm:max-w-lg border-border/60 p-0">
+        <DialogContent className="max-w-full sm:max-w-lg p-0">
           {previewUrl ? (
             <div className="w-full max-h-[80vh] flex items-center justify-center bg-background">
               {/* eslint-disable-next-line @next/next/no-img-element */}

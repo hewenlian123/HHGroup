@@ -18,7 +18,7 @@ export default function LoadingInvoiceDetail() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border/60 p-6 space-y-3">
+      <div className="space-y-3 rounded-sm border border-[#EBEBE9] p-6 dark:border-border">
         <Skeleton className="h-4 w-40 rounded-md" />
         <Skeleton className="h-4 w-72 rounded-md" />
         <div className="flex gap-3 pt-2">
@@ -28,7 +28,7 @@ export default function LoadingInvoiceDetail() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border/60 overflow-hidden">
+      <div className="overflow-hidden rounded-sm border border-[#EBEBE9] dark:border-border">
         <div className="p-4 pb-2">
           <Skeleton className="h-4 w-24 rounded-md" />
         </div>

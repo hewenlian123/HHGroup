@@ -17,7 +17,7 @@
     @apply flex flex-col gap-3;
   }
   .table-head-label {
-    @apply text-xs font-medium uppercase tracking-wide text-gray-500;
+    @apply text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400;
   }
   .table-row-compact {
     @apply h-10;
@@ -30,13 +30,13 @@
   }
   /* Compact KPI metric cell */
   .kpi-metric {
-    @apply rounded-lg border border-[#E5E7EB] bg-white px-4 py-3;
+    @apply rounded-lg border border-[#EBEBE9] bg-white px-4 py-3 shadow-sm;
   }
   .kpi-metric-label {
-    @apply text-xs font-medium uppercase tracking-wide text-gray-500;
+    @apply text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400;
   }
   .kpi-metric-value {
-    @apply text-base font-semibold text-[#111111];
+    @apply text-base font-semibold text-[#2D2D2D];
   }
   /* Add-on: touch-friendly forms only when <1024px; desktop unchanged */
   .form-mobile-friendly input,
@@ -81,13 +81,13 @@
     touch-action: pan-x;
   }
   .ui-divider {
-    @apply border-b border-[#E5E7EB];
+    @apply border-b border-[#EBEBE9];
   }
   .ui-section {
     @apply py-2;
   }
   .ui-section-label {
-    @apply text-sm font-semibold uppercase tracking-wide text-gray-500;
+    @apply text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-400;
   }
 }
 

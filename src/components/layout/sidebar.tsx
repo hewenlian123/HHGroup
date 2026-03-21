@@ -3,6 +3,7 @@
 import Link from "next/link";
 import * as React from "react";
 import { usePathname } from "next/navigation";
+import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
   FolderKanban,
@@ -10,7 +11,6 @@ import {
   Receipt,
   Banknote,
   ShoppingCart,
-  CreditCard,
   Clock,
   Wallet,
   Users,
@@ -48,7 +48,7 @@ import { useSystemHealth } from "@/contexts/system-health-context";
 
 const STORAGE_KEY = "hh.sidebarSections";
 
-type NavItem = { href: string; label: string; icon?: React.ComponentType<{ className?: string }> };
+type NavItem = { href: string; label: string; icon?: LucideIcon };
 
 const SECTION_KEYS = ["PROJECTS", "OPERATIONS", "FINANCE", "LABOR", "PEOPLE", "SYSTEM"] as const;
 
@@ -216,26 +216,34 @@ export function Sidebar({
   const isActive = (href: string) =>
     pathname === href || (href !== "/dashboard" && pathname.startsWith(href + "/"));
 
-  const linkClass = (active: boolean) =>
+  /** Projects / Estimates–aligned nav row */
+  const navRowClass = (active: boolean) =>
     cn(
-      "relative flex min-h-[44px] sm:h-8 sm:min-h-0 items-center rounded-md text-sm transition-all duration-200 ease-out",
-      collapsed ? "justify-center px-2" : "gap-2 pl-3 pr-2.5",
+      "group relative flex items-center rounded-lg transition-all duration-150",
+      collapsed ? "min-h-[44px] justify-center px-2 py-2.5 sm:min-h-0" : "min-h-[44px] gap-3 px-4 py-2.5 text-sm sm:min-h-0",
       active
-        ? "bg-[#f5f5f5] dark:bg-muted text-[#111111] dark:text-foreground font-medium"
-        : "text-[#6B7280] dark:text-muted-foreground hover:bg-[#fafafa] dark:hover:bg-muted/50 hover:text-[#111111] dark:hover:text-foreground"
+        ? "bg-white font-semibold text-[#2D2D2D] shadow-sm dark:bg-card dark:text-foreground"
+        : "font-medium text-[#2D2D2D] hover:bg-white hover:shadow-sm dark:text-foreground/90 dark:hover:bg-muted"
+    );
+
+  const navIconClass = (active: boolean, extra?: string) =>
+    cn(
+      "h-[18px] w-[18px] shrink-0 text-gray-500 transition-colors duration-150 group-hover:text-[#2D2D2D]",
+      active && "text-[#2D2D2D]",
+      extra
     );
 
   return (
     <aside
       className={cn(
-        "flex h-full shrink-0 flex-col border-r border-[#E5E7EB] bg-white",
-          collapsed ? "w-[72px]" : "w-[260px]",
+        "flex h-full shrink-0 flex-col border-r border-[#EBEBE9] bg-[#F7F7F5] dark:border-border dark:bg-background",
+        collapsed ? "w-[72px]" : "w-[240px]",
         className
       )}
     >
       <div
         className={cn(
-          "flex h-12 items-center gap-2 border-b border-[#E5E7EB]",
+          "flex h-12 items-center gap-2 border-b border-[#EBEBE9] dark:border-border",
           collapsed ? "px-3" : "px-3"
         )}
       >
@@ -247,10 +255,10 @@ export function Sidebar({
         </Avatar>
         {!collapsed && (
           <div className="min-w-0">
-            <p className="truncate text-[11px] font-medium uppercase tracking-wide text-gray-400">
+            <p className="truncate text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400">
               HH Unified
             </p>
-            <p className="truncate text-sm font-semibold text-[#111111]">{orgName}</p>
+            <p className="truncate text-sm font-semibold text-[#2D2D2D] dark:text-foreground">{orgName}</p>
           </div>
         )}
       </div>
@@ -263,23 +271,20 @@ export function Sidebar({
             onClick={onNavigate}
             title={collapsed ? "Dashboard" : undefined}
             aria-label={collapsed ? "Dashboard" : undefined}
-            className={linkClass(isActive("/dashboard"))}
+            className={navRowClass(isActive("/dashboard"))}
           >
-            {isActive("/dashboard") && (
-              <span className="absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-r-sm bg-gray-900 dark:bg-foreground" aria-hidden />
-            )}
-            <LayoutDashboard className={cn("h-[13px] w-[13px] shrink-0 opacity-60", isActive("/dashboard") && "opacity-100")} strokeWidth={1.5} />
+            <LayoutDashboard className={navIconClass(isActive("/dashboard"))} strokeWidth={1.75} />
             {!collapsed && <span className="truncate">Dashboard</span>}
           </Link>
         </div>
 
-        {/* Sections — Linear-style collapsible groups */}
-        <div className={cn("flex flex-col gap-4", collapsed && "gap-3")} style={{ marginTop: 16 }}>
-          {sections.map((section) => {
+        {/* Sections — collapsible groups, Estimates-style labels */}
+        <div className={cn("flex flex-col", collapsed && "gap-1")}>
+          {sections.map((section, sectionIndex) => {
             const isOpen = openSections[section.key] ?? false;
             if (collapsed) {
               return (
-                <div key={section.key} className="flex flex-col gap-1">
+                <div key={section.key} className={cn("flex flex-col gap-1", sectionIndex > 0 && "mt-6")}>
                   {section.items.map((item) => {
                     const active = isActive(item.href);
                     const Icon = item.icon;
@@ -290,12 +295,9 @@ export function Sidebar({
                         onClick={onNavigate}
                         title={item.label}
                         aria-label={item.label}
-                        className={linkClass(active)}
+                        className={navRowClass(active)}
                       >
-                        {active && (
-                          <span className="absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-r-sm bg-gray-900 dark:bg-foreground" aria-hidden />
-                        )}
-                        {Icon ? <Icon className={cn("h-[13px] w-[13px] shrink-0 opacity-60", active && "opacity-100")} /> : null}
+                        {Icon ? <Icon className={navIconClass(active)} strokeWidth={1.75} /> : null}
                       </Link>
                     );
                   })}
@@ -303,17 +305,17 @@ export function Sidebar({
               );
             }
             return (
-              <div key={section.key} className="flex flex-col gap-0.5">
+              <div key={section.key} className={cn("flex flex-col", sectionIndex > 0 && "mt-6")}>
                 <button
                   type="button"
                   onClick={() => setSectionOpen(section.key, !isOpen)}
-                  className="flex h-8 w-full items-center gap-2 rounded-md px-4 text-left text-[11px] font-medium uppercase tracking-[0.08em] text-[#9CA3AF] transition-colors hover:bg-gray-50"
+                  className="flex w-full items-center gap-2 rounded-lg px-4 py-3 text-left text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 transition-all duration-150 hover:bg-white/70 hover:shadow-sm dark:text-muted-foreground dark:hover:bg-muted/60"
                   aria-expanded={isOpen}
                 >
                   {isOpen ? (
-                    <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden strokeWidth={1.75} />
                   ) : (
-                    <ChevronRight className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden strokeWidth={1.75} />
                   )}
                   <span className="truncate">{section.label}</span>
                 </button>
@@ -322,7 +324,7 @@ export function Sidebar({
                   style={{ gridTemplateRows: isOpen ? "1fr" : "0fr" }}
                 >
                   <div className="min-h-0 overflow-hidden">
-                    <div className="mt-1 flex flex-col gap-1">
+                    <div className="flex flex-col gap-1">
                       {section.items.map((item) => {
                         const active = isActive(item.href);
                         const Icon = item.icon;
@@ -333,12 +335,9 @@ export function Sidebar({
                             onClick={onNavigate}
                             title={collapsed ? item.label : undefined}
                             aria-label={collapsed ? item.label : undefined}
-                            className={linkClass(active)}
+                            className={navRowClass(active)}
                           >
-                            {active && (
-                              <span className="absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-r-sm bg-gray-900 dark:bg-foreground" aria-hidden />
-                            )}
-                            {Icon ? <Icon className={cn("h-[13px] w-[13px] shrink-0 opacity-60", active && "opacity-100")} /> : null}
+                            {Icon ? <Icon className={navIconClass(active)} strokeWidth={1.75} /> : null}
                             {!collapsed && <span className="truncate">{item.label}</span>}
                           </Link>
                         );
@@ -352,24 +351,25 @@ export function Sidebar({
 
           {/* System Health warning indicator */}
           {systemHealth.status === "warning" && (
-            <div className="flex flex-col gap-1">
+            <div className="mt-6 flex flex-col gap-1">
               <Link
                 href="/system-health"
                 onClick={onNavigate}
-                className={linkClass(isActive("/system-health"))}
+                className={navRowClass(isActive("/system-health"))}
                 title="System Health"
               >
-                {isActive("/system-health") && (
-                  <span className="absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-r-sm bg-gray-900 dark:bg-foreground" aria-hidden />
-                )}
-                <AlertTriangle className={cn("h-[13px] w-[13px] shrink-0 text-amber-500 opacity-60", isActive("/system-health") && "opacity-100")} aria-hidden />
+                <AlertTriangle
+                  className={navIconClass(isActive("/system-health"), "text-amber-500 group-hover:text-amber-600")}
+                  strokeWidth={1.75}
+                  aria-hidden
+                />
                 {!collapsed && <span className="truncate">⚠ System Health</span>}
               </Link>
             </div>
           )}
 
           {/* Documents & Settings */}
-          <div className="flex flex-col gap-1">
+          <div className="mt-6 flex flex-col gap-1">
             {standaloneItems.map((item) => {
               const active = isActive(item.href);
               const Icon = item.icon;
@@ -380,12 +380,9 @@ export function Sidebar({
                   onClick={onNavigate}
                   title={collapsed ? item.label : undefined}
                   aria-label={collapsed ? item.label : undefined}
-                  className={linkClass(active)}
+                  className={navRowClass(active)}
                 >
-                  {active && (
-                    <span className="absolute left-0 top-1/2 h-4 w-[2px] -translate-y-1/2 rounded-r-sm bg-gray-900 dark:bg-foreground" aria-hidden />
-                  )}
-                  {Icon ? <Icon className={cn("h-[13px] w-[13px] shrink-0 opacity-60", active && "opacity-100")} /> : null}
+                  {Icon ? <Icon className={navIconClass(active)} strokeWidth={1.75} /> : null}
                   {!collapsed && <span className="truncate">{item.label}</span>}
                 </Link>
               );
@@ -396,35 +393,35 @@ export function Sidebar({
 
       {/* User footer */}
       {!collapsed && (
-        <div className="border-t border-gray-100 dark:border-border px-5 py-3.5">
+        <div className="border-t border-[#EBEBE9] dark:border-border px-4 py-3">
           <div className="flex items-center gap-3">
-            <div className="h-6 w-6 shrink-0 rounded-full bg-gray-100 dark:bg-muted border border-gray-200 dark:border-border flex items-center justify-center">
-              <span className="text-[10px] font-medium text-gray-500 dark:text-muted-foreground">U</span>
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#EBEBE9] bg-white dark:border-border dark:bg-card">
+              <span className="text-[10px] font-semibold text-gray-500 dark:text-muted-foreground">U</span>
             </div>
             <div className="min-w-0">
-              <p className="truncate text-[12px] font-medium text-gray-900 dark:text-foreground">User</p>
-              <p className="text-[10px] text-gray-400 dark:text-muted-foreground">Admin</p>
+              <p className="truncate text-sm font-medium text-[#2D2D2D] dark:text-foreground">User</p>
+              <p className="text-[10px] uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Admin</p>
             </div>
           </div>
         </div>
       )}
 
       {/* Collapse button at bottom */}
-      <div className="border-t border-[#E5E7EB] dark:border-border p-2">
+      <div className="border-t border-[#EBEBE9] dark:border-border p-2">
         <button
           type="button"
           onClick={onToggleCollapsed}
           className={cn(
-            "flex h-8 w-full items-center rounded-md text-sm text-[#6B7280] transition-colors hover:bg-gray-50 hover:text-[#111111]",
-            collapsed ? "justify-center px-2" : "gap-2 px-2.5"
+            "flex w-full items-center rounded-lg text-sm font-medium text-gray-500 transition-all duration-150 hover:bg-white hover:text-[#2D2D2D] hover:shadow-sm dark:text-muted-foreground dark:hover:bg-muted dark:hover:text-foreground",
+            collapsed ? "min-h-[44px] justify-center px-2 py-2 sm:min-h-8" : "gap-3 px-4 py-2.5"
           )}
           aria-label="Collapse sidebar"
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {collapsed ? (
-            <ChevronRight className="h-[18px] w-[18px]" />
+            <ChevronRight className="h-[18px] w-[18px]" strokeWidth={1.75} />
           ) : (
-            <ChevronLeft className="h-[18px] w-[18px]" />
+            <ChevronLeft className="h-[18px] w-[18px]" strokeWidth={1.75} />
           )}
           {!collapsed && "Collapse"}
         </button>

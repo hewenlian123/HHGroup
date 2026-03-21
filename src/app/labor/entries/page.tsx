@@ -6,11 +6,16 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   PageLayout,
   PageHeader,
-  Divider,
-  SectionHeader,
 } from "@/components/base";
+import { FilterBar } from "@/components/filter-bar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+import {
+  listTableAmountCellClassName,
+  listTableRowClassName,
+} from "@/lib/list-table-interaction";
 import {
   Dialog,
   DialogContent,
@@ -283,70 +288,78 @@ function DailyEntriesPageInner() {
         />
       }
     >
-      <SectionHeader
-        label="Filters"
-        action={
-          <div className="flex flex-wrap items-center gap-2">
+      <FilterBar>
+        <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-6">
+          <div className="space-y-1">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">From</p>
             <Input
               type="date"
               value={filters.date_from ?? ""}
               onChange={(e) => setFilters((f) => ({ ...f, date_from: e.target.value || undefined }))}
               max={new Date().toISOString().slice(0, 10)}
-              className="h-8 w-[130px] text-sm"
-              placeholder="From"
             />
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">To</p>
             <Input
               type="date"
               value={filters.date_to ?? ""}
               onChange={(e) => setFilters((f) => ({ ...f, date_to: e.target.value || undefined }))}
               max={new Date().toISOString().slice(0, 10)}
-              className="h-8 w-[130px] text-sm"
-              placeholder="To"
             />
-            <select
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Worker</p>
+            <Select
               value={filters.worker_id ?? ""}
               onChange={(e) => setFilters((f) => ({ ...f, worker_id: e.target.value || undefined }))}
-              className="h-8 min-w-[140px] rounded border border-input bg-transparent px-2 text-xs"
             >
               <option value="">All workers</option>
               {workers.map((w) => (
                 <option key={w.id} value={w.id}>{w.name}</option>
               ))}
-            </select>
-            <select
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Project</p>
+            <Select
               value={filters.project_id ?? ""}
               onChange={(e) => setFilters((f) => ({ ...f, project_id: e.target.value || undefined }))}
-              className="h-8 min-w-[140px] rounded border border-input bg-transparent px-2 text-xs"
             >
               <option value="">All projects</option>
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
-            </select>
-            <select
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Status</p>
+            <Select
               value={filters.status ?? ""}
-              onChange={(e) => setFilters((f) => ({ ...f, status: (e.target.value || undefined) as LaborEntriesFilters["status"] }))}
-              className="h-8 min-w-[120px] rounded border border-input bg-transparent px-2 text-xs"
+              onChange={(e) =>
+                setFilters((f) => ({ ...f, status: (e.target.value || undefined) as LaborEntriesFilters["status"] }))
+              }
             >
               <option value="">All statuses</option>
               <option value="Draft">Draft</option>
               <option value="Submitted">Submitted</option>
               <option value="Approved">Approved</option>
               <option value="Locked">Locked</option>
-            </select>
+            </Select>
+          </div>
+          <div className="space-y-1 sm:col-span-2 lg:col-span-1">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Search</p>
             <Input
               type="text"
-              placeholder="Search notes, code, worker, project"
+              placeholder="Notes, code, worker, project…"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              className="h-8 w-44 text-sm"
             />
           </div>
-        }
-      />
-      <Divider />
+        </div>
+      </FilterBar>
       {selectedIds.size > 0 ? (
-        <div className="flex flex-wrap items-center gap-2 py-2">
+        <div className="flex flex-wrap items-center gap-2 border-b border-[#EBEBE9] py-2 dark:border-border/60">
           <span className="text-xs text-muted-foreground">{selectedIds.size} selected</span>
           <Button variant="outline" size="sm" onClick={handleBulkSubmit} disabled={!!bulkAction}>
             {bulkAction === "submit" ? "…" : "Submit"}
@@ -362,17 +375,20 @@ function DailyEntriesPageInner() {
           </Button>
         </div>
       ) : null}
-      <Divider />
       {error ? (
-        <p className="py-2 text-sm text-red-600 dark:text-red-400">{error}</p>
+        <div className="rounded-lg border border-border/60 bg-background px-4 py-3">
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        </div>
       ) : null}
       {message ? (
-        <p className="py-2 text-sm text-muted-foreground">{message}</p>
+        <div className="rounded-lg border border-[#EBEBE9] bg-background px-3 py-2 text-sm text-muted-foreground dark:border-border">
+          {message}
+        </div>
       ) : null}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto border-t border-[#EBEBE9] dark:border-border/60">
         <table className="w-full text-sm border-collapse">
           <thead>
-            <tr className="border-b border-border/60">
+            <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
               <th className="w-8 px-1">
                 <input
                   type="checkbox"
@@ -415,25 +431,36 @@ function DailyEntriesPageInner() {
                   row.usesPaymentLinkForPayroll ? "payment_link" : "status_fallback"
                 );
                 const payrollLocked = payrollStatus === "paid";
+                const rowLocked = row.status === "Locked" || payrollLocked;
                 return (
-                <tr key={row.id} className="border-b border-border/40">
-                  <td className="py-1.5 px-1">
+                <tr
+                  key={row.id}
+                  className={cn(
+                    "border-b border-[#EBEBE9]/80 dark:border-border/40",
+                    !rowLocked && listTableRowClassName
+                  )}
+                  onClick={() => {
+                    if (rowLocked) return;
+                    openEdit(row);
+                  }}
+                >
+                  <td className="py-1.5 px-1" onClick={(e) => e.stopPropagation()}>
                     <input
                       type="checkbox"
                       checked={selectedIds.has(row.id)}
                       onChange={() => toggleSelect(row.id)}
-                      disabled={row.status === "Locked" || payrollLocked}
+                      disabled={rowLocked}
                       className="h-4 w-4 rounded border-input"
                     />
                   </td>
-                  <td className="py-1.5 px-3 tabular-nums">{row.work_date}</td>
+                  <td className="py-1.5 px-3 tabular-nums text-muted-foreground">{row.work_date}</td>
                   <td className="py-1.5 px-3">{row.worker_name ?? "—"}</td>
                   <td className="py-1.5 px-3">{row.project_name ?? "—"}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums">{row.hours}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums text-muted-foreground">
+                  <td className={cn("py-1.5 px-3 text-right tabular-nums", listTableAmountCellClassName)}>{row.hours}</td>
+                  <td className={cn("py-1.5 px-3 text-right tabular-nums text-muted-foreground", listTableAmountCellClassName)}>
                     {rate != null ? `$${rate.toFixed(2)}` : "—"}
                   </td>
-                  <td className="py-1.5 px-3 text-right tabular-nums font-medium">
+                  <td className={cn("py-1.5 px-3 text-right tabular-nums font-medium", listTableAmountCellClassName)}>
                     ${cost.toFixed(2)}
                   </td>
                   <td className="py-1.5 px-3">
@@ -443,14 +470,14 @@ function DailyEntriesPageInner() {
                     />
                   </td>
                   <td className="py-1.5 px-3 max-w-[160px] truncate" title={row.notes ?? ""}>{row.notes ?? "—"}</td>
-                  <td className="py-1.5 px-1">
+                  <td className="py-1.5 px-1" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-1">
                       <Button
                         variant="ghost"
                         size="sm"
                         className="h-7 text-xs"
                         onClick={() => openEdit(row)}
-                        disabled={row.status === "Locked" || payrollLocked}
+                        disabled={rowLocked}
                       >
                         Edit
                       </Button>
@@ -459,7 +486,7 @@ function DailyEntriesPageInner() {
                         size="sm"
                         className="h-7 text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                         onClick={() => handleDelete(row)}
-                        disabled={row.status === "Locked" || payrollLocked || deletingId === row.id}
+                        disabled={rowLocked || deletingId === row.id}
                       >
                         {deletingId === row.id ? "…" : "Delete"}
                       </Button>
@@ -483,28 +510,28 @@ function DailyEntriesPageInner() {
             <div className="grid gap-3 py-2">
               <div>
                 <label className="text-xs font-medium text-muted-foreground">Worker</label>
-                <select
+                <Select
                   value={editDraft.worker_id}
-                  onChange={(e) => setEditDraft((d) => d ? { ...d, worker_id: e.target.value } : null)}
-                  className="mt-1 h-9 w-full rounded border border-input bg-transparent px-2 text-sm"
+                  onChange={(e) => setEditDraft((d) => (d ? { ...d, worker_id: e.target.value } : null))}
+                  className="mt-1 w-full"
                 >
                   {workers.map((w) => (
                     <option key={w.id} value={w.id}>{w.name}</option>
                   ))}
-                </select>
+                </Select>
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground">Project</label>
-                <select
+                <Select
                   value={editDraft.project_id ?? ""}
-                  onChange={(e) => setEditDraft((d) => d ? { ...d, project_id: e.target.value || null } : null)}
-                  className="mt-1 h-9 w-full rounded border border-input bg-transparent px-2 text-sm"
+                  onChange={(e) => setEditDraft((d) => (d ? { ...d, project_id: e.target.value || null } : null))}
+                  className="mt-1 w-full"
                 >
                   <option value="">—</option>
                   {projects.map((p) => (
                     <option key={p.id} value={p.id}>{p.name}</option>
                   ))}
-                </select>
+                </Select>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>

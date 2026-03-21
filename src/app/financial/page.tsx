@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -37,84 +36,82 @@ export default async function FinancialPage() {
   return (
     <div className="page-container page-stack py-6">
       <PageHeader title="Financial" description="Financial overview and reports." />
-      <div className="flex items-center gap-4 text-sm text-muted-foreground border-b border-border/60 pb-3">
-        <Link href="/financial/dashboard" className="hover:text-foreground">Company Dashboard</Link>
+      <div className="flex items-center gap-4 border-b border-border/60 pb-3 text-sm text-muted-foreground">
+        <Link href="/financial/dashboard" className="hover:text-foreground">
+          Company Dashboard
+        </Link>
       </div>
 
       <section>
-        <h2 className="text-lg font-semibold text-foreground mb-4">CASH OVERVIEW</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <h2 className="mb-4 text-lg font-semibold text-foreground">CASH OVERVIEW</h2>
+        <div className="grid gap-4 border-b border-[#EBEBE9] pb-6 sm:grid-cols-2 lg:grid-cols-5 dark:border-border">
           {kpis.map(({ label, value, icon: Icon }) => (
-            <Card key={label} className="rounded-2xl border border-zinc-200/40 dark:border-border shadow-none">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  {label}
-                </CardTitle>
-                <div className="rounded-lg bg-muted p-2">
-                  <Icon className="h-4 w-4 text-muted-foreground" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p
-                  className={cn(
-                    "text-2xl font-bold tabular-nums text-right",
-                    value < 0 ? "text-red-600/90 dark:text-red-400/90" : "text-foreground"
-                  )}
-                >
-                  {formatMoney(value)}
-                </p>
-              </CardContent>
-            </Card>
+            <div key={label}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">{label}</span>
+                <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              </div>
+              <p
+                className={cn(
+                  "mt-1 text-xl font-semibold tabular-nums",
+                  value < 0 ? "text-red-600/90 dark:text-red-400/90" : "text-foreground"
+                )}
+              >
+                {formatMoney(value)}
+              </p>
+            </div>
           ))}
         </div>
 
         {cash.cashDifference !== 0 && (
-          <div className="mt-4 rounded-xl border border-amber-300 dark:border-amber-600 bg-amber-50 dark:bg-amber-950/30 px-4 py-3">
+          <div className="mt-4 border-b border-amber-400/40 pb-3 dark:border-amber-600/40">
             <p className="text-sm font-medium text-amber-800 dark:text-amber-400">Cash mismatch detected</p>
           </div>
         )}
 
         <div className="mt-6">
-          <h3 className="text-sm font-semibold text-foreground mb-3">Recent Unreconciled Transactions</h3>
-          <Card className="rounded-2xl border border-zinc-200/60 dark:border-border overflow-hidden">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-b border-zinc-200/40 dark:border-border/60 bg-muted/30">
-                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Date</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Description</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">Amount</TableHead>
+          <h3 className="mb-3 text-sm font-semibold text-foreground">Recent Unreconciled Transactions</h3>
+          <div className="overflow-x-auto rounded-sm border border-[#EBEBE9] dark:border-border">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border dark:bg-muted/30">
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Date</TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Description</TableHead>
+                  <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground tabular-nums">Amount</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {cash.recentUnreconciled.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={3} className="py-6 text-center text-muted-foreground">
+                      No unreconciled transactions
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {cash.recentUnreconciled.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={3} className="text-center text-muted-foreground py-6">
-                        No unreconciled transactions
+                ) : (
+                  cash.recentUnreconciled.map((tx) => (
+                    <TableRow
+                      key={tx.id}
+                      className="border-b border-[#EBEBE9]/80 transition-colors hover:bg-[#F7F7F5] dark:border-border/40 dark:hover:bg-muted/20"
+                    >
+                      <TableCell className="tabular-nums">{tx.date}</TableCell>
+                      <TableCell>{tx.description}</TableCell>
+                      <TableCell
+                        className={cn(
+                          "text-right font-medium tabular-nums",
+                          tx.amount >= 0 ? "text-emerald-600/90 dark:text-emerald-400/90" : "text-red-600/90 dark:text-red-400/90"
+                        )}
+                      >
+                        {tx.amount >= 0 ? "+" : ""}
+                        {formatMoney(tx.amount)}
                       </TableCell>
                     </TableRow>
-                  ) : (
-                    cash.recentUnreconciled.map((tx) => (
-                      <TableRow key={tx.id} className="border-b border-zinc-100/50 dark:border-border/30">
-                        <TableCell className="tabular-nums">{tx.date}</TableCell>
-                        <TableCell>{tx.description}</TableCell>
-                        <TableCell
-                          className={cn(
-                            "text-right tabular-nums font-medium",
-                            tx.amount >= 0 ? "text-emerald-600/90 dark:text-emerald-400/90" : "text-red-600/90 dark:text-red-400/90"
-                          )}
-                        >
-                          {tx.amount >= 0 ? "+" : ""}{formatMoney(tx.amount)}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </Card>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
           {cash.recentUnreconciled.length > 0 && (
-            <Button asChild variant="outline" size="sm" className="mt-3 rounded-lg">
+            <Button asChild variant="outline" size="sm" className="mt-3 rounded-sm">
               <Link href="/financial/bank">Reconcile in Bank</Link>
             </Button>
           )}

@@ -6,9 +6,9 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { createBrowserClient } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { StatusBadge } from "@/components/status-badge";
 
 type SubcontractorRow = {
@@ -334,10 +334,10 @@ export default function SubcontractorDetailPage() {
         subtitle="Subcontractor profile, compliance docs, and linked projects."
         actions={
           <div className="flex items-center gap-2">
-            <Button asChild variant="outline">
+            <Button asChild variant="outline" size="sm" className="rounded-sm">
               <Link href="/labor/subcontractors">Back</Link>
             </Button>
-            <Button onClick={() => void handleSave()} disabled={saving}>
+            <Button size="sm" className="rounded-sm" onClick={() => void handleSave()} disabled={saving}>
               {saving ? "Saving..." : "Save Changes"}
             </Button>
           </div>
@@ -363,7 +363,7 @@ export default function SubcontractorDetailPage() {
       </div>
 
       {tab === "profile" ? (
-        <Card className="rounded-2xl border border-zinc-200/60 p-4 dark:border-border">
+        <section className="border-b border-[#EBEBE9] pb-6 dark:border-border">
           <div className="mb-3 flex items-center gap-2">
             <StatusBadge status={row.status} />
             <span className="text-xs text-muted-foreground">
@@ -393,21 +393,20 @@ export default function SubcontractorDetailPage() {
               <Input value={row.email ?? ""} onChange={(event) => setRow((prev) => (prev ? { ...prev, email: event.target.value } : prev))} />
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Status</p>
-              <select
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Status</p>
+              <Select
                 value={row.status}
                 onChange={(event) =>
                   setRow((prev) => (prev ? { ...prev, status: event.target.value === "inactive" ? "inactive" : "active" } : prev))
                 }
-                className="h-10 w-full rounded-[10px] border border-input bg-muted/20 px-3 text-sm"
               >
                 <option value="active">active</option>
                 <option value="inactive">inactive</option>
-              </select>
+              </Select>
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">W9 on file</p>
-              <label className="inline-flex items-center gap-2 rounded-[10px] border border-input bg-muted/20 px-3 py-2 text-sm">
+              <label className="inline-flex items-center gap-2 border border-[#EBEBE9] bg-background px-3 py-2 text-sm dark:border-border">
                 <input
                   type="checkbox"
                   checked={row.w9_on_file}
@@ -457,11 +456,11 @@ export default function SubcontractorDetailPage() {
               <Input value={row.notes ?? ""} onChange={(event) => setRow((prev) => (prev ? { ...prev, notes: event.target.value } : prev))} />
             </div>
           </div>
-        </Card>
+        </section>
       ) : null}
 
       {tab === "docs" ? (
-        <Card className="rounded-2xl border border-zinc-200/60 p-4 dark:border-border">
+        <section className="border-b border-[#EBEBE9] pb-6 dark:border-border">
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <Input
               type="file"
@@ -475,10 +474,10 @@ export default function SubcontractorDetailPage() {
             />
             <span className="text-xs text-muted-foreground">{uploading ? "Uploading..." : "Upload W9 / COI / contract PDF."}</span>
           </div>
-          <div className="overflow-x-auto rounded-xl border border-zinc-200/60 dark:border-border">
+          <div className="overflow-x-auto rounded-sm border border-[#EBEBE9] dark:border-border">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-zinc-200/40 bg-muted/30 dark:border-border/60">
+                <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
                   <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">File</th>
                   <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">Type</th>
                   <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">Size</th>
@@ -488,17 +487,20 @@ export default function SubcontractorDetailPage() {
               </thead>
               <tbody>
                 {attachments.map((item) => (
-                  <tr key={item.id} className="border-b border-zinc-100/50 dark:border-border/30">
+                  <tr
+                    key={item.id}
+                    className="border-b border-[#EBEBE9]/80 transition-colors hover:bg-[#F7F7F5] dark:border-border/40 dark:hover:bg-muted/20"
+                  >
                     <td className="px-4 py-3 text-foreground">{item.file_name}</td>
                     <td className="px-4 py-3 text-muted-foreground">{item.mime_type || "—"}</td>
                     <td className="px-4 py-3 text-muted-foreground">{item.size_bytes != null ? `${Math.round(item.size_bytes / 1024)} KB` : "—"}</td>
                     <td className="px-4 py-3 text-muted-foreground">{new Date(item.created_at).toLocaleDateString()}</td>
                     <td className="px-4 py-3 text-right">
                       <div className="inline-flex items-center gap-2">
-                        <Button size="sm" variant="outline" onClick={() => void handleOpenAttachment(item.file_path)}>
+                        <Button size="sm" variant="outline" className="rounded-sm" onClick={() => void handleOpenAttachment(item.file_path)}>
                           Open
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => void handleDeleteAttachment(item)}>
+                        <Button size="sm" variant="outline" className="rounded-sm" onClick={() => void handleDeleteAttachment(item)}>
                           Delete
                         </Button>
                       </div>
@@ -515,47 +517,52 @@ export default function SubcontractorDetailPage() {
               </tbody>
             </table>
           </div>
-        </Card>
+        </section>
       ) : null}
 
       {tab === "projects" ? (
-        <Card className="rounded-2xl border border-zinc-200/60 p-4 dark:border-border">
+        <section className="pb-2">
           <div className="mb-4 grid gap-2 md:grid-cols-4">
-            <select
-              value={linkProjectId}
-              onChange={(event) => setLinkProjectId(event.target.value)}
-              className="h-10 rounded-[10px] border border-input bg-muted/20 px-3 text-sm"
-            >
+            <Select value={linkProjectId} onChange={(event) => setLinkProjectId(event.target.value)}>
               <option value="">Select project</option>
               {projectOptions.map((project) => (
                 <option key={project.id} value={project.id}>
                   {project.name || project.id}
                 </option>
               ))}
-            </select>
-            <Input value={linkRole} onChange={(event) => setLinkRole(event.target.value)} placeholder="Role (e.g. roofing)" />
-            <select
-              value={linkRateType}
-              onChange={(event) => setLinkRateType(event.target.value)}
-              className="h-10 rounded-[10px] border border-input bg-muted/20 px-3 text-sm"
-            >
+            </Select>
+            <Input
+              className="rounded-sm"
+              value={linkRole}
+              onChange={(event) => setLinkRole(event.target.value)}
+              placeholder="Role (e.g. roofing)"
+            />
+            <Select value={linkRateType} onChange={(event) => setLinkRateType(event.target.value)}>
               <option value="">Rate type</option>
               <option value="fixed">fixed</option>
               <option value="t&m">t&m</option>
               <option value="unit">unit</option>
-            </select>
-            <Input value={linkRate} onChange={(event) => setLinkRate(event.target.value)} type="number" min="0" step="0.01" placeholder="Rate" />
+            </Select>
+            <Input
+              className="rounded-sm"
+              value={linkRate}
+              onChange={(event) => setLinkRate(event.target.value)}
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="Rate"
+            />
           </div>
           <div className="mb-4">
-            <Button onClick={() => void handleLinkProject()} disabled={linking || !linkProjectId}>
+            <Button size="sm" className="rounded-sm" onClick={() => void handleLinkProject()} disabled={linking || !linkProjectId}>
               {linking ? "Linking..." : "Link to Project"}
             </Button>
           </div>
 
-          <div className="overflow-x-auto rounded-xl border border-zinc-200/60 dark:border-border">
+          <div className="overflow-x-auto rounded-sm border border-[#EBEBE9] dark:border-border">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-zinc-200/40 bg-muted/30 dark:border-border/60">
+                <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
                   <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">Project</th>
                   <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">Role</th>
                   <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">Rate type</th>
@@ -565,7 +572,10 @@ export default function SubcontractorDetailPage() {
               </thead>
               <tbody>
                 {links.map((link) => (
-                  <tr key={link.id} className="border-b border-zinc-100/50 dark:border-border/30">
+                  <tr
+                    key={link.id}
+                    className="border-b border-[#EBEBE9]/80 transition-colors hover:bg-[#F7F7F5] dark:border-border/40 dark:hover:bg-muted/20"
+                  >
                     <td className="px-4 py-3 text-foreground">{link.projects?.name || link.project_id}</td>
                     <td className="px-4 py-3 text-muted-foreground">{link.role || "—"}</td>
                     <td className="px-4 py-3 text-muted-foreground">{link.agreed_rate_type || "—"}</td>
@@ -573,7 +583,7 @@ export default function SubcontractorDetailPage() {
                       {link.agreed_rate != null ? `$${Number(link.agreed_rate).toLocaleString()}` : "—"}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <Button size="sm" variant="outline" onClick={() => void handleUnlink(link.id)}>
+                      <Button size="sm" variant="outline" className="rounded-sm" onClick={() => void handleUnlink(link.id)}>
                         Unlink
                       </Button>
                     </td>
@@ -589,7 +599,7 @@ export default function SubcontractorDetailPage() {
               </tbody>
             </table>
           </div>
-        </Card>
+        </section>
       ) : null}
     </div>
   );

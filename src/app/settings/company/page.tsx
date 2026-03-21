@@ -8,7 +8,6 @@ import { Upload, Image as ImageIcon, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { SectionHeader } from "@/components/section-header";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/toast/toast-provider";
@@ -230,14 +229,14 @@ export default function SettingsCompanyPage() {
         </div>
       ) : null}
 
-      <Card className="rounded-2xl border border-zinc-200/60 p-5 dark:border-border">
+      <section className="border-b border-[#EBEBE9] pb-8 dark:border-border">
         <SectionHeader title="Branding" subtitle="Upload logo for sidebar, topbar, and future PDF output." />
         <div className="mt-4 grid gap-4 md:grid-cols-[1fr_auto]">
           <label
             htmlFor="logo-upload"
             onDragOver={(e) => e.preventDefault()}
             onDrop={onDrop}
-            className="flex min-h-28 cursor-pointer items-center gap-3 rounded-xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-3 text-sm text-muted-foreground hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900/30 dark:hover:bg-zinc-900/50"
+            className="flex min-h-28 cursor-pointer items-center gap-3 rounded-sm border border-dashed border-[#EBEBE9] bg-background px-4 py-3 text-sm text-muted-foreground hover:bg-[#F7F7F5]/80 dark:border-border dark:hover:bg-muted/20"
           >
             {profile?.logo_url ? (
               <Image
@@ -245,11 +244,11 @@ export default function SettingsCompanyPage() {
                 alt="Company logo"
                 width={48}
                 height={48}
-                className="h-12 w-12 rounded-md object-contain bg-white p-1"
+                className="h-12 w-12 rounded-sm object-contain bg-white p-1"
                 unoptimized
               />
             ) : (
-              <div className="flex h-12 w-12 items-center justify-center rounded-md bg-zinc-200/70 dark:bg-zinc-800">
+              <div className="flex h-12 w-12 items-center justify-center rounded-sm bg-[#F7F7F5] dark:bg-muted/40">
                 <ImageIcon className="h-5 w-5" />
               </div>
             )}
@@ -275,70 +274,73 @@ export default function SettingsCompanyPage() {
           <Button
             type="button"
             variant="outline"
+            size="sm"
             onClick={onRemoveLogo}
             disabled={disabled || !profile?.logo_path}
-            className="h-10 gap-2 self-start"
+            className="gap-2 self-start rounded-sm"
           >
             <Trash2 className="h-4 w-4" />
             Remove Logo
           </Button>
         </div>
-      </Card>
+      </section>
 
-      <Card className="rounded-2xl border border-zinc-200/60 p-5 dark:border-border">
+      <section className="pt-2">
         <SectionHeader title="Company Profile" subtitle="This profile is shared globally across HH Unified." />
         <div className="mt-4 grid gap-3 md:grid-cols-2">
-          <Input placeholder="Company Name" value={form.org_name} onChange={(e) => updateField("org_name", e.target.value)} />
-          <Input placeholder="Legal Name" value={form.legal_name} onChange={(e) => updateField("legal_name", e.target.value)} />
-          <Input placeholder="Phone" value={form.phone} onChange={(e) => updateField("phone", e.target.value)} />
-          <Input placeholder="Email" value={form.email} onChange={(e) => updateField("email", e.target.value)} />
-          <Input placeholder="Website" value={form.website} onChange={(e) => updateField("website", e.target.value)} />
+          <Input className="rounded-sm" placeholder="Company Name" value={form.org_name} onChange={(e) => updateField("org_name", e.target.value)} />
+          <Input className="rounded-sm" placeholder="Legal Name" value={form.legal_name} onChange={(e) => updateField("legal_name", e.target.value)} />
+          <Input className="rounded-sm" placeholder="Phone" value={form.phone} onChange={(e) => updateField("phone", e.target.value)} />
+          <Input className="rounded-sm" placeholder="Email" value={form.email} onChange={(e) => updateField("email", e.target.value)} />
+          <Input className="rounded-sm" placeholder="Website" value={form.website} onChange={(e) => updateField("website", e.target.value)} />
           <Input
+            className="rounded-sm"
             placeholder="License Number"
             value={form.license_number}
             onChange={(e) => updateField("license_number", e.target.value)}
           />
-          <Input placeholder="Tax ID" value={form.tax_id} onChange={(e) => updateField("tax_id", e.target.value)} />
+          <Input className="rounded-sm" placeholder="Tax ID" value={form.tax_id} onChange={(e) => updateField("tax_id", e.target.value)} />
           <Input
+            className="rounded-sm"
             placeholder="Default tax %"
             inputMode="decimal"
             value={form.default_tax_pct}
             onChange={(e) => updateField("default_tax_pct", e.target.value)}
           />
-          <Input placeholder="Address Line 1" value={form.address1} onChange={(e) => updateField("address1", e.target.value)} />
-          <Input placeholder="Address Line 2" value={form.address2} onChange={(e) => updateField("address2", e.target.value)} />
-          <Input placeholder="City" value={form.city} onChange={(e) => updateField("city", e.target.value)} />
-          <Input placeholder="State" value={form.state} onChange={(e) => updateField("state", e.target.value)} />
-          <Input placeholder="ZIP" value={form.zip} onChange={(e) => updateField("zip", e.target.value)} />
-          <Input placeholder="Country" value={form.country} onChange={(e) => updateField("country", e.target.value)} />
+          <Input className="rounded-sm" placeholder="Address Line 1" value={form.address1} onChange={(e) => updateField("address1", e.target.value)} />
+          <Input className="rounded-sm" placeholder="Address Line 2" value={form.address2} onChange={(e) => updateField("address2", e.target.value)} />
+          <Input className="rounded-sm" placeholder="City" value={form.city} onChange={(e) => updateField("city", e.target.value)} />
+          <Input className="rounded-sm" placeholder="State" value={form.state} onChange={(e) => updateField("state", e.target.value)} />
+          <Input className="rounded-sm" placeholder="ZIP" value={form.zip} onChange={(e) => updateField("zip", e.target.value)} />
+          <Input className="rounded-sm" placeholder="Country" value={form.country} onChange={(e) => updateField("country", e.target.value)} />
         </div>
         <div className="mt-3 grid gap-3">
           <textarea
             value={form.default_terms}
             onChange={(e) => updateField("default_terms", e.target.value)}
             placeholder="Default Terms"
-            className="min-h-20 rounded-[10px] border border-input bg-muted/20 px-3 py-2 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring"
+            className="min-h-20 rounded-sm border border-[#EBEBE9] bg-background px-3 py-2 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring dark:border-border"
           />
           <textarea
             value={form.invoice_footer}
             onChange={(e) => updateField("invoice_footer", e.target.value)}
             placeholder="Invoice Footer"
-            className="min-h-20 rounded-[10px] border border-input bg-muted/20 px-3 py-2 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring"
+            className="min-h-20 rounded-sm border border-[#EBEBE9] bg-background px-3 py-2 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring dark:border-border"
           />
           <textarea
             value={form.notes}
             onChange={(e) => updateField("notes", e.target.value)}
             placeholder="Notes"
-            className="min-h-24 rounded-[10px] border border-input bg-muted/20 px-3 py-2 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring"
+            className="min-h-24 rounded-sm border border-[#EBEBE9] bg-background px-3 py-2 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring dark:border-border"
           />
         </div>
         <div className="mt-4 flex justify-end">
-          <Button type="button" disabled={disabled} onClick={onSave} className="gap-2">
+          <Button type="button" size="sm" disabled={disabled} onClick={onSave} className="gap-2 rounded-sm">
             <Upload className="h-4 w-4" />
             {saving ? "Saving..." : "Save Profile"}
           </Button>
         </div>
-      </Card>
+      </section>
     </div>
   );
 }

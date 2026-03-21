@@ -3,7 +3,6 @@ import { unstable_noStore } from "next/cache";
 import { PageHeader } from "@/components/page-header";
 import { getEstimateList } from "@/lib/data";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, FlaskConical } from "lucide-react";
 import { EstimateListRow } from "./estimate-list-row";
@@ -37,14 +36,14 @@ export default async function EstimatesListPage({
         actions={
           <div className="flex items-center gap-2">
             <form action={createTestEstimateAction}>
-              <Button type="submit" variant="outline" size="default" className="rounded-lg">
-                <FlaskConical className="h-4 w-4 mr-2" />
+              <Button type="submit" variant="outline" size="sm" className="rounded-sm">
+                <FlaskConical className="mr-2 h-4 w-4" />
                 Create test estimate
               </Button>
             </form>
-            <Button asChild variant="ghost" className="rounded-lg text-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800" size="default">
+            <Button asChild variant="ghost" size="sm" className="rounded-sm text-foreground hover:bg-[#F7F7F5] dark:hover:bg-muted/30">
               <Link href="/estimates/new">
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="mr-2 h-4 w-4" />
                 New Estimate
               </Link>
             </Button>
@@ -53,12 +52,12 @@ export default async function EstimatesListPage({
       />
       <EstimateSuccessBanner saved={saved} />
       {errorMessage && (
-        <div
+        <p
           role="alert"
-          className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+          className="border-b border-amber-400/50 pb-3 text-sm font-medium text-amber-800 dark:border-amber-600/50 dark:text-amber-200"
         >
           {errorMessage}
-        </div>
+        </p>
       )}
       {list.length === 0 ? (
         <EmptyState
@@ -72,10 +71,10 @@ export default async function EstimatesListPage({
           }
         />
       ) : (
-        <Card className="rounded-2xl border border-zinc-200/60 dark:border-border overflow-hidden">
+        <div className="overflow-hidden rounded-sm border border-[#EBEBE9] dark:border-border">
           <Table>
             <TableHeader>
-              <TableRow className="border-b border-zinc-200/40 dark:border-border/60 hover:bg-transparent">
+              <TableRow className="border-b border-[#EBEBE9] bg-[#F7F7F5] hover:bg-transparent dark:border-border dark:bg-muted/30">
                 <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Estimate #</TableHead>
                 <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Client</TableHead>
                 <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Project</TableHead>
@@ -91,7 +90,7 @@ export default async function EstimatesListPage({
               ))}
             </TableBody>
           </Table>
-        </Card>
+        </div>
       )}
     </div>
   );

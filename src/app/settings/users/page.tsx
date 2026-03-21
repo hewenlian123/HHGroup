@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import type { AppRole } from "@/lib/permissions";
 
 type ProfileRow = {
@@ -91,13 +92,13 @@ export default function SettingsUsersPage() {
       />
 
       {message ? (
-        <div className="rounded-lg border border-zinc-200/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground dark:border-border">
+        <div className="rounded-lg border border-[#EBEBE9] bg-background px-3 py-2 text-sm text-muted-foreground dark:border-border">
           {message}
         </div>
       ) : null}
 
-      <Card className="rounded-2xl border border-zinc-200/60 dark:border-border p-4">
-        <p className="text-sm font-semibold text-foreground mb-2">Invite Note (optional)</p>
+      <Card className="border-[#EBEBE9] p-4 dark:border-border">
+        <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground mb-2">Invite note (optional)</p>
         <Input
           value={inviteNote}
           onChange={(event) => setInviteNote(event.target.value)}
@@ -105,11 +106,11 @@ export default function SettingsUsersPage() {
         />
       </Card>
 
-      <Card className="rounded-2xl border border-zinc-200/60 dark:border-border overflow-hidden">
+      <Card className="overflow-hidden border-[#EBEBE9] p-0 dark:border-border">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-zinc-200/40 dark:border-border/60 bg-muted/30">
+              <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
                 <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">Email</th>
                 <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">Role</th>
                 <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">Created</th>
@@ -124,21 +125,21 @@ export default function SettingsUsersPage() {
                 </tr>
               ) : null}
               {rows.map((row) => (
-                <tr key={row.id} className="border-b border-zinc-100/50 dark:border-border/30">
+                <tr key={row.id} className="border-b border-[#EBEBE9]/80 dark:border-border/30">
                   <td className="px-4 py-3 text-foreground">{row.email || row.id}</td>
                   <td className="px-4 py-3">
                     {row.role === "owner" ? (
                       <span className="text-sm font-medium text-foreground">owner</span>
                     ) : (
-                      <select
+                      <Select
                         value={row.role}
                         onChange={(event) => void setUserRole(row.id, event.target.value === "admin" ? "admin" : "assistant")}
                         disabled={savingId === row.id}
-                        className="h-9 rounded-[10px] border border-input bg-muted/20 px-3 text-sm"
+                        className="h-9 max-w-[200px]"
                       >
                         <option value="admin">admin</option>
                         <option value="assistant">assistant</option>
-                      </select>
+                      </Select>
                     )}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">

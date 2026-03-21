@@ -3,9 +3,11 @@
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { PageHeader } from "@/components/page-header";
+import { FilterBar } from "@/components/filter-bar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { DeleteRowAction } from "@/components/base";
@@ -249,64 +251,73 @@ export default function LaborPaymentsClient() {
       <PageHeader title="Labor Payments" description="Weekly pay run summary from confirmed labor only." />
 
       {error ? (
-        <Card className="p-5">
+        <div className="rounded-lg border border-border/60 bg-background px-4 py-3">
           <p className="text-sm text-red-600">{error}</p>
-        </Card>
+        </div>
       ) : null}
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-        <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-        <select
-          value={projectId}
-          onChange={(e) => setProjectId(e.target.value)}
-          className="h-10 rounded-[10px] border border-input bg-white px-3 text-sm"
-        >
-          <option value="">All projects</option>
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
-        </select>
-      </div>
+      <FilterBar>
+        <div className="grid w-full gap-4 sm:grid-cols-3">
+          <div className="space-y-1">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Start</p>
+            <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">End</p>
+            <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Project</p>
+            <Select value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+              <option value="">All projects</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </Select>
+          </div>
+        </div>
+      </FilterBar>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <Card className="p-5">
-          <p className="text-xs uppercase tracking-wider text-muted-foreground">Total Due</p>
-          {loading ? <Skeleton className="mt-2 h-7 w-24" /> : (
-            <p className="text-lg font-semibold tabular-nums mt-1">
-              {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(kpiTotalDue)}
-            </p>
-          )}
-        </Card>
-        <Card className="p-5">
-          <p className="text-xs uppercase tracking-wider text-muted-foreground">Total Paid</p>
-          {loading ? <Skeleton className="mt-2 h-7 w-24" /> : (
-            <p className="text-lg font-semibold tabular-nums mt-1">
-              {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(kpiTotalPaid)}
-            </p>
-          )}
-        </Card>
-        <Card className="p-5">
-          <p className="text-xs uppercase tracking-wider text-muted-foreground">Outstanding</p>
-          {loading ? <Skeleton className="mt-2 h-7 w-24" /> : (
-            <p className="text-lg font-semibold tabular-nums mt-1">
-              {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(kpiOutstanding)}
-            </p>
-          )}
-        </Card>
-      </div>
+      <Card className="overflow-hidden p-0">
+        <div className="grid divide-y divide-[#EBEBE9] sm:grid-cols-3 sm:divide-y-0 sm:divide-x dark:divide-border/60">
+          <div className="p-5">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Total Due</p>
+            {loading ? <Skeleton className="mt-2 h-7 w-24" /> : (
+              <p className="text-lg font-semibold tabular-nums mt-1 text-[#2D2D2D] dark:text-foreground">
+                {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(kpiTotalDue)}
+              </p>
+            )}
+          </div>
+          <div className="p-5">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Total Paid</p>
+            {loading ? <Skeleton className="mt-2 h-7 w-24" /> : (
+              <p className="text-lg font-semibold tabular-nums mt-1 text-[#2D2D2D] dark:text-foreground">
+                {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(kpiTotalPaid)}
+              </p>
+            )}
+          </div>
+          <div className="p-5">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Outstanding</p>
+            {loading ? <Skeleton className="mt-2 h-7 w-24" /> : (
+              <p className="text-lg font-semibold tabular-nums mt-1 text-[#2D2D2D] dark:text-foreground">
+                {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(kpiOutstanding)}
+              </p>
+            )}
+          </div>
+        </div>
+      </Card>
 
       {message ? (
-        <div className="rounded-lg border border-zinc-200/60 dark:border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+        <div className="rounded-lg border border-[#EBEBE9] dark:border-border bg-background px-3 py-2 text-sm text-muted-foreground">
           {message}
         </div>
       ) : null}
 
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden p-0">
         <div className="table-responsive">
           <table className="w-full min-w-[520px] text-sm md:min-w-0">
             <thead>
-              <tr className="border-b border-zinc-200/40 dark:border-border/60 bg-muted/30">
+              <tr className="border-b border-[#EBEBE9] dark:border-border/60 bg-[#F7F7F5] dark:bg-muted/30">
                 <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Worker</th>
                 <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Confirmed Total</th>
                 <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Paid Total</th>
@@ -329,9 +340,9 @@ export default function LaborPaymentsClient() {
               ) : (
                 rows.map((row) => (
                   <React.Fragment key={row.workerId}>
-                    <tr className="border-b border-zinc-100/50 dark:border-border/30">
+                    <tr className="border-b border-[#EBEBE9]/80 dark:border-border/30 hover:bg-[#F7F7F5] dark:hover:bg-muted/30">
                       <td className="py-3 px-4 font-medium text-foreground">
-                        <button type="button" className="hover:underline" onClick={() => setExpandedWorkerId((prev) => (prev === row.workerId ? null : row.workerId))}>
+                        <button type="button" className="hover:underline text-left" onClick={() => setExpandedWorkerId((prev) => (prev === row.workerId ? null : row.workerId))}>
                           {row.workerName}
                         </button>
                       </td>
@@ -351,6 +362,7 @@ export default function LaborPaymentsClient() {
                       </td>
                       <td className="py-3 px-4 text-right">
                         <RowActionsMenu
+                          appearance="list"
                           ariaLabel={`Actions for ${row.workerName}`}
                           actions={[
                             {
@@ -367,10 +379,10 @@ export default function LaborPaymentsClient() {
                       </td>
                     </tr>
                     {expandedWorkerId === row.workerId ? (
-                      <tr className="border-b border-zinc-100/50 dark:border-border/30 bg-muted/20">
+                      <tr className="border-b border-[#EBEBE9]/80 dark:border-border/30 bg-[#F7F7F5]/50 dark:bg-muted/20">
                         <td className="py-3 px-4 text-xs text-muted-foreground" colSpan={6}>
                           <div className="space-y-3">
-                            <div className="rounded-lg border border-zinc-200/60 dark:border-border px-3 py-2 bg-background/60">
+                            <div className="border-b border-[#EBEBE9] dark:border-border pb-3">
                               <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">Pay Run Source</p>
                               <div className="space-y-1">
                                 <div className="flex justify-between gap-4">
@@ -379,7 +391,7 @@ export default function LaborPaymentsClient() {
                                     {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(row.confirmedDailyTotal)}
                                   </span>
                                 </div>
-                                <div className="flex justify-between gap-4 font-medium text-foreground pt-1 border-t border-zinc-200/60 dark:border-border">
+                                <div className="flex justify-between gap-4 font-medium text-foreground pt-1 border-t border-[#EBEBE9] dark:border-border">
                                   <span>Confirmed total</span>
                                   <span className="tabular-nums">
                                     {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(row.confirmedTotal)}
@@ -439,11 +451,11 @@ export default function LaborPaymentsClient() {
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Method</label>
-                <select value={method} onChange={(e) => setMethod(e.target.value)} className="mt-1 h-10 w-full rounded-[10px] border border-input bg-white px-3 text-sm">
+                <Select value={method} onChange={(e) => setMethod(e.target.value)} className="mt-1 w-full">
                   {paymentMethods.map((m) => (
                     <option key={m} value={m}>{m}</option>
                   ))}
-                </select>
+                </Select>
               </div>
               <div>
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Memo (optional)</label>
@@ -452,8 +464,8 @@ export default function LaborPaymentsClient() {
               {modalWarning ? <p className="text-xs text-amber-600 dark:text-amber-400">{modalWarning}</p> : null}
             </div>
             <div className="mt-6 flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setModalWorkerId(null)} disabled={busy}>Cancel</Button>
-              <Button onClick={savePayment} disabled={amount <= 0 || busy}>Save Payment</Button>
+              <Button variant="outline" size="sm" onClick={() => setModalWorkerId(null)} disabled={busy}>Cancel</Button>
+              <Button size="sm" onClick={savePayment} disabled={amount <= 0 || busy}>Save Payment</Button>
             </div>
           </Card>
         </div>

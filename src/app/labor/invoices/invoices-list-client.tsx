@@ -9,12 +9,19 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FilterBar } from "@/components/filter-bar";
+import { Select } from "@/components/ui/select";
 import { StatusBadge } from "@/components/status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { DeleteRowAction } from "@/components/base";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { createBrowserClient } from "@/lib/supabase";
+import {
+  listTableAmountCellClassName,
+  listTablePrimaryCellClassName,
+  listTableRowClassName,
+} from "@/lib/list-table-interaction";
+import { cn } from "@/lib/utils";
 
 type LaborInvoiceStatus = "draft" | "reviewed" | "confirmed" | "void";
 
@@ -187,41 +194,51 @@ export default function LaborInvoicesListClient() {
         subtitle="Worker invoices/receipts with attachment and project split review."
         actions={
           <Link href="/labor/invoices/new" className="w-full sm:w-auto block sm:inline-block">
-            <Button className="min-h-[44px] sm:min-h-9 w-full sm:w-auto rounded-lg">+ New Invoice</Button>
+            <Button size="sm" className="w-full sm:w-auto">+ New Invoice</Button>
           </Link>
         }
       />
-      <FilterBar className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search invoice # or worker" className="h-10 rounded-[10px]" />
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value as "" | LaborInvoiceStatus)}
-          className="h-10 rounded-[10px] border border-input bg-muted/20 px-3 text-sm"
-        >
-          <option value="">All status</option>
-          <option value="draft">Draft</option>
-          <option value="reviewed">Reviewed</option>
-          <option value="confirmed">Confirmed</option>
-          <option value="void">Void</option>
-        </select>
-        <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="h-10 rounded-[10px]" />
-        <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="h-10 rounded-[10px]" />
+      <FilterBar>
+        <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="space-y-1">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Search</p>
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Invoice # or worker" />
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Status</p>
+            <Select value={status} onChange={(e) => setStatus(e.target.value as "" | LaborInvoiceStatus)}>
+              <option value="">All status</option>
+              <option value="draft">Draft</option>
+              <option value="reviewed">Reviewed</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="void">Void</option>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">From</p>
+            <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">To</p>
+            <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+          </div>
+        </div>
       </FilterBar>
       {message ? (
-        <div className="rounded-lg border border-zinc-200/60 dark:border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+        <div className="rounded-lg border border-[#EBEBE9] dark:border-border bg-background px-3 py-2 text-sm text-muted-foreground">
           {message}
         </div>
       ) : null}
       {error ? (
-        <Card className="p-5">
+        <div className="rounded-lg border border-border/60 bg-background px-4 py-3">
           <p className="text-sm text-red-600">{error}</p>
-        </Card>
+        </div>
       ) : null}
-      <Card className="rounded-2xl border border-zinc-200/60 dark:border-border overflow-hidden">
+      <Card className="overflow-hidden p-0">
         <div className="table-responsive">
           <table className="w-full min-w-[560px] text-sm md:min-w-0">
             <thead>
-              <tr className="border-b border-zinc-200/40 dark:border-border/60 bg-muted/30">
+              <tr className="border-b border-[#EBEBE9] dark:border-border/60 bg-[#F7F7F5] dark:bg-muted/30">
                 <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Invoice #</th>
                 <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Worker</th>
                 <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Date</th>
@@ -243,22 +260,24 @@ export default function LaborInvoicesListClient() {
               ) : (
                 <>
                   {filtered.map((row) => (
-                    <tr key={row.id} className="group border-b border-zinc-100/50 dark:border-border/30">
+                    <tr
+                      key={row.id}
+                      className={cn(listTableRowClassName, "border-b border-[#EBEBE9]/80 dark:border-border/30")}
+                      onClick={() => router.push(`/labor/invoices/${row.id}`)}
+                    >
                       <td className="py-3 px-4 font-medium text-foreground">
-                        <Link href={`/labor/invoices/${row.id}`} className="hover:underline">
-                          {row.invoice_no}
-                        </Link>
+                        <span className={cn(listTablePrimaryCellClassName, "hover:underline")}>{row.invoice_no}</span>
                       </td>
                       <td className="py-3 px-4">{workersMap.get(row.worker_id) ?? "Unknown worker"}</td>
-                      <td className="py-3 px-4 tabular-nums">{row.invoice_date}</td>
-                      <td className="py-3 px-4 text-right tabular-nums">
+                      <td className="py-3 px-4 tabular-nums text-muted-foreground">{row.invoice_date}</td>
+                      <td className={cn("py-3 px-4 text-right tabular-nums", listTableAmountCellClassName)}>
                         {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(row.amount)}
                       </td>
-                      <td className="py-3 px-4 text-right tabular-nums">{row.project_splits?.length ?? 0}</td>
+                      <td className={cn("py-3 px-4 text-right tabular-nums", listTableAmountCellClassName)}>{row.project_splits?.length ?? 0}</td>
                       <td className="py-3 px-4">
                         <StatusBadge status={row.status} />
                       </td>
-                      <td className="py-3 px-4 text-right">
+                      <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="inline-flex items-center justify-end gap-1">
                           <DeleteRowAction
                             disabled={row.status === "confirmed" || !!busyId}
@@ -267,9 +286,10 @@ export default function LaborInvoicesListClient() {
                             onDelete={() => handleDelete(row.id)}
                           />
                           <RowActionsMenu
+                            appearance="list"
                             ariaLabel={`Actions for ${row.invoice_no}`}
                             actions={[
-                              { label: "View", onClick: () => router.push(`/labor/invoices/${row.id}`) },
+                              { label: "View", onClick: () => { void router.push(`/labor/invoices/${row.id}`); } },
                               ...(row.status !== "void"
                                 ? [{ label: "Void", onClick: () => setVoidConfirmId(row.id), disabled: !!busyId, destructive: true }]
                                 : []),
@@ -294,7 +314,7 @@ export default function LaborInvoicesListClient() {
       </Card>
 
       <Dialog open={!!voidConfirmId} onOpenChange={(open) => !open && setVoidConfirmId(null)}>
-        <DialogContent className="max-w-sm border-border/60 rounded-md">
+        <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Void invoice</DialogTitle>
           </DialogHeader>

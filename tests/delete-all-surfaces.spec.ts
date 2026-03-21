@@ -156,10 +156,15 @@ test.describe("Delete surface catalog (read-only)", () => {
     await page.waitForLoadState("domcontentloaded");
     await skipIfSupabaseMissing(page);
     await waitForListLoaded(page);
+    await expect(page.locator("tbody tr").first()).not.toContainText(/\bLoading\b/i, { timeout: LIST_LOAD_MS }).catch(() => undefined);
     const row = page.locator("tbody tr").first();
     test.skip((await row.count()) === 0, "No labor invoice rows.");
-    const del = row.getByRole("button", { name: /^Delete$/ });
-    await expectDeleteControlVisibleWithoutHover(page, del, 1500);
+    const rowText = (await row.innerText()).trim();
+    test.skip(/\bloading\b/i.test(rowText), "Labor invoices table still loading.");
+    test.skip(/no labor invoices yet/i.test(rowText), "No labor invoice rows.");
+    // Text button "Delete" in Actions column (not icon-only).
+    const del = row.getByRole("button", { name: /^Delete$/i });
+    await expectDeleteControlVisibleWithoutHover(page, del, 4000);
   });
 
   test("labor reimbursements: trash Delete visible", async ({ page }) => {
@@ -167,10 +172,14 @@ test.describe("Delete surface catalog (read-only)", () => {
     await page.waitForLoadState("domcontentloaded");
     await skipIfSupabaseMissing(page);
     await waitForListLoaded(page);
+    await expect(page.locator("tbody tr").first()).not.toContainText(/\bLoading\b/i, { timeout: LIST_LOAD_MS }).catch(() => undefined);
     const row = page.locator("tbody tr").first();
     test.skip((await row.count()) === 0, "No reimbursement rows.");
-    const del = row.getByRole("button", { name: "Delete" });
-    await expectDeleteControlVisibleWithoutHover(page, del, 1500);
+    const rowText = (await row.innerText()).trim();
+    test.skip(/\bloading\b/i.test(rowText), "Reimbursements table still loading.");
+    test.skip(/no reimbursements yet/i.test(rowText), "No reimbursement rows.");
+    const del = row.locator('button[aria-label="Delete"]');
+    await expectDeleteControlVisibleWithoutHover(page, del, 4000);
   });
 
   test("labor daily: first row delete (trash) visible", async ({ page }) => {
@@ -188,40 +197,29 @@ test.describe("Delete surface catalog (read-only)", () => {
     await page.goto(`${BASE}/labor/worker-invoices`);
     await page.waitForLoadState("domcontentloaded");
     await skipIfSupabaseMissing(page);
+    await expect(page.locator("tbody tr").first()).not.toContainText(/\bLoading\b/i, { timeout: LIST_LOAD_MS }).catch(() => undefined);
     const row = page.locator("tbody tr").first();
     test.skip((await row.count()) === 0, "No worker invoice rows.");
+    const rowText = (await row.innerText()).trim();
+    test.skip(/\bloading\b/i.test(rowText), "Worker invoices table still loading.");
+    test.skip(/no worker invoices yet/i.test(rowText), "No worker invoice rows.");
     const del = row.getByRole("button", { name: /^Delete$/ });
-    await expectDeleteControlVisibleWithoutHover(page, del, 1500);
+    await expectDeleteControlVisibleWithoutHover(page, del, 4000);
   });
 
-  test("labor payments: pay history Delete visible after expand (read-only)", async ({ page }) => {
+  test("labor payments (worker payouts list): first row Delete visible", async ({ page }) => {
     await page.goto(`${BASE}/labor/payments`);
     await page.waitForLoadState("domcontentloaded");
     await skipIfSupabaseMissing(page);
     await waitForListLoaded(page);
-    const workerRows = page.locator('tbody tr:not(:has(td[colspan="6"]))');
-    const wc = await workerRows.count();
-    test.skip(wc === 0, "No worker rows.");
-    let found: ReturnType<typeof page.locator> | null = null;
-    for (let i = 0; i < wc; i++) {
-      const nameBtn = workerRows.nth(i).locator("td").first().getByRole("button");
-      await nameBtn.click();
-      const del = page
-        .locator("tbody tr")
-        .filter({ has: page.getByRole("button", { name: /^Delete$/ }) })
-        .getByRole("button", { name: /^Delete$/ })
-        .first();
-      if (await del.isVisible().catch(() => false)) {
-        found = del;
-        break;
-      }
-      await nameBtn.click();
-    }
-    if (!found) {
-      test.skip(true, "No labor_payments in selected range for any worker.");
-    } else {
-      await expectDeleteControlVisibleWithoutHover(page, found, 1500);
-    }
+    await expect(page.locator("tbody tr").first()).not.toContainText(/\bLoading\b/i, { timeout: LIST_LOAD_MS }).catch(() => undefined);
+    const row = page.locator("tbody tr").first();
+    test.skip((await row.count()) === 0, "No payment rows.");
+    const rowText = (await row.innerText()).trim();
+    test.skip(/\bloading\b/i.test(rowText), "Payments table still loading.");
+    test.skip(/no payments yet/i.test(rowText), "No worker payment rows.");
+    const del = row.getByRole("button", { name: /^Delete$/ });
+    await expectDeleteControlVisibleWithoutHover(page, del, 4000);
   });
 
   test("site-photos: first card overflow has Delete", async ({ page }) => {

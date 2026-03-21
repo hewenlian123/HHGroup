@@ -2,12 +2,13 @@
 
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus, Search } from "lucide-react";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
+import { FilterBar } from "@/components/filter-bar";
+import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -264,11 +265,7 @@ export function ExpensesClient() {
     {
       key: "vendor_name",
       header: "Vendor",
-      render: (row) => (
-        <Link href={`/financial/expenses/${row.id}`} className="font-medium text-foreground hover:underline">
-          {row.vendor_name?.trim() || "Untitled Expense"}
-        </Link>
-      ),
+      render: (row) => <span className="font-medium text-foreground">{row.vendor_name?.trim() || "Untitled Expense"}</span>,
     },
     {
       key: "worker",
@@ -297,9 +294,11 @@ export function ExpensesClient() {
       align: "right",
       render: (row) => (
         <RowActionsMenu
-          ariaLabel="Row actions"
+          appearance="list"
+          ariaLabel={`Actions for ${row.vendor_name?.trim() || "expense"}`}
           actions={[
             { label: "View", onClick: () => router.push(`/financial/expenses/${row.id}`) },
+            { label: "Edit", onClick: () => router.push(`/financial/expenses/${row.id}`) },
             { label: "Delete", onClick: () => void handleDelete(row.id), destructive: true },
           ]}
         />
@@ -326,50 +325,44 @@ export function ExpensesClient() {
       />
 
       {error ? (
-        <div className="rounded-[12px] border border-[#E5E7EB] bg-white px-4 py-3 text-sm text-muted-foreground">{error}</div>
+        <div className="rounded-lg border border-[#EBEBE9] bg-white px-4 py-3 text-sm text-gray-600 shadow-sm dark:border-border dark:bg-card dark:text-muted-foreground">
+          {error}
+        </div>
       ) : null}
 
-      <Card className="p-5">
-        <div className="grid gap-4 sm:grid-cols-3">
+      <FilterBar>
+        <div className="grid w-full gap-4 sm:grid-cols-3">
           <div className="space-y-1">
-            <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">Search</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Search</p>
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-muted-foreground" />
               <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Vendor or reference..." className="pl-9" />
             </div>
           </div>
           <div className="space-y-1">
-            <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">Project</p>
-            <select
-              value={projectFilter}
-              onChange={(e) => setProjectFilter(e.target.value)}
-              className="h-10 w-full rounded-[10px] border border-[#E5E7EB] bg-white px-3 text-sm"
-            >
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Project</p>
+            <Select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)}>
               <option value="">All projects</option>
               {projectsForFilter.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div className="space-y-1">
-            <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">Category</p>
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="h-10 w-full rounded-[10px] border border-[#E5E7EB] bg-white px-3 text-sm"
-            >
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Category</p>
+            <Select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
               <option value="">All categories</option>
               {categoriesForFilter.map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         </div>
-      </Card>
+      </FilterBar>
 
       <Card className="p-0 overflow-hidden">
         {loading ? (
@@ -380,7 +373,15 @@ export function ExpensesClient() {
           </div>
         ) : (
           <>
-            <DataTable<Row> columns={columns} data={data} keyExtractor={(r) => r.id} emptyText="No data yet." />
+            <DataTable<Row>
+              columns={columns}
+              data={data}
+              keyExtractor={(r) => r.id}
+              emptyText="No data yet."
+              onRowClick={(r) => router.push(`/financial/expenses/${r.id}`)}
+              primaryColumnKey="vendor_name"
+              amountColumnKeys={["total"]}
+            />
             {hasMore && data.length > 0 && (
               <div className="border-t border-border/60 p-3 flex justify-center">
                 <Button variant="outline" size="sm" disabled={loadingMore} onClick={() => fetchPage(rows.length, true)}>
