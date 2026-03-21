@@ -1,0 +1,27 @@
+@media print {
+  .modal-header {
+    display: none !important;
+  }
+
+  .receipt-preview-overlay {
+    display: none !important;
+  }
+
+  .receipt-preview-dialog-root {
+    position: static !important;
+    inset: auto !important;
+    left: auto !important;
+    top: auto !important;
+    transform: none !important;
+    max-height: none !important;
+    width: 100% !important;
+    max-width: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+  }
+
+  .receipt-preview-scroll {
+    overflow: visible !important;
+    background: white !important;
+  }
+}

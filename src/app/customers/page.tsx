@@ -1,8 +1,9 @@
-"use server";
-
 import { PageLayout } from "@/components/base";
 import { getAllCustomers } from "@/lib/customers-db";
 import { CustomersClient } from "./customers-client";
+
+/** Avoid DB access during `next build` when CI uses placeholder Supabase env. */
+export const dynamic = "force-dynamic";
 
 export default async function CustomersPage() {
   const customers = await getAllCustomers();
@@ -15,4 +16,3 @@ export default async function CustomersPage() {
     </PageLayout>
   );
 }
-

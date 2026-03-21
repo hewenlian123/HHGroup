@@ -2,12 +2,12 @@
 
 ## 1. Environment variables (hosting, e.g. Vercel)
 
-| Variable | Required | Purpose |
-|----------|----------|---------|
-| `NEXT_PUBLIC_SUPABASE_URL` | **Yes** | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | **Yes** | Client + cookie-based server reads |
-| `SUPABASE_SERVICE_ROLE_KEY` | **Yes** for labor pay | Worker payment, delete payment, balance APIs that use `getServerSupabaseAdmin()` (RLS bypass) |
-| `SUPABASE_DATABASE_URL` or `DATABASE_URL` | Recommended | Faster worker balances aggregation (SQL); schema repair scripts |
+| Variable                                  | Required              | Purpose                                                                                       |
+| ----------------------------------------- | --------------------- | --------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`                | **Yes**               | Supabase project URL                                                                          |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY`           | **Yes**               | Client + cookie-based server reads                                                            |
+| `SUPABASE_SERVICE_ROLE_KEY`               | **Yes** for labor pay | Worker payment, delete payment, balance APIs that use `getServerSupabaseAdmin()` (RLS bypass) |
+| `SUPABASE_DATABASE_URL` or `DATABASE_URL` | Recommended           | Faster worker balances aggregation (SQL); schema repair scripts                               |
 
 Never commit secrets. Copy from Supabase Dashboard → Project Settings.
 

@@ -1,6 +1,6 @@
 /**
  * UI smoke tests using Puppeteer.
- * Run with: node tests/ui-tests.js
+ * Run with: npx tsx tests/ui-tests.ts
  * Or via:   npm run ui:test
  *
  * Tests navigate the live app and verify pages load with expected UI elements.
@@ -9,8 +9,8 @@
  * Output: single-line JSON to stdout — { ok, tests: [{ name, ok, error? }], error? }
  */
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const fs = require("fs");
+import * as fs from "node:fs";
+import type { Browser, ElementHandle, HTTPResponse, LaunchOptions, Page } from "puppeteer";
 
 const BASE_URL = (process.env.BASE_URL || "http://localhost:3000").replace(/\/$/, "");
 const NAV_TIMEOUT = 20000;
@@ -33,7 +33,7 @@ const CHROME_CANDIDATES = [
   "/snap/bin/chromium",
 ];
 
-function findSystemChrome() {
+function findSystemChrome(): string | undefined {
   for (const p of CHROME_CANDIDATES) {
     try {
       if (fs.existsSync(p)) return p;
@@ -46,8 +46,12 @@ function findSystemChrome() {
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
+type TestOutcome =
+  | { name: string; ok: true }
+  | { name: string; ok: false; error: string };
+
 /** Run a single test function. Returns { name, ok, error? }. */
-async function runTest(name, fn) {
+async function runTest(name: string, fn: () => Promise<void>): Promise<TestOutcome> {
   try {
     await fn();
     return { name, ok: true };
@@ -57,7 +61,7 @@ async function runTest(name, fn) {
 }
 
 /** Navigate to a URL and wait for the page body to be visible. */
-async function goto(page, path) {
+async function goto(page: Page, path: string): Promise<HTTPResponse | null> {
   const url = `${BASE_URL}${path}`;
   const res = await page.goto(url, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT });
   if (!res || res.status() >= 500) {
@@ -68,7 +72,7 @@ async function goto(page, path) {
 }
 
 /** Wait for any element matching selector to appear. */
-async function waitFor(page, selector, description) {
+async function waitFor(page: Page, selector: string, description?: string): Promise<void> {
   try {
     await page.waitForSelector(selector, { timeout: WAIT_TIMEOUT });
   } catch {
@@ -77,7 +81,7 @@ async function waitFor(page, selector, description) {
 }
 
 /** Check page body contains a given string. */
-async function assertText(page, text) {
+async function assertText(page: Page, text: string): Promise<void> {
   const content = await page.content();
   if (!content.includes(text)) throw new Error(`Expected text not found: "${text}"`);
 }
@@ -88,7 +92,14 @@ async function assertText(page, text) {
  * expectedText: string that must appear on the page (e.g. "Projects" or "Estimates")
  * options: { createButtonLabel?: string } optional label to look for (default: look for New|Add|Create)
  */
-async function smokeTestModulePage(page, path, expectedText, options = {}) {
+type SmokeModuleOptions = { createButtonLabel?: string };
+
+async function smokeTestModulePage(
+  page: Page,
+  path: string,
+  expectedText: string,
+  options: SmokeModuleOptions = {}
+): Promise<void> {
   const res = await goto(page, path);
   if (!res || res.status() >= 400) {
     throw new Error(`Page ${path} returned HTTP ${res ? res.status() : "no response"}`);
@@ -152,15 +163,25 @@ async function smokeTestModulePage(page, path, expectedText, options = {}) {
   }
 }
 
+/** XPath first match (legacy `Page.$x` — not always in typings). */
+async function xpathFirst(page: Page, expression: string): Promise<ElementHandle<Element> | undefined> {
+  const legacy = page as unknown as { $x?: (xpath: string) => Promise<ElementHandle<Element>[]> };
+  if (!legacy.$x) throw new Error("Puppeteer Page.$x is not available");
+  const handles = await legacy.$x(expression);
+  return handles[0];
+}
+
+type PuppeteerWithLaunch = { launch: (opts?: LaunchOptions) => Promise<Browser> };
+
 // ── main ──────────────────────────────────────────────────────────────────────
 
 async function main() {
-  // Require puppeteer here so the error is caught below
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  let puppeteer;
+  let puppeteerPkg: PuppeteerWithLaunch | null = null;
   try {
-    puppeteer = require("puppeteer");
-  } catch (e) {
+    const mod = await import("puppeteer");
+    const raw = mod as { default?: PuppeteerWithLaunch } & PuppeteerWithLaunch;
+    puppeteerPkg = raw.default ?? raw;
+  } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
     process.stdout.write(
       JSON.stringify({
@@ -193,7 +214,7 @@ async function main() {
     "labor_receipts",
   ];
 
-  function exitSkipped(hint) {
+  function exitSkipped(hint: string): never {
     process.stdout.write(
       JSON.stringify({
         ok: true,
@@ -202,6 +223,7 @@ async function main() {
       }) + "\n"
     );
     process.exit(0);
+    throw new Error("unreachable");
   }
 
   // No system Chrome — skip launch entirely so we don't hang (Puppeteer may try to download Chrome)
@@ -209,9 +231,9 @@ async function main() {
     exitSkipped("No system Chrome found. Run: npx puppeteer browsers install chrome");
   }
 
-  let browser;
+  let browser: Browser;
   try {
-    browser = await puppeteer.launch({
+    browser = await puppeteerPkg.launch({
       headless: true,
       args: launchArgs,
       executablePath,
@@ -221,7 +243,7 @@ async function main() {
     exitSkipped(errMsg);
   }
 
-  const results = [];
+  const results: TestOutcome[] = [];
 
   // ── 1. receipt_upload ──────────────────────────────────────────────────────
   {
@@ -366,13 +388,13 @@ async function main() {
       try {
         await goto(page, "/tasks");
         await waitFor(page, "main, [class*='page-container']", "page content");
-        const newBtn = await page.$x('//button[contains(., "New Task")]').then((a) => a[0]);
+        const newBtn = await xpathFirst(page, '//button[contains(., "New Task")]');
         if (!newBtn) throw new Error('"New Task" button not found');
         await newBtn.click();
         await page.waitForSelector('[role="dialog"], [class*="dialog"]', { timeout: WAIT_TIMEOUT });
         const firstProjectValue = await page.evaluate(() => {
           const opt = document.querySelector('select option[value]:not([value=""])');
-          return opt ? opt.value : null;
+          return opt ? (opt as HTMLOptionElement).value : null;
         });
         if (!firstProjectValue) {
           await page.keyboard.press("Escape");
@@ -382,7 +404,7 @@ async function main() {
         const titleInput = await page.$('input[placeholder*="Task title"], input[placeholder*="title"]');
         if (!titleInput) throw new Error("Task title input not found");
         await titleInput.type(taskTitle, { delay: 20 });
-        const saveBtn = await page.$x('//button[contains(., "Save")]').then((a) => a[0]);
+        const saveBtn = await xpathFirst(page, '//button[contains(., "Save")]');
         if (!saveBtn) throw new Error("Save button not found");
         await saveBtn.click();
         await page.waitForFunction(
@@ -392,13 +414,16 @@ async function main() {
         await new Promise((r) => setTimeout(r, 800));
         const hasRow = await page.evaluate((title) => document.body.innerText.includes(title), taskTitle);
         if (!hasRow) throw new Error(`New task row "${taskTitle}" did not appear`);
-        const rowEl = await page.$x(`//tr[contains(., "${taskTitle}")] | //button[contains(., "${taskTitle}")]`).then((a) => a[0]);
+        const rowEl = await xpathFirst(
+          page,
+          `//tr[contains(., "${taskTitle}")] | //button[contains(., "${taskTitle}")]`
+        );
         if (!rowEl) throw new Error(`Row with "${taskTitle}" not found`);
         await rowEl.click();
         await new Promise((r) => setTimeout(r, 400));
-        const deleteBtn = await page.$x('//button[contains(., "Delete")]').then((a) => a[0]);
+        const deleteBtn = await xpathFirst(page, '//button[contains(., "Delete")]');
         if (!deleteBtn) throw new Error("Delete button not found in drawer");
-        page.once("dialog", (d) => d.accept());
+        page.once("dialog", (d: { accept: () => void }) => d.accept());
         await deleteBtn.click();
         await new Promise((r) => setTimeout(r, 1200));
         const stillThere = await page.evaluate((title) => document.body.innerText.includes(title), taskTitle);
@@ -488,7 +513,6 @@ async function main() {
   );
 
   await browser.close();
-  browser = null;
 
   const allOk = results.every((t) => t.ok);
   process.stdout.write(JSON.stringify({ ok: allOk, tests: results }) + "\n");

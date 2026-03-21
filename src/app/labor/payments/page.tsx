@@ -4,6 +4,7 @@ import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
+import { WorkerPaymentReceiptPreviewModal } from "@/components/labor/worker-payment-receipt-preview-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { deleteWorkerPayment, getProjects, getWorkerPayments, getWorkers, type WorkerPayment } from "@/lib/data";
@@ -32,6 +33,7 @@ export default function WorkerPaymentsPage() {
     key: "paymentDate",
     dir: "desc",
   });
+  const [receiptPreviewId, setReceiptPreviewId] = React.useState<string | null>(null);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -119,6 +121,13 @@ export default function WorkerPaymentsPage() {
 
   return (
     <div className="page-container page-stack py-6">
+      <WorkerPaymentReceiptPreviewModal
+        paymentId={receiptPreviewId}
+        open={receiptPreviewId != null}
+        onOpenChange={(o) => {
+          if (!o) setReceiptPreviewId(null);
+        }}
+      />
       <PageHeader
         title="Worker Payments"
         subtitle="Payment history for worker payouts."
@@ -200,12 +209,13 @@ export default function WorkerPaymentsPage() {
                   </td>
                   <td className="py-2 px-4 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <Link
-                        href={`/labor/payments/${r.id}/receipt`}
+                      <button
+                        type="button"
                         className="text-sm text-muted-foreground hover:text-foreground"
+                        onClick={() => setReceiptPreviewId(r.id)}
                       >
                         View Receipt
-                      </Link>
+                      </button>
                       <Button size="sm" variant="ghost" className="h-8 text-red-600" onClick={() => handleDelete(r.id)}>
                         Delete
                       </Button>

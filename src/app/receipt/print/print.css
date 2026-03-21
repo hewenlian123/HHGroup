@@ -1,0 +1,31 @@
+@media print {
+  body {
+    background: white;
+  }
+
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  .no-print {
+    display: none;
+  }
+
+  .no-break {
+    page-break-inside: avoid;
+  }
+
+  .receipt-paper {
+    box-shadow: none;
+    border: none;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tr {
+    page-break-inside: avoid;
+  }
+}

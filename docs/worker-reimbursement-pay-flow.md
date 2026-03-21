@@ -17,12 +17,12 @@
 
 顺序是：
 
-1. **先**调 `markReimbursementPaid(id)`  
-   - 执行：`update worker_reimbursements set status = 'paid', paid_at = now() where id = ?`  
+1. **先**调 `markReimbursementPaid(id)`
+   - 执行：`update worker_reimbursements set status = 'paid', paid_at = now() where id = ?`
    - 成功则返回更新后的报销对象；失败则抛错，接口直接 400，**不会**去创建费用。
 
-2. **再**调 `createExpenseFromPaidReimbursement(reimbursement, { method, note })`  
-   - 用报销数据创建一条 `expenses` 记录（并写一条 `expense_lines`）。  
+2. **再**调 `createExpenseFromPaidReimbursement(reimbursement, { method, note })`
+   - 用报销数据创建一条 `expenses` 记录（并写一条 `expense_lines`）。
    - 若这里抛错，会被 catch，只把错误信息放进 `expenseWarning`，接口仍 200，报销状态**已经**是 paid。
 
 3. 返回 200 + `{ reimbursement, expenseId?, expenseWarning? }`。
@@ -50,15 +50,15 @@
 
 ### Bug 2：同一笔报销生成多条费用（重复创建）
 
-- **原因 1**：**防重依赖 `source` / `source_id`**  
-  - 防重逻辑：先查 `expenses` 是否存在 `source = 'worker_reimbursement'` 且 `source_id = reimbursement.id`，有则直接返回，不插入。  
+- **原因 1**：**防重依赖 `source` / `source_id`**
+  - 防重逻辑：先查 `expenses` 是否存在 `source = 'worker_reimbursement'` 且 `source_id = reimbursement.id`，有则直接返回，不插入。
   - 若迁移 `202604141000_expenses_source_source_id_paid.sql` **没跑**，表里没有 `source`、`source_id`，这条 select 会报错；代码里用 try/catch 吞掉错误，`existingId` 一直是 null → **每次都会插入** → 重复费用。
 
-- **原因 2**：**降级插入不写 source/source_id**  
-  - 首次插入时若因缺少列（如没有 `status='paid'`、没有 `source` 等）走 fallback 插入（noSource、minimal），这些 payload **没有**写 `source`、`source_id`。  
+- **原因 2**：**降级插入不写 source/source_id**
+  - 首次插入时若因缺少列（如没有 `status='paid'`、没有 `source` 等）走 fallback 插入（noSource、minimal），这些 payload **没有**写 `source`、`source_id`。
   - 这样产生的费用行没有 source 信息，下次同一报销再点「Mark as Paid」时，防重查询仍然找不到 → **再次插入** → 重复。
 
-- **原因 3**：**没有用 reference_no 做兜底防重**  
+- **原因 3**：**没有用 reference_no 做兜底防重**
   - 费用里已经稳定写了 `reference_no = 'REIM-${reimbursementId}'`，但防重只看了 source/source_id，没有用 reference_no 再查一次，所以在「无 source 列」或「历史数据无 source」时无法防重。
 
 ### Bug 3：付款“没成功”的体感
@@ -72,36 +72,36 @@
 
 ### 表 1：`worker_reimbursements`
 
-| 字段           | 类型         | 说明 |
-|----------------|--------------|------|
-| id             | uuid PK      | 主键 |
-| worker_id      | uuid         | 工人 |
-| project_id     | uuid nullable| 项目 |
-| vendor         | text         | 供应商/说明（后续迁移加） |
-| amount         | numeric      | 金额 |
-| description    | text         | 描述 |
-| receipt_url    | text         | 收据链接 |
-| status         | text default 'pending' | pending / paid |
-| created_at     | timestamptz  | 创建时间 |
-| paid_at        | timestamptz  | 付款时间（后续迁移加） |
-| payment_id     | uuid         | 关联 worker_payments（批量付款用，可选） |
+| 字段        | 类型                   | 说明                                     |
+| ----------- | ---------------------- | ---------------------------------------- |
+| id          | uuid PK                | 主键                                     |
+| worker_id   | uuid                   | 工人                                     |
+| project_id  | uuid nullable          | 项目                                     |
+| vendor      | text                   | 供应商/说明（后续迁移加）                |
+| amount      | numeric                | 金额                                     |
+| description | text                   | 描述                                     |
+| receipt_url | text                   | 收据链接                                 |
+| status      | text default 'pending' | pending / paid                           |
+| created_at  | timestamptz            | 创建时间                                 |
+| paid_at     | timestamptz            | 付款时间（后续迁移加）                   |
+| payment_id  | uuid                   | 关联 worker_payments（批量付款用，可选） |
 
 - **无唯一约束**在 (source_type, source_id) 上，因为这是报销表不是费用表。
 - 状态应统一小写 `pending` / `paid`，避免与 update 条件不一致。
 
 ### 表 2：`expenses`
 
-| 字段           | 说明 |
-|----------------|------|
-| id             | 主键 |
-| expense_date   | 日期 |
-| vendor / vendor_name | 供应商 |
-| reference_no   | 单据号，我们写 `REIM-${reimbursementId}` |
-| total, line_count | 金额、行数 |
-| status         | 需包含 'paid'（迁移 202604141000 已加） |
-| **source**     | 来源，写 `'worker_reimbursement'`（同上迁移） |
-| **source_id**  | 来源 id，写 `reimbursement.id`（同上迁移） |
-| notes, payment_method, receipt_url, ... | 其它 |
+| 字段                                    | 说明                                          |
+| --------------------------------------- | --------------------------------------------- |
+| id                                      | 主键                                          |
+| expense_date                            | 日期                                          |
+| vendor / vendor_name                    | 供应商                                        |
+| reference_no                            | 单据号，我们写 `REIM-${reimbursementId}`      |
+| total, line_count                       | 金额、行数                                    |
+| status                                  | 需包含 'paid'（迁移 202604141000 已加）       |
+| **source**                              | 来源，写 `'worker_reimbursement'`（同上迁移） |
+| **source_id**                           | 来源 id，写 `reimbursement.id`（同上迁移）    |
+| notes, payment_method, receipt_url, ... | 其它                                          |
 
 - **缺失/冲突**：若未跑 202604141000，则缺 `source`、`source_id`，且 `status` 的 check 可能不含 `'paid'`，会导致插入失败或走 fallback；fallback 插入又不写 source/source_id，导致无法防重。
 
@@ -113,13 +113,13 @@
 
 ## 四、后端 API 与具体出问题的文件/函数
 
-| 文件 | 函数/路由 | 问题 |
-|------|-----------|------|
-| `src/lib/worker-reimbursements-db.ts` | `markReimbursementPaid` | ~~曾用 `.in("status", ["pending","approved"])` 导致 0 行更新~~ → 已改为只按 id 更新。 |
-| `src/lib/expenses-db.ts` | `createExpenseFromPaidReimbursement` | ① 防重仅靠 source/source_id，无列或报错时被 catch 后总是插入；② fallback 插入不写 source/source_id，无法防重；③ 未用 reference_no 兜底。 |
-| `src/app/api/worker-reimbursements/[id]/pay/route.ts` | POST | 顺序正确（先更新报销再创建费用），无逻辑错误。 |
-| `src/app/api/worker-reimbursements/route.ts` | GET | 已只返回 pending，列表只显示待付款。 |
-| `src/app/api/worker-reimbursements/create-payment/route.ts` | POST | 批量先更新再逐条创建费用，逻辑正确；同样依赖 `createExpenseFromPaidReimbursement` 防重。 |
+| 文件                                                        | 函数/路由                            | 问题                                                                                                                                     |
+| ----------------------------------------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/worker-reimbursements-db.ts`                       | `markReimbursementPaid`              | ~~曾用 `.in("status", ["pending","approved"])` 导致 0 行更新~~ → 已改为只按 id 更新。                                                    |
+| `src/lib/expenses-db.ts`                                    | `createExpenseFromPaidReimbursement` | ① 防重仅靠 source/source_id，无列或报错时被 catch 后总是插入；② fallback 插入不写 source/source_id，无法防重；③ 未用 reference_no 兜底。 |
+| `src/app/api/worker-reimbursements/[id]/pay/route.ts`       | POST                                 | 顺序正确（先更新报销再创建费用），无逻辑错误。                                                                                           |
+| `src/app/api/worker-reimbursements/route.ts`                | GET                                  | 已只返回 pending，列表只显示待付款。                                                                                                     |
+| `src/app/api/worker-reimbursements/create-payment/route.ts` | POST                                 | 批量先更新再逐条创建费用，逻辑正确；同样依赖 `createExpenseFromPaidReimbursement` 防重。                                                 |
 
 **结论**：问题集中在 **`createExpenseFromPaidReimbursement`** 的防重与 fallback 策略；`markReimbursementPaid` 已修。
 
@@ -127,12 +127,12 @@
 
 ## 五、为什么同一笔报销会生成多条费用
 
-1. **第一次点击「Mark as Paid」**  
-   - 若 DB 还没有 source/source_id 列：防重 select 报错 → catch 后 existingId = null → 插入一条费用（可能用 noSource/minimal，没 source/source_id）。  
+1. **第一次点击「Mark as Paid」**
+   - 若 DB 还没有 source/source_id 列：防重 select 报错 → catch 后 existingId = null → 插入一条费用（可能用 noSource/minimal，没 source/source_id）。
    - 若 DB 有 source/source_id 但插入时因 `status='paid'` 不在 check 里失败：走 noSource 插入，仍然不写 source/source_id。
 
-2. **第二次再对同一条报销点「Mark as Paid」**（例如列表没刷新、或从别处又进）  
-   - 防重：用 source + source_id 查，要么列不存在（又报错被吞），要么这条费用没有 source/source_id（查不到）。  
+2. **第二次再对同一条报销点「Mark as Paid」**（例如列表没刷新、或从别处又进）
+   - 防重：用 source + source_id 查，要么列不存在（又报错被吞），要么这条费用没有 source/source_id（查不到）。
    - 结果再次执行 insert → **第二条费用**。
 
 3. **重复次数**：每多点一次或批量里重复 id，就多插一条，因为没有任何「按 reference_no 或 source_id 只保留一条」的兜底。
@@ -143,9 +143,9 @@
 
 1. 用户对某条 **pending** 报销点击「Mark as Paid」并提交。
 2. 后端 **先** `UPDATE worker_reimbursements SET status='paid', paid_at=now() WHERE id=?`，且必须按 id 成功更新（找不到则 400）。
-3. **再** 创建费用：  
-   - 先防重：有 source/source_id 则按 `(source, source_id)` 查；**无论有没有这两列，都再按 reference_no = `REIM-${reimbursementId}` 查一次**。  
-   - 若已存在任一条则直接返回该费用，**不插入**。  
+3. **再** 创建费用：
+   - 先防重：有 source/source_id 则按 `(source, source_id)` 查；**无论有没有这两列，都再按 reference_no = `REIM-${reimbursementId}` 查一次**。
+   - 若已存在任一条则直接返回该费用，**不插入**。
    - 若不存在才 insert 一条 expenses + 一条 expense_lines，并尽量写上 source、source_id、reference_no、status='paid'；fallback 时至少保证 reference_no 一致，便于下次防重。
 4. 返回 200，前端 `load()` 刷新列表；列表只含 pending，该条已 paid 会消失。
 5. 同一笔报销无论点多少次「Mark as Paid」，费用表里**至多一条**对应 `REIM-${id}` 或 (source, source_id)。
@@ -182,8 +182,8 @@
    `markReimbursementPaid` 已改为仅按 `id` 更新，不再带 `status in ('pending','approved')`，避免 0 行更新导致状态仍为 pending。
 
 2. **防重复创建费用**（`expenses-db.ts`）  
-   在 `createExpenseFromPaidReimbursement` 中增加**按 reference_no 兜底**：  
-   - 先按 `source = 'worker_reimbursement'` 且 `source_id = reimbursementId` 查；  
-   - 若未查到，再按 `reference_no = 'REIM-${reimbursementId}'` 查；  
+   在 `createExpenseFromPaidReimbursement` 中增加**按 reference_no 兜底**：
+   - 先按 `source = 'worker_reimbursement'` 且 `source_id = reimbursementId` 查；
+   - 若未查到，再按 `reference_no = 'REIM-${reimbursementId}'` 查；
    - 任一步查到已存在费用则直接返回该费用，不插入。  
-   这样即使未跑 source/source_id 迁移或历史数据无 source，同一报销也只会对应一条费用。
+     这样即使未跑 source/source_id 迁移或历史数据无 source，同一报销也只会对应一条费用。

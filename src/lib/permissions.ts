@@ -86,6 +86,7 @@ export const PUBLIC_AUTH_ROUTES = new Set(["/login", "/auth/callback"]);
 export function requiredPermissionForPath(pathname: string): PermissionKey | null {
   if (pathname.startsWith("/financial")) return "finance.view";
   if (pathname.startsWith("/projects")) return "projects.view";
+  if (pathname.startsWith("/workers")) return "workers.view";
   if (pathname.startsWith("/labor/workers")) return "workers.view";
   if (pathname.startsWith("/labor/subcontractors")) return "workers.view";
   if (pathname.startsWith("/labor/review")) return "timesheets.approve";

@@ -93,8 +93,7 @@ const sections: { key: (typeof SECTION_KEYS)[number]; label: string; items: NavI
     key: "LABOR",
     label: "LABOR",
     items: [
-      { href: "/workers", label: "Workers", icon: Users },
-      { href: "/labor", label: "Labor", icon: Clock },
+      { href: "/labor", label: "Time Entries", icon: Clock },
       { href: "/labor/reimbursements", label: "Reimbursements", icon: ReceiptText },
       { href: "/labor/worker-balances", label: "Worker Balances", icon: Wallet },
       { href: "/labor/payments", label: "Worker Payments", icon: CircleDollarSign },
@@ -108,7 +107,8 @@ const sections: { key: (typeof SECTION_KEYS)[number]; label: string; items: NavI
     key: "PEOPLE",
     label: "PEOPLE",
     items: [
-      { href: "/workers", label: "Workers", icon: Users },
+      { href: "/workers", label: "Worker Profile", icon: Users },
+      { href: "/workers/summary", label: "Worker Summary", icon: BarChart2 },
       { href: "/labor/subcontractors", label: "Vendors", icon: Users },
       { href: "/subcontractors", label: "Subcontractors", icon: Users },
     ],
