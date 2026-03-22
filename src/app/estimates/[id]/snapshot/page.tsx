@@ -3,6 +3,8 @@ import Link from "next/link";
 import { getEstimateById, getEstimateItems, getEstimateMeta, getEstimateCategories } from "@/lib/data";
 import { EstimateReadOnlyContent } from "../estimate-read-only";
 import { Download } from "lucide-react";
+import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
+import { DocumentCompanyHeader } from "@/components/documents/document-company-header";
 
 export default async function EstimateSnapshotPage({
   params,
@@ -13,7 +15,12 @@ export default async function EstimateSnapshotPage({
   const estimate = await getEstimateById(id);
   if (!estimate) notFound();
 
-  const [meta, items, categories] = await Promise.all([getEstimateMeta(id), getEstimateItems(id), getEstimateCategories(id)]);
+  const [meta, items, categories, company] = await Promise.all([
+    getEstimateMeta(id),
+    getEstimateItems(id),
+    getEstimateCategories(id),
+    fetchDocumentCompanyProfile(),
+  ]);
 
   const estimateCategories = [...categories].sort((a, b) => a.costCode.localeCompare(b.costCode));
 
@@ -46,37 +53,31 @@ export default async function EstimateSnapshotPage({
         }}
       />
       <div className="mx-auto max-w-[1180px] flex flex-col gap-8 p-6 print:p-0 print:max-w-none">
-        {/* Top bar: Estimate #, Status, Date, Client, Project, Address — only Download PDF button */}
-        <header className="snapshot-no-print flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between print:flex print:flex-row print:justify-between print:border-b print:pb-4 print:mb-6">
-          <div className="grid grid-cols-1 gap-2 text-sm min-w-0">
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="font-semibold text-foreground">Estimate #{payload.number}</span>
-              <span className="rounded border border-zinc-300 dark:border-zinc-600 px-2 py-0.5 text-xs font-medium text-foreground">
-                {payload.status}
-              </span>
-              <span className="text-muted-foreground">Date: {payload.date}</span>
-            </div>
-            <div className="text-muted-foreground">
-              <span className="font-medium text-foreground">{payload.clientName}</span>
-              {payload.clientAddress && ` · ${payload.clientAddress}`}
-            </div>
-            <div className="text-muted-foreground">
-              <span className="font-medium text-foreground">{payload.projectName}</span>
-              {payload.projectAddress && ` · ${payload.projectAddress}`}
-            </div>
-          </div>
-          <div className="snapshot-no-print flex-shrink-0">
-            <Link
-              href={`/estimates/${id}/print?autoprint=1`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-lg border border-zinc-200/60 dark:border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted/50"
-            >
-              <Download className="h-4 w-4" />
-              Download PDF
-            </Link>
-          </div>
+        <header className="snapshot-no-print mb-6 flex justify-end">
+          <Link
+            href={`/estimates/${id}/print?autoprint=1`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-zinc-200/60 dark:border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted/50"
+          >
+            <Download className="h-4 w-4" />
+            Download PDF
+          </Link>
         </header>
+
+        <DocumentCompanyHeader
+          company={company}
+          documentTitle="Estimate"
+          documentNo={payload.number}
+          documentDate={payload.date}
+          documentNoLabel="Estimate No"
+          extraRight={
+            <span className="inline-block rounded-sm border border-zinc-300 px-2 py-0.5 text-xs font-medium text-zinc-800 dark:border-zinc-600 dark:text-foreground">
+              {payload.status}
+            </span>
+          }
+          className="border-zinc-200 dark:border-border"
+        />
 
         <EstimateReadOnlyContent payload={payload} />
       </div>

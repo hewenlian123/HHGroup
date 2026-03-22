@@ -4,6 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { syncRouterAndClients } from "@/lib/sync-router-client";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
+import { runOptimisticPersist } from "@/lib/optimistic-save";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -18,7 +19,7 @@ import {
   listTablePrimaryCellClassName,
   listTableRowClassName,
 } from "@/lib/list-table-interaction";
-import { UserPlus } from "lucide-react";
+import { Loader2, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function fmtRate(n: number): string {
@@ -41,6 +42,8 @@ export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
   const [defaultOtRate, setDefaultOtRate] = React.useState("");
   const [status, setStatus] = React.useState<WorkerStatus>("Active");
   const [notes, setNotes] = React.useState("");
+  const itemsRef = React.useRef(items);
+  itemsRef.current = items;
 
   React.useEffect(() => {
     setItems(rows);
@@ -64,14 +67,18 @@ export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
     setNotes(editFor.notes ?? "");
   }, [editFor]);
 
-  const onSaveEdit = async () => {
-    if (!editFor) return;
-    if (busy) return;
-    setBusy(true);
+  const onSaveEdit = () => {
+    if (!editFor || busy) return;
+    const nameTrim = name.trim();
+    if (!nameTrim) {
+      toast({ title: "Name is required", variant: "error" });
+      return;
+    }
+    const id = editFor.id;
     const original = editFor;
     const patch: WorkerRow = {
       ...editFor,
-      name: name.trim(),
+      name: nameTrim,
       phone: phone.trim() || null,
       trade: trade.trim() || null,
       daily_rate: Number(dailyRate) || 0,
@@ -79,48 +86,46 @@ export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
       status,
       notes: notes.trim() || null,
     };
-    // optimistic update
-    setItems((prev) => prev.map((w) => (w.id === editFor.id ? patch : w)));
-    try {
-      const res = await updateWorkerAction(editFor.id, {
-        name: name.trim(),
-        phone: phone.trim() || null,
-        trade: trade.trim() || null,
-        daily_rate: Number(dailyRate) || 0,
-        default_ot_rate: Number(defaultOtRate) || 0,
-        status,
-        notes: notes.trim() || null,
-      });
-      if (!res.ok) {
-        // rollback
-        setItems((prev) => prev.map((w) => (w.id === original.id ? original : w)));
-        toast({ title: "Save failed", description: res.error ?? "Failed to update worker.", variant: "error" });
-        return;
-      }
-      toast({ title: "Saved", variant: "success" });
-      setEditFor(null);
-    } finally {
-      setBusy(false);
-    }
+    type Snap = { list: WorkerRow[]; editing: WorkerRow };
+    runOptimisticPersist<Snap>({
+      setBusy,
+      getSnapshot: () => ({ list: [...itemsRef.current], editing: original }),
+      apply: () => {
+        setItems((prev) => prev.map((w) => (w.id === id ? patch : w)));
+        setEditFor(null);
+      },
+      rollback: (s) => {
+        setItems(s.list);
+        setEditFor(s.editing);
+      },
+      persist: () =>
+        updateWorkerAction(id, {
+          name: nameTrim,
+          phone: phone.trim() || null,
+          trade: trade.trim() || null,
+          daily_rate: Number(dailyRate) || 0,
+          default_ot_rate: Number(defaultOtRate) || 0,
+          status,
+          notes: notes.trim() || null,
+        }).then((res) => (res.ok ? undefined : { error: res.error ?? "Failed to update worker." })),
+      onError: (msg) => toast({ title: "Save failed", description: msg, variant: "error" }),
+      onSuccess: () => toast({ title: "Saved", variant: "success" }),
+    });
   };
 
-  const onDelete = async (row: WorkerRow) => {
+  const onDelete = (row: WorkerRow) => {
     if (busy) return;
-    setBusy(true);
-    // optimistic remove
-    setItems((prev) => prev.filter((w) => w.id !== row.id));
-    try {
-      const res = await deleteWorkerAction(row.id);
-      if (!res.ok) {
-        // rollback
-        setItems((prev) => (prev.some((w) => w.id === row.id) ? prev : [...prev, row]).sort((a, b) => a.name.localeCompare(b.name)));
-        toast({ title: "Delete failed", description: res.error ?? "Failed to delete worker.", variant: "error" });
-        return;
-      }
-      toast({ title: "Deleted", variant: "success" });
-    } finally {
-      setBusy(false);
-    }
+    type Snap = { list: WorkerRow[] };
+    runOptimisticPersist<Snap>({
+      setBusy,
+      getSnapshot: () => ({ list: [...itemsRef.current] }),
+      apply: () => setItems((prev) => prev.filter((w) => w.id !== row.id)),
+      rollback: (s) => setItems([...s.list].sort((a, b) => a.name.localeCompare(b.name))),
+      persist: () =>
+        deleteWorkerAction(row.id).then((res) => (res.ok ? undefined : { error: res.error ?? "Failed to delete worker." })),
+      onError: (msg) => toast({ title: "Delete failed", description: msg, variant: "error" }),
+      onSuccess: () => toast({ title: "Deleted", variant: "success" }),
+    });
   };
 
   const handleAddSuccess = (worker: WorkerRow) => {
@@ -164,7 +169,7 @@ export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
                 actions={[
                   { label: "View", onClick: () => router.push(`/workers/${r.id}`), disabled: busy },
                   { label: "Edit", onClick: () => setEditFor(r), disabled: busy },
-                  { label: "Delete", onClick: () => void onDelete(r), destructive: true, disabled: busy },
+                  { label: "Delete", onClick: () => onDelete(r), destructive: true, disabled: busy },
                 ]}
               />
             </div>
@@ -217,7 +222,7 @@ export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
                     actions={[
                       { label: "View", onClick: () => router.push(`/workers/${r.id}`), disabled: busy },
                       { label: "Edit", onClick: () => setEditFor(r), disabled: busy },
-                      { label: "Delete", onClick: () => void onDelete(r), destructive: true, disabled: busy },
+                      { label: "Delete", onClick: () => onDelete(r), destructive: true, disabled: busy },
                     ]}
                   />
                 </td>
@@ -295,8 +300,15 @@ export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
             <Button variant="outline" size="sm" className="h-8" onClick={() => setEditFor(null)} disabled={busy}>
               Cancel
             </Button>
-            <Button size="sm" className="h-8" onClick={() => void onSaveEdit()} disabled={busy || !name.trim()}>
-              {busy ? "Saving…" : "Save"}
+            <Button size="sm" className="h-8" onClick={onSaveEdit} disabled={busy || !name.trim()} aria-busy={busy}>
+              {busy ? (
+                <>
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
+                  Saving…
+                </>
+              ) : (
+                "Save"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

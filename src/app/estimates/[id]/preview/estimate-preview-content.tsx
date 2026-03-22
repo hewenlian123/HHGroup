@@ -8,10 +8,13 @@ import {
 } from "@/lib/estimates-db";
 import { splitLineItemDesc } from "@/lib/sanitize-line-item-html";
 import { LineItemDescriptionBodyPreview } from "@/app/estimates/_components/line-item-description-body-preview";
+import { DocumentCompanyHeader } from "@/components/documents/document-company-header";
+import type { DocumentCompanyProfileDTO } from "@/lib/document-company-profile";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
 type EstimatePreviewProps = {
+  company: DocumentCompanyProfileDTO;
   estimate: { number: string; status: string; updatedAt: string };
   meta: EstimateMetaRecord | null;
   categories: { costCode: string; displayName: string }[];
@@ -28,8 +31,6 @@ type EstimatePreviewProps = {
     grandTotal: number;
   } | null;
 };
-
-const COMPANY_NAME = "HH Group";
 
 /** Responsive key/value row: flexible label + value, no fixed widths. */
 function ClientEstimateField({
@@ -97,6 +98,7 @@ function LineItemsTable({ rows, fmt }: { rows: EstimateItemRow[]; fmt: (n: numbe
 }
 
 export function EstimatePreviewContent({
+  company,
   estimate,
   meta,
   categories,
@@ -115,22 +117,23 @@ export function EstimatePreviewContent({
   return (
       <article className="bg-white text-zinc-900 print:shadow-none">
         <div className="px-4 py-5 print:px-0 print:py-4">
-          {/* Header */}
-          <header className="flex flex-wrap items-start justify-between gap-4">
-            <div className="min-w-0">
-              <p className="text-lg font-semibold tracking-tight text-zinc-900">{COMPANY_NAME}</p>
-              <p className="text-xs text-zinc-600 mt-0.5">Estimate / Proposal</p>
-            </div>
-            <div className="shrink-0 text-right text-sm">
-              <p className="font-semibold text-zinc-900 tabular-nums">{estimate.number}</p>
-              <p className="text-zinc-600 mt-1 tabular-nums">Date: {estimateDateStr}</p>
-              {meta?.validUntil ? (
-                <p className="text-xs text-zinc-500 mt-0.5 tabular-nums">Valid until: {meta.validUntil}</p>
-              ) : null}
-            </div>
-          </header>
-
-          <div className="border-b border-zinc-300 my-4" />
+          <DocumentCompanyHeader
+            company={company}
+            documentTitle="Estimate"
+            documentNo={estimate.number}
+            documentDate={estimateDateStr}
+            documentNoLabel="Estimate No"
+            extraRight={
+              <>
+                <span className="inline-block rounded-sm border border-zinc-300 px-2 py-0.5 text-xs font-medium text-zinc-800">
+                  {statusLabel}
+                </span>
+                {meta?.validUntil ? (
+                  <p className="text-xs text-zinc-500 tabular-nums">Valid until: {meta.validUntil}</p>
+                ) : null}
+              </>
+            }
+          />
 
           {/* Client & estimate — compact invoice-style grid */}
           {meta && (
@@ -269,7 +272,7 @@ export function EstimatePreviewContent({
           </section>
 
           <footer className="text-[11px] text-zinc-400 border-t border-zinc-200 pt-3 mt-10">
-            {COMPANY_NAME} · Estimate {estimate.number}
+            {company.companyName} · Estimate {estimate.number}
           </footer>
         </div>
       </article>

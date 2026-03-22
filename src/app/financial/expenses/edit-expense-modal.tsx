@@ -1,14 +1,27 @@
 "use client";
 
 import * as React from "react";
+import { flushSync } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { updateExpenseForReview, getExpenseTotal, type Expense } from "@/lib/data";
+import { getExpenseTotal, type Expense } from "@/lib/data";
 import { useToast } from "@/components/toast/toast-provider";
+import { Loader2 } from "lucide-react";
 
 type ProjectOption = { id: string; name: string | null };
 type WorkerOption = { id: string; name: string };
+
+export type ExpenseReviewSavePatch = {
+  expenseId: string;
+  vendorName: string;
+  amount: number;
+  projectId: string | null;
+  workerId: string | null;
+  category: string;
+  notes: string | undefined;
+  status: "pending" | "needs_review" | "approved" | "reimbursed";
+};
 
 type Props = {
   expense: Expense | null;
@@ -17,10 +30,11 @@ type Props = {
   projects: ProjectOption[];
   workers: WorkerOption[];
   categories: string[];
-  onSuccess: () => void;
+  /** Sync: parent applies optimistic UI + background persist. */
+  onSave: (patch: ExpenseReviewSavePatch) => void;
 };
 
-export function EditExpenseModal({ expense, open, onOpenChange, projects, workers, categories, onSuccess }: Props) {
+export function EditExpenseModal({ expense, open, onOpenChange, projects, workers, categories, onSave }: Props) {
   const { toast } = useToast();
   const [saving, setSaving] = React.useState(false);
   const [vendorName, setVendorName] = React.useState("");
@@ -43,17 +57,18 @@ export function EditExpenseModal({ expense, open, onOpenChange, projects, worker
     }
   }, [expense]);
 
-  const handleSave = async () => {
-    if (!expense) return;
-    setSaving(true);
+  const handleSave = () => {
+    if (!expense || saving) return;
+    const numAmount = parseFloat(amount);
+    if (Number.isNaN(numAmount) || numAmount < 0) {
+      toast({ title: "Invalid amount", variant: "error" });
+      return;
+    }
+    flushSync(() => setSaving(true));
     try {
-      const numAmount = parseFloat(amount);
-      if (Number.isNaN(numAmount) || numAmount < 0) {
-        toast({ title: "Invalid amount", variant: "error" });
-        return;
-      }
-      await updateExpenseForReview(expense.id, {
-        vendorName: vendorName.trim() || undefined,
+      onSave({
+        expenseId: expense.id,
+        vendorName: vendorName.trim(),
         amount: numAmount,
         projectId: projectId || null,
         workerId: workerId || null,
@@ -61,11 +76,6 @@ export function EditExpenseModal({ expense, open, onOpenChange, projects, worker
         notes: notes.trim() || undefined,
         status,
       });
-      toast({ title: "Expense updated", variant: "success" });
-      onSuccess();
-      onOpenChange(false);
-    } catch (e) {
-      toast({ title: "Update failed", description: e instanceof Error ? e.message : "Unknown error", variant: "error" });
     } finally {
       setSaving(false);
     }
@@ -81,11 +91,19 @@ export function EditExpenseModal({ expense, open, onOpenChange, projects, worker
           <div className="space-y-3 py-4">
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Vendor</label>
-              <Input value={vendorName} onChange={(e) => setVendorName(e.target.value)} className="mt-1 h-9" />
+              <Input value={vendorName} onChange={(e) => setVendorName(e.target.value)} className="mt-1 h-9" disabled={saving} />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Amount</label>
-              <Input type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} className="mt-1 h-9 tabular-nums" />
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="mt-1 h-9 tabular-nums"
+                disabled={saving}
+              />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Project</label>
@@ -93,10 +111,13 @@ export function EditExpenseModal({ expense, open, onOpenChange, projects, worker
                 value={projectId ?? ""}
                 onChange={(e) => setProjectId(e.target.value || null)}
                 className="mt-1 h-9 w-full rounded border border-input bg-transparent px-2 text-sm"
+                disabled={saving}
               >
                 <option value="">—</option>
                 {projects.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name ?? p.id}</option>
+                  <option key={p.id} value={p.id}>
+                    {p.name ?? p.id}
+                  </option>
                 ))}
               </select>
             </div>
@@ -106,10 +127,13 @@ export function EditExpenseModal({ expense, open, onOpenChange, projects, worker
                 value={workerId ?? ""}
                 onChange={(e) => setWorkerId(e.target.value || null)}
                 className="mt-1 h-9 w-full rounded border border-input bg-transparent px-2 text-sm"
+                disabled={saving}
               >
                 <option value="">—</option>
                 {workers.map((w) => (
-                  <option key={w.id} value={w.id}>{w.name}</option>
+                  <option key={w.id} value={w.id}>
+                    {w.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -119,15 +143,24 @@ export function EditExpenseModal({ expense, open, onOpenChange, projects, worker
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 className="mt-1 h-9 w-full rounded border border-input bg-transparent px-2 text-sm"
+                disabled={saving}
               >
                 {["Other", ...categories].filter((c, i, a) => a.indexOf(c) === i).map((c) => (
-                  <option key={c} value={c}>{c}</option>
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
                 ))}
               </select>
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Notes</label>
-              <Input value={notes} onChange={(e) => setNotes(e.target.value)} className="mt-1 h-9" placeholder="Optional" />
+              <Input
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="mt-1 h-9"
+                placeholder="Optional"
+                disabled={saving}
+              />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</label>
@@ -135,6 +168,7 @@ export function EditExpenseModal({ expense, open, onOpenChange, projects, worker
                 value={status}
                 onChange={(e) => setStatus(e.target.value as "pending" | "needs_review" | "approved" | "reimbursed")}
                 className="mt-1 h-9 w-full rounded border border-input bg-transparent px-2 text-sm"
+                disabled={saving}
               >
                 <option value="pending">Pending</option>
                 <option value="needs_review">Needs Review</option>
@@ -143,8 +177,19 @@ export function EditExpenseModal({ expense, open, onOpenChange, projects, worker
               </select>
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" size="sm" className="h-8" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button size="sm" className="h-8" onClick={handleSave} disabled={saving}>{saving ? "Saving…" : "Save"}</Button>
+              <Button variant="outline" size="sm" className="h-8" onClick={() => onOpenChange(false)} disabled={saving}>
+                Cancel
+              </Button>
+              <Button size="sm" className="h-8" onClick={handleSave} disabled={saving} aria-busy={saving}>
+                {saving ? (
+                  <>
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
+                    Saving…
+                  </>
+                ) : (
+                  "Save"
+                )}
+              </Button>
             </div>
           </div>
         ) : null}

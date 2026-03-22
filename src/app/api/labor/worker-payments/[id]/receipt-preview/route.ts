@@ -3,6 +3,7 @@ import { getProjectById, getWorkerById, getWorkerPaymentById } from "@/lib/data"
 import { getWorkerPaymentReceiptPayload } from "@/lib/worker-payment-receipt-data";
 import type { WorkerPaymentReceiptPreviewDto } from "@/lib/worker-payment-receipt-preview-dto";
 import { computeWorkerPaymentReceiptNo } from "@/lib/worker-payment-receipt-no";
+import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 
 export const dynamic = "force-dynamic";
 
@@ -18,13 +19,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       return NextResponse.json({ error: "Not found." }, { status: 404 });
     }
 
-    const [worker, project, receiptData, receiptNo] = await Promise.all([
+    const [worker, project, receiptData, receiptNo, company] = await Promise.all([
       getWorkerById(payment.workerId),
       payment.projectId ? getProjectById(payment.projectId) : Promise.resolve(undefined),
       getWorkerPaymentReceiptPayload(payment.id, payment.workerId, payment.amount, {
         laborEntryIdsFromPayment: payment.laborEntryIds,
       }),
       computeWorkerPaymentReceiptNo(payment.id, payment.paymentDate),
+      fetchDocumentCompanyProfile(),
     ]);
 
     if (!worker) {
@@ -34,6 +36,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     const projectName = project?.name ?? (payment.projectId ? payment.projectId : null);
 
     const body: WorkerPaymentReceiptPreviewDto = {
+      company,
       receiptNo,
       payment: {
         id: payment.id,

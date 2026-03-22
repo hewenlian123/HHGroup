@@ -1,5 +1,7 @@
 import { estimateLineTotal, type EstimateItemRow, type CostCode } from "@/lib/data";
 import type { EstimateSummaryResult } from "@/lib/data";
+import { DocumentCompanyHeader } from "@/components/documents/document-company-header";
+import type { DocumentCompanyProfileDTO } from "@/lib/document-company-profile";
 
 type EstimateForProposal = { number: string; status: string; updatedAt: string };
 type MetaForProposal = {
@@ -8,33 +10,37 @@ type MetaForProposal = {
 } | null;
 
 export function EstimateProposalContent({
+  company,
   estimate,
   meta,
   itemsByCode,
   costCodes,
   summary,
 }: {
+  company: DocumentCompanyProfileDTO;
   estimate: EstimateForProposal;
   meta: MetaForProposal;
   itemsByCode: Record<string, EstimateItemRow[]>;
   costCodes: CostCode[];
   summary: EstimateSummaryResult;
 }) {
+  const estimateDateStr = estimate.updatedAt ? estimate.updatedAt.slice(0, 10) : "—";
+  const statusLabel = estimate.status === "Converted" ? "Converted to Project" : estimate.status;
+
   return (
     <div className="mx-auto max-w-[8.5in] px-6 py-6 print:px-0 print:py-0 print:max-w-none">
-      <header className="flex justify-between items-center border-b border-zinc-200 pb-4 mb-6 print:break-after-avoid">
-        <div>
-          <p className="text-lg font-semibold text-zinc-900">HH Group</p>
-          <p className="text-sm text-zinc-500">Estimate</p>
-        </div>
-        <div className="text-right text-sm">
-          <p className="font-medium text-zinc-900">Estimate {estimate.number}</p>
-          <p className="text-zinc-500">Date: {estimate.updatedAt}</p>
-          <span className="inline-block mt-1 rounded border border-zinc-300 px-2 py-0.5 text-xs font-medium text-zinc-700">
-            {estimate.status === "Converted" ? "Converted to Project" : estimate.status}
+      <DocumentCompanyHeader
+        company={company}
+        documentTitle="Estimate"
+        documentNo={estimate.number}
+        documentDate={estimateDateStr}
+        documentNoLabel="Estimate No"
+        extraRight={
+          <span className="inline-block rounded-sm border border-zinc-300 px-2 py-0.5 text-xs font-medium text-zinc-800">
+            {statusLabel}
           </span>
-        </div>
-      </header>
+        }
+      />
 
       {meta && (
         <div className="grid grid-cols-2 gap-6 mb-6 estimate-print-section">

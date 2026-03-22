@@ -9,6 +9,7 @@ import {
   getCostCodes,
 } from "@/lib/data";
 import { EstimatePrintDocument } from "../../_components/estimate-print-document";
+import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 import { AutoprintTrigger } from "./autoprint-trigger";
 import { PrintActionBar } from "./print-action-bar";
 
@@ -24,7 +25,7 @@ export default async function EstimatePrintPage({
   const { id } = await params;
   const { autoprint } = await searchParams;
 
-  const [estimate, meta, items, categories, summary, paymentSchedule, costCodes] = await Promise.all([
+  const [estimate, meta, items, categories, summary, paymentSchedule, costCodes, company] = await Promise.all([
     getEstimateById(id),
     getEstimateMeta(id),
     getEstimateItems(id),
@@ -32,6 +33,7 @@ export default async function EstimatePrintPage({
     getEstimateSummary(id),
     getPaymentSchedule(id),
     getCostCodes(),
+    fetchDocumentCompanyProfile(),
   ]);
 
   if (!estimate || !meta) redirect("/estimates");
@@ -59,6 +61,7 @@ export default async function EstimatePrintPage({
         }}
       />
       <EstimatePrintDocument
+        company={company}
         estimate={{
           number: estimate.number,
           status: estimate.status,

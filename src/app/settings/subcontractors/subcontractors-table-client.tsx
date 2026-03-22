@@ -1,6 +1,6 @@
 "use client";
 
-import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { dispatchClientDataSync, syncRouterAndClients } from "@/lib/sync-router-client";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import { useRouter } from "next/navigation";
@@ -10,12 +10,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useToast } from "@/components/toast/toast-provider";
 import type { SubcontractorRow } from "@/lib/data";
 import { deleteSubcontractorAction, updateSubcontractorProfile } from "@/app/subcontractors/[id]/actions";
+import { runOptimisticPersist } from "@/lib/optimistic-save";
 
 export function SubcontractorsTableClient({ rows }: { rows: SubcontractorRow[] }) {
   const router = useRouter();
   const { toast } = useToast();
   const [localRows, setLocalRows] = React.useState<SubcontractorRow[]>(rows);
-  React.useEffect(() => setLocalRows(rows), [rows]);
+  const rowsRef = React.useRef(localRows);
+  React.useEffect(() => {
+    setLocalRows(rows);
+  }, [rows]);
+  React.useEffect(() => {
+    rowsRef.current = localRows;
+  }, [localRows]);
   const [editFor, setEditFor] = React.useState<SubcontractorRow | null>(null);
   const [busy, setBusy] = React.useState(false);
 
@@ -43,29 +50,40 @@ export function SubcontractorsTableClient({ rows }: { rows: SubcontractorRow[] }
     [router]
   );
 
-  const onSave = async () => {
+  const onSave = () => {
     if (!editFor) return;
-    if (busy) return;
-    setBusy(true);
-    try {
-      const res = await updateSubcontractorProfile(editFor.id, {
-        name: name.trim(),
-        phone: phone.trim() || null,
-        email: email.trim() || null,
-        address: address.trim() || null,
-        insurance_expiration_date: insuranceExpiration.trim() || null,
-        notes: notes.trim() || null,
-      });
-      if (!res.ok) {
-        toast({ title: "Save failed", description: res.error ?? "Failed to update subcontractor.", variant: "error" });
-        return;
-      }
-      toast({ title: "Saved", variant: "success" });
-      setEditFor(null);
-      void syncRouterAndClients(router);
-    } finally {
-      setBusy(false);
-    }
+    const row = editFor;
+    const patch = {
+      name: name.trim(),
+      phone: phone.trim() || null,
+      email: email.trim() || null,
+      address: address.trim() || null,
+      insurance_expiration_date: insuranceExpiration.trim() || null,
+      notes: notes.trim() || null,
+    };
+    const optimistic: SubcontractorRow = { ...row, ...patch };
+
+    type Snap = { rows: SubcontractorRow[]; editing: SubcontractorRow };
+    runOptimisticPersist<Snap>({
+      setBusy,
+      getSnapshot: () => ({ rows: [...rowsRef.current], editing: row }),
+      apply: () => {
+        setLocalRows((prev) => prev.map((r) => (r.id === row.id ? optimistic : r)));
+        setEditFor(null);
+      },
+      rollback: (s) => {
+        setLocalRows(s.rows);
+        setEditFor(s.editing);
+      },
+      persist: () =>
+        updateSubcontractorProfile(row.id, patch).then((res) => {
+          if (!res.ok) return { error: res.error ?? "Failed to update subcontractor." };
+          dispatchClientDataSync({ reason: "subcontractor-profile" });
+          return undefined;
+        }),
+      onError: (msg) => toast({ title: "Save failed", description: msg, variant: "error" }),
+      onSuccess: () => toast({ title: "Saved", variant: "success" }),
+    });
   };
 
   const onDelete = async (row: SubcontractorRow) => {
@@ -85,7 +103,7 @@ export function SubcontractorsTableClient({ rows }: { rows: SubcontractorRow[] }
         return;
       }
       toast({ title: "Deleted", variant: "success" });
-      void syncRouterAndClients(router);
+      dispatchClientDataSync({ reason: "subcontractor-deleted" });
     } finally {
       setBusy(false);
     }

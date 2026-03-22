@@ -202,18 +202,44 @@
     size: letter;
     margin: 0.5in;
   }
+  /* App shell uses h-screen + flex-1 main; in print that reserves a full viewport page
+     and pushes real content (or portaled dialogs) to page 2. Collapse layout for print. */
+  .app-shell {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
   .app-shell aside,
-  .app-shell > div > header {
+  .app-shell > div > header,
+  [data-app-main-column] > header {
     display: none !important;
   }
-  .app-shell > div {
-    flex: 1;
-    width: 100%;
-    overflow: visible;
+  [data-app-main-column] {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
-  .app-shell main {
-    overflow: visible;
-    padding: 0;
+  /* Mobile bottom nav + FAB — hide when printing */
+  [data-app-main-column] > nav.fixed.bottom-0,
+  [data-app-main-column] > div.fixed.z-40[aria-label="Quick actions"] {
+    display: none !important;
+  }
+  .app-shell > div,
+  [data-app-main-column] {
+    width: 100%;
+  }
+  .app-shell main,
+  [data-app-main-column] > main {
+    flex: none !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    padding: 0 !important;
   }
   body {
     background: #fff;

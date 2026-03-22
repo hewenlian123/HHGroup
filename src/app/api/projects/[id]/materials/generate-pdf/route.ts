@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getProjectById, getSelectionsByProject, insertDocument } from "@/lib/data";
+import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 const BUCKET = "attachments";
@@ -13,19 +14,50 @@ export async function POST(
 
   try {
     const supabase = getServerSupabaseAdmin();
-    const [project, selections] = await Promise.all([
+    const [project, selections, company] = await Promise.all([
       getProjectById(projectId),
       getSelectionsByProject(projectId),
+      fetchDocumentCompanyProfile(),
     ]);
     if (!project) return NextResponse.json({ ok: false, message: "Project not found" }, { status: 404 });
 
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF();
-    let y = 20;
+    let y = 14;
 
-    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text(company.companyName, 20, y);
+    y += 5;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    for (const line of company.addressLines) {
+      doc.text(line, 20, y);
+      y += 4;
+    }
+    if (company.phone) {
+      doc.text(company.phone, 20, y);
+      y += 4;
+    }
+    if (company.email) {
+      doc.text(company.email, 20, y);
+      y += 4;
+    }
+    if (company.website) {
+      doc.text(company.website, 20, y);
+      y += 4;
+    }
+    if (company.licenseNumber) {
+      doc.text(`License: ${company.licenseNumber}`, 20, y);
+      y += 4;
+    }
+    y += 4;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
     doc.text("Material Selections", 20, y);
-    y += 10;
+    y += 8;
+    doc.setFont("helvetica", "normal");
 
     doc.setFontSize(11);
     doc.text(`Project: ${project.name ?? ""}`, 20, y);

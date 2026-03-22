@@ -1,7 +1,9 @@
 "use client";
 
 import * as React from "react";
+import { flushSync } from "react-dom";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
+import { runOptimisticPersist } from "@/lib/optimistic-save";
 import Link from "next/link";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
@@ -92,6 +94,24 @@ export default function InvoiceDetailClient() {
   const [busy, setBusy] = React.useState(false);
 
   const [matchedCustomerId, setMatchedCustomerId] = React.useState<string | null>(null);
+
+  const invoiceRef = React.useRef<Invoice | null>(null);
+  const paymentsRef = React.useRef<InvoicePayment[]>([]);
+  invoiceRef.current = invoice;
+  paymentsRef.current = payments;
+
+  const recomputeInvoiceTotals = React.useCallback((inv: Invoice, pays: InvoicePayment[]) => {
+    const totalInv = safeNumber(inv.total);
+    const paidTotal = pays.reduce((s, p) => (p.status === "Voided" ? s : s + safeNumber(p.amount)), 0);
+    const balanceDue = Math.max(0, totalInv - paidTotal);
+    let status: InvoiceStatus = inv.status;
+    if (inv.status !== "Void" && inv.status !== "Draft") {
+      if (totalInv > 0 && paidTotal >= totalInv) status = "Paid";
+      else if (paidTotal > 0) status = "Partially Paid";
+      else if (paidTotal === 0 && inv.status === "Paid") status = "Sent";
+    }
+    return { ...inv, paidTotal, balanceDue, status };
+  }, []);
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -232,59 +252,147 @@ export default function InvoiceDetailClient() {
     safeNumber(invoice.balanceDue) > 0 &&
     invoice.status !== "Draft";
 
-  const handleMarkSent = async () => {
-    if (!id || !supabase || !invoice || busy) return;
-    setBusy(true);
-    setError(null);
-    const { error: updErr } = await supabase.from("invoices").update({ status: "Sent" }).eq("id", id);
-    if (updErr) setError(updErr.message);
-    await refresh();
-    setBusy(false);
+  const handleMarkSent = () => {
+    if (!id || !supabase || !invoiceRef.current || busy) return;
+    const inv = invoiceRef.current;
+    type Snap = { inv: Invoice };
+    runOptimisticPersist<Snap>({
+      setBusy,
+      getSnapshot: () => ({ inv: { ...inv } }),
+      apply: () => {
+        setError(null);
+        setInvoice((prev) => (prev ? { ...prev, status: "Sent" } : null));
+      },
+      rollback: (s) => setInvoice(s.inv),
+      persist: async () => {
+        const { error: updErr } = await supabase.from("invoices").update({ status: "Sent" }).eq("id", id);
+        return updErr ? { error: updErr.message } : undefined;
+      },
+      onError: (msg) => setError(msg),
+    });
   };
 
-  const handleVoid = async () => {
+  const handleVoid = () => {
     if (!id || !supabase || busy) return;
-    setBusy(true);
-    setError(null);
-    const { error: updErr } = await supabase.from("invoices").update({ status: "Void" }).eq("id", id);
-    if (updErr) setError(updErr.message);
-    setVoidConfirm(false);
-    await refresh();
-    setBusy(false);
+    const inv = invoiceRef.current;
+    if (!inv) return;
+    type Snap = { inv: Invoice };
+    runOptimisticPersist<Snap>({
+      setBusy,
+      getSnapshot: () => ({ inv: { ...inv } }),
+      apply: () => {
+        setError(null);
+        setVoidConfirm(false);
+        setInvoice((prev) => (prev ? { ...prev, status: "Void" } : null));
+      },
+      rollback: (s) => setInvoice(s.inv),
+      persist: async () => {
+        const { error: updErr } = await supabase.from("invoices").update({ status: "Void" }).eq("id", id);
+        return updErr ? { error: updErr.message } : undefined;
+      },
+      onError: (msg) => setError(msg),
+    });
   };
 
-  const handleRecordPayment = async () => {
-    if (!id || !supabase || busy || !invoice) return;
+  const handleRecordPayment = () => {
+    if (!id || !supabase || busy || !invoiceRef.current) return;
+    const inv = invoiceRef.current;
+    const pays = paymentsRef.current;
     const amount = safeNumber(paymentAmount);
     if (!Number.isFinite(amount) || amount <= 0) return;
-    if (invoice.status === "Draft" || invoice.status === "Void") return;
+    if (inv.status === "Draft" || inv.status === "Void") return;
 
-    setBusy(true);
-    setError(null);
-    const { error: insErr } = await supabase.from("invoice_payments").insert({
-      invoice_id: id,
+    const tempId = `temp-pay-${Date.now()}`;
+    const newPayment: InvoicePayment = {
+      id: tempId,
       paid_at: paymentDate,
       amount,
       method: paymentMethod,
       memo: paymentMemo.trim() || null,
       status: "Posted",
+    };
+    const nextPays = [newPayment, ...pays];
+    const nextInv = recomputeInvoiceTotals(inv, nextPays);
+
+    type Snap = { inv: Invoice; pays: InvoicePayment[]; payAmt: string; payMemo: string; modal: boolean };
+    runOptimisticPersist<Snap>({
+      setBusy,
+      getSnapshot: () => ({
+        inv: { ...inv },
+        pays: [...pays],
+        payAmt: paymentAmount,
+        payMemo: paymentMemo,
+        modal: showPaymentModal,
+      }),
+      apply: () => {
+        setError(null);
+        setPayments(nextPays);
+        setInvoice(nextInv);
+        setPaymentAmount("");
+        setPaymentMemo("");
+        setShowPaymentModal(false);
+      },
+      rollback: (s) => {
+        setInvoice(s.inv);
+        setPayments(s.pays);
+        setPaymentAmount(s.payAmt);
+        setPaymentMemo(s.payMemo);
+        setShowPaymentModal(s.modal);
+      },
+      persist: async () => {
+        const { data, error: insErr } = await supabase
+          .from("invoice_payments")
+          .insert({
+            invoice_id: id,
+            paid_at: paymentDate,
+            amount,
+            method: paymentMethod,
+            memo: paymentMemo.trim() || null,
+            status: "Posted",
+          })
+          .select("id,paid_at,amount,method,memo,status")
+          .single();
+        if (insErr) return { error: insErr.message };
+        const row = data as InvoicePayment;
+        flushSync(() => {
+          setPayments((prev) => prev.map((p) => (p.id === tempId ? row : p)));
+        });
+        return undefined;
+      },
+      onError: (msg) => setError(msg),
     });
-    if (insErr) setError(insErr.message);
-    setPaymentAmount("");
-    setPaymentMemo("");
-    setShowPaymentModal(false);
-    await refresh();
-    setBusy(false);
   };
 
-  const handleVoidPayment = async (paymentId: string) => {
+  const handleVoidPayment = (paymentId: string) => {
     if (!supabase || busy) return;
-    setBusy(true);
-    setError(null);
-    const { error: updErr } = await supabase.from("invoice_payments").update({ status: "Voided" }).eq("id", paymentId);
-    if (updErr) setError(updErr.message);
-    await refresh();
-    setBusy(false);
+    const inv = invoiceRef.current;
+    if (!inv) return;
+    const pays = paymentsRef.current;
+    const target = pays.find((p) => p.id === paymentId);
+    if (!target || target.status === "Voided") return;
+
+    const nextPays = pays.map((p) => (p.id === paymentId ? { ...p, status: "Voided" as const } : p));
+    const nextInv = recomputeInvoiceTotals(inv, nextPays);
+
+    type Snap = { inv: Invoice; pays: InvoicePayment[] };
+    runOptimisticPersist<Snap>({
+      setBusy,
+      getSnapshot: () => ({ inv: { ...inv }, pays: [...pays] }),
+      apply: () => {
+        setError(null);
+        setPayments(nextPays);
+        setInvoice(nextInv);
+      },
+      rollback: (s) => {
+        setInvoice(s.inv);
+        setPayments(s.pays);
+      },
+      persist: async () => {
+        const { error: updErr } = await supabase.from("invoice_payments").update({ status: "Voided" }).eq("id", paymentId);
+        return updErr ? { error: updErr.message } : undefined;
+      },
+      onError: (msg) => setError(msg),
+    });
   };
 
   const handleDelete = async () => {

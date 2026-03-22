@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { syncRouterAndClients } from "@/lib/sync-router-client";
@@ -17,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { Customer } from "@/lib/customers-db";
+import { runOptimisticPersist } from "@/lib/optimistic-save";
 
 type Props = {
   initialCustomers: Customer[];
@@ -45,6 +47,10 @@ export function CustomersClient({ initialCustomers }: Props) {
   const [deleteTarget, setDeleteTarget] = React.useState<Customer | null>(null);
   const [deleteError, setDeleteError] = React.useState<string | null>(null);
   const [deleteBusy, setDeleteBusy] = React.useState(false);
+  const itemsRef = React.useRef(items);
+  React.useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
 
   React.useEffect(() => {
     setItems(initialCustomers);
@@ -97,53 +103,68 @@ export function CustomersClient({ initialCustomers }: Props) {
     setModalOpen(true);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!draft) return;
     if (!draft.name.trim()) {
       setError("Name is required.");
       return;
     }
-    setBusy(true);
     setError(null);
-    try {
-      const payload = {
-        name: draft.name.trim(),
-        email: draft.email.trim() || null,
-        phone: draft.phone.trim() || null,
-        address: draft.address.trim() || null,
-        city: draft.city.trim() || null,
-        state: draft.state.trim() || null,
-        zip: draft.zip.trim() || null,
-        notes: draft.notes.trim() || null,
-      };
-      if (!draft.id) {
-        const res = await fetch("/api/customers", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          setError(data?.message ?? "Failed to create customer.");
-          return;
+    const payload = {
+      name: draft.name.trim(),
+      email: draft.email.trim() || null,
+      phone: draft.phone.trim() || null,
+      address: draft.address.trim() || null,
+      city: draft.city.trim() || null,
+      state: draft.state.trim() || null,
+      zip: draft.zip.trim() || null,
+      notes: draft.notes.trim() || null,
+    };
+
+    if (!draft.id) {
+      setBusy(true);
+      void (async () => {
+        try {
+          const res = await fetch("/api/customers", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            setError(data?.message ?? "Failed to create customer.");
+            return;
+          }
+          setItems((prev) =>
+            [...prev, data as Customer].sort((a, b) => a.name.localeCompare(b.name)),
+          );
+          setModalOpen(false);
+          setDraft(null);
+        } finally {
+          setBusy(false);
         }
-        setItems((prev) =>
-          [...prev, data as Customer].sort((a, b) => a.name.localeCompare(b.name)),
-        );
-      } else {
-        const id = draft.id;
-        const previous = items.find((c) => c.id === id);
-        if (!previous) {
-          setError("Customer not found.");
-          return;
-        }
-        const optimistic: Customer = {
-          ...previous,
-          ...payload,
-        };
-        const snapshot = items;
-        const draftSnapshot = draft;
+      })();
+      return;
+    }
+
+    const id = draft.id;
+    const previous = itemsRef.current.find((c) => c.id === id);
+    if (!previous) {
+      setError("Customer not found.");
+      return;
+    }
+    const optimistic: Customer = {
+      ...previous,
+      ...payload,
+    };
+    const draftSnapshot: Draft = { ...draft };
+
+    type Snap = { list: Customer[]; draft: Draft; modalOpen: boolean };
+    runOptimisticPersist<Snap>({
+      setBusy,
+      getSnapshot: () => ({ list: [...itemsRef.current], draft: draftSnapshot, modalOpen }),
+      apply: () => {
         setItems((prev) =>
           prev
             .map((c) => (c.id === id ? optimistic : c))
@@ -151,39 +172,35 @@ export function CustomersClient({ initialCustomers }: Props) {
         );
         setModalOpen(false);
         setDraft(null);
-        setBusy(false);
-        try {
-          const res = await fetch(`/api/customers/${id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          });
-          const data = await res.json();
-          if (!res.ok) {
-            setItems(snapshot);
-            setDraft(draftSnapshot);
-            setModalOpen(true);
-            setError(data?.message ?? "Failed to update customer.");
-            return;
-          }
-          setItems((prev) =>
-            prev
-              .map((c) => (c.id === (data as Customer).id ? (data as Customer) : c))
-              .sort((a, b) => a.name.localeCompare(b.name)),
-          );
-        } catch {
-          setItems(snapshot);
-          setDraft(draftSnapshot);
-          setModalOpen(true);
-          setError("Failed to update customer.");
-        }
-        return;
-      }
-      setModalOpen(false);
-      setDraft(null);
-    } finally {
-      setBusy(false);
-    }
+      },
+      rollback: (s) => {
+        setItems(s.list);
+        setDraft(s.draft);
+        setModalOpen(s.modalOpen);
+      },
+      persist: () =>
+        fetch(`/api/customers/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        })
+          .then(async (res) => {
+            const data = await res.json();
+            if (!res.ok) {
+              return { error: (data as { message?: string })?.message ?? "Failed to update customer." };
+            }
+            flushSync(() => {
+              setItems((prev) =>
+                prev
+                  .map((c) => (c.id === (data as Customer).id ? (data as Customer) : c))
+                  .sort((a, b) => a.name.localeCompare(b.name)),
+              );
+            });
+            return undefined;
+          })
+          .catch(() => ({ error: "Failed to update customer." })),
+      onError: (msg) => setError(msg),
+    });
   };
 
   const confirmDelete = (c: Customer) => {

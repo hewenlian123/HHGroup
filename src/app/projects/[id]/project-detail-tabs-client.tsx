@@ -1,8 +1,13 @@
 "use client";
 
-import { syncRouterAndClients } from "@/lib/sync-router-client";
-import { useOnAppSync } from "@/hooks/use-on-app-sync";
+import {
+  dispatchClientDataSync,
+  HH_APP_SYNC_EVENT,
+  HH_PROJECT_EDIT_OPTIMISTIC_REASON,
+  syncRouterAndClients,
+} from "@/lib/sync-router-client";
 import * as React from "react";
+import { flushSync } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, MoreHorizontal } from "lucide-react";
@@ -34,8 +39,9 @@ import { RecentExpenseLines } from "./recent-expense-lines";
 import {
   archiveProjectAction,
   deleteProjectAction,
+  updateProjectAction,
 } from "../actions";
-import { EditProjectModal } from "./edit-project-modal";
+import { EditProjectModal, type ProjectEditSavePatch } from "./edit-project-modal";
 
 type TabKey =
   | "overview"
@@ -123,16 +129,71 @@ export function ProjectDetailTabsClient({
   const { toast } = useToast();
   const [tab, setTab] = React.useState<TabKey>(initialTab);
   const [editModalOpen, setEditModalOpen] = React.useState(false);
+  const [displayProject, setDisplayProject] = React.useState<Project>(() => project);
+  const displayProjectRef = React.useRef(displayProject);
+  displayProjectRef.current = displayProject;
 
-  useOnAppSync(
-    React.useCallback(() => {
-      void syncRouterAndClients(router);
-    }, [router]),
-    [router]
+  React.useEffect(() => {
+    setDisplayProject(project);
+  }, [projectId]);
+
+  React.useEffect(() => {
+    let t: ReturnType<typeof setTimeout> | null = null;
+    const handler = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ reason?: string }>).detail;
+      if (detail?.reason === HH_PROJECT_EDIT_OPTIMISTIC_REASON) return;
+      if (t != null) clearTimeout(t);
+      t = setTimeout(() => {
+        t = null;
+        void syncRouterAndClients(router);
+      }, 80);
+    };
+    window.addEventListener(HH_APP_SYNC_EVENT, handler);
+    return () => {
+      window.removeEventListener(HH_APP_SYNC_EVENT, handler);
+      if (t != null) clearTimeout(t);
+    };
+  }, [router]);
+
+  const handleProjectSave = React.useCallback(
+    (patch: ProjectEditSavePatch) => {
+      const snapshot = displayProjectRef.current;
+      flushSync(() => {
+        setDisplayProject((p) => ({
+          ...p,
+          name: patch.name,
+          address: patch.address,
+          budget: patch.budget,
+          customerId: patch.customerId,
+          client: patch.customerId ? (patch.customerName ?? p.client) : undefined,
+        }));
+        setEditModalOpen(false);
+      });
+      dispatchClientDataSync({ reason: HH_PROJECT_EDIT_OPTIMISTIC_REASON });
+      void (async () => {
+        const result = await updateProjectAction(projectId, {
+          name: patch.name,
+          address: patch.address,
+          budget: patch.budget,
+          customerId: patch.customerId,
+        });
+        if (result?.error) {
+          flushSync(() => setDisplayProject(snapshot));
+          toast({
+            title: "Couldn't save project",
+            description: result.error,
+            variant: "error",
+          });
+          return;
+        }
+        toast({ title: "Project updated" });
+      })();
+    },
+    [projectId, toast],
   );
 
   const subtitle = [
-    `Budget $${(financialSummary?.budget ?? project.budget ?? 0).toLocaleString()}`,
+    `Budget $${(displayProject.budget ?? financialSummary?.budget ?? 0).toLocaleString()}`,
     `Spent $${(financialSummary?.spent ?? canonicalProfit.actualCost).toLocaleString()}`,
     `Profit ${canonicalProfit.profit >= 0 ? "" : "−"}$${Math.abs(
       canonicalProfit.profit,
@@ -157,17 +218,17 @@ export function ProjectDetailTabsClient({
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-[24px] font-semibold tracking-tight text-foreground">
-                  {project.name}
+                  {displayProject.name}
                 </h1>
                 <StatusBadge
                   label={
-                    project.status.charAt(0).toUpperCase() +
-                    project.status.slice(1)
+                    displayProject.status.charAt(0).toUpperCase() +
+                    displayProject.status.slice(1)
                   }
                   variant={
-                    project.status === "active"
+                    displayProject.status === "active"
                       ? "success"
-                      : project.status === "pending"
+                      : displayProject.status === "pending"
                       ? "warning"
                       : "muted"
                   }
@@ -223,7 +284,7 @@ export function ProjectDetailTabsClient({
                     e.preventDefault();
                     if (
                       !window.confirm(
-                        `Delete project "${project.name}"? This cannot be undone.`,
+                        `Delete project "${displayProject.name}"? This cannot be undone.`,
                       )
                     )
                       return;
@@ -256,11 +317,14 @@ export function ProjectDetailTabsClient({
       <EditProjectModal
         open={editModalOpen}
         onOpenChange={setEditModalOpen}
-        project={{ id: projectId, name: project.name, address: project.address, budget: project.budget, customerId: project.customerId ?? null }}
-        onSaved={() => {
-          void syncRouterAndClients(router);
-          toast({ title: "Project updated" });
+        project={{
+          id: projectId,
+          name: displayProject.name,
+          address: displayProject.address ?? "",
+          budget: displayProject.budget,
+          customerId: displayProject.customerId ?? null,
         }}
+        onSave={handleProjectSave}
       />
       <div className="bg-[#F9FAFB] -mx-4 -mb-4 px-4 pb-6 sm:-mx-6 sm:px-6">
         <div className="bg-white rounded-sm px-4 py-3 sm:px-5 sm:py-4 space-y-4">
@@ -418,7 +482,9 @@ export function ProjectDetailTabsClient({
               <div className="flex items-center justify-between gap-3 py-2">
                 <span className="text-[#9CA3AF]">Client</span>
                 <span className="truncate text-right text-[#111827]">
-                  {(project as { client_name?: string }).client_name ?? "—"}
+                  {displayProject.client ??
+                    (displayProject as { client_name?: string }).client_name ??
+                    "—"}
                 </span>
               </div>
               <div className="flex items-center justify-between gap-3 py-2">
@@ -431,7 +497,7 @@ export function ProjectDetailTabsClient({
                 <span className="text-[#9CA3AF]">Budget</span>
                 <span className="tabular-nums text-right text-[#111827]">
                   $
-                  {(financialSummary?.budget ?? project.budget ?? 0).toLocaleString("en-US", {
+                  {(displayProject.budget ?? financialSummary?.budget ?? 0).toLocaleString("en-US", {
                     maximumFractionDigits: 0,
                   })}
                 </span>
@@ -636,8 +702,12 @@ export function ProjectDetailTabsClient({
         <TabsContent value="materials" className="mt-4">
           <ProjectMaterialsTab
             projectId={projectId}
-            projectName={project.name}
-            clientName={(project as { client_name?: string }).client_name}
+            projectName={displayProject.name}
+            clientName={
+              displayProject.client ??
+              (displayProject as { client_name?: string }).client_name ??
+              undefined
+            }
             selections={materialSelections}
             catalog={materialCatalog}
             onRefresh={() => void syncRouterAndClients(router)}
@@ -646,7 +716,7 @@ export function ProjectDetailTabsClient({
         <TabsContent value="closeout" className="mt-4">
           <ProjectCloseoutTab
             projectId={projectId}
-            projectName={project.name}
+            projectName={displayProject.name}
             billingSummary={billingSummary}
             contractValue={canonicalProfit.revenue}
             punch={closeoutPunch}

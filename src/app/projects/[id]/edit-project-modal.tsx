@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { flushSync } from "react-dom";
 import {
   Dialog,
   DialogContent,
@@ -11,24 +12,30 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { updateProjectAction } from "../actions";
 import type { Project } from "@/lib/data";
+import { Loader2 } from "lucide-react";
 
 type CustomerOption = { id: string; name: string };
+
+/** Payload passed to parent for optimistic UI + background server action. */
+export type ProjectEditSavePatch = {
+  name: string;
+  address: string;
+  budget: number;
+  customerId: string | null;
+  /** Resolved label for overview customer line; null when cleared. */
+  customerName: string | null;
+};
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   project: Pick<Project, "id" | "name" | "address" | "budget" | "customerId">;
-  onSaved?: () => void;
+  /** Synchronous: parent applies optimistic UI and closes modal; runs server work in background. */
+  onSave: (patch: ProjectEditSavePatch) => void;
 };
 
-export function EditProjectModal({
-  open,
-  onOpenChange,
-  project,
-  onSaved,
-}: Props) {
+export function EditProjectModal({ open, onOpenChange, project, onSave }: Props) {
   const [name, setName] = React.useState(project.name ?? "");
   const [address, setAddress] = React.useState(project.address ?? "");
   const [budget, setBudget] = React.useState(String(project.budget ?? ""));
@@ -58,8 +65,10 @@ export function EditProjectModal({
       .finally(() => setCustomersLoading(false));
   }, [open]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (saving) return;
+
     const nameTrim = name.trim();
     if (!nameTrim) {
       setError("Project name is required.");
@@ -70,21 +79,25 @@ export function EditProjectModal({
       setError("Budget must be 0 or greater.");
       return;
     }
-    setSaving(true);
-    setError(null);
+
+    const cid = customerId?.trim() || null;
+    const customerName = cid ? (customers.find((c) => c.id === cid)?.name ?? null) : null;
+
+    flushSync(() => {
+      setSaving(true);
+      setError(null);
+    });
+
     try {
-      const result = await updateProjectAction(project.id, {
+      onSave({
         name: nameTrim,
         address: address.trim(),
         budget: budgetNum,
-        customerId: customerId?.trim() || null,
+        customerId: cid,
+        customerName,
       });
-      if (result?.error) {
-        setError(result.error);
-        return;
-      }
-      onSaved?.();
-      onOpenChange(false);
+    } catch {
+      setError("Something went wrong. Try again.");
     } finally {
       setSaving(false);
     }
@@ -94,9 +107,7 @@ export function EditProjectModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md border-border/60 rounded-md p-5">
         <DialogHeader>
-          <DialogTitle className="text-base font-semibold">
-            Edit project
-          </DialogTitle>
+          <DialogTitle className="text-base font-semibold">Edit project</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="grid gap-3">
           <div className="space-y-1">
@@ -149,9 +160,7 @@ export function EditProjectModal({
               disabled={saving}
             />
           </div>
-          {error && (
-            <p className="text-sm text-destructive">{error}</p>
-          )}
+          {error ? <p className="text-sm text-destructive">{error}</p> : null}
           <DialogFooter>
             <Button
               type="button"
@@ -162,8 +171,15 @@ export function EditProjectModal({
             >
               Cancel
             </Button>
-            <Button type="submit" size="sm" disabled={saving}>
-              {saving ? "Saving…" : "Save"}
+            <Button type="submit" size="sm" disabled={saving} aria-busy={saving}>
+              {saving ? (
+                <>
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
+                  Saving…
+                </>
+              ) : (
+                "Save"
+              )}
             </Button>
           </DialogFooter>
         </form>

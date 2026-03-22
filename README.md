@@ -5,6 +5,7 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 - **How modules stay in sync:** `docs/DATA_AND_INTEGRATION.md` (entities, routes, `syncRouterAndClients` / `useOnAppSync`).
 - **Prove cross-page links work:** `npm run test:e2e:integration` (needs dev server + Supabase; uses `E2E_BASE_URL` if set).
 - **Delete surfaces / mutations:** see `package.json` scripts `test:e2e:delete-catalog`, `test:e2e:delete`, and payment specs.
+- **Company Profile + Logo + 单据 Header：** [`docs/company-profile-logo-header-verification.md`](docs/company-profile-logo-header-verification.md)（测试清单与命令）；落地 SQL / 环境变量见 [`docs/supabase-company-profile-without-db-push.md`](docs/supabase-company-profile-without-db-push.md)。自动化：`npm run test:e2e:company-branding`。
 
 ## Testing & code quality
 

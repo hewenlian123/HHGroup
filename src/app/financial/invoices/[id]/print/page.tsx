@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getInvoiceById, getProjectById } from "@/lib/data";
+import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
+import { DocumentCompanyHeader } from "@/components/documents/document-company-header";
 
 export default async function InvoicePrintPage({
   params,
@@ -10,14 +12,20 @@ export default async function InvoicePrintPage({
   const { id } = await params;
   const invoice = await getInvoiceById(id);
   if (!invoice) notFound();
-  const project = await getProjectById(invoice.projectId);
+  const [project, company] = await Promise.all([
+    getProjectById(invoice.projectId),
+    fetchDocumentCompanyProfile(),
+  ]);
 
   return (
     <div className="min-h-screen bg-white text-black p-8 mx-auto" style={{ maxWidth: "8.5in" }}>
-      <header className="border-b border-zinc-300 pb-4 mb-6">
-        <h1 className="text-2xl font-bold">INVOICE</h1>
-        <p className="text-lg font-semibold mt-1">{invoice.invoiceNo}</p>
-      </header>
+      <DocumentCompanyHeader
+        company={company}
+        documentTitle="Invoice"
+        documentNo={invoice.invoiceNo}
+        documentDate={invoice.issueDate}
+        documentNoLabel="Invoice No"
+      />
 
       <section className="mb-6">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">Bill to</h2>
