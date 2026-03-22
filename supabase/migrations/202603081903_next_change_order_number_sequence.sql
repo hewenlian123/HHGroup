@@ -1,5 +1,5 @@
 -- Backfill sequence from existing number (CO-001 -> 1) where sequence is null.
--- Requires: project_change_orders.sequence column (from 202603081900_project_change_orders_add_sequence.sql)
+-- Requires: project_change_orders.sequence column (from 202603081902_project_change_orders_add_sequence.sql)
 update public.project_change_orders
 set sequence = nullif(regexp_replace(number, '^CO-0*', ''), '')::int
 where sequence is null and number ~ '^CO-[0-9]+$';

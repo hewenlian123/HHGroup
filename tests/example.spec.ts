@@ -29,7 +29,8 @@ async function checkPage(
    * “Loading…” (~8 chars). Wait for hydrated shell (`main`) before asserting body length.
    */
   try {
-    await page.locator("main.flex-1").first().waitFor({ state: "visible", timeout: 90_000 });
+    // App shell may use `main` without `flex-1` in some routes; prefer any primary `main`.
+    await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
   } catch {
     try {
       await page.waitForFunction(

@@ -77,14 +77,14 @@ do $$
 begin
   if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'labor_entries' and column_name = 'project_id') then
     create or replace function public.log_activity_labor_entry()
-    returns trigger language plpgsql as $$
+    returns trigger language plpgsql as $fn$
     begin
       if new.project_id is not null then
         insert into public.activity_logs (project_id, type, description)
         values (new.project_id, 'labor_entry_created', 'Labor entry created');
       end if;
       return new;
-    end; $$;
+    end $fn$;
     drop trigger if exists trg_activity_labor_entry on public.labor_entries;
     create trigger trg_activity_labor_entry after insert on public.labor_entries
       for each row execute function public.log_activity_labor_entry();

@@ -1,0 +1,600 @@
+-- ═══════════════════════════════════════════════════════════════════════════
+-- E2E / staging SEED DATA — DO NOT RUN ON PRODUCTION
+-- Official Supabase CLI path: `supabase/seed.sql` (see `supabase db reset --local`).
+-- ═══════════════════════════════════════════════════════════════════════════
+--
+-- 1) Verify columns in **your** database (Supabase SQL Editor):
+--
+--    SELECT table_name, column_name
+--    FROM information_schema.columns
+--    WHERE table_schema = 'public'
+--      AND table_name IN (
+--        'categories', 'subcontractors', 'projects',
+--        'workers', 'labor_entries', 'labor_workers',
+--        'project_tasks', 'documents', 'site_photos',
+--        'project_subcontractors'
+--      )
+--    ORDER BY table_name, ordinal_position;
+--
+-- 2) This script uses information_schema at **runtime** (via hh_e2e_col) so it
+--    only references columns that exist. No static INSERT lists against unknown schemas.
+--
+-- Fixed IDs:
+--   Project: 11111111-1111-1111-1111-111111111111
+--   Worker:  22222222-2222-2222-2222-222222222222
+-- ═══════════════════════════════════════════════════════════════════════════
+
+BEGIN;
+
+CREATE OR REPLACE FUNCTION pg_temp.hh_e2e_col(p_table text, p_col text)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = p_table
+      AND column_name = p_col
+  );
+$$;
+
+DO $$
+DECLARE
+  v_project constant uuid := '11111111-1111-1111-1111-111111111111'::uuid;
+  v_worker constant uuid := '22222222-2222-2222-2222-222222222222'::uuid;
+  v_has_tasks_is_test boolean;
+  v_has_modern_labor boolean;
+  v_sep text;
+  v_cols text;
+  v_vals text;
+  v_sql text;
+  v_sub_key text;
+  v_date_col text;
+BEGIN
+  -- ─── Tear down ───
+  IF to_regclass('public.labor_entries') IS NOT NULL THEN
+    IF pg_temp.hh_e2e_col('labor_entries', 'project_id')
+       AND pg_temp.hh_e2e_col('labor_entries', 'worker_id') THEN
+      EXECUTE format(
+        'DELETE FROM public.labor_entries WHERE project_id = %L::uuid OR worker_id = %L::uuid',
+        v_project,
+        v_worker
+      );
+    ELSIF pg_temp.hh_e2e_col('labor_entries', 'project_id') THEN
+      EXECUTE format('DELETE FROM public.labor_entries WHERE project_id = %L::uuid', v_project);
+    ELSIF pg_temp.hh_e2e_col('labor_entries', 'worker_id') THEN
+      EXECUTE format('DELETE FROM public.labor_entries WHERE worker_id = %L::uuid', v_worker);
+    ELSE
+      RAISE NOTICE 'labor_entries: tear-down skipped (no project_id/worker_id columns).';
+    END IF;
+  END IF;
+
+  IF to_regclass('public.site_photos') IS NOT NULL
+     AND pg_temp.hh_e2e_col('site_photos', 'project_id') THEN
+    EXECUTE format('DELETE FROM public.site_photos WHERE project_id = %L::uuid', v_project);
+  END IF;
+
+  IF to_regclass('public.documents') IS NOT NULL
+     AND pg_temp.hh_e2e_col('documents', 'project_id') THEN
+    EXECUTE format('DELETE FROM public.documents WHERE project_id = %L::uuid', v_project);
+  END IF;
+
+  IF to_regclass('public.project_tasks') IS NOT NULL
+     AND pg_temp.hh_e2e_col('project_tasks', 'project_id') THEN
+    EXECUTE format('DELETE FROM public.project_tasks WHERE project_id = %L::uuid', v_project);
+  END IF;
+
+  IF to_regclass('public.project_subcontractors') IS NOT NULL
+     AND pg_temp.hh_e2e_col('project_subcontractors', 'project_id') THEN
+    EXECUTE format('DELETE FROM public.project_subcontractors WHERE project_id = %L::uuid', v_project);
+  END IF;
+
+  IF to_regclass('public.projects') IS NOT NULL THEN
+    EXECUTE format('DELETE FROM public.projects WHERE id = %L::uuid', v_project);
+  END IF;
+
+  IF to_regclass('public.workers') IS NOT NULL THEN
+    EXECUTE format('DELETE FROM public.workers WHERE id = %L::uuid', v_worker);
+  END IF;
+
+  IF to_regclass('public.categories') IS NOT NULL AND pg_temp.hh_e2e_col('categories', 'name') THEN
+    EXECUTE $d$DELETE FROM public.categories WHERE name LIKE '[E2E] %'$d$;
+  END IF;
+
+  IF to_regclass('public.subcontractors') IS NOT NULL THEN
+    IF pg_temp.hh_e2e_col('subcontractors', 'display_name') THEN
+      EXECUTE $d$DELETE FROM public.subcontractors WHERE display_name LIKE '[E2E] %'$d$;
+    ELSIF pg_temp.hh_e2e_col('subcontractors', 'name') THEN
+      EXECUTE $d$DELETE FROM public.subcontractors WHERE name LIKE '[E2E] %'$d$;
+    END IF;
+  END IF;
+
+  -- ─── categories ───
+  IF to_regclass('public.categories') IS NOT NULL AND pg_temp.hh_e2e_col('categories', 'name') THEN
+    EXECUTE format('INSERT INTO public.categories (name) VALUES (%L)', '[E2E] Materials');
+    EXECUTE format('INSERT INTO public.categories (name) VALUES (%L)', '[E2E] Equipment');
+    EXECUTE format('INSERT INTO public.categories (name) VALUES (%L)', '[E2E] Test income');
+  END IF;
+
+  -- ─── customers (Playwright integration: list + detail link) ───
+  IF to_regclass('public.customers') IS NOT NULL AND pg_temp.hh_e2e_col('customers', 'name') THEN
+    EXECUTE $d$DELETE FROM public.customers WHERE id = '33333333-3333-3333-3333-333333333333'::uuid OR name = '[E2E] Test Customer'$d$;
+    IF pg_temp.hh_e2e_col('customers', 'id') THEN
+      EXECUTE $cust$
+        INSERT INTO public.customers (id, name, email)
+        VALUES (
+          '33333333-3333-3333-3333-333333333333'::uuid,
+          '[E2E] Test Customer',
+          'e2e-customer@example.test'
+        )
+      $cust$;
+    ELSE
+      EXECUTE format(
+        'INSERT INTO public.customers (name, email) VALUES (%L, %L)',
+        '[E2E] Test Customer',
+        'e2e-customer@example.test'
+      );
+    END IF;
+  END IF;
+
+  -- ─── subcontractors ───
+  IF to_regclass('public.subcontractors') IS NOT NULL THEN
+    IF pg_temp.hh_e2e_col('subcontractors', 'display_name') THEN
+      v_cols := quote_ident('display_name');
+      v_vals := quote_literal('[E2E] Test Subcontractor');
+      IF pg_temp.hh_e2e_col('subcontractors', 'legal_name') THEN
+        v_cols := v_cols || ', ' || quote_ident('legal_name');
+        v_vals := v_vals || ', ' || quote_literal('E2E Test Sub LLC');
+      END IF;
+      IF pg_temp.hh_e2e_col('subcontractors', 'contact_name') THEN
+        v_cols := v_cols || ', ' || quote_ident('contact_name');
+        v_vals := v_vals || ', ' || quote_literal('Seed Contact');
+      END IF;
+      IF pg_temp.hh_e2e_col('subcontractors', 'phone') THEN
+        v_cols := v_cols || ', ' || quote_ident('phone');
+        v_vals := v_vals || ', ' || quote_literal('555-0100');
+      END IF;
+      IF pg_temp.hh_e2e_col('subcontractors', 'email') THEN
+        v_cols := v_cols || ', ' || quote_ident('email');
+        v_vals := v_vals || ', ' || quote_literal('e2e-sub@example.test');
+      END IF;
+      IF pg_temp.hh_e2e_col('subcontractors', 'status') THEN
+        v_cols := v_cols || ', ' || quote_ident('status');
+        v_vals := v_vals || ', ' || quote_literal('active');
+      END IF;
+      IF pg_temp.hh_e2e_col('subcontractors', 'notes') THEN
+        v_cols := v_cols || ', ' || quote_ident('notes');
+        v_vals := v_vals || ', ' || quote_literal('E2E_SEED');
+      END IF;
+      EXECUTE format('INSERT INTO public.subcontractors (%s) VALUES (%s)', v_cols, v_vals);
+    ELSIF pg_temp.hh_e2e_col('subcontractors', 'name') THEN
+      v_cols := quote_ident('name');
+      v_vals := quote_literal('[E2E] Test Subcontractor');
+      IF pg_temp.hh_e2e_col('subcontractors', 'phone') THEN
+        v_cols := v_cols || ', ' || quote_ident('phone');
+        v_vals := v_vals || ', ' || quote_literal('555-0100');
+      END IF;
+      IF pg_temp.hh_e2e_col('subcontractors', 'email') THEN
+        v_cols := v_cols || ', ' || quote_ident('email');
+        v_vals := v_vals || ', ' || quote_literal('e2e-sub@example.test');
+      END IF;
+      IF pg_temp.hh_e2e_col('subcontractors', 'active') THEN
+        v_cols := v_cols || ', ' || quote_ident('active');
+        v_vals := v_vals || ', true';
+      ELSIF pg_temp.hh_e2e_col('subcontractors', 'status') THEN
+        v_cols := v_cols || ', ' || quote_ident('status');
+        v_vals := v_vals || ', ' || quote_literal('active');
+      END IF;
+      IF pg_temp.hh_e2e_col('subcontractors', 'address') THEN
+        v_cols := v_cols || ', ' || quote_ident('address');
+        v_vals := v_vals || ', ' || quote_literal('100 Seed Lane');
+      END IF;
+      EXECUTE format('INSERT INTO public.subcontractors (%s) VALUES (%s)', v_cols, v_vals);
+    END IF;
+  END IF;
+
+  -- ─── workers (half_day_rate/role vs daily_rate/trade) ───
+  IF to_regclass('public.workers') IS NOT NULL AND pg_temp.hh_e2e_col('workers', 'name') THEN
+    v_sep := '';
+    v_cols := '';
+    v_vals := '';
+    IF pg_temp.hh_e2e_col('workers', 'id') THEN
+      v_cols := v_cols || quote_ident('id');
+      v_vals := v_vals || format('%L::uuid', v_worker);
+      v_sep := ', ';
+    END IF;
+    v_cols := v_cols || v_sep || quote_ident('name');
+    v_vals := v_vals || v_sep || quote_literal('E2E Seed Worker');
+    v_sep := ', ';
+    IF pg_temp.hh_e2e_col('workers', 'role') THEN
+      v_cols := v_cols || v_sep || quote_ident('role');
+      v_vals := v_vals || v_sep || quote_literal('Carpenter');
+      v_sep := ', ';
+    ELSIF pg_temp.hh_e2e_col('workers', 'trade') THEN
+      v_cols := v_cols || v_sep || quote_ident('trade');
+      v_vals := v_vals || v_sep || quote_literal('Carpenter');
+      v_sep := ', ';
+    END IF;
+    IF pg_temp.hh_e2e_col('workers', 'phone') THEN
+      v_cols := v_cols || v_sep || quote_ident('phone');
+      v_vals := v_vals || v_sep || quote_literal('555-0200');
+      v_sep := ', ';
+    END IF;
+    IF pg_temp.hh_e2e_col('workers', 'half_day_rate') THEN
+      v_cols := v_cols || v_sep || quote_ident('half_day_rate');
+      v_vals := v_vals || v_sep || '100';
+      v_sep := ', ';
+    ELSIF pg_temp.hh_e2e_col('workers', 'daily_rate') THEN
+      v_cols := v_cols || v_sep || quote_ident('daily_rate');
+      v_vals := v_vals || v_sep || '200';
+      v_sep := ', ';
+    END IF;
+    IF pg_temp.hh_e2e_col('workers', 'status') THEN
+      v_cols := v_cols || v_sep || quote_ident('status');
+      v_vals := v_vals || v_sep || quote_literal('active');
+      v_sep := ', ';
+    END IF;
+    IF pg_temp.hh_e2e_col('workers', 'notes') THEN
+      v_cols := v_cols || v_sep || quote_ident('notes');
+      v_vals := v_vals || v_sep || quote_literal('E2E_SEED');
+    END IF;
+    EXECUTE format('INSERT INTO public.workers (%s) VALUES (%s)', v_cols, v_vals);
+  END IF;
+
+  IF to_regclass('public.labor_workers') IS NOT NULL
+     AND pg_temp.hh_e2e_col('labor_workers', 'id')
+     AND pg_temp.hh_e2e_col('labor_workers', 'name') THEN
+    EXECUTE format(
+      'INSERT INTO public.labor_workers (id, name) VALUES (%L::uuid, %L) ON CONFLICT (id) DO UPDATE SET name = excluded.name',
+      v_worker,
+      'E2E Seed Worker'
+    );
+  END IF;
+
+  -- ─── projects ───
+  IF to_regclass('public.projects') IS NOT NULL AND pg_temp.hh_e2e_col('projects', 'name') THEN
+    v_sep := '';
+    v_cols := '';
+    v_vals := '';
+    IF pg_temp.hh_e2e_col('projects', 'id') THEN
+      v_cols := v_cols || quote_ident('id');
+      v_vals := v_vals || format('%L::uuid', v_project);
+      v_sep := ', ';
+    END IF;
+    v_cols := v_cols || v_sep || quote_ident('name');
+    v_vals := v_vals || v_sep || quote_literal('E2E Seed — HH Unified');
+    v_sep := ', ';
+    IF pg_temp.hh_e2e_col('projects', 'status') THEN
+      v_cols := v_cols || v_sep || quote_ident('status');
+      v_vals := v_vals || v_sep || quote_literal('active');
+      v_sep := ', ';
+    END IF;
+    IF pg_temp.hh_e2e_col('projects', 'budget') THEN
+      v_cols := v_cols || v_sep || quote_ident('budget');
+      v_vals := v_vals || v_sep || '100000';
+      v_sep := ', ';
+    END IF;
+    IF pg_temp.hh_e2e_col('projects', 'spent') THEN
+      v_cols := v_cols || v_sep || quote_ident('spent');
+      v_vals := v_vals || v_sep || '0';
+      v_sep := ', ';
+    END IF;
+    IF pg_temp.hh_e2e_col('projects', 'client') THEN
+      v_cols := v_cols || v_sep || quote_ident('client');
+      v_vals := v_vals || v_sep || quote_literal('E2E Client');
+      v_sep := ', ';
+    ELSIF pg_temp.hh_e2e_col('projects', 'client_name') THEN
+      v_cols := v_cols || v_sep || quote_ident('client_name');
+      v_vals := v_vals || v_sep || quote_literal('E2E Client');
+      v_sep := ', ';
+    END IF;
+    IF pg_temp.hh_e2e_col('projects', 'address') THEN
+      v_cols := v_cols || v_sep || quote_ident('address');
+      v_vals := v_vals || v_sep || quote_literal('100 Seed Lane, Testville');
+      v_sep := ', ';
+    END IF;
+    IF pg_temp.hh_e2e_col('projects', 'notes') THEN
+      v_cols := v_cols || v_sep || quote_ident('notes');
+      v_vals := v_vals || v_sep || quote_literal('E2E_SEED — safe to delete; recreated by supabase/seed.sql');
+    END IF;
+    EXECUTE format('INSERT INTO public.projects (%s) VALUES (%s)', v_cols, v_vals);
+  END IF;
+
+  -- ─── project_subcontractors ───
+  IF to_regclass('public.project_subcontractors') IS NOT NULL
+     AND pg_temp.hh_e2e_col('project_subcontractors', 'project_id')
+     AND pg_temp.hh_e2e_col('project_subcontractors', 'subcontractor_id') THEN
+    IF pg_temp.hh_e2e_col('subcontractors', 'display_name') THEN
+      v_sub_key := 'display_name';
+    ELSIF pg_temp.hh_e2e_col('subcontractors', 'name') THEN
+      v_sub_key := 'name';
+    ELSE
+      v_sub_key := NULL;
+    END IF;
+    IF v_sub_key IS NOT NULL AND to_regclass('public.subcontractors') IS NOT NULL THEN
+      v_sql := format(
+        'INSERT INTO public.project_subcontractors (project_id, subcontractor_id, role)
+         SELECT %L::uuid, s.id, %L FROM public.subcontractors s WHERE s.%I = %L LIMIT 1
+         ON CONFLICT (project_id, subcontractor_id) DO NOTHING',
+        v_project,
+        'General',
+        v_sub_key,
+        '[E2E] Test Subcontractor'
+      );
+      EXECUTE v_sql;
+    END IF;
+  END IF;
+
+  -- ─── project_tasks ───
+  IF to_regclass('public.project_tasks') IS NOT NULL
+     AND pg_temp.hh_e2e_col('project_tasks', 'project_id')
+     AND pg_temp.hh_e2e_col('project_tasks', 'title')
+     AND pg_temp.hh_e2e_col('project_tasks', 'status')
+     AND pg_temp.hh_e2e_col('project_tasks', 'priority') THEN
+    SELECT EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'project_tasks'
+        AND column_name = 'is_test'
+    ) INTO v_has_tasks_is_test;
+
+    IF v_has_tasks_is_test AND pg_temp.hh_e2e_col('project_tasks', 'description') THEN
+      EXECUTE format(
+        $t$INSERT INTO public.project_tasks (project_id, title, description, status, priority, is_test) VALUES
+        (%L::uuid, %L, %L, %L, %L, true),
+        (%L::uuid, %L, %L, %L, %L, true)$t$,
+        v_project,
+        '[E2E] Task — setup',
+        'Seeded for Playwright / manual QA',
+        'todo',
+        'medium',
+        v_project,
+        '[E2E] Task — in progress',
+        'Seeded row',
+        'in_progress',
+        'high'
+      );
+    ELSIF v_has_tasks_is_test THEN
+      EXECUTE format(
+        $t$INSERT INTO public.project_tasks (project_id, title, status, priority, is_test) VALUES
+        (%L::uuid, %L, %L, %L, true),
+        (%L::uuid, %L, %L, %L, true)$t$,
+        v_project,
+        '[E2E] Task — setup',
+        'todo',
+        'medium',
+        v_project,
+        '[E2E] Task — in progress',
+        'in_progress',
+        'high'
+      );
+    ELSIF pg_temp.hh_e2e_col('project_tasks', 'description') THEN
+      EXECUTE format(
+        $t$INSERT INTO public.project_tasks (project_id, title, description, status, priority) VALUES
+        (%L::uuid, %L, %L, %L, %L),
+        (%L::uuid, %L, %L, %L, %L)$t$,
+        v_project,
+        '[E2E] Task — setup',
+        'Seeded for Playwright / manual QA',
+        'todo',
+        'medium',
+        v_project,
+        '[E2E] Task — in progress',
+        'Seeded row',
+        'in_progress',
+        'high'
+      );
+    ELSE
+      EXECUTE format(
+        $t$INSERT INTO public.project_tasks (project_id, title, status, priority) VALUES
+        (%L::uuid, %L, %L, %L),
+        (%L::uuid, %L, %L, %L)$t$,
+        v_project,
+        '[E2E] Task — setup',
+        'todo',
+        'medium',
+        v_project,
+        '[E2E] Task — in progress',
+        'in_progress',
+        'high'
+      );
+    END IF;
+  END IF;
+
+  -- ─── documents (only columns that exist) ───
+  IF to_regclass('public.documents') IS NOT NULL
+     AND pg_temp.hh_e2e_col('documents', 'file_name')
+     AND pg_temp.hh_e2e_col('documents', 'file_path') THEN
+    v_sep := '';
+    v_cols := '';
+    v_vals := '';
+    v_cols := quote_ident('file_name');
+    v_vals := quote_literal('[E2E] seed-readme.txt');
+    v_sep := ', ';
+    v_cols := v_cols || v_sep || quote_ident('file_path');
+    v_vals := v_vals || v_sep || quote_literal('e2e-seed/placeholder.txt');
+    v_sep := ', ';
+    IF pg_temp.hh_e2e_col('documents', 'file_type') THEN
+      v_cols := v_cols || v_sep || quote_ident('file_type');
+      v_vals := v_vals || v_sep || quote_literal('Other');
+      v_sep := ', ';
+    END IF;
+    IF pg_temp.hh_e2e_col('documents', 'mime_type') THEN
+      v_cols := v_cols || v_sep || quote_ident('mime_type');
+      v_vals := v_vals || v_sep || quote_literal('text/plain');
+      v_sep := ', ';
+    END IF;
+    IF pg_temp.hh_e2e_col('documents', 'size_bytes') THEN
+      v_cols := v_cols || v_sep || quote_ident('size_bytes');
+      v_vals := v_vals || v_sep || '42';
+      v_sep := ', ';
+    END IF;
+    IF pg_temp.hh_e2e_col('documents', 'project_id') THEN
+      v_cols := v_cols || v_sep || quote_ident('project_id');
+      v_vals := v_vals || v_sep || format('%L::uuid', v_project);
+      v_sep := ', ';
+    END IF;
+    IF pg_temp.hh_e2e_col('documents', 'related_module') THEN
+      v_cols := v_cols || v_sep || quote_ident('related_module');
+      v_vals := v_vals || v_sep || quote_literal('e2e_seed');
+      v_sep := ', ';
+    END IF;
+    IF pg_temp.hh_e2e_col('documents', 'uploaded_by') THEN
+      v_cols := v_cols || v_sep || quote_ident('uploaded_by');
+      v_vals := v_vals || v_sep || quote_literal('e2e_seed');
+    END IF;
+    IF pg_temp.hh_e2e_col('documents', 'notes') THEN
+      v_cols := v_cols || ', ' || quote_ident('notes');
+      v_vals := v_vals || ', ' || quote_literal('E2E_SEED');
+    END IF;
+    EXECUTE format('INSERT INTO public.documents (%s) VALUES (%s)', v_cols, v_vals);
+  END IF;
+
+  -- ─── site_photos ───
+  IF to_regclass('public.site_photos') IS NOT NULL
+     AND pg_temp.hh_e2e_col('site_photos', 'project_id')
+     AND pg_temp.hh_e2e_col('site_photos', 'photo_url') THEN
+    v_sep := '';
+    v_cols := '';
+    v_vals := '';
+    v_cols := quote_ident('project_id');
+    v_vals := format('%L::uuid', v_project);
+    v_sep := ', ';
+    v_cols := v_cols || v_sep || quote_ident('photo_url');
+    v_vals := v_vals || v_sep || quote_literal('https://picsum.photos/seed/hh-e2e/800/600');
+    v_sep := ', ';
+    IF pg_temp.hh_e2e_col('site_photos', 'description') THEN
+      v_cols := v_cols || v_sep || quote_ident('description');
+      v_vals := v_vals || v_sep || quote_literal('[E2E] Seeded site photo');
+      v_sep := ', ';
+    END IF;
+    IF pg_temp.hh_e2e_col('site_photos', 'tags') THEN
+      v_cols := v_cols || v_sep || quote_ident('tags');
+      v_vals := v_vals || v_sep || quote_literal('e2e,seed');
+      v_sep := ', ';
+    END IF;
+    IF pg_temp.hh_e2e_col('site_photos', 'uploaded_by') THEN
+      v_cols := v_cols || v_sep || quote_ident('uploaded_by');
+      v_vals := v_vals || v_sep || quote_literal('e2e_seed');
+    END IF;
+    EXECUTE format('INSERT INTO public.site_photos (%s) VALUES (%s)', v_cols, v_vals);
+  END IF;
+
+  -- ─── labor_entries ───
+  IF to_regclass('public.labor_entries') IS NOT NULL THEN
+    SELECT pg_temp.hh_e2e_col('labor_entries', 'project_id')
+      AND (
+        pg_temp.hh_e2e_col('labor_entries', 'work_date')
+        OR pg_temp.hh_e2e_col('labor_entries', 'entry_date')
+      )
+    INTO v_has_modern_labor;
+
+    v_date_col := NULL;
+    IF pg_temp.hh_e2e_col('labor_entries', 'work_date') THEN
+      v_date_col := 'work_date';
+    ELSIF pg_temp.hh_e2e_col('labor_entries', 'entry_date') THEN
+      v_date_col := 'entry_date';
+    END IF;
+
+    IF v_has_modern_labor AND v_date_col IS NOT NULL THEN
+      IF pg_temp.hh_e2e_col('labor_entries', 'hours')
+         AND pg_temp.hh_e2e_col('labor_entries', 'morning')
+         AND pg_temp.hh_e2e_col('labor_entries', 'afternoon')
+         AND pg_temp.hh_e2e_col('labor_entries', 'cost_amount')
+         AND pg_temp.hh_e2e_col('labor_entries', 'worker_id') THEN
+        v_cols := quote_ident('worker_id');
+        v_vals := format('%L::uuid', v_worker);
+        v_cols := v_cols || ', ' || quote_ident('project_id');
+        v_vals := v_vals || ', ' || format('%L::uuid', v_project);
+        v_cols := v_cols || ', ' || quote_ident(v_date_col);
+        v_vals := v_vals || ', ' || format('%L::date', CURRENT_DATE - 1);
+        v_cols := v_cols || ', ' || quote_ident('hours');
+        v_vals := v_vals || ', 8';
+        IF pg_temp.hh_e2e_col('labor_entries', 'cost_code') THEN
+          v_cols := v_cols || ', ' || quote_ident('cost_code');
+          v_vals := v_vals || ', ' || quote_literal('E2E');
+        END IF;
+        IF pg_temp.hh_e2e_col('labor_entries', 'notes') THEN
+          v_cols := v_cols || ', ' || quote_ident('notes');
+          v_vals := v_vals || ', ' || quote_literal('E2E_SEED');
+        END IF;
+        v_cols := v_cols || ', ' || quote_ident('cost_amount');
+        v_vals := v_vals || ', 200';
+        v_cols := v_cols || ', ' || quote_ident('morning');
+        v_vals := v_vals || ', true';
+        v_cols := v_cols || ', ' || quote_ident('afternoon');
+        v_vals := v_vals || ', true';
+        IF pg_temp.hh_e2e_col('labor_entries', 'status') THEN
+          v_cols := v_cols || ', ' || quote_ident('status');
+          v_vals := v_vals || ', ' || quote_literal('Draft');
+        END IF;
+        EXECUTE format('INSERT INTO public.labor_entries (%s) VALUES (%s)', v_cols, v_vals);
+      ELSIF pg_temp.hh_e2e_col('labor_entries', 'cost_amount')
+        AND pg_temp.hh_e2e_col('labor_entries', 'worker_id')
+        AND pg_temp.hh_e2e_col('labor_entries', 'project_id') THEN
+        v_cols := quote_ident('worker_id');
+        v_vals := format('%L::uuid', v_worker);
+        v_cols := v_cols || ', ' || quote_ident('project_id');
+        v_vals := v_vals || ', ' || format('%L::uuid', v_project);
+        v_cols := v_cols || ', ' || quote_ident(v_date_col);
+        v_vals := v_vals || ', ' || format('%L::date', CURRENT_DATE - 1);
+        IF pg_temp.hh_e2e_col('labor_entries', 'cost_code') THEN
+          v_cols := v_cols || ', ' || quote_ident('cost_code');
+          v_vals := v_vals || ', ' || quote_literal('E2E');
+        END IF;
+        IF pg_temp.hh_e2e_col('labor_entries', 'notes') THEN
+          v_cols := v_cols || ', ' || quote_ident('notes');
+          v_vals := v_vals || ', ' || quote_literal('E2E_SEED');
+        END IF;
+        v_cols := v_cols || ', ' || quote_ident('cost_amount');
+        v_vals := v_vals || ', 200';
+        IF pg_temp.hh_e2e_col('labor_entries', 'status') THEN
+          v_cols := v_cols || ', ' || quote_ident('status');
+          v_vals := v_vals || ', ' || quote_literal('Draft');
+        END IF;
+        EXECUTE format('INSERT INTO public.labor_entries (%s) VALUES (%s)', v_cols, v_vals);
+      ELSE
+        RAISE NOTICE 'labor_entries: modern shape missing cost_amount; skipped.';
+      END IF;
+    ELSIF pg_temp.hh_e2e_col('labor_entries', 'work_date')
+      AND pg_temp.hh_e2e_col('labor_entries', 'project_am_id')
+      AND pg_temp.hh_e2e_col('labor_entries', 'project_pm_id')
+      AND pg_temp.hh_e2e_col('labor_entries', 'worker_id')
+      AND pg_temp.hh_e2e_col('labor_entries', 'day_rate')
+      AND pg_temp.hh_e2e_col('labor_entries', 'ot_amount')
+      AND pg_temp.hh_e2e_col('labor_entries', 'total') THEN
+      EXECUTE format(
+        $l$INSERT INTO public.labor_entries (worker_id, work_date, project_am_id, project_pm_id, day_rate, ot_amount, total)
+        VALUES (%L::uuid, %L::date, %L::uuid, %L::uuid, 200, 0, 200)$l$,
+        v_worker,
+        (CURRENT_DATE - 1),
+        v_project,
+        v_project
+      );
+    ELSIF pg_temp.hh_e2e_col('labor_entries', 'date')
+      AND pg_temp.hh_e2e_col('labor_entries', 'worker_id')
+      AND pg_temp.hh_e2e_col('labor_entries', 'am_project_id')
+      AND pg_temp.hh_e2e_col('labor_entries', 'pm_project_id')
+      AND pg_temp.hh_e2e_col('labor_entries', 'half_day_rate')
+      AND pg_temp.hh_e2e_col('labor_entries', 'total')
+      AND pg_temp.hh_e2e_col('labor_entries', 'status') THEN
+      EXECUTE format(
+        $l$INSERT INTO public.labor_entries (date, worker_id, am_project_id, pm_project_id, half_day_rate, total, status)
+        VALUES (%L::date, %L::uuid, %L::uuid, %L::uuid, 100, 200, 'draft')$l$,
+        (CURRENT_DATE - 1),
+        v_worker,
+        v_project,
+        v_project
+      );
+    ELSE
+      RAISE NOTICE 'labor_entries: skipped (unrecognized column set). Apply migrations or use app ensure-schema.';
+    END IF;
+  END IF;
+END $$;
+
+DROP FUNCTION IF EXISTS pg_temp.hh_e2e_col(text, text);
+
+COMMIT;

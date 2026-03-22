@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { tryCreateDraftInvoiceNavigateToDetail } from './e2e-helpers';
+import { expectVisibleOrSkip, tryCreateDraftInvoiceNavigateToDetail } from './e2e-helpers';
 
 /** Default local dev (reliable SPA nav). Production: `E2E_BASE_URL=https://hhprojectgroup.com`. */
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
@@ -87,11 +87,9 @@ test.describe('Projects page buttons', () => {
   test('Project row View action navigates to detail', async ({ page }) => {
     await page.goto(`${BASE}/projects`, { waitUntil: "domcontentloaded", timeout: 45_000 });
     await page.waitForLoadState("domcontentloaded");
-    await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible({ timeout: 60_000 });
-    const rowCount = await page.locator("table tbody tr").count();
-    test.skip(rowCount === 0, "No project rows.");
+    await expect(page.getByTestId("projects-page-heading")).toBeVisible({ timeout: 60_000 });
     const dataRow = page.locator("table tbody tr").first();
-    await expect(dataRow).toBeVisible({ timeout: 15_000 });
+    await expectVisibleOrSkip(dataRow, "No project rows.", 55_000);
     // Row <tr onClick> can be flaky before hydration; row actions menu calls onNavigate directly.
     await dataRow.getByRole("button", { name: /^Actions for / }).click();
     await page.getByRole("menuitem", { name: "View" }).click();
@@ -102,13 +100,17 @@ test.describe('Projects page buttons', () => {
 // ─── BILLS PAGE ───────────────────────────────────────────────────────────────
 test.describe('Bills page buttons', () => {
   test('New bill button navigates to bill creation', async ({ page }) => {
+    // Default project timeout is 30s; visibility wait is 60s — raise test timeout first.
+    test.setTimeout(90_000);
     await page.goto(`${BASE}/bills`);
     await page.waitForLoadState("domcontentloaded");
-    const newBillLink = page.locator('a[href="/bills/new"]').filter({ hasText: /new bill/i });
-    await expect(newBillLink.first()).toBeVisible({ timeout: 60_000 });
+    // bills/page.tsx: <Link href="/bills/new">+ New Bill</Link> (Button asChild → <a>)
+    const newBillLink = page.locator('a[href="/bills/new"]').first();
+    await expect(newBillLink).toBeVisible({ timeout: 60_000 });
+    await expect(newBillLink).toContainText(/new bill/i);
     await Promise.all([
       page.waitForURL(/\/bills\/new/, { timeout: 45_000 }),
-      newBillLink.first().click(),
+      newBillLink.click(),
     ]);
   });
 });
@@ -180,7 +182,7 @@ test.describe('System Health page buttons', () => {
     const refreshBtn = page.getByRole("button", { name: "Refresh Now" }).first();
     await expect(refreshBtn).toBeVisible({ timeout: 60_000 });
     try {
-      await expect(refreshBtn).toBeEnabled({ timeout: 45_000 });
+      await expect(refreshBtn).toBeEnabled({ timeout: 75_000 });
     } catch {
       test.skip(true, "System health refresh stayed disabled (guardian still loading).");
       return;

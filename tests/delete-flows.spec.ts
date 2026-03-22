@@ -3,6 +3,7 @@ import {
   acceptBrowserDialogs,
   expectDeleteControlVisibleWithoutHover,
   clickTrashInRowAndConfirmDialog,
+  expectVisibleOrSkip,
 } from "./e2e-helpers";
 import { e2eTargetOrigin } from "./e2e-env-helpers";
 
@@ -30,13 +31,9 @@ test.describe("Delete UX: Delete control visible without hover (existing rows)",
     if (await page.getByText(/Supabase is not configured/i).isVisible().catch(() => false)) {
       test.skip(true, "Supabase not configured.");
     }
-    try {
-      await expect(page.getByText(/Loading vendors/i)).not.toBeVisible({ timeout: LIST_LOAD_MS });
-    } catch {
-      test.skip(true, "Vendors list still loading — API slow or unavailable.");
-    }
+    await expect(page.getByText(/Loading vendors/i)).not.toBeVisible({ timeout: LIST_LOAD_MS }).catch(() => undefined);
     const dataRow = page.locator("tbody tr").filter({ hasNotText: /Loading vendors|No vendors yet/i }).first();
-    test.skip((await dataRow.count()) === 0, "No vendor rows.");
+    await expectVisibleOrSkip(dataRow, "No vendor rows or list still loading.", LIST_LOAD_MS);
     const del = dataRow.getByRole("button", { name: /^Delete$/ });
     await expectDeleteControlVisibleWithoutHover(page, del, 1200);
   });
@@ -47,13 +44,9 @@ test.describe("Delete UX: Delete control visible without hover (existing rows)",
     if (await page.getByText(/Supabase is not configured/i).isVisible().catch(() => false)) {
       test.skip(true, "Supabase not configured.");
     }
-    try {
-      await expect(page.getByText(/Loading categories/i)).not.toBeVisible({ timeout: LIST_LOAD_MS });
-    } catch {
-      test.skip(true, "Categories list still loading — API slow or unavailable.");
-    }
+    await expect(page.getByText(/Loading categories/i)).not.toBeVisible({ timeout: LIST_LOAD_MS }).catch(() => undefined);
     const dataRow = page.locator("tbody tr").filter({ hasNotText: /Loading categories|No categories yet/i }).first();
-    test.skip((await dataRow.count()) === 0, "No category rows.");
+    await expectVisibleOrSkip(dataRow, "No category rows or list still loading.", LIST_LOAD_MS);
     const del = dataRow.getByRole("button", { name: /^Delete$/ });
     await expectDeleteControlVisibleWithoutHover(page, del, 1200);
   });
@@ -64,13 +57,9 @@ test.describe("Delete UX: Delete control visible without hover (existing rows)",
     if (await page.getByText(/Failed to fetch workers/i).isVisible().catch(() => false)) {
       test.skip(true, "Workers API unavailable.");
     }
-    try {
-      await expect(page.getByText(/Loading workers/i)).not.toBeVisible({ timeout: LIST_LOAD_MS });
-    } catch {
-      test.skip(true, "Workers list still loading — API slow or unavailable.");
-    }
+    await expect(page.getByText(/Loading workers/i)).not.toBeVisible({ timeout: LIST_LOAD_MS }).catch(() => undefined);
     const dataRow = page.locator("tbody tr").filter({ hasNotText: /Loading workers|No workers found/i }).first();
-    test.skip((await dataRow.count()) === 0, "No worker rows.");
+    await expectVisibleOrSkip(dataRow, "No worker rows or list still loading.", LIST_LOAD_MS);
     const del = dataRow.getByRole("button", { name: /^Delete$/ });
     await expectDeleteControlVisibleWithoutHover(page, del, 1200);
   });
@@ -81,9 +70,9 @@ test.describe("Delete UX: Delete control visible without hover (existing rows)",
     if (await page.getByText(/Supabase is not configured/i).isVisible().catch(() => false)) {
       test.skip(true, "Supabase not configured.");
     }
-    await expect(page.getByText(/Loading/i).first()).not.toBeVisible({ timeout: 20_000 }).catch(() => undefined);
+    await expect(page.getByText(/Loading/i).first()).not.toBeVisible({ timeout: LIST_LOAD_MS }).catch(() => undefined);
     const dataRow = page.locator("tbody tr").filter({ hasNotText: /No subcontractors yet/i }).first();
-    test.skip((await dataRow.count()) === 0, "No subcontractor rows.");
+    await expectVisibleOrSkip(dataRow, "No subcontractor rows or list still loading.", LIST_LOAD_MS);
     const del = dataRow.getByRole("button", { name: /^Delete$/ });
     await expectDeleteControlVisibleWithoutHover(page, del, 1200);
   });
@@ -93,8 +82,13 @@ test.describe("Delete UX: Delete control visible without hover (existing rows)",
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto(`${BASE}/bills`, { waitUntil: "domcontentloaded", timeout: 55_000 });
     await page.waitForLoadState("domcontentloaded");
+    await expect(page.getByText(/Loading/i).first()).not.toBeVisible({ timeout: LIST_LOAD_MS }).catch(() => undefined);
     const rowWithTrash = page.locator("tbody tr").filter({ has: page.getByRole("button", { name: "Delete" }) }).first();
-    test.skip((await rowWithTrash.count()) === 0, "No draft bill row with delete (trash) control.");
+    await expectVisibleOrSkip(
+      rowWithTrash,
+      "No draft bill row with delete (trash) control or list still loading.",
+      LIST_LOAD_MS,
+    );
     const trash = rowWithTrash.getByRole("button", { name: "Delete" });
     await expectDeleteControlVisibleWithoutHover(page, trash, 1200);
     const t0 = Date.now();

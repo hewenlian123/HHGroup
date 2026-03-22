@@ -18,6 +18,8 @@
     "test:unit": "NODE_ENV=test vitest run",
     "test:e2e": "playwright test",
     "test:e2e:ci": "playwright test --project chromium",
+    "test:local": "CI= npx playwright test --project=chromium",
+    "test:before-push": "CI= npx playwright test --project=chromium && git push origin main",
     "test:e2e:company-profile": "CI= playwright test tests/settings-company-profile.spec.ts --project=chromium",
     "test:e2e:document-header": "CI= playwright test tests/settings-company-profile.spec.ts -g \"invoice print header\" --project=chromium",
     "test:e2e:company-branding": "CI= playwright test tests/settings-company-profile.spec.ts --project=chromium",
@@ -37,7 +39,9 @@
     "db:seed:clean:test": "NODE_ENV=test npx tsx scripts/cleanup-test-data.ts",
     "db:reset:test": "NODE_ENV=test npx tsx scripts/cleanup-test-data.ts",
     "db:ensure-tables": "npx tsx scripts/ensure-project-tasks.ts",
-    "db:migrate": "npx supabase db push"
+    "db:migrate": "npx supabase db push",
+    "db:seed": "npx supabase db reset --local",
+    "db:seed:remote": "npx supabase db execute --file supabase/seed.sql --project-ref $SUPABASE_PROJECT_REF"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

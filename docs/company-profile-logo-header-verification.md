@@ -16,11 +16,11 @@ npm run test:unit -- src/__tests__/lib/document-company-profile.test.ts
 npm run test:e2e:company-branding
 ```
 
-| 脚本                        | 覆盖                                                                                  |
-| --------------------------- | ------------------------------------------------------------------------------------- |
-| `test:e2e:company-profile`  | Settings 字段、保存、持久化、Logo 正例/反例、**503/401 时走浏览器直连 fallback**      |
+| 脚本                        | 覆盖                                                                                                              |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `test:e2e:company-profile`  | Settings 字段、保存、持久化、Logo 正例/反例、**503/401 时走浏览器直连 fallback**                                  |
 | `test:e2e:document-header`  | 仅跑 `settings-company-profile` 中 **invoice print header**（与 Profile 串行，避免争用同一 `company_profile` 行） |
-| `test:e2e:company-branding` | 等同 `test:e2e:company-profile`（打印头用例已并入该文件）                              |
+| `test:e2e:company-branding` | 等同 `test:e2e:company-profile`（打印头用例已并入该文件）                                                         |
 
 Logo E2E 若因 Storage RLS 失败会 **skip**；强制失败可设 `E2E_BRANDING_FULL=1`（见 `tests/settings-company-profile.spec.ts`）。
 

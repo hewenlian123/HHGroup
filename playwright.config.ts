@@ -1,8 +1,11 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const defaultBase = "http://localhost:3000";
-const resolvedBase = (process.env.E2E_BASE_URL || defaultBase).replace(/\/$/, "");
-// VS Code / Playwright UI often omit env; helpers read process.env.E2E_BASE_URL — keep in sync with baseURL.
+/** Dynamic base URL for local dev (default :3000) or CI override. */
+const resolvedBase = (process.env.E2E_BASE_URL || "http://localhost:3000").replace(
+  /\/$/,
+  "",
+);
+// Helpers that read process.env.E2E_BASE_URL stay in sync when unset.
 if (!process.env.E2E_BASE_URL) {
   process.env.E2E_BASE_URL = resolvedBase;
 }
@@ -33,7 +36,7 @@ export default defineConfig({
       }
     : undefined,
   use: {
-    baseURL: resolvedBase,
+    baseURL: (process.env.E2E_BASE_URL || "http://localhost:3000").replace(/\/$/, ""),
     headless: true,
     screenshot: "only-on-failure",
   },

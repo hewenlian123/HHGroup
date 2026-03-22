@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 
 /**
  * POST /api/ensure-schema
- * 1) Runs core schema creation (ensureConstructionSchema) if DB URL is set.
+ * 1) ensureConstructionSchema is a no-op (schema = supabase/migrations only).
  * 2) Runs schema auto-repair (worker_payments, expenses columns, expense_lines, payments_received, labor_entries).
  * Returns combined status for the UI.
  */
@@ -28,7 +28,7 @@ export async function POST() {
   try {
     await ensureConstructionSchema();
     constructionMessage =
-      "Core tables created or already exist.";
+      "Core schema is managed by Supabase migrations (construction DDL no-op).";
   } catch (err) {
     constructionOk = false;
     constructionMessage = err instanceof Error ? err.message : String(err);
