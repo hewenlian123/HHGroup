@@ -1,6 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 -- E2E / staging SEED DATA — DO NOT RUN ON PRODUCTION
--- Official Supabase CLI path: `supabase/seed.sql` (see `supabase db reset --local`).
+-- Path: `supabase/seed.sql` (local: `supabase db reset --local`; remote: `npm run db:seed:remote`).
 -- ═══════════════════════════════════════════════════════════════════════════
 --
 -- 1) Verify columns in **your** database (Supabase SQL Editor):

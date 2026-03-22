@@ -41,7 +41,7 @@
     "db:ensure-tables": "npx tsx scripts/ensure-project-tasks.ts",
     "db:migrate": "npx supabase db push",
     "db:seed": "npx supabase db reset --local",
-    "db:seed:remote": "npx supabase db execute --file supabase/seed.sql --project-ref $SUPABASE_PROJECT_REF"
+    "db:seed:remote": "node scripts/seed-supabase-remote.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
