@@ -20,7 +20,13 @@ import { getARSummary } from "@/lib/data";
 import { Banknote, Receipt, CheckCircle, AlertCircle, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type BankTx = { id: string; txn_date: string; description: string; amount: number; status: "unmatched" | "reconciled" };
+type BankTx = {
+  id: string;
+  txn_date: string;
+  description: string;
+  amount: number;
+  status: "unmatched" | "reconciled";
+};
 
 function safeNumber(v: unknown): number {
   const n = typeof v === "number" ? v : Number(v);
@@ -88,17 +94,27 @@ export function FinancialClient() {
       setReconciledBankTotal(0);
       setUnreconciledBankTotal(0);
     } else {
-      const rows = (bankRes.data ?? []) as Array<{ amount: number; status: "unmatched" | "reconciled" }>;
+      const rows = (bankRes.data ?? []) as Array<{
+        amount: number;
+        status: "unmatched" | "reconciled";
+      }>;
       const all = rows.reduce((sum, r) => sum + safeNumber(r.amount), 0);
-      reconciledTotal = rows.reduce((sum, r) => (r.status === "reconciled" ? sum + safeNumber(r.amount) : sum), 0);
-      const unrec = rows.reduce((sum, r) => (r.status === "unmatched" ? sum + safeNumber(r.amount) : sum), 0);
+      reconciledTotal = rows.reduce(
+        (sum, r) => (r.status === "reconciled" ? sum + safeNumber(r.amount) : sum),
+        0
+      );
+      const unrec = rows.reduce(
+        (sum, r) => (r.status === "unmatched" ? sum + safeNumber(r.amount) : sum),
+        0
+      );
       setBankBalance(all);
       setReconciledBankTotal(reconciledTotal);
       setUnreconciledBankTotal(unrec);
     }
 
     if (bankRecentRes.error) {
-      if (!isMissingTableError(bankRecentRes.error)) setError((prev) => prev ?? bankRecentRes.error.message);
+      if (!isMissingTableError(bankRecentRes.error))
+        setError((prev) => prev ?? bankRecentRes.error.message);
       setRecentUnreconciled([]);
     } else {
       setRecentUnreconciled((bankRecentRes.data ?? []) as BankTx[]);
@@ -108,7 +124,10 @@ export function FinancialClient() {
       if (!isMissingTableError(expRes.error)) setError((prev) => prev ?? expRes.error.message);
       setSystemExpenses(0);
     } else {
-      expTotal = (expRes.data ?? []).reduce((sum, r) => sum + safeNumber((r as { total?: number }).total), 0);
+      expTotal = (expRes.data ?? []).reduce(
+        (sum, r) => sum + safeNumber((r as { total?: number }).total),
+        0
+      );
       setSystemExpenses(expTotal);
     }
 
@@ -182,7 +201,9 @@ export function FinancialClient() {
 
         {!loading && cashDifference !== 0 ? (
           <div className="mt-4 rounded-xl border border-amber-300 dark:border-amber-600 bg-amber-50 dark:bg-amber-950/30 px-4 py-3">
-            <p className="text-sm font-medium text-amber-800 dark:text-amber-400">Cash mismatch detected</p>
+            <p className="text-sm font-medium text-amber-800 dark:text-amber-400">
+              Cash mismatch detected
+            </p>
           </div>
         ) : null}
 
@@ -195,9 +216,15 @@ export function FinancialClient() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-b border-zinc-200/40 dark:border-border/60 bg-muted/30">
-                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Date</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Description</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">Amount</TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                      Date
+                    </TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                      Description
+                    </TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">
+                      Amount
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -217,13 +244,18 @@ export function FinancialClient() {
                     </TableRow>
                   ) : (
                     recentUnreconciled.map((tx) => (
-                      <TableRow key={tx.id} className="border-b border-[#EBEBE9] dark:border-border/60">
+                      <TableRow
+                        key={tx.id}
+                        className="border-b border-[#EBEBE9] dark:border-border/60"
+                      >
                         <TableCell className="tabular-nums">{tx.txn_date}</TableCell>
                         <TableCell>{tx.description}</TableCell>
                         <TableCell
                           className={cn(
                             "text-right tabular-nums font-medium",
-                            tx.amount >= 0 ? "text-emerald-600/90 dark:text-emerald-400/90" : "text-red-600/90 dark:text-red-400/90"
+                            tx.amount >= 0
+                              ? "text-emerald-600/90 dark:text-emerald-400/90"
+                              : "text-red-600/90 dark:text-red-400/90"
                           )}
                         >
                           {tx.amount >= 0 ? "+" : ""}
@@ -252,4 +284,3 @@ export function FinancialClient() {
     </div>
   );
 }
-

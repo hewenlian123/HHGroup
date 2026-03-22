@@ -34,7 +34,10 @@ async function main() {
   const sql = postgres(url, { max: 1, connect_timeout: 10 });
 
   try {
-    const migrationPath = join(process.cwd(), "supabase/migrations/202604161000_add_missing_columns.sql");
+    const migrationPath = join(
+      process.cwd(),
+      "supabase/migrations/202604161000_add_missing_columns.sql"
+    );
     const migrationSql = readFileSync(migrationPath, "utf8");
 
     console.log("Running migration 202604161000 (add missing columns)...");

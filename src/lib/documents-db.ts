@@ -92,13 +92,12 @@ function mapRow(r: Record<string, unknown>): DocumentRow {
 /** List documents with optional filters and search. */
 export async function getDocuments(filters: DocumentFilters = {}): Promise<DocumentWithProject[]> {
   const c = client();
-  const colsWithProject = "id, file_name, file_path, file_type, mime_type, size_bytes, project_id, related_module, related_id, uploaded_by, uploaded_at, notes, projects(name)";
-  const colsOnly = "id, file_name, file_path, file_type, mime_type, size_bytes, project_id, related_module, related_id, uploaded_by, uploaded_at, notes";
+  const colsWithProject =
+    "id, file_name, file_path, file_type, mime_type, size_bytes, project_id, related_module, related_id, uploaded_by, uploaded_at, notes, projects(name)";
+  const colsOnly =
+    "id, file_name, file_path, file_type, mime_type, size_bytes, project_id, related_module, related_id, uploaded_by, uploaded_at, notes";
 
-  let q = c
-    .from("documents")
-    .select(colsWithProject)
-    .order("uploaded_at", { ascending: false });
+  let q = c.from("documents").select(colsWithProject).order("uploaded_at", { ascending: false });
 
   if (filters.project_id) q = q.eq("project_id", filters.project_id);
   if (filters.file_type) q = q.eq("file_type", filters.file_type);
@@ -113,19 +112,27 @@ export async function getDocuments(filters: DocumentFilters = {}): Promise<Docum
   const { data: rows, error } = await q;
   if (error) {
     try {
-      let qFallback = c.from("documents").select(colsOnly).order("uploaded_at", { ascending: false });
+      let qFallback = c
+        .from("documents")
+        .select(colsOnly)
+        .order("uploaded_at", { ascending: false });
       if (filters.project_id) qFallback = qFallback.eq("project_id", filters.project_id);
       if (filters.file_type) qFallback = qFallback.eq("file_type", filters.file_type);
-      if (filters.related_module) qFallback = qFallback.eq("related_module", filters.related_module);
+      if (filters.related_module)
+        qFallback = qFallback.eq("related_module", filters.related_module);
       if (filters.date_from) qFallback = qFallback.gte("uploaded_at", filters.date_from);
-      if (filters.date_to) qFallback = qFallback.lte("uploaded_at", filters.date_to + "T23:59:59.999Z");
+      if (filters.date_to)
+        qFallback = qFallback.lte("uploaded_at", filters.date_to + "T23:59:59.999Z");
       if (filters.search?.trim()) {
         const term = `%${filters.search.trim().toLowerCase()}%`;
         qFallback = qFallback.ilike("file_name", term);
       }
       const res = await qFallback;
       if (res.error) return safeReturnDocuments();
-      return (res.data ?? []).map((r: Record<string, unknown>) => ({ ...mapRow(r), project_name: null }));
+      return (res.data ?? []).map((r: Record<string, unknown>) => ({
+        ...mapRow(r),
+        project_name: null,
+      }));
     } catch {
       return safeReturnDocuments();
     }
@@ -185,7 +192,10 @@ export async function getDocumentsPaged(
       const fallback = await qFallback.range(from, to);
       if (fallback.error) return { rows: safeReturnDocuments(), total: 0 };
       return {
-        rows: (fallback.data ?? []).map((r: Record<string, unknown>) => ({ ...mapRow(r), project_name: null })),
+        rows: (fallback.data ?? []).map((r: Record<string, unknown>) => ({
+          ...mapRow(r),
+          project_name: null,
+        })),
         total: fallback.count ?? 0,
       };
     } catch {
@@ -207,7 +217,9 @@ export async function getDocumentsByProject(projectId: string): Promise<Document
     const c = client();
     const { data: rows, error } = await c
       .from("documents")
-      .select("id, file_name, file_path, file_type, mime_type, size_bytes, project_id, related_module, related_id, uploaded_by, uploaded_at, notes")
+      .select(
+        "id, file_name, file_path, file_type, mime_type, size_bytes, project_id, related_module, related_id, uploaded_by, uploaded_at, notes"
+      )
       .eq("project_id", projectId)
       .order("uploaded_at", { ascending: false });
     if (error) return [];
@@ -223,7 +235,9 @@ export async function getDocumentById(id: string): Promise<DocumentWithProject |
     const c = client();
     const { data: row, error } = await c
       .from("documents")
-      .select("id, file_name, file_path, file_type, mime_type, size_bytes, project_id, related_module, related_id, uploaded_by, uploaded_at, notes, projects(name)")
+      .select(
+        "id, file_name, file_path, file_type, mime_type, size_bytes, project_id, related_module, related_id, uploaded_by, uploaded_at, notes, projects(name)"
+      )
       .eq("id", id)
       .maybeSingle();
     if (error || !row) return null;
@@ -241,7 +255,9 @@ export async function insertDocument(draft: DocumentDraft): Promise<DocumentRow>
   const payload = {
     file_name: draft.file_name.trim(),
     file_path: draft.file_path.trim(),
-    file_type: DOCUMENT_FILE_TYPES.includes(draft.file_type as DocumentFileType) ? draft.file_type : "Other",
+    file_type: DOCUMENT_FILE_TYPES.includes(draft.file_type as DocumentFileType)
+      ? draft.file_type
+      : "Other",
     mime_type: draft.mime_type?.trim() || null,
     size_bytes: draft.size_bytes != null ? Number(draft.size_bytes) : null,
     project_id: draft.project_id || null,
@@ -262,7 +278,8 @@ export async function deleteDocument(id: string, removeFromStorage = true): Prom
   if (!doc) return false;
   if (removeFromStorage) {
     const { error: storageError } = await c.storage.from(BUCKET).remove([doc.file_path]);
-    if (storageError) throw new Error(storageError.message ?? "Failed to delete file from storage.");
+    if (storageError)
+      throw new Error(storageError.message ?? "Failed to delete file from storage.");
   }
   const { error } = await c.from("documents").delete().eq("id", id);
   if (error) throw new Error(error.message ?? "Failed to delete document record.");
@@ -270,7 +287,10 @@ export async function deleteDocument(id: string, removeFromStorage = true): Prom
 }
 
 /** Create a signed URL for preview/download (expires in 60 seconds). */
-export async function getDocumentSignedUrl(filePath: string, expiresIn = 60): Promise<{ url: string | null; error?: string }> {
+export async function getDocumentSignedUrl(
+  filePath: string,
+  expiresIn = 60
+): Promise<{ url: string | null; error?: string }> {
   const c = client();
   const { data, error } = await c.storage.from(BUCKET).createSignedUrl(filePath, expiresIn);
   if (error) return { url: null, error: error.message };

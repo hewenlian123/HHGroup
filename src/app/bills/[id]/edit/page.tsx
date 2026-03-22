@@ -16,10 +16,7 @@ export default async function EditBillPage({ params }: Props) {
   return (
     <PageLayout
       header={
-        <PageHeader
-          title={`Edit ${bill.bill_no ?? "bill"}`}
-          description={bill.vendor_name}
-        />
+        <PageHeader title={`Edit ${bill.bill_no ?? "bill"}`} description={bill.vendor_name} />
       }
     >
       <EditBillClient bill={bill} projects={projectOptions} />

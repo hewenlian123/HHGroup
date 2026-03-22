@@ -6,12 +6,7 @@ import {
   getChangeOrderItems,
   getChangeOrderAttachments,
 } from "@/lib/data";
-import {
-  PageLayout,
-  PageHeader,
-  Divider,
-  SectionHeader,
-} from "@/components/base";
+import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { Pencil } from "lucide-react";
 import { ChangeOrderStatusDropdown } from "./change-order-header-actions";
@@ -57,7 +52,7 @@ export default async function ChangeOrderDetailPage({
             description={
               co.approvedAt
                 ? `Approved ${new Date(co.approvedAt).toLocaleDateString()}${co.approvedBy ? ` by ${co.approvedBy}` : ""}`
-                : co.description ?? undefined
+                : (co.description ?? undefined)
             }
           >
             <div className="flex items-center gap-3">

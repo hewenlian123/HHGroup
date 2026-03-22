@@ -23,7 +23,7 @@ export async function GET(request: Request) {
     let q = admin
       .from("worker_advances")
       .select(
-        "id, worker_id, project_id, amount, advance_date, status, notes, created_at, workers!inner(name), projects(name)",
+        "id, worker_id, project_id, amount, advance_date, status, notes, created_at, workers!inner(name), projects(name)"
       )
       .order("advance_date", { ascending: false })
       .order("created_at", { ascending: false });
@@ -96,7 +96,7 @@ export async function POST(request: Request) {
       .from("worker_advances")
       .insert(payload)
       .select(
-        "id, worker_id, project_id, amount, advance_date, status, notes, created_at, workers(name), projects(name)",
+        "id, worker_id, project_id, amount, advance_date, status, notes, created_at, workers(name), projects(name)"
       )
       .single();
 
@@ -124,4 +124,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ message }, { status: 500 });
   }
 }
-

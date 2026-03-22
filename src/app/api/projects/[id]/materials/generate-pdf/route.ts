@@ -5,12 +5,10 @@ import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 const BUCKET = "attachments";
 
-export async function POST(
-  _req: Request,
-  ctx: { params: Promise<{ id: string }> }
-) {
+export async function POST(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id: projectId } = await ctx.params;
-  if (!projectId) return NextResponse.json({ ok: false, message: "Missing project id" }, { status: 400 });
+  if (!projectId)
+    return NextResponse.json({ ok: false, message: "Missing project id" }, { status: 400 });
 
   try {
     const supabase = getServerSupabaseAdmin();
@@ -19,7 +17,8 @@ export async function POST(
       getSelectionsByProject(projectId),
       fetchDocumentCompanyProfile(),
     ]);
-    if (!project) return NextResponse.json({ ok: false, message: "Project not found" }, { status: 404 });
+    if (!project)
+      return NextResponse.json({ ok: false, message: "Project not found" }, { status: 404 });
 
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF();
@@ -118,11 +117,13 @@ export async function POST(
     const fileName = `material-selections-${ts}.pdf`;
     const filePath = `projects/${projectId}/materials/${fileName}`;
 
-    if (!supabase) return NextResponse.json({ ok: false, message: "Supabase not configured" }, { status: 500 });
+    if (!supabase)
+      return NextResponse.json({ ok: false, message: "Supabase not configured" }, { status: 500 });
     const { error: uploadError } = await supabase.storage
       .from(BUCKET)
       .upload(filePath, buf, { contentType: "application/pdf", upsert: true });
-    if (uploadError) return NextResponse.json({ ok: false, message: uploadError.message }, { status: 500 });
+    if (uploadError)
+      return NextResponse.json({ ok: false, message: uploadError.message }, { status: 500 });
 
     await insertDocument({
       file_name: `Material Selections - ${project.name}.pdf`,

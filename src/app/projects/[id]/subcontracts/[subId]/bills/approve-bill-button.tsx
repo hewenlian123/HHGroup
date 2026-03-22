@@ -35,9 +35,7 @@ export function ApproveBillButton({ billId }: Props) {
       >
         {busy ? "…" : "Approve"}
       </button>
-      {error ? (
-        <span className="text-xs text-red-600 dark:text-red-400">{error}</span>
-      ) : null}
+      {error ? <span className="text-xs text-red-600 dark:text-red-400">{error}</span> : null}
     </span>
   );
 }

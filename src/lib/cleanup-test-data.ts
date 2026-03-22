@@ -40,10 +40,7 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
     if (count > 0) deleted[table] = (deleted[table] ?? 0) + count;
   };
 
-  const tryDelete = async (
-    table: string,
-    getIds: () => Promise<string[]>
-  ): Promise<boolean> => {
+  const tryDelete = async (table: string, getIds: () => Promise<string[]>): Promise<boolean> => {
     try {
       const ids = await getIds();
       if (ids.length === 0) return true;
@@ -67,8 +64,14 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
     for (const pattern of TEST_DATA_PATTERNS) {
       const { data: proj } = await c.from("projects").select("id").ilike("name", `%${pattern}%`);
       const { data: work } = await c.from("workers").select("id").ilike("name", `%${pattern}%`);
-      testProjectIds = uniqueStrings([...testProjectIds, ...(proj ?? []).map((r: { id: string }) => r.id)]);
-      testWorkerIds = uniqueStrings([...testWorkerIds, ...(work ?? []).map((r: { id: string }) => r.id)]);
+      testProjectIds = uniqueStrings([
+        ...testProjectIds,
+        ...(proj ?? []).map((r: { id: string }) => r.id),
+      ]);
+      testWorkerIds = uniqueStrings([
+        ...testWorkerIds,
+        ...(work ?? []).map((r: { id: string }) => r.id),
+      ]);
     }
   } catch (e) {
     errors.push(`Resolve test ids: ${e instanceof Error ? e.message : String(e)}`);
@@ -114,7 +117,10 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
   await tryDelete("site_photos", async () => {
     const ids: string[] = [];
     for (const pattern of TEST_DATA_PATTERNS) {
-      const { data } = await c.from("site_photos").select("id").ilike("description", `%${pattern}%`);
+      const { data } = await c
+        .from("site_photos")
+        .select("id")
+        .ilike("description", `%${pattern}%`);
       ids.push(...(data ?? []).map((r: { id: string }) => r.id));
     }
     return uniqueStrings(ids);
@@ -134,7 +140,10 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
   await tryDelete("project_change_orders", async () => {
     const ids: string[] = [];
     for (const pattern of TEST_DATA_PATTERNS) {
-      const { data } = await c.from("project_change_orders").select("id").ilike("title", `%${pattern}%`);
+      const { data } = await c
+        .from("project_change_orders")
+        .select("id")
+        .ilike("title", `%${pattern}%`);
       ids.push(...(data ?? []).map((r: { id: string }) => r.id));
     }
     return uniqueStrings(ids);
@@ -145,11 +154,17 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
     await tryDelete("worker_receipts", async () => {
       const ids: string[] = [];
       if (testWorkerIds.length > 0) {
-        const { data } = await c.from("worker_receipts").select("id").in("worker_id", testWorkerIds);
+        const { data } = await c
+          .from("worker_receipts")
+          .select("id")
+          .in("worker_id", testWorkerIds);
         ids.push(...(data ?? []).map((r: { id: string }) => r.id));
       }
       if (testProjectIds.length > 0) {
-        const { data } = await c.from("worker_receipts").select("id").in("project_id", testProjectIds);
+        const { data } = await c
+          .from("worker_receipts")
+          .select("id")
+          .in("project_id", testProjectIds);
         ids.push(...(data ?? []).map((r: { id: string }) => r.id));
       }
       return uniqueStrings(ids);
@@ -160,15 +175,24 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
   await tryDelete("worker_reimbursements", async () => {
     const ids: string[] = [];
     for (const pattern of TEST_DATA_PATTERNS) {
-      const { data } = await c.from("worker_reimbursements").select("id").ilike("notes", `%${pattern}%`);
+      const { data } = await c
+        .from("worker_reimbursements")
+        .select("id")
+        .ilike("notes", `%${pattern}%`);
       ids.push(...(data ?? []).map((r: { id: string }) => r.id));
     }
     if (testWorkerIds.length > 0) {
-      const { data } = await c.from("worker_reimbursements").select("id").in("worker_id", testWorkerIds);
+      const { data } = await c
+        .from("worker_reimbursements")
+        .select("id")
+        .in("worker_id", testWorkerIds);
       ids.push(...(data ?? []).map((r: { id: string }) => r.id));
     }
     if (testProjectIds.length > 0) {
-      const { data } = await c.from("worker_reimbursements").select("id").in("project_id", testProjectIds);
+      const { data } = await c
+        .from("worker_reimbursements")
+        .select("id")
+        .in("project_id", testProjectIds);
       ids.push(...(data ?? []).map((r: { id: string }) => r.id));
     }
     return uniqueStrings(ids);
@@ -191,8 +215,14 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
         ids.push(...(data ?? []).map((r: { id: string }) => r.id));
       }
       if (testProjectIds.length > 0) {
-        const { data: dataAm } = await c.from("labor_entries").select("id").in("project_am_id", testProjectIds);
-        const { data: dataPm } = await c.from("labor_entries").select("id").in("project_pm_id", testProjectIds);
+        const { data: dataAm } = await c
+          .from("labor_entries")
+          .select("id")
+          .in("project_am_id", testProjectIds);
+        const { data: dataPm } = await c
+          .from("labor_entries")
+          .select("id")
+          .in("project_pm_id", testProjectIds);
         ids.push(...(dataAm ?? []).map((r: { id: string }) => r.id));
         ids.push(...(dataPm ?? []).map((r: { id: string }) => r.id));
       }
@@ -209,7 +239,10 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
   const uniqueExpenseIds = uniqueStrings(testExpenseIds);
   if (uniqueExpenseIds.length > 0) {
     await tryDelete("expense_lines", async () => {
-      const { data } = await c.from("expense_lines").select("id").in("expense_id", uniqueExpenseIds);
+      const { data } = await c
+        .from("expense_lines")
+        .select("id")
+        .in("expense_id", uniqueExpenseIds);
       return (data ?? []).map((r: { id: string }) => r.id);
     });
   }
@@ -228,7 +261,10 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
   await tryDelete("payments_received", async () => {
     const ids: string[] = [];
     for (const pattern of TEST_DATA_PATTERNS) {
-      const { data } = await c.from("payments_received").select("id").ilike("customer_name", `%${pattern}%`);
+      const { data } = await c
+        .from("payments_received")
+        .select("id")
+        .ilike("customer_name", `%${pattern}%`);
       ids.push(...(data ?? []).map((r: { id: string }) => r.id));
     }
     return uniqueStrings(ids);
@@ -258,7 +294,10 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
   await tryDelete("material_catalog", async () => {
     const ids: string[] = [];
     for (const pattern of TEST_DATA_PATTERNS) {
-      const { data } = await c.from("material_catalog").select("id").ilike("material_name", `%${pattern}%`);
+      const { data } = await c
+        .from("material_catalog")
+        .select("id")
+        .ilike("material_name", `%${pattern}%`);
       ids.push(...(data ?? []).map((r: { id: string }) => r.id));
     }
     return uniqueStrings(ids);
@@ -268,7 +307,10 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
   await tryDelete("activity_logs", async () => {
     const ids: string[] = [];
     for (const pattern of TEST_DATA_PATTERNS) {
-      const { data } = await c.from("activity_logs").select("id").ilike("description", `%${pattern}%`);
+      const { data } = await c
+        .from("activity_logs")
+        .select("id")
+        .ilike("description", `%${pattern}%`);
       ids.push(...(data ?? []).map((r: { id: string }) => r.id));
     }
     if (testProjectIds.length > 0) {

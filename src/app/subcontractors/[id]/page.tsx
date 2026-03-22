@@ -1,12 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  PageLayout,
-  PageHeader,
-  Divider,
-  SectionHeader,
-  StatusBadge,
-} from "@/components/base";
+import { PageLayout, PageHeader, Divider, SectionHeader, StatusBadge } from "@/components/base";
 import {
   getSubcontractorById,
   getSubcontractsBySubcontractor,
@@ -51,11 +45,16 @@ export default async function SubcontractorDetailPage({ params }: Props) {
 
   const paidBySubcontractId = new Map<string, number>();
   for (const p of payments) {
-    paidBySubcontractId.set(p.subcontract_id, (paidBySubcontractId.get(p.subcontract_id) ?? 0) + p.amount);
+    paidBySubcontractId.set(
+      p.subcontract_id,
+      (paidBySubcontractId.get(p.subcontract_id) ?? 0) + p.amount
+    );
   }
 
   const contractRows = contracts.map((c) => {
-    const revised = c.contract_amount + (approvedCoByProjectAndCostCode.get(c.project_id)?.get(c.cost_code ?? "") ?? 0);
+    const revised =
+      c.contract_amount +
+      (approvedCoByProjectAndCostCode.get(c.project_id)?.get(c.cost_code ?? "") ?? 0);
     const paid = paidBySubcontractId.get(c.id) ?? 0;
     const exposure = revised - paid;
     return { ...c, revised, paid, exposure };
@@ -83,7 +82,10 @@ export default async function SubcontractorDetailPage({ params }: Props) {
           description="Profile, contracts, progress payments, and payment history."
           actions={
             <div className="flex flex-wrap items-center gap-3">
-              <Link href="/subcontractors" className="text-sm text-muted-foreground hover:text-foreground">
+              <Link
+                href="/subcontractors"
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
                 Subcontractors
               </Link>
               <SubcontractorDetailClient subcontractor={subcontractor as SubcontractorRow} />
@@ -153,13 +155,27 @@ export default async function SubcontractorDetailPage({ params }: Props) {
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Project</th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Cost Code</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Contract Amount</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Retainage %</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Revised Contract</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Paid</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Exposure</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Project
+              </th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Cost Code
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Contract Amount
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Retainage %
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Revised Contract
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Paid
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Exposure
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -173,16 +189,24 @@ export default async function SubcontractorDetailPage({ params }: Props) {
               contractRows.map((c) => {
                 const exposurePositive = c.exposure > 0;
                 const paidInFull = c.paid >= c.revised;
-                const rowClass = paidInFull ? "bg-green-500/10 dark:bg-green-500/10" : exposurePositive ? "bg-orange-500/10 dark:bg-orange-500/10" : "";
+                const rowClass = paidInFull
+                  ? "bg-green-500/10 dark:bg-green-500/10"
+                  : exposurePositive
+                    ? "bg-orange-500/10 dark:bg-orange-500/10"
+                    : "";
                 return (
                   <tr key={c.id} className={`border-b border-border/40 ${rowClass}`}>
                     <td className="py-1.5 px-3">{c.project_name}</td>
                     <td className="py-1.5 px-3">{c.cost_code ?? "—"}</td>
-                    <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(c.contract_amount)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums">
+                      ${fmtUsd(c.contract_amount)}
+                    </td>
                     <td className="py-1.5 px-3 text-right tabular-nums">—</td>
                     <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(c.revised)}</td>
                     <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(c.paid)}</td>
-                    <td className={`py-1.5 px-3 text-right tabular-nums ${exposurePositive ? "text-orange-600 dark:text-orange-400" : paidInFull ? "text-green-600 dark:text-green-400" : ""}`}>
+                    <td
+                      className={`py-1.5 px-3 text-right tabular-nums ${exposurePositive ? "text-orange-600 dark:text-orange-400" : paidInFull ? "text-green-600 dark:text-green-400" : ""}`}
+                    >
                       ${fmtUsd(c.exposure)}
                     </td>
                   </tr>
@@ -199,10 +223,18 @@ export default async function SubcontractorDetailPage({ params }: Props) {
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Project</th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Amount</th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Project
+              </th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Date
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Amount
+              </th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Status
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -215,7 +247,9 @@ export default async function SubcontractorDetailPage({ params }: Props) {
             ) : (
               bills.map((b) => (
                 <tr key={b.id} className="border-b border-border/40">
-                  <td className="py-1.5 px-3">{subcontractIdToProjectName.get(b.subcontract_id) ?? "—"}</td>
+                  <td className="py-1.5 px-3">
+                    {subcontractIdToProjectName.get(b.subcontract_id) ?? "—"}
+                  </td>
                   <td className="py-1.5 px-3">{b.bill_date}</td>
                   <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(b.amount)}</td>
                   <td className="py-1.5 px-3">{b.status}</td>
@@ -232,10 +266,18 @@ export default async function SubcontractorDetailPage({ params }: Props) {
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Project</th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Amount</th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Method</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Project
+              </th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Date
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Amount
+              </th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Method
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -248,7 +290,9 @@ export default async function SubcontractorDetailPage({ params }: Props) {
             ) : (
               payments.map((p) => (
                 <tr key={p.id} className="border-b border-border/40">
-                  <td className="py-1.5 px-3">{subcontractIdToProjectName.get(p.subcontract_id) ?? "—"}</td>
+                  <td className="py-1.5 px-3">
+                    {subcontractIdToProjectName.get(p.subcontract_id) ?? "—"}
+                  </td>
                   <td className="py-1.5 px-3">{p.payment_date}</td>
                   <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(p.amount)}</td>
                   <td className="py-1.5 px-3">{p.method ?? "—"}</td>

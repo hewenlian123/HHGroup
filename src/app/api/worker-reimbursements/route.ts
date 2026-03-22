@@ -5,7 +5,8 @@ import type { WorkerReimbursement } from "@/lib/worker-reimbursements-db";
 /** Force fresh list so status updates appear immediately */
 export const dynamic = "force-dynamic";
 
-const COLS = "id, worker_id, project_id, vendor, amount, description, receipt_url, status, created_at, paid_at, payment_id";
+const COLS =
+  "id, worker_id, project_id, vendor, amount, description, receipt_url, status, created_at, paid_at, payment_id";
 
 function fromRow(r: Record<string, unknown>): WorkerReimbursement {
   return {
@@ -44,28 +45,48 @@ export async function GET() {
     if (resFull.error) {
       const resFallback = await supabase
         .from("worker_reimbursements")
-        .select("id, worker_id, project_id, amount, description, receipt_url, status, created_at, paid_at")
+        .select(
+          "id, worker_id, project_id, amount, description, receipt_url, status, created_at, paid_at"
+        )
         .order("created_at", { ascending: false });
-      if (resFallback.error) throw new Error(resFallback.error.message ?? "Failed to load reimbursements.");
+      if (resFallback.error)
+        throw new Error(resFallback.error.message ?? "Failed to load reimbursements.");
       raw = (resFallback.data ?? []) as Record<string, unknown>[];
     } else {
       raw = (resFull.data ?? []) as Record<string, unknown>[];
     }
 
     const all = raw.map((r) => {
-      if (r.vendor == null && (r as any).vendor_name != null) (r as any).vendor = (r as any).vendor_name;
+      if (r.vendor == null && (r as any).vendor_name != null)
+        (r as any).vendor = (r as any).vendor_name;
       return fromRow(r);
     });
     const list = all.filter((r) => r.status === "pending");
 
     const workerIds = Array.from(new Set(list.map((r) => r.workerId).filter(Boolean))) as string[];
-    const projectIds = Array.from(new Set(list.map((r) => r.projectId).filter(Boolean))) as string[];
+    const projectIds = Array.from(
+      new Set(list.map((r) => r.projectId).filter(Boolean))
+    ) as string[];
     const [workersRes, projectsRes] = await Promise.all([
-      workerIds.length ? supabase.from("workers").select("id, name").in("id", workerIds) : { data: [] },
-      projectIds.length ? supabase.from("projects").select("id, name").in("id", projectIds) : { data: [] },
+      workerIds.length
+        ? supabase.from("workers").select("id, name").in("id", workerIds)
+        : { data: [] },
+      projectIds.length
+        ? supabase.from("projects").select("id, name").in("id", projectIds)
+        : { data: [] },
     ]);
-    const workerNameById = new Map(((workersRes.data ?? []) as { id: string; name: string | null }[]).map((w) => [w.id, w.name ?? null]));
-    const projectNameById = new Map(((projectsRes.data ?? []) as { id: string; name: string | null }[]).map((p) => [p.id, p.name ?? null]));
+    const workerNameById = new Map(
+      ((workersRes.data ?? []) as { id: string; name: string | null }[]).map((w) => [
+        w.id,
+        w.name ?? null,
+      ])
+    );
+    const projectNameById = new Map(
+      ((projectsRes.data ?? []) as { id: string; name: string | null }[]).map((p) => [
+        p.id,
+        p.name ?? null,
+      ])
+    );
 
     const enriched: WorkerReimbursement[] = list.map((r) => ({
       ...r,
@@ -104,7 +125,8 @@ export async function POST(req: Request) {
     const projectId = typeof body.projectId === "string" ? body.projectId.trim() : "";
     const vendor = typeof body.vendor === "string" ? body.vendor.trim() : "";
     const amount = Number(body.amount);
-    if (!Number.isFinite(amount) || amount < 0) return NextResponse.json({ message: "amount is invalid." }, { status: 400 });
+    if (!Number.isFinite(amount) || amount < 0)
+      return NextResponse.json({ message: "amount is invalid." }, { status: 400 });
 
     const payloadBase: Record<string, unknown> = {
       worker_id: workerId,
@@ -121,7 +143,10 @@ export async function POST(req: Request) {
       .insert({ ...payloadBase, vendor: vendor || null })
       .select(COLS)
       .single();
-    if (res.error && /column .*vendor.*does not exist|schema cache/i.test(res.error.message ?? "")) {
+    if (
+      res.error &&
+      /column .*vendor.*does not exist|schema cache/i.test(res.error.message ?? "")
+    ) {
       // Fallback: vendor_name column
       res = await supabase
         .from("worker_reimbursements")
@@ -131,7 +156,10 @@ export async function POST(req: Request) {
         .single();
     }
     if (res.error || !res.data) {
-      return NextResponse.json({ message: res.error?.message ?? "Failed to create reimbursement." }, { status: 500 });
+      return NextResponse.json(
+        { message: res.error?.message ?? "Failed to create reimbursement." },
+        { status: 500 }
+      );
     }
     const row = res.data as Record<string, unknown>;
     // Map vendor_name -> vendor for client shape compatibility

@@ -35,9 +35,7 @@ export function LaborAddEntryProvider({ children }: { children: React.ReactNode 
     [registerOpenDailyEntry, triggerOpenDailyEntry]
   );
 
-  return (
-    <LaborAddEntryContext.Provider value={value}>{children}</LaborAddEntryContext.Provider>
-  );
+  return <LaborAddEntryContext.Provider value={value}>{children}</LaborAddEntryContext.Provider>;
 }
 
 export function useLaborAddEntry() {

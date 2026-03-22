@@ -29,7 +29,11 @@ export function SimpleBarChart({
             <span className="text-muted-foreground">{item.label}</span>
             {showValues && (
               <span className="tabular-nums font-medium">
-                ${item.value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                $
+                {item.value.toLocaleString(undefined, {
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                })}
               </span>
             )}
           </div>

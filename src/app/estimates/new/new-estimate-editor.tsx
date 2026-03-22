@@ -95,7 +95,8 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
   const codeToType = React.useMemo(() => {
     const m = new Map<string, CostCodeType>();
     costCodes.forEach((c) => {
-      if ("type" in c && (c as { type?: string }).type) m.set(c.code, (c as { type: CostCodeType }).type);
+      if ("type" in c && (c as { type?: string }).type)
+        m.set(c.code, (c as { type: CostCodeType }).type);
     });
     return m;
   }, [costCodes]);
@@ -124,7 +125,17 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
     const overhead = subtotal * (overheadPct / 100);
     const profit = subtotal * (profitPct / 100);
     const grandTotal = subtotal + overhead + profit + tax - discount;
-    return { materialCost, laborCost, subcontractorCost, subtotal, overhead, profit, tax, discount, grandTotal };
+    return {
+      materialCost,
+      laborCost,
+      subcontractorCost,
+      subtotal,
+      overhead,
+      profit,
+      tax,
+      discount,
+      grandTotal,
+    };
   }, [lineItems, codeToType, overheadPct, profitPct, tax, discount]);
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -275,7 +286,11 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
     }
     const project = projectName.trim();
     if (!project) {
-      toast({ title: "Missing project", description: "Project name is required", variant: "error" });
+      toast({
+        title: "Missing project",
+        description: "Project name is required",
+        variant: "error",
+      });
       return;
     }
 
@@ -424,47 +439,69 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
 
         <div className="px-4 py-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
           <div className="min-w-0">
-            <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">Client</div>
+            <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+              Client
+            </div>
             <div className="truncate font-medium text-foreground">{clientName || "—"}</div>
           </div>
           <div className="min-w-0">
-            <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">Project</div>
+            <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+              Project
+            </div>
             <div className="truncate font-medium text-foreground">{projectName || "—"}</div>
           </div>
           <div className="min-w-0">
-            <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">Estimate #</div>
+            <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+              Estimate #
+            </div>
             <div className="truncate font-medium text-foreground tabular-nums">Auto-generated</div>
           </div>
           <div className="min-w-0">
-            <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">Status</div>
+            <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+              Status
+            </div>
             <div className="truncate font-medium text-foreground">Draft</div>
           </div>
           <div className="min-w-0 md:col-span-2">
-            <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">Address</div>
+            <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+              Address
+            </div>
             <div className="truncate text-muted-foreground">{address || "—"}</div>
           </div>
           <div className="min-w-0">
-            <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">Phone</div>
+            <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+              Phone
+            </div>
             <div className="truncate text-muted-foreground">{phone || "—"}</div>
           </div>
           <div className="min-w-0">
-            <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">Email</div>
+            <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+              Email
+            </div>
             <div className="truncate text-muted-foreground">{email || "—"}</div>
           </div>
           <div className="min-w-0">
-            <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">Estimate Date</div>
+            <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+              Estimate Date
+            </div>
             <div className="tabular-nums text-muted-foreground">{estimateDate}</div>
           </div>
           <div className="min-w-0">
-            <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">Valid Until</div>
+            <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+              Valid Until
+            </div>
             <div className="tabular-nums text-muted-foreground">{validUntil || "—"}</div>
           </div>
           <div className="min-w-0">
-            <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">Sales</div>
+            <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+              Sales
+            </div>
             <div className="truncate text-muted-foreground">{salesPerson || "—"}</div>
           </div>
           <div className="min-w-0 md:col-span-2 lg:col-span-3">
-            <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">Notes</div>
+            <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+              Notes
+            </div>
             <div className="truncate text-muted-foreground">{notes || "—"}</div>
           </div>
         </div>
@@ -480,21 +517,49 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="clientName" className="text-xs">Client / Customer</Label>
-                <Input id="clientName" value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Client or company name" className="h-8 rounded-md text-sm" required />
+                <Label htmlFor="clientName" className="text-xs">
+                  Client / Customer
+                </Label>
+                <Input
+                  id="clientName"
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
+                  placeholder="Client or company name"
+                  className="h-8 rounded-md text-sm"
+                  required
+                />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="projectName" className="text-xs">Project</Label>
-                <Input id="projectName" value={projectName} onChange={(e) => setProjectName(e.target.value)} placeholder="Project name" className="h-8 rounded-md text-sm" required />
+                <Label htmlFor="projectName" className="text-xs">
+                  Project
+                </Label>
+                <Input
+                  id="projectName"
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                  placeholder="Project name"
+                  className="h-8 rounded-md text-sm"
+                  required
+                />
               </div>
             </div>
             <div className="space-y-1.5 pt-2 border-t border-zinc-200/60 dark:border-border">
-              <Label htmlFor="address" className="text-xs">Address</Label>
-              <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Site or client address" className="h-8 rounded-md text-sm" />
+              <Label htmlFor="address" className="text-xs">
+                Address
+              </Label>
+              <Input
+                id="address"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="Site or client address"
+                className="h-8 rounded-md text-sm"
+              />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-zinc-200/60 dark:border-border">
               <div className="space-y-1.5">
-                <Label htmlFor="clientPhone" className="text-xs">Phone</Label>
+                <Label htmlFor="clientPhone" className="text-xs">
+                  Phone
+                </Label>
                 <Input
                   id="clientPhone"
                   type="tel"
@@ -505,7 +570,9 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="clientEmail" className="text-xs">Email</Label>
+                <Label htmlFor="clientEmail" className="text-xs">
+                  Email
+                </Label>
                 <Input
                   id="clientEmail"
                   type="email"
@@ -519,15 +586,29 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-zinc-200/60 dark:border-border">
               <div className="space-y-1.5">
                 <Label className="text-xs">Estimate Number</Label>
-                <Input placeholder="Auto-generated" className="h-8 rounded-md text-sm bg-muted/50" disabled />
+                <Input
+                  placeholder="Auto-generated"
+                  className="h-8 rounded-md text-sm bg-muted/50"
+                  disabled
+                />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Estimate Date</Label>
-                <Input type="date" value={estimateDate} className="h-8 rounded-md text-sm" readOnly />
+                <Input
+                  type="date"
+                  value={estimateDate}
+                  className="h-8 rounded-md text-sm"
+                  readOnly
+                />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Valid Until</Label>
-                <Input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} className="h-8 rounded-md text-sm" />
+                <Input
+                  type="date"
+                  value={validUntil}
+                  onChange={(e) => setValidUntil(e.target.value)}
+                  className="h-8 rounded-md text-sm"
+                />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Status</Label>
@@ -537,11 +618,21 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-zinc-200/60 dark:border-border">
               <div className="space-y-1.5">
                 <Label className="text-xs">Sales Person</Label>
-                <Input value={salesPerson} onChange={(e) => setSalesPerson(e.target.value)} placeholder="Optional" className="h-8 rounded-md text-sm" />
+                <Input
+                  value={salesPerson}
+                  onChange={(e) => setSalesPerson(e.target.value)}
+                  placeholder="Optional"
+                  className="h-8 rounded-md text-sm"
+                />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Notes</Label>
-                <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional notes" className="h-8 rounded-md text-sm" />
+                <Input
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Optional notes"
+                  className="h-8 rounded-md text-sm"
+                />
               </div>
             </div>
           </div>
@@ -552,7 +643,14 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
       <section className="border border-zinc-200/70 dark:border-border rounded-lg overflow-hidden bg-background">
         <div className="px-4 py-3 border-b border-zinc-200/60 dark:border-border bg-muted/20 flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-foreground">Cost Breakdown</h2>
-          <Button type="button" variant="outline" size="sm" className="rounded-md h-8" onClick={addCategory} disabled={codesWithoutItems.length === 0}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="rounded-md h-8"
+            onClick={addCategory}
+            disabled={codesWithoutItems.length === 0}
+          >
             <Plus className="h-4 w-4 mr-2" />
             Add Category
           </Button>
@@ -586,12 +684,24 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-zinc-200/60 dark:border-border bg-muted/10">
-                          <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Title</th>
-                          <th className="text-right py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums w-20">Qty</th>
-                          <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium w-16">Unit</th>
-                          <th className="text-right py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums w-28">Unit Price</th>
-                          <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium w-20">Cost Code</th>
-                          <th className="text-right py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums w-28">Total</th>
+                          <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                            Title
+                          </th>
+                          <th className="text-right py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums w-20">
+                            Qty
+                          </th>
+                          <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium w-16">
+                            Unit
+                          </th>
+                          <th className="text-right py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums w-28">
+                            Unit Price
+                          </th>
+                          <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium w-20">
+                            Cost Code
+                          </th>
+                          <th className="text-right py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums w-28">
+                            Total
+                          </th>
                           <th className="w-24" />
                         </tr>
                       </thead>
@@ -600,27 +710,73 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                           <React.Fragment key={row.id}>
                             <tr className="border-b border-zinc-100/50 dark:border-border/30 hover:bg-muted/20 transition-colors">
                               <td className="py-2 px-4 align-top">
-                                <Input value={row.title} onChange={(e) => updateItem(row.id, { title: e.target.value })} className="h-8 text-sm" placeholder="Title" />
+                                <Input
+                                  value={row.title}
+                                  onChange={(e) => updateItem(row.id, { title: e.target.value })}
+                                  className="h-8 text-sm"
+                                  placeholder="Title"
+                                />
                               </td>
                               <td className="py-2 px-4 align-top">
-                                <Input type="number" min={0} step={1} value={row.qty} onChange={(e) => updateItem(row.id, { qty: Number(e.target.value) || 0 })} className="h-8 w-20 text-right" />
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  step={1}
+                                  value={row.qty}
+                                  onChange={(e) =>
+                                    updateItem(row.id, { qty: Number(e.target.value) || 0 })
+                                  }
+                                  className="h-8 w-20 text-right"
+                                />
                               </td>
                               <td className="py-2 px-4 align-top">
-                                <Input value={row.unit} onChange={(e) => updateItem(row.id, { unit: e.target.value })} className="h-8 w-16" />
+                                <Input
+                                  value={row.unit}
+                                  onChange={(e) => updateItem(row.id, { unit: e.target.value })}
+                                  className="h-8 w-16"
+                                />
                               </td>
                               <td className="py-2 px-4 align-top">
-                                <Input type="number" min={0} step={0.01} value={row.unitPrice} onChange={(e) => updateItem(row.id, { unitPrice: Number(e.target.value) || 0 })} className="h-8 w-28 text-right" />
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  step={0.01}
+                                  value={row.unitPrice}
+                                  onChange={(e) =>
+                                    updateItem(row.id, { unitPrice: Number(e.target.value) || 0 })
+                                  }
+                                  className="h-8 w-28 text-right"
+                                />
                               </td>
-                              <td className="py-2 px-4 align-top text-muted-foreground text-xs">{row.costCode}</td>
+                              <td className="py-2 px-4 align-top text-muted-foreground text-xs">
+                                {row.costCode}
+                              </td>
                               <td className="py-2 px-4 align-top text-right tabular-nums font-semibold">
-                                ${lineTotal(row).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                $
+                                {lineTotal(row).toLocaleString(undefined, {
+                                  minimumFractionDigits: 2,
+                                })}
                               </td>
                               <td className="py-2 px-2 align-top">
                                 <div className="flex items-center gap-1">
-                                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => duplicateItem(row.id)} title="Duplicate">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() => duplicateItem(row.id)}
+                                    title="Duplicate"
+                                  >
                                     <Copy className="h-4 w-4" />
                                   </Button>
-                                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => deleteItem(row.id)} title="Delete">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                    onClick={() => deleteItem(row.id)}
+                                    title="Delete"
+                                  >
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
                                 </div>
@@ -642,7 +798,13 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                     </table>
                   </div>
                   <div className="px-4 py-2 border-t border-zinc-100/50 dark:border-border/30">
-                    <Button type="button" variant="ghost" size="sm" className="h-8 text-muted-foreground hover:text-foreground" onClick={() => addLineItem(code)}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 text-muted-foreground hover:text-foreground"
+                      onClick={() => addLineItem(code)}
+                    >
                       <Plus className="h-4 w-4 mr-2" />
                       Add Line Item
                     </Button>
@@ -655,7 +817,14 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
           {codesWithItems.length === 0 && (
             <div className="px-6 py-8 text-center">
               <p className="text-sm text-muted-foreground mb-3">No categories or line items yet.</p>
-              <Button type="button" variant="outline" size="sm" className="rounded-md h-8" onClick={addCategory} disabled={costCodes.length === 0}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="rounded-md h-8"
+                onClick={addCategory}
+                disabled={costCodes.length === 0}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Category
               </Button>
@@ -668,7 +837,13 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
       <section className="border border-zinc-200/70 dark:border-border rounded-lg overflow-hidden bg-background">
         <div className="px-4 py-3 border-b border-zinc-200/60 dark:border-border bg-muted/20 flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-foreground">Payment Schedule</h2>
-          <Button type="button" variant="outline" size="sm" className="rounded-md h-8" onClick={() => setScheduleOpen(true)}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="rounded-md h-8"
+            onClick={() => setScheduleOpen(true)}
+          >
             <Plus className="h-4 w-4 mr-2" />
             Schedule Payment
           </Button>
@@ -697,10 +872,18 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-zinc-200/60 dark:border-border bg-muted/10">
-                <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Payment Name</th>
-                <th className="text-right py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Amount</th>
-                <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Payment Terms</th>
-                <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Due Date</th>
+                <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Payment Name
+                </th>
+                <th className="text-right py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                  Amount
+                </th>
+                <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Payment Terms
+                </th>
+                <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Due Date
+                </th>
                 <th className="w-16" />
               </tr>
             </thead>
@@ -713,17 +896,31 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                 </tr>
               ) : (
                 paymentMilestones.map((m) => {
-                  const amount = m.amountType === "percent" ? (summary.grandTotal * m.value) / 100 : m.value;
+                  const amount =
+                    m.amountType === "percent" ? (summary.grandTotal * m.value) / 100 : m.value;
                   return (
-                    <tr key={m.id} className="table-row-compact border-b border-zinc-100/50 dark:border-border/30 hover:bg-muted/20 transition-colors">
+                    <tr
+                      key={m.id}
+                      className="table-row-compact border-b border-zinc-100/50 dark:border-border/30 hover:bg-muted/20 transition-colors"
+                    >
                       <td className="py-2 px-4 font-medium text-foreground">{m.title}</td>
                       <td className="py-2 px-4 text-right tabular-nums font-medium text-foreground">
                         ${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </td>
                       <td className="py-2 px-4 text-muted-foreground">{m.dueRule || "—"}</td>
-                      <td className="py-2 px-4 text-muted-foreground tabular-nums">{m.dueDate || "—"}</td>
+                      <td className="py-2 px-4 text-muted-foreground tabular-nums">
+                        {m.dueDate || "—"}
+                      </td>
                       <td className="py-2 px-2">
-                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setPaymentMilestones((prev) => prev.filter((x) => x.id !== m.id))}>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive"
+                          onClick={() =>
+                            setPaymentMilestones((prev) => prev.filter((x) => x.id !== m.id))
+                          }
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </td>
@@ -750,7 +947,13 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                 <Label htmlFor="pm-title" className="text-xs">
                   Payment Name
                 </Label>
-                <Input id="pm-title" value={pmTitle} onChange={(e) => setPmTitle(e.target.value)} placeholder="e.g. Deposit" className="h-9" />
+                <Input
+                  id="pm-title"
+                  value={pmTitle}
+                  onChange={(e) => setPmTitle(e.target.value)}
+                  placeholder="e.g. Deposit"
+                  className="h-9"
+                />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Amount</Label>
@@ -778,13 +981,25 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                 <Label htmlFor="pm-terms" className="text-xs">
                   Payment Terms
                 </Label>
-                <Input id="pm-terms" value={pmDueRule} onChange={(e) => setPmDueRule(e.target.value)} placeholder="e.g. Due on signing" className="h-9" />
+                <Input
+                  id="pm-terms"
+                  value={pmDueRule}
+                  onChange={(e) => setPmDueRule(e.target.value)}
+                  placeholder="e.g. Due on signing"
+                  className="h-9"
+                />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="pm-dueDate" className="text-xs">
                   Due Date
                 </Label>
-                <Input id="pm-dueDate" value={pmDueDate} onChange={(e) => setPmDueDate(e.target.value)} type="date" className="h-9" />
+                <Input
+                  id="pm-dueDate"
+                  value={pmDueDate}
+                  onChange={(e) => setPmDueDate(e.target.value)}
+                  type="date"
+                  className="h-9"
+                />
               </div>
               <div className="space-y-1">
                 <Label htmlFor="pm-notes" className="text-xs">
@@ -833,7 +1048,9 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
           <div className="space-y-2 text-sm">
             <SummaryRow label="Subtotal" value={summary.subtotal} />
             <div className="flex justify-between items-center text-sm">
-              <Label htmlFor="summary-tax" className="text-muted-foreground">Tax ($)</Label>
+              <Label htmlFor="summary-tax" className="text-muted-foreground">
+                Tax ($)
+              </Label>
               <Input
                 id="summary-tax"
                 type="number"
@@ -847,11 +1064,22 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
               />
             </div>
             <div className="flex justify-between items-center text-sm">
-              <Label htmlFor="summary-discount" className="text-muted-foreground">Discount ($)</Label>
-              <Input id="summary-discount" type="number" step={0.01} value={discount} onChange={(e) => setDiscount(Number(e.target.value) || 0)} className="h-8 w-28 text-right" />
+              <Label htmlFor="summary-discount" className="text-muted-foreground">
+                Discount ($)
+              </Label>
+              <Input
+                id="summary-discount"
+                type="number"
+                step={0.01}
+                value={discount}
+                onChange={(e) => setDiscount(Number(e.target.value) || 0)}
+                className="h-8 w-28 text-right"
+              />
             </div>
             <div className="flex justify-between items-center text-sm">
-              <Label htmlFor="summary-markup" className="text-muted-foreground">Markup (%)</Label>
+              <Label htmlFor="summary-markup" className="text-muted-foreground">
+                Markup (%)
+              </Label>
               <Input
                 id="summary-markup"
                 type="number"
@@ -892,7 +1120,9 @@ function SummaryRow({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex justify-between items-center text-sm">
       <span className="text-muted-foreground">{label}</span>
-      <span className="tabular-nums font-medium text-foreground">${value.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+      <span className="tabular-nums font-medium text-foreground">
+        ${value.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+      </span>
     </div>
   );
 }

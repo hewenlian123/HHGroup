@@ -1,15 +1,6 @@
 import Link from "next/link";
-import {
-  PageLayout,
-  PageHeader,
-  Divider,
-  SectionHeader,
-} from "@/components/base";
-import {
-  getLaborEntriesWithJoins,
-  getLaborPaymentsByDateRange,
-  getWorkers,
-} from "@/lib/data";
+import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
+import { getLaborEntriesWithJoins, getLaborPaymentsByDateRange, getWorkers } from "@/lib/data";
 import { MonthlyLaborMonthSelect } from "./monthly-month-select";
 
 function fmtUsd(n: number): string {
@@ -45,7 +36,8 @@ export default async function MonthlyLaborPage({ searchParams }: Props) {
   ]);
   const workerNameMap = new Map(workersList.map((w) => [w.id, w.name]));
   const hourlyRateMap = new Map(workersList.map((w) => [w.id, (w.halfDayRate ?? 0) / 4]));
-  const entryAmount = (workerId: string, hours: number) => (hourlyRateMap.get(workerId) ?? 0) * hours;
+  const entryAmount = (workerId: string, hours: number) =>
+    (hourlyRateMap.get(workerId) ?? 0) * hours;
 
   const totalEarned = entries.reduce((s, e) => s + entryAmount(e.worker_id, e.hours), 0);
   const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
@@ -68,19 +60,21 @@ export default async function MonthlyLaborPage({ searchParams }: Props) {
     {} as Record<string, number>
   );
   const workerIds = new Set([...Object.keys(earnedByWorker), ...Object.keys(paidByWorker)]);
-  const byWorkerRows = Array.from(workerIds).map((worker_id) => {
-    const e = earnedByWorker[worker_id];
-    const paid = paidByWorker[worker_id] ?? 0;
-    const earned = e?.earned ?? 0;
-    const worker_name = e?.worker_name ?? workerNameMap.get(worker_id) ?? "—";
-    return {
-      worker_id,
-      worker_name,
-      earned,
-      paid,
-      balance: earned - paid,
-    };
-  }).sort((a, b) => a.worker_name.localeCompare(b.worker_name));
+  const byWorkerRows = Array.from(workerIds)
+    .map((worker_id) => {
+      const e = earnedByWorker[worker_id];
+      const paid = paidByWorker[worker_id] ?? 0;
+      const earned = e?.earned ?? 0;
+      const worker_name = e?.worker_name ?? workerNameMap.get(worker_id) ?? "—";
+      return {
+        worker_id,
+        worker_name,
+        earned,
+        paid,
+        balance: earned - paid,
+      };
+    })
+    .sort((a, b) => a.worker_name.localeCompare(b.worker_name));
 
   const byProject = entries.reduce(
     (acc, e) => {
@@ -94,11 +88,13 @@ export default async function MonthlyLaborPage({ searchParams }: Props) {
     },
     {} as Record<string, { project_name: string; total: number }>
   );
-  const byProjectRows = Object.entries(byProject).map(([project_id, v]) => ({
-    project_id,
-    project_name: v.project_name,
-    total: v.total,
-  })).sort((a, b) => a.project_name.localeCompare(b.project_name));
+  const byProjectRows = Object.entries(byProject)
+    .map(([project_id, v]) => ({
+      project_id,
+      project_name: v.project_name,
+      total: v.total,
+    }))
+    .sort((a, b) => a.project_name.localeCompare(b.project_name));
 
   return (
     <PageLayout
@@ -114,10 +110,7 @@ export default async function MonthlyLaborPage({ searchParams }: Props) {
         />
       }
     >
-      <SectionHeader
-        label="Month"
-        action={<MonthlyLaborMonthSelect value={month} />}
-      />
+      <SectionHeader label="Month" action={<MonthlyLaborMonthSelect value={month} />} />
       <Divider />
 
       {/* Summary */}
@@ -149,10 +142,18 @@ export default async function MonthlyLaborPage({ searchParams }: Props) {
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Worker</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Earned</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Paid</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Balance</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Worker
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Earned
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Paid
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Balance
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -183,8 +184,12 @@ export default async function MonthlyLaborPage({ searchParams }: Props) {
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Project</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Total Labor Cost</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Project
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Total Labor Cost
+              </th>
             </tr>
           </thead>
           <tbody>

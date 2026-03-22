@@ -81,14 +81,18 @@ export function DataTable<T>({
         <Table
           className={cn(
             "min-w-[480px] md:min-w-0 border-0",
-            onRowClick && "border-separate border-spacing-y-1.5 border-spacing-x-0 [&_tbody_tr]:border-b-0",
+            onRowClick &&
+              "border-separate border-spacing-y-1.5 border-spacing-x-0 [&_tbody_tr]:border-b-0",
             className
           )}
         >
           <TableHeader>
             <TableRow className={cn("hover:bg-transparent border-b-0", headerClassName)}>
               {columns.map((col) => (
-                <TableHead key={col.key} className={cn(col.align === "right" && "text-right", col.className)}>
+                <TableHead
+                  key={col.key}
+                  className={cn(col.align === "right" && "text-right", col.className)}
+                >
                   {col.header}
                 </TableHead>
               ))}
@@ -97,14 +101,20 @@ export function DataTable<T>({
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={columns.length} className="py-8 text-center text-muted-foreground">
+                <TableCell
+                  colSpan={columns.length}
+                  className="py-8 text-center text-muted-foreground"
+                >
                   {loadingText}
                 </TableCell>
               </TableRow>
             ) : null}
             {!loading && data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={columns.length} className="py-8 text-center text-muted-foreground">
+                <TableCell
+                  colSpan={columns.length}
+                  className="py-8 text-center text-muted-foreground"
+                >
                   {emptyText}
                 </TableCell>
               </TableRow>
@@ -119,7 +129,12 @@ export function DataTable<T>({
                     onRowClick
                       ? (e) => {
                           const el = e.target as HTMLElement;
-                          if (el.closest("a,button,[role=menuitem],[data-radix-popper-content-wrapper]")) return;
+                          if (
+                            el.closest(
+                              "a,button,[role=menuitem],[data-radix-popper-content-wrapper]"
+                            )
+                          )
+                            return;
                           onRowClick(row);
                         }
                       : undefined
@@ -145,18 +160,28 @@ export function DataTable<T>({
                   {columns.map((col) => (
                     <TableCell
                       key={col.key}
-                      onClick={onRowClick && col.key === actionsColumnKey ? (e) => e.stopPropagation() : undefined}
+                      onClick={
+                        onRowClick && col.key === actionsColumnKey
+                          ? (e) => e.stopPropagation()
+                          : undefined
+                      }
                       className={cn(
                         col.align === "right" && "text-right",
                         onRowClick && col.key === primaryColumnKey && listTablePrimaryCellClassName,
                         onRowClick && col.key === columns[0]?.key && "first:rounded-l-xl",
-                        onRowClick && col.key === columns[columns.length - 1]?.key && "last:rounded-r-xl",
+                        onRowClick &&
+                          col.key === columns[columns.length - 1]?.key &&
+                          "last:rounded-r-xl",
                         cellClassName,
                         col.className,
-                        onRowClick && amountColumnKeys?.includes(col.key) && listTableAmountCellClassName
+                        onRowClick &&
+                          amountColumnKeys?.includes(col.key) &&
+                          listTableAmountCellClassName
                       )}
                     >
-                      {col.render ? col.render(row) : (row as Record<string, unknown>)[col.key] as React.ReactNode}
+                      {col.render
+                        ? col.render(row)
+                        : ((row as Record<string, unknown>)[col.key] as React.ReactNode)}
                     </TableCell>
                   ))}
                 </TableRow>
@@ -179,26 +204,31 @@ export function DataTable<T>({
           data.map((row) => {
             const titleCol = columns.find((c) => c.key === titleKey);
             return (
-            <div
-              key={keyExtractor(row)}
-              className="rounded-lg border border-border/60 bg-background p-4 shadow-[var(--shadow-1)]"
-            >
-              <div className="text-base font-medium text-foreground">
-                {titleCol ? getCellContent(row, titleCol) : null}
+              <div
+                key={keyExtractor(row)}
+                className="rounded-lg border border-border/60 bg-background p-4 shadow-[var(--shadow-1)]"
+              >
+                <div className="text-base font-medium text-foreground">
+                  {titleCol ? getCellContent(row, titleCol) : null}
+                </div>
+                <dl className="mt-3 space-y-2">
+                  {cardColumns
+                    .filter((col) => col.key !== titleKey)
+                    .map((col) => (
+                      <div key={col.key} className="flex justify-between gap-2 text-sm">
+                        <dt className="text-muted-foreground">{col.header}</dt>
+                        <dd
+                          className={cn(
+                            "text-right tabular-nums",
+                            col.align === "right" && "text-right"
+                          )}
+                        >
+                          {getCellContent(row, col)}
+                        </dd>
+                      </div>
+                    ))}
+                </dl>
               </div>
-              <dl className="mt-3 space-y-2">
-                {cardColumns
-                  .filter((col) => col.key !== titleKey)
-                  .map((col) => (
-                    <div key={col.key} className="flex justify-between gap-2 text-sm">
-                      <dt className="text-muted-foreground">{col.header}</dt>
-                      <dd className={cn("text-right tabular-nums", col.align === "right" && "text-right")}>
-                        {getCellContent(row, col)}
-                      </dd>
-                    </div>
-                  ))}
-              </dl>
-            </div>
             );
           })
         )}

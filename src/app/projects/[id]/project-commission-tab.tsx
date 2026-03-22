@@ -126,13 +126,27 @@ export function ProjectCommissionTab({
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Person</th>
-              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Role</th>
-              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Calculation Mode</th>
-              <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground tabular-nums">Rate</th>
-              <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground tabular-nums">Base Amount</th>
-              <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground tabular-nums">Commission Amount</th>
-              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Status</th>
+              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Person
+              </th>
+              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Role
+              </th>
+              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Calculation Mode
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground tabular-nums">
+                Rate
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground tabular-nums">
+                Base Amount
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground tabular-nums">
+                Commission Amount
+              </th>
+              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Status
+              </th>
               <th className="w-16" />
             </tr>
           </thead>
@@ -153,7 +167,9 @@ export function ProjectCommissionTab({
                     {c.rate > 0 ? (c.rate * 100).toFixed(1) + "%" : "—"}
                   </td>
                   <td className="py-2 px-3 text-right tabular-nums">${fmtUsd(c.base_amount)}</td>
-                  <td className="py-2 px-3 text-right tabular-nums font-medium">${fmtUsd(c.commission_amount)}</td>
+                  <td className="py-2 px-3 text-right tabular-nums font-medium">
+                    ${fmtUsd(c.commission_amount)}
+                  </td>
                   <td className="py-2 px-3 text-muted-foreground">{c.status}</td>
                   <td className="py-2 px-3">
                     <Button
@@ -196,25 +212,33 @@ export function ProjectCommissionTab({
                 className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
               >
                 {ROLES.map((r) => (
-                  <option key={r} value={r}>{r}</option>
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground block mb-1">Calculation Mode</label>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">
+                Calculation Mode
+              </label>
               <select
                 value={form.calculation_mode}
                 onChange={(e) => setForm((p) => ({ ...p, calculation_mode: e.target.value }))}
                 className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
               >
                 {CALC_MODES.map((m) => (
-                  <option key={m} value={m}>{m}</option>
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
                 ))}
               </select>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-xs font-medium text-muted-foreground block mb-1">Rate (decimal, e.g. 0.05 = 5%)</label>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">
+                  Rate (decimal, e.g. 0.05 = 5%)
+                </label>
                 <Input
                   type="number"
                   min={0}
@@ -226,7 +250,9 @@ export function ProjectCommissionTab({
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground block mb-1">Base Amount</label>
+                <label className="text-xs font-medium text-muted-foreground block mb-1">
+                  Base Amount
+                </label>
                 <Input
                   type="number"
                   min={0}
@@ -239,13 +265,20 @@ export function ProjectCommissionTab({
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground block mb-1">
-                Commission Amount {form.calculation_mode === "Auto" && computedCommission != null ? `(auto: $${fmtUsd(computedCommission)})` : ""}
+                Commission Amount{" "}
+                {form.calculation_mode === "Auto" && computedCommission != null
+                  ? `(auto: $${fmtUsd(computedCommission)})`
+                  : ""}
               </label>
               <Input
                 type="number"
                 min={0}
                 step={0.01}
-                value={form.calculation_mode === "Auto" && computedCommission != null ? String(computedCommission) : form.commission_amount}
+                value={
+                  form.calculation_mode === "Auto" && computedCommission != null
+                    ? String(computedCommission)
+                    : form.commission_amount
+                }
                 onChange={(e) => setForm((p) => ({ ...p, commission_amount: e.target.value }))}
                 disabled={form.calculation_mode === "Auto"}
                 className="h-9 text-sm"
@@ -259,7 +292,9 @@ export function ProjectCommissionTab({
                 className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
               >
                 {STATUSES.map((s) => (
-                  <option key={s} value={s}>{s}</option>
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
                 ))}
               </select>
             </div>
@@ -275,10 +310,22 @@ export function ProjectCommissionTab({
             {error && <p className="text-sm text-destructive">{error}</p>}
           </form>
           <DialogFooter className="border-t border-border/60 pt-3">
-            <Button type="button" variant="outline" size="sm" className="rounded-sm h-9" onClick={() => setModalOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-sm h-9"
+              onClick={() => setModalOpen(false)}
+            >
               Cancel
             </Button>
-            <Button type="submit" form="commission-form" size="sm" disabled={submitting} className="rounded-sm h-9">
+            <Button
+              type="submit"
+              form="commission-form"
+              size="sm"
+              disabled={submitting}
+              className="rounded-sm h-9"
+            >
               {submitting ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>

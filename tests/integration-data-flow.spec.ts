@@ -26,11 +26,18 @@ test.describe("Integration: data linked across modules", () => {
   test("dashboard → projects → open first project detail", async ({ page }) => {
     await page.goto(`${trimBase(BASE)}/dashboard`);
     await page.waitForLoadState("domcontentloaded");
-    await expect(page.locator("body")).not.toContainText(/Application error|Internal Server Error/i);
+    await expect(page.locator("body")).not.toContainText(
+      /Application error|Internal Server Error/i
+    );
 
     await page.goto(`${trimBase(BASE)}/projects`);
     await page.waitForLoadState("domcontentloaded");
-    if (await page.getByText(/Supabase is not configured/i).isVisible().catch(() => false)) {
+    if (
+      await page
+        .getByText(/Supabase is not configured/i)
+        .isVisible()
+        .catch(() => false)
+    ) {
       test.skip(true, "Supabase not configured.");
     }
     const row = page.locator("table tbody tr").first();
@@ -38,13 +45,20 @@ test.describe("Integration: data linked across modules", () => {
     await row.getByRole("button", { name: /^Actions for / }).click();
     await page.getByRole("menuitem", { name: "View" }).click();
     await expect(page).toHaveURL(/\/projects\/[^/?#]+/, { timeout: 25_000 });
-    await expect(page.locator("body")).not.toContainText(/Application error|Internal Server Error/i);
+    await expect(page.locator("body")).not.toContainText(
+      /Application error|Internal Server Error/i
+    );
   });
 
   test("customers: name → detail page (customer graph)", async ({ page }) => {
     await page.goto(`${trimBase(BASE)}/customers`);
     await page.waitForLoadState("domcontentloaded");
-    if (await page.getByText(/Supabase is not configured/i).isVisible().catch(() => false)) {
+    if (
+      await page
+        .getByText(/Supabase is not configured/i)
+        .isVisible()
+        .catch(() => false)
+    ) {
       test.skip(true, "Supabase not configured.");
     }
     if (
@@ -56,12 +70,21 @@ test.describe("Integration: data linked across modules", () => {
     ) {
       test.skip(true, "Customers page requires service role / working customers API.");
     }
-    if (await page.getByRole("heading", { name: /Something went wrong/i }).isVisible().catch(() => false)) {
+    if (
+      await page
+        .getByRole("heading", { name: /Something went wrong/i })
+        .isVisible()
+        .catch(() => false)
+    ) {
       test.skip(true, "Customers page hit global error boundary.");
     }
     // customers-client.tsx: summary row "Total customers: {n}" (React may split text nodes; match number)
     const summary = page.getByText(/Total customers\s*:\s*\d+/i);
-    await expectVisibleOrSkip(summary, "Customers summary not rendered (SSR or DB error).", LOAD_MS);
+    await expectVisibleOrSkip(
+      summary,
+      "Customers summary not rendered (SSR or DB error).",
+      LOAD_MS
+    );
     const nameLink = page.locator("tbody tr td a[href^='/customers/']").first();
     await expectVisibleOrSkip(nameLink, "No customers — seed data to test detail link.", LOAD_MS);
     const name = (await nameLink.textContent())?.trim() ?? "";
@@ -73,31 +96,51 @@ test.describe("Integration: data linked across modules", () => {
   test("labor: worker balances ↔ worker balance page", async ({ page }) => {
     await page.goto(`${trimBase(BASE)}/labor/worker-balances`);
     await page.waitForLoadState("domcontentloaded");
-    if (await page.getByText(/Supabase is not configured|Failed to load/i).isVisible().catch(() => false)) {
+    if (
+      await page
+        .getByText(/Supabase is not configured|Failed to load/i)
+        .isVisible()
+        .catch(() => false)
+    ) {
       test.skip(true, "Labor balances unavailable.");
     }
-    await expect(page.getByText(/Loading/i).first()).not.toBeVisible({ timeout: LOAD_MS }).catch(() => undefined);
+    await expect(page.getByText(/Loading/i).first())
+      .not.toBeVisible({ timeout: LOAD_MS })
+      .catch(() => undefined);
     const workerLink = page.locator("tbody tr td a[href*='/labor/workers/']").first();
     await expectVisibleOrSkip(workerLink, "No worker link on balances.", LOAD_MS);
     await workerLink.click();
     await expect(page).toHaveURL(/\/labor\/workers\/[^/]+\/balance/, { timeout: 20_000 });
-    await expect(page.locator("body")).not.toContainText(/Application error|Internal Server Error/i);
+    await expect(page.locator("body")).not.toContainText(
+      /Application error|Internal Server Error/i
+    );
   });
 
-  test("financial: new invoice flow requires project (customer ↔ project graph)", async ({ page }) => {
+  test("financial: new invoice flow requires project (customer ↔ project graph)", async ({
+    page,
+  }) => {
     const r = await tryCreateDraftInvoiceNavigateToDetail(page, BASE);
     test.skip(!r.ok, r.ok ? "" : r.skipReason);
     await expect(page).toHaveURL(/\/financial\/invoices\/[^/]+/);
-    await expect(page.locator("body")).not.toContainText(/Application error|Internal Server Error/i);
+    await expect(page.locator("body")).not.toContainText(
+      /Application error|Internal Server Error/i
+    );
   });
 
   test("tasks: new task dialog lists projects (task ↔ project)", async ({ page }) => {
     await page.goto(`${trimBase(BASE)}/tasks`);
     await page.waitForLoadState("domcontentloaded");
-    if (await page.getByText(/Failed to load tasks/i).isVisible().catch(() => false)) {
+    if (
+      await page
+        .getByText(/Failed to load tasks/i)
+        .isVisible()
+        .catch(() => false)
+    ) {
       test.skip(true, "Tasks API failed.");
     }
-    await expect(page.getByText(/Loading/i).first()).not.toBeVisible({ timeout: LOAD_MS }).catch(() => undefined);
+    await expect(page.getByText(/Loading/i).first())
+      .not.toBeVisible({ timeout: LOAD_MS })
+      .catch(() => undefined);
     await page.getByRole("button", { name: /\+ New Task/i }).click();
     const dlg = page.getByRole("dialog", { name: /New Task/i });
     await expect(dlg).toBeVisible({ timeout: 10_000 });
@@ -110,7 +153,9 @@ test.describe("Integration: data linked across modules", () => {
   test("bills list ↔ new bill (AP graph)", async ({ page }) => {
     await page.goto(`${trimBase(BASE)}/bills`);
     await page.waitForLoadState("domcontentloaded");
-    await expect(page.locator("body")).not.toContainText(/Application error|Internal Server Error/i);
+    await expect(page.locator("body")).not.toContainText(
+      /Application error|Internal Server Error/i
+    );
     const newBill = page.locator('a[href="/bills/new"]').first();
     await expectVisibleOrSkip(newBill, "Bills page not ready.", LOAD_MS + 25_000);
     await newBill.click();
@@ -120,11 +165,20 @@ test.describe("Integration: data linked across modules", () => {
   test("labor entries list loads (entries ↔ workers/projects)", async ({ page }) => {
     await page.goto(`${trimBase(BASE)}/labor/entries`);
     await page.waitForLoadState("domcontentloaded");
-    if (await page.getByText(/Supabase is not configured/i).isVisible().catch(() => false)) {
+    if (
+      await page
+        .getByText(/Supabase is not configured/i)
+        .isVisible()
+        .catch(() => false)
+    ) {
       test.skip(true, "Supabase not configured.");
     }
-    await expect(page.getByText(/Loading/i).first()).not.toBeVisible({ timeout: LOAD_MS }).catch(() => undefined);
-    await expect(page.locator("body")).not.toContainText(/Application error|Internal Server Error/i);
+    await expect(page.getByText(/Loading/i).first())
+      .not.toBeVisible({ timeout: LOAD_MS })
+      .catch(() => undefined);
+    await expect(page.locator("body")).not.toContainText(
+      /Application error|Internal Server Error/i
+    );
     await expect(page.locator("table, [role='table']").first()).toBeVisible({ timeout: 15_000 });
   });
 });

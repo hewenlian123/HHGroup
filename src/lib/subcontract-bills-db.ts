@@ -42,8 +42,10 @@ function isMissingColumn(err: { message?: string } | null): boolean {
   return /column .* does not exist|does not exist.*column/i.test(m);
 }
 
-const COLS_FULL = "id, subcontract_id, project_id, bill_date, due_date, amount, description, status, created_at";
-const COLS_NO_DUE = "id, subcontract_id, project_id, bill_date, amount, description, status, created_at";
+const COLS_FULL =
+  "id, subcontract_id, project_id, bill_date, due_date, amount, description, status, created_at";
+const COLS_NO_DUE =
+  "id, subcontract_id, project_id, bill_date, amount, description, status, created_at";
 
 function mapBillRow(r: Record<string, unknown>): SubcontractBillRow {
   return {
@@ -62,10 +64,19 @@ function mapBillRow(r: Record<string, unknown>): SubcontractBillRow {
 /** Fetch all bills for a subcontract, order by bill_date desc. */
 export async function getBillsBySubcontract(subcontractId: string): Promise<SubcontractBillRow[]> {
   const c = client();
-  const first = await c.from("subcontract_bills").select(COLS_FULL).eq("subcontract_id", subcontractId).order("bill_date", { ascending: false });
+  const first = await c
+    .from("subcontract_bills")
+    .select(COLS_FULL)
+    .eq("subcontract_id", subcontractId)
+    .order("bill_date", { ascending: false });
   if (!first.error) return (first.data ?? []).map((r: Record<string, unknown>) => mapBillRow(r));
-  if (!isMissingColumn(first.error)) throw new Error(first.error.message ?? "Failed to load bills.");
-  const fallback = await c.from("subcontract_bills").select(COLS_NO_DUE).eq("subcontract_id", subcontractId).order("bill_date", { ascending: false });
+  if (!isMissingColumn(first.error))
+    throw new Error(first.error.message ?? "Failed to load bills.");
+  const fallback = await c
+    .from("subcontract_bills")
+    .select(COLS_NO_DUE)
+    .eq("subcontract_id", subcontractId)
+    .order("bill_date", { ascending: false });
   if (fallback.error) throw new Error(fallback.error.message ?? "Failed to load bills.");
   return (fallback.data ?? []).map((r: Record<string, unknown>) => mapBillRow(r));
 }
@@ -103,7 +114,10 @@ export async function approveSubcontractBill(billId: string): Promise<void> {
   const { error } = await c.rpc("approve_subcontract_bill", { p_bill_id: billId });
   if (error) {
     if (!isMissingFunction(error)) throw new Error(error.message ?? "Failed to approve bill.");
-    const { error: updErr } = await c.from("subcontract_bills").update({ status: "Approved" }).eq("id", billId);
+    const { error: updErr } = await c
+      .from("subcontract_bills")
+      .update({ status: "Approved" })
+      .eq("id", billId);
     if (updErr) throw new Error(updErr.message ?? "Failed to approve bill.");
   }
 }
@@ -113,7 +127,10 @@ export async function voidSubcontractBill(billId: string): Promise<void> {
   const { error } = await c.rpc("void_subcontract_bill", { p_bill_id: billId });
   if (error) {
     if (!isMissingFunction(error)) throw new Error(error.message ?? "Failed to void bill.");
-    const { error: updErr } = await c.from("subcontract_bills").update({ status: "Void" }).eq("id", billId);
+    const { error: updErr } = await c
+      .from("subcontract_bills")
+      .update({ status: "Void" })
+      .eq("id", billId);
     if (updErr) throw new Error(updErr.message ?? "Failed to void bill.");
   }
 }
@@ -135,22 +152,30 @@ export async function updateSubcontractBill(
 
   // Contract guard: total(other non-void bills) + newAmount <= contract_amount
   const subcontractId = (row as { subcontract_id: string }).subcontract_id;
-  const newAmount = patch.amount !== undefined ? Number(patch.amount) || 0 : Number((row as { amount?: number }).amount) || 0;
-  const [{ data: subcontractRow, error: subErr }, { data: totals, error: totErr }] = await Promise.all([
-    c.from("subcontracts").select("contract_amount").eq("id", subcontractId).maybeSingle(),
-    c.from("subcontract_bills").select("id,amount,status").eq("subcontract_id", subcontractId),
-  ]);
+  const newAmount =
+    patch.amount !== undefined
+      ? Number(patch.amount) || 0
+      : Number((row as { amount?: number }).amount) || 0;
+  const [{ data: subcontractRow, error: subErr }, { data: totals, error: totErr }] =
+    await Promise.all([
+      c.from("subcontracts").select("contract_amount").eq("id", subcontractId).maybeSingle(),
+      c.from("subcontract_bills").select("id,amount,status").eq("subcontract_id", subcontractId),
+    ]);
   if (subErr) throw new Error(subErr.message ?? "Failed to load subcontract.");
   if (totErr) throw new Error(totErr.message ?? "Failed to load subcontract bills.");
-  const contractAmount = Number((subcontractRow as { contract_amount?: number } | null)?.contract_amount) || 0;
+  const contractAmount =
+    Number((subcontractRow as { contract_amount?: number } | null)?.contract_amount) || 0;
   const otherTotal = ((totals ?? []) as Array<{ id?: string; amount?: number; status?: string }>)
     .filter((r) => r && r.status !== "Void" && String(r.id ?? "") !== billId)
     .reduce((s, r) => s + (Number(r.amount) || 0), 0);
-  if (otherTotal + newAmount > contractAmount) throw new Error("Bill exceeds subcontract contract amount");
+  if (otherTotal + newAmount > contractAmount)
+    throw new Error("Bill exceeds subcontract contract amount");
 
   const updates: Record<string, unknown> = {};
-  if (patch.bill_date !== undefined) updates.bill_date = patch.bill_date ? patch.bill_date.slice(0, 10) : null;
-  if (patch.due_date !== undefined) updates.due_date = patch.due_date ? patch.due_date.slice(0, 10) : null;
+  if (patch.bill_date !== undefined)
+    updates.bill_date = patch.bill_date ? patch.bill_date.slice(0, 10) : null;
+  if (patch.due_date !== undefined)
+    updates.due_date = patch.due_date ? patch.due_date.slice(0, 10) : null;
   if (patch.amount !== undefined) updates.amount = newAmount;
   if (patch.description !== undefined) updates.description = patch.description?.trim() || null;
   const { error } = await c.from("subcontract_bills").update(updates).eq("id", billId);
@@ -159,7 +184,11 @@ export async function updateSubcontractBill(
 
 export async function deleteSubcontractBillDraft(billId: string): Promise<void> {
   const c = client();
-  const { data: row, error: rowErr } = await c.from("subcontract_bills").select("status").eq("id", billId).maybeSingle();
+  const { data: row, error: rowErr } = await c
+    .from("subcontract_bills")
+    .select("status")
+    .eq("id", billId)
+    .maybeSingle();
   if (rowErr) throw new Error(rowErr.message ?? "Failed to load bill.");
   const status = (row as { status?: string } | null)?.status ?? "";
   if (status !== "Pending") throw new Error("Only Draft bills can be deleted");
@@ -168,7 +197,9 @@ export async function deleteSubcontractBillDraft(billId: string): Promise<void> 
 }
 
 /** Fetch all bills for summary: subcontract_id, amount, status. */
-export async function getBillsSummaryAll(): Promise<{ subcontract_id: string; amount: number; status: string }[]> {
+export async function getBillsSummaryAll(): Promise<
+  { subcontract_id: string; amount: number; status: string }[]
+> {
   const c = client();
   const { data: rows, error } = await c
     .from("subcontract_bills")
@@ -184,9 +215,7 @@ export async function getBillsSummaryAll(): Promise<{ subcontract_id: string; am
 /** Fetch all bills with id, amount, status (for cashflow approved unpaid). */
 export async function getBillsAll(): Promise<{ id: string; amount: number; status: string }[]> {
   const c = client();
-  const { data: rows, error } = await c
-    .from("subcontract_bills")
-    .select("id, amount, status");
+  const { data: rows, error } = await c.from("subcontract_bills").select("id, amount, status");
   if (error) throw new Error(error.message ?? "Failed to load bills.");
   return (rows ?? []).map((r: Record<string, unknown>) => ({
     id: (r.id as string) ?? "",
@@ -196,7 +225,9 @@ export async function getBillsAll(): Promise<{ id: string; amount: number; statu
 }
 
 /** Sum of approved/paid bill amounts for a project. */
-export async function getApprovedSubcontractBillsTotalByProject(projectId: string): Promise<number> {
+export async function getApprovedSubcontractBillsTotalByProject(
+  projectId: string
+): Promise<number> {
   const c = client();
   const { data: rows, error } = await c
     .from("subcontract_bills")
@@ -208,13 +239,24 @@ export async function getApprovedSubcontractBillsTotalByProject(projectId: strin
 }
 
 /** Fetch all bills for the given subcontract ids (e.g. for one subcontractor). */
-export async function getBillsBySubcontractIds(subcontractIds: string[]): Promise<SubcontractBillRow[]> {
+export async function getBillsBySubcontractIds(
+  subcontractIds: string[]
+): Promise<SubcontractBillRow[]> {
   if (subcontractIds.length === 0) return [];
   const c = client();
-  const first = await c.from("subcontract_bills").select(COLS_FULL).in("subcontract_id", subcontractIds).order("bill_date", { ascending: false });
+  const first = await c
+    .from("subcontract_bills")
+    .select(COLS_FULL)
+    .in("subcontract_id", subcontractIds)
+    .order("bill_date", { ascending: false });
   if (!first.error) return (first.data ?? []).map((r: Record<string, unknown>) => mapBillRow(r));
-  if (!isMissingColumn(first.error)) throw new Error(first.error.message ?? "Failed to load bills.");
-  const fallback = await c.from("subcontract_bills").select(COLS_NO_DUE).in("subcontract_id", subcontractIds).order("bill_date", { ascending: false });
+  if (!isMissingColumn(first.error))
+    throw new Error(first.error.message ?? "Failed to load bills.");
+  const fallback = await c
+    .from("subcontract_bills")
+    .select(COLS_NO_DUE)
+    .in("subcontract_id", subcontractIds)
+    .order("bill_date", { ascending: false });
   if (fallback.error) throw new Error(fallback.error.message ?? "Failed to load bills.");
   return (fallback.data ?? []).map((r: Record<string, unknown>) => mapBillRow(r));
 }

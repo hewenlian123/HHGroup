@@ -5,7 +5,13 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import type { SubcontractBillRow } from "@/lib/data";
 import {
   deleteSubcontractBillDraftAction,
@@ -128,20 +134,42 @@ export function BillRowActions({
     <div className="flex items-center justify-end gap-2">
       {isDraft ? (
         <>
-          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setEditOpen(true)}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs"
+            onClick={() => setEditOpen(true)}
+          >
             Edit
           </Button>
-          <Button variant="ghost" size="sm" className="h-7 text-xs text-red-600" onClick={handleDelete} disabled={busy}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs text-red-600"
+            onClick={handleDelete}
+            disabled={busy}
+          >
             Delete
           </Button>
         </>
       ) : null}
       {isApproved ? (
         <>
-          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setPayOpen(true)}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs"
+            onClick={() => setPayOpen(true)}
+          >
             Record payment
           </Button>
-          <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground" onClick={handleVoid} disabled={busy}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs text-muted-foreground"
+            onClick={handleVoid}
+            disabled={busy}
+          >
             Void
           </Button>
         </>
@@ -156,23 +184,52 @@ export function BillRowActions({
           <div className="grid gap-3 py-2">
             <div>
               <label className="text-xs font-medium text-muted-foreground">Bill date</label>
-              <Input type="date" value={billDate} onChange={(e) => setBillDate(e.target.value)} className="mt-1 h-9" required />
+              <Input
+                type="date"
+                value={billDate}
+                onChange={(e) => setBillDate(e.target.value)}
+                className="mt-1 h-9"
+                required
+              />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Due date</label>
-              <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="mt-1 h-9" />
+              <Input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="mt-1 h-9"
+              />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Amount</label>
-              <Input type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} className="mt-1 h-9" required />
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="mt-1 h-9"
+                required
+              />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Description</label>
-              <Input value={description} onChange={(e) => setDescription(e.target.value)} className="mt-1 h-9" />
+              <Input
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="mt-1 h-9"
+              />
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" size="sm" onClick={() => setEditOpen(false)} disabled={busy}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setEditOpen(false)}
+              disabled={busy}
+            >
               Cancel
             </Button>
             <Button type="button" size="sm" onClick={handleEditSave} disabled={busy}>
@@ -190,23 +247,52 @@ export function BillRowActions({
           <div className="grid gap-3 py-2">
             <div>
               <label className="text-xs font-medium text-muted-foreground">Payment date</label>
-              <Input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} className="mt-1 h-9" required />
+              <Input
+                type="date"
+                value={paymentDate}
+                onChange={(e) => setPaymentDate(e.target.value)}
+                className="mt-1 h-9"
+                required
+              />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Amount</label>
-              <Input type="number" step="0.01" min="0" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} className="mt-1 h-9" required />
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
+                className="mt-1 h-9"
+                required
+              />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Method</label>
-              <Input value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="mt-1 h-9" placeholder="e.g. ACH, Check" />
+              <Input
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                className="mt-1 h-9"
+                placeholder="e.g. ACH, Check"
+              />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Note</label>
-              <Input value={paymentNote} onChange={(e) => setPaymentNote(e.target.value)} className="mt-1 h-9" />
+              <Input
+                value={paymentNote}
+                onChange={(e) => setPaymentNote(e.target.value)}
+                className="mt-1 h-9"
+              />
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" size="sm" onClick={() => setPayOpen(false)} disabled={busy}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setPayOpen(false)}
+              disabled={busy}
+            >
               Cancel
             </Button>
             <Button type="button" size="sm" onClick={handleRecordPayment} disabled={busy}>
@@ -218,4 +304,3 @@ export function BillRowActions({
     </div>
   );
 }
-

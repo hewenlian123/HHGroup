@@ -125,7 +125,7 @@ export async function POST() {
     }
 
     // Use the first project for dependent seed records.
-    const projectId = (projects && projects[0]) ? projects[0].id : undefined;
+    const projectId = projects && projects[0] ? projects[0].id : undefined;
     if (!projectId) {
       throw new Error("Failed to create or load demo projects.");
     }

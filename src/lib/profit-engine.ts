@@ -118,7 +118,10 @@ async function fetchLaborCostForProject(projectId: string): Promise<number> {
   if (!modern.error && Array.isArray(modern.data)) {
     rows = modern.data as LaborCostRow[];
   } else if (modern.error && isMissingColumn(modern.error)) {
-    const legacy = await c.from("labor_entries").select("project_id, cost_amount, total, status").eq("project_id", projectId);
+    const legacy = await c
+      .from("labor_entries")
+      .select("project_id, cost_amount, total, status")
+      .eq("project_id", projectId);
     if (!legacy.error && Array.isArray(legacy.data)) {
       rows = legacy.data as LaborCostRow[];
     } else if (legacy.error && !isMissingColumn(legacy.error)) {
@@ -155,7 +158,10 @@ async function fetchLaborCostBatch(projectIds: string[]): Promise<Map<string, nu
   if (!modern.error && Array.isArray(modern.data)) {
     list = modern.data as LaborCostRow[];
   } else if (modern.error && isMissingColumn(modern.error)) {
-    const legacy = await c.from("labor_entries").select("project_id, cost_amount, total, status").in("project_id", projectIds);
+    const legacy = await c
+      .from("labor_entries")
+      .select("project_id, cost_amount, total, status")
+      .in("project_id", projectIds);
     if (!legacy.error && Array.isArray(legacy.data)) {
       list = legacy.data as LaborCostRow[];
     } else if (legacy.error && !isMissingColumn(legacy.error)) {
@@ -187,7 +193,10 @@ async function getExpenseCostForProject(projectId: string): Promise<number> {
 
   // Fast path: already know the schema
   if (expenseLinesHasProjectId === true) {
-    const { data, error } = await c.from("expense_lines").select("amount").eq("project_id", projectId);
+    const { data, error } = await c
+      .from("expense_lines")
+      .select("amount")
+      .eq("project_id", projectId);
     if (!error && Array.isArray(data)) {
       return (data as Array<{ amount?: unknown }>).reduce((s, e) => s + toNum(e.amount), 0);
     }
@@ -200,7 +209,11 @@ async function getExpenseCostForProject(projectId: string): Promise<number> {
   }
 
   // Schema unknown — probe it
-  const { error } = await c.from("expense_lines").select("amount").eq("project_id", projectId).limit(1);
+  const { error } = await c
+    .from("expense_lines")
+    .select("amount")
+    .eq("project_id", projectId)
+    .limit(1);
 
   if (!error) {
     expenseLinesHasProjectId = true;
@@ -226,13 +239,23 @@ async function getExpenseCostViaJoin(_projectId: string): Promise<number> {
   return 0;
 }
 
-export async function getCanonicalProjectProfit(projectId: string): Promise<CanonicalProjectProfit> {
+export async function getCanonicalProjectProfit(
+  projectId: string
+): Promise<CanonicalProjectProfit> {
   const c = client();
 
   const [projectRes, approvedChangeOrdersRes, subcontractBillsRes] = await Promise.all([
     c.from("projects").select("budget").eq("id", projectId).single(),
-    c.from("project_change_orders").select("*").eq("project_id", projectId).eq("status", "Approved"),
-    c.from("subcontract_bills").select("amount").eq("project_id", projectId).eq("status", "Approved"),
+    c
+      .from("project_change_orders")
+      .select("*")
+      .eq("project_id", projectId)
+      .eq("status", "Approved"),
+    c
+      .from("subcontract_bills")
+      .select("amount")
+      .eq("project_id", projectId)
+      .eq("status", "Approved"),
   ]);
 
   // Base contract
@@ -246,10 +269,13 @@ export async function getCanonicalProjectProfit(projectId: string): Promise<Cano
   // Approved change orders
   let approvedCO = 0;
   if (!approvedChangeOrdersRes.error && Array.isArray(approvedChangeOrdersRes.data)) {
-    approvedCO = (approvedChangeOrdersRes.data as Array<{ amount?: unknown; total?: unknown; total_amount?: unknown }>).reduce(
-      (sum, co) => sum + toNum(co?.amount ?? co?.total ?? co?.total_amount),
-      0
-    );
+    approvedCO = (
+      approvedChangeOrdersRes.data as Array<{
+        amount?: unknown;
+        total?: unknown;
+        total_amount?: unknown;
+      }>
+    ).reduce((sum, co) => sum + toNum(co?.amount ?? co?.total ?? co?.total_amount), 0);
   } else if (approvedChangeOrdersRes.error) {
     devLogFail("project_change_orders", approvedChangeOrdersRes.error);
   }
@@ -275,7 +301,17 @@ export async function getCanonicalProjectProfit(projectId: string): Promise<Cano
   const profit = revenue - actualCost;
   const margin = revenue > 0 ? profit / revenue : 0;
 
-  return { revenue, actualCost, profit, margin, budget: baseContract, approvedChangeOrders: approvedCO, laborCost, expenseCost, subcontractCost };
+  return {
+    revenue,
+    actualCost,
+    profit,
+    margin,
+    budget: baseContract,
+    approvedChangeOrders: approvedCO,
+    laborCost,
+    expenseCost,
+    subcontractCost,
+  };
 }
 
 /**
@@ -293,8 +329,16 @@ export async function getCanonicalProjectProfitBatch(
   // 1. Budgets + non-labor cost sources
   const [projectsRes, cosRes, subBillsRes, expenseByProject, laborByProject] = await Promise.all([
     c.from("projects").select("id, budget").in("id", projectIds),
-    c.from("project_change_orders").select("project_id, amount, total, total_amount").in("project_id", projectIds).eq("status", "Approved"),
-    c.from("subcontract_bills").select("project_id, amount").in("project_id", projectIds).eq("status", "Approved"),
+    c
+      .from("project_change_orders")
+      .select("project_id, amount, total, total_amount")
+      .in("project_id", projectIds)
+      .eq("status", "Approved"),
+    c
+      .from("subcontract_bills")
+      .select("project_id, amount")
+      .in("project_id", projectIds)
+      .eq("status", "Approved"),
     getExpenseCostBatch(projectIds),
     fetchLaborCostBatch(projectIds),
   ]);
@@ -311,9 +355,17 @@ export async function getCanonicalProjectProfitBatch(
   // Aggregate approved change orders by project
   const coByProject = new Map<string, number>();
   if (!cosRes.error && Array.isArray(cosRes.data)) {
-    for (const co of cosRes.data as Array<{ project_id?: string; amount?: unknown; total?: unknown; total_amount?: unknown }>) {
+    for (const co of cosRes.data as Array<{
+      project_id?: string;
+      amount?: unknown;
+      total?: unknown;
+      total_amount?: unknown;
+    }>) {
       const pid = co.project_id ?? "";
-      coByProject.set(pid, (coByProject.get(pid) ?? 0) + toNum(co.amount ?? co.total ?? co.total_amount));
+      coByProject.set(
+        pid,
+        (coByProject.get(pid) ?? 0) + toNum(co.amount ?? co.total ?? co.total_amount)
+      );
     }
   }
 
@@ -335,7 +387,17 @@ export async function getCanonicalProjectProfitBatch(
     const actualCost = laborCost + expenseCost + subcontractCost;
     const profit = revenue - actualCost;
     const margin = revenue > 0 ? profit / revenue : 0;
-    result.set(pid, { revenue, actualCost, profit, margin, budget, approvedChangeOrders, laborCost, expenseCost, subcontractCost });
+    result.set(pid, {
+      revenue,
+      actualCost,
+      profit,
+      margin,
+      budget,
+      approvedChangeOrders,
+      laborCost,
+      expenseCost,
+      subcontractCost,
+    });
   }
 
   return result;
@@ -349,7 +411,10 @@ async function getExpenseCostBatch(projectIds: string[]): Promise<Map<string, nu
 
   // Fast path: already know the schema
   if (expenseLinesHasProjectId === true) {
-    const { data, error } = await c.from("expense_lines").select("project_id, amount").in("project_id", projectIds);
+    const { data, error } = await c
+      .from("expense_lines")
+      .select("project_id, amount")
+      .in("project_id", projectIds);
     if (!error && Array.isArray(data)) {
       for (const e of data as Array<{ project_id?: string; amount?: unknown }>) {
         const pid = e.project_id ?? "";
@@ -364,11 +429,18 @@ async function getExpenseCostBatch(projectIds: string[]): Promise<Map<string, nu
   }
 
   // Probe
-  const { error } = await c.from("expense_lines").select("project_id, amount").in("project_id", projectIds).limit(1);
+  const { error } = await c
+    .from("expense_lines")
+    .select("project_id, amount")
+    .in("project_id", projectIds)
+    .limit(1);
 
   if (!error) {
     expenseLinesHasProjectId = true;
-    const full = await c.from("expense_lines").select("project_id, amount").in("project_id", projectIds);
+    const full = await c
+      .from("expense_lines")
+      .select("project_id, amount")
+      .in("project_id", projectIds);
     if (!full.error && Array.isArray(full.data)) {
       for (const e of full.data as Array<{ project_id?: string; amount?: unknown }>) {
         const pid = e.project_id ?? "";

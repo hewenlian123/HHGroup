@@ -1,12 +1,7 @@
 "use client";
 
 import * as React from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { addSubcontractorAction } from "./actions";
 
@@ -113,7 +108,9 @@ export function AddSubcontractorModal({ open, onOpenChange, onSuccess }: Props) 
             />
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">Insurance expiration</label>
+            <label className="text-xs font-medium text-muted-foreground">
+              Insurance expiration
+            </label>
             <Input
               type="date"
               value={insuranceExpiration}
@@ -130,9 +127,7 @@ export function AddSubcontractorModal({ open, onOpenChange, onSuccess }: Props) 
               className="h-9 text-sm"
             />
           </div>
-          {error ? (
-            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-          ) : null}
+          {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
           <div className="flex justify-end gap-2 pt-2 border-t border-border/40">
             <button
               type="button"

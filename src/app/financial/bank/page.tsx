@@ -57,7 +57,10 @@ function createEmptyLine(id: string): SplitLineRow {
   return { id, projectId: null, category: "Other", memo: null, amount: 0 };
 }
 
-function getNextUnmatched(transactions: BankTransaction[], currentId: string | null): BankTransaction | null {
+function getNextUnmatched(
+  transactions: BankTransaction[],
+  currentId: string | null
+): BankTransaction | null {
   const unmatched = transactions.filter((t) => t.status === "unmatched");
   if (unmatched.length === 0) return null;
   if (!currentId) return unmatched[0];
@@ -85,7 +88,9 @@ export default function BankReconcilePage() {
   const [importMessage, setImportMessage] = React.useState<string | null>(null);
   const [toastMessage, setToastMessage] = React.useState<string | null>(null);
 
-  const [reconcileType, setReconcileType] = React.useState<"Expense" | "Income" | "Transfer">("Expense");
+  const [reconcileType, setReconcileType] = React.useState<"Expense" | "Income" | "Transfer">(
+    "Expense"
+  );
   const [lines, setLines] = React.useState<SplitLineRow[]>([]);
   const [vendorName, setVendorName] = React.useState("");
   const [paymentMethod, setPaymentMethod] = React.useState("ACH");
@@ -128,7 +133,7 @@ export default function BankReconcilePage() {
 
   const selected =
     selectedIds.size === 1
-      ? transactions.find((t) => t.id === Array.from(selectedIds)[0]) ?? null
+      ? (transactions.find((t) => t.id === Array.from(selectedIds)[0]) ?? null)
       : null;
   const selectedList = transactions.filter((t) => selectedIds.has(t.id));
   const isBulkMode = selectedList.length > 1;
@@ -143,8 +148,7 @@ export default function BankReconcilePage() {
   const linesTotal = lines.reduce((s, l) => s + l.amount, 0);
   const remaining = targetAmount - linesTotal;
   const canReconcile =
-    reconcileType !== "Expense" ||
-    (remaining === 0 && lines.some((l) => l.amount > 0));
+    reconcileType !== "Expense" || (remaining === 0 && lines.some((l) => l.amount > 0));
 
   React.useEffect(() => {
     if (toastMessage) {
@@ -205,9 +209,7 @@ export default function BankReconcilePage() {
   };
 
   const handleLineChange = (lineId: string, patch: Partial<SplitLineRow>) => {
-    setLines((prev) =>
-      prev.map((l) => (l.id === lineId ? { ...l, ...patch } : l))
-    );
+    setLines((prev) => prev.map((l) => (l.id === lineId ? { ...l, ...patch } : l)));
   };
 
   const handleDeleteLine = (lineId: string) => {
@@ -255,9 +257,11 @@ export default function BankReconcilePage() {
     setSelectedIds(updated ? new Set([updated.id]) : new Set());
   };
 
-  const selectedTxFromList = selected ? transactions.find((t) => t.id === selected.id) ?? selected : null;
+  const selectedTxFromList = selected
+    ? (transactions.find((t) => t.id === selected.id) ?? selected)
+    : null;
   const isReconciled = selectedTxFromList?.status === "reconciled";
-  const isLinkedToExpense = !!(selectedTxFromList?.linkedExpenseId);
+  const isLinkedToExpense = !!selectedTxFromList?.linkedExpenseId;
   const [suggestions, setSuggestions] = React.useState<ExpenseSuggestion[]>([]);
   React.useEffect(() => {
     if (!selected || selected.status !== "unmatched") {
@@ -268,7 +272,9 @@ export default function BankReconcilePage() {
     getSuggestedExpensesForBankTx(selected).then((s) => {
       if (!cancelled) setSuggestions(s);
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [selected]);
 
   const bankListRef = React.useRef<HTMLDivElement>(null);
@@ -311,7 +317,10 @@ export default function BankReconcilePage() {
         handleReconcile();
       }
     } else if (!isBulkMode && (e.ctrlKey || e.metaKey) && e.key === "Enter") {
-      if (suggestions.length > 0 && !("linkedBankTxId" in suggestions[0].expense && suggestions[0].expense.linkedBankTxId)) {
+      if (
+        suggestions.length > 0 &&
+        !("linkedBankTxId" in suggestions[0].expense && suggestions[0].expense.linkedBankTxId)
+      ) {
         e.preventDefault();
         handleLinkToExpense(suggestions[0].expense.id);
       }
@@ -397,7 +406,12 @@ export default function BankReconcilePage() {
                 id="bank-csv-upload"
                 onChange={handleFileChange}
               />
-              <Button variant="outline" size="sm" className="rounded-sm" onClick={() => document.getElementById("bank-csv-upload")?.click()}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-sm"
+                onClick={() => document.getElementById("bank-csv-upload")?.click()}
+              >
                 <Upload className="mr-2 h-4 w-4" />
                 Upload CSV
               </Button>
@@ -451,10 +465,18 @@ export default function BankReconcilePage() {
                   <TableHead className="w-10 text-center">
                     <span className="sr-only">Select</span>
                   </TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Date</TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Description</TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">Amount</TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Status</TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                    Date
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                    Description
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">
+                    Amount
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                    Status
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -467,7 +489,10 @@ export default function BankReconcilePage() {
                     )}
                     onClick={() => setSelectedIds(new Set([tx.id]))}
                   >
-                    <TableCell className="w-10 p-2 text-center" onClick={(e) => e.stopPropagation()}>
+                    <TableCell
+                      className="w-10 p-2 text-center"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <input
                         type="checkbox"
                         checked={selectedIds.has(tx.id)}
@@ -480,13 +505,20 @@ export default function BankReconcilePage() {
                     <TableCell
                       className={cn(
                         "text-right tabular-nums font-medium",
-                        tx.amount >= 0 ? "text-emerald-600/90 dark:text-emerald-400/90" : "text-red-600/90 dark:text-red-400/90"
+                        tx.amount >= 0
+                          ? "text-emerald-600/90 dark:text-emerald-400/90"
+                          : "text-red-600/90 dark:text-red-400/90"
                       )}
                     >
                       {tx.amount >= 0 ? "+" : ""}${tx.amount.toLocaleString()}
                     </TableCell>
                     <TableCell>
-                      <span className={cn("text-xs font-medium", tx.status === "reconciled" ? "text-emerald-600" : "text-amber-600")}>
+                      <span
+                        className={cn(
+                          "text-xs font-medium",
+                          tx.status === "reconciled" ? "text-emerald-600" : "text-amber-600"
+                        )}
+                      >
                         {tx.status}
                       </span>
                     </TableCell>
@@ -511,7 +543,8 @@ export default function BankReconcilePage() {
             <>
               <h2 className="text-base font-semibold text-foreground mb-1">Bulk Reconcile</h2>
               <p className="text-sm text-muted-foreground mb-4">
-                {selectedList.length} transaction(s) selected. Expenses will use one line each; income will be marked reconciled.
+                {selectedList.length} transaction(s) selected. Expenses will use one line each;
+                income will be marked reconciled.
               </p>
               <div className="space-y-4">
                 <CreatableSelect
@@ -526,7 +559,9 @@ export default function BankReconcilePage() {
                   }}
                 />
                 <div className="grid gap-1.5">
-                  <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Project</label>
+                  <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                    Project
+                  </label>
                   <Select value={bulkProjectId} onChange={(e) => setBulkProjectId(e.target.value)}>
                     <option value="">Overhead</option>
                     {projects.map((p) => (
@@ -568,13 +603,19 @@ export default function BankReconcilePage() {
               <>
                 <h2 className="text-base font-semibold text-foreground mb-2">Reconciled</h2>
                 <p className="text-sm text-muted-foreground mb-2">
-                  {selectedTxFromList?.description} — {selectedTxFromList && (selectedTxFromList.amount >= 0 ? "+" : "")}${selectedTxFromList?.amount.toLocaleString()}
+                  {selectedTxFromList?.description} —{" "}
+                  {selectedTxFromList && (selectedTxFromList.amount >= 0 ? "+" : "")}$
+                  {selectedTxFromList?.amount.toLocaleString()}
                 </p>
                 {selectedTxFromList?.reconciledAt && (
-                  <p className="text-sm text-muted-foreground mb-2">Reconciled on {selectedTxFromList.reconciledAt}</p>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Reconciled on {selectedTxFromList.reconciledAt}
+                  </p>
                 )}
                 {isLinkedToExpense && selectedTxFromList?.linkedExpenseId && (
-                  <p className="text-sm font-medium text-foreground mb-2">Linked to Expense #{selectedTxFromList.linkedExpenseId}</p>
+                  <p className="text-sm font-medium text-foreground mb-2">
+                    Linked to Expense #{selectedTxFromList.linkedExpenseId}
+                  </p>
                 )}
                 <span className="mb-4 inline-flex items-center gap-2 text-xs font-medium text-foreground">
                   <span
@@ -590,7 +631,9 @@ export default function BankReconcilePage() {
                 <div className="flex flex-col gap-2">
                   {selectedTxFromList?.linkedExpenseId && (
                     <Button asChild variant="outline" size="sm" className="rounded-sm">
-                      <Link href={`/financial/expenses/${selectedTxFromList.linkedExpenseId}`}>Open Expense</Link>
+                      <Link href={`/financial/expenses/${selectedTxFromList.linkedExpenseId}`}>
+                        Open Expense
+                      </Link>
                     </Button>
                   )}
                   {isLinkedToExpense && (
@@ -609,13 +652,18 @@ export default function BankReconcilePage() {
               <>
                 <h2 className="text-base font-semibold text-foreground mb-2">Reconcile</h2>
                 <p className="text-sm text-muted-foreground mb-4">
-                  {selected.description} — {selected.amount >= 0 ? "+" : ""}${selected.amount.toLocaleString()}
+                  {selected.description} — {selected.amount >= 0 ? "+" : ""}$
+                  {selected.amount.toLocaleString()}
                 </p>
                 <div className="grid gap-1.5">
-                  <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Type</label>
+                  <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                    Type
+                  </label>
                   <Select
                     value={reconcileType}
-                    onChange={(e) => setReconcileType(e.target.value as "Expense" | "Income" | "Transfer")}
+                    onChange={(e) =>
+                      setReconcileType(e.target.value as "Expense" | "Income" | "Transfer")
+                    }
                   >
                     <option value="Expense">Expense</option>
                     <option value="Income">Income</option>
@@ -627,20 +675,35 @@ export default function BankReconcilePage() {
                   <>
                     {suggestions.length > 0 && (
                       <div className="mt-4 border border-[#EBEBE9] p-4 dark:border-border">
-                        <h3 className="mb-3 text-sm font-semibold text-foreground">Match Existing Expense</h3>
-                        <p className="mb-3 text-xs text-muted-foreground">Link this bank line to an existing expense to avoid duplicates.</p>
+                        <h3 className="mb-3 text-sm font-semibold text-foreground">
+                          Match Existing Expense
+                        </h3>
+                        <p className="mb-3 text-xs text-muted-foreground">
+                          Link this bank line to an existing expense to avoid duplicates.
+                        </p>
                         <div className="max-h-64 space-y-2 overflow-y-auto">
                           {suggestions.map((s) => (
                             <div
                               key={s.expense.id}
                               className="flex flex-wrap items-center gap-2 border border-[#EBEBE9] p-2 text-sm dark:border-border"
                             >
-                              <span className="tabular-nums text-muted-foreground w-20">{s.expense.date}</span>
-                              <span className="font-medium min-w-[100px]">{s.expense.vendorName}</span>
-                              <span className="tabular-nums font-medium text-red-600/90 dark:text-red-400/90">${s.total.toLocaleString()}</span>
+                              <span className="tabular-nums text-muted-foreground w-20">
+                                {s.expense.date}
+                              </span>
+                              <span className="font-medium min-w-[100px]">
+                                {s.expense.vendorName}
+                              </span>
+                              <span className="tabular-nums font-medium text-red-600/90 dark:text-red-400/90">
+                                ${s.total.toLocaleString()}
+                              </span>
                               <span className="text-muted-foreground">{s.projectLabel}</span>
                               <span className="text-muted-foreground">{s.categoryLabel}</span>
-                              <span className="text-muted-foreground truncate max-w-[120px]" title={s.memoLabel}>{s.memoLabel}</span>
+                              <span
+                                className="text-muted-foreground truncate max-w-[120px]"
+                                title={s.memoLabel}
+                              >
+                                {s.memoLabel}
+                              </span>
                               <div className="ml-auto flex gap-1">
                                 <Button asChild variant="ghost" size="sm" className="h-8">
                                   <Link href={`/financial/expenses/${s.expense.id}`}>View</Link>
@@ -650,7 +713,9 @@ export default function BankReconcilePage() {
                                   size="sm"
                                   className="h-8"
                                   onClick={() => handleLinkToExpense(s.expense.id)}
-                                  disabled={!!("linkedBankTxId" in s.expense && s.expense.linkedBankTxId)}
+                                  disabled={
+                                    !!("linkedBankTxId" in s.expense && s.expense.linkedBankTxId)
+                                  }
                                 >
                                   Link
                                 </Button>
@@ -661,39 +726,41 @@ export default function BankReconcilePage() {
                       </div>
                     )}
                     <div className="mt-6">
-                    <SplitLinesEditor
-                      lines={lines}
-                      onLineChange={handleLineChange}
-                      onAddLine={handleAddLineWithFocus}
-                      onDeleteLine={handleDeleteLine}
-                      showHeaderVendorPayment
-                      vendorName={vendorName}
-                      onVendorNameChange={setVendorName}
-                      paymentMethod={paymentMethod}
-                      onPaymentMethodChange={setPaymentMethod}
-                      targetAmount={targetAmount}
-                      projects={projects}
-                      categories={categories}
-                      vendorsList={vendorsList}
-                      paymentMethodsList={paymentMethodsList}
-                      onAddCategory={addExpenseCategory}
-                      onAddVendor={addVendor}
-                      onAddPaymentMethod={addPaymentMethod}
-                      onToast={setToastMessage}
-                      isExpenseCategoryDisabled={() => false}
-                      isVendorDisabled={() => false}
-                      isPaymentMethodDisabled={() => false}
-                      minLines={1}
-                      firstFocusId="bank-reconcile-first-focus"
-                      focusLineId={focusNewLineId}
-                      onFocusLineHandled={() => setFocusNewLineId(null)}
-                    />
-                  </div>
-                </>
+                      <SplitLinesEditor
+                        lines={lines}
+                        onLineChange={handleLineChange}
+                        onAddLine={handleAddLineWithFocus}
+                        onDeleteLine={handleDeleteLine}
+                        showHeaderVendorPayment
+                        vendorName={vendorName}
+                        onVendorNameChange={setVendorName}
+                        paymentMethod={paymentMethod}
+                        onPaymentMethodChange={setPaymentMethod}
+                        targetAmount={targetAmount}
+                        projects={projects}
+                        categories={categories}
+                        vendorsList={vendorsList}
+                        paymentMethodsList={paymentMethodsList}
+                        onAddCategory={addExpenseCategory}
+                        onAddVendor={addVendor}
+                        onAddPaymentMethod={addPaymentMethod}
+                        onToast={setToastMessage}
+                        isExpenseCategoryDisabled={() => false}
+                        isVendorDisabled={() => false}
+                        isPaymentMethodDisabled={() => false}
+                        minLines={1}
+                        firstFocusId="bank-reconcile-first-focus"
+                        focusLineId={focusNewLineId}
+                        onFocusLineHandled={() => setFocusNewLineId(null)}
+                      />
+                    </div>
+                  </>
                 )}
 
                 {reconcileType !== "Expense" && (
-                  <p className="text-sm text-muted-foreground mt-4">Mark as reconciled without creating an expense.</p>
+                  <p className="text-sm text-muted-foreground mt-4">
+                    Mark as reconciled without creating an expense.
+                  </p>
                 )}
 
                 <div className="mt-6 flex flex-col gap-2">

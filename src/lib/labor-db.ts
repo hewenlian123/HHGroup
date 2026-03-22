@@ -9,17 +9,33 @@ import { getSupabaseClient } from "@/lib/supabase";
 
 const LABOR_ENTRIES_COLS = "id, worker_id, project_id, work_date, hours, cost_code, notes" as const;
 /** Columns for labor cost aggregation (includes cost_amount). Use after migration 202603101200. */
-const LABOR_ENTRIES_COLS_WITH_COST = "id, worker_id, project_id, work_date, hours, cost_code, notes, cost_amount" as const;
+const LABOR_ENTRIES_COLS_WITH_COST =
+  "id, worker_id, project_id, work_date, hours, cost_code, notes, cost_amount" as const;
 /** Columns for daily (AM/PM) insert; includes morning, afternoon when migration 202603191000 applied. */
-const LABOR_ENTRIES_DAILY_COLS = "id, worker_id, project_id, work_date, hours, cost_code, notes, cost_amount, morning, afternoon" as const;
+const LABOR_ENTRIES_DAILY_COLS =
+  "id, worker_id, project_id, work_date, hours, cost_code, notes, cost_amount, morning, afternoon" as const;
 /** Columns for reading entries with AM/PM for pay display. */
-const LABOR_ENTRIES_COLS_WITH_AMPM = "id, worker_id, project_id, work_date, hours, cost_code, notes, morning, afternoon" as const;
-const LABOR_ENTRIES_ALLOWED = new Set<string>(["id", "worker_id", "project_id", "work_date", "hours", "cost_code", "notes", "cost_amount", "morning", "afternoon"]);
+const LABOR_ENTRIES_COLS_WITH_AMPM =
+  "id, worker_id, project_id, work_date, hours, cost_code, notes, morning, afternoon" as const;
+const LABOR_ENTRIES_ALLOWED = new Set<string>([
+  "id",
+  "worker_id",
+  "project_id",
+  "work_date",
+  "hours",
+  "cost_code",
+  "notes",
+  "cost_amount",
+  "morning",
+  "afternoon",
+]);
 
 function assertLaborEntriesColumns(cols: string[]): void {
   for (const c of cols) {
     if (!LABOR_ENTRIES_ALLOWED.has(c)) {
-      throw new Error(`labor_entries: column '${c}' does not exist. Allowed: id, worker_id, project_id, work_date, hours, cost_code, notes, cost_amount.`);
+      throw new Error(
+        `labor_entries: column '${c}' does not exist. Allowed: id, worker_id, project_id, work_date, hours, cost_code, notes, cost_amount.`
+      );
     }
   }
 }
@@ -57,7 +73,11 @@ export type LaborShiftEntry = LaborEntry;
 /** Calculate pay for display: AM = dailyRate/2, PM = dailyRate/2, AM+PM = dailyRate. Hours-only entries: hours * (dailyRate/8). */
 export function calculateLaborPay(worker: Worker, entry: LaborEntry): number {
   const dailyRate = worker.dailyRate ?? (worker.halfDayRate ?? 0) * 2;
-  const hasAmPm = entry.morning === true || entry.morning === false || entry.afternoon === true || entry.afternoon === false;
+  const hasAmPm =
+    entry.morning === true ||
+    entry.morning === false ||
+    entry.afternoon === true ||
+    entry.afternoon === false;
   if (hasAmPm) {
     return (entry.morning ? dailyRate / 2 : 0) + (entry.afternoon ? dailyRate / 2 : 0);
   }
@@ -73,7 +93,14 @@ export type LaborInvoiceChecklist = {
   verifiedAllocation: boolean;
   verifiedAttachment: boolean;
 };
-export type Attachment = { id: string; fileName: string; mimeType: string; url: string; size: number; createdAt: string };
+export type Attachment = {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  url: string;
+  size: number;
+  createdAt: string;
+};
 
 export type LaborInvoice = {
   id: string;
@@ -102,7 +129,17 @@ export type LaborPayment = {
   createdAt: string;
 };
 
-type WorkerRow = { id: string; name: string; role: string | null; phone: string | null; half_day_rate: number; status: string; notes: string | null; created_at: string; daily_rate?: number | null };
+type WorkerRow = {
+  id: string;
+  name: string;
+  role: string | null;
+  phone: string | null;
+  half_day_rate: number;
+  status: string;
+  notes: string | null;
+  created_at: string;
+  daily_rate?: number | null;
+};
 type LaborEntryRow = {
   id: string;
   worker_id: string;
@@ -115,10 +152,29 @@ type LaborEntryRow = {
   afternoon?: boolean | null;
 };
 type LaborInvoiceRow = {
-  id: string; invoice_no: string; worker_id: string; invoice_date: string; amount: number; memo: string | null; status: string;
-  project_splits: LaborInvoiceSplit[]; checklist: Record<string, boolean>; created_at: string; confirmed_at: string | null;
+  id: string;
+  invoice_no: string;
+  worker_id: string;
+  invoice_date: string;
+  amount: number;
+  memo: string | null;
+  status: string;
+  project_splits: LaborInvoiceSplit[];
+  checklist: Record<string, boolean>;
+  created_at: string;
+  confirmed_at: string | null;
 };
-type LaborPaymentRow = { id: string; worker_id: string; payment_date: string; amount: number; method: string | null; memo: string | null; applied_start_date: string | null; applied_end_date: string | null; created_at: string };
+type LaborPaymentRow = {
+  id: string;
+  worker_id: string;
+  payment_date: string;
+  amount: number;
+  method: string | null;
+  memo: string | null;
+  applied_start_date: string | null;
+  applied_end_date: string | null;
+  created_at: string;
+};
 
 function client() {
   const c = getSupabaseClient();
@@ -133,15 +189,15 @@ function isMissingTable(err: { message?: string } | null): boolean {
 
 function isMissingColumn(err: { message?: string } | null): boolean {
   const m = err?.message ?? "";
-  return /column.*does not exist|does not exist.*column|undefined column|could not find.*daily_rate|daily_rate.*schema cache/i.test(m);
+  return /column.*does not exist|does not exist.*column|undefined column|could not find.*daily_rate|daily_rate.*schema cache/i.test(
+    m
+  );
 }
 
 function toWorker(r: WorkerRow): Worker {
   const halfDay = Number(r.half_day_rate) || 0;
   const dailyRate =
-    r.daily_rate != null && Number(r.daily_rate) > 0
-      ? Number(r.daily_rate)
-      : halfDay;
+    r.daily_rate != null && Number(r.daily_rate) > 0 ? Number(r.daily_rate) : halfDay;
   return {
     id: r.id,
     name: r.name ?? "",
@@ -179,8 +235,14 @@ function toLaborInvoice(r: LaborInvoiceRow): LaborInvoice {
     invoiceDate: r.invoice_date?.slice(0, 10) ?? "",
     amount: Number(r.amount) || 0,
     memo: r.memo ?? undefined,
-    projectSplits: splits.map((s) => ({ projectId: (s as { projectId?: string }).projectId ?? (s as { project_id?: string }).project_id ?? "", amount: Number((s as { amount: number }).amount) || 0 })),
-    status: (r.status === "void" || r.status === "confirmed" || r.status === "reviewed" ? r.status : "draft") as LaborInvoice["status"],
+    projectSplits: splits.map((s) => ({
+      projectId:
+        (s as { projectId?: string }).projectId ?? (s as { project_id?: string }).project_id ?? "",
+      amount: Number((s as { amount: number }).amount) || 0,
+    })),
+    status: (r.status === "void" || r.status === "confirmed" || r.status === "reviewed"
+      ? r.status
+      : "draft") as LaborInvoice["status"],
     checklist: {
       verifiedWorker: !!checklist.verifiedWorker,
       verifiedAmount: !!checklist.verifiedAmount,
@@ -202,19 +264,27 @@ function toLaborPayment(r: LaborPaymentRow): LaborPayment {
     method: r.method ?? "",
     memo: r.memo ?? undefined,
     attachments: [],
-    appliedRange: r.applied_start_date && r.applied_end_date ? { startDate: r.applied_start_date.slice(0, 10), endDate: r.applied_end_date.slice(0, 10) } : undefined,
+    appliedRange:
+      r.applied_start_date && r.applied_end_date
+        ? { startDate: r.applied_start_date.slice(0, 10), endDate: r.applied_end_date.slice(0, 10) }
+        : undefined,
     createdAt: r.created_at ?? "",
   };
 }
 
 export async function getWorkers(): Promise<Worker[]> {
   const c = client();
-  const colsWithDaily = "id, name, role, phone, half_day_rate, daily_rate, status, notes, created_at";
+  const colsWithDaily =
+    "id, name, role, phone, half_day_rate, daily_rate, status, notes, created_at";
   const { data: rows, error } = await c.from("workers").select(colsWithDaily).order("name");
   if (error) {
-    if (isMissingTable(error)) throw new Error("labor_workers (workers): table not found. Run migrations.");
+    if (isMissingTable(error))
+      throw new Error("labor_workers (workers): table not found. Run migrations.");
     if (isMissingColumn(error)) {
-      const { data: rows2, error: err2 } = await c.from("workers").select("id, name, role, phone, half_day_rate, status, notes, created_at").order("name");
+      const { data: rows2, error: err2 } = await c
+        .from("workers")
+        .select("id, name, role, phone, half_day_rate, status, notes, created_at")
+        .order("name");
       if (err2) throw new Error(err2.message ?? "Failed to load workers.");
       return (rows2 ?? []).map((r) => toWorker(r as WorkerRow));
     }
@@ -230,11 +300,20 @@ export async function getLaborWorkers(): Promise<Worker[]> {
 
 export async function getWorkerById(id: string): Promise<Worker | null> {
   const c = client();
-  const colsWithDaily = "id, name, role, phone, half_day_rate, daily_rate, status, notes, created_at";
-  const { data: row, error } = await c.from("workers").select(colsWithDaily).eq("id", id).maybeSingle();
+  const colsWithDaily =
+    "id, name, role, phone, half_day_rate, daily_rate, status, notes, created_at";
+  const { data: row, error } = await c
+    .from("workers")
+    .select(colsWithDaily)
+    .eq("id", id)
+    .maybeSingle();
   if (error) {
     if (isMissingColumn(error)) {
-      const { data: row2, error: err2 } = await c.from("workers").select("id, name, role, phone, half_day_rate, status, notes, created_at").eq("id", id).maybeSingle();
+      const { data: row2, error: err2 } = await c
+        .from("workers")
+        .select("id, name, role, phone, half_day_rate, status, notes, created_at")
+        .eq("id", id)
+        .maybeSingle();
       if (err2 || !row2) return null;
       return toWorker(row2 as WorkerRow);
     }
@@ -255,7 +334,8 @@ export async function createWorker(input: {
 }): Promise<Worker> {
   const c = client();
   const dailyRate = input.dailyRate != null ? Number(input.dailyRate) : undefined;
-  const halfDayRate = input.halfDayRate != null ? Number(input.halfDayRate) : dailyRate != null ? dailyRate / 2 : 0;
+  const halfDayRate =
+    input.halfDayRate != null ? Number(input.halfDayRate) : dailyRate != null ? dailyRate / 2 : 0;
   const payload: Record<string, unknown> = {
     name: input.name.trim(),
     phone: input.phone?.trim() ?? null,
@@ -294,7 +374,14 @@ export async function createWorker(input: {
 
 export async function updateWorker(
   id: string,
-  patch: Partial<{ name: string; phone?: string; trade?: string; status: "active" | "inactive"; halfDayRate: number; notes?: string }>
+  patch: Partial<{
+    name: string;
+    phone?: string;
+    trade?: string;
+    status: "active" | "inactive";
+    halfDayRate: number;
+    notes?: string;
+  }>
 ): Promise<Worker | null> {
   const c = client();
   const updates: Record<string, unknown> = {};
@@ -305,7 +392,12 @@ export async function updateWorker(
   if (patch.halfDayRate != null) updates.half_day_rate = Math.max(0, patch.halfDayRate);
   if (patch.notes !== undefined) updates.notes = patch.notes?.trim() ?? null;
   if (Object.keys(updates).length === 0) return getWorkerById(id);
-  const { data: row, error } = await c.from("workers").update(updates).eq("id", id).select("id, name, role, phone, half_day_rate, status, notes, created_at").single();
+  const { data: row, error } = await c
+    .from("workers")
+    .update(updates)
+    .eq("id", id)
+    .select("id, name, role, phone, half_day_rate, status, notes, created_at")
+    .single();
   if (error || !row) return null;
   return toWorker(row as WorkerRow);
 }
@@ -315,7 +407,10 @@ export async function deleteWorker(id: string): Promise<void> {
   await c.from("workers").delete().eq("id", id);
 }
 
-export async function getLaborAllocatedByProject(projectId: string, date?: string): Promise<number> {
+export async function getLaborAllocatedByProject(
+  projectId: string,
+  date?: string
+): Promise<number> {
   const c = client();
   let q = c
     .from("labor_entries")
@@ -336,7 +431,10 @@ export async function getLaborAllocatedByProject(projectId: string, date?: strin
 }
 
 /** Sum of labor cost (Approved/Locked only) for work_date in [startDate, endDate] (inclusive). For dashboard "Labor Cost This Week". */
-export async function getLaborCostForDateRange(startDate: string, endDate: string): Promise<number> {
+export async function getLaborCostForDateRange(
+  startDate: string,
+  endDate: string
+): Promise<number> {
   const c = client();
   const start = startDate.slice(0, 10);
   const end = endDate.slice(0, 10);
@@ -350,7 +448,10 @@ export async function getLaborCostForDateRange(startDate: string, endDate: strin
     if (isMissingTable(error) || isMissingColumn(error)) return 0;
     throw new Error(error.message ?? "Failed to load labor cost.");
   }
-  return (rows ?? []).reduce((sum, r) => sum + (Number((r as { cost_amount?: number }).cost_amount) || 0), 0);
+  return (rows ?? []).reduce(
+    (sum, r) => sum + (Number((r as { cost_amount?: number }).cost_amount) || 0),
+    0
+  );
 }
 
 export async function getLaborEntries(_status?: "draft" | "confirmed"): Promise<LaborEntry[]> {
@@ -387,7 +488,10 @@ export async function getLaborEntriesByDate(date: string): Promise<LaborEntry[]>
 }
 
 /** Entries for a given project and date. Used to disable workers who already have an entry in the Add Daily modal. */
-export async function getLaborEntriesByProjectAndDate(projectId: string, workDate: string): Promise<LaborEntry[]> {
+export async function getLaborEntriesByProjectAndDate(
+  projectId: string,
+  workDate: string
+): Promise<LaborEntry[]> {
   const c = client();
   const { data: rows, error } = await c
     .from("labor_entries")
@@ -482,7 +586,10 @@ export async function insertDailyLaborEntries(
   if (payloads.length === 0) return [];
 
   const colsForSelect = LABOR_ENTRIES_DAILY_COLS;
-  const { data: inserted, error } = await c.from("labor_entries").insert(payloads).select(colsForSelect);
+  const { data: inserted, error } = await c
+    .from("labor_entries")
+    .insert(payloads)
+    .select(colsForSelect);
   if (error) {
     if (isMissingColumn(error)) {
       const payloadsHoursOnly = payloads.map((p) => {
@@ -491,7 +598,10 @@ export async function insertDailyLaborEntries(
         delete rest.afternoon;
         return rest;
       });
-      const { data: fallback, error: err2 } = await c.from("labor_entries").insert(payloadsHoursOnly).select(LABOR_ENTRIES_COLS);
+      const { data: fallback, error: err2 } = await c
+        .from("labor_entries")
+        .insert(payloadsHoursOnly)
+        .select(LABOR_ENTRIES_COLS);
       if (err2) throw new Error(err2.message ?? "Failed to save daily labor entries.");
       return (fallback ?? []).map((row) => toLaborEntry(row as LaborEntryRow));
     }
@@ -508,9 +618,17 @@ export async function insertDailyLaborEntries(
 
 export async function getLaborEntryById(id: string): Promise<LaborEntry | null> {
   const c = client();
-  const { data: row, error } = await c.from("labor_entries").select(LABOR_ENTRIES_COLS_WITH_AMPM).eq("id", id).maybeSingle();
+  const { data: row, error } = await c
+    .from("labor_entries")
+    .select(LABOR_ENTRIES_COLS_WITH_AMPM)
+    .eq("id", id)
+    .maybeSingle();
   if (error && isMissingColumn(error)) {
-    const { data: rowFallback } = await c.from("labor_entries").select(LABOR_ENTRIES_COLS).eq("id", id).maybeSingle();
+    const { data: rowFallback } = await c
+      .from("labor_entries")
+      .select(LABOR_ENTRIES_COLS)
+      .eq("id", id)
+      .maybeSingle();
     if (!rowFallback) return null;
     return toLaborEntry(rowFallback as LaborEntryRow);
   }
@@ -543,7 +661,11 @@ export async function upsertLaborEntry(
     if (!updated) throw new Error("Failed to read back labor entry.");
     return updated;
   }
-  const { data: row, error } = await c.from("labor_entries").insert(payload).select(LABOR_ENTRIES_COLS).single();
+  const { data: row, error } = await c
+    .from("labor_entries")
+    .insert(payload)
+    .select(LABOR_ENTRIES_COLS)
+    .single();
   if (error || !row) throw new Error(error?.message ?? "Failed to upsert labor entry.");
   return toLaborEntry(row as LaborEntryRow);
 }
@@ -658,7 +780,12 @@ export async function unconfirmLaborEntry(id: string): Promise<LaborEntry | null
 
 async function nextLaborInvoiceNo(): Promise<string> {
   const c = client();
-  const { data: rows } = await c.from("labor_invoices").select("invoice_no").like("invoice_no", "LI-%").order("invoice_no", { ascending: false }).limit(1);
+  const { data: rows } = await c
+    .from("labor_invoices")
+    .select("invoice_no")
+    .like("invoice_no", "LI-%")
+    .order("invoice_no", { ascending: false })
+    .limit(1);
   let maxSeq = 0;
   for (const r of rows ?? []) {
     const match = /^LI-(\d+)$/.exec((r as { invoice_no: string }).invoice_no);
@@ -669,7 +796,11 @@ async function nextLaborInvoiceNo(): Promise<string> {
 
 export async function getLaborInvoices(): Promise<LaborInvoice[]> {
   const c = client();
-  const { data: rows, error } = await c.from("labor_invoices").select("*").order("invoice_date", { ascending: false }).order("created_at", { ascending: false });
+  const { data: rows, error } = await c
+    .from("labor_invoices")
+    .select("*")
+    .order("invoice_date", { ascending: false })
+    .order("created_at", { ascending: false });
   if (error) {
     if (isMissingTable(error)) throw new Error("labor_invoices: table not found. Run migrations.");
     throw new Error(error.message ?? "Failed to load labor_invoices.");
@@ -679,7 +810,11 @@ export async function getLaborInvoices(): Promise<LaborInvoice[]> {
 
 export async function getLaborInvoiceById(id: string): Promise<LaborInvoice | null> {
   const c = client();
-  const { data: row, error } = await c.from("labor_invoices").select("*").eq("id", id).maybeSingle();
+  const { data: row, error } = await c
+    .from("labor_invoices")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
   if (error || !row) return null;
   return toLaborInvoice(row as LaborInvoiceRow);
 }
@@ -689,7 +824,12 @@ export async function getLaborInvoicesByWorker(workerId: string): Promise<LaborI
   return all.filter((i) => i.workerId === workerId);
 }
 
-export async function createLaborInvoice(input: { workerId: string; invoiceDate?: string; amount?: number; memo?: string }): Promise<LaborInvoice> {
+export async function createLaborInvoice(input: {
+  workerId: string;
+  invoiceDate?: string;
+  amount?: number;
+  memo?: string;
+}): Promise<LaborInvoice> {
   const c = client();
   const invoiceNo = await nextLaborInvoiceNo();
   const date = input.invoiceDate?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
@@ -704,7 +844,12 @@ export async function createLaborInvoice(input: { workerId: string; invoiceDate?
       memo: input.memo?.trim() ?? null,
       status: "draft",
       project_splits: [],
-      checklist: { verifiedWorker: false, verifiedAmount: false, verifiedAllocation: false, verifiedAttachment: false },
+      checklist: {
+        verifiedWorker: false,
+        verifiedAmount: false,
+        verifiedAllocation: false,
+        verifiedAttachment: false,
+      },
     })
     .select("*")
     .single();
@@ -728,14 +873,22 @@ export async function updateLaborInvoice(
   const c = client();
   const current = await getLaborInvoiceById(id);
   if (!current) return null;
-  if ((current.status === "confirmed" || current.status === "void") && patch.status != null && patch.status !== current.status) return current;
+  if (
+    (current.status === "confirmed" || current.status === "void") &&
+    patch.status != null &&
+    patch.status !== current.status
+  )
+    return current;
   const updates: Record<string, unknown> = {};
   if (patch.invoiceNo != null) updates.invoice_no = patch.invoiceNo;
   if (patch.workerId != null) updates.worker_id = patch.workerId;
   if (patch.invoiceDate != null) updates.invoice_date = patch.invoiceDate.slice(0, 10);
   if (patch.amount != null) updates.amount = Math.max(0, patch.amount);
   if (patch.memo !== undefined) updates.memo = patch.memo?.trim() ?? null;
-  if (patch.projectSplits != null) updates.project_splits = patch.projectSplits.filter((s) => !!s.projectId).map((s) => ({ projectId: s.projectId, amount: Math.max(0, s.amount) }));
+  if (patch.projectSplits != null)
+    updates.project_splits = patch.projectSplits
+      .filter((s) => !!s.projectId)
+      .map((s) => ({ projectId: s.projectId, amount: Math.max(0, s.amount) }));
   if (patch.checklist != null) updates.checklist = patch.checklist;
   if (patch.status != null) updates.status = patch.status;
   if (patch.status === "confirmed") updates.confirmed_at = new Date().toISOString();
@@ -765,7 +918,10 @@ export async function confirmLaborInvoice(id: string): Promise<LaborInvoice | nu
     Math.abs(inv.amount - inv.projectSplits.reduce((s, x) => s + x.amount, 0)) < 0.01;
   if (!ok) return null;
   const c = client();
-  await c.from("labor_invoices").update({ status: "confirmed", confirmed_at: new Date().toISOString() }).eq("id", id);
+  await c
+    .from("labor_invoices")
+    .update({ status: "confirmed", confirmed_at: new Date().toISOString() })
+    .eq("id", id);
   return getLaborInvoiceById(id);
 }
 
@@ -787,7 +943,11 @@ export async function getLaborInvoiceActualByProject(projectId: string): Promise
   return total;
 }
 
-export async function getLaborPayments(filters?: { workerId?: string; startDate?: string; endDate?: string }): Promise<LaborPayment[]> {
+export async function getLaborPayments(filters?: {
+  workerId?: string;
+  startDate?: string;
+  endDate?: string;
+}): Promise<LaborPayment[]> {
   const c = client();
   let q = c.from("labor_payments").select("*").order("payment_date", { ascending: false });
   if (filters?.workerId) q = q.eq("worker_id", filters.workerId) as typeof q;
@@ -833,7 +993,10 @@ export async function deleteLaborPayment(id: string): Promise<boolean> {
   return !error;
 }
 
-export async function getWorkerUsage(id: string, options?: { hasExpenseLabor?: boolean }): Promise<{ used: boolean; reason?: "entries" | "invoices" }> {
+export async function getWorkerUsage(
+  id: string,
+  options?: { hasExpenseLabor?: boolean }
+): Promise<{ used: boolean; reason?: "entries" | "invoices" }> {
   void options; // reserved for future filtering
   const [entries, invoices] = await Promise.all([getLaborEntries(), getLaborInvoices()]);
   const hasEntries = entries.some((e) => e.workerId === id);

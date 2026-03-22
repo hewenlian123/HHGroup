@@ -6,7 +6,12 @@ import { DollarSign, Banknote, ShoppingCart, Clock, TrendingUp, Activity } from 
 export const dynamic = "force-dynamic";
 
 function fmtUsd(n: number): string {
-  return n.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return n.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 const navItems = [
@@ -19,15 +24,17 @@ const navItems = [
 ] as const;
 
 export default async function FinanceOverviewPage() {
-  const [stats, recent] = await Promise.all([
-    getFinanceOverviewStats(),
-    getRecentTransactions(15),
-  ]);
+  const [stats, recent] = await Promise.all([getFinanceOverviewStats(), getRecentTransactions(15)]);
 
   const cards = [
     { label: "Revenue", value: stats.revenue, icon: DollarSign, href: "/financial/invoices" },
     { label: "Total Bills", value: stats.totalBills, icon: Banknote, href: "/bills" },
-    { label: "Total Expenses", value: stats.totalExpenses, icon: ShoppingCart, href: "/financial/expenses" },
+    {
+      label: "Total Expenses",
+      value: stats.totalExpenses,
+      icon: ShoppingCart,
+      href: "/financial/expenses",
+    },
     { label: "Total Labor Cost", value: stats.totalLaborCost, icon: Clock, href: "/labor/entries" },
     { label: "Profit", value: stats.profit, icon: TrendingUp },
   ];
@@ -46,7 +53,11 @@ export default async function FinanceOverviewPage() {
           <Link
             key={item.href}
             href={item.href}
-            className={item.href === "/finance" ? "font-medium text-foreground" : "text-muted-foreground hover:text-foreground"}
+            className={
+              item.href === "/finance"
+                ? "font-medium text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }
           >
             {item.label}
           </Link>
@@ -59,7 +70,9 @@ export default async function FinanceOverviewPage() {
           const content = (
             <div className="flex flex-col gap-1 border-b border-border/60 pb-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</span>
+                <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  {label}
+                </span>
                 {href ? (
                   <Icon className="h-4 w-4 text-muted-foreground" />
                 ) : (
@@ -68,7 +81,11 @@ export default async function FinanceOverviewPage() {
               </div>
               <p
                 className={`text-xl font-semibold tabular-nums ${
-                  label === "Profit" ? (value >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400") : "text-foreground"
+                  label === "Profit"
+                    ? value >= 0
+                      ? "text-green-600 dark:text-green-400"
+                      : "text-red-600 dark:text-red-400"
+                    : "text-foreground"
                 }`}
               >
                 {fmtUsd(value)}
@@ -90,7 +107,9 @@ export default async function FinanceOverviewPage() {
       <section>
         <div className="flex items-center gap-2 pb-2">
           <Activity className="h-4 w-4 text-muted-foreground" />
-          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Recent financial activity</span>
+          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Recent financial activity
+          </span>
         </div>
         <div className="border-b border-border/60" />
         {recent.length === 0 ? (
@@ -99,11 +118,21 @@ export default async function FinanceOverviewPage() {
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="border-b border-border/60">
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Type</th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Description</th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Project</th>
-                <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider tabular-nums text-muted-foreground">Amount</th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Date</th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Type
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Description
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Project
+                </th>
+                <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider tabular-nums text-muted-foreground">
+                  Amount
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Date
+                </th>
               </tr>
             </thead>
             <tbody>

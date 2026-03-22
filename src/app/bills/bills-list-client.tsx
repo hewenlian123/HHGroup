@@ -100,56 +100,83 @@ export function BillsListClient({ bills, summary, projects }: Props) {
     [router, searchParams]
   );
 
-  const handleVoid = React.useCallback(async (id: string) => {
-    const result = await voidBillAction(id);
-    if (result.ok) {
-      setVoidConfirmId(null);
-      void syncRouterAndClients(router);
-    }
-  }, [router]);
+  const handleVoid = React.useCallback(
+    async (id: string) => {
+      const result = await voidBillAction(id);
+      if (result.ok) {
+        setVoidConfirmId(null);
+        void syncRouterAndClients(router);
+      }
+    },
+    [router]
+  );
 
-  const handleDeleteDraft = React.useCallback(async (id: string) => {
-    let snapshot: ApBillWithProject[] | undefined;
-    setLocalBills((prev) => {
-      snapshot = prev;
-      return prev.filter((b) => b.id !== id);
-    });
-    const result = await deleteBillDraftAction(id);
-    if (result.ok) {
-      void syncRouterAndClients(router);
-    } else {
-      if (snapshot) setLocalBills(snapshot);
-    }
-  }, [router]);
+  const handleDeleteDraft = React.useCallback(
+    async (id: string) => {
+      let snapshot: ApBillWithProject[] | undefined;
+      setLocalBills((prev) => {
+        snapshot = prev;
+        return prev.filter((b) => b.id !== id);
+      });
+      const result = await deleteBillDraftAction(id);
+      if (result.ok) {
+        void syncRouterAndClients(router);
+      } else {
+        if (snapshot) setLocalBills(snapshot);
+      }
+    },
+    [router]
+  );
 
-  const statusPill = React.useCallback((bill: ApBillWithProject): { label: string; variant: Parameters<typeof StatusBadge>[0]["variant"] } => {
-    if (bill.status === "Paid") return { label: "Paid", variant: "success" };
-    if (bill.status === "Void") return { label: "Void", variant: "muted" };
-    const d = daysUntil(bill.due_date);
-    if (d != null && d < 0) return { label: "Overdue", variant: "danger" };
-    if (d != null && d <= 7) return { label: "Due Soon", variant: "warning" };
-    return { label: "Pending", variant: "muted" };
-  }, []);
+  const statusPill = React.useCallback(
+    (
+      bill: ApBillWithProject
+    ): { label: string; variant: Parameters<typeof StatusBadge>[0]["variant"] } => {
+      if (bill.status === "Paid") return { label: "Paid", variant: "success" };
+      if (bill.status === "Void") return { label: "Void", variant: "muted" };
+      const d = daysUntil(bill.due_date);
+      if (d != null && d < 0) return { label: "Overdue", variant: "danger" };
+      if (d != null && d <= 7) return { label: "Due Soon", variant: "warning" };
+      return { label: "Pending", variant: "muted" };
+    },
+    []
+  );
 
   return (
     <div className="flex flex-col gap-6 text-foreground [font-family:var(--font-inter),var(--font-geist-sans),sans-serif]">
       <Card className="overflow-hidden p-0">
         <div className="grid divide-y divide-[#EBEBE9] sm:grid-cols-2 sm:divide-y-0 md:grid-cols-4 md:divide-x dark:divide-border/60">
           <div className="p-4">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Outstanding</p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-[#2D2D2D] dark:text-foreground">{fmtUsd(summary.totalOutstanding)}</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Outstanding
+            </p>
+            <p className="mt-1 text-lg font-semibold tabular-nums text-[#2D2D2D] dark:text-foreground">
+              {fmtUsd(summary.totalOutstanding)}
+            </p>
           </div>
           <div className="p-4">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Overdue</p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-[#2D2D2D] dark:text-foreground">{fmtUsd(summary.overdueAmount)}</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Overdue
+            </p>
+            <p className="mt-1 text-lg font-semibold tabular-nums text-[#2D2D2D] dark:text-foreground">
+              {fmtUsd(summary.overdueAmount)}
+            </p>
           </div>
           <div className="p-4">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Due This Week</p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-[#2D2D2D] dark:text-foreground">{fmtUsd(summary.dueThisWeekAmount)}</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Due This Week
+            </p>
+            <p className="mt-1 text-lg font-semibold tabular-nums text-[#2D2D2D] dark:text-foreground">
+              {fmtUsd(summary.dueThisWeekAmount)}
+            </p>
           </div>
           <div className="p-4">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Paid This Month</p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{fmtUsd(summary.paidThisMonthAmount)}</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Paid This Month
+            </p>
+            <p className="mt-1 text-lg font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+              {fmtUsd(summary.paidThisMonthAmount)}
+            </p>
           </div>
         </div>
       </Card>
@@ -157,7 +184,9 @@ export function BillsListClient({ bills, summary, projects }: Props) {
       <FilterBar>
         <div className="flex w-full flex-col gap-4">
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Search</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Search
+            </p>
             <Input
               type="text"
               placeholder="Vendor, reference…"
@@ -169,34 +198,60 @@ export function BillsListClient({ bills, summary, projects }: Props) {
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Status</p>
-              <Select value={status} onChange={(e) => setFilters({ status: e.target.value })} className="min-h-[44px] md:min-h-9">
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+                Status
+              </p>
+              <Select
+                value={status}
+                onChange={(e) => setFilters({ status: e.target.value })}
+                className="min-h-[44px] md:min-h-9"
+              >
                 <option value="">All</option>
                 {AP_BILL_STATUSES.map((s) => (
-                  <option key={s} value={s}>{s}</option>
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
                 ))}
               </Select>
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Type</p>
-              <Select value={billType} onChange={(e) => setFilters({ bill_type: e.target.value })} className="min-h-[44px] md:min-h-9">
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+                Type
+              </p>
+              <Select
+                value={billType}
+                onChange={(e) => setFilters({ bill_type: e.target.value })}
+                className="min-h-[44px] md:min-h-9"
+              >
                 <option value="">All</option>
                 {AP_BILL_TYPES.map((t) => (
-                  <option key={t} value={t}>{t}</option>
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
                 ))}
               </Select>
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Project</p>
-              <Select value={projectId} onChange={(e) => setFilters({ project_id: e.target.value })} className="min-h-[44px] md:min-h-9">
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+                Project
+              </p>
+              <Select
+                value={projectId}
+                onChange={(e) => setFilters({ project_id: e.target.value })}
+                className="min-h-[44px] md:min-h-9"
+              >
                 <option value="">All</option>
                 {projects.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
                 ))}
               </Select>
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Date range</p>
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+                Date range
+              </p>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
                 <Input
                   type="date"
@@ -221,7 +276,11 @@ export function BillsListClient({ bills, summary, projects }: Props) {
       {localBills.length === 0 ? (
         <div className="flex min-h-[280px] flex-col items-center justify-center text-center">
           <p className="text-sm font-medium text-foreground">No bills yet</p>
-          <Button asChild size="touch" className="mt-4 rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90">
+          <Button
+            asChild
+            size="touch"
+            className="mt-4 rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90"
+          >
             <Link href="/bills/new">Create First Bill</Link>
           </Button>
         </div>
@@ -240,10 +299,14 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1 pr-8">
                         <p className="font-medium text-foreground truncate">{bill.vendor_name}</p>
-                        <p className="mt-0.5 text-sm text-muted-foreground truncate">{bill.project_name ?? "—"}</p>
+                        <p className="mt-0.5 text-sm text-muted-foreground truncate">
+                          {bill.project_name ?? "—"}
+                        </p>
                         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
                           <span className="tabular-nums font-medium">{fmtUsd(bill.amount)}</span>
-                          <span className="text-muted-foreground">Due {formatDate(bill.due_date)}</span>
+                          <span className="text-muted-foreground">
+                            Due {formatDate(bill.due_date)}
+                          </span>
                         </div>
                       </div>
                       <StatusBadge label={s.label} variant={s.variant} />
@@ -266,99 +329,107 @@ export function BillsListClient({ bills, summary, projects }: Props) {
           </div>
           {/* Desktop/tablet: table */}
           <div className="table-responsive hidden md:block">
-          <table className="min-w-[640px] w-full border-collapse text-sm md:min-w-0">
-            <thead>
-              <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
-                <th className="table-head-label py-3 px-3 text-left">Vendor</th>
-                <th className="table-head-label py-3 px-3 text-left">Project</th>
-                <th className="table-head-label py-3 px-3 text-right tabular-nums">Amount</th>
-                <th className="table-head-label py-3 px-3 text-left">Due Date</th>
-                <th className="table-head-label py-3 px-3 text-left">Status</th>
-                <th className="w-10 px-1" />
-              </tr>
-            </thead>
-            <tbody>
-              {localBills.map((bill) => (
-                <tr
-                  key={bill.id}
-                  className={cn(listTableRowClassName, "h-12 border-b border-[#EBEBE9]/80 last:border-b-0 dark:border-border/40")}
-                  onClick={() => router.push(`/bills/${bill.id}`)}
-                >
-                  <td className="py-0 px-3 align-middle">
-                    <span
+            <table className="min-w-[640px] w-full border-collapse text-sm md:min-w-0">
+              <thead>
+                <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
+                  <th className="table-head-label py-3 px-3 text-left">Vendor</th>
+                  <th className="table-head-label py-3 px-3 text-left">Project</th>
+                  <th className="table-head-label py-3 px-3 text-right tabular-nums">Amount</th>
+                  <th className="table-head-label py-3 px-3 text-left">Due Date</th>
+                  <th className="table-head-label py-3 px-3 text-left">Status</th>
+                  <th className="w-10 px-1" />
+                </tr>
+              </thead>
+              <tbody>
+                {localBills.map((bill) => (
+                  <tr
+                    key={bill.id}
+                    className={cn(
+                      listTableRowClassName,
+                      "h-12 border-b border-[#EBEBE9]/80 last:border-b-0 dark:border-border/40"
+                    )}
+                    onClick={() => router.push(`/bills/${bill.id}`)}
+                  >
+                    <td className="py-0 px-3 align-middle">
+                      <span
+                        className={cn(
+                          "block max-w-[220px] truncate font-medium text-foreground hover:underline",
+                          listTablePrimaryCellClassName
+                        )}
+                      >
+                        {bill.vendor_name}
+                      </span>
+                    </td>
+                    <td className="py-0 px-3 align-middle text-muted-foreground">
+                      <span className="block max-w-[240px] truncate">
+                        {bill.project_name ?? "—"}
+                      </span>
+                    </td>
+                    <td
                       className={cn(
-                        "block max-w-[220px] truncate font-medium text-foreground hover:underline",
-                        listTablePrimaryCellClassName
+                        "py-0 px-3 text-right align-middle tabular-nums whitespace-nowrap",
+                        listTableAmountCellClassName
                       )}
                     >
-                      {bill.vendor_name}
-                    </span>
-                  </td>
-                  <td className="py-0 px-3 align-middle text-muted-foreground">
-                    <span className="block max-w-[240px] truncate">{bill.project_name ?? "—"}</span>
-                  </td>
-                  <td className={cn("py-0 px-3 text-right align-middle tabular-nums whitespace-nowrap", listTableAmountCellClassName)}>
-                    {fmtUsd(bill.amount)}
-                  </td>
-                  <td className="py-0 px-3 align-middle text-muted-foreground tabular-nums whitespace-nowrap">
-                    {formatDate(bill.due_date)}
-                  </td>
-                  <td className="py-0 px-3 align-middle">
-                    {(() => {
-                      const s = statusPill(bill);
-                      return <StatusBadge label={s.label} variant={s.variant} />;
-                    })()}
-                  </td>
-                  <td className="py-0 px-1 align-middle" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-end gap-2">
-                      {bill.status === "Draft" && bill.paid_amount <= 0 ? (
-                        <DeleteRowAction
-                          onDelete={() => handleDeleteDraft(bill.id)}
-                        />
-                      ) : null}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="min-w-[140px]">
-                          <DropdownMenuItem asChild>
-                            <Link href={`/bills/${bill.id}`}>Open</Link>
-                          </DropdownMenuItem>
-                          {bill.status !== "Paid" && bill.status !== "Void" && (
-                            <DropdownMenuItem asChild>
-                              <Link href={`/bills/${bill.id}?addPayment=1`}>Add payment</Link>
-                            </DropdownMenuItem>
-                          )}
-                          {bill.status !== "Void" && (
-                            <DropdownMenuItem asChild>
-                              <Link href={`/bills/${bill.id}/edit`}>Edit</Link>
-                            </DropdownMenuItem>
-                          )}
-                          {bill.status !== "Void" && (
-                            <DropdownMenuItem
-                              className="text-muted-foreground"
-                              onSelect={(e) => {
-                                e.preventDefault();
-                                setVoidConfirmId(bill.id);
-                              }}
+                      {fmtUsd(bill.amount)}
+                    </td>
+                    <td className="py-0 px-3 align-middle text-muted-foreground tabular-nums whitespace-nowrap">
+                      {formatDate(bill.due_date)}
+                    </td>
+                    <td className="py-0 px-3 align-middle">
+                      {(() => {
+                        const s = statusPill(bill);
+                        return <StatusBadge label={s.label} variant={s.variant} />;
+                      })()}
+                    </td>
+                    <td className="py-0 px-1 align-middle" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-2">
+                        {bill.status === "Draft" && bill.paid_amount <= 0 ? (
+                          <DeleteRowAction onDelete={() => handleDeleteDraft(bill.id)} />
+                        ) : null}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
                             >
-                              Void
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="min-w-[140px]">
+                            <DropdownMenuItem asChild>
+                              <Link href={`/bills/${bill.id}`}>Open</Link>
                             </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                            {bill.status !== "Paid" && bill.status !== "Void" && (
+                              <DropdownMenuItem asChild>
+                                <Link href={`/bills/${bill.id}?addPayment=1`}>Add payment</Link>
+                              </DropdownMenuItem>
+                            )}
+                            {bill.status !== "Void" && (
+                              <DropdownMenuItem asChild>
+                                <Link href={`/bills/${bill.id}/edit`}>Edit</Link>
+                              </DropdownMenuItem>
+                            )}
+                            {bill.status !== "Void" && (
+                              <DropdownMenuItem
+                                className="text-muted-foreground"
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                  setVoidConfirmId(bill.id);
+                                }}
+                              >
+                                Void
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </>
       )}
@@ -370,7 +441,9 @@ export function BillsListClient({ bills, summary, projects }: Props) {
         description="This cannot be undone."
         confirmLabel="Void"
         destructive
-        onConfirm={() => { if (voidConfirmId) void handleVoid(voidConfirmId); }}
+        onConfirm={() => {
+          if (voidConfirmId) void handleVoid(voidConfirmId);
+        }}
       />
     </div>
   );

@@ -1,13 +1,7 @@
 "use client";
 
 import * as React from "react";
-import {
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -62,19 +56,11 @@ export function DataTable<T>({
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               {columns.map((col) => (
-                <TableHead
-                  key={col.key}
-                  className={cn(
-                    col.numeric && "text-right",
-                    col.className
-                  )}
-                >
+                <TableHead key={col.key} className={cn(col.numeric && "text-right", col.className)}>
                   {col.header}
                 </TableHead>
               ))}
-              {rowActions ? (
-                <TableHead className="w-10 px-0 text-right" />
-              ) : null}
+              {rowActions ? <TableHead className="w-10 px-0 text-right" /> : null}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -94,18 +80,17 @@ export function DataTable<T>({
                   }}
                 >
                   {columns.map((col) => (
-                    <TableCell
-                      key={col.key}
-                      className={cn(
-                        col.numeric && "num",
-                        col.className
-                      )}
-                    >
-                      {col.cell ? col.cell(row) : (row as Record<string, unknown>)[col.key] as React.ReactNode}
+                    <TableCell key={col.key} className={cn(col.numeric && "num", col.className)}>
+                      {col.cell
+                        ? col.cell(row)
+                        : ((row as Record<string, unknown>)[col.key] as React.ReactNode)}
                     </TableCell>
                   ))}
                   {rowActions ? (
-                    <TableCell className="w-10 px-0 text-right" onClick={(e) => e.stopPropagation()}>
+                    <TableCell
+                      className="w-10 px-0 text-right"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       {actions.length > 0 ? (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>

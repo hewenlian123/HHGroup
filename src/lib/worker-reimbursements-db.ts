@@ -67,12 +67,17 @@ const TABLE_MISSING_MESSAGE =
 
 function isTableMissingError(error: { message?: string; code?: string }): boolean {
   const msg = error?.message ?? "";
-  return (msg.includes(TABLE_NAME) || msg.includes(PAYMENTS_TABLE)) && (msg.includes("schema cache") || error?.code === "PGRST205");
+  return (
+    (msg.includes(TABLE_NAME) || msg.includes(PAYMENTS_TABLE)) &&
+    (msg.includes("schema cache") || error?.code === "PGRST205")
+  );
 }
 
-const COLS = "id, worker_id, project_id, vendor, amount, description, receipt_url, status, created_at, paid_at, payment_id";
+const COLS =
+  "id, worker_id, project_id, vendor, amount, description, receipt_url, status, created_at, paid_at, payment_id";
 /** Fallback when payment_id column does not exist */
-const COLS_MINIMAL = "id, worker_id, project_id, vendor, amount, description, receipt_url, status, created_at, paid_at";
+const COLS_MINIMAL =
+  "id, worker_id, project_id, vendor, amount, description, receipt_url, status, created_at, paid_at";
 
 async function enrichNames(rows: WorkerReimbursement[]): Promise<WorkerReimbursement[]> {
   const c = client();
@@ -80,12 +85,26 @@ async function enrichNames(rows: WorkerReimbursement[]): Promise<WorkerReimburse
   const projectIds = Array.from(new Set(rows.map((r) => r.projectId).filter(Boolean))) as string[];
 
   const [workersRes, projectsRes] = await Promise.all([
-    workerIds.length ? c.from("workers").select("id, name").in("id", workerIds) : Promise.resolve({ data: [] as any[] }),
-    projectIds.length ? c.from("projects").select("id, name").in("id", projectIds) : Promise.resolve({ data: [] as any[] }),
+    workerIds.length
+      ? c.from("workers").select("id, name").in("id", workerIds)
+      : Promise.resolve({ data: [] as any[] }),
+    projectIds.length
+      ? c.from("projects").select("id, name").in("id", projectIds)
+      : Promise.resolve({ data: [] as any[] }),
   ]);
 
-  const workerNameById = new Map(((workersRes.data ?? []) as { id: string; name: string | null }[]).map((w) => [w.id, w.name ?? null]));
-  const projectNameById = new Map(((projectsRes.data ?? []) as { id: string; name: string | null }[]).map((p) => [p.id, p.name ?? null]));
+  const workerNameById = new Map(
+    ((workersRes.data ?? []) as { id: string; name: string | null }[]).map((w) => [
+      w.id,
+      w.name ?? null,
+    ])
+  );
+  const projectNameById = new Map(
+    ((projectsRes.data ?? []) as { id: string; name: string | null }[]).map((p) => [
+      p.id,
+      p.name ?? null,
+    ])
+  );
 
   return rows.map((r) => ({
     ...r,
@@ -125,9 +144,15 @@ function isColumnMissingError(err: { message?: string }): boolean {
 
 export async function getWorkerReimbursements(): Promise<WorkerReimbursement[]> {
   const c = client();
-  let { data, error } = await c.from(TABLE_NAME).select(COLS).order("created_at", { ascending: false });
+  let { data, error } = await c
+    .from(TABLE_NAME)
+    .select(COLS)
+    .order("created_at", { ascending: false });
   if (error && isColumnMissingError(error)) {
-    const fallback = await c.from(TABLE_NAME).select(COLS_MINIMAL).order("created_at", { ascending: false });
+    const fallback = await c
+      .from(TABLE_NAME)
+      .select(COLS_MINIMAL)
+      .order("created_at", { ascending: false });
     data = fallback.data as unknown as typeof data;
     error = fallback.error;
   }
@@ -140,11 +165,21 @@ export async function getWorkerReimbursements(): Promise<WorkerReimbursement[]> 
 }
 
 /** Get a single reimbursement by id. Returns null if not found. */
-export async function getReimbursementById(reimbursementId: string): Promise<WorkerReimbursement | null> {
+export async function getReimbursementById(
+  reimbursementId: string
+): Promise<WorkerReimbursement | null> {
   const c = client();
-  let { data, error } = await c.from(TABLE_NAME).select(COLS).eq("id", reimbursementId).maybeSingle();
+  let { data, error } = await c
+    .from(TABLE_NAME)
+    .select(COLS)
+    .eq("id", reimbursementId)
+    .maybeSingle();
   if (error && isColumnMissingError(error)) {
-    const fallback = await c.from(TABLE_NAME).select(COLS_MINIMAL).eq("id", reimbursementId).maybeSingle();
+    const fallback = await c
+      .from(TABLE_NAME)
+      .select(COLS_MINIMAL)
+      .eq("id", reimbursementId)
+      .maybeSingle();
     data = fallback.data as unknown as typeof data;
     error = fallback.error;
   }
@@ -156,11 +191,21 @@ export async function getReimbursementById(reimbursementId: string): Promise<Wor
   return (await enrichNames([fromRow(data as Record<string, unknown>)]))[0] ?? null;
 }
 
-export async function getWorkerReimbursementsByWorkerId(workerId: string): Promise<WorkerReimbursement[]> {
+export async function getWorkerReimbursementsByWorkerId(
+  workerId: string
+): Promise<WorkerReimbursement[]> {
   const c = client();
-  let { data, error } = await c.from(TABLE_NAME).select(COLS).eq("worker_id", workerId).order("created_at", { ascending: false });
+  let { data, error } = await c
+    .from(TABLE_NAME)
+    .select(COLS)
+    .eq("worker_id", workerId)
+    .order("created_at", { ascending: false });
   if (error && isColumnMissingError(error)) {
-    const fallback = await c.from(TABLE_NAME).select(COLS_MINIMAL).eq("worker_id", workerId).order("created_at", { ascending: false });
+    const fallback = await c
+      .from(TABLE_NAME)
+      .select(COLS_MINIMAL)
+      .eq("worker_id", workerId)
+      .order("created_at", { ascending: false });
     data = fallback.data as unknown as typeof data;
     error = fallback.error;
   }
@@ -172,7 +217,9 @@ export async function getWorkerReimbursementsByWorkerId(workerId: string): Promi
   return enrichNames(rows);
 }
 
-export async function insertWorkerReimbursement(draft: WorkerReimbursementDraft): Promise<WorkerReimbursement> {
+export async function insertWorkerReimbursement(
+  draft: WorkerReimbursementDraft
+): Promise<WorkerReimbursement> {
   const { data, error } = await client()
     .from(TABLE_NAME)
     .insert({
@@ -253,7 +300,9 @@ function paymentFromRow(r: Record<string, unknown>): WorkerReimbursementPayment 
   };
 }
 
-export async function getWorkerReimbursementPayments(workerId: string): Promise<WorkerReimbursementPayment[]> {
+export async function getWorkerReimbursementPayments(
+  workerId: string
+): Promise<WorkerReimbursementPayment[]> {
   const { data, error } = await client()
     .from(PAYMENTS_TABLE)
     .select(PAYMENT_COLS)
@@ -371,7 +420,11 @@ export async function createWorkerPayment(params: {
 export async function recordBatchReimbursementPayment(
   reimbursementIds: string[],
   params: { paymentMethod?: string | null; note?: string | null }
-): Promise<{ payment: WorkerPayment; updatedCount: number; reimbursements: WorkerReimbursement[] }> {
+): Promise<{
+  payment: WorkerPayment;
+  updatedCount: number;
+  reimbursements: WorkerReimbursement[];
+}> {
   if (reimbursementIds.length === 0) throw new Error("No reimbursements selected.");
   const c = client();
 
@@ -381,12 +434,15 @@ export async function recordBatchReimbursementPayment(
     .in("id", reimbursementIds);
   if (fetchErr) throw new Error(fetchErr.message ?? "Failed to load reimbursements.");
   const list = (rows ?? []) as { id: string; worker_id: string; amount: number; status: string }[];
-  if (list.length !== reimbursementIds.length) throw new Error("One or more reimbursements not found.");
+  if (list.length !== reimbursementIds.length)
+    throw new Error("One or more reimbursements not found.");
   const workerIds = new Set(list.map((r) => r.worker_id));
-  if (workerIds.size > 1) throw new Error("All selected reimbursements must be for the same worker.");
+  if (workerIds.size > 1)
+    throw new Error("All selected reimbursements must be for the same worker.");
   const workerId = list[0].worker_id;
   const notPending = list.filter((r) => r.status !== "pending");
-  if (notPending.length > 0) throw new Error("All selected reimbursements must have status pending.");
+  if (notPending.length > 0)
+    throw new Error("All selected reimbursements must have status pending.");
 
   const totalAmount = list.reduce((s, r) => s + Number(r.amount) || 0, 0);
   const payment = await createWorkerPayment({
@@ -407,11 +463,10 @@ export async function recordBatchReimbursementPayment(
     .select("id");
   if (updateErr) throw new Error(updateErr.message ?? "Failed to update reimbursements.");
   const updatedCount = Array.isArray(updated) ? updated.length : 0;
-  const { data: reimbRows } = await c
-    .from(TABLE_NAME)
-    .select(COLS)
-    .in("id", reimbursementIds);
-  const reimbursements = await enrichNames(((reimbRows ?? []) as Record<string, unknown>[]).map(fromRow));
+  const { data: reimbRows } = await c.from(TABLE_NAME).select(COLS).in("id", reimbursementIds);
+  const reimbursements = await enrichNames(
+    ((reimbRows ?? []) as Record<string, unknown>[]).map(fromRow)
+  );
   return { payment, updatedCount, reimbursements };
 }
 
@@ -421,7 +476,10 @@ export async function recordBatchReimbursementPayment(
  * bulk-updating all pending rows without a payment link caused accounting inconsistencies.
  * @returns 0 — settlement is handled by POST /api/labor/workers/[id]/pay.
  */
-export async function markWorkerReimbursementsPaid(workerId: string, projectId?: string | null): Promise<number> {
+export async function markWorkerReimbursementsPaid(
+  workerId: string,
+  projectId?: string | null
+): Promise<number> {
   void workerId;
   void projectId;
   return 0;
@@ -440,9 +498,7 @@ export async function getWorkerReimbursementBalances(): Promise<WorkerBalanceRow
   const [reimbursements, payments, workers] = await Promise.all([
     getWorkerReimbursements(),
     (async () => {
-      const { data, error } = await client()
-        .from(PAYMENTS_TABLE)
-        .select("worker_id, amount");
+      const { data, error } = await client().from(PAYMENTS_TABLE).select("worker_id, amount");
       if (error) return [] as { worker_id: string; amount: number }[];
       return (data ?? []) as { worker_id: string; amount: number }[];
     })(),

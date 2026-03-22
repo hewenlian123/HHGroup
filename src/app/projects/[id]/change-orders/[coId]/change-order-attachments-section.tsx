@@ -48,7 +48,11 @@ export function ChangeOrderAttachmentsSection({
 
   const handleDelete = (attachmentId: string) => {
     startTransition(async () => {
-      const { ok } = await deleteChangeOrderAttachmentAction(attachmentId, projectId, changeOrderId);
+      const { ok } = await deleteChangeOrderAttachmentAction(
+        attachmentId,
+        projectId,
+        changeOrderId
+      );
       if (ok) void syncRouterAndClients(router);
     });
   };

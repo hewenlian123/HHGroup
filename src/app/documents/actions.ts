@@ -23,18 +23,24 @@ function sanitizeFileName(name: string): string {
   return name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 200) || "file";
 }
 
-export async function getDocumentPreviewUrl(documentId: string): Promise<{ url: string | null; error?: string }> {
+export async function getDocumentPreviewUrl(
+  documentId: string
+): Promise<{ url: string | null; error?: string }> {
   const doc = await getDocumentById(documentId);
   if (!doc) return { url: null, error: "Document not found." };
   return getDocumentSignedUrl(doc.file_path, 120);
 }
 
 /** Return a signed URL for document download (same as preview, client can use for download). */
-export async function getDocumentDownloadUrl(documentId: string): Promise<{ url: string | null; error?: string }> {
+export async function getDocumentDownloadUrl(
+  documentId: string
+): Promise<{ url: string | null; error?: string }> {
   return getDocumentPreviewUrl(documentId);
 }
 
-export async function deleteDocumentAction(documentId: string): Promise<{ ok: boolean; error?: string }> {
+export async function deleteDocumentAction(
+  documentId: string
+): Promise<{ ok: boolean; error?: string }> {
   try {
     if (!documentId) return { ok: false, error: "Missing document id." };
     await deleteDocument(documentId, true);

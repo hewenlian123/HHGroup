@@ -19,7 +19,10 @@ import type { ProjectUsageCounts } from "@/lib/data";
 import type { DeleteBlockedPayload } from "@/lib/projects-db";
 import type { ProjectTask, ProjectTaskStatus } from "@/lib/project-tasks-db";
 
-export async function createProjectAction(prevState: { error?: string } | null, formData: FormData): Promise<{ error?: string } | null> {
+export async function createProjectAction(
+  prevState: { error?: string } | null,
+  formData: FormData
+): Promise<{ error?: string } | null> {
   const name = (formData.get("name") as string)?.trim();
   const budgetRaw = formData.get("budget");
   const budget = Number(budgetRaw);
@@ -33,9 +36,9 @@ export async function createProjectAction(prevState: { error?: string } | null, 
 }
 
 /** Returns usage counts for the project. If any count > 0, deletion should be blocked. */
-export async function getProjectUsageAction(projectId: string): Promise<
-  { blocked: false } | { blocked: true; counts: ProjectUsageCounts }
-> {
+export async function getProjectUsageAction(
+  projectId: string
+): Promise<{ blocked: false } | { blocked: true; counts: ProjectUsageCounts }> {
   if (!projectId?.trim()) return { blocked: false };
   try {
     const counts = await getProjectUsageCounts(projectId);
@@ -118,9 +121,9 @@ export async function archiveProjectAction(projectId: string): Promise<{ error?:
   }
 }
 
-export async function deleteProjectAction(projectId: string): Promise<
-  { error?: string; blocked?: boolean; counts?: Record<string, number> }
-> {
+export async function deleteProjectAction(
+  projectId: string
+): Promise<{ error?: string; blocked?: boolean; counts?: Record<string, number> }> {
   if (!projectId?.trim()) return { error: "Project ID is required." };
   try {
     const usage = await getProjectUsageCounts(projectId);
@@ -168,14 +171,17 @@ export async function forceDeleteProjectAction(projectId: string): Promise<{ err
   }
 }
 
-export async function createProjectTaskAction(projectId: string, draft: {
-  title: string;
-  description?: string | null;
-  assigned_worker_id?: string | null;
-  due_date?: string | null;
-  priority?: "low" | "medium" | "high";
-  status?: ProjectTaskStatus;
-}): Promise<{ error?: string; task?: ProjectTask }> {
+export async function createProjectTaskAction(
+  projectId: string,
+  draft: {
+    title: string;
+    description?: string | null;
+    assigned_worker_id?: string | null;
+    due_date?: string | null;
+    priority?: "low" | "medium" | "high";
+    status?: ProjectTaskStatus;
+  }
+): Promise<{ error?: string; task?: ProjectTask }> {
   if (!projectId?.trim()) return { error: "Project ID is required." };
   try {
     const task = await createProjectTask({
@@ -199,7 +205,14 @@ export async function createProjectTaskAction(projectId: string, draft: {
 export async function updateProjectTaskAction(
   projectId: string,
   taskId: string,
-  patch: { title?: string; description?: string | null; status?: ProjectTaskStatus; assigned_worker_id?: string | null; due_date?: string | null; priority?: "low" | "medium" | "high" }
+  patch: {
+    title?: string;
+    description?: string | null;
+    status?: ProjectTaskStatus;
+    assigned_worker_id?: string | null;
+    due_date?: string | null;
+    priority?: "low" | "medium" | "high";
+  }
 ): Promise<{ error?: string; task?: ProjectTask | null }> {
   if (!projectId?.trim() || !taskId?.trim()) return { error: "Project and task ID are required." };
   try {
@@ -217,7 +230,10 @@ export async function updateProjectTaskAction(
   }
 }
 
-export async function deleteProjectTaskAction(projectId: string, taskId: string): Promise<{ error?: string }> {
+export async function deleteProjectTaskAction(
+  projectId: string,
+  taskId: string
+): Promise<{ error?: string }> {
   if (!projectId?.trim() || !taskId?.trim()) return { error: "Project and task ID are required." };
   try {
     const admin = getServerSupabaseAdmin();

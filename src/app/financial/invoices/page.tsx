@@ -71,7 +71,9 @@ function InvoicesPageInner() {
     getInvoicesWithDerived().then((list) => {
       if (!cancelled) setInvoices(list);
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   React.useEffect(() => {
@@ -79,10 +81,15 @@ function InvoicesPageInner() {
     getProjects().then((list) => {
       if (!cancelled) setProjects(list);
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const projectNameById = React.useMemo(() => new Map(projects.map((p) => [p.id, p.name])), [projects]);
+  const projectNameById = React.useMemo(
+    () => new Map(projects.map((p) => [p.id, p.name])),
+    [projects]
+  );
 
   const filtered = React.useMemo(() => {
     let list = invoices;
@@ -162,7 +169,9 @@ function InvoicesPageInner() {
       <FilterBar>
         <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1 sm:col-span-2 lg:col-span-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Search</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Search
+            </p>
             <Input
               placeholder="Invoice #, client, project…"
               value={search}
@@ -170,7 +179,9 @@ function InvoicesPageInner() {
             />
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Status</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Status
+            </p>
             <Select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as "" | InvoiceComputedStatus)}
@@ -183,7 +194,9 @@ function InvoicesPageInner() {
             </Select>
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Project</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Project
+            </p>
             <Select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)}>
               <option value="">All projects</option>
               {projects.map((p) => (
@@ -198,8 +211,16 @@ function InvoicesPageInner() {
 
       {total === 0 ? (
         <EmptyState
-          title={search.trim() || statusFilter || projectFilter ? "No invoices match filters" : "No invoices yet"}
-          description={search.trim() || statusFilter || projectFilter ? "Try adjusting the filters." : "Create an invoice to get started."}
+          title={
+            search.trim() || statusFilter || projectFilter
+              ? "No invoices match filters"
+              : "No invoices yet"
+          }
+          description={
+            search.trim() || statusFilter || projectFilter
+              ? "Try adjusting the filters."
+              : "Create an invoice to get started."
+          }
           icon={<Plus className="h-5 w-5" />}
           action={
             search.trim() || statusFilter || projectFilter ? null : (
@@ -211,39 +232,69 @@ function InvoicesPageInner() {
         />
       ) : (
         <Card className="overflow-hidden p-0">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
-                <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Invoice #</TableHead>
-                <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Project</TableHead>
-                <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Client</TableHead>
-                <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Issue</TableHead>
-                <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Due</TableHead>
-                <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Total</TableHead>
-                <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Paid</TableHead>
-                <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Balance</TableHead>
-                <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pageRows.map((inv) => (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Invoice #
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Project
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Client
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                    Issue
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                    Due
+                  </TableHead>
+                  <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                    Total
+                  </TableHead>
+                  <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                    Paid
+                  </TableHead>
+                  <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                    Balance
+                  </TableHead>
+                  <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Actions
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pageRows.map((inv) => (
                   <TableRow
                     key={inv.id}
-                    className={cn(listTableRowClassName, "group border-b border-[#EBEBE9]/80 dark:border-border/30")}
+                    className={cn(
+                      listTableRowClassName,
+                      "group border-b border-[#EBEBE9]/80 dark:border-border/30"
+                    )}
                     onClick={() => router.push(`/financial/invoices/${inv.id}`)}
                   >
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
-                        <span className={cn("text-primary hover:underline", listTablePrimaryCellClassName)}>
+                        <span
+                          className={cn(
+                            "text-primary hover:underline",
+                            listTablePrimaryCellClassName
+                          )}
+                        >
                           {inv.invoiceNo}
                         </span>
                         <InvoiceStatusBadge status={inv.computedStatus} />
                       </div>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{projectNameById.get(inv.projectId) ?? inv.projectId}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {projectNameById.get(inv.projectId) ?? inv.projectId}
+                    </TableCell>
                     <TableCell className="text-foreground">{inv.clientName}</TableCell>
-                    <TableCell className="tabular-nums text-muted-foreground">{inv.issueDate}</TableCell>
+                    <TableCell className="tabular-nums text-muted-foreground">
+                      {inv.issueDate}
+                    </TableCell>
                     <TableCell className="tabular-nums">
                       {inv.computedStatus === "Overdue" ? (
                         <span className="text-red-600 dark:text-red-400">{inv.dueDate}</span>
@@ -251,9 +302,30 @@ function InvoicesPageInner() {
                         <span className="text-muted-foreground">{inv.dueDate}</span>
                       )}
                     </TableCell>
-                    <TableCell className={cn("text-right tabular-nums font-medium", listTableAmountCellClassName)}>${inv.total.toLocaleString()}</TableCell>
-                    <TableCell className={cn("text-right tabular-nums text-emerald-600/90 dark:text-emerald-400/90", listTableAmountCellClassName)}>${inv.paidTotal.toLocaleString()}</TableCell>
-                    <TableCell className={cn("text-right tabular-nums font-medium", listTableAmountCellClassName)}>${inv.balanceDue.toLocaleString()}</TableCell>
+                    <TableCell
+                      className={cn(
+                        "text-right tabular-nums font-medium",
+                        listTableAmountCellClassName
+                      )}
+                    >
+                      ${inv.total.toLocaleString()}
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        "text-right tabular-nums text-emerald-600/90 dark:text-emerald-400/90",
+                        listTableAmountCellClassName
+                      )}
+                    >
+                      ${inv.paidTotal.toLocaleString()}
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        "text-right tabular-nums font-medium",
+                        listTableAmountCellClassName
+                      )}
+                    >
+                      ${inv.balanceDue.toLocaleString()}
+                    </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-1">
                         <Button asChild variant="ghost" size="sm" className="h-8">
@@ -279,13 +351,23 @@ function InvoicesPageInner() {
                             <Copy className="h-4 w-4" />
                           </Button>
                         )}
-                        {inv.computedStatus !== "Void" && (
-                          voidConfirmId === inv.id ? (
+                        {inv.computedStatus !== "Void" &&
+                          (voidConfirmId === inv.id ? (
                             <>
-                              <Button variant="destructive" size="sm" className="h-8" onClick={() => handleVoid(inv.id)}>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                className="h-8"
+                                onClick={() => handleVoid(inv.id)}
+                              >
                                 Confirm Void
                               </Button>
-                              <Button variant="ghost" size="sm" className="h-8" onClick={() => setVoidConfirmId(null)}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8"
+                                onClick={() => setVoidConfirmId(null)}
+                              >
                                 Cancel
                               </Button>
                             </>
@@ -299,25 +381,19 @@ function InvoicesPageInner() {
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
-                          )
-                        )}
+                          ))}
                       </div>
                     </TableCell>
                   </TableRow>
                 ))}
-            </TableBody>
-          </Table>
-        </div>
-      </Card>
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
       )}
 
       {total > 0 ? (
-        <Pagination
-          page={curPage}
-          pageSize={pageSize}
-          total={total}
-          onPageChange={setPage}
-        />
+        <Pagination page={curPage} pageSize={pageSize} total={total} onPageChange={setPage} />
       ) : null}
     </div>
   );

@@ -28,9 +28,9 @@ function isMissingTable(err: { message?: string } | null): boolean {
   const m = String((err as { message?: string }).message ?? err).toLowerCase();
   return (
     m.includes("schema cache") ||
-    m.includes("relation") && m.includes("does not exist") ||
+    (m.includes("relation") && m.includes("does not exist")) ||
     m.includes("could not find the table") ||
-    m.includes("table") && m.includes("accounts")
+    (m.includes("table") && m.includes("accounts"))
   );
 }
 
@@ -58,7 +58,8 @@ export async function getAccounts(): Promise<Account[]> {
     }));
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    if (/schema cache|table.*accounts|could not find|relation.*does not exist/i.test(msg)) return [];
+    if (/schema cache|table.*accounts|could not find|relation.*does not exist/i.test(msg))
+      return [];
     throw e;
   }
 }
@@ -83,7 +84,10 @@ export async function createAccount(input: {
     .select("id, name, type, last_four, notes, created_at, updated_at")
     .single();
   if (error) {
-    if (isMissingTable(error)) throw new Error("Accounts table not found. Run migration: supabase/migrations/202603190000_accounts.sql");
+    if (isMissingTable(error))
+      throw new Error(
+        "Accounts table not found. Run migration: supabase/migrations/202603190000_accounts.sql"
+      );
     throw new Error(error.message ?? "Failed to create account.");
   }
   return {

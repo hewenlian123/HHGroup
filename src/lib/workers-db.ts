@@ -50,7 +50,9 @@ function isMissingTable(err: { message?: string } | null): boolean {
 
 function isMissingColumn(err: { message?: string } | null): boolean {
   const m = err?.message ?? "";
-  return /column.*does not exist|does not exist.*column|undefined column|could not find.*column|schema cache/i.test(m);
+  return /column.*does not exist|does not exist.*column|undefined column|could not find.*column|schema cache/i.test(
+    m
+  );
 }
 
 /** Map an extended-schema row. */
@@ -64,7 +66,9 @@ function mapExtRow(r: Record<string, unknown>): WorkerRow {
     default_ot_rate: Number(r.default_ot_rate) || 0,
     status: (r.status === "Active" || r.status === "Inactive"
       ? r.status
-      : r.status === "active" ? "Active" : "Inactive") as WorkerStatus,
+      : r.status === "active"
+        ? "Active"
+        : "Inactive") as WorkerStatus,
     notes: (r.notes as string | null) ?? null,
     created_at: (r.created_at as string) ?? "",
   };
@@ -81,7 +85,9 @@ function mapBaseRow(r: Record<string, unknown>): WorkerRow {
     default_ot_rate: 0,
     status: (r.status === "Active" || r.status === "Inactive"
       ? r.status
-      : r.status === "active" ? "Active" : "Inactive") as WorkerStatus,
+      : r.status === "active"
+        ? "Active"
+        : "Inactive") as WorkerStatus,
     notes: (r.notes as string | null) ?? null,
     created_at: (r.created_at as string) ?? "",
   };
@@ -114,7 +120,11 @@ export async function getWorkerById(id: string): Promise<WorkerRow | null> {
   if (error) {
     if (isMissingTable(error)) return null;
     if (isMissingColumn(error)) {
-      const { data: row2, error: err2 } = await c.from("workers").select(COLS_BASE).eq("id", id).maybeSingle();
+      const { data: row2, error: err2 } = await c
+        .from("workers")
+        .select(COLS_BASE)
+        .eq("id", id)
+        .maybeSingle();
       if (err2 || !row2) return null;
       return mapBaseRow(row2 as Record<string, unknown>);
     }
@@ -151,7 +161,11 @@ export async function insertWorker(draft: WorkerDraft): Promise<WorkerRow> {
         status: draft.status === "Inactive" ? "inactive" : "active",
         notes: draft.notes?.trim() || null,
       };
-      const { data: row2, error: err2 } = await c.from("workers").insert(basePayload).select(COLS_BASE).single();
+      const { data: row2, error: err2 } = await c
+        .from("workers")
+        .insert(basePayload)
+        .select(COLS_BASE)
+        .single();
       if (err2) throw new Error(err2.message ?? "Failed to add worker.");
       return mapBaseRow(row2 as Record<string, unknown>);
     }
@@ -161,24 +175,37 @@ export async function insertWorker(draft: WorkerDraft): Promise<WorkerRow> {
 }
 
 export type UpdateWorkerPatch = Partial<
-  Pick<WorkerRow, "name" | "phone" | "trade" | "daily_rate" | "default_ot_rate" | "status" | "notes">
+  Pick<
+    WorkerRow,
+    "name" | "phone" | "trade" | "daily_rate" | "default_ot_rate" | "status" | "notes"
+  >
 >;
 
 /** Update one worker. */
-export async function updateWorker(id: string, patch: UpdateWorkerPatch): Promise<WorkerRow | null> {
+export async function updateWorker(
+  id: string,
+  patch: UpdateWorkerPatch
+): Promise<WorkerRow | null> {
   const c = client();
   const extPayload: Record<string, unknown> = {};
   if (patch.name !== undefined) extPayload.name = patch.name.trim();
   if (patch.phone !== undefined) extPayload.phone = patch.phone?.trim() || null;
   if (patch.trade !== undefined) extPayload.trade = patch.trade?.trim() || null;
   if (patch.daily_rate !== undefined) extPayload.daily_rate = Number(patch.daily_rate) || 0;
-  if (patch.default_ot_rate !== undefined) extPayload.default_ot_rate = Number(patch.default_ot_rate) || 0;
-  if (patch.status !== undefined) extPayload.status = patch.status === "Inactive" ? "Inactive" : "Active";
+  if (patch.default_ot_rate !== undefined)
+    extPayload.default_ot_rate = Number(patch.default_ot_rate) || 0;
+  if (patch.status !== undefined)
+    extPayload.status = patch.status === "Inactive" ? "Inactive" : "Active";
   if (patch.notes !== undefined) extPayload.notes = patch.notes?.trim() || null;
 
   if (Object.keys(extPayload).length === 0) return getWorkerById(id);
 
-  const { data: row, error } = await c.from("workers").update(extPayload).eq("id", id).select(COLS_EXT).single();
+  const { data: row, error } = await c
+    .from("workers")
+    .update(extPayload)
+    .eq("id", id)
+    .select(COLS_EXT)
+    .single();
   if (error) {
     if (isMissingColumn(error)) {
       // fall back to base schema
@@ -187,11 +214,17 @@ export async function updateWorker(id: string, patch: UpdateWorkerPatch): Promis
       if (patch.phone !== undefined) basePayload.phone = patch.phone?.trim() || null;
       if (patch.trade !== undefined) basePayload.role = patch.trade?.trim() || null;
       if (patch.daily_rate !== undefined) basePayload.half_day_rate = Number(patch.daily_rate) || 0;
-      if (patch.status !== undefined) basePayload.status = patch.status === "Inactive" ? "inactive" : "active";
+      if (patch.status !== undefined)
+        basePayload.status = patch.status === "Inactive" ? "inactive" : "active";
       if (patch.notes !== undefined) basePayload.notes = patch.notes?.trim() || null;
 
       if (Object.keys(basePayload).length === 0) return getWorkerById(id);
-      const { data: row2, error: err2 } = await c.from("workers").update(basePayload).eq("id", id).select(COLS_BASE).single();
+      const { data: row2, error: err2 } = await c
+        .from("workers")
+        .update(basePayload)
+        .eq("id", id)
+        .select(COLS_BASE)
+        .single();
       if (err2) throw new Error(err2.message ?? "Failed to update worker.");
       return row2 ? mapBaseRow(row2 as Record<string, unknown>) : null;
     }

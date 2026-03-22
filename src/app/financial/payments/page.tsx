@@ -48,7 +48,9 @@ function PaymentsReceivedPageInner() {
     load().finally(() => {
       if (!cancelled) setLoading(false);
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [load]);
 
   useOnAppSync(
@@ -91,30 +93,60 @@ function PaymentsReceivedPageInner() {
             <Table>
               <TableHeader>
                 <TableRow className="border-b border-border/60 hover:bg-transparent">
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Date</TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Customer</TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Project</TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Invoice #</TableHead>
-                  <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground tabular-nums">Amount</TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Payment Method</TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Account</TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Notes</TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                    Date
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                    Customer
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                    Project
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                    Invoice #
+                  </TableHead>
+                  <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground tabular-nums">
+                    Amount
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                    Payment Method
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                    Account
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                    Notes
+                  </TableHead>
                   <TableHead className="w-10" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {payments.map((row) => (
-                  <TableRow key={row.id} className="group border-b border-border/30 hover:bg-muted/20">
-                    <TableCell className="tabular-nums text-foreground">{row.payment_date}</TableCell>
+                  <TableRow
+                    key={row.id}
+                    className="group border-b border-border/30 hover:bg-muted/20"
+                  >
+                    <TableCell className="tabular-nums text-foreground">
+                      {row.payment_date}
+                    </TableCell>
                     <TableCell className="text-foreground">{row.customer_name || "—"}</TableCell>
-                    <TableCell className="text-muted-foreground">{row.project_name ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {row.project_name ?? "—"}
+                    </TableCell>
                     <TableCell className="text-muted-foreground">{row.invoice_no ?? "—"}</TableCell>
                     <TableCell className="text-right tabular-nums font-medium text-emerald-600/90 dark:text-emerald-400/90">
                       {money(row.amount)}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{row.payment_method ?? "—"}</TableCell>
-                    <TableCell className="text-muted-foreground">{row.deposit_account ?? "—"}</TableCell>
-                    <TableCell className="text-muted-foreground max-w-[200px] truncate" title={row.notes ?? undefined}>
+                    <TableCell className="text-muted-foreground">
+                      {row.payment_method ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {row.deposit_account ?? "—"}
+                    </TableCell>
+                    <TableCell
+                      className="text-muted-foreground max-w-[200px] truncate"
+                      title={row.notes ?? undefined}
+                    >
                       {row.notes ?? "—"}
                     </TableCell>
                     <TableCell className="text-right">
@@ -148,11 +180,7 @@ function PaymentsReceivedPageInner() {
         </section>
       )}
 
-      <ReceivePaymentModal
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        onSuccess={load}
-      />
+      <ReceivePaymentModal open={modalOpen} onOpenChange={setModalOpen} onSuccess={load} />
     </div>
   );
 }

@@ -28,11 +28,21 @@ test.describe("Delete UX: Delete control visible without hover (existing rows)",
   test("financial vendors: first data row Delete is immediately visible", async ({ page }) => {
     await page.goto(`${BASE}/financial/vendors`);
     await page.waitForLoadState("domcontentloaded");
-    if (await page.getByText(/Supabase is not configured/i).isVisible().catch(() => false)) {
+    if (
+      await page
+        .getByText(/Supabase is not configured/i)
+        .isVisible()
+        .catch(() => false)
+    ) {
       test.skip(true, "Supabase not configured.");
     }
-    await expect(page.getByText(/Loading vendors/i)).not.toBeVisible({ timeout: LIST_LOAD_MS }).catch(() => undefined);
-    const dataRow = page.locator("tbody tr").filter({ hasNotText: /Loading vendors|No vendors yet/i }).first();
+    await expect(page.getByText(/Loading vendors/i))
+      .not.toBeVisible({ timeout: LIST_LOAD_MS })
+      .catch(() => undefined);
+    const dataRow = page
+      .locator("tbody tr")
+      .filter({ hasNotText: /Loading vendors|No vendors yet/i })
+      .first();
     await expectVisibleOrSkip(dataRow, "No vendor rows or list still loading.", LIST_LOAD_MS);
     const del = dataRow.getByRole("button", { name: /^Delete$/ });
     await expectDeleteControlVisibleWithoutHover(page, del, 1200);
@@ -41,11 +51,21 @@ test.describe("Delete UX: Delete control visible without hover (existing rows)",
   test("settings categories: first data row Delete is immediately visible", async ({ page }) => {
     await page.goto(`${BASE}/settings/categories`);
     await page.waitForLoadState("domcontentloaded");
-    if (await page.getByText(/Supabase is not configured/i).isVisible().catch(() => false)) {
+    if (
+      await page
+        .getByText(/Supabase is not configured/i)
+        .isVisible()
+        .catch(() => false)
+    ) {
       test.skip(true, "Supabase not configured.");
     }
-    await expect(page.getByText(/Loading categories/i)).not.toBeVisible({ timeout: LIST_LOAD_MS }).catch(() => undefined);
-    const dataRow = page.locator("tbody tr").filter({ hasNotText: /Loading categories|No categories yet/i }).first();
+    await expect(page.getByText(/Loading categories/i))
+      .not.toBeVisible({ timeout: LIST_LOAD_MS })
+      .catch(() => undefined);
+    const dataRow = page
+      .locator("tbody tr")
+      .filter({ hasNotText: /Loading categories|No categories yet/i })
+      .first();
     await expectVisibleOrSkip(dataRow, "No category rows or list still loading.", LIST_LOAD_MS);
     const del = dataRow.getByRole("button", { name: /^Delete$/ });
     await expectDeleteControlVisibleWithoutHover(page, del, 1200);
@@ -54,11 +74,21 @@ test.describe("Delete UX: Delete control visible without hover (existing rows)",
   test("labor workers: first data row Delete is immediately visible", async ({ page }) => {
     await page.goto(`${BASE}/labor/workers`);
     await page.waitForLoadState("domcontentloaded");
-    if (await page.getByText(/Failed to fetch workers/i).isVisible().catch(() => false)) {
+    if (
+      await page
+        .getByText(/Failed to fetch workers/i)
+        .isVisible()
+        .catch(() => false)
+    ) {
       test.skip(true, "Workers API unavailable.");
     }
-    await expect(page.getByText(/Loading workers/i)).not.toBeVisible({ timeout: LIST_LOAD_MS }).catch(() => undefined);
-    const dataRow = page.locator("tbody tr").filter({ hasNotText: /Loading workers|No workers found/i }).first();
+    await expect(page.getByText(/Loading workers/i))
+      .not.toBeVisible({ timeout: LIST_LOAD_MS })
+      .catch(() => undefined);
+    const dataRow = page
+      .locator("tbody tr")
+      .filter({ hasNotText: /Loading workers|No workers found/i })
+      .first();
     await expectVisibleOrSkip(dataRow, "No worker rows or list still loading.", LIST_LOAD_MS);
     const del = dataRow.getByRole("button", { name: /^Delete$/ });
     await expectDeleteControlVisibleWithoutHover(page, del, 1200);
@@ -67,27 +97,48 @@ test.describe("Delete UX: Delete control visible without hover (existing rows)",
   test("labor subcontractors: first data row Delete is immediately visible", async ({ page }) => {
     await page.goto(`${BASE}/labor/subcontractors`);
     await page.waitForLoadState("domcontentloaded");
-    if (await page.getByText(/Supabase is not configured/i).isVisible().catch(() => false)) {
+    if (
+      await page
+        .getByText(/Supabase is not configured/i)
+        .isVisible()
+        .catch(() => false)
+    ) {
       test.skip(true, "Supabase not configured.");
     }
-    await expect(page.getByText(/Loading/i).first()).not.toBeVisible({ timeout: LIST_LOAD_MS }).catch(() => undefined);
-    const dataRow = page.locator("tbody tr").filter({ hasNotText: /No subcontractors yet/i }).first();
-    await expectVisibleOrSkip(dataRow, "No subcontractor rows or list still loading.", LIST_LOAD_MS);
+    await expect(page.getByText(/Loading/i).first())
+      .not.toBeVisible({ timeout: LIST_LOAD_MS })
+      .catch(() => undefined);
+    const dataRow = page
+      .locator("tbody tr")
+      .filter({ hasNotText: /No subcontractors yet/i })
+      .first();
+    await expectVisibleOrSkip(
+      dataRow,
+      "No subcontractor rows or list still loading.",
+      LIST_LOAD_MS
+    );
     const del = dataRow.getByRole("button", { name: /^Delete$/ });
     await expectDeleteControlVisibleWithoutHover(page, del, 1200);
   });
 
-  test("bills list: draft trash opens confirm quickly then cancel (no delete)", async ({ page }) => {
+  test("bills list: draft trash opens confirm quickly then cancel (no delete)", async ({
+    page,
+  }) => {
     test.setTimeout(60_000);
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto(`${BASE}/bills`, { waitUntil: "domcontentloaded", timeout: 55_000 });
     await page.waitForLoadState("domcontentloaded");
-    await expect(page.getByText(/Loading/i).first()).not.toBeVisible({ timeout: LIST_LOAD_MS }).catch(() => undefined);
-    const rowWithTrash = page.locator("tbody tr").filter({ has: page.getByRole("button", { name: "Delete" }) }).first();
+    await expect(page.getByText(/Loading/i).first())
+      .not.toBeVisible({ timeout: LIST_LOAD_MS })
+      .catch(() => undefined);
+    const rowWithTrash = page
+      .locator("tbody tr")
+      .filter({ has: page.getByRole("button", { name: "Delete" }) })
+      .first();
     await expectVisibleOrSkip(
       rowWithTrash,
       "No draft bill row with delete (trash) control or list still loading.",
-      LIST_LOAD_MS,
+      LIST_LOAD_MS
     );
     const trash = rowWithTrash.getByRole("button", { name: "Delete" });
     await expectDeleteControlVisibleWithoutHover(page, trash, 1200);

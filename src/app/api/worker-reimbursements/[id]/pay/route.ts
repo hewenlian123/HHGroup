@@ -48,7 +48,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         console.log("[reimbursement/pay] expense created", { expenseId, reimbursementId });
       }
     } catch (expErr) {
-      expenseWarning = expErr instanceof Error ? expErr.message : "Could not add to Project Expenses.";
+      expenseWarning =
+        expErr instanceof Error ? expErr.message : "Could not add to Project Expenses.";
       if (typeof console !== "undefined" && console.error) {
         console.error("[reimbursement/pay] createExpenseFromPaidReimbursement failed", expErr);
       }
@@ -57,7 +58,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     // Step 4: Update reimbursement status (SET status='paid', paid_at=now())
     const reimbursement = await markReimbursementPaid(reimbursementId);
     if (typeof console !== "undefined" && console.log) {
-      console.log("[reimbursement/pay] reimbursement status updated", { reimbursementId, status: reimbursement.status });
+      console.log("[reimbursement/pay] reimbursement status updated", {
+        reimbursementId,
+        status: reimbursement.status,
+      });
     }
 
     // Step 5: Return updated reimbursement

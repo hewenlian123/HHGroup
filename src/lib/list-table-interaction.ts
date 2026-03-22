@@ -9,7 +9,8 @@ export const listTableRowClassName = cn(
 );
 
 /** Primary title / name column */
-export const listTablePrimaryCellClassName = "transition-opacity duration-200 group-hover:opacity-80";
+export const listTablePrimaryCellClassName =
+  "transition-opacity duration-200 group-hover:opacity-80";
 
 /** Currency / numeric emphasis columns (beats per-column color on hover). */
 export const listTableAmountCellClassName = cn(

@@ -5,10 +5,14 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ensureConstructionSchema } from "@/lib/ensure-construction-schema";
 
-const AppShell = dynamic(
-  () => import("@/components/layout/app-shell").then((m) => m.AppShell),
-  { ssr: false, loading: () => <div className="min-h-screen bg-warm-grey flex items-center justify-center text-sm text-muted-foreground">Loading…</div> }
-);
+const AppShell = dynamic(() => import("@/components/layout/app-shell").then((m) => m.AppShell), {
+  ssr: false,
+  loading: () => (
+    <div className="min-h-screen bg-warm-grey flex items-center justify-center text-sm text-muted-foreground">
+      Loading…
+    </div>
+  ),
+});
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -42,8 +46,8 @@ export const viewport: Viewport = {
 
 export default async function RootLayout(
   props: Readonly<{
-  children: React.ReactNode;
-}>
+    children: React.ReactNode;
+  }>
 ) {
   try {
     await ensureConstructionSchema();
@@ -56,9 +60,7 @@ export default async function RootLayout(
         <link rel="icon" href="/favicon.png" type="image/png" sizes="32x32" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} antialiased`}
-      >
+      <body className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} antialiased`}>
         <AppShell>{props.children}</AppShell>
       </body>
     </html>

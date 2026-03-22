@@ -40,7 +40,13 @@ export function ReceiptActions({
       <Button size="sm" variant="outline" className="h-8" asChild>
         <Link href={`/receipt/print/${encodeURIComponent(paymentId)}`}>View receipt page</Link>
       </Button>
-      <Button size="sm" variant="outline" className="h-8" type="button" onClick={() => window.print()}>
+      <Button
+        size="sm"
+        variant="outline"
+        className="h-8"
+        type="button"
+        onClick={() => window.print()}
+      >
         Print
       </Button>
       <Button

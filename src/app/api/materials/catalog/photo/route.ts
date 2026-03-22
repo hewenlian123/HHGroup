@@ -16,7 +16,10 @@ export async function GET(req: Request) {
   try {
     const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60);
     if (error || !data?.signedUrl) {
-      return NextResponse.json({ ok: false, message: error?.message ?? "Failed to get URL." }, { status: 500 });
+      return NextResponse.json(
+        { ok: false, message: error?.message ?? "Failed to get URL." },
+        { status: 500 }
+      );
     }
     return NextResponse.redirect(data.signedUrl);
   } catch {

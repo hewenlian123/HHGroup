@@ -23,7 +23,9 @@ function client() {
 }
 
 /** Fetch all payments for summary: subcontract_id, amount. */
-export async function getPaymentsSummaryAll(): Promise<{ subcontract_id: string; amount: number }[]> {
+export async function getPaymentsSummaryAll(): Promise<
+  { subcontract_id: string; amount: number }[]
+> {
   const c = client();
   const { data: rows, error } = await c
     .from("subcontract_payments")
@@ -38,9 +40,7 @@ export async function getPaymentsSummaryAll(): Promise<{ subcontract_id: string;
 /** Fetch all payments with bill_id and amount (for cashflow expected outflow). */
 export async function getPaymentsAll(): Promise<{ bill_id: string | null; amount: number }[]> {
   const c = client();
-  const { data: rows, error } = await c
-    .from("subcontract_payments")
-    .select("bill_id, amount");
+  const { data: rows, error } = await c.from("subcontract_payments").select("bill_id, amount");
   if (error) throw new Error(error.message ?? "Failed to load payments.");
   return (rows ?? []).map((r: Record<string, unknown>) => ({
     bill_id: (r.bill_id as string | null) ?? null,
@@ -49,7 +49,9 @@ export async function getPaymentsAll(): Promise<{ bill_id: string | null; amount
 }
 
 /** Fetch all payment rows for the given subcontract ids (e.g. for one subcontractor). */
-export async function getPaymentsBySubcontractIds(subcontractIds: string[]): Promise<SubcontractPaymentRow[]> {
+export async function getPaymentsBySubcontractIds(
+  subcontractIds: string[]
+): Promise<SubcontractPaymentRow[]> {
   if (subcontractIds.length === 0) return [];
   const c = client();
   const { data: rows, error } = await c
@@ -112,7 +114,10 @@ export async function recordSubcontractPayment(input: {
       c.from("subcontract_payments").select("amount").eq("bill_id", input.bill_id),
     ]);
     const billTotal = Number((billRow as { amount?: number } | null)?.amount) || 0;
-    const paidTotal = ((payRows ?? []) as Array<{ amount?: number }>).reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    const paidTotal = ((payRows ?? []) as Array<{ amount?: number }>).reduce(
+      (s, r) => s + (Number(r.amount) || 0),
+      0
+    );
     const newStatus = paidTotal >= billTotal ? "Paid" : "Partial";
     await c.from("subcontract_bills").update({ status: newStatus }).eq("id", input.bill_id);
   }

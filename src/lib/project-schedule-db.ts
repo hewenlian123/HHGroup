@@ -44,7 +44,9 @@ function toItem(r: Record<string, unknown>): ProjectScheduleItem {
 }
 
 /** Get all schedule items across all projects (for Operations Schedule page), with project name. */
-export async function getAllScheduleWithProject(): Promise<(ProjectScheduleItem & { project_name: string | null })[]> {
+export async function getAllScheduleWithProject(): Promise<
+  (ProjectScheduleItem & { project_name: string | null })[]
+> {
   const c = client();
   const { data: rows, error } = await c
     .from("project_schedule")
@@ -55,7 +57,9 @@ export async function getAllScheduleWithProject(): Promise<(ProjectScheduleItem 
   const projectIds = Array.from(new Set(items.map((i) => i.project_id)));
   if (projectIds.length === 0) return items.map((i) => ({ ...i, project_name: null }));
   const { data: projects } = await c.from("projects").select("id, name").in("id", projectIds);
-  const projectNames = new Map<string, string>(((projects ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name ?? ""]));
+  const projectNames = new Map<string, string>(
+    ((projects ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name ?? ""])
+  );
   return items.map((i) => ({ ...i, project_name: projectNames.get(i.project_id) ?? null }));
 }
 
@@ -72,7 +76,9 @@ export async function getProjectSchedule(projectId: string): Promise<ProjectSche
 }
 
 /** Create a schedule item. */
-export async function createProjectScheduleItem(draft: ProjectScheduleItemDraft): Promise<ProjectScheduleItem> {
+export async function createProjectScheduleItem(
+  draft: ProjectScheduleItemDraft
+): Promise<ProjectScheduleItem> {
   const c = client();
   const { data: row, error } = await c
     .from("project_schedule")
@@ -101,7 +107,12 @@ export async function updateProjectScheduleItem(
   if (patch.end_date !== undefined) updates.end_date = patch.end_date?.slice(0, 10) ?? null;
   if (patch.status !== undefined) updates.status = patch.status;
   if (Object.keys(updates).length === 0) return null;
-  const { data: row, error } = await c.from("project_schedule").update(updates).eq("id", id).select(COLS).single();
+  const { data: row, error } = await c
+    .from("project_schedule")
+    .update(updates)
+    .eq("id", id)
+    .select(COLS)
+    .single();
   if (error || !row) return null;
   return toItem(row as Record<string, unknown>);
 }

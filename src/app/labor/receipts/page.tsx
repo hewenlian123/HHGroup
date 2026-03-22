@@ -24,7 +24,7 @@ export default async function LaborReceiptsPage({ searchParams }: Props) {
   const projectById = new Map(projects.map((p) => [p.id, p.name ?? ""]));
   const initialRows: ReceiptRow[] = filteredReceipts.map((r) => ({
     ...r,
-    projectName: r.projectId ? projectById.get(r.projectId) ?? "" : "",
+    projectName: r.projectId ? (projectById.get(r.projectId) ?? "") : "",
   }));
 
   return <ReceiptsClient initialRows={initialRows} />;

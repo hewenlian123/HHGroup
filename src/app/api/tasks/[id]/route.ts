@@ -22,7 +22,11 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
   const admin = getServerSupabaseAdmin();
   if (!admin) {
     return NextResponse.json(
-      { ok: false, message: "Server misconfiguration: SUPABASE_SERVICE_ROLE_KEY is required for task delete (RLS bypass)." },
+      {
+        ok: false,
+        message:
+          "Server misconfiguration: SUPABASE_SERVICE_ROLE_KEY is required for task delete (RLS bypass).",
+      },
       { status: 500 }
     );
   }
@@ -34,7 +38,10 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
       .eq("id", id)
       .maybeSingle();
     if (fetchErr) {
-      return NextResponse.json({ ok: false, message: fetchErr.message ?? "Failed to load task." }, { status: 500 });
+      return NextResponse.json(
+        { ok: false, message: fetchErr.message ?? "Failed to load task." },
+        { status: 500 }
+      );
     }
     if (row && isTestTask({ title: (row as { title?: string }).title ?? "" })) {
       return NextResponse.json(
@@ -50,8 +57,9 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
     if (message.includes("not found") || message.includes("already deleted")) {
       return NextResponse.json({ ok: true, rowsDeleted: 0 });
     }
-    const isFkError =
-      /foreign key|violates foreign key|referential integrity|referenced by/i.test(message);
+    const isFkError = /foreign key|violates foreign key|referential integrity|referenced by/i.test(
+      message
+    );
     if (isFkError) {
       return NextResponse.json(
         {

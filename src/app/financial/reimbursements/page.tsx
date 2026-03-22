@@ -35,7 +35,10 @@ type WorkerReimbursementRow = {
   expenses: Expense[];
 };
 
-function buildReimbursementRows(expenses: Expense[], workerNameById: Map<string, string>): WorkerReimbursementRow[] {
+function buildReimbursementRows(
+  expenses: Expense[],
+  workerNameById: Map<string, string>
+): WorkerReimbursementRow[] {
   const byWorker = new Map<string, Expense[]>();
   for (const e of expenses) {
     const wid = e.workerId ?? "";
@@ -93,7 +96,9 @@ function WorkerReimbursementsPageInner() {
     load().finally(() => {
       if (!cancelled) setLoading(false);
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [load]);
 
   useOnAppSync(
@@ -103,7 +108,10 @@ function WorkerReimbursementsPageInner() {
     [load]
   );
 
-  const workerNameById = React.useMemo(() => new Map(workers.map((w) => [w.id, w.name])), [workers]);
+  const workerNameById = React.useMemo(
+    () => new Map(workers.map((w) => [w.id, w.name])),
+    [workers]
+  );
   const rows = React.useMemo(
     () => buildReimbursementRows(expenses, workerNameById),
     [expenses, workerNameById]
@@ -153,11 +161,21 @@ function WorkerReimbursementsPageInner() {
             <Table>
               <TableHeader>
                 <TableRow className="border-b border-border/60 hover:bg-transparent">
-<TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Worker</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">Needs Review</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">Approved</TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">Total Owed</TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right w-[140px]">Actions</TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                    Worker
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">
+                    Needs Review
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">
+                    Approved
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">
+                    Total Owed
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right w-[140px]">
+                    Actions
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -215,10 +233,18 @@ function WorkerReimbursementsPageInner() {
                   <Table>
                     <TableHeader>
                       <TableRow className="border-b border-border/60 hover:bg-transparent">
-                        <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Date</TableHead>
-                        <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Vendor</TableHead>
-                        <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">Amount</TableHead>
-                        <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Status</TableHead>
+                        <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                          Date
+                        </TableHead>
+                        <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                          Vendor
+                        </TableHead>
+                        <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">
+                          Amount
+                        </TableHead>
+                        <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                          Status
+                        </TableHead>
                         <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right w-16" />
                       </TableRow>
                     </TableHeader>
@@ -230,7 +256,9 @@ function WorkerReimbursementsPageInner() {
                           <TableCell className="text-right tabular-nums">
                             ${getExpenseTotal(exp).toLocaleString()}
                           </TableCell>
-                          <TableCell className="text-muted-foreground text-sm capitalize">{exp.status ?? "pending"}</TableCell>
+                          <TableCell className="text-muted-foreground text-sm capitalize">
+                            {exp.status ?? "pending"}
+                          </TableCell>
                           <TableCell className="text-right">
                             <Button asChild variant="ghost" size="sm" className="h-7">
                               <Link href={`/financial/expenses/${exp.id}`}>View</Link>
@@ -243,7 +271,10 @@ function WorkerReimbursementsPageInner() {
                 </div>
                 <div className="border-t border-border/60 px-4 py-3 flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">
-                    Total owed: <span className="font-medium text-foreground">${detailWorker.totalOwed.toLocaleString()}</span>
+                    Total owed:{" "}
+                    <span className="font-medium text-foreground">
+                      ${detailWorker.totalOwed.toLocaleString()}
+                    </span>
                   </span>
                   <Button
                     variant="outline"

@@ -8,7 +8,15 @@ import { getSupabaseClient } from "@/lib/supabase";
 
 const BILLS_TABLE = "ap_bills";
 
-export const AP_BILL_TYPES = ["Vendor", "Labor", "Overhead", "Utility", "Permit", "Equipment", "Other"] as const;
+export const AP_BILL_TYPES = [
+  "Vendor",
+  "Labor",
+  "Overhead",
+  "Utility",
+  "Permit",
+  "Equipment",
+  "Other",
+] as const;
 export type ApBillType = (typeof AP_BILL_TYPES)[number];
 
 export const AP_BILL_STATUSES = ["Draft", "Pending", "Partially Paid", "Paid", "Void"] as const;
@@ -117,7 +125,9 @@ export async function getApBillById(id: string): Promise<ApBillWithProject | nul
   const c = client();
   const { data: row, error } = await c
     .from(BILLS_TABLE)
-    .select("id, bill_type, vendor_name, project_id, issue_date, due_date, amount, status, category, notes, created_at, updated_at, projects(name)")
+    .select(
+      "id, bill_type, vendor_name, project_id, issue_date, due_date, amount, status, category, notes, created_at, updated_at, projects(name)"
+    )
     .eq("id", id)
     .maybeSingle();
   if (error) {
@@ -135,7 +145,9 @@ export async function getApBills(filters: ApBillsFilters = {}): Promise<ApBillWi
   const c = client();
   let q = c
     .from(BILLS_TABLE)
-    .select("id, bill_type, vendor_name, project_id, issue_date, due_date, amount, status, category, notes, created_at, updated_at, projects(name)")
+    .select(
+      "id, bill_type, vendor_name, project_id, issue_date, due_date, amount, status, category, notes, created_at, updated_at, projects(name)"
+    )
     .order("created_at", { ascending: false });
 
   if (filters.status) q = q.eq("status", filters.status);
@@ -179,7 +191,9 @@ export async function getApBillsRecent(limit: number): Promise<ApBillWithProject
   const c = client();
   const { data: rows, error } = await c
     .from(BILLS_TABLE)
-    .select("id, bill_type, vendor_name, project_id, issue_date, due_date, amount, status, category, notes, created_at, updated_at, projects(name)")
+    .select(
+      "id, bill_type, vendor_name, project_id, issue_date, due_date, amount, status, category, notes, created_at, updated_at, projects(name)"
+    )
     .order("created_at", { ascending: false })
     .limit(Math.max(1, Math.min(limit, 100)));
   if (error) {
@@ -197,7 +211,9 @@ export async function getApBillPayments(billId: string): Promise<ApBillPaymentRo
   const c = client();
   const { data: rows, error } = await c
     .from("ap_bill_payments")
-    .select("id, bill_id, payment_date, amount, payment_method, reference_no, notes, created_at, created_by")
+    .select(
+      "id, bill_id, payment_date, amount, payment_method, reference_no, notes, created_at, created_by"
+    )
     .eq("bill_id", billId)
     .order("payment_date", { ascending: false });
   if (error) {
@@ -237,7 +253,8 @@ export async function createApBill(draft: {
   };
   const { data: row, error } = await c.from(BILLS_TABLE).insert(payload).select("*").single();
   if (error) {
-    if (isMissingTable(error)) throw new Error("Bills table not found. Please ensure the bills table exists in Supabase.");
+    if (isMissingTable(error))
+      throw new Error("Bills table not found. Please ensure the bills table exists in Supabase.");
     throw new Error(error.message ?? "Failed to create bill.");
   }
   return mapBill(row as Record<string, unknown>);
@@ -262,7 +279,8 @@ export async function updateApBill(
 ): Promise<ApBillRow | null> {
   const c = client();
   const updates: Record<string, unknown> = {};
-  if (patch.bill_type !== undefined) updates.bill_type = AP_BILL_TYPES.includes(patch.bill_type) ? patch.bill_type : "Vendor";
+  if (patch.bill_type !== undefined)
+    updates.bill_type = AP_BILL_TYPES.includes(patch.bill_type) ? patch.bill_type : "Vendor";
   if (patch.vendor_name !== undefined) updates.vendor_name = patch.vendor_name.trim();
   if (patch.project_id !== undefined) updates.project_id = patch.project_id || null;
   if (patch.issue_date !== undefined) updates.issue_date = patch.issue_date?.slice(0, 10) || null;
@@ -270,9 +288,18 @@ export async function updateApBill(
   if (patch.amount !== undefined) updates.amount = Math.max(0, patch.amount);
   if (patch.category !== undefined) updates.category = patch.category?.trim() || null;
   if (patch.notes !== undefined) updates.notes = patch.notes?.trim() || null;
-  if (patch.status !== undefined) updates.status = AP_BILL_STATUSES.includes(patch.status) ? patch.status : "Draft";
-  if (Object.keys(updates).length === 0) return getApBillById(id).then((b) => (b ? mapBill(b as unknown as Record<string, unknown>) : null));
-  const { data: row, error } = await c.from(BILLS_TABLE).update(updates).eq("id", id).select("*").single();
+  if (patch.status !== undefined)
+    updates.status = AP_BILL_STATUSES.includes(patch.status) ? patch.status : "Draft";
+  if (Object.keys(updates).length === 0)
+    return getApBillById(id).then((b) =>
+      b ? mapBill(b as unknown as Record<string, unknown>) : null
+    );
+  const { data: row, error } = await c
+    .from(BILLS_TABLE)
+    .update(updates)
+    .eq("id", id)
+    .select("*")
+    .single();
   if (error) {
     if (isMissingTable(error)) return null;
     throw new Error(error.message ?? "Failed to update bill.");
@@ -281,13 +308,16 @@ export async function updateApBill(
 }
 
 /** Add a payment; trigger will recompute paid_amount, balance_amount, status. */
-export async function addApBillPayment(billId: string, payment: {
-  payment_date: string;
-  amount: number;
-  payment_method?: string | null;
-  reference_no?: string | null;
-  notes?: string | null;
-}): Promise<ApBillPaymentRow> {
+export async function addApBillPayment(
+  billId: string,
+  payment: {
+    payment_date: string;
+    amount: number;
+    payment_method?: string | null;
+    reference_no?: string | null;
+    notes?: string | null;
+  }
+): Promise<ApBillPaymentRow> {
   const c = client();
   const amt = Math.max(0, payment.amount);
   const { data: row, error } = await c
@@ -303,7 +333,10 @@ export async function addApBillPayment(billId: string, payment: {
     .select("*")
     .single();
   if (error) {
-    if (isMissingTable(error)) throw new Error("AP Bill Payments table not found. Please run the ap_bills migration in Supabase.");
+    if (isMissingTable(error))
+      throw new Error(
+        "AP Bill Payments table not found. Please run the ap_bills migration in Supabase."
+      );
     throw new Error(error.message ?? "Failed to add payment.");
   }
   return mapPayment(row as Record<string, unknown>);
@@ -324,7 +357,11 @@ export async function voidApBill(id: string): Promise<void> {
 /** Delete a Draft bill with no payments. */
 export async function deleteApBillDraft(id: string): Promise<void> {
   const c = client();
-  const { data: bill, error: billErr } = await c.from(BILLS_TABLE).select("id,status").eq("id", id).single();
+  const { data: bill, error: billErr } = await c
+    .from(BILLS_TABLE)
+    .select("id,status")
+    .eq("id", id)
+    .single();
   if (billErr) {
     if (isMissingTable(billErr)) return;
     throw new Error(billErr.message ?? "Failed to load bill.");
@@ -385,7 +422,14 @@ export async function getApBillsSummary(): Promise<{
     .not("status", "eq", "Void");
   if (error) {
     // Table missing or other error — return zeroed summary rather than crashing.
-    return { totalOutstanding: 0, overdueCount: 0, overdueAmount: 0, dueThisWeekCount: 0, dueThisWeekAmount: 0, paidThisMonthAmount: 0 };
+    return {
+      totalOutstanding: 0,
+      overdueCount: 0,
+      overdueAmount: 0,
+      dueThisWeekCount: 0,
+      dueThisWeekAmount: 0,
+      paidThisMonthAmount: 0,
+    };
   }
   const list = (bills ?? []) as Array<{ due_date?: string | null; amount?: number }>;
 
@@ -416,8 +460,14 @@ export async function getApBillsSummary(): Promise<{
       .from("ap_bill_payments")
       .select("amount")
       .gte("payment_date", startOfMonth)
-      .lte("payment_date", new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10));
-    paidThisMonthAmount = (payments ?? []).reduce((s, p) => s + toNum((p as { amount?: number }).amount), 0);
+      .lte(
+        "payment_date",
+        new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10)
+      );
+    paidThisMonthAmount = (payments ?? []).reduce(
+      (s, p) => s + toNum((p as { amount?: number }).amount),
+      0
+    );
   } catch {
     // ap_bill_payments may not exist
   }

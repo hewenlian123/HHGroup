@@ -130,7 +130,10 @@ export async function deleteWorkerInvoice(id: string): Promise<void> {
   }
 }
 
-export async function markWorkerInvoicesPaid(workerId: string, projectId?: string | null): Promise<number> {
+export async function markWorkerInvoicesPaid(
+  workerId: string,
+  projectId?: string | null
+): Promise<number> {
   const c = client();
   let q = c
     .from("worker_invoices")

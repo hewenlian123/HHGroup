@@ -28,7 +28,13 @@ export function ProjectCashFlowChart({
 }: ProjectCashFlowChartProps) {
   if (points.length === 0) {
     return (
-      <div className={cn("flex items-center justify-center rounded-md border border-border/60 bg-background", className)} style={{ width, height }}>
+      <div
+        className={cn(
+          "flex items-center justify-center rounded-md border border-border/60 bg-background",
+          className
+        )}
+        style={{ width, height }}
+      >
         <p className="text-sm text-muted-foreground">No cash flow data</p>
       </div>
     );
@@ -47,9 +53,7 @@ export function ProjectCashFlowChart({
   const xScale = (i: number) => left + (i / Math.max(1, points.length - 1)) * chartWidth;
 
   const linePath = (values: number[]) =>
-    values
-      .map((v, i) => `${i === 0 ? "M" : "L"} ${xScale(i)} ${yScale(v)}`)
-      .join(" ");
+    values.map((v, i) => `${i === 0 ? "M" : "L"} ${xScale(i)} ${yScale(v)}`).join(" ");
 
   const incomePath = linePath(points.map((p) => p.cumulativeIncome));
   const expensePath = linePath(points.map((p) => p.cumulativeExpense));

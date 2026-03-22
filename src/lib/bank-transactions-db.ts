@@ -62,7 +62,9 @@ export async function getBankTransactions(): Promise<BankTransaction[]> {
   const c = client();
   const { data: rows, error } = await c
     .from("bank_transactions")
-    .select("id, txn_date, description, amount, status, linked_expense_id, created_at, reconciled_at, reconciled_by")
+    .select(
+      "id, txn_date, description, amount, status, linked_expense_id, created_at, reconciled_at, reconciled_by"
+    )
     .order("txn_date", { ascending: false });
   if (error) {
     if (isMissingTable(error)) throw new Error(`bank_transactions: table not found. ${HINT}`);
@@ -75,7 +77,9 @@ export async function getBankTransactionById(id: string): Promise<BankTransactio
   const c = client();
   const { data: row, error } = await c
     .from("bank_transactions")
-    .select("id, txn_date, description, amount, status, linked_expense_id, created_at, reconciled_at, reconciled_by")
+    .select(
+      "id, txn_date, description, amount, status, linked_expense_id, created_at, reconciled_at, reconciled_by"
+    )
     .eq("id", id)
     .maybeSingle();
   if (error || !row) {
@@ -100,7 +104,9 @@ export async function createBankTransaction(payload: {
       amount: payload.amount ?? 0,
       status: payload.status ?? "unmatched",
     })
-    .select("id, txn_date, description, amount, status, linked_expense_id, created_at, reconciled_at, reconciled_by")
+    .select(
+      "id, txn_date, description, amount, status, linked_expense_id, created_at, reconciled_at, reconciled_by"
+    )
     .single();
   if (error || !row) throw new Error(error?.message ?? "Failed to create bank transaction.");
   return toBankTx(row as BankTransactionRow);
@@ -126,20 +132,34 @@ export async function updateBankTransaction(
     .from("bank_transactions")
     .update(updates)
     .eq("id", id)
-    .select("id, txn_date, description, amount, status, linked_expense_id, created_at, reconciled_at, reconciled_by")
+    .select(
+      "id, txn_date, description, amount, status, linked_expense_id, created_at, reconciled_at, reconciled_by"
+    )
     .single();
   if (error || !row) return null;
   return toBankTx(row as BankTransactionRow);
 }
 
-export async function linkBankTransactionToExpense(bankTxId: string, expenseId: string): Promise<boolean> {
+export async function linkBankTransactionToExpense(
+  bankTxId: string,
+  expenseId: string
+): Promise<boolean> {
   const c = client();
-  const { data: tx } = await c.from("bank_transactions").select("id, linked_expense_id").eq("id", bankTxId).maybeSingle();
+  const { data: tx } = await c
+    .from("bank_transactions")
+    .select("id, linked_expense_id")
+    .eq("id", bankTxId)
+    .maybeSingle();
   if (!tx || tx.linked_expense_id) return false;
   const now = new Date().toISOString().slice(0, 10);
   const { error } = await c
     .from("bank_transactions")
-    .update({ linked_expense_id: expenseId, status: "reconciled", reconciled_at: now, reconciled_by: "owner" })
+    .update({
+      linked_expense_id: expenseId,
+      status: "reconciled",
+      reconciled_at: now,
+      reconciled_by: "owner",
+    })
     .eq("id", bankTxId);
   if (error) return false;
   return true;
@@ -147,11 +167,20 @@ export async function linkBankTransactionToExpense(bankTxId: string, expenseId: 
 
 export async function unlinkBankTransaction(bankTxId: string): Promise<boolean> {
   const c = client();
-  const { data: tx } = await c.from("bank_transactions").select("id, linked_expense_id").eq("id", bankTxId).maybeSingle();
+  const { data: tx } = await c
+    .from("bank_transactions")
+    .select("id, linked_expense_id")
+    .eq("id", bankTxId)
+    .maybeSingle();
   if (!tx || !tx.linked_expense_id) return false;
   const { error } = await c
     .from("bank_transactions")
-    .update({ linked_expense_id: null, status: "unmatched", reconciled_at: null, reconciled_by: null })
+    .update({
+      linked_expense_id: null,
+      status: "unmatched",
+      reconciled_at: null,
+      reconciled_by: null,
+    })
     .eq("id", bankTxId);
   return !error;
 }

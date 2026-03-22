@@ -5,10 +5,7 @@ export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
     const projectId = url.searchParams.get("project_id") || undefined;
-    const [photos, projects] = await Promise.all([
-      getSitePhotos(projectId || null),
-      getProjects(),
-    ]);
+    const [photos, projects] = await Promise.all([getSitePhotos(projectId || null), getProjects()]);
     return NextResponse.json({
       ok: true as const,
       photos,
@@ -26,10 +23,16 @@ export async function POST(req: Request) {
     const project_id = body.project_id as string | undefined;
     const photo_url = (body.photo_url as string)?.trim();
     if (!project_id?.trim()) {
-      return NextResponse.json({ ok: false as const, message: "project_id is required." }, { status: 400 });
+      return NextResponse.json(
+        { ok: false as const, message: "project_id is required." },
+        { status: 400 }
+      );
     }
     if (!photo_url) {
-      return NextResponse.json({ ok: false as const, message: "photo_url is required." }, { status: 400 });
+      return NextResponse.json(
+        { ok: false as const, message: "photo_url is required." },
+        { status: 400 }
+      );
     }
     await createSitePhoto({
       project_id,

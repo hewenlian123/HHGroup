@@ -277,7 +277,9 @@ export default function SubcontractorsPage() {
           />
           <Select
             value={statusFilter}
-            onChange={(event) => setStatusFilter((event.target.value as "" | "active" | "inactive") ?? "")}
+            onChange={(event) =>
+              setStatusFilter((event.target.value as "" | "active" | "inactive") ?? "")
+            }
           >
             <option value="">All statuses</option>
             <option value="active">active</option>
@@ -287,7 +289,9 @@ export default function SubcontractorsPage() {
       </FilterBar>
 
       {message ? (
-        <p className="border-b border-[#EBEBE9] pb-3 text-sm text-muted-foreground dark:border-border">{message}</p>
+        <p className="border-b border-[#EBEBE9] pb-3 text-sm text-muted-foreground dark:border-border">
+          {message}
+        </p>
       ) : null}
 
       {editorOpen ? (
@@ -297,7 +301,9 @@ export default function SubcontractorsPage() {
               <p className="text-xs text-muted-foreground">Display Name</p>
               <Input
                 value={form.display_name}
-                onChange={(event) => setForm((prev) => ({ ...prev, display_name: event.target.value }))}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, display_name: event.target.value }))
+                }
                 placeholder="Required"
                 disabled={submitting}
               />
@@ -306,7 +312,9 @@ export default function SubcontractorsPage() {
               <p className="text-xs text-muted-foreground">Legal Name</p>
               <Input
                 value={form.legal_name}
-                onChange={(event) => setForm((prev) => ({ ...prev, legal_name: event.target.value }))}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, legal_name: event.target.value }))
+                }
                 placeholder="Optional"
                 disabled={submitting}
               />
@@ -315,7 +323,9 @@ export default function SubcontractorsPage() {
               <p className="text-xs text-muted-foreground">Contact Name</p>
               <Input
                 value={form.contact_name}
-                onChange={(event) => setForm((prev) => ({ ...prev, contact_name: event.target.value }))}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, contact_name: event.target.value }))
+                }
                 placeholder="Optional"
                 disabled={submitting}
               />
@@ -344,7 +354,9 @@ export default function SubcontractorsPage() {
                 <input
                   type="checkbox"
                   checked={form.w9_on_file}
-                  onChange={(event) => setForm((prev) => ({ ...prev, w9_on_file: event.target.checked }))}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, w9_on_file: event.target.checked }))
+                  }
                   disabled={submitting}
                 />
                 Yes
@@ -355,7 +367,9 @@ export default function SubcontractorsPage() {
               <Input
                 type="date"
                 value={form.insurance_expiration}
-                onChange={(event) => setForm((prev) => ({ ...prev, insurance_expiration: event.target.value }))}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, insurance_expiration: event.target.value }))
+                }
                 disabled={submitting}
               />
             </div>
@@ -363,7 +377,9 @@ export default function SubcontractorsPage() {
               <p className="text-xs text-muted-foreground">License Number</p>
               <Input
                 value={form.license_number}
-                onChange={(event) => setForm((prev) => ({ ...prev, license_number: event.target.value }))}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, license_number: event.target.value }))
+                }
                 placeholder="Optional"
                 disabled={submitting}
               />
@@ -372,17 +388,24 @@ export default function SubcontractorsPage() {
               <p className="text-xs text-muted-foreground">Tax ID Last 4</p>
               <Input
                 value={form.tax_id_last4}
-                onChange={(event) => setForm((prev) => ({ ...prev, tax_id_last4: event.target.value }))}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, tax_id_last4: event.target.value }))
+                }
                 placeholder="Optional"
                 disabled={submitting}
               />
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Status</p>
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                Status
+              </p>
               <Select
                 value={form.status}
                 onChange={(event) =>
-                  setForm((prev) => ({ ...prev, status: event.target.value === "inactive" ? "inactive" : "active" }))
+                  setForm((prev) => ({
+                    ...prev,
+                    status: event.target.value === "inactive" ? "inactive" : "active",
+                  }))
                 }
                 disabled={submitting}
               >
@@ -410,15 +433,24 @@ export default function SubcontractorsPage() {
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">City</p>
-              <Input value={form.city} onChange={(event) => setForm((prev) => ({ ...prev, city: event.target.value }))} />
+              <Input
+                value={form.city}
+                onChange={(event) => setForm((prev) => ({ ...prev, city: event.target.value }))}
+              />
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">State</p>
-              <Input value={form.state} onChange={(event) => setForm((prev) => ({ ...prev, state: event.target.value }))} />
+              <Input
+                value={form.state}
+                onChange={(event) => setForm((prev) => ({ ...prev, state: event.target.value }))}
+              />
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">ZIP</p>
-              <Input value={form.zip} onChange={(event) => setForm((prev) => ({ ...prev, zip: event.target.value }))} />
+              <Input
+                value={form.zip}
+                onChange={(event) => setForm((prev) => ({ ...prev, zip: event.target.value }))}
+              />
             </div>
             <div className="space-y-1 md:col-span-2">
               <p className="text-xs text-muted-foreground">Notes</p>
@@ -430,11 +462,21 @@ export default function SubcontractorsPage() {
             </div>
           </div>
           <div className="mt-4 flex flex-col-reverse justify-end gap-2 border-t border-[#EBEBE9] pt-3 sm:flex-row sm:items-center dark:border-border">
-            <Button variant="outline" size="sm" className="rounded-sm" onClick={closeEditor} disabled={submitting}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-sm"
+              onClick={closeEditor}
+              disabled={submitting}
+            >
               Cancel
             </Button>
             <Button size="sm" className="rounded-sm" onClick={handleSave} disabled={submitting}>
-              {submitting ? "Saving..." : editorMode === "create" ? "Create Subcontractor" : "Save Changes"}
+              {submitting
+                ? "Saving..."
+                : editorMode === "create"
+                  ? "Create Subcontractor"
+                  : "Save Changes"}
             </Button>
           </div>
         </section>
@@ -476,8 +518,12 @@ export default function SubcontractorsPage() {
                   <td className="px-4 py-3 text-muted-foreground">{row.contact_name || "—"}</td>
                   <td className="px-4 py-3 text-muted-foreground">{row.phone || "—"}</td>
                   <td className="px-4 py-3 text-muted-foreground">{row.email || "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{row.w9_on_file ? "On file" : "Missing"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{row.insurance_expiration || "—"}</td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {row.w9_on_file ? "On file" : "Missing"}
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {row.insurance_expiration || "—"}
+                  </td>
                   <td className="px-4 py-3">
                     <StatusBadge status={row.status} />
                   </td>

@@ -9,7 +9,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,7 +40,13 @@ type AddCategoryModalProps = {
   onCategoryCreated: (costCode: string, displayName: string) => void;
 };
 
-function AddCategoryModal({ open, onOpenChange, estimateId, categories, onCategoryCreated }: AddCategoryModalProps) {
+function AddCategoryModal({
+  open,
+  onOpenChange,
+  estimateId,
+  categories,
+  onCategoryCreated,
+}: AddCategoryModalProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [addCodeDraft, setAddCodeDraft] = React.useState("");
@@ -78,7 +90,8 @@ function AddCategoryModal({ open, onOpenChange, estimateId, categories, onCatego
     if (categories.has(code)) {
       toast({
         title: "Code already exists",
-        description: "This code is already used on this estimate. Change the code or use the generated value.",
+        description:
+          "This code is already used on this estimate. Change the code or use the generated value.",
         variant: "error",
       });
       return;
@@ -101,7 +114,16 @@ function AddCategoryModal({ open, onOpenChange, estimateId, categories, onCatego
     } finally {
       setAddSaving(false);
     }
-  }, [addCodeDraft, addNameDraft, categories, estimateId, onCategoryCreated, onOpenChange, router, toast]);
+  }, [
+    addCodeDraft,
+    addNameDraft,
+    categories,
+    estimateId,
+    onCategoryCreated,
+    onOpenChange,
+    router,
+    toast,
+  ]);
 
   return (
     <Dialog
@@ -114,7 +136,9 @@ function AddCategoryModal({ open, onOpenChange, estimateId, categories, onCatego
       <DialogContent className="gap-0 sm:max-w-md rounded-sm border-border/60 p-4 shadow-[var(--shadow-popover)]">
         <DialogHeader className="space-y-1 pb-3">
           <DialogTitle className="text-base">Add new category</DialogTitle>
-          <p className="text-xs text-muted-foreground">Creates a cost code and first line on this estimate.</p>
+          <p className="text-xs text-muted-foreground">
+            Creates a cost code and first line on this estimate.
+          </p>
         </DialogHeader>
         <div className="space-y-3 pb-4">
           <div className="space-y-1.5">
@@ -162,7 +186,13 @@ function AddCategoryModal({ open, onOpenChange, estimateId, categories, onCatego
           >
             Cancel
           </Button>
-          <Button type="button" size="sm" className="rounded-sm h-8" disabled={addSaving} onClick={() => void commitAddCategory()}>
+          <Button
+            type="button"
+            size="sm"
+            className="rounded-sm h-8"
+            disabled={addSaving}
+            onClick={() => void commitAddCategory()}
+          >
             {addSaving ? "Saving…" : "Save"}
           </Button>
         </DialogFooter>
@@ -230,7 +260,11 @@ export function CostCategoryTitleMenu({
         if (res.ok) {
           onMoved(newCode);
         } else {
-          toast({ title: "Could not move category", description: res.error ?? "Try again.", variant: "error" });
+          toast({
+            title: "Could not move category",
+            description: res.error ?? "Try again.",
+            variant: "error",
+          });
         }
       } finally {
         setMoving(false);
@@ -284,14 +318,19 @@ export function CostCategoryTitleMenu({
             onClick={(e) => e.stopPropagation()}
             aria-label="Category: open menu to change cost code"
           >
-            <span className="text-muted-foreground font-normal tabular-nums shrink-0">{currentCostCode}</span>
+            <span className="text-muted-foreground font-normal tabular-nums shrink-0">
+              {currentCostCode}
+            </span>
             <span className="text-muted-foreground/50 shrink-0" aria-hidden>
               –
             </span>
             <span className="truncate min-w-0">{displayName || currentCostCode}</span>
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="min-w-[16rem] max-h-72 overflow-y-auto rounded-md z-[120]">
+        <DropdownMenuContent
+          align="start"
+          className="min-w-[16rem] max-h-72 overflow-y-auto rounded-md z-[120]"
+        >
           {categoryOptions.map((o) => (
             <DropdownMenuItem
               key={o.code}
@@ -356,10 +395,22 @@ export function CostCategoryTitleMenu({
             />
           </div>
           <DialogFooter className="border-t-0 pt-0 sm:justify-end gap-2">
-            <Button type="button" variant="outline" size="sm" className="rounded-sm h-8" onClick={() => setRenameOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-sm h-8"
+              onClick={() => setRenameOpen(false)}
+            >
               Cancel
             </Button>
-            <Button type="button" size="sm" className="rounded-sm h-8" disabled={renameSaving} onClick={() => void commitRename()}>
+            <Button
+              type="button"
+              size="sm"
+              className="rounded-sm h-8"
+              disabled={renameSaving}
+              onClick={() => void commitRename()}
+            >
               {renameSaving ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>

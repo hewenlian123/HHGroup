@@ -30,7 +30,9 @@ export async function createAccountAction(
     }
     // If the DB/RLS allows anon inserts, proceed without a user session.
     // When signed in, we attach user_id for ownership.
-    const { data: { user } } = await supabase.auth.getUser().catch(() => ({ data: { user: null as any } }));
+    const {
+      data: { user },
+    } = await supabase.auth.getUser().catch(() => ({ data: { user: null as any } }));
     const name = (input.name ?? "").trim();
     if (!name) {
       return { error: "Account name is required." };
@@ -64,11 +66,22 @@ export async function createAccountAction(
   }
 }
 
-export async function getAccountsAction(): Promise<{ accounts: Array<{ id: string; name: string; type: string; lastFour: string | null; notes: string | null }>; error?: string }> {
+export async function getAccountsAction(): Promise<{
+  accounts: Array<{
+    id: string;
+    name: string;
+    type: string;
+    lastFour: string | null;
+    notes: string | null;
+  }>;
+  error?: string;
+}> {
   const supabase = (await createServerSupabaseClient()) ?? getServerSupabase();
   if (!supabase) return { accounts: [], error: "Supabase is not configured." };
   // user is optional; when present we can optionally scope admin results.
-  const { data: { user } } = await supabase.auth.getUser().catch(() => ({ data: { user: null as any } }));
+  const {
+    data: { user },
+  } = await supabase.auth.getUser().catch(() => ({ data: { user: null as any } }));
 
   // Prefer admin client (if configured) to avoid "old rows with null/mismatched user_id" disappearing.
   // We still scope results to the signed-in user when possible (user_id=user OR user_id is null).
@@ -124,9 +137,7 @@ export async function updateAccountAction(
   }
 }
 
-export async function deleteAccountAction(
-  id: string
-): Promise<{ ok: boolean; error?: string }> {
+export async function deleteAccountAction(id: string): Promise<{ ok: boolean; error?: string }> {
   try {
     const supabase = (await createServerSupabaseClient()) ?? getServerSupabase();
     if (!supabase) return { ok: false, error: "Supabase is not configured." };

@@ -3,7 +3,30 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { revalidateEstimatePaths } from "@/app/estimates/revalidate-estimate-paths";
-import { createNewVersionFromSnapshot, convertEstimateSnapshotToProject, convertEstimateToProjectWithSetup, addLineItem, createCustomEstimateCategory, createEstimateCategoryWithExplicitCode, updateEstimateCategoryDisplayName, setEstimateStatus, updateEstimateStatus, updateEstimateMeta, updateLineItem, duplicateLineItem, deleteLineItem, moveEstimateItemsToCostCode, reorderEstimateCategories, addPaymentMilestone, updatePaymentMilestone, deletePaymentMilestone, markPaymentMilestonePaid, reorderPaymentSchedule, createPaymentTemplate, applyPaymentTemplateToEstimate } from "@/lib/data";
+import {
+  createNewVersionFromSnapshot,
+  convertEstimateSnapshotToProject,
+  convertEstimateToProjectWithSetup,
+  addLineItem,
+  createCustomEstimateCategory,
+  createEstimateCategoryWithExplicitCode,
+  updateEstimateCategoryDisplayName,
+  setEstimateStatus,
+  updateEstimateStatus,
+  updateEstimateMeta,
+  updateLineItem,
+  duplicateLineItem,
+  deleteLineItem,
+  moveEstimateItemsToCostCode,
+  reorderEstimateCategories,
+  addPaymentMilestone,
+  updatePaymentMilestone,
+  deletePaymentMilestone,
+  markPaymentMilestonePaid,
+  reorderPaymentSchedule,
+  createPaymentTemplate,
+  applyPaymentTemplateToEstimate,
+} from "@/lib/data";
 
 export type EstimateStatus = "Draft" | "Sent" | "Approved" | "Rejected" | "Converted";
 
@@ -82,9 +105,13 @@ export async function changeEstimateStatusAction(formData: FormData) {
   const estimateId = formData.get("estimateId");
   const newStatus = formData.get("newStatus");
   const valid = ["Draft", "Sent", "Approved", "Rejected", "Converted"];
-  if (typeof estimateId !== "string" || typeof newStatus !== "string" || !valid.includes(newStatus)) return;
+  if (typeof estimateId !== "string" || typeof newStatus !== "string" || !valid.includes(newStatus))
+    return;
   try {
-    const ok = await updateEstimateStatus(estimateId, newStatus as "Draft" | "Sent" | "Approved" | "Rejected" | "Converted");
+    const ok = await updateEstimateStatus(
+      estimateId,
+      newStatus as "Draft" | "Sent" | "Approved" | "Rejected" | "Converted"
+    );
     if (!ok) return;
     revalidateEstimatePaths(estimateId);
     revalidatePath("/estimates");
@@ -96,7 +123,10 @@ export async function changeEstimateStatusAction(formData: FormData) {
 
 // ---- Inline UI actions (no redirect) ----
 
-export async function changeEstimateStatusInlineAction(estimateId: string, newStatus: EstimateStatus): Promise<{ ok: boolean; error?: string }> {
+export async function changeEstimateStatusInlineAction(
+  estimateId: string,
+  newStatus: EstimateStatus
+): Promise<{ ok: boolean; error?: string }> {
   try {
     const ok = await updateEstimateStatus(estimateId, newStatus);
     if (ok) {
@@ -109,7 +139,9 @@ export async function changeEstimateStatusInlineAction(estimateId: string, newSt
   }
 }
 
-export async function sendEstimateInlineAction(estimateId: string): Promise<{ ok: boolean; error?: string }> {
+export async function sendEstimateInlineAction(
+  estimateId: string
+): Promise<{ ok: boolean; error?: string }> {
   try {
     const ok = await setEstimateStatus(estimateId, "Sent");
     if (ok) {
@@ -122,7 +154,9 @@ export async function sendEstimateInlineAction(estimateId: string): Promise<{ ok
   }
 }
 
-export async function approveEstimateInlineAction(estimateId: string): Promise<{ ok: boolean; error?: string }> {
+export async function approveEstimateInlineAction(
+  estimateId: string
+): Promise<{ ok: boolean; error?: string }> {
   try {
     const ok = await setEstimateStatus(estimateId, "Approved");
     if (ok) {
@@ -135,7 +169,9 @@ export async function approveEstimateInlineAction(estimateId: string): Promise<{
   }
 }
 
-export async function rejectEstimateInlineAction(estimateId: string): Promise<{ ok: boolean; error?: string }> {
+export async function rejectEstimateInlineAction(
+  estimateId: string
+): Promise<{ ok: boolean; error?: string }> {
   try {
     const ok = await setEstimateStatus(estimateId, "Rejected");
     if (ok) {
@@ -148,7 +184,9 @@ export async function rejectEstimateInlineAction(estimateId: string): Promise<{ 
   }
 }
 
-export async function convertToProjectInlineAction(estimateId: string): Promise<{ ok: boolean; projectId?: string; error?: string }> {
+export async function convertToProjectInlineAction(
+  estimateId: string
+): Promise<{ ok: boolean; projectId?: string; error?: string }> {
   try {
     const record = await convertEstimateSnapshotToProject(estimateId);
     if (record) {
@@ -164,7 +202,9 @@ export async function convertToProjectInlineAction(estimateId: string): Promise<
 }
 
 /** Convert with setup form payload. Returns { ok, projectId } on success so client can redirect; does not redirect. */
-export async function convertToProjectWithSetupAction(formData: FormData): Promise<{ ok: boolean; projectId?: string; error?: string }> {
+export async function convertToProjectWithSetupAction(
+  formData: FormData
+): Promise<{ ok: boolean; projectId?: string; error?: string }> {
   const estimateId = formData.get("estimateId");
   if (typeof estimateId !== "string") return { ok: false, error: "Missing estimate" };
   try {
@@ -190,7 +230,9 @@ export async function convertToProjectWithSetupAction(formData: FormData): Promi
   }
 }
 
-export async function saveEstimateMetaInlineAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+export async function saveEstimateMetaInlineAction(
+  formData: FormData
+): Promise<{ ok: boolean; error?: string }> {
   const estimateId = formData.get("estimateId");
   if (typeof estimateId !== "string") return { ok: false, error: "缺少报价 ID" };
   try {
@@ -206,12 +248,20 @@ export async function saveEstimateMetaInlineAction(formData: FormData): Promise<
     const salesPerson = (formData.get("salesPerson") as string)?.trim();
     const markupNum = markupPct != null && markupPct !== "" ? Number(markupPct) / 100 : undefined;
     const ok = await updateEstimateMeta(estimateId, {
-      ...(clientName != null ? { client: { name: clientName, ...(address != null ? { address } : {}) } } : {}),
-      ...(projectName != null ? { project: { name: projectName, ...(address != null ? { siteAddress: address } : {}) } } : {}),
-      ...(address != null && clientName == null && projectName == null ? { client: { address }, project: { siteAddress: address } } : {}),
+      ...(clientName != null
+        ? { client: { name: clientName, ...(address != null ? { address } : {}) } }
+        : {}),
+      ...(projectName != null
+        ? { project: { name: projectName, ...(address != null ? { siteAddress: address } : {}) } }
+        : {}),
+      ...(address != null && clientName == null && projectName == null
+        ? { client: { address }, project: { siteAddress: address } }
+        : {}),
       ...(tax != null && tax !== "" ? { tax: Number(tax) || 0 } : {}),
       ...(discount != null && discount !== "" ? { discount: Number(discount) || 0 } : {}),
-      ...(markupNum != null && !Number.isNaN(markupNum) ? { overheadPct: markupNum / 2, profitPct: markupNum / 2 } : {}),
+      ...(markupNum != null && !Number.isNaN(markupNum)
+        ? { overheadPct: markupNum / 2, profitPct: markupNum / 2 }
+        : {}),
       ...(estimateDate != null ? { estimateDate: estimateDate || undefined } : {}),
       ...(validUntil != null ? { validUntil: validUntil || undefined } : {}),
       ...(notes != null ? { notes: notes || undefined } : {}),
@@ -262,7 +312,9 @@ export async function updatePaymentMilestoneAction(formData: FormData) {
   try {
     await updatePaymentMilestone(estimateId, itemId, {
       ...(title != null ? { title } : {}),
-      ...(amountType === "percent" || amountType === "fixed" ? { amountType: amountType as "percent" | "fixed" } : {}),
+      ...(amountType === "percent" || amountType === "fixed"
+        ? { amountType: amountType as "percent" | "fixed" }
+        : {}),
       ...(value != null && value !== "" ? { value: Number(value) } : {}),
       ...(dueRule != null ? { dueRule } : {}),
       ...(dueDate !== undefined ? { dueDate } : {}),
@@ -375,7 +427,9 @@ export async function addLineItemAction(formData: FormData) {
     });
     if (!item) return;
     if (categoryDisplayName) {
-      await updateEstimateMeta(estimateId, { costCategoryNames: { [costCode]: categoryDisplayName } });
+      await updateEstimateMeta(estimateId, {
+        costCategoryNames: { [costCode]: categoryDisplayName },
+      });
     }
     revalidateEstimatePaths(estimateId);
     redirect(`/estimates/${estimateId}`);
@@ -401,7 +455,9 @@ export async function addLineItemCatalogInlineAction(
     });
     if (!item) return { ok: false, error: "Could not add line item." };
     if (categoryDisplayName.trim()) {
-      await updateEstimateMeta(estimateId, { costCategoryNames: { [costCode]: categoryDisplayName.trim() } });
+      await updateEstimateMeta(estimateId, {
+        costCategoryNames: { [costCode]: categoryDisplayName.trim() },
+      });
     }
     revalidateEstimatePaths(estimateId);
     revalidatePath("/estimates");
@@ -475,10 +531,13 @@ export async function updateLineItemAction(formData: FormData) {
 }
 
 /** Same payload as update line item form, without redirect — for client-driven saves (e.g. description modal). */
-export async function updateLineItemInlineAction(formData: FormData): Promise<{ ok: boolean; error?: string }> {
+export async function updateLineItemInlineAction(
+  formData: FormData
+): Promise<{ ok: boolean; error?: string }> {
   const estimateId = formData.get("estimateId");
   const itemId = formData.get("itemId");
-  if (typeof estimateId !== "string" || typeof itemId !== "string") return { ok: false, error: "Missing estimate or item id" };
+  if (typeof estimateId !== "string" || typeof itemId !== "string")
+    return { ok: false, error: "Missing estimate or item id" };
   try {
     const desc = formData.get("desc") as string | null;
     const qty = formData.get("qty");
@@ -545,12 +604,20 @@ export async function saveEstimateMetaAction(formData: FormData) {
     const salesPerson = (formData.get("salesPerson") as string)?.trim();
     const markupNum = markupPct != null && markupPct !== "" ? Number(markupPct) / 100 : undefined;
     const ok = await updateEstimateMeta(estimateId, {
-      ...(clientName != null ? { client: { name: clientName, ...(address != null ? { address } : {}) } } : {}),
-      ...(projectName != null ? { project: { name: projectName, ...(address != null ? { siteAddress: address } : {}) } } : {}),
-      ...(address != null && clientName == null && projectName == null ? { client: { address }, project: { siteAddress: address } } : {}),
+      ...(clientName != null
+        ? { client: { name: clientName, ...(address != null ? { address } : {}) } }
+        : {}),
+      ...(projectName != null
+        ? { project: { name: projectName, ...(address != null ? { siteAddress: address } : {}) } }
+        : {}),
+      ...(address != null && clientName == null && projectName == null
+        ? { client: { address }, project: { siteAddress: address } }
+        : {}),
       ...(tax != null && tax !== "" ? { tax: Number(tax) || 0 } : {}),
       ...(discount != null && discount !== "" ? { discount: Number(discount) || 0 } : {}),
-      ...(markupNum != null && !Number.isNaN(markupNum) ? { overheadPct: markupNum / 2, profitPct: markupNum / 2 } : {}),
+      ...(markupNum != null && !Number.isNaN(markupNum)
+        ? { overheadPct: markupNum / 2, profitPct: markupNum / 2 }
+        : {}),
       ...(estimateDate != null ? { estimateDate: estimateDate || undefined } : {}),
       ...(validUntil != null ? { validUntil: validUntil || undefined } : {}),
       ...(notes != null ? { notes: notes || undefined } : {}),
@@ -624,7 +691,9 @@ export async function saveCostCategoryNameInlineAction(
     const ok = await updateEstimateCategoryDisplayName(estimateId, costCode, trimmed);
     if (!ok) {
       // Fallback: legacy path in case direct category upsert fails in some environments.
-      const legacyOk = await updateEstimateMeta(estimateId, { costCategoryNames: { [costCode]: trimmed } });
+      const legacyOk = await updateEstimateMeta(estimateId, {
+        costCategoryNames: { [costCode]: trimmed },
+      });
       if (!legacyOk) return { ok: false, error: "Could not save category name." };
     }
     revalidateEstimatePaths(estimateId);

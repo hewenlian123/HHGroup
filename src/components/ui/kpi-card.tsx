@@ -19,8 +19,17 @@ export function KpiCard({
     <Card className={cn("min-h-[100px] p-[22px]", emphasis && "border-foreground/15", className)}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
-          <p className={cn("mt-2 text-2xl font-semibold leading-tight tabular-nums text-foreground", emphasis && "text-3xl")}>{value}</p>
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            {label}
+          </p>
+          <p
+            className={cn(
+              "mt-2 text-2xl font-semibold leading-tight tabular-nums text-foreground",
+              emphasis && "text-3xl"
+            )}
+          >
+            {value}
+          </p>
         </div>
         {Icon ? (
           <div className="rounded-md border border-border/60 bg-muted/20 p-2">

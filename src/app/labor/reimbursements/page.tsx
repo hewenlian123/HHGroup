@@ -51,7 +51,10 @@ export default function WorkerReimbursementsPage() {
   const [query, setQuery] = React.useState("");
   const [page, setPage] = React.useState(1);
   const pageSize = 10;
-  const [sort, setSort] = React.useState<{ key: "createdAt" | "amount" | "status"; dir: "asc" | "desc" }>({
+  const [sort, setSort] = React.useState<{
+    key: "createdAt" | "amount" | "status";
+    dir: "asc" | "desc";
+  }>({
     key: "createdAt",
     dir: "desc",
   });
@@ -123,14 +126,19 @@ export default function WorkerReimbursementsPage() {
     const q = query.trim().toLowerCase();
     const base = q
       ? rows.filter((r) => {
-          const worker = (r.workerName ?? workerById.get(r.workerId) ?? r.workerId) ?? "";
-          const project = r.projectName ?? (r.projectId ? projectById.get(r.projectId) ?? r.projectId : "") ?? "";
+          const worker = r.workerName ?? workerById.get(r.workerId) ?? r.workerId ?? "";
+          const project =
+            r.projectName ??
+            (r.projectId ? (projectById.get(r.projectId) ?? r.projectId) : "") ??
+            "";
           const vendor = (r.vendor ?? "").toLowerCase();
           return (
             worker.toLowerCase().includes(q) ||
             project.toLowerCase().includes(q) ||
             vendor.includes(q) ||
-            String(r.amount ?? "").toLowerCase().includes(q) ||
+            String(r.amount ?? "")
+              .toLowerCase()
+              .includes(q) ||
             (r.description ?? "").toLowerCase().includes(q) ||
             (r.receiptUrl ?? "").toLowerCase().includes(q) ||
             (r.status ?? "").toLowerCase().includes(q)
@@ -141,7 +149,8 @@ export default function WorkerReimbursementsPage() {
     const dir = sort.dir === "asc" ? 1 : -1;
     const sorted = [...base].sort((a, b) => {
       if (sort.key === "amount") return ((a.amount ?? 0) - (b.amount ?? 0)) * dir;
-      if (sort.key === "status") return (String(a.status).localeCompare(String(b.status)) || 0) * dir;
+      if (sort.key === "status")
+        return (String(a.status).localeCompare(String(b.status)) || 0) * dir;
       return (String(a.createdAt).localeCompare(String(b.createdAt)) || 0) * dir;
     });
     return sorted;
@@ -309,7 +318,9 @@ export default function WorkerReimbursementsPage() {
   };
 
   const toggleSort = (key: "createdAt" | "amount" | "status") => {
-    setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
+    setSort((s) =>
+      s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }
+    );
   };
 
   const pendingOnPage = React.useMemo(() => paged.filter((r) => r.status === "pending"), [paged]);
@@ -339,8 +350,7 @@ export default function WorkerReimbursementsPage() {
     [filtered, selectedIds]
   );
   const selectedSameWorker =
-    selectedRows.length <= 1 ||
-    selectedRows.every((r) => r.workerId === selectedRows[0].workerId);
+    selectedRows.length <= 1 || selectedRows.every((r) => r.workerId === selectedRows[0].workerId);
   const openCreateWorkerPayment = () => {
     if (selectedRows.length === 0 || !selectedSameWorker) return;
     const workerId = selectedRows[0].workerId;
@@ -384,9 +394,10 @@ export default function WorkerReimbursementsPage() {
 
   const isPdfReceipt = viewReceiptUrl != null && viewReceiptUrl.toLowerCase().endsWith(".pdf");
 
-  const workerName = (r: WorkerReimbursement) => r.workerName ?? workerById.get(r.workerId) ?? r.workerId;
+  const workerName = (r: WorkerReimbursement) =>
+    r.workerName ?? workerById.get(r.workerId) ?? r.workerId;
   const projectName = (r: WorkerReimbursement) =>
-    r.projectName ?? (r.projectId ? projectById.get(r.projectId) ?? r.projectId : null) ?? "—";
+    r.projectName ?? (r.projectId ? (projectById.get(r.projectId) ?? r.projectId) : null) ?? "—";
 
   function ActionsDropdown({ r }: { r: WorkerReimbursement }) {
     const isBusy = busyId === r.id;
@@ -395,7 +406,12 @@ export default function WorkerReimbursementsPage() {
         <DeleteRowAction disabled={isBusy} onDelete={() => handleDelete(r.id)} />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 min-h-[44px] min-w-[44px] rounded-sm touch-manipulation" aria-label="Actions">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 min-h-[44px] min-w-[44px] rounded-sm touch-manipulation"
+              aria-label="Actions"
+            >
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
@@ -412,7 +428,10 @@ export default function WorkerReimbursementsPage() {
                 )}
                 <DropdownMenuItem onSelect={() => handleEdit(r)}>Edit</DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={() => handleDelete(r.id)}>
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onSelect={() => handleDelete(r.id)}
+                >
                   Delete
                 </DropdownMenuItem>
               </>
@@ -430,16 +449,32 @@ export default function WorkerReimbursementsPage() {
         subtitle="Construction finance: approve, pay, and track worker reimbursements."
         actions={
           <>
-            <Link href="/financial/workers" className="mr-2 text-sm text-muted-foreground hover:text-foreground">
+            <Link
+              href="/financial/workers"
+              className="mr-2 text-sm text-muted-foreground hover:text-foreground"
+            >
               Worker Balances
             </Link>
-            <Link href="/labor/receipts" className="mr-2 text-sm text-muted-foreground hover:text-foreground">
+            <Link
+              href="/labor/receipts"
+              className="mr-2 text-sm text-muted-foreground hover:text-foreground"
+            >
               Receipt Uploads
             </Link>
-            <Link href="/labor" className="mr-2 text-sm text-muted-foreground hover:text-foreground">
+            <Link
+              href="/labor"
+              className="mr-2 text-sm text-muted-foreground hover:text-foreground"
+            >
               Labor
             </Link>
-            <Button size="sm" className="w-full sm:w-auto" onClick={() => { setEditingId(null); setShowForm(true); }}>
+            <Button
+              size="sm"
+              className="w-full sm:w-auto"
+              onClick={() => {
+                setEditingId(null);
+                setShowForm(true);
+              }}
+            >
               + New Reimbursement
             </Button>
           </>
@@ -447,13 +482,16 @@ export default function WorkerReimbursementsPage() {
       />
       {schemaWarning ? (
         <div className="rounded-lg border border-amber-200/80 bg-background px-3 py-2 text-sm text-amber-700 dark:border-amber-900/40 dark:text-amber-500">
-          {schemaWarning} Run Labor schema migration (e.g. ensure labor tables) or check Supabase Project Settings → API → Reload schema.
+          {schemaWarning} Run Labor schema migration (e.g. ensure labor tables) or check Supabase
+          Project Settings → API → Reload schema.
         </div>
       ) : null}
       <FilterBar>
         <div className="flex w-full flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
           <div className="space-y-1 min-w-[200px] flex-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Search</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Search
+            </p>
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -484,7 +522,9 @@ export default function WorkerReimbursementsPage() {
           </h2>
           <form onSubmit={handleSubmit} className="flex flex-wrap gap-3 items-end">
             <div>
-              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-[0.2em] block mb-1">Worker</label>
+              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-[0.2em] block mb-1">
+                Worker
+              </label>
               <Select
                 value={form.workerId}
                 onChange={(e) => setForm((f) => ({ ...f, workerId: e.target.value }))}
@@ -493,12 +533,16 @@ export default function WorkerReimbursementsPage() {
               >
                 <option value="">Select worker</option>
                 {workers.map((w) => (
-                  <option key={w.id} value={w.id}>{w.name}</option>
+                  <option key={w.id} value={w.id}>
+                    {w.name}
+                  </option>
                 ))}
               </Select>
             </div>
             <div>
-              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-[0.2em] block mb-1">Project</label>
+              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-[0.2em] block mb-1">
+                Project
+              </label>
               <Select
                 value={form.projectId ?? ""}
                 onChange={(e) => setForm((f) => ({ ...f, projectId: e.target.value }))}
@@ -507,12 +551,16 @@ export default function WorkerReimbursementsPage() {
               >
                 <option value="">—</option>
                 {projects.map((p) => (
-                  <option key={p.id} value={String(p.id)}>{p.name ?? p.id}</option>
+                  <option key={p.id} value={String(p.id)}>
+                    {p.name ?? p.id}
+                  </option>
                 ))}
               </Select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">Vendor</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">
+                Vendor
+              </label>
               <Input
                 type="text"
                 value={form.vendor}
@@ -522,7 +570,9 @@ export default function WorkerReimbursementsPage() {
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">Amount</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">
+                Amount
+              </label>
               <Input
                 type="number"
                 min="0"
@@ -533,7 +583,9 @@ export default function WorkerReimbursementsPage() {
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">Receipt URL</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">
+                Receipt URL
+              </label>
               <Input
                 type="text"
                 value={form.receiptUrl}
@@ -543,7 +595,9 @@ export default function WorkerReimbursementsPage() {
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">Description</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">
+                Description
+              </label>
               <Input
                 type="text"
                 value={form.description}
@@ -553,19 +607,29 @@ export default function WorkerReimbursementsPage() {
               />
             </div>
             <div>
-              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-[0.2em] block mb-1">Status</label>
+              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-[0.2em] block mb-1">
+                Status
+              </label>
               <Select
                 value={form.status}
-                onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as WorkerReimbursementStatus }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, status: e.target.value as WorkerReimbursementStatus }))
+                }
                 className="min-w-[100px]"
               >
                 {STATUS_OPTIONS.map((s) => (
-                  <option key={s} value={s}>{s}</option>
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
                 ))}
               </Select>
             </div>
-            <Button type="submit" size="sm">Save</Button>
-            <Button type="button" variant="outline" size="sm" onClick={resetForm}>Cancel</Button>
+            <Button type="submit" size="sm">
+              Save
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={resetForm}>
+              Cancel
+            </Button>
           </form>
         </div>
       )}
@@ -578,7 +642,10 @@ export default function WorkerReimbursementsPage() {
           <p className="py-6 text-center text-muted-foreground text-xs">No reimbursements yet.</p>
         ) : (
           paged.map((r) => (
-            <div key={r.id} className="rounded-sm border border-[#EBEBE9] p-3 space-y-2 dark:border-border/60">
+            <div
+              key={r.id}
+              className="rounded-sm border border-[#EBEBE9] p-3 space-y-2 dark:border-border/60"
+            >
               <div className="flex justify-between items-start gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   {r.status === "pending" ? (
@@ -592,10 +659,16 @@ export default function WorkerReimbursementsPage() {
                   ) : null}
                   <span className="font-medium truncate">{workerName(r)}</span>
                 </div>
-                <span className="text-muted-foreground text-xs shrink-0">{(r.createdAt ?? "").slice(0, 10)}</span>
+                <span className="text-muted-foreground text-xs shrink-0">
+                  {(r.createdAt ?? "").slice(0, 10)}
+                </span>
               </div>
-              <p className="text-sm text-muted-foreground">{projectName(r)} · {(r.vendor ?? "—")}</p>
-              <p className="text-sm font-medium">${fmtUsd(r.amount)} · {r.status}</p>
+              <p className="text-sm text-muted-foreground">
+                {projectName(r)} · {r.vendor ?? "—"}
+              </p>
+              <p className="text-sm font-medium">
+                ${fmtUsd(r.amount)} · {r.status}
+              </p>
               <div className="flex justify-end pt-2">
                 <ActionsDropdown r={r} />
               </div>
@@ -613,30 +686,61 @@ export default function WorkerReimbursementsPage() {
                 <input
                   type="checkbox"
                   aria-label="Select all pending on page"
-                  checked={pendingOnPage.length > 0 && pendingOnPage.every((r) => selectedIds.has(r.id))}
+                  checked={
+                    pendingOnPage.length > 0 && pendingOnPage.every((r) => selectedIds.has(r.id))
+                  }
                   onChange={selectAllPendingOnPage}
                   className="h-4 w-4 rounded border-input"
                 />
               </th>
-              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Worker</th>
-              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Project</th>
-              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Vendor</th>
-              <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground tabular-nums cursor-pointer select-none" onClick={() => toggleSort("amount")}>Amount</th>
-              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground cursor-pointer select-none" onClick={() => toggleSort("status")}>Status</th>
-              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Receipt</th>
+              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Worker
+              </th>
+              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Project
+              </th>
+              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Vendor
+              </th>
+              <th
+                className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground tabular-nums cursor-pointer select-none"
+                onClick={() => toggleSort("amount")}
+              >
+                Amount
+              </th>
+              <th
+                className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground cursor-pointer select-none"
+                onClick={() => toggleSort("status")}
+              >
+                Status
+              </th>
+              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Receipt
+              </th>
               <th className="w-44 text-right py-2 px-3">Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr className="border-b border-border/40"><td colSpan={8} className="py-6 px-3 text-center text-muted-foreground text-xs">Loading…</td></tr>
+              <tr className="border-b border-border/40">
+                <td colSpan={8} className="py-6 px-3 text-center text-muted-foreground text-xs">
+                  Loading…
+                </td>
+              </tr>
             ) : paged.length === 0 ? (
-              <tr className="border-b border-border/40"><td colSpan={8} className="py-6 px-3 text-center text-muted-foreground text-xs">No reimbursements yet.</td></tr>
+              <tr className="border-b border-border/40">
+                <td colSpan={8} className="py-6 px-3 text-center text-muted-foreground text-xs">
+                  No reimbursements yet.
+                </td>
+              </tr>
             ) : (
               paged.map((r) => (
                 <tr
                   key={r.id}
-                  className={cn(listTableRowClassName, "group border-b border-[#EBEBE9]/80 dark:border-border/40")}
+                  className={cn(
+                    listTableRowClassName,
+                    "group border-b border-[#EBEBE9]/80 dark:border-border/40"
+                  )}
                   onClick={() => handleEdit(r)}
                 >
                   <td className="w-10 py-2 px-2 text-center" onClick={(e) => e.stopPropagation()}>
@@ -652,14 +756,40 @@ export default function WorkerReimbursementsPage() {
                       <span className="text-muted-foreground">—</span>
                     )}
                   </td>
-                  <td className={cn("py-2 px-3 font-medium", listTablePrimaryCellClassName, "hover:underline")}>{workerName(r)}</td>
+                  <td
+                    className={cn(
+                      "py-2 px-3 font-medium",
+                      listTablePrimaryCellClassName,
+                      "hover:underline"
+                    )}
+                  >
+                    {workerName(r)}
+                  </td>
                   <td className="py-2 px-3 text-muted-foreground">{projectName(r)}</td>
-                  <td className="py-2 px-3 text-muted-foreground max-w-[120px] truncate" title={r.vendor ?? undefined}>{r.vendor ?? "—"}</td>
-                  <td className={cn("py-2 px-3 text-right tabular-nums font-medium", listTableAmountCellClassName)}>${fmtUsd(r.amount)}</td>
+                  <td
+                    className="py-2 px-3 text-muted-foreground max-w-[120px] truncate"
+                    title={r.vendor ?? undefined}
+                  >
+                    {r.vendor ?? "—"}
+                  </td>
+                  <td
+                    className={cn(
+                      "py-2 px-3 text-right tabular-nums font-medium",
+                      listTableAmountCellClassName
+                    )}
+                  >
+                    ${fmtUsd(r.amount)}
+                  </td>
                   <td className="py-2 px-3 text-muted-foreground">{r.status}</td>
                   <td className="py-2 px-3" onClick={(e) => e.stopPropagation()}>
                     {r.receiptUrl ? (
-                      <button type="button" onClick={() => setViewReceiptUrl(r.receiptUrl)} className="text-primary hover:underline text-xs">View</button>
+                      <button
+                        type="button"
+                        onClick={() => setViewReceiptUrl(r.receiptUrl)}
+                        className="text-primary hover:underline text-xs"
+                      >
+                        View
+                      </button>
                     ) : (
                       <span className="text-muted-foreground">—</span>
                     )}
@@ -676,24 +806,52 @@ export default function WorkerReimbursementsPage() {
 
       <div className="flex items-center justify-between pt-3 text-sm text-muted-foreground">
         <span className="tabular-nums">
-          {filtered.length === 0 ? "0" : `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, filtered.length)} of ${filtered.length}`}
+          {filtered.length === 0
+            ? "0"
+            : `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, filtered.length)} of ${filtered.length}`}
         </span>
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" className="h-8 rounded-sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Prev</Button>
-          <Button size="sm" variant="outline" className="h-8 rounded-sm" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 rounded-sm"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            Prev
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 rounded-sm"
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          >
+            Next
+          </Button>
         </div>
       </div>
 
       {/* Receipt preview modal */}
       <Dialog open={!!viewReceiptUrl} onOpenChange={(open) => !open && setViewReceiptUrl(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh] p-2 flex flex-col">
-          <DialogHeader className="sr-only"><DialogTitle>Receipt</DialogTitle></DialogHeader>
+          <DialogHeader className="sr-only">
+            <DialogTitle>Receipt</DialogTitle>
+          </DialogHeader>
           {viewReceiptUrl && (
             <div className="flex-1 min-h-0 overflow-auto flex items-center justify-center bg-background border-t border-[#EBEBE9] dark:border-border/60">
               {isPdfReceipt ? (
-                <iframe src={viewReceiptUrl} title="Receipt" className="w-full min-h-[70vh] border-0 rounded-sm" />
+                <iframe
+                  src={viewReceiptUrl}
+                  title="Receipt"
+                  className="w-full min-h-[70vh] border-0 rounded-sm"
+                />
               ) : (
-                <img src={viewReceiptUrl} alt="Receipt" className="max-w-full max-h-[85vh] object-contain" />
+                <img
+                  src={viewReceiptUrl}
+                  alt="Receipt"
+                  className="max-w-full max-h-[85vh] object-contain"
+                />
               )}
             </div>
           )}
@@ -701,7 +859,10 @@ export default function WorkerReimbursementsPage() {
       </Dialog>
 
       {/* Create Worker Payment (batch) modal */}
-      <Dialog open={!!batchPaymentModal} onOpenChange={(open) => !open && setBatchPaymentModal(null)}>
+      <Dialog
+        open={!!batchPaymentModal}
+        onOpenChange={(open) => !open && setBatchPaymentModal(null)}
+      >
         <DialogContent className="max-w-md gap-3">
           <DialogHeader>
             <DialogTitle>Create Worker Payment</DialogTitle>
@@ -709,26 +870,38 @@ export default function WorkerReimbursementsPage() {
           {batchPaymentModal && (
             <form onSubmit={handleBatchPayment} className="flex flex-col gap-3">
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">Worker</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">
+                  Worker
+                </label>
                 <p className="text-sm font-medium">{batchPaymentModal.workerName}</p>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">Reimbursements</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">
+                  Reimbursements
+                </label>
                 <ul className="text-sm border border-border/60 rounded-sm divide-y divide-border/60 max-h-40 overflow-auto">
                   {batchPaymentModal.items.map((r) => (
                     <li key={r.id} className="py-2 px-3 flex justify-between gap-2">
-                      <span className="truncate">{projectName(r)} · {(r.vendor ?? "—")}</span>
+                      <span className="truncate">
+                        {projectName(r)} · {r.vendor ?? "—"}
+                      </span>
                       <span className="tabular-nums shrink-0">${fmtUsd(r.amount)}</span>
                     </li>
                   ))}
                 </ul>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">Total</label>
-                <p className="text-sm font-semibold tabular-nums">${fmtUsd(batchPaymentModal.totalAmount)}</p>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">
+                  Total
+                </label>
+                <p className="text-sm font-semibold tabular-nums">
+                  ${fmtUsd(batchPaymentModal.totalAmount)}
+                </p>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">Payment Method</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">
+                  Payment Method
+                </label>
                 <Input
                   type="text"
                   value={batchPayMethod}
@@ -738,7 +911,9 @@ export default function WorkerReimbursementsPage() {
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">Note</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">
+                  Note
+                </label>
                 <Input
                   type="text"
                   value={batchPayNote}
@@ -748,10 +923,21 @@ export default function WorkerReimbursementsPage() {
                 />
               </div>
               <div className="flex gap-2 justify-end pt-2">
-                <Button type="button" variant="outline" size="sm" className="h-9 rounded-sm" onClick={() => setBatchPaymentModal(null)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-9 rounded-sm"
+                  onClick={() => setBatchPaymentModal(null)}
+                >
                   Cancel
                 </Button>
-                <Button type="submit" size="sm" className="h-9 rounded-sm" disabled={batchPaySubmitting}>
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="h-9 rounded-sm"
+                  disabled={batchPaySubmitting}
+                >
                   {batchPaySubmitting ? "…" : "Confirm Payment"}
                 </Button>
               </div>
@@ -766,26 +952,55 @@ export default function WorkerReimbursementsPage() {
           <DialogHeader>
             <DialogTitle>Mark as Paid</DialogTitle>
             <p className="text-xs text-muted-foreground font-normal mt-1">
-              This will mark the reimbursement as paid and add it to Project Expenses (category: Worker Reimbursement).
+              This will mark the reimbursement as paid and add it to Project Expenses (category:
+              Worker Reimbursement).
             </p>
           </DialogHeader>
           <form onSubmit={handlePay} className="flex flex-col gap-3">
             {payError && <p className="text-sm text-destructive">{payError}</p>}
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">Amount</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">
+                Amount
+              </label>
               <p className="text-sm font-medium tabular-nums">${payAmount}</p>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">Payment Method</label>
-              <Input type="text" value={payMethod} onChange={(e) => setPayMethod(e.target.value)} placeholder="e.g. Check, ACH" className="h-9 rounded-sm" />
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">
+                Payment Method
+              </label>
+              <Input
+                type="text"
+                value={payMethod}
+                onChange={(e) => setPayMethod(e.target.value)}
+                placeholder="e.g. Check, ACH"
+                className="h-9 rounded-sm"
+              />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">Note</label>
-              <Input type="text" value={payNote} onChange={(e) => setPayNote(e.target.value)} placeholder="Optional" className="h-9 rounded-sm" />
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">
+                Note
+              </label>
+              <Input
+                type="text"
+                value={payNote}
+                onChange={(e) => setPayNote(e.target.value)}
+                placeholder="Optional"
+                className="h-9 rounded-sm"
+              />
             </div>
             <div className="flex gap-2 justify-end pt-2">
-              <Button type="button" variant="outline" size="sm" className="h-9 rounded-sm" onClick={() => setPayModal(null)}>Cancel</Button>
-              <Button type="submit" size="sm" className="h-9 rounded-sm">Mark as Paid</Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9 rounded-sm"
+                onClick={() => setPayModal(null)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" size="sm" className="h-9 rounded-sm">
+                Mark as Paid
+              </Button>
             </div>
           </form>
         </DialogContent>

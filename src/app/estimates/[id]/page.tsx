@@ -1,5 +1,14 @@
 import { redirect } from "next/navigation";
-import { getEstimateById, getEstimateMeta, getEstimateItems, getEstimateCategories, getEstimateSummary, getCostCodes, getPaymentSchedule, listPaymentTemplates } from "@/lib/data";
+import {
+  getEstimateById,
+  getEstimateMeta,
+  getEstimateItems,
+  getEstimateCategories,
+  getEstimateSummary,
+  getCostCodes,
+  getPaymentSchedule,
+  listPaymentTemplates,
+} from "@/lib/data";
 import { EstimateDetailClient } from "./estimate-detail-client";
 import { EstimateSuccessBanner } from "./estimate-success-banner";
 
@@ -14,16 +23,17 @@ export default async function EstimateDetailPage({
 }) {
   const { id } = await params;
   const { created, saved } = await searchParams;
-  const [estimate, meta, items, categories, summary, costCodes, paymentSchedule, paymentTemplates] = await Promise.all([
-    getEstimateById(id),
-    getEstimateMeta(id),
-    getEstimateItems(id),
-    getEstimateCategories(id),
-    getEstimateSummary(id),
-    getCostCodes(),
-    getPaymentSchedule(id),
-    listPaymentTemplates(),
-  ]);
+  const [estimate, meta, items, categories, summary, costCodes, paymentSchedule, paymentTemplates] =
+    await Promise.all([
+      getEstimateById(id),
+      getEstimateMeta(id),
+      getEstimateItems(id),
+      getEstimateCategories(id),
+      getEstimateSummary(id),
+      getCostCodes(),
+      getPaymentSchedule(id),
+      listPaymentTemplates(),
+    ]);
 
   if (!estimate || !meta) redirect("/estimates");
 

@@ -74,7 +74,9 @@ export function ProjectsListClient({
   const [query, setQuery] = React.useState("");
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
   const [deleteBlockedOpen, setDeleteBlockedOpen] = React.useState(false);
-  const [deleteBlockedCounts, setDeleteBlockedCounts] = React.useState<DeleteBlockedCounts | null>(null);
+  const [deleteBlockedCounts, setDeleteBlockedCounts] = React.useState<DeleteBlockedCounts | null>(
+    null
+  );
   const [deleteBlockedProjectId, setDeleteBlockedProjectId] = React.useState<string | null>(null);
   const [forceDeleteInProgress, setForceDeleteInProgress] = React.useState(false);
 
@@ -176,7 +178,11 @@ export function ProjectsListClient({
                   view === v ? "bg-warm-grey text-graphite" : "text-graphite/45 hover:text-graphite"
                 )}
               >
-                {v === "all" ? `All (${localRows.length})` : v === "active" ? `Active (${localRows.filter((r) => r.status === "active").length})` : `Closed (${localRows.filter((r) => r.status === "completed").length})`}
+                {v === "all"
+                  ? `All (${localRows.length})`
+                  : v === "active"
+                    ? `Active (${localRows.filter((r) => r.status === "active").length})`
+                    : `Closed (${localRows.filter((r) => r.status === "completed").length})`}
               </button>
             ))}
           </div>
@@ -208,7 +214,11 @@ export function ProjectsListClient({
             {query.trim() || view !== "all" ? "No projects match your filter." : "No projects yet."}
           </p>
           {!query.trim() && view === "all" ? (
-            <Button asChild className="mt-6 rounded-xl bg-graphite px-6 text-white" variant="default">
+            <Button
+              asChild
+              className="mt-6 rounded-xl bg-graphite px-6 text-white"
+              variant="default"
+            >
               <Link href="/projects/new">New Project</Link>
             </Button>
           ) : null}
@@ -334,9 +344,12 @@ export function ProjectsListClient({
       <Dialog open={deleteBlockedOpen} onOpenChange={setDeleteBlockedOpen}>
         <DialogContent className="max-w-md rounded-xl border-border-soft p-5">
           <DialogHeader>
-            <DialogTitle className="text-base font-semibold text-graphite">Cannot delete project</DialogTitle>
+            <DialogTitle className="text-base font-semibold text-graphite">
+              Cannot delete project
+            </DialogTitle>
             <DialogDescription className="text-sm text-graphite/55">
-              This project has related records. Remove or reassign them first, or archive the project.
+              This project has related records. Remove or reassign them first, or archive the
+              project.
             </DialogDescription>
           </DialogHeader>
           {deleteBlockedCounts && deleteBlockedProjectId != null && (
@@ -346,7 +359,9 @@ export function ProjectsListClient({
                 if (n <= 0) return null;
                 const label = getLabelForKey(key);
                 const viewPath = getViewPathForKey(key);
-                const href = viewPath ? `${viewPath}?project_id=${deleteBlockedProjectId}` : undefined;
+                const href = viewPath
+                  ? `${viewPath}?project_id=${deleteBlockedProjectId}`
+                  : undefined;
                 return (
                   <li
                     key={key}
@@ -356,7 +371,12 @@ export function ProjectsListClient({
                       {label} ({n})
                     </span>
                     {href ? (
-                      <Button variant="outline" size="sm" className="shrink-0 rounded-lg border-border-soft" asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0 rounded-lg border-border-soft"
+                        asChild
+                      >
                         <Link href={href} onClick={() => setDeleteBlockedOpen(false)}>
                           View {label}
                         </Link>
@@ -366,7 +386,9 @@ export function ProjectsListClient({
                 );
               })}
               {Object.entries(deleteBlockedCounts)
-                .filter(([k, n]) => n > 0 && !DELETE_BLOCKED_RELATED_CONFIG.some((c) => c.key === k))
+                .filter(
+                  ([k, n]) => n > 0 && !DELETE_BLOCKED_RELATED_CONFIG.some((c) => c.key === k)
+                )
                 .map(([key, n]) => (
                   <li
                     key={key}
@@ -380,7 +402,12 @@ export function ProjectsListClient({
             </ul>
           )}
           <DialogFooter className="flex-wrap gap-2 border-t border-border-soft pt-3">
-            <Button variant="ghost" size="sm" onClick={() => setDeleteBlockedOpen(false)} disabled={forceDeleteInProgress}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setDeleteBlockedOpen(false)}
+              disabled={forceDeleteInProgress}
+            >
               Cancel
             </Button>
             {deleteBlockedProjectId != null && deleteBlockedCounts && (

@@ -29,7 +29,9 @@ export type ProjectForecastSummaryResult = {
  * - Forecast Profit = Revenue - Forecast Final Cost
  * - Forecast Margin = Forecast Profit / Revenue (0 when revenue is 0)
  */
-export async function getProjectForecastSummary(projectId: string): Promise<ProjectForecastSummaryResult> {
+export async function getProjectForecastSummary(
+  projectId: string
+): Promise<ProjectForecastSummaryResult> {
   const [revenueCollected, expenseTotal, laborCost, subcontracts, commitments] = await Promise.all([
     invoicesDb.getProjectRevenueAndCollected(projectId),
     expensesDb.getExpenseTotalsByProject(projectId),
@@ -42,10 +44,15 @@ export async function getProjectForecastSummary(projectId: string): Promise<Proj
 
   const subcontractIds = subcontracts.map((s) => s.id);
   const payments =
-    subcontractIds.length > 0 ? await subcontractPaymentsDb.getPaymentsBySubcontractIds(subcontractIds) : [];
+    subcontractIds.length > 0
+      ? await subcontractPaymentsDb.getPaymentsBySubcontractIds(subcontractIds)
+      : [];
   const paidBySubcontractId = new Map<string, number>();
   for (const p of payments) {
-    paidBySubcontractId.set(p.subcontract_id, (paidBySubcontractId.get(p.subcontract_id) ?? 0) + p.amount);
+    paidBySubcontractId.set(
+      p.subcontract_id,
+      (paidBySubcontractId.get(p.subcontract_id) ?? 0) + p.amount
+    );
   }
   const subcontractPaid = payments.reduce((s, p) => s + p.amount, 0);
 
@@ -93,7 +100,9 @@ export type ProjectCostCodeSummaryItem = {
  * - Variance = budget - forecast
  * Supabase only. No mock. Throws on error.
  */
-export async function getProjectCostCodeSummary(projectId: string): Promise<ProjectCostCodeSummaryItem[]> {
+export async function getProjectCostCodeSummary(
+  projectId: string
+): Promise<ProjectCostCodeSummaryItem[]> {
   const [budgetItems, expenseLines, laborEntries, subcontracts, commitments] = await Promise.all([
     coDb.getProjectBudgetItems(projectId),
     expensesDb.getProjectExpenseLines(projectId),
@@ -104,12 +113,17 @@ export async function getProjectCostCodeSummary(projectId: string): Promise<Proj
 
   const subcontractIds = subcontracts.map((s) => s.id);
   const payments =
-    subcontractIds.length > 0 ? await subcontractPaymentsDb.getPaymentsBySubcontractIds(subcontractIds) : [];
+    subcontractIds.length > 0
+      ? await subcontractPaymentsDb.getPaymentsBySubcontractIds(subcontractIds)
+      : [];
 
   const budgetByCode = new Map<string, number>();
   for (const item of budgetItems) {
     const code = (item as { cost_code?: string }).cost_code ?? "";
-    budgetByCode.set(code, (budgetByCode.get(code) ?? 0) + Number((item as { total?: number }).total ?? 0));
+    budgetByCode.set(
+      code,
+      (budgetByCode.get(code) ?? 0) + Number((item as { total?: number }).total ?? 0)
+    );
   }
 
   const expenseByCode = new Map<string, number>();
@@ -125,7 +139,9 @@ export async function getProjectCostCodeSummary(projectId: string): Promise<Proj
     laborByCode.set(code, (laborByCode.get(code) ?? 0) + amount);
   }
 
-  const subcontractIdToCostCode = new Map(subcontracts.map((s) => [s.id, (s as { cost_code: string | null }).cost_code ?? ""]));
+  const subcontractIdToCostCode = new Map(
+    subcontracts.map((s) => [s.id, (s as { cost_code: string | null }).cost_code ?? ""])
+  );
   const subcontractPaidByCode = new Map<string, number>();
   for (const p of payments) {
     const code = subcontractIdToCostCode.get(p.subcontract_id) ?? "";

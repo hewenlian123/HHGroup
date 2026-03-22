@@ -21,7 +21,10 @@ export async function expectDeleteControlVisibleWithoutHover(
 ): Promise<void> {
   const start = Date.now();
   await expect(deleteButton).toBeVisible({ timeout: maxMs });
-  expect(Date.now() - start, "Delete control should appear immediately (no hover delay)").toBeLessThanOrEqual(maxMs + 150);
+  expect(
+    Date.now() - start,
+    "Delete control should appear immediately (no hover delay)"
+  ).toBeLessThanOrEqual(maxMs + 150);
 }
 
 /**
@@ -42,9 +45,7 @@ export async function clickTrashInRowAndConfirmDialog(
   await dialog.getByRole("button", { name: /^Delete$/ }).click();
 }
 
-export type CreateDraftInvoiceResult =
-  | { ok: true }
-  | { ok: false; skipReason: string };
+export type CreateDraftInvoiceResult = { ok: true } | { ok: false; skipReason: string };
 
 /**
  * Self-contained: open New Invoice, pick first real project, minimal line + client, submit.
@@ -78,7 +79,9 @@ export async function tryCreateDraftInvoiceNavigateToDetail(
   await createBtn.click();
 
   // Do not accept `/financial/invoices/new` — that is the editor, not a created draft detail.
-  await expect(page).toHaveURL(/\/financial\/invoices\/(?!new(?:\/|$))[^/?#]+/i, { timeout: 20_000 });
+  await expect(page).toHaveURL(/\/financial\/invoices\/(?!new(?:\/|$))[^/?#]+/i, {
+    timeout: 20_000,
+  });
   await expect(page.locator("body")).not.toContainText("Application error");
   return { ok: true };
 }
@@ -104,7 +107,12 @@ export async function openFirstProjectStatusSelect(page: Page, baseUrl: string):
   // List search only (topbar also has "Search projects, workers…" — avoid strict-mode duplicate match).
   await expect(page.getByTestId("projects-list-search")).toBeVisible({ timeout: 30_000 });
 
-  if (await page.getByText("No projects yet.").isVisible().catch(() => false)) {
+  if (
+    await page
+      .getByText("No projects yet.")
+      .isVisible()
+      .catch(() => false)
+  ) {
     test.skip(true, "No projects.");
     return;
   }
@@ -116,7 +124,12 @@ export async function openFirstProjectStatusSelect(page: Page, baseUrl: string):
   await expect(activeBtn).toBeVisible({ timeout: 15_000 });
   await activeBtn.click();
 
-  if (await page.getByText("No projects match your filter.").isVisible().catch(() => false)) {
+  if (
+    await page
+      .getByText("No projects match your filter.")
+      .isVisible()
+      .catch(() => false)
+  ) {
     test.skip(true, "No active projects for Active filter.");
     return;
   }
@@ -158,7 +171,7 @@ export async function expectDeleteMenuItemThenClose(page: Page): Promise<void> {
 export async function expectVisibleOrSkip(
   locator: Locator,
   skipReason: string,
-  timeoutMs = 55_000,
+  timeoutMs = 55_000
 ): Promise<void> {
   try {
     await expect(locator.first()).toBeVisible({ timeout: timeoutMs });
@@ -166,4 +179,3 @@ export async function expectVisibleOrSkip(
     test.skip(true, skipReason);
   }
 }
-

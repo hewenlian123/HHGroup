@@ -99,9 +99,7 @@ export function WorkerPaymentReceiptBody({
             <span className="receipt-label-text">Project</span>
             <span className="receipt-value">{projectName ?? "—"}</span>
           </div>
-          {notes?.trim() ? (
-            <div className="receipt-notes">{notes.trim()}</div>
-          ) : null}
+          {notes?.trim() ? <div className="receipt-notes">{notes.trim()}</div> : null}
         </div>
         <div className="receipt-meta-right">
           <div className="receipt-field receipt-field--inline-end">
@@ -214,7 +212,8 @@ export function WorkerPaymentReceiptBody({
 
       <footer className="receipt-footer">
         <p>
-          Retain for payroll, 1099, accounting, and records. {company.companyName} — worker payment receipt.
+          Retain for payroll, 1099, accounting, and records. {company.companyName} — worker payment
+          receipt.
         </p>
       </footer>
     </div>

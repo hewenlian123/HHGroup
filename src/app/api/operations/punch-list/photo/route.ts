@@ -11,9 +11,11 @@ export async function GET(req: Request) {
   }
   try {
     const supabase = getServerSupabaseAdmin();
-    if (!supabase) return NextResponse.json({ ok: false, message: "Storage not configured." }, { status: 500 });
+    if (!supabase)
+      return NextResponse.json({ ok: false, message: "Storage not configured." }, { status: 500 });
     const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60);
-    if (error || !data?.signedUrl) return NextResponse.json({ ok: false, message: "Failed to get URL." }, { status: 500 });
+    if (error || !data?.signedUrl)
+      return NextResponse.json({ ok: false, message: "Failed to get URL." }, { status: 500 });
     return NextResponse.redirect(data.signedUrl);
   } catch {
     return NextResponse.json({ ok: false, message: "Failed to get photo URL." }, { status: 500 });

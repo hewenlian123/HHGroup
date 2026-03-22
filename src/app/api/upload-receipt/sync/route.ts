@@ -14,13 +14,23 @@ export async function GET() {
     return NextResponse.json({ message: "Supabase not configured." }, { status: 500 });
   }
   try {
-    const { data: files, error: listErr } = await supabase.storage.from(BUCKET).list("uploads", { limit: 1000 });
+    const { data: files, error: listErr } = await supabase.storage
+      .from(BUCKET)
+      .list("uploads", { limit: 1000 });
     if (listErr) {
-      return NextResponse.json({ message: listErr.message ?? "Failed to list storage." }, { status: 500 });
+      return NextResponse.json(
+        { message: listErr.message ?? "Failed to list storage." },
+        { status: 500 }
+      );
     }
     const objects = (files ?? []).filter((f) => f.name && f.id);
-    const { data: rows } = await supabase.from("worker_receipts").select("id, receipt_url").not("receipt_url", "is", null);
-    const dbUrls = new Set((rows ?? []).map((r: { receipt_url: string | null }) => r.receipt_url).filter(Boolean));
+    const { data: rows } = await supabase
+      .from("worker_receipts")
+      .select("id, receipt_url")
+      .not("receipt_url", "is", null);
+    const dbUrls = new Set(
+      (rows ?? []).map((r: { receipt_url: string | null }) => r.receipt_url).filter(Boolean)
+    );
     const baseUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}/storage/v1/object/public/${BUCKET}`;
     const orphanPaths: string[] = [];
     for (const obj of objects) {
@@ -46,13 +56,23 @@ export async function POST() {
     return NextResponse.json({ message: "Supabase not configured." }, { status: 500 });
   }
   try {
-    const { data: files, error: listErr } = await supabase.storage.from(BUCKET).list("uploads", { limit: 500 });
+    const { data: files, error: listErr } = await supabase.storage
+      .from(BUCKET)
+      .list("uploads", { limit: 500 });
     if (listErr) {
-      return NextResponse.json({ message: listErr.message ?? "Failed to list storage." }, { status: 500 });
+      return NextResponse.json(
+        { message: listErr.message ?? "Failed to list storage." },
+        { status: 500 }
+      );
     }
     const objects = (files ?? []).filter((f) => f.name && f.id);
-    const { data: rows } = await supabase.from("worker_receipts").select("receipt_url").not("receipt_url", "is", null);
-    const dbUrls = new Set((rows ?? []).map((r: { receipt_url: string | null }) => r.receipt_url).filter(Boolean));
+    const { data: rows } = await supabase
+      .from("worker_receipts")
+      .select("receipt_url")
+      .not("receipt_url", "is", null);
+    const dbUrls = new Set(
+      (rows ?? []).map((r: { receipt_url: string | null }) => r.receipt_url).filter(Boolean)
+    );
     const baseUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}/storage/v1/object/public/${BUCKET}`;
     const inserted: string[] = [];
     for (const obj of objects) {
@@ -70,7 +90,11 @@ export async function POST() {
       inserted.push(publicUrl);
       dbUrls.add(publicUrl);
     }
-    return NextResponse.json({ ok: true, insertedCount: inserted.length, inserted: inserted.slice(0, 20) });
+    return NextResponse.json({
+      ok: true,
+      insertedCount: inserted.length,
+      inserted: inserted.slice(0, 20),
+    });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Sync failed";
     return NextResponse.json({ message }, { status: 500 });

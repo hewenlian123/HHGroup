@@ -292,7 +292,14 @@ export function UploadReceiptClient() {
 
         <div>
           <Label zh="发票照片" en="Receipt Photo" />
-          <input ref={inputRef} type="file" accept="image/*,application/pdf" capture="environment" className="hidden" onChange={handleFile} />
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*,application/pdf"
+            capture="environment"
+            className="hidden"
+            onChange={handleFile}
+          />
           <button
             type="button"
             onClick={() => inputRef.current?.click()}

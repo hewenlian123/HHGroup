@@ -49,10 +49,7 @@ type PaymentRow = {
  * Uses a per-request Supabase client with cache: "no-store" so Next.js data cache
  * never serves a stale response between balance checks within the same workflow test.
  */
-export async function GET(
-  _req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: workerId } = await params;
   if (!workerId) {
     return NextResponse.json({ message: "Worker id required" }, { status: 400 });
@@ -130,7 +127,12 @@ export async function GET(
       if (!paymentsRes.error || !isMissingColumn(paymentsRes.error)) break;
     }
     if (paymentsRes.error) {
-      paymentsRes = await queryWorker(c, "worker_payments", "id, worker_id, amount, created_at", "created_at");
+      paymentsRes = await queryWorker(
+        c,
+        "worker_payments",
+        "id, worker_id, amount, created_at",
+        "created_at"
+      );
     }
     if (paymentsRes.error) {
       paymentsRes = await queryWorker(c, "worker_payments", "id, amount, created_at", "created_at");
@@ -145,7 +147,10 @@ export async function GET(
       c.from("projects").select("id, name"),
     ]);
 
-    const advancesRes = await c.from("worker_advances").select("worker_id, amount, status").eq("worker_id", workerId);
+    const advancesRes = await c
+      .from("worker_advances")
+      .select("worker_id, amount, status")
+      .eq("worker_id", workerId);
 
     if (!worker?.id) {
       return NextResponse.json({ message: "Worker not found" }, { status: 404 });
@@ -178,9 +183,15 @@ export async function GET(
       const projectKey = r.project_id ?? r.project_am_id ?? r.project_pm_id ?? null;
       const workerPaymentId =
         laborSettlementMode === "payment_link"
-          ? (r.worker_payment_id != null ? String(r.worker_payment_id).trim() || null : null)
+          ? r.worker_payment_id != null
+            ? String(r.worker_payment_id).trim() || null
+            : null
           : null;
-      const payrollSettled = !isLaborUnpaidForWorkerPayroll(r.status, r.worker_payment_id, laborSettlementMode);
+      const payrollSettled = !isLaborUnpaidForWorkerPayroll(
+        r.status,
+        r.worker_payment_id,
+        laborSettlementMode
+      );
       return {
         id: r.id,
         date: (r.work_date ?? "").slice(0, 10),
@@ -231,7 +242,9 @@ export async function GET(
     }));
 
     const laborOwed = laborRaw
-      .filter((r) => isLaborUnpaidForWorkerPayroll(r.status, r.worker_payment_id, laborSettlementMode))
+      .filter((r) =>
+        isLaborUnpaidForWorkerPayroll(r.status, r.worker_payment_id, laborSettlementMode)
+      )
       .reduce((s, r) => s + (Number(r.cost_amount ?? r.total) || 0), 0);
     const reimbUnpaid = reimbRaw
       .filter((r) => String(r.status ?? "").toLowerCase() !== "paid")

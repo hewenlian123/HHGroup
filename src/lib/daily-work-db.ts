@@ -34,14 +34,18 @@ function client() {
   return c;
 }
 
-const COLS = "id, work_date, worker_id, project_id, day_type, daily_rate, ot_hours, total_pay, notes, created_at";
+const COLS =
+  "id, work_date, worker_id, project_id, day_type, daily_rate, ot_hours, total_pay, notes, created_at";
 
 const TABLE_MISSING_MESSAGE =
   "未找到 daily_work_entries 表。请运行 Supabase 迁移（如 supabase db push），然后在 Project Settings → API 中重新加载 schema 缓存。";
 
 function isTableMissingError(error: { message?: string; code?: string }): boolean {
   const msg = error?.message ?? "";
-  return msg.includes("daily_work_entries") && (msg.includes("schema cache") || error?.code === "PGRST205");
+  return (
+    msg.includes("daily_work_entries") &&
+    (msg.includes("schema cache") || error?.code === "PGRST205")
+  );
 }
 
 function fromRow(r: Record<string, unknown>): DailyWorkEntry {
@@ -174,8 +178,7 @@ export async function updateDailyWorkEntry(
   if (draft.dailyRate != null) payload.daily_rate = draft.dailyRate;
   if (draft.notes !== undefined) payload.notes = draft.notes?.trim() || null;
 
-  const needTotalPay =
-    draft.otAmount != null || draft.dayType != null || draft.dailyRate != null;
+  const needTotalPay = draft.otAmount != null || draft.dayType != null || draft.dailyRate != null;
   if (needTotalPay) {
     const current = await getEntryById(id);
     const dayType = draft.dayType ?? current?.dayType ?? "full_day";
@@ -221,7 +224,10 @@ export type PayrollSummaryRow = {
   totalPay: number;
 };
 
-export async function getPayrollSummary(fromDate: string, toDate: string): Promise<PayrollSummaryRow[]> {
+export async function getPayrollSummary(
+  fromDate: string,
+  toDate: string
+): Promise<PayrollSummaryRow[]> {
   const entries = await getDailyWorkEntriesInRange(fromDate, toDate);
   const byWorker = new Map<
     string,
@@ -233,8 +239,7 @@ export async function getPayrollSummary(fromDate: string, toDate: string): Promi
     const existing = byWorker.get(e.workerId);
     const dayPay = dayPayForEntry(e.dayType, e.dailyRate);
     const totalPay = dayPay + e.otAmount;
-    const days =
-      e.dayType === "full_day" ? 1 : e.dayType === "half_day" ? 0.5 : 0;
+    const days = e.dayType === "full_day" ? 1 : e.dayType === "half_day" ? 0.5 : 0;
     if (existing) {
       existing.daysWorked += days;
       existing.otTotal += e.otAmount;
@@ -259,10 +264,7 @@ export async function getPayrollSummary(fromDate: string, toDate: string): Promi
 
 async function getWorkersForPayroll(workerIds: string[]): Promise<{ id: string; name: string }[]> {
   if (workerIds.length === 0) return [];
-  const { data } = await client()
-    .from("workers")
-    .select("id, name")
-    .in("id", workerIds);
+  const { data } = await client().from("workers").select("id, name").in("id", workerIds);
   return ((data ?? []) as { id: string; name: string }[]).map((r) => ({ id: r.id, name: r.name }));
 }
 
@@ -274,11 +276,13 @@ export async function getDailyWorkEntriesForWorker(
 ): Promise<(DailyWorkEntry & { projectName?: string })[]> {
   const entries = await getDailyWorkEntriesInRange(fromDate, toDate);
   const filtered = entries.filter((e) => e.workerId === workerId);
-  const projectIds = Array.from(new Set(filtered.map((e) => e.projectId).filter(Boolean))) as string[];
+  const projectIds = Array.from(
+    new Set(filtered.map((e) => e.projectId).filter(Boolean))
+  ) as string[];
   const projectNames = await getProjectNames(projectIds);
   return filtered.map((e) => ({
     ...e,
-    projectName: e.projectId ? projectNames.get(e.projectId) ?? e.projectId : undefined,
+    projectName: e.projectId ? (projectNames.get(e.projectId) ?? e.projectId) : undefined,
   }));
 }
 

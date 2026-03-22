@@ -1,4 +1,10 @@
-import { getCostCodes, estimateLineTotal, groupEstimateItemsByCategoryId, type EstimateItemRow, type CostCode } from "@/lib/data";
+import {
+  getCostCodes,
+  estimateLineTotal,
+  groupEstimateItemsByCategoryId,
+  type EstimateItemRow,
+  type CostCode,
+} from "@/lib/data";
 import { ChevronRight } from "lucide-react";
 
 export type EstimateReadOnlyPayload = {
@@ -19,9 +25,16 @@ export type EstimateReadOnlyPayload = {
 
 export function EstimateReadOnlyContent({ payload }: { payload: EstimateReadOnlyPayload }) {
   const costCodes = getCostCodes();
-  const catalogNameByCode = Object.fromEntries(costCodes.map((c) => [c.code, c.name])) as Record<string, string>;
+  const catalogNameByCode = Object.fromEntries(costCodes.map((c) => [c.code, c.name])) as Record<
+    string,
+    string
+  >;
   const estimateCategories = payload.estimateCategories ?? [];
-  const costSections = groupEstimateItemsByCategoryId(payload.items, estimateCategories, catalogNameByCode);
+  const costSections = groupEstimateItemsByCategoryId(
+    payload.items,
+    estimateCategories,
+    catalogNameByCode
+  );
 
   const subtotal = payload.items.reduce((s, r) => s + estimateLineTotal(r), 0);
   const overheadPct = 0.05;
@@ -56,7 +69,9 @@ export function EstimateReadOnlyContent({ payload }: { payload: EstimateReadOnly
       </div>
 
       <section>
-        <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted-foreground">Cost Code Sections</h2>
+        <h2 className="mb-4 text-sm font-medium uppercase tracking-wider text-muted-foreground">
+          Cost Code Sections
+        </h2>
         <div className="space-y-4">
           {costSections.map(({ categoryId, title, rows, sectionTotal }) => (
             <CostCodeSectionReadOnly
@@ -124,12 +139,24 @@ function CostCodeSectionReadOnly({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/20">
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Description</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground tabular-nums">Qty</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Unit</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground tabular-nums">Unit Cost</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground tabular-nums">Markup %</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground tabular-nums">Total</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Description
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground tabular-nums">
+                    Qty
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Unit
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground tabular-nums">
+                    Unit Cost
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground tabular-nums">
+                    Markup %
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground tabular-nums">
+                    Total
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -141,10 +168,17 @@ function CostCodeSectionReadOnly({
                     <td className="px-4 py-3 font-medium text-foreground">{row.desc}</td>
                     <td className="px-4 py-3 text-right tabular-nums text-foreground">{row.qty}</td>
                     <td className="px-4 py-3 text-muted-foreground">{row.unit}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-foreground">${row.unitCost.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{(row.markupPct * 100).toFixed(0)}%</td>
+                    <td className="px-4 py-3 text-right tabular-nums text-foreground">
+                      ${row.unitCost.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                      {(row.markupPct * 100).toFixed(0)}%
+                    </td>
                     <td className="px-4 py-3 text-right font-medium tabular-nums text-foreground">
-                      ${estimateLineTotal(row).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      $
+                      {estimateLineTotal(row).toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                      })}
                     </td>
                   </tr>
                 ))}
@@ -161,7 +195,9 @@ function SummaryRow({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex items-center justify-between text-sm">
       <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium tabular-nums text-foreground">${value.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+      <span className="font-medium tabular-nums text-foreground">
+        ${value.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+      </span>
     </div>
   );
 }

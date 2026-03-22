@@ -16,7 +16,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { Customer } from "@/lib/customers-db";
 import { runOptimisticPersist } from "@/lib/optimistic-save";
 
@@ -137,7 +142,7 @@ export function CustomersClient({ initialCustomers }: Props) {
             return;
           }
           setItems((prev) =>
-            [...prev, data as Customer].sort((a, b) => a.name.localeCompare(b.name)),
+            [...prev, data as Customer].sort((a, b) => a.name.localeCompare(b.name))
           );
           setModalOpen(false);
           setDraft(null);
@@ -168,7 +173,7 @@ export function CustomersClient({ initialCustomers }: Props) {
         setItems((prev) =>
           prev
             .map((c) => (c.id === id ? optimistic : c))
-            .sort((a, b) => a.name.localeCompare(b.name)),
+            .sort((a, b) => a.name.localeCompare(b.name))
         );
         setModalOpen(false);
         setDraft(null);
@@ -187,13 +192,15 @@ export function CustomersClient({ initialCustomers }: Props) {
           .then(async (res) => {
             const data = await res.json();
             if (!res.ok) {
-              return { error: (data as { message?: string })?.message ?? "Failed to update customer." };
+              return {
+                error: (data as { message?: string })?.message ?? "Failed to update customer.",
+              };
             }
             flushSync(() => {
               setItems((prev) =>
                 prev
                   .map((c) => (c.id === (data as Customer).id ? (data as Customer) : c))
-                  .sort((a, b) => a.name.localeCompare(b.name)),
+                  .sort((a, b) => a.name.localeCompare(b.name))
               );
             });
             return undefined;
@@ -227,10 +234,7 @@ export function CustomersClient({ initialCustomers }: Props) {
         const data = await res.json();
         if (snapshot) setItems(snapshot);
         setDeleteTarget(target);
-        setDeleteError(
-          data?.message ??
-            "Customer has linked projects and cannot be deleted.",
-        );
+        setDeleteError(data?.message ?? "Customer has linked projects and cannot be deleted.");
         return;
       }
       if (!res.ok && res.status !== 204) {
@@ -252,9 +256,7 @@ export function CustomersClient({ initialCustomers }: Props) {
           <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
             Customers
           </p>
-          <p className="text-sm text-muted-foreground">
-            Manage your clients and contacts.
-          </p>
+          <p className="text-sm text-muted-foreground">Manage your clients and contacts.</p>
         </div>
         <div className="flex items-center gap-2">
           <Input
@@ -263,11 +265,7 @@ export function CustomersClient({ initialCustomers }: Props) {
             onChange={(e) => setSearch(e.target.value)}
             className="h-9 w-40 sm:w-64 text-sm"
           />
-          <Button
-            type="button"
-            className="h-9 rounded-sm px-3 text-sm"
-            onClick={openNew}
-          >
+          <Button type="button" className="h-9 rounded-sm px-3 text-sm" onClick={openNew}>
             + New Customer
           </Button>
         </div>
@@ -282,9 +280,7 @@ export function CustomersClient({ initialCustomers }: Props) {
             <div className="flex h-10 w-10 items-center justify-center rounded-full border border-dashed border-border/60 text-xs text-muted-foreground">
               ☺
             </div>
-            <p className="text-sm font-medium text-foreground">
-              No customers yet.
-            </p>
+            <p className="text-sm font-medium text-foreground">No customers yet.</p>
             <p className="text-xs text-muted-foreground">
               Add your first client to start tracking projects and estimates.
             </p>
@@ -336,19 +332,11 @@ export function CustomersClient({ initialCustomers }: Props) {
                         {c.name}
                       </Link>
                     </td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground">{c.email ?? "—"}</td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground">{c.phone ?? "—"}</td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground">{c.city ?? "—"}</td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">
-                      {c.email ?? "—"}
-                    </td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground">
-                      {c.phone ?? "—"}
-                    </td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground">
-                      {c.city ?? "—"}
-                    </td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground">
-                      {c.created_at
-                        ? new Date(c.created_at).toLocaleDateString()
-                        : "—"}
+                      {c.created_at ? new Date(c.created_at).toLocaleDateString() : "—"}
                     </td>
                     <td className="px-2 py-2 text-right">
                       <DropdownMenu>
@@ -391,7 +379,10 @@ export function CustomersClient({ initialCustomers }: Props) {
         )}
       </div>
 
-      <Dialog open={modalOpen} onOpenChange={(open) => !open && setDraft(null) && setModalOpen(false)}>
+      <Dialog
+        open={modalOpen}
+        onOpenChange={(open) => !open && setDraft(null) && setModalOpen(false)}
+      >
         <DialogContent className="max-w-md border-border/60 rounded-md p-5">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">
@@ -406,9 +397,7 @@ export function CustomersClient({ initialCustomers }: Props) {
                 </p>
                 <Input
                   value={draft.name}
-                  onChange={(e) =>
-                    setDraft((d) => (d ? { ...d, name: e.target.value } : d))
-                  }
+                  onChange={(e) => setDraft((d) => (d ? { ...d, name: e.target.value } : d))}
                   className="h-9 text-sm"
                   required
                 />
@@ -418,9 +407,7 @@ export function CustomersClient({ initialCustomers }: Props) {
                   <p className="text-xs font-medium text-muted-foreground">Email</p>
                   <Input
                     value={draft.email}
-                    onChange={(e) =>
-                      setDraft((d) => (d ? { ...d, email: e.target.value } : d))
-                    }
+                    onChange={(e) => setDraft((d) => (d ? { ...d, email: e.target.value } : d))}
                     className="h-9 text-sm"
                   />
                 </div>
@@ -428,9 +415,7 @@ export function CustomersClient({ initialCustomers }: Props) {
                   <p className="text-xs font-medium text-muted-foreground">Phone</p>
                   <Input
                     value={draft.phone}
-                    onChange={(e) =>
-                      setDraft((d) => (d ? { ...d, phone: e.target.value } : d))
-                    }
+                    onChange={(e) => setDraft((d) => (d ? { ...d, phone: e.target.value } : d))}
                     className="h-9 text-sm"
                   />
                 </div>
@@ -439,11 +424,7 @@ export function CustomersClient({ initialCustomers }: Props) {
                 <p className="text-xs font-medium text-muted-foreground">Address</p>
                 <Input
                   value={draft.address}
-                  onChange={(e) =>
-                    setDraft((d) =>
-                      d ? { ...d, address: e.target.value } : d,
-                    )
-                  }
+                  onChange={(e) => setDraft((d) => (d ? { ...d, address: e.target.value } : d))}
                   className="h-9 text-sm"
                 />
               </div>
@@ -452,9 +433,7 @@ export function CustomersClient({ initialCustomers }: Props) {
                   <p className="text-xs font-medium text-muted-foreground">City</p>
                   <Input
                     value={draft.city}
-                    onChange={(e) =>
-                      setDraft((d) => (d ? { ...d, city: e.target.value } : d))
-                    }
+                    onChange={(e) => setDraft((d) => (d ? { ...d, city: e.target.value } : d))}
                     className="h-9 text-sm"
                   />
                 </div>
@@ -462,9 +441,7 @@ export function CustomersClient({ initialCustomers }: Props) {
                   <p className="text-xs font-medium text-muted-foreground">State</p>
                   <Input
                     value={draft.state}
-                    onChange={(e) =>
-                      setDraft((d) => (d ? { ...d, state: e.target.value } : d))
-                    }
+                    onChange={(e) => setDraft((d) => (d ? { ...d, state: e.target.value } : d))}
                     className="h-9 text-sm"
                   />
                 </div>
@@ -472,9 +449,7 @@ export function CustomersClient({ initialCustomers }: Props) {
                   <p className="text-xs font-medium text-muted-foreground">Zip</p>
                   <Input
                     value={draft.zip}
-                    onChange={(e) =>
-                      setDraft((d) => (d ? { ...d, zip: e.target.value } : d))
-                    }
+                    onChange={(e) => setDraft((d) => (d ? { ...d, zip: e.target.value } : d))}
                     className="h-9 text-sm"
                   />
                 </div>
@@ -483,15 +458,11 @@ export function CustomersClient({ initialCustomers }: Props) {
                 <p className="text-xs font-medium text-muted-foreground">Notes</p>
                 <Input
                   value={draft.notes}
-                  onChange={(e) =>
-                    setDraft((d) => (d ? { ...d, notes: e.target.value } : d))
-                  }
+                  onChange={(e) => setDraft((d) => (d ? { ...d, notes: e.target.value } : d))}
                   className="h-9 text-sm"
                 />
               </div>
-              {error ? (
-                <p className="text-xs text-red-600">{error}</p>
-              ) : null}
+              {error ? <p className="text-xs text-red-600">{error}</p> : null}
               <DialogFooter className="mt-2 gap-2 border-t border-border/60 pt-3">
                 <Button
                   type="button"
@@ -503,12 +474,7 @@ export function CustomersClient({ initialCustomers }: Props) {
                 >
                   Cancel
                 </Button>
-                <Button
-                  type="submit"
-                  size="sm"
-                  className="h-9 rounded-sm"
-                  disabled={busy}
-                >
+                <Button type="submit" size="sm" className="h-9 rounded-sm" disabled={busy}>
                   {busy ? "Saving…" : "Save"}
                 </Button>
               </DialogFooter>
@@ -520,19 +486,14 @@ export function CustomersClient({ initialCustomers }: Props) {
       <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <DialogContent className="max-w-sm border-border/60 rounded-md p-5">
           <DialogHeader>
-            <DialogTitle className="text-base font-semibold">
-              Delete customer
-            </DialogTitle>
+            <DialogTitle className="text-base font-semibold">Delete customer</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
             Are you sure you want to delete{" "}
-            <span className="font-medium">{deleteTarget?.name}</span>? This
-            action cannot be undone. Customers with linked projects cannot be
-            deleted.
+            <span className="font-medium">{deleteTarget?.name}</span>? This action cannot be undone.
+            Customers with linked projects cannot be deleted.
           </p>
-          {deleteError ? (
-            <p className="pt-2 text-xs text-red-600">{deleteError}</p>
-          ) : null}
+          {deleteError ? <p className="pt-2 text-xs text-red-600">{deleteError}</p> : null}
           <DialogFooter className="mt-3 gap-2 border-t border-border/60 pt-3">
             <Button
               type="button"
@@ -560,4 +521,3 @@ export function CustomersClient({ initialCustomers }: Props) {
     </div>
   );
 }
-

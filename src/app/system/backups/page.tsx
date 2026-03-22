@@ -150,9 +150,7 @@ export default function SystemBackupsPage() {
             </p>
           )}
           {Array.isArray(createResult.tableErrors) && createResult.tableErrors.length > 0 && (
-            <p className="text-xs">
-              Table errors: {createResult.tableErrors.join(", ")}
-            </p>
+            <p className="text-xs">Table errors: {createResult.tableErrors.join(", ")}</p>
           )}
           {/* Offer download when file write failed but data was fetched */}
           {!createResult.ok && createResult.data != null && createResult.filename ? (
@@ -175,9 +173,8 @@ export default function SystemBackupsPage() {
           Saved Backups
         </p>
         <p className="text-xs text-muted-foreground -mt-0.5">
-          Files are saved to{" "}
-          <code className="rounded bg-muted px-1 py-0.5">backups/database/</code> in the project
-          root. Only available in local or self-hosted environments.
+          Files are saved to <code className="rounded bg-muted px-1 py-0.5">backups/database/</code>{" "}
+          in the project root. Only available in local or self-hosted environments.
         </p>
       </div>
 
@@ -206,9 +203,7 @@ export default function SystemBackupsPage() {
               ) : (
                 backups.map((b) => (
                   <tr key={b.filename} className="border-b border-border/30">
-                    <td className="py-2.5 pr-6 font-medium font-mono text-xs">
-                      {b.filename}
-                    </td>
+                    <td className="py-2.5 pr-6 font-medium font-mono text-xs">{b.filename}</td>
                     <td className="py-2.5 pr-6 tabular-nums">{b.date}</td>
                     <td className="py-2.5 pr-6 tabular-nums text-muted-foreground">
                       {formatBytes(b.sizeBytes)}

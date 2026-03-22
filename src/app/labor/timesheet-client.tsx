@@ -78,7 +78,10 @@ function isMissingTableError(error: unknown): boolean {
   if (!e) return false;
   if (e.code === "42P01") return true;
   const msg = (e.message ?? "").toLowerCase();
-  return msg.includes("labor_entries") && (msg.includes("schema cache") || msg.includes("could not find"));
+  return (
+    msg.includes("labor_entries") &&
+    (msg.includes("schema cache") || msg.includes("could not find"))
+  );
 }
 
 const workerOptionsToSelect = (workers: WorkerOption[]): SearchableSelectOption[] =>
@@ -106,9 +109,18 @@ export default function TimesheetClient() {
     [configured, url, anon]
   );
 
-  const halfDayRates = React.useMemo(() => new Map(workerOptions.map((w) => [w.id, w.halfDayRate])), [workerOptions]);
-  const workerSelectOptions = React.useMemo(() => workerOptionsToSelect(workerOptions), [workerOptions]);
-  const projectSelectOptions = React.useMemo(() => projectOptionsToSelect(projectOptions), [projectOptions]);
+  const halfDayRates = React.useMemo(
+    () => new Map(workerOptions.map((w) => [w.id, w.halfDayRate])),
+    [workerOptions]
+  );
+  const workerSelectOptions = React.useMemo(
+    () => workerOptionsToSelect(workerOptions),
+    [workerOptions]
+  );
+  const projectSelectOptions = React.useMemo(
+    () => projectOptionsToSelect(projectOptions),
+    [projectOptions]
+  );
 
   const refresh = React.useCallback(async () => {
     if (!supabase) {
@@ -137,14 +149,19 @@ export default function TimesheetClient() {
         setError(entriesRes.error.message);
       }
     }
-    if (workersRes.error && !isMissingTableError(workersRes.error)) setError((e) => e ?? workersRes.error?.message ?? null);
-    if (projectsRes.error && !isMissingTableError(projectsRes.error)) setError((e) => e ?? projectsRes.error?.message ?? null);
+    if (workersRes.error && !isMissingTableError(workersRes.error))
+      setError((e) => e ?? workersRes.error?.message ?? null);
+    if (projectsRes.error && !isMissingTableError(projectsRes.error))
+      setError((e) => e ?? projectsRes.error?.message ?? null);
 
     const workerOpts: WorkerOption[] = (workersRes.data ?? []).map((w) => {
       const row = w as { id: string; name: string; half_day_rate?: number | null };
       return { id: row.id, name: row.name ?? "", halfDayRate: safeNumber(row.half_day_rate) };
     });
-    const projOpts: ProjectOption[] = (projectsRes.data ?? []).map((p) => ({ id: (p as { id: string }).id, name: (p as { name: string }).name ?? "" }));
+    const projOpts: ProjectOption[] = (projectsRes.data ?? []).map((p) => ({
+      id: (p as { id: string }).id,
+      name: (p as { name: string }).name ?? "",
+    }));
     setWorkerOptions(workerOpts);
     setProjectOptions(projOpts);
 
@@ -169,7 +186,10 @@ export default function TimesheetClient() {
     setRows((prev) => prev.map((r) => (r.localId === localId ? { ...r, ...patch } : r)));
   };
 
-  const totalWorkers = React.useMemo(() => new Set(rows.filter((r) => r.workerId).map((r) => r.workerId)).size, [rows]);
+  const totalWorkers = React.useMemo(
+    () => new Set(rows.filter((r) => r.workerId).map((r) => r.workerId)).size,
+    [rows]
+  );
   const totalLaborCost = React.useMemo(
     () =>
       rows.reduce((sum, r) => {
@@ -178,7 +198,10 @@ export default function TimesheetClient() {
       }, 0),
     [rows, halfDayRates]
   );
-  const entryCount = React.useMemo(() => rows.filter((r) => r.workerId && r.projectId && r.hours > 0).length, [rows]);
+  const entryCount = React.useMemo(
+    () => rows.filter((r) => r.workerId && r.projectId && r.hours > 0).length,
+    [rows]
+  );
 
   const validateRow = (row: DraftRow): string | null => {
     if (!row.workerId) return "Worker is required.";
@@ -211,15 +234,27 @@ export default function TimesheetClient() {
       cost_amount: (Number(row.hours) || 0) * hourlyRate,
     };
     if (row.id) {
-      const { error: updErr } = await supabase.from("labor_entries").update(payload).eq("id", row.id);
+      const { error: updErr } = await supabase
+        .from("labor_entries")
+        .update(payload)
+        .eq("id", row.id);
       if (updErr) setError(updErr.message);
       else setMessage("Entry saved.");
     } else {
-      const { data: inserted, error: insErr } = await supabase.from("labor_entries").insert(payload).select("id").single();
+      const { data: inserted, error: insErr } = await supabase
+        .from("labor_entries")
+        .insert(payload)
+        .select("id")
+        .single();
       if (insErr) setError(insErr.message);
       else {
         setMessage("Entry saved.");
-        if (inserted?.id) setRows((prev) => prev.map((r) => (r.localId === row.localId ? { ...r, id: inserted.id, localId: inserted.id } : r)));
+        if (inserted?.id)
+          setRows((prev) =>
+            prev.map((r) =>
+              r.localId === row.localId ? { ...r, id: inserted.id, localId: inserted.id } : r
+            )
+          );
       }
     }
     await refresh();
@@ -271,8 +306,17 @@ export default function TimesheetClient() {
       if (row.id && supabase) {
         await supabase.from("labor_entries").update(payload).eq("id", row.id);
       } else if (supabase) {
-        const { data: inserted } = await supabase.from("labor_entries").insert(payload).select("id").single();
-        if (inserted?.id) setRows((prev) => prev.map((r) => (r.localId === row.localId ? { ...r, id: inserted.id, localId: inserted.id } : r)));
+        const { data: inserted } = await supabase
+          .from("labor_entries")
+          .insert(payload)
+          .select("id")
+          .single();
+        if (inserted?.id)
+          setRows((prev) =>
+            prev.map((r) =>
+              r.localId === row.localId ? { ...r, id: inserted.id, localId: inserted.id } : r
+            )
+          );
         await refresh();
       }
     }
@@ -288,9 +332,15 @@ export default function TimesheetClient() {
   if (!configured) {
     return (
       <div className="page-container page-stack py-6">
-        <PageHeader title="Timesheet Entry" description="Manage daily labor entries by worker and project." />
+        <PageHeader
+          title="Timesheet Entry"
+          description="Manage daily labor entries by worker and project."
+        />
         <Card className="rounded-xl border border-[#E5E7EB] bg-white p-6">
-          <p className="text-sm text-muted-foreground">Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.</p>
+          <p className="text-sm text-muted-foreground">
+            Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and
+            NEXT_PUBLIC_SUPABASE_ANON_KEY.
+          </p>
         </Card>
       </div>
     );
@@ -311,10 +361,20 @@ export default function TimesheetClient() {
                 max={new Date().toISOString().slice(0, 10)}
                 className="h-10 w-[160px] rounded-xl border-[#E5E7EB] bg-white"
               />
-              <Button variant="outline" className="h-10 rounded-xl border-[#E5E7EB]" onClick={addWorkerRow} disabled={busy}>
+              <Button
+                variant="outline"
+                className="h-10 rounded-xl border-[#E5E7EB]"
+                onClick={addWorkerRow}
+                disabled={busy}
+              >
                 + Add Worker Row
               </Button>
-              <Button variant="outline" className="h-10 rounded-xl border-[#E5E7EB]" onClick={saveAll} disabled={busy}>
+              <Button
+                variant="outline"
+                className="h-10 rounded-xl border-[#E5E7EB]"
+                onClick={saveAll}
+                disabled={busy}
+              >
                 Save All
               </Button>
             </div>
@@ -329,14 +389,27 @@ export default function TimesheetClient() {
 
         {missingLaborTable ? (
           <Card className="rounded-xl border-2 border-amber-200 border-[#E5E7EB] bg-amber-50/50 p-6">
-            <h3 className="text-base font-semibold text-amber-900">Table <code className="rounded bg-amber-100 px-1.5 py-0.5 font-mono text-sm">public.labor_entries</code> not found</h3>
+            <h3 className="text-base font-semibold text-amber-900">
+              Table{" "}
+              <code className="rounded bg-amber-100 px-1.5 py-0.5 font-mono text-sm">
+                public.labor_entries
+              </code>{" "}
+              not found
+            </h3>
             <p className="mt-2 text-sm text-amber-800">
               Create the labor tables in your Supabase project, then refresh this page.
             </p>
             <ol className="mt-4 list-decimal space-y-1 pl-5 text-sm text-amber-900">
-              <li>Open <strong>Supabase Dashboard</strong> → your project</li>
-              <li>Go to <strong>SQL Editor</strong> → New query</li>
-              <li>Click <strong>Copy SQL</strong> below, paste into the editor, then click <strong>Run</strong></li>
+              <li>
+                Open <strong>Supabase Dashboard</strong> → your project
+              </li>
+              <li>
+                Go to <strong>SQL Editor</strong> → New query
+              </li>
+              <li>
+                Click <strong>Copy SQL</strong> below, paste into the editor, then click{" "}
+                <strong>Run</strong>
+              </li>
               <li>Refresh this page</li>
             </ol>
             <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -351,12 +424,19 @@ export default function TimesheetClient() {
                   });
                 }}
               >
-                {copySqlFeedback ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
+                {copySqlFeedback ? (
+                  <Check className="mr-2 h-4 w-4" />
+                ) : (
+                  <Copy className="mr-2 h-4 w-4" />
+                )}
                 {copySqlFeedback ? "Copied!" : "Copy SQL"}
               </Button>
             </div>
             <p className="mt-4 text-xs text-amber-700">
-              The script creates <code className="rounded bg-amber-100 px-1">workers</code>, <code className="rounded bg-amber-100 px-1">labor_entries</code>, and <code className="rounded bg-amber-100 px-1">labor_payments</code> with RLS. Safe to run more than once.
+              The script creates <code className="rounded bg-amber-100 px-1">workers</code>,{" "}
+              <code className="rounded bg-amber-100 px-1">labor_entries</code>, and{" "}
+              <code className="rounded bg-amber-100 px-1">labor_payments</code> with RLS. Safe to
+              run more than once.
             </p>
           </Card>
         ) : null}
@@ -371,7 +451,11 @@ export default function TimesheetClient() {
           <KpiCard label="Total Workers" value={String(totalWorkers)} icon={Users} />
           <KpiCard
             label="Total Labor Cost"
-            value={new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(totalLaborCost)}
+            value={new Intl.NumberFormat("en-US", {
+              style: "currency",
+              currency: "USD",
+              maximumFractionDigits: 0,
+            }).format(totalLaborCost)}
             icon={DollarSign}
             emphasis
           />
@@ -396,14 +480,30 @@ export default function TimesheetClient() {
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 z-10 bg-[#F8FAFC] shadow-[0_1px_0_0_#E5E7EB]">
                     <tr>
-                      <th className="text-left py-3 px-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">Worker</th>
-                      <th className="text-left py-3 px-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">Project</th>
-                      <th className="text-right py-3 px-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">Hours</th>
-                      <th className="text-left py-3 px-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">Cost Code</th>
-                      <th className="text-left py-3 px-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">Notes</th>
-                      <th className="text-right py-3 px-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">Half-Day Rate</th>
-                      <th className="text-right py-3 px-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">Total</th>
-                      <th className="text-right py-3 px-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">Actions</th>
+                      <th className="text-left py-3 px-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                        Worker
+                      </th>
+                      <th className="text-left py-3 px-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                        Project
+                      </th>
+                      <th className="text-right py-3 px-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                        Hours
+                      </th>
+                      <th className="text-left py-3 px-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                        Cost Code
+                      </th>
+                      <th className="text-left py-3 px-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                        Notes
+                      </th>
+                      <th className="text-right py-3 px-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                        Half-Day Rate
+                      </th>
+                      <th className="text-right py-3 px-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                        Total
+                      </th>
+                      <th className="text-right py-3 px-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -439,7 +539,9 @@ export default function TimesheetClient() {
                               min={0}
                               step={0.25}
                               value={row.hours || ""}
-                              onChange={(e) => updateRow(row.localId, { hours: Number(e.target.value) || 0 })}
+                              onChange={(e) =>
+                                updateRow(row.localId, { hours: Number(e.target.value) || 0 })
+                              }
                               className="h-9 w-24 rounded-lg text-right tabular-nums"
                             />
                           </td>
@@ -465,14 +567,30 @@ export default function TimesheetClient() {
                             {row.workerId ? `$${rate.toLocaleString()}` : "—"}
                           </td>
                           <td className="py-3 px-4 align-top text-right tabular-nums font-semibold">
-                            {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(total)}
+                            {new Intl.NumberFormat("en-US", {
+                              style: "currency",
+                              currency: "USD",
+                              maximumFractionDigits: 2,
+                            }).format(total)}
                           </td>
                           <td className="py-3 px-4 align-top">
                             <div className="flex justify-end gap-2">
-                              <Button size="sm" variant="outline" className="h-8 rounded-lg" onClick={() => saveRow(row)} disabled={busy}>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 rounded-lg"
+                                onClick={() => saveRow(row)}
+                                disabled={busy}
+                              >
                                 Save
                               </Button>
-                              <Button size="sm" variant="outline" className="h-8 rounded-lg text-red-600 hover:bg-red-50" onClick={() => deleteRow(row)} disabled={busy}>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 rounded-lg text-red-600 hover:bg-red-50"
+                                onClick={() => deleteRow(row)}
+                                disabled={busy}
+                              >
                                 Delete
                               </Button>
                             </div>
@@ -485,7 +603,9 @@ export default function TimesheetClient() {
               </div>
 
               <div className="md:hidden border-t border-[#E5E7EB] p-4">
-                <p className="text-xs text-muted-foreground">Scroll horizontally to see all columns, or use desktop for full table.</p>
+                <p className="text-xs text-muted-foreground">
+                  Scroll horizontally to see all columns, or use desktop for full table.
+                </p>
               </div>
             </>
           )}
@@ -508,14 +628,31 @@ export default function TimesheetClient() {
                   <div>Hours: {row.hours}</div>
                   <div>Cost code: {row.costCode || "—"}</div>
                   <div className="font-semibold tabular-nums col-span-2">
-                    Total: {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(total)}
+                    Total:{" "}
+                    {new Intl.NumberFormat("en-US", {
+                      style: "currency",
+                      currency: "USD",
+                      maximumFractionDigits: 2,
+                    }).format(total)}
                   </div>
                 </div>
                 <div className="flex gap-2 pt-2">
-                  <Button size="sm" variant="outline" className="flex-1 rounded-lg" onClick={() => saveRow(row)} disabled={busy}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 rounded-lg"
+                    onClick={() => saveRow(row)}
+                    disabled={busy}
+                  >
                     Save
                   </Button>
-                  <Button size="sm" variant="outline" className="flex-1 rounded-lg text-red-600" onClick={() => deleteRow(row)} disabled={busy}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1 rounded-lg text-red-600"
+                    onClick={() => deleteRow(row)}
+                    disabled={busy}
+                  >
                     Delete
                   </Button>
                 </div>

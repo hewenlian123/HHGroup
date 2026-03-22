@@ -2,11 +2,7 @@ import { redirect } from "next/navigation";
 import { getProjectById } from "@/lib/data";
 import { NewChangeOrderForm } from "./new-change-order-form";
 
-export default async function NewChangeOrderPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function NewChangeOrderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: projectId } = await params;
   const project = await getProjectById(projectId);
   if (!project) redirect("/projects");

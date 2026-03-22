@@ -1,11 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  PageLayout,
-  PageHeader,
-  Divider,
-  SectionHeader,
-} from "@/components/base";
+import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
 import {
   getProjectById,
   getLaborEntriesWithJoins,
@@ -30,7 +25,19 @@ type Props = { params: Promise<{ id: string }> };
 
 export default async function ProjectProfitPage({ params }: Props) {
   const { id } = await params;
-  const [project, canonical, laborEntries, laborActual, subcontractTotal, expenseTotal, estimate, subcontracts, budgetItems, expenseLines, workers] = await Promise.all([
+  const [
+    project,
+    canonical,
+    laborEntries,
+    laborActual,
+    subcontractTotal,
+    expenseTotal,
+    estimate,
+    subcontracts,
+    budgetItems,
+    expenseLines,
+    workers,
+  ] = await Promise.all([
     getProjectById(id),
     getCanonicalProjectProfit(id),
     getLaborEntriesWithJoins({ project_id: id }),
@@ -71,7 +78,10 @@ export default async function ProjectProfitPage({ params }: Props) {
   }
   const paidBySubcontractId = new Map<string, number>();
   for (const p of payments) {
-    paidBySubcontractId.set(p.subcontract_id, (paidBySubcontractId.get(p.subcontract_id) ?? 0) + p.amount);
+    paidBySubcontractId.set(
+      p.subcontract_id,
+      (paidBySubcontractId.get(p.subcontract_id) ?? 0) + p.amount
+    );
   }
   const subcontractRows = subcontracts.map((s) => {
     const revised = s.contract_amount + (approvedCoByCostCode.get(s.cost_code ?? "") ?? 0);
@@ -107,7 +117,10 @@ export default async function ProjectProfitPage({ params }: Props) {
   const contractAmountByCostCode = new Map<string, number>();
   for (const s of subcontracts) {
     const code = s.cost_code ?? "";
-    contractAmountByCostCode.set(code, (contractAmountByCostCode.get(code) ?? 0) + s.contract_amount);
+    contractAmountByCostCode.set(
+      code,
+      (contractAmountByCostCode.get(code) ?? 0) + s.contract_amount
+    );
   }
   const costCodesForForecast = Array.from(new Set(budgetItems.map((b) => b.costCode ?? ""))).sort();
   const forecastByCostCodeRows = costCodesForForecast.map((code) => {
@@ -132,7 +145,8 @@ export default async function ProjectProfitPage({ params }: Props) {
   };
   const laborBudget = estimate?.laborCost ?? null;
   const subcontractBudget = estimate?.vendorCost ?? null;
-  const expenseBudget = estimate != null ? (estimate.materialsCost ?? 0) + (estimate.otherCost ?? 0) : null;
+  const expenseBudget =
+    estimate != null ? (estimate.materialsCost ?? 0) + (estimate.otherCost ?? 0) : null;
   const rows: Row[] = [
     {
       category: "Labor",
@@ -164,7 +178,10 @@ export default async function ProjectProfitPage({ params }: Props) {
           title="Profit"
           description={`Revenue, cost, and margin for ${project.name}.`}
           actions={
-            <Link href={`/projects/${id}`} className="text-sm text-muted-foreground hover:text-foreground">
+            <Link
+              href={`/projects/${id}`}
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
               Project
             </Link>
           }
@@ -177,11 +194,15 @@ export default async function ProjectProfitPage({ params }: Props) {
         <span className="text-sm text-muted-foreground">Total Cost</span>
         <span className="text-lg font-medium tabular-nums">${fmtUsd(totalCost)}</span>
         <span className="text-sm text-muted-foreground">Profit</span>
-        <span className={`text-lg font-medium tabular-nums ${profit >= 0 ? "text-foreground" : "text-destructive"}`}>
+        <span
+          className={`text-lg font-medium tabular-nums ${profit >= 0 ? "text-foreground" : "text-destructive"}`}
+        >
           ${fmtUsd(profit)}
         </span>
         <span className="text-sm text-muted-foreground">Margin</span>
-        <span className={`text-lg font-medium tabular-nums ${marginPct >= 0 ? "text-foreground" : "text-destructive"}`}>
+        <span
+          className={`text-lg font-medium tabular-nums ${marginPct >= 0 ? "text-foreground" : "text-destructive"}`}
+        >
           {marginPct.toFixed(1)}%
         </span>
       </div>
@@ -197,11 +218,15 @@ export default async function ProjectProfitPage({ params }: Props) {
         <span className="text-sm text-muted-foreground">Forecast Final Cost</span>
         <span className="text-lg font-medium tabular-nums">${fmtUsd(forecastFinalCost)}</span>
         <span className="text-sm text-muted-foreground">Forecast Profit</span>
-        <span className={`text-lg font-medium tabular-nums ${forecastProfit < 0 ? "text-destructive" : forecastProfit > 0 ? "text-green-600 dark:text-green-400" : ""}`}>
+        <span
+          className={`text-lg font-medium tabular-nums ${forecastProfit < 0 ? "text-destructive" : forecastProfit > 0 ? "text-green-600 dark:text-green-400" : ""}`}
+        >
           ${fmtUsd(forecastProfit)}
         </span>
         <span className="text-sm text-muted-foreground">Forecast Margin %</span>
-        <span className={`text-lg font-medium tabular-nums ${forecastProfit < 0 ? "text-destructive" : forecastProfit > 0 ? "text-green-600 dark:text-green-400" : ""}`}>
+        <span
+          className={`text-lg font-medium tabular-nums ${forecastProfit < 0 ? "text-destructive" : forecastProfit > 0 ? "text-green-600 dark:text-green-400" : ""}`}
+        >
           {forecastMarginPct.toFixed(1)}%
         </span>
       </div>
@@ -211,12 +236,24 @@ export default async function ProjectProfitPage({ params }: Props) {
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Cost Code</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Budget</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Actual</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Remaining</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Forecast</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Variance</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Cost Code
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Budget
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Actual
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Remaining
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Forecast
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Variance
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -229,7 +266,9 @@ export default async function ProjectProfitPage({ params }: Props) {
             ) : (
               forecastByCostCodeRows.map((r) => {
                 const variancePositive = r.variance > 0;
-                const varianceClass = variancePositive ? "text-destructive" : "text-green-600 dark:text-green-400";
+                const varianceClass = variancePositive
+                  ? "text-destructive"
+                  : "text-green-600 dark:text-green-400";
                 return (
                   <tr key={r.costCode} className="border-b border-border/40">
                     <td className="py-1.5 px-3">{r.costCode}</td>
@@ -253,11 +292,21 @@ export default async function ProjectProfitPage({ params }: Props) {
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Category</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Budget</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Actual</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Variance</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Impact on Profit</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Category
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Budget
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Actual
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Variance
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Impact on Profit
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -271,7 +320,9 @@ export default async function ProjectProfitPage({ params }: Props) {
                 <td className="py-1.5 px-3 text-right tabular-nums">
                   {r.variance != null ? `$${fmtUsd(r.variance)}` : "—"}
                 </td>
-                <td className={`py-1.5 px-3 text-right tabular-nums ${r.impactOnProfit <= 0 ? "text-destructive" : ""}`}>
+                <td
+                  className={`py-1.5 px-3 text-right tabular-nums ${r.impactOnProfit <= 0 ? "text-destructive" : ""}`}
+                >
                   ${fmtUsd(r.impactOnProfit)}
                 </td>
               </tr>
@@ -285,10 +336,18 @@ export default async function ProjectProfitPage({ params }: Props) {
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Subcontractor</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Revised Contract</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Paid</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Exposure</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Subcontractor
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Revised Contract
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Paid
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Exposure
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -302,13 +361,19 @@ export default async function ProjectProfitPage({ params }: Props) {
               subcontractRows.map((s) => {
                 const exposurePositive = s.exposure > 0;
                 const paidInFull = s.paid >= s.revised;
-                const rowClass = paidInFull ? "bg-green-500/10 dark:bg-green-500/10" : exposurePositive ? "bg-orange-500/10 dark:bg-orange-500/10" : "";
+                const rowClass = paidInFull
+                  ? "bg-green-500/10 dark:bg-green-500/10"
+                  : exposurePositive
+                    ? "bg-orange-500/10 dark:bg-orange-500/10"
+                    : "";
                 return (
                   <tr key={s.id} className={`border-b border-border/40 ${rowClass}`}>
                     <td className="py-1.5 px-3">{s.subcontractor_name}</td>
                     <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(s.revised)}</td>
                     <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(s.paid)}</td>
-                    <td className={`py-1.5 px-3 text-right tabular-nums ${exposurePositive ? "text-orange-600 dark:text-orange-400" : paidInFull ? "text-green-600 dark:text-green-400" : ""}`}>
+                    <td
+                      className={`py-1.5 px-3 text-right tabular-nums ${exposurePositive ? "text-orange-600 dark:text-orange-400" : paidInFull ? "text-green-600 dark:text-green-400" : ""}`}
+                    >
                       ${fmtUsd(s.exposure)}
                     </td>
                   </tr>

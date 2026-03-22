@@ -36,7 +36,8 @@ function client() {
   return c;
 }
 
-const COLS = "id, project_id, inspection_type, inspector, inspection_date, status, notes, created_at";
+const COLS =
+  "id, project_id, inspection_type, inspector, inspection_date, status, notes, created_at";
 
 function toRow(r: Record<string, unknown>): InspectionLogEntry {
   return {
@@ -63,7 +64,9 @@ export async function getInspectionLogs(): Promise<InspectionLogEntryWithProject
   const projectIds = Array.from(new Set(items.map((i) => i.project_id)));
   if (projectIds.length === 0) return items.map((i) => ({ ...i, project_name: null }));
   const { data: projects } = await c.from("projects").select("id, name").in("id", projectIds);
-  const projectNames = new Map<string, string>(((projects ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name ?? ""]));
+  const projectNames = new Map<string, string>(
+    ((projects ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name ?? ""])
+  );
   return items.map((i) => ({
     ...i,
     project_name: projectNames.get(i.project_id) ?? null,
@@ -71,12 +74,22 @@ export async function getInspectionLogs(): Promise<InspectionLogEntryWithProject
 }
 
 /** Get one inspection log entry by id. */
-export async function getInspectionLogById(id: string): Promise<InspectionLogEntryWithProject | null> {
+export async function getInspectionLogById(
+  id: string
+): Promise<InspectionLogEntryWithProject | null> {
   const c = client();
-  const { data: row, error } = await c.from("inspection_log").select(COLS).eq("id", id).maybeSingle();
+  const { data: row, error } = await c
+    .from("inspection_log")
+    .select(COLS)
+    .eq("id", id)
+    .maybeSingle();
   if (error || !row) return null;
   const item = toRow(row as Record<string, unknown>);
-  const { data: proj } = await c.from("projects").select("id, name").eq("id", item.project_id).maybeSingle();
+  const { data: proj } = await c
+    .from("projects")
+    .select("id, name")
+    .eq("id", item.project_id)
+    .maybeSingle();
   const project_name = (proj as { name?: string } | null)?.name ?? null;
   return { ...item, project_name };
 }
@@ -104,17 +117,28 @@ export async function createInspectionLog(draft: InspectionLogDraft): Promise<In
 /** Update an inspection log entry. */
 export async function updateInspectionLog(
   id: string,
-  patch: Partial<Pick<InspectionLogEntry, "inspection_type" | "inspector" | "inspection_date" | "status" | "notes">>
+  patch: Partial<
+    Pick<
+      InspectionLogEntry,
+      "inspection_type" | "inspector" | "inspection_date" | "status" | "notes"
+    >
+  >
 ): Promise<InspectionLogEntry | null> {
   const c = client();
   const updates: Record<string, unknown> = {};
   if (patch.inspection_type !== undefined) updates.inspection_type = patch.inspection_type.trim();
   if (patch.inspector !== undefined) updates.inspector = patch.inspector?.trim() ?? null;
-  if (patch.inspection_date !== undefined) updates.inspection_date = patch.inspection_date?.slice(0, 10) ?? null;
+  if (patch.inspection_date !== undefined)
+    updates.inspection_date = patch.inspection_date?.slice(0, 10) ?? null;
   if (patch.status !== undefined) updates.status = patch.status;
   if (patch.notes !== undefined) updates.notes = patch.notes?.trim() ?? null;
   if (Object.keys(updates).length === 0) return null;
-  const { data: row, error } = await c.from("inspection_log").update(updates).eq("id", id).select(COLS).single();
+  const { data: row, error } = await c
+    .from("inspection_log")
+    .update(updates)
+    .eq("id", id)
+    .select(COLS)
+    .single();
   if (error || !row) return null;
   return toRow(row as Record<string, unknown>);
 }

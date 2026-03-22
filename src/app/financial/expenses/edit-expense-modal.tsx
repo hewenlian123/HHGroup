@@ -34,7 +34,15 @@ type Props = {
   onSave: (patch: ExpenseReviewSavePatch) => void;
 };
 
-export function EditExpenseModal({ expense, open, onOpenChange, projects, workers, categories, onSave }: Props) {
+export function EditExpenseModal({
+  expense,
+  open,
+  onOpenChange,
+  projects,
+  workers,
+  categories,
+  onSave,
+}: Props) {
   const { toast } = useToast();
   const [saving, setSaving] = React.useState(false);
   const [vendorName, setVendorName] = React.useState("");
@@ -43,7 +51,9 @@ export function EditExpenseModal({ expense, open, onOpenChange, projects, worker
   const [workerId, setWorkerId] = React.useState<string | null>(null);
   const [category, setCategory] = React.useState("Other");
   const [notes, setNotes] = React.useState("");
-  const [status, setStatus] = React.useState<"pending" | "needs_review" | "approved" | "reimbursed">("needs_review");
+  const [status, setStatus] = React.useState<
+    "pending" | "needs_review" | "approved" | "reimbursed"
+  >("needs_review");
 
   React.useEffect(() => {
     if (expense) {
@@ -53,7 +63,9 @@ export function EditExpenseModal({ expense, open, onOpenChange, projects, worker
       setWorkerId(expense.workerId ?? null);
       setCategory(expense.lines[0]?.category ?? "Other");
       setNotes(expense.notes ?? "");
-      setStatus((expense.status as "pending" | "needs_review" | "approved" | "reimbursed") ?? "needs_review");
+      setStatus(
+        (expense.status as "pending" | "needs_review" | "approved" | "reimbursed") ?? "needs_review"
+      );
     }
   }, [expense]);
 
@@ -90,11 +102,20 @@ export function EditExpenseModal({ expense, open, onOpenChange, projects, worker
         {expense ? (
           <div className="space-y-3 py-4">
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Vendor</label>
-              <Input value={vendorName} onChange={(e) => setVendorName(e.target.value)} className="mt-1 h-9" disabled={saving} />
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Vendor
+              </label>
+              <Input
+                value={vendorName}
+                onChange={(e) => setVendorName(e.target.value)}
+                className="mt-1 h-9"
+                disabled={saving}
+              />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Amount</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Amount
+              </label>
               <Input
                 type="number"
                 min="0"
@@ -106,7 +127,9 @@ export function EditExpenseModal({ expense, open, onOpenChange, projects, worker
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Project</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Project
+              </label>
               <select
                 value={projectId ?? ""}
                 onChange={(e) => setProjectId(e.target.value || null)}
@@ -122,7 +145,9 @@ export function EditExpenseModal({ expense, open, onOpenChange, projects, worker
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Worker</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Worker
+              </label>
               <select
                 value={workerId ?? ""}
                 onChange={(e) => setWorkerId(e.target.value || null)}
@@ -138,22 +163,28 @@ export function EditExpenseModal({ expense, open, onOpenChange, projects, worker
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Category</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Category
+              </label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 className="mt-1 h-9 w-full rounded border border-input bg-transparent px-2 text-sm"
                 disabled={saving}
               >
-                {["Other", ...categories].filter((c, i, a) => a.indexOf(c) === i).map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
+                {["Other", ...categories]
+                  .filter((c, i, a) => a.indexOf(c) === i)
+                  .map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Notes</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Notes
+              </label>
               <Input
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -163,10 +194,16 @@ export function EditExpenseModal({ expense, open, onOpenChange, projects, worker
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Status
+              </label>
               <select
                 value={status}
-                onChange={(e) => setStatus(e.target.value as "pending" | "needs_review" | "approved" | "reimbursed")}
+                onChange={(e) =>
+                  setStatus(
+                    e.target.value as "pending" | "needs_review" | "approved" | "reimbursed"
+                  )
+                }
                 className="mt-1 h-9 w-full rounded border border-input bg-transparent px-2 text-sm"
                 disabled={saving}
               >
@@ -177,10 +214,22 @@ export function EditExpenseModal({ expense, open, onOpenChange, projects, worker
               </select>
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" size="sm" className="h-8" onClick={() => onOpenChange(false)} disabled={saving}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8"
+                onClick={() => onOpenChange(false)}
+                disabled={saving}
+              >
                 Cancel
               </Button>
-              <Button size="sm" className="h-8" onClick={handleSave} disabled={saving} aria-busy={saving}>
+              <Button
+                size="sm"
+                className="h-8"
+                onClick={handleSave}
+                disabled={saving}
+                aria-busy={saving}
+              >
                 {saving ? (
                   <>
                     <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />

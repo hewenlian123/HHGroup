@@ -378,21 +378,32 @@ async function main() {
           await page.keyboard.press("Escape");
           return;
         }
-        await page.select('select', firstProjectValue);
-        const titleInput = await page.$('input[placeholder*="Task title"], input[placeholder*="title"]');
+        await page.select("select", firstProjectValue);
+        const titleInput = await page.$(
+          'input[placeholder*="Task title"], input[placeholder*="title"]'
+        );
         if (!titleInput) throw new Error("Task title input not found");
         await titleInput.type(taskTitle, { delay: 20 });
         const saveBtn = await page.$x('//button[contains(., "Save")]').then((a) => a[0]);
         if (!saveBtn) throw new Error("Save button not found");
         await saveBtn.click();
-        await page.waitForFunction(
-          () => !document.querySelector('[role="dialog"]') && !document.querySelector('[class*="dialog"][data-state="open"]'),
-          { timeout: WAIT_TIMEOUT }
-        ).catch(() => {});
+        await page
+          .waitForFunction(
+            () =>
+              !document.querySelector('[role="dialog"]') &&
+              !document.querySelector('[class*="dialog"][data-state="open"]'),
+            { timeout: WAIT_TIMEOUT }
+          )
+          .catch(() => {});
         await new Promise((r) => setTimeout(r, 800));
-        const hasRow = await page.evaluate((title) => document.body.innerText.includes(title), taskTitle);
+        const hasRow = await page.evaluate(
+          (title) => document.body.innerText.includes(title),
+          taskTitle
+        );
         if (!hasRow) throw new Error(`New task row "${taskTitle}" did not appear`);
-        const rowEl = await page.$x(`//tr[contains(., "${taskTitle}")] | //button[contains(., "${taskTitle}")]`).then((a) => a[0]);
+        const rowEl = await page
+          .$x(`//tr[contains(., "${taskTitle}")] | //button[contains(., "${taskTitle}")]`)
+          .then((a) => a[0]);
         if (!rowEl) throw new Error(`Row with "${taskTitle}" not found`);
         await rowEl.click();
         await new Promise((r) => setTimeout(r, 400));
@@ -401,7 +412,10 @@ async function main() {
         page.once("dialog", (d) => d.accept());
         await deleteBtn.click();
         await new Promise((r) => setTimeout(r, 1200));
-        const stillThere = await page.evaluate((title) => document.body.innerText.includes(title), taskTitle);
+        const stillThere = await page.evaluate(
+          (title) => document.body.innerText.includes(title),
+          taskTitle
+        );
         if (stillThere) throw new Error("Task row still visible after delete");
       } finally {
         await page.close();
@@ -497,8 +511,6 @@ async function main() {
 
 main().catch((fatal) => {
   const msg = fatal instanceof Error ? fatal.message : String(fatal);
-  process.stdout.write(
-    JSON.stringify({ ok: false, tests: [], error: `Fatal: ${msg}` }) + "\n"
-  );
+  process.stdout.write(JSON.stringify({ ok: false, tests: [], error: `Fatal: ${msg}` }) + "\n");
   process.exit(1);
 });

@@ -9,17 +9,27 @@ export async function POST(
 ) {
   const { id: projectId, commissionId } = await ctx.params;
   if (!projectId || !commissionId)
-    return NextResponse.json({ ok: false, message: "Missing project or commission id" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, message: "Missing project or commission id" },
+      { status: 400 }
+    );
   try {
     const commission = await getCommissionById(commissionId);
-    if (!commission) return NextResponse.json({ ok: false, message: "Commission not found" }, { status: 404 });
+    if (!commission)
+      return NextResponse.json({ ok: false, message: "Commission not found" }, { status: 404 });
     if (commission.project_id !== projectId)
-      return NextResponse.json({ ok: false, message: "Commission does not belong to this project" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, message: "Commission does not belong to this project" },
+        { status: 400 }
+      );
     const body = await req.json();
     const amount = Math.max(0, Number(body.amount) || 0);
     const payment_date = String(body.payment_date ?? "").slice(0, 10);
-    const payment_method = PAYMENT_METHODS.includes(body.payment_method) ? body.payment_method : "Other";
-    const reference_no = body.reference_no != null ? String(body.reference_no).trim() || null : null;
+    const payment_method = PAYMENT_METHODS.includes(body.payment_method)
+      ? body.payment_method
+      : "Other";
+    const reference_no =
+      body.reference_no != null ? String(body.reference_no).trim() || null : null;
     const notes = body.notes != null ? String(body.notes).trim() || null : null;
     const record = await createPaymentRecord({
       commission_id: commissionId,

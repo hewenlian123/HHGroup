@@ -68,13 +68,19 @@ async function checkDataIntegrity(origin: string): Promise<GuardianCheck> {
     const dupCount = data.duplicateTasks?.count ?? 0;
     const staleTasks = data.staleTestData?.tasks?.count ?? 0;
     const staleProjects = data.staleTestData?.projects?.count ?? 0;
-    const hasIssues = orphanCount > 0 || ghostCount > 0 || dupCount > 0 || staleTasks > 0 || staleProjects > 0;
+    const hasIssues =
+      orphanCount > 0 || ghostCount > 0 || dupCount > 0 || staleTasks > 0 || staleProjects > 0;
     if (res.status >= 500 || (data.ok === false && hasIssues)) {
       const msg =
         (data.errors?.length ?? 0) > 0
           ? (data.errors ?? []).join("; ")
           : hasIssues
-            ? [orphanCount && `${orphanCount} orphan`, ghostCount && `${ghostCount} ghost`, dupCount && `${dupCount} duplicate`, (staleTasks + staleProjects) > 0 && "stale test data"]
+            ? [
+                orphanCount && `${orphanCount} orphan`,
+                ghostCount && `${ghostCount} ghost`,
+                dupCount && `${dupCount} duplicate`,
+                staleTasks + staleProjects > 0 && "stale test data",
+              ]
                 .filter(Boolean)
                 .join("; ")
             : "Integrity check failed";
@@ -90,11 +96,19 @@ async function checkDataIntegrity(origin: string): Promise<GuardianCheck> {
     }
     return { name: "Data integrity", ok: true };
   } catch (e) {
-    return { name: "Data integrity", ok: false, error: e instanceof Error ? e.message : "Unreachable" };
+    return {
+      name: "Data integrity",
+      ok: false,
+      error: e instanceof Error ? e.message : "Unreachable",
+    };
   }
 }
 
-async function checkEndpoint(origin: string, urlPath: string, displayName: string): Promise<GuardianCheck> {
+async function checkEndpoint(
+  origin: string,
+  urlPath: string,
+  displayName: string
+): Promise<GuardianCheck> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 8000);
   try {
@@ -128,7 +142,11 @@ async function checkTable(
     if (error) return { name: displayName, ok: false, error: error.message };
     return { name: displayName, ok: true };
   } catch (e) {
-    return { name: displayName, ok: false, error: e instanceof Error ? e.message : "Unknown error" };
+    return {
+      name: displayName,
+      ok: false,
+      error: e instanceof Error ? e.message : "Unknown error",
+    };
   }
 }
 
@@ -186,23 +204,41 @@ export async function GET(request: Request): Promise<NextResponse<GuardianResult
       c ? checkTable(c, "projects", "Projects") : Promise.resolve(notConfigured("Projects")),
       c ? checkTable(c, "workers", "Workers") : Promise.resolve(notConfigured("Workers")),
       c ? checkTable(c, "labor_entries", "Labor") : Promise.resolve(notConfigured("Labor")),
-      c ? checkTable(c, "worker_reimbursements", "Reimbursements") : Promise.resolve(notConfigured("Reimbursements")),
+      c
+        ? checkTable(c, "worker_reimbursements", "Reimbursements")
+        : Promise.resolve(notConfigured("Reimbursements")),
       c ? checkTable(c, "expenses", "Expenses") : Promise.resolve(notConfigured("Expenses")),
-      c ? checkTable(c, "worker_payments", "Worker Payments") : Promise.resolve(notConfigured("Worker Payments")),
+      c
+        ? checkTable(c, "worker_payments", "Worker Payments")
+        : Promise.resolve(notConfigured("Worker Payments")),
       c ? checkTable(c, "invoices", "Invoices") : Promise.resolve(notConfigured("Invoices")),
       c ? checkTable(c, "customers", "Customers") : Promise.resolve(notConfigured("Customers")),
-      c ? checkTable(c, "project_commissions", "Commission Payments") : Promise.resolve(notConfigured("Commission Payments")),
-      c ? checkTable(c, "payments_received", "Payments Received") : Promise.resolve(notConfigured("Payments Received")),
+      c
+        ? checkTable(c, "project_commissions", "Commission Payments")
+        : Promise.resolve(notConfigured("Commission Payments")),
+      c
+        ? checkTable(c, "payments_received", "Payments Received")
+        : Promise.resolve(notConfigured("Payments Received")),
       c ? checkTable(c, "deposits", "Deposits") : Promise.resolve(notConfigured("Deposits")),
       c ? checkTable(c, "bills", "Bills") : Promise.resolve(notConfigured("Bills")),
-      c ? checkTable(c, "worker_advances", "Worker Advances") : Promise.resolve(notConfigured("Worker Advances")),
+      c
+        ? checkTable(c, "worker_advances", "Worker Advances")
+        : Promise.resolve(notConfigured("Worker Advances")),
       c ? checkTable(c, "accounts", "Accounts") : Promise.resolve(notConfigured("Accounts")),
-      c ? checkTable(c, "worker_invoices", "Worker Invoices") : Promise.resolve(notConfigured("Worker Invoices")),
+      c
+        ? checkTable(c, "worker_invoices", "Worker Invoices")
+        : Promise.resolve(notConfigured("Worker Invoices")),
       c ? checkTable(c, "vendors", "Vendors") : Promise.resolve(notConfigured("Vendors")),
-      c ? checkTable(c, "subcontractors", "Subcontractors") : Promise.resolve(notConfigured("Subcontractors")),
-      c ? checkTable(c, "worker_receipts", "Receipt Uploads") : Promise.resolve(notConfigured("Receipt Uploads")),
+      c
+        ? checkTable(c, "subcontractors", "Subcontractors")
+        : Promise.resolve(notConfigured("Subcontractors")),
+      c
+        ? checkTable(c, "worker_receipts", "Receipt Uploads")
+        : Promise.resolve(notConfigured("Receipt Uploads")),
       c ? checkTable(c, "documents", "Documents") : Promise.resolve(notConfigured("Documents")),
-      c ? checkTable(c, "activity_logs", "Activity Logs") : Promise.resolve(notConfigured("Activity Logs")),
+      c
+        ? checkTable(c, "activity_logs", "Activity Logs")
+        : Promise.resolve(notConfigured("Activity Logs")),
       checkEndpoint(origin, "/api/system/backup", "Backups"),
       checkDataIntegrity(origin),
     ]);
@@ -254,9 +290,7 @@ export async function GET(request: Request): Promise<NextResponse<GuardianResult
     return safeResult(checks, ok);
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    const checks: GuardianCheck[] = [
-      { name: "Guardian", ok: false, error: message },
-    ];
+    const checks: GuardianCheck[] = [{ name: "Guardian", ok: false, error: message }];
     return safeResult(checks, false);
   }
 }

@@ -48,10 +48,7 @@ function jsonError(message: string, status = 400) {
   return NextResponse.json({ ok: false as const, message }, { status });
 }
 
-export async function GET(
-  _req: Request,
-  ctx: { params: Promise<{ id: string }> }
-) {
+export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
   const url = new URL(_req.url);
   const key = (url.searchParams.get("key") ?? "overview").toLowerCase() as TabKey;
@@ -96,7 +93,13 @@ export async function GET(
         getProjectBillingSummary(id),
         getSourceForProject(id),
       ]);
-      return NextResponse.json({ ok: true as const, key, canonical, billingSummary, sourceFromEstimate });
+      return NextResponse.json({
+        ok: true as const,
+        key,
+        canonical,
+        billingSummary,
+        sourceFromEstimate,
+      });
     }
 
     if (key === "expenses") {
@@ -178,4 +181,3 @@ export async function GET(
     return NextResponse.json({ ok: false as const, message }, { status: 500 });
   }
 }
-

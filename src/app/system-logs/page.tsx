@@ -62,9 +62,7 @@ export default function SystemLogsPage() {
         </button>
       </div>
 
-      {error ? (
-        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-      ) : null}
+      {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
 
       <div className="table-responsive border-b border-border/60">
         <table className="w-full text-sm min-w-[360px] sm:min-w-0">
@@ -80,7 +78,8 @@ export default function SystemLogsPage() {
             {logs.length === 0 && !loading ? (
               <tr>
                 <td colSpan={4} className="py-8 text-center text-muted-foreground">
-                  No log entries yet. Server console output will appear here after instrumentation captures it.
+                  No log entries yet. Server console output will appear here after instrumentation
+                  captures it.
                 </td>
               </tr>
             ) : (

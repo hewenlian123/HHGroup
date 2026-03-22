@@ -28,7 +28,10 @@ export function dispatchClientDataSync(detail?: Partial<AppSyncDetail>) {
 /** Next.js `AppRouterInstance.refresh()` is typed as `void` but may still schedule async work. */
 export type MinimalAppRouter = { refresh: () => void | Promise<void> };
 
-export async function syncRouterAndClients(router: MinimalAppRouter, reason?: string): Promise<void> {
+export async function syncRouterAndClients(
+  router: MinimalAppRouter,
+  reason?: string
+): Promise<void> {
   await Promise.resolve(router.refresh());
   dispatchClientDataSync({ reason });
 }

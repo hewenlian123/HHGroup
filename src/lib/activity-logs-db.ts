@@ -26,7 +26,10 @@ function isMissingTable(err: { message?: string } | null): boolean {
 }
 
 /** Get activity logs for a project, newest first. Returns [] if table does not exist. */
-export async function getActivityLogsByProject(projectId: string, limit = 100): Promise<ActivityLog[]> {
+export async function getActivityLogsByProject(
+  projectId: string,
+  limit = 100
+): Promise<ActivityLog[]> {
   const c = client();
   const { data: rows, error } = await c
     .from("activity_logs")
@@ -48,7 +51,11 @@ export async function getActivityLogsByProject(projectId: string, limit = 100): 
 }
 
 /** Insert an activity log (e.g. task_completed from app). No-op if table does not exist. */
-export async function insertActivityLog(projectId: string, type: string, description: string): Promise<ActivityLog | null> {
+export async function insertActivityLog(
+  projectId: string,
+  type: string,
+  description: string
+): Promise<ActivityLog | null> {
   const c = client();
   const { data: row, error } = await c
     .from("activity_logs")

@@ -116,7 +116,9 @@ function isMissingFunction(err: { message?: string } | null): boolean {
 
 function isMissingColumn(err: { message?: string } | null): boolean {
   const m = (err?.message ?? "").toLowerCase();
-  return /column.*does not exist|does not exist.*column|undefined column|could not find the.*column|schema cache.*column/i.test(m);
+  return /column.*does not exist|does not exist.*column|undefined column|could not find the.*column|schema cache.*column/i.test(
+    m
+  );
 }
 
 function normalizeStatus(s: string | null | undefined): ChangeOrderStatus {
@@ -128,7 +130,11 @@ function normalizeStatus(s: string | null | undefined): ChangeOrderStatus {
 
 function toChangeOrder(r: ChangeOrderRow): ChangeOrder {
   const total = Number(r.total ?? r.total_amount ?? 0);
-  const date = r.date ?? (r.created_at ? new Date(r.created_at).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10));
+  const date =
+    r.date ??
+    (r.created_at
+      ? new Date(r.created_at).toISOString().slice(0, 10)
+      : new Date().toISOString().slice(0, 10));
   return {
     id: r.id,
     projectId: r.project_id,
@@ -177,8 +183,7 @@ const CO_COLS =
   "id,project_id,number,status,total,total_amount,amount,date,created_at,approved_at,approved_by,title,description,cost_impact,schedule_impact_days";
 const CO_COLS_NO_AMOUNT =
   "id,project_id,number,status,total,total_amount,date,created_at,approved_at,approved_by,title,description,cost_impact,schedule_impact_days";
-const CO_COLS_LEGACY =
-  "id,project_id,number,status,total,total_amount,date,created_at,approved_at";
+const CO_COLS_LEGACY = "id,project_id,number,status,total,total_amount,date,created_at,approved_at";
 
 async function selectChangeOrders(
   c: ReturnType<typeof client>,
@@ -208,7 +213,7 @@ async function selectChangeOrders(
     .eq("project_id", projectId)
     .order("created_at", { ascending: false })
     .order("number", { ascending: false });
-  return { data: retry2.data as unknown[], error: (retry2.error as { message?: string } | null) };
+  return { data: retry2.data as unknown[], error: retry2.error as { message?: string } | null };
 }
 
 async function selectChangeOrderById(
@@ -219,12 +224,20 @@ async function selectChangeOrderById(
   if (!first.error) return { data: first.data as unknown, error: null };
   if (!isMissingColumn(first.error)) return { data: null, error: first.error };
 
-  const retry1 = await c.from("project_change_orders").select(CO_COLS_NO_AMOUNT).eq("id", id).maybeSingle();
+  const retry1 = await c
+    .from("project_change_orders")
+    .select(CO_COLS_NO_AMOUNT)
+    .eq("id", id)
+    .maybeSingle();
   if (!retry1.error) return { data: retry1.data as unknown, error: null };
   if (!isMissingColumn(retry1.error)) return { data: null, error: retry1.error };
 
-  const retry2 = await c.from("project_change_orders").select(CO_COLS_LEGACY).eq("id", id).maybeSingle();
-  return { data: retry2.data as unknown, error: (retry2.error as { message?: string } | null) };
+  const retry2 = await c
+    .from("project_change_orders")
+    .select(CO_COLS_LEGACY)
+    .eq("id", id)
+    .maybeSingle();
+  return { data: retry2.data as unknown, error: retry2.error as { message?: string } | null };
 }
 
 // —— Read ——
@@ -263,7 +276,9 @@ export async function getChangeOrderItems(changeOrderId: string): Promise<Change
   return (rows ?? []).map(toChangeOrderItem);
 }
 
-export async function getChangeOrderAttachments(changeOrderId: string): Promise<ChangeOrderAttachment[]> {
+export async function getChangeOrderAttachments(
+  changeOrderId: string
+): Promise<ChangeOrderAttachment[]> {
   const c = client();
   const { data: rows, error } = await c
     .from("project_change_order_attachments")
@@ -292,7 +307,10 @@ export async function getProjectBudgetItems(projectId: string): Promise<ProjectB
 
 // —— Create ——
 
-async function getNextChangeOrderNumber(c: ReturnType<typeof client>, projectId: string): Promise<string> {
+async function getNextChangeOrderNumber(
+  c: ReturnType<typeof client>,
+  projectId: string
+): Promise<string> {
   const { data: numRow, error: numErr } = await c.rpc("next_change_order_number", {
     p_project_id: projectId,
   });
@@ -306,13 +324,22 @@ async function getNextChangeOrderNumber(c: ReturnType<typeof client>, projectId:
       .from("project_change_orders")
       .select("id")
       .eq("project_id", projectId);
-    const seq = ((existing ?? []).length + 1);
+    const seq = (existing ?? []).length + 1;
     return `CO-${String(seq).padStart(4, "0")}`;
   }
   if (typeof numRow === "string" && numRow) return numRow;
-  if (Array.isArray(numRow) && numRow[0] != null && typeof (numRow[0] as { next_change_order_number?: string }).next_change_order_number === "string")
+  if (
+    Array.isArray(numRow) &&
+    numRow[0] != null &&
+    typeof (numRow[0] as { next_change_order_number?: string }).next_change_order_number ===
+      "string"
+  )
     return (numRow[0] as { next_change_order_number: string }).next_change_order_number;
-  if (typeof numRow === "object" && numRow !== null && typeof (numRow as { next_change_order_number?: string }).next_change_order_number === "string")
+  if (
+    typeof numRow === "object" &&
+    numRow !== null &&
+    typeof (numRow as { next_change_order_number?: string }).next_change_order_number === "string"
+  )
     return (numRow as { next_change_order_number: string }).next_change_order_number;
   throw new Error(`Failed to get CO number: unexpected RPC result. ${HINT}`);
 }
@@ -325,7 +352,10 @@ export type CreateChangeOrderInput = {
   scheduleImpactDays?: number | null;
 };
 
-export async function createChangeOrder(projectId: string, input?: CreateChangeOrderInput): Promise<ChangeOrder> {
+export async function createChangeOrder(
+  projectId: string,
+  input?: CreateChangeOrderInput
+): Promise<ChangeOrder> {
   const c = client();
   const number = await getNextChangeOrderNumber(c, projectId);
   const sequence = parseInt(number.replace(/^CO-0*/, "") || "0", 10) || 1;
@@ -362,7 +392,11 @@ export async function createChangeOrder(projectId: string, input?: CreateChangeO
       // Otherwise insert failed too: retry without amount and select legacy columns.
       const payloadNoAmount = { ...payload };
       delete (payloadNoAmount as Record<string, unknown>).amount;
-      const retry = await c.from("project_change_orders").insert(payloadNoAmount).select(CO_COLS_LEGACY).single();
+      const retry = await c
+        .from("project_change_orders")
+        .insert(payloadNoAmount)
+        .select(CO_COLS_LEGACY)
+        .single();
       if (!retry.error && retry.data) return toChangeOrder(retry.data as ChangeOrderRow);
       throw new Error(retry.error?.message ? `${retry.error.message} ${HINT}` : HINT);
     }
@@ -394,7 +428,10 @@ export async function addChangeOrderAttachment(
 
 export async function deleteChangeOrderAttachment(attachmentId: string): Promise<boolean> {
   const c = client();
-  const { error } = await c.from("project_change_order_attachments").delete().eq("id", attachmentId);
+  const { error } = await c
+    .from("project_change_order_attachments")
+    .delete()
+    .eq("id", attachmentId);
   return !error;
 }
 
@@ -426,13 +463,19 @@ export async function addChangeOrderItem(
   return toChangeOrderItem(row);
 }
 
-async function recomputeChangeOrderTotal(c: ReturnType<typeof client>, changeOrderId: string): Promise<void> {
+async function recomputeChangeOrderTotal(
+  c: ReturnType<typeof client>,
+  changeOrderId: string
+): Promise<void> {
   const { data: rows } = await c
     .from("project_change_order_items")
     .select("total")
     .eq("change_order_id", changeOrderId);
   const sum = (rows ?? []).reduce((s, r) => s + Number(r.total), 0);
-  await c.from("project_change_orders").update({ total: sum, total_amount: sum }).eq("id", changeOrderId);
+  await c
+    .from("project_change_orders")
+    .update({ total: sum, total_amount: sum })
+    .eq("id", changeOrderId);
 }
 
 // —— Update ——
@@ -445,7 +488,10 @@ export type UpdateChangeOrderPatch = {
   scheduleImpactDays?: number | null;
 };
 
-export async function updateChangeOrder(changeOrderId: string, patch: UpdateChangeOrderPatch): Promise<boolean> {
+export async function updateChangeOrder(
+  changeOrderId: string,
+  patch: UpdateChangeOrderPatch
+): Promise<boolean> {
   const c = client();
   const co = await getChangeOrderById(changeOrderId);
   if (!co || co.status !== "Draft") return false;
@@ -454,7 +500,8 @@ export async function updateChangeOrder(changeOrderId: string, patch: UpdateChan
   if (patch.description !== undefined) updates.description = patch.description;
   if (patch.amount !== undefined) updates.amount = patch.amount;
   if (patch.costImpact !== undefined) updates.cost_impact = patch.costImpact;
-  if (patch.scheduleImpactDays !== undefined) updates.schedule_impact_days = patch.scheduleImpactDays;
+  if (patch.scheduleImpactDays !== undefined)
+    updates.schedule_impact_days = patch.scheduleImpactDays;
   if (Object.keys(updates).length === 0) return true;
   const res = await c.from("project_change_orders").update(updates).eq("id", changeOrderId);
   if (!res.error) return true;
@@ -462,7 +509,10 @@ export async function updateChangeOrder(changeOrderId: string, patch: UpdateChan
     // Older schema: drop amount update and retry.
     const retryUpdates = { ...updates };
     delete (retryUpdates as Record<string, unknown>).amount;
-    const retry = await c.from("project_change_orders").update(retryUpdates).eq("id", changeOrderId);
+    const retry = await c
+      .from("project_change_orders")
+      .update(retryUpdates)
+      .eq("id", changeOrderId);
     return !retry.error;
   }
   return false;
@@ -476,7 +526,12 @@ export async function updateChangeOrderItem(
   const c = client();
   const co = await getChangeOrderById(changeOrderId);
   if (!co || co.status !== "Draft") return false;
-  const itemRows = await c.from("project_change_order_items").select("*").eq("id", itemId).eq("change_order_id", changeOrderId).maybeSingle();
+  const itemRows = await c
+    .from("project_change_order_items")
+    .select("*")
+    .eq("id", itemId)
+    .eq("change_order_id", changeOrderId)
+    .maybeSingle();
   if (itemRows.error || !itemRows.data) return false;
   const updates: Record<string, unknown> = {};
   if (patch.description != null) updates.description = patch.description;
@@ -488,17 +543,28 @@ export async function updateChangeOrderItem(
   const qty = patch.qty != null ? patch.qty : Number(current.qty);
   const unitPrice = patch.unitPrice != null ? patch.unitPrice : Number(current.unit_price);
   updates.total = qty * unitPrice;
-  const { error } = await c.from("project_change_order_items").update(updates).eq("id", itemId).eq("change_order_id", changeOrderId);
+  const { error } = await c
+    .from("project_change_order_items")
+    .update(updates)
+    .eq("id", itemId)
+    .eq("change_order_id", changeOrderId);
   if (error) return false;
   await recomputeChangeOrderTotal(c, changeOrderId);
   return true;
 }
 
-export async function deleteChangeOrderItem(changeOrderId: string, itemId: string): Promise<boolean> {
+export async function deleteChangeOrderItem(
+  changeOrderId: string,
+  itemId: string
+): Promise<boolean> {
   const c = client();
   const co = await getChangeOrderById(changeOrderId);
   if (!co || co.status !== "Draft") return false;
-  const { error } = await c.from("project_change_order_items").delete().eq("id", itemId).eq("change_order_id", changeOrderId);
+  const { error } = await c
+    .from("project_change_order_items")
+    .delete()
+    .eq("id", itemId)
+    .eq("change_order_id", changeOrderId);
   if (error) return false;
   await recomputeChangeOrderTotal(c, changeOrderId);
   return true;
@@ -519,15 +585,23 @@ export async function updateChangeOrderStatus(
 
   if (status === "Approved") {
     if (co.status === "Approved") return false;
-    const payload: { p_change_order_id: string; p_approved_by?: string | null } = { p_change_order_id: changeOrderId };
+    const payload: { p_change_order_id: string; p_approved_by?: string | null } = {
+      p_change_order_id: changeOrderId,
+    };
     if (options?.approvedBy != null) payload.p_approved_by = options.approvedBy;
     const { error } = await c.rpc("approve_change_order", payload);
     if (error) {
       if (!isMissingFunction(error)) return false;
       // Fallback: direct status update.
-      const updates: Record<string, unknown> = { status: "Approved", approved_at: new Date().toISOString() };
+      const updates: Record<string, unknown> = {
+        status: "Approved",
+        approved_at: new Date().toISOString(),
+      };
       if (options?.approvedBy != null) updates.approved_by = options.approvedBy;
-      const { error: updErr } = await c.from("project_change_orders").update(updates).eq("id", changeOrderId);
+      const { error: updErr } = await c
+        .from("project_change_orders")
+        .update(updates)
+        .eq("id", changeOrderId);
       return !updErr;
     }
     return true;
@@ -543,7 +617,10 @@ export async function updateChangeOrderStatus(
   }
 
   if (status === "Pending Approval" && co.status === "Draft") {
-    const { error } = await c.from("project_change_orders").update({ status: "Pending Approval" }).eq("id", changeOrderId);
+    const { error } = await c
+      .from("project_change_orders")
+      .update({ status: "Pending Approval" })
+      .eq("id", changeOrderId);
     return !error;
   }
 

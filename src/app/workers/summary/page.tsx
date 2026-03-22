@@ -49,7 +49,10 @@ type SortKey = keyof Omit<Row, "workerId">;
 function SortGlyph({ active, dir }: { active: boolean; dir: "asc" | "desc" }) {
   if (!active) return <span className="ml-1 inline-block w-3" aria-hidden />;
   return (
-    <span className="ml-0.5 inline-block w-3 text-[10px] font-normal text-muted-foreground" aria-hidden>
+    <span
+      className="ml-0.5 inline-block w-3 text-[10px] font-normal text-muted-foreground"
+      aria-hidden
+    >
       {dir === "asc" ? "↑" : "↓"}
     </span>
   );
@@ -66,10 +69,12 @@ export default function WorkerSummaryPage() {
   const [fromDate, setFromDate] = React.useState(defaultFrom);
   const [toDate, setToDate] = React.useState(today);
   const [query, setQuery] = React.useState("");
-  const [sort, setSort] = React.useState<{ key: keyof Omit<Row, "workerId">; dir: "asc" | "desc" }>({
-    key: "outstanding",
-    dir: "desc",
-  });
+  const [sort, setSort] = React.useState<{ key: keyof Omit<Row, "workerId">; dir: "asc" | "desc" }>(
+    {
+      key: "outstanding",
+      dir: "desc",
+    }
+  );
   const [page, setPage] = React.useState(1);
   const pageSize = 15;
 
@@ -113,7 +118,10 @@ export default function WorkerSummaryPage() {
       for (const inv of invoicesAll as WorkerInvoice[]) {
         const d = inv.createdAt?.slice(0, 10) ?? "";
         if (d && (d < fromDate || d > toDate)) continue;
-        invoiceByWorker.set(inv.workerId, (invoiceByWorker.get(inv.workerId) ?? 0) + (Number(inv.amount) || 0));
+        invoiceByWorker.set(
+          inv.workerId,
+          (invoiceByWorker.get(inv.workerId) ?? 0) + (Number(inv.amount) || 0)
+        );
       }
 
       const paidByWorker = new Map<string, number>();
@@ -216,17 +224,37 @@ export default function WorkerSummaryPage() {
       />
 
       <div className="flex flex-wrap items-center gap-3 border-b border-border/60 pb-3">
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">From</label>
-        <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="h-9 w-[152px]" />
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">To</label>
-        <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="h-9 w-[152px]" />
+        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          From
+        </label>
+        <Input
+          type="date"
+          value={fromDate}
+          onChange={(e) => setFromDate(e.target.value)}
+          className="h-9 w-[152px]"
+        />
+        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          To
+        </label>
+        <Input
+          type="date"
+          value={toDate}
+          onChange={(e) => setToDate(e.target.value)}
+          className="h-9 w-[152px]"
+        />
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search worker…"
           className="h-9 min-w-[180px]"
         />
-        <Button size="sm" variant="outline" className="h-9 ml-auto" onClick={() => void load()} disabled={loading}>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-9 ml-auto"
+          onClick={() => void load()}
+          disabled={loading}
+        >
           Refresh
         </Button>
       </div>
@@ -235,19 +263,31 @@ export default function WorkerSummaryPage() {
 
       <div className="grid gap-4 border-b border-border/60 py-4 sm:grid-cols-2 lg:grid-cols-4">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Work days (entries)</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Work days (entries)
+          </p>
           <p className="mt-1 text-lg font-semibold tabular-nums text-right">{totals.workDays}</p>
         </div>
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total Earned</p>
-          <p className="mt-1 text-lg font-semibold tabular-nums text-right">{fmtUsd(totals.earned)}</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Total Earned
+          </p>
+          <p className="mt-1 text-lg font-semibold tabular-nums text-right">
+            {fmtUsd(totals.earned)}
+          </p>
         </div>
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total Paid</p>
-          <p className="mt-1 text-lg font-semibold tabular-nums text-right">{fmtUsd(totals.paid)}</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Total Paid
+          </p>
+          <p className="mt-1 text-lg font-semibold tabular-nums text-right">
+            {fmtUsd(totals.paid)}
+          </p>
         </div>
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total Outstanding</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Total Outstanding
+          </p>
           <p
             className={
               totals.outstanding > 0.005
@@ -267,7 +307,13 @@ export default function WorkerSummaryPage() {
               <th
                 className="cursor-pointer select-none py-2.5 px-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground"
                 onClick={() => toggleSort("workerName")}
-                aria-sort={sort.key === "workerName" ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
+                aria-sort={
+                  sort.key === "workerName"
+                    ? sort.dir === "asc"
+                      ? "ascending"
+                      : "descending"
+                    : "none"
+                }
               >
                 Worker
                 <SortGlyph active={sort.key === "workerName"} dir={sort.dir} />
@@ -275,7 +321,13 @@ export default function WorkerSummaryPage() {
               <th
                 className="cursor-pointer select-none py-2.5 px-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground tabular-nums w-[88px]"
                 onClick={() => toggleSort("workDays")}
-                aria-sort={sort.key === "workDays" ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
+                aria-sort={
+                  sort.key === "workDays"
+                    ? sort.dir === "asc"
+                      ? "ascending"
+                      : "descending"
+                    : "none"
+                }
               >
                 Work days
                 <SortGlyph active={sort.key === "workDays"} dir={sort.dir} />
@@ -283,7 +335,9 @@ export default function WorkerSummaryPage() {
               <th
                 className="cursor-pointer select-none py-2.5 px-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground tabular-nums"
                 onClick={() => toggleSort("earned")}
-                aria-sort={sort.key === "earned" ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
+                aria-sort={
+                  sort.key === "earned" ? (sort.dir === "asc" ? "ascending" : "descending") : "none"
+                }
               >
                 Earned
                 <SortGlyph active={sort.key === "earned"} dir={sort.dir} />
@@ -291,7 +345,9 @@ export default function WorkerSummaryPage() {
               <th
                 className="cursor-pointer select-none py-2.5 px-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground tabular-nums"
                 onClick={() => toggleSort("paid")}
-                aria-sort={sort.key === "paid" ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
+                aria-sort={
+                  sort.key === "paid" ? (sort.dir === "asc" ? "ascending" : "descending") : "none"
+                }
               >
                 Paid
                 <SortGlyph active={sort.key === "paid"} dir={sort.dir} />
@@ -299,7 +355,13 @@ export default function WorkerSummaryPage() {
               <th
                 className="cursor-pointer select-none py-2.5 px-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground tabular-nums"
                 onClick={() => toggleSort("outstanding")}
-                aria-sort={sort.key === "outstanding" ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
+                aria-sort={
+                  sort.key === "outstanding"
+                    ? sort.dir === "asc"
+                      ? "ascending"
+                      : "descending"
+                    : "none"
+                }
               >
                 Outstanding
                 <SortGlyph active={sort.key === "outstanding"} dir={sort.dir} />
@@ -338,10 +400,31 @@ export default function WorkerSummaryPage() {
                   role="link"
                   aria-label={`Open ${r.workerName} dashboard`}
                 >
-                  <td className={cn("first:rounded-l-xl py-1.5 px-3 font-medium", listTablePrimaryCellClassName)}>{r.workerName}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums text-muted-foreground">{r.workDays}</td>
-                  <td className={cn("py-1.5 px-3 text-right tabular-nums", listTableAmountCellClassName)}>{fmtUsd(r.earned)}</td>
-                  <td className={cn("py-1.5 px-3 text-right tabular-nums text-muted-foreground", listTableAmountCellClassName)}>
+                  <td
+                    className={cn(
+                      "first:rounded-l-xl py-1.5 px-3 font-medium",
+                      listTablePrimaryCellClassName
+                    )}
+                  >
+                    {r.workerName}
+                  </td>
+                  <td className="py-1.5 px-3 text-right tabular-nums text-muted-foreground">
+                    {r.workDays}
+                  </td>
+                  <td
+                    className={cn(
+                      "py-1.5 px-3 text-right tabular-nums",
+                      listTableAmountCellClassName
+                    )}
+                  >
+                    {fmtUsd(r.earned)}
+                  </td>
+                  <td
+                    className={cn(
+                      "py-1.5 px-3 text-right tabular-nums text-muted-foreground",
+                      listTableAmountCellClassName
+                    )}
+                  >
                     {fmtUsd(r.paid)}
                   </td>
                   <td
@@ -353,7 +436,10 @@ export default function WorkerSummaryPage() {
                   >
                     {fmtUsd(r.outstanding)}
                   </td>
-                  <td className="last:rounded-r-xl py-1.5 px-3 text-right" onClick={(e) => e.stopPropagation()}>
+                  <td
+                    className="last:rounded-r-xl py-1.5 px-3 text-right"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <RowActionsMenu
                       appearance="list"
                       ariaLabel={`Actions for ${r.workerName}`}
@@ -364,11 +450,20 @@ export default function WorkerSummaryPage() {
                           label: "Delete",
                           onClick: async () => {
                             if (deletingId) return;
-                            if (!window.confirm(`Delete worker "${r.workerName}"? This cannot be undone.`)) return;
+                            if (
+                              !window.confirm(
+                                `Delete worker "${r.workerName}"? This cannot be undone.`
+                              )
+                            )
+                              return;
                             setDeletingId(r.workerId);
                             const res = await deleteWorkerAction(r.workerId);
                             if (!res.ok) {
-                              toast({ title: "Delete failed", description: res.error, variant: "error" });
+                              toast({
+                                title: "Delete failed",
+                                description: res.error,
+                                variant: "error",
+                              });
                             } else {
                               toast({ title: "Deleted", variant: "success" });
                             }
@@ -396,7 +491,13 @@ export default function WorkerSummaryPage() {
           of {filtered.length}
         </span>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" className="h-8" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
             Prev
           </Button>
           <Button

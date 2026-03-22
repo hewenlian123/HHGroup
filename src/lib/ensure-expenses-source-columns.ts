@@ -24,7 +24,10 @@ export async function ensureExpensesSourceColumns(): Promise<void> {
       await sql.end();
       return;
     }
-    const migrationPath = join(process.cwd(), "supabase/migrations/202604141000_expenses_source_source_id_paid.sql");
+    const migrationPath = join(
+      process.cwd(),
+      "supabase/migrations/202604141000_expenses_source_source_id_paid.sql"
+    );
     const migrationSql = readFileSync(migrationPath, "utf8");
     await sql.unsafe(migrationSql);
     ensured = true;

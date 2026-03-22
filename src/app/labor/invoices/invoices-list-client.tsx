@@ -14,7 +14,13 @@ import { StatusBadge } from "@/components/status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { DeleteRowAction } from "@/components/base";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { createBrowserClient } from "@/lib/supabase";
 import {
   listTableAmountCellClassName,
@@ -81,40 +87,64 @@ export default function LaborInvoicesListClient() {
     setMessage(null);
     setVoidConfirmId(null);
 
-    const [
-      { data: invData, error: invErr },
-      { data: workerData, error: workerErr },
-    ] = await Promise.all([
-      supabase.from("labor_invoices").select("id,invoice_no,worker_id,invoice_date,amount,project_splits,status").order("created_at", { ascending: false }).limit(500),
-      supabase.from("workers").select("id,name").order("created_at", { ascending: false }).limit(500),
-    ]);
+    const [{ data: invData, error: invErr }, { data: workerData, error: workerErr }] =
+      await Promise.all([
+        supabase
+          .from("labor_invoices")
+          .select("id,invoice_no,worker_id,invoice_date,amount,project_splits,status")
+          .order("created_at", { ascending: false })
+          .limit(500),
+        supabase
+          .from("workers")
+          .select("id,name")
+          .order("created_at", { ascending: false })
+          .limit(500),
+      ]);
 
     if (invErr) {
       if (isMissingTableError(invErr)) setInvoices([]);
       else setError(invErr.message);
     } else {
-      setInvoices((invData ?? []).map((r) => {
-        const row = r as { id: string; invoice_no: string; worker_id: string; invoice_date: string; amount?: unknown; project_splits?: { projectId?: string; amount?: number }[]; status: string };
-        const splits = Array.isArray(row.project_splits)
-          ? row.project_splits.map((s) => ({ projectId: s.projectId ?? "", amount: Number.isFinite(s.amount) ? Number(s.amount) : 0 }))
-          : [];
-        return {
-          id: row.id,
-          invoice_no: row.invoice_no,
-          worker_id: row.worker_id,
-          invoice_date: row.invoice_date,
-          amount: safeNumber(row.amount),
-          project_splits: splits,
-          status: row.status as LaborInvoiceStatus,
-        };
-      }));
+      setInvoices(
+        (invData ?? []).map((r) => {
+          const row = r as {
+            id: string;
+            invoice_no: string;
+            worker_id: string;
+            invoice_date: string;
+            amount?: unknown;
+            project_splits?: { projectId?: string; amount?: number }[];
+            status: string;
+          };
+          const splits = Array.isArray(row.project_splits)
+            ? row.project_splits.map((s) => ({
+                projectId: s.projectId ?? "",
+                amount: Number.isFinite(s.amount) ? Number(s.amount) : 0,
+              }))
+            : [];
+          return {
+            id: row.id,
+            invoice_no: row.invoice_no,
+            worker_id: row.worker_id,
+            invoice_date: row.invoice_date,
+            amount: safeNumber(row.amount),
+            project_splits: splits,
+            status: row.status as LaborInvoiceStatus,
+          };
+        })
+      );
     }
 
     if (workerErr) {
       if (!isMissingTableError(workerErr)) setError((e) => e ?? workerErr.message);
       setWorkers([]);
     } else {
-      setWorkers((workerData ?? []).map((w) => ({ id: (w as { id: string }).id, name: (w as { name: string }).name ?? "" })));
+      setWorkers(
+        (workerData ?? []).map((w) => ({
+          id: (w as { id: string }).id,
+          name: (w as { name: string }).name ?? "",
+        }))
+      );
     }
     setLoading(false);
   }, [supabase, configured]);
@@ -176,7 +206,10 @@ export default function LaborInvoicesListClient() {
       setBusyId(id);
       setError(null);
       setInvoices((inv) => inv.map((r) => (r.id === id ? { ...r, status: "void" as const } : r)));
-      const { error: updateErr } = await supabase.from("labor_invoices").update({ status: "void" }).eq("id", id);
+      const { error: updateErr } = await supabase
+        .from("labor_invoices")
+        .update({ status: "void" })
+        .eq("id", id);
       if (updateErr) {
         setError(updateErr.message);
         void refresh();
@@ -194,19 +227,32 @@ export default function LaborInvoicesListClient() {
         subtitle="Worker invoices/receipts with attachment and project split review."
         actions={
           <Link href="/labor/invoices/new" className="w-full sm:w-auto block sm:inline-block">
-            <Button size="sm" className="w-full sm:w-auto">+ New Invoice</Button>
+            <Button size="sm" className="w-full sm:w-auto">
+              + New Invoice
+            </Button>
           </Link>
         }
       />
       <FilterBar>
         <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Search</p>
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Invoice # or worker" />
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Search
+            </p>
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Invoice # or worker"
+            />
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Status</p>
-            <Select value={status} onChange={(e) => setStatus(e.target.value as "" | LaborInvoiceStatus)}>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Status
+            </p>
+            <Select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as "" | LaborInvoiceStatus)}
+            >
               <option value="">All status</option>
               <option value="draft">Draft</option>
               <option value="reviewed">Reviewed</option>
@@ -215,11 +261,15 @@ export default function LaborInvoicesListClient() {
             </Select>
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">From</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              From
+            </p>
             <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">To</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              To
+            </p>
             <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
           </div>
         </div>
@@ -239,13 +289,27 @@ export default function LaborInvoicesListClient() {
           <table className="w-full min-w-[560px] text-sm md:min-w-0">
             <thead>
               <tr className="border-b border-[#EBEBE9] dark:border-border/60 bg-[#F7F7F5] dark:bg-muted/30">
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Invoice #</th>
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Worker</th>
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Date</th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Amount</th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Split Projects</th>
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Status</th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Actions</th>
+                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Invoice #
+                </th>
+                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Worker
+                </th>
+                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Date
+                </th>
+                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Amount
+                </th>
+                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Split Projects
+                </th>
+                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Status
+                </th>
+                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -262,18 +326,43 @@ export default function LaborInvoicesListClient() {
                   {filtered.map((row) => (
                     <tr
                       key={row.id}
-                      className={cn(listTableRowClassName, "border-b border-[#EBEBE9]/80 dark:border-border/30")}
+                      className={cn(
+                        listTableRowClassName,
+                        "border-b border-[#EBEBE9]/80 dark:border-border/30"
+                      )}
                       onClick={() => router.push(`/labor/invoices/${row.id}`)}
                     >
                       <td className="py-3 px-4 font-medium text-foreground">
-                        <span className={cn(listTablePrimaryCellClassName, "hover:underline")}>{row.invoice_no}</span>
+                        <span className={cn(listTablePrimaryCellClassName, "hover:underline")}>
+                          {row.invoice_no}
+                        </span>
                       </td>
-                      <td className="py-3 px-4">{workersMap.get(row.worker_id) ?? "Unknown worker"}</td>
-                      <td className="py-3 px-4 tabular-nums text-muted-foreground">{row.invoice_date}</td>
-                      <td className={cn("py-3 px-4 text-right tabular-nums", listTableAmountCellClassName)}>
-                        {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(row.amount)}
+                      <td className="py-3 px-4">
+                        {workersMap.get(row.worker_id) ?? "Unknown worker"}
                       </td>
-                      <td className={cn("py-3 px-4 text-right tabular-nums", listTableAmountCellClassName)}>{row.project_splits?.length ?? 0}</td>
+                      <td className="py-3 px-4 tabular-nums text-muted-foreground">
+                        {row.invoice_date}
+                      </td>
+                      <td
+                        className={cn(
+                          "py-3 px-4 text-right tabular-nums",
+                          listTableAmountCellClassName
+                        )}
+                      >
+                        {new Intl.NumberFormat("en-US", {
+                          style: "currency",
+                          currency: "USD",
+                          maximumFractionDigits: 2,
+                        }).format(row.amount)}
+                      </td>
+                      <td
+                        className={cn(
+                          "py-3 px-4 text-right tabular-nums",
+                          listTableAmountCellClassName
+                        )}
+                      >
+                        {row.project_splits?.length ?? 0}
+                      </td>
                       <td className="py-3 px-4">
                         <StatusBadge status={row.status} />
                       </td>
@@ -289,9 +378,21 @@ export default function LaborInvoicesListClient() {
                             appearance="list"
                             ariaLabel={`Actions for ${row.invoice_no}`}
                             actions={[
-                              { label: "View", onClick: () => { void router.push(`/labor/invoices/${row.id}`); } },
+                              {
+                                label: "View",
+                                onClick: () => {
+                                  void router.push(`/labor/invoices/${row.id}`);
+                                },
+                              },
                               ...(row.status !== "void"
-                                ? [{ label: "Void", onClick: () => setVoidConfirmId(row.id), disabled: !!busyId, destructive: true }]
+                                ? [
+                                    {
+                                      label: "Void",
+                                      onClick: () => setVoidConfirmId(row.id),
+                                      disabled: !!busyId,
+                                      destructive: true,
+                                    },
+                                  ]
                                 : []),
                             ]}
                           />
@@ -320,7 +421,9 @@ export default function LaborInvoicesListClient() {
           </DialogHeader>
           <p className="text-sm text-muted-foreground">This cannot be undone.</p>
           <DialogFooter className="gap-2 pt-3 border-t border-border/60">
-            <Button variant="ghost" size="sm" onClick={() => setVoidConfirmId(null)}>Cancel</Button>
+            <Button variant="ghost" size="sm" onClick={() => setVoidConfirmId(null)}>
+              Cancel
+            </Button>
             <Button
               variant="destructive"
               size="sm"

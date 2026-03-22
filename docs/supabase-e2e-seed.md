@@ -12,15 +12,15 @@
 
 ## 覆盖的数据
 
-| 表 | 说明 |
-|----|------|
-| `categories` | `[E2E] Materials` / `[E2E] Equipment` / `[E2E] Test income` |
-| `subcontractors` | `[E2E] Test Subcontractor`（可选写入 `project_subcontractors`） |
-| `project_tasks` | 两条任务，`is_test = true`（若列存在） |
-| `documents` | 一条元数据（`notes = E2E_SEED`，无实际上传文件） |
-| `labor_entries` | 一条与种子项目/工人关联的工时（按当前库列自动选插入形态） |
-| `site_photos` | 一条占位图 URL（picsum） |
-| `projects` / `workers` / `labor_workers` | 支撑上述外键的固定种子行 |
+| 表                                       | 说明                                                            |
+| ---------------------------------------- | --------------------------------------------------------------- |
+| `categories`                             | `[E2E] Materials` / `[E2E] Equipment` / `[E2E] Test income`     |
+| `subcontractors`                         | `[E2E] Test Subcontractor`（可选写入 `project_subcontractors`） |
+| `project_tasks`                          | 两条任务，`is_test = true`（若列存在）                          |
+| `documents`                              | 一条元数据（`notes = E2E_SEED`，无实际上传文件）                |
+| `labor_entries`                          | 一条与种子项目/工人关联的工时（按当前库列自动选插入形态）       |
+| `site_photos`                            | 一条占位图 URL（picsum）                                        |
+| `projects` / `workers` / `labor_workers` | 支撑上述外键的固定种子行                                        |
 
 固定 ID（便于清理）：
 
@@ -73,7 +73,7 @@ psql "$SUPABASE_DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/seed.sql
 
 工作流在 E2E 前会执行（**仅当你配置了以下 secrets，且指向 staging**）：
 
-- `SUPABASE_PROJECT_REF` — 项目 ref  
+- `SUPABASE_PROJECT_REF` — 项目 ref
 - `SUPABASE_ACCESS_TOKEN` — [Supabase CLI 访问令牌](https://supabase.com/docs/guides/cli/getting-started)（用于 `db execute`）
 
 ## 仅删除种子（不重新插入）

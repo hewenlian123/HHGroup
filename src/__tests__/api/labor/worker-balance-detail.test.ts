@@ -2,14 +2,19 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 let mockSupabaseGetter: () => ReturnType<typeof createBalanceMock> | null = () => null;
 
-function createBalanceMock(workerId: string, overrides: {
-  worker?: { id: string; name: string | null } | null;
-  labor?: unknown[];
-  reimb?: unknown[];
-  payments?: unknown[];
-  projects?: unknown[];
-} = {}) {
-  const worker = overrides.hasOwnProperty("worker") ? overrides.worker! : { id: workerId, name: "Test Worker" };
+function createBalanceMock(
+  workerId: string,
+  overrides: {
+    worker?: { id: string; name: string | null } | null;
+    labor?: unknown[];
+    reimb?: unknown[];
+    payments?: unknown[];
+    projects?: unknown[];
+  } = {}
+) {
+  const worker = overrides.hasOwnProperty("worker")
+    ? overrides.worker!
+    : { id: workerId, name: "Test Worker" };
   const labor = overrides.labor ?? [];
   const reimb = overrides.reimb ?? [];
   const payments = overrides.payments ?? [];
@@ -87,8 +92,25 @@ describe("GET /api/labor/workers/[id]/balance", () => {
     mockSupabaseGetter = () =>
       createBalanceMock("w1", {
         worker: { id: "w1", name: "Worker One" },
-        labor: [{ id: "l1", project_id: "p1", work_date: "2025-01-01", cost_amount: 100, status: "pending" }],
-        reimb: [{ id: "r1", project_id: null, vendor: "V", amount: 20, status: "pending", created_at: "2025-01-02" }],
+        labor: [
+          {
+            id: "l1",
+            project_id: "p1",
+            work_date: "2025-01-01",
+            cost_amount: 100,
+            status: "pending",
+          },
+        ],
+        reimb: [
+          {
+            id: "r1",
+            project_id: null,
+            vendor: "V",
+            amount: 20,
+            status: "pending",
+            created_at: "2025-01-02",
+          },
+        ],
         payments: [
           {
             id: "pay1",

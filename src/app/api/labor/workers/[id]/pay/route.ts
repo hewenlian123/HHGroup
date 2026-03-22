@@ -55,7 +55,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const paymentDate = (body.payment_date ?? new Date().toISOString().slice(0, 10)).slice(0, 10);
   const notes = typeof body.notes === "string" ? body.notes.trim() || null : null;
   const projectIdForFilter =
-    typeof body.project_id === "string" && body.project_id.trim().length > 0 ? body.project_id.trim() : null;
+    typeof body.project_id === "string" && body.project_id.trim().length > 0
+      ? body.project_id.trim()
+      : null;
 
   const admin = getServerSupabaseAdmin();
   if (!admin) {
@@ -65,8 +67,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     );
   }
 
-  const laborIdsIn = Array.isArray(body.labor_entry_ids) ? body.labor_entry_ids.filter(Boolean) : null;
-  const reimbIdsIn = Array.isArray(body.reimbursement_ids) ? body.reimbursement_ids.filter(Boolean) : null;
+  const laborIdsIn = Array.isArray(body.labor_entry_ids)
+    ? body.labor_entry_ids.filter(Boolean)
+    : null;
+  const reimbIdsIn = Array.isArray(body.reimbursement_ids)
+    ? body.reimbursement_ids.filter(Boolean)
+    : null;
   const explicitSelection = laborIdsIn !== null || reimbIdsIn !== null;
   const laborIds = laborIdsIn ?? [];
   const reimbIds = reimbIdsIn ?? [];
@@ -94,7 +100,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           .select("id, worker_id, cost_amount, status, worker_payment_id")
           .eq("worker_id", workerId)
           .in("id", laborIds);
-        if (laborQ.error && /column|schema cache|worker_payment_id/i.test(laborQ.error.message ?? "")) {
+        if (
+          laborQ.error &&
+          /column|schema cache|worker_payment_id/i.test(laborQ.error.message ?? "")
+        ) {
           laborSettlementMode = "status_fallback";
           laborQ = await admin
             .from("labor_entries")
@@ -112,7 +121,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           worker_payment_id?: string | null;
         }[];
         if (rows.length !== laborIds.length) {
-          return NextResponse.json({ message: "One or more labor entries were not found for this worker." }, { status: 400 });
+          return NextResponse.json(
+            { message: "One or more labor entries were not found for this worker." },
+            { status: 400 }
+          );
         }
         for (const r of rows) {
           if (!isLaborUnpaidForWorkerPayroll(r.status, r.worker_payment_id, laborSettlementMode)) {
@@ -146,7 +158,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         }
         for (const r of rows) {
           if (String(r.status ?? "").toLowerCase() === "paid") {
-            return NextResponse.json({ message: "One or more reimbursements are already paid." }, { status: 400 });
+            return NextResponse.json(
+              { message: "One or more reimbursements are already paid." },
+              { status: 400 }
+            );
           }
           expectedTotal += Number(r.amount) || 0;
         }
@@ -154,7 +169,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
       if (Math.abs(expectedTotal - amount) > AMOUNT_EPS) {
         return NextResponse.json(
-          { message: `Payment amount must match selected items (expected ${expectedTotal.toFixed(2)}).` },
+          {
+            message: `Payment amount must match selected items (expected ${expectedTotal.toFixed(2)}).`,
+          },
           { status: 400 }
         );
       }
@@ -177,9 +194,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     const persistPaymentLaborIds = async (paymentId: string, laborIds: string[]) => {
       if (laborIds.length === 0) return;
-      const { error } = await admin.from("worker_payments").update({ labor_entry_ids: laborIds }).eq("id", paymentId);
+      const { error } = await admin
+        .from("worker_payments")
+        .update({ labor_entry_ids: laborIds })
+        .eq("id", paymentId);
       if (error && !/column|schema cache|labor_entry_ids/i.test(error.message ?? "")) {
-        console.warn("[pay worker] could not persist labor_entry_ids on worker_payments:", error.message);
+        console.warn(
+          "[pay worker] could not persist labor_entry_ids on worker_payments:",
+          error.message
+        );
       }
     };
 
@@ -215,7 +238,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           return {
             ok: false,
             settledLaborIds: [],
-            error: e2.message ?? "Could not mark labor paid (check DB: worker_payment_id or status).",
+            error:
+              e2.message ?? "Could not mark labor paid (check DB: worker_payment_id or status).",
           };
         }
         const got2 = (upd2 ?? []) as { id: string }[];
@@ -228,7 +252,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         }
         return { ok: true, settledLaborIds: got2.map((r) => r.id) };
       }
-      return { ok: false, settledLaborIds: [], error: error.message ?? "Failed to update labor entries." };
+      return {
+        ok: false,
+        settledLaborIds: [],
+        error: error.message ?? "Failed to update labor entries.",
+      };
     };
 
     const settleReimbForIds = async (ids: string[]): Promise<{ ok: boolean; error?: string }> => {
@@ -239,7 +267,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         paid_at: paidAt,
         payment_id: payment.id,
       };
-      const { error } = await admin.from("worker_reimbursements").update(payload).eq("worker_id", workerId).in("id", ids);
+      const { error } = await admin
+        .from("worker_reimbursements")
+        .update(payload)
+        .eq("worker_id", workerId)
+        .in("id", ids);
       if (!error) return { ok: true };
       if (/column|schema cache|payment_id|paid_at/i.test(error.message ?? "")) {
         const { error: e2 } = await admin
@@ -264,7 +296,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     const reimbResult = await settleReimbForIds(plannedReimbIds);
     if (!reimbResult.ok) {
-      await admin.from("labor_entries").update({ worker_payment_id: null }).eq("worker_payment_id", payment.id);
+      await admin
+        .from("labor_entries")
+        .update({ worker_payment_id: null })
+        .eq("worker_payment_id", payment.id);
       await admin.from("worker_payments").delete().eq("id", payment.id);
       return NextResponse.json(
         { message: reimbResult.error ?? "Failed to settle reimbursements." },

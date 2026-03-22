@@ -79,7 +79,7 @@ function ymd(value: string | null | undefined): string {
 
 function one<T>(value: T | T[] | null | undefined): T | null {
   if (!value) return null;
-  return Array.isArray(value) ? value[0] ?? null : value;
+  return Array.isArray(value) ? (value[0] ?? null) : value;
 }
 
 type ApBillApiRow = {
@@ -150,10 +150,15 @@ export function ProjectDetailClient({ id }: { id: string }) {
     setState((prev) => ({ ...prev, loading: true, error: null, notFound: false }));
 
     const tableMissing = (e: unknown) =>
-      typeof (e as { code?: string })?.code === "string" && (e as { code: string }).code === "42P01";
+      typeof (e as { code?: string })?.code === "string" &&
+      (e as { code: string }).code === "42P01";
 
     const [projectRes, billsRes, subsRes] = await Promise.all([
-      supabase.from("projects").select("id,name,status,budget,spent,created_at,updated_at").eq("id", id).maybeSingle(),
+      supabase
+        .from("projects")
+        .select("id,name,status,budget,spent,created_at,updated_at")
+        .eq("id", id)
+        .maybeSingle(),
       supabase
         .from("ap_bills")
         .select("id,bill_no,issue_date,due_date,status,amount,balance_amount,vendor_name")
@@ -169,27 +174,49 @@ export function ProjectDetailClient({ id }: { id: string }) {
     ]);
 
     if (projectRes.error) {
-      setState((prev) => ({ ...prev, loading: false, error: projectRes.error?.message || "Failed to load project." }));
+      setState((prev) => ({
+        ...prev,
+        loading: false,
+        error: projectRes.error?.message || "Failed to load project.",
+      }));
       return;
     }
 
     const project = (projectRes.data ?? null) as ProjectRow | null;
     if (!project) {
-      setState((prev) => ({ ...prev, loading: false, notFound: true, project: null, bills: [], subs: [] }));
+      setState((prev) => ({
+        ...prev,
+        loading: false,
+        notFound: true,
+        project: null,
+        bills: [],
+        subs: [],
+      }));
       return;
     }
 
     const bills: BillRow[] = billsRes.error
-      ? (tableMissing(billsRes.error) ? [] : [])
+      ? tableMissing(billsRes.error)
+        ? []
+        : []
       : ((billsRes.data ?? []) as unknown as ApBillApiRow[]).map(mapApBillToBillRow);
 
     const subs: ProjectSubcontractorRow[] = subsRes.error
-      ? (tableMissing(subsRes.error) ? [] : [])
-      : ((subsRes.data ?? []) as unknown as ProjectSubcontractorRowRaw[]).map((row) => ({ ...row, subcontractors: one(row.subcontractors) }));
+      ? tableMissing(subsRes.error)
+        ? []
+        : []
+      : ((subsRes.data ?? []) as unknown as ProjectSubcontractorRowRaw[]).map((row) => ({
+          ...row,
+          subcontractors: one(row.subcontractors),
+        }));
 
     const nonVoidBills = bills.filter((b) => (b.status ?? "").toString().toLowerCase() !== "void");
-    const outstandingBills = nonVoidBills.reduce((s, b) => s + Math.max(0, safeNumber(b.balance)), 0);
-    const actualCost = safeNumber(project.spent) + nonVoidBills.reduce((s, b) => s + safeNumber(b.total), 0);
+    const outstandingBills = nonVoidBills.reduce(
+      (s, b) => s + Math.max(0, safeNumber(b.balance)),
+      0
+    );
+    const actualCost =
+      safeNumber(project.spent) + nonVoidBills.reduce((s, b) => s + safeNumber(b.total), 0);
     const budget = safeNumber(project.budget);
     const profit = budget - actualCost;
     const marginPct = budget > 0 ? (profit / budget) * 100 : 0;
@@ -236,14 +263,29 @@ export function ProjectDetailClient({ id }: { id: string }) {
         updated: "—",
       };
     }
-    const nonVoidBills = state.bills.filter((b) => (b.status ?? "").toString().toLowerCase() !== "void");
-    const outstandingBills = nonVoidBills.reduce((s, b) => s + Math.max(0, safeNumber(b.balance)), 0);
-    const actualCost = safeNumber(project.spent) + nonVoidBills.reduce((s, b) => s + safeNumber(b.total), 0);
+    const nonVoidBills = state.bills.filter(
+      (b) => (b.status ?? "").toString().toLowerCase() !== "void"
+    );
+    const outstandingBills = nonVoidBills.reduce(
+      (s, b) => s + Math.max(0, safeNumber(b.balance)),
+      0
+    );
+    const actualCost =
+      safeNumber(project.spent) + nonVoidBills.reduce((s, b) => s + safeNumber(b.total), 0);
     const budget = safeNumber(project.budget);
     const profit = budget - actualCost;
     const marginPct = budget > 0 ? (profit / budget) * 100 : 0;
-    const risk = budget > 0 && actualCost > budget * 0.9 ? ("High Risk" as const) : ("Normal" as const);
-    return { budget, actualCost, outstandingBills, profit, marginPct, risk, updated: ymd(project.updated_at ?? project.created_at) };
+    const risk =
+      budget > 0 && actualCost > budget * 0.9 ? ("High Risk" as const) : ("Normal" as const);
+    return {
+      budget,
+      actualCost,
+      outstandingBills,
+      profit,
+      marginPct,
+      risk,
+      updated: ymd(project.updated_at ?? project.created_at),
+    };
   }, [state.bills, state.project]);
 
   const billsColumns: Column<BillRow>[] = [
@@ -256,19 +298,35 @@ export function ProjectDetailClient({ id }: { id: string }) {
         </Link>
       ),
     },
-    { key: "status", header: "Status", render: (row) => <StatusBadge status={(row.status ?? "draft").toString()} /> },
-    { key: "due_date", header: "Due", render: (row) => <span className="tabular-nums text-muted-foreground">{row.due_date || "—"}</span> },
+    {
+      key: "status",
+      header: "Status",
+      render: (row) => <StatusBadge status={(row.status ?? "draft").toString()} />,
+    },
+    {
+      key: "due_date",
+      header: "Due",
+      render: (row) => (
+        <span className="tabular-nums text-muted-foreground">{row.due_date || "—"}</span>
+      ),
+    },
     {
       key: "payee_name",
       header: "Payee",
-      render: (row) => <span className="text-muted-foreground">{row.subcontractors?.display_name || row.payee_name || "—"}</span>,
+      render: (row) => (
+        <span className="text-muted-foreground">
+          {row.subcontractors?.display_name || row.payee_name || "—"}
+        </span>
+      ),
     },
     {
       key: "total",
       header: "Total",
       align: "right",
       className: "tabular-nums",
-      render: (row) => <span className="tabular-nums text-muted-foreground">{money(safeNumber(row.total))}</span>,
+      render: (row) => (
+        <span className="tabular-nums text-muted-foreground">{money(safeNumber(row.total))}</span>
+      ),
     },
     {
       key: "balance",
@@ -276,7 +334,12 @@ export function ProjectDetailClient({ id }: { id: string }) {
       align: "right",
       className: "tabular-nums",
       render: (row) => (
-        <span className={cn("tabular-nums font-medium", safeNumber(row.balance) > 0 ? "text-amber-600" : "text-emerald-600")}>
+        <span
+          className={cn(
+            "tabular-nums font-medium",
+            safeNumber(row.balance) > 0 ? "text-amber-600" : "text-emerald-600"
+          )}
+        >
           {money(Math.max(0, safeNumber(row.balance)))}
         </span>
       ),
@@ -288,19 +351,33 @@ export function ProjectDetailClient({ id }: { id: string }) {
       key: "name",
       header: "Subcontractor",
       render: (row) => (
-        <Link href={row.subcontractors?.id ? `/labor/subcontractors/${row.subcontractors.id}` : "#"} className="font-medium text-foreground hover:underline">
+        <Link
+          href={row.subcontractors?.id ? `/labor/subcontractors/${row.subcontractors.id}` : "#"}
+          className="font-medium text-foreground hover:underline"
+        >
           {row.subcontractors?.display_name || "—"}
         </Link>
       ),
     },
-    { key: "role", header: "Role", render: (row) => <span className="text-muted-foreground">{row.role || "—"}</span> },
-    { key: "status", header: "Status", render: (row) => <StatusBadge status={row.subcontractors?.status || "active"} /> },
+    {
+      key: "role",
+      header: "Role",
+      render: (row) => <span className="text-muted-foreground">{row.role || "—"}</span>,
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: (row) => <StatusBadge status={row.subcontractors?.status || "active"} />,
+    },
   ];
 
   if (state.notFound) {
     return (
       <div className="page-container page-stack">
-        <PageHeader title="Project not found" subtitle="This project does not exist or you no longer have access." />
+        <PageHeader
+          title="Project not found"
+          subtitle="This project does not exist or you no longer have access."
+        />
         <Button variant="outline" onClick={() => router.push("/projects")}>
           Back to Projects
         </Button>
@@ -316,12 +393,17 @@ export function ProjectDetailClient({ id }: { id: string }) {
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <Link href="/projects" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+            <Link
+              href="/projects"
+              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+            >
               <ArrowLeft className="h-4 w-4" />
               Projects
             </Link>
             <div className="flex items-center gap-2">
-              <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-foreground">{projectName}</h1>
+              <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-foreground">
+                {projectName}
+              </h1>
               <StatusBadge status={status} />
               <StatusBadge status={derived.risk} />
             </div>
@@ -347,7 +429,9 @@ export function ProjectDetailClient({ id }: { id: string }) {
         </div>
 
         {state.error ? (
-          <div className="rounded-[12px] border border-[#E5E7EB] bg-white px-4 py-3 text-sm text-muted-foreground">{state.error}</div>
+          <div className="rounded-[12px] border border-[#E5E7EB] bg-white px-4 py-3 text-sm text-muted-foreground">
+            {state.error}
+          </div>
         ) : null}
       </div>
 
@@ -365,7 +449,11 @@ export function ProjectDetailClient({ id }: { id: string }) {
             <KpiCard label="Budget" value={money(derived.budget)} />
             <KpiCard label="Actual Cost" value={money(derived.actualCost)} />
             <KpiCard label="Outstanding Bills" value={money(derived.outstandingBills)} />
-            <KpiCard label="Profit" value={`${derived.profit < 0 ? "−" : ""}${money(Math.abs(derived.profit))}`} emphasis />
+            <KpiCard
+              label="Profit"
+              value={`${derived.profit < 0 ? "−" : ""}${money(Math.abs(derived.profit))}`}
+              emphasis
+            />
             <KpiCard label="Margin" value={`${derived.marginPct.toFixed(1)}%`} />
             <KpiCard label="Updated" value={derived.updated} />
           </>
@@ -421,7 +509,9 @@ export function ProjectDetailClient({ id }: { id: string }) {
                 ) : (
                   <>
                     <div className="mb-3 flex items-center justify-between">
-                      <div className="text-sm text-muted-foreground">{state.subs.length} linked</div>
+                      <div className="text-sm text-muted-foreground">
+                        {state.subs.length} linked
+                      </div>
                       <Button asChild variant="outline" size="sm">
                         <Link href="/labor/subcontractors">
                           <Users className="h-4 w-4" />
@@ -537,4 +627,3 @@ export function ProjectDetailClient({ id }: { id: string }) {
     </div>
   );
 }
-

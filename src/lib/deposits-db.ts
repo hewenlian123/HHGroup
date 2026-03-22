@@ -46,12 +46,16 @@ export async function getDeposits(): Promise<DepositWithMeta[]> {
   const list = (rows ?? []) as DepositRow[];
   if (list.length === 0) return list.map((r) => ({ ...r, invoice_no: null, project_name: null }));
   const projectIds = Array.from(new Set(list.map((r) => r.project_id).filter(Boolean))) as string[];
-  const projRes = projectIds.length ? await c.from("projects").select("id, name").in("id", projectIds) : { data: [] };
-  const projectNameById = new Map((projRes.data ?? []).map((r: { id: string; name?: string }) => [r.id, r.name ?? null]));
+  const projRes = projectIds.length
+    ? await c.from("projects").select("id, name").in("id", projectIds)
+    : { data: [] };
+  const projectNameById = new Map(
+    (projRes.data ?? []).map((r: { id: string; name?: string }) => [r.id, r.name ?? null])
+  );
   return list.map((r) => ({
     ...r,
     invoice_no: null,
-    project_name: r.project_id ? projectNameById.get(r.project_id) ?? null : null,
+    project_name: r.project_id ? (projectNameById.get(r.project_id) ?? null) : null,
   }));
 }
 

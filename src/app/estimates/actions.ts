@@ -18,9 +18,30 @@ export async function createTestEstimateAction() {
       overheadPct: 0.05,
       profitPct: 0.1,
       items: [
-        { costCode: "010000", desc: "General Conditions", qty: 10, unit: "EA", unitCost: 500, markupPct: 0.15 },
-        { costCode: "030000", desc: "Concrete", qty: 20, unit: "CY", unitCost: 120, markupPct: 0.1 },
-        { costCode: "070000", desc: "Roofing", qty: 1, unit: "LS", unitCost: 15000, markupPct: 0.12 },
+        {
+          costCode: "010000",
+          desc: "General Conditions",
+          qty: 10,
+          unit: "EA",
+          unitCost: 500,
+          markupPct: 0.15,
+        },
+        {
+          costCode: "030000",
+          desc: "Concrete",
+          qty: 20,
+          unit: "CY",
+          unitCost: 120,
+          markupPct: 0.1,
+        },
+        {
+          costCode: "070000",
+          desc: "Roofing",
+          qty: 1,
+          unit: "LS",
+          unitCost: 15000,
+          markupPct: 0.12,
+        },
       ],
     });
     const ok = await updateEstimateStatus(id, "Approved");

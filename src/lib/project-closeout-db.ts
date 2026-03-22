@@ -76,15 +76,29 @@ export async function getCloseoutPunch(projectId: string): Promise<CloseoutPunch
 
 export async function upsertCloseoutPunch(
   projectId: string,
-  data: Partial<Pick<CloseoutPunch, "inspection_date" | "inspector" | "notes" | "contractor_signature" | "client_signature" | "items">>
+  data: Partial<
+    Pick<
+      CloseoutPunch,
+      | "inspection_date"
+      | "inspector"
+      | "notes"
+      | "contractor_signature"
+      | "client_signature"
+      | "items"
+    >
+  >
 ): Promise<CloseoutPunch> {
   const c = client();
   const payload = {
     project_id: projectId,
-    ...(data.inspection_date !== undefined && { inspection_date: data.inspection_date?.slice(0, 10) ?? null }),
+    ...(data.inspection_date !== undefined && {
+      inspection_date: data.inspection_date?.slice(0, 10) ?? null,
+    }),
     ...(data.inspector !== undefined && { inspector: data.inspector ?? null }),
     ...(data.notes !== undefined && { notes: data.notes ?? null }),
-    ...(data.contractor_signature !== undefined && { contractor_signature: data.contractor_signature ?? null }),
+    ...(data.contractor_signature !== undefined && {
+      contractor_signature: data.contractor_signature ?? null,
+    }),
     ...(data.client_signature !== undefined && { client_signature: data.client_signature ?? null }),
     ...(data.items !== undefined && { items: data.items }),
     updated_at: new Date().toISOString(),
@@ -186,15 +200,28 @@ export async function getCloseoutCompletion(projectId: string): Promise<Closeout
 
 export async function upsertCloseoutCompletion(
   projectId: string,
-  data: Partial<Pick<CloseoutCompletion, "completion_date" | "contractor_name" | "client_name" | "contractor_signature" | "client_signature">>
+  data: Partial<
+    Pick<
+      CloseoutCompletion,
+      | "completion_date"
+      | "contractor_name"
+      | "client_name"
+      | "contractor_signature"
+      | "client_signature"
+    >
+  >
 ): Promise<CloseoutCompletion> {
   const c = client();
   const payload = {
     project_id: projectId,
-    ...(data.completion_date !== undefined && { completion_date: data.completion_date?.slice(0, 10) ?? null }),
+    ...(data.completion_date !== undefined && {
+      completion_date: data.completion_date?.slice(0, 10) ?? null,
+    }),
     ...(data.contractor_name !== undefined && { contractor_name: data.contractor_name ?? null }),
     ...(data.client_name !== undefined && { client_name: data.client_name ?? null }),
-    ...(data.contractor_signature !== undefined && { contractor_signature: data.contractor_signature ?? null }),
+    ...(data.contractor_signature !== undefined && {
+      contractor_signature: data.contractor_signature ?? null,
+    }),
     ...(data.client_signature !== undefined && { client_signature: data.client_signature ?? null }),
     updated_at: new Date().toISOString(),
   };

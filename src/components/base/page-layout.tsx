@@ -23,12 +23,8 @@ export function PageHeader({
     <header className={cn("flex flex-col gap-1", className)}>
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight text-[#111111]">
-            {title}
-          </h1>
-          {description ? (
-            <p className="mt-0.5 text-xs text-[#6B7280]">{description}</p>
-          ) : null}
+          <h1 className="text-2xl font-semibold tracking-tight text-[#111111]">{title}</h1>
+          {description ? <p className="mt-0.5 text-xs text-[#6B7280]">{description}</p> : null}
         </div>
         {rightContent}
       </div>
@@ -71,16 +67,8 @@ export function ActionBar({
 }
 
 /** Main content wrapper for page body (no card, no heavy shadow). */
-export function MainContent({
-  children,
-  className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={cn("flex flex-1 flex-col gap-4", className)}>{children}</div>
-  );
+export function MainContent({ children, className }: { children: ReactNode; className?: string }) {
+  return <div className={cn("flex flex-1 flex-col gap-4", className)}>{children}</div>;
 }
 
 /** Composes PageHeader, optional ActionBar, Divider, and MainContent for a consistent page shell. */

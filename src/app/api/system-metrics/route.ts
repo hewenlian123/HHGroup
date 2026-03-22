@@ -30,10 +30,7 @@ type Metrics = {
 export async function GET() {
   const server = getServerSupabase();
   if (!server) {
-    return NextResponse.json(
-      { message: "Supabase not configured" },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: "Supabase not configured" }, { status: 500 });
   }
 
   const metrics: Record<string, number> = {
@@ -58,9 +55,7 @@ export async function GET() {
 
   for (const table of TABLES) {
     try {
-      const { count } = await server
-        .from(table)
-        .select("*", { count: "exact", head: true });
+      const { count } = await server.from(table).select("*", { count: "exact", head: true });
       const key = keyMap[table];
       metrics[key] = typeof count === "number" ? count : 0;
     } catch {

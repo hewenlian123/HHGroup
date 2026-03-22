@@ -52,7 +52,8 @@ export async function getSubcontractors(): Promise<SubcontractorRow[]> {
   const c = client();
   const first = await c.from("subcontractors").select(COLS_FULL).order("display_name");
   if (!first.error) return (first.data ?? []).map((r: Record<string, unknown>) => mapRow(r));
-  if (!isMissingColumn(first.error)) throw new Error(first.error.message ?? "Failed to load subcontractors.");
+  if (!isMissingColumn(first.error))
+    throw new Error(first.error.message ?? "Failed to load subcontractors.");
   // Fallback: columns added in a later migration don't exist yet — fetch base columns only.
   const fallback = await c.from("subcontractors").select(COLS_BASE).order("display_name");
   if (fallback.error) throw new Error(fallback.error.message ?? "Failed to load subcontractors.");
@@ -64,9 +65,7 @@ function mapRow(r: Record<string, unknown>): SubcontractorRow {
   const status = String(r.status ?? "").toLowerCase();
   const activeLegacy = r.active;
   const active =
-    typeof activeLegacy === "boolean"
-      ? activeLegacy
-      : status === "active" || (!status && true);
+    typeof activeLegacy === "boolean" ? activeLegacy : status === "active" || (!status && true);
   const ins =
     (r.insurance_expiration_date as string | null) ??
     (r.insurance_expiration as string | null) ??
@@ -90,7 +89,8 @@ export async function getSubcontractorById(id: string): Promise<SubcontractorRow
   const c = client();
   const first = await c.from("subcontractors").select(COLS_FULL).eq("id", id).maybeSingle();
   if (!first.error) return first.data ? mapRow(first.data as Record<string, unknown>) : null;
-  if (!isMissingColumn(first.error)) throw new Error(first.error.message ?? "Failed to load subcontractor.");
+  if (!isMissingColumn(first.error))
+    throw new Error(first.error.message ?? "Failed to load subcontractor.");
   const fallback = await c.from("subcontractors").select(COLS_BASE).eq("id", id).maybeSingle();
   if (fallback.error) throw new Error(fallback.error.message ?? "Failed to load subcontractor.");
   return fallback.data ? mapRow(fallback.data as Record<string, unknown>) : null;
@@ -125,11 +125,24 @@ export async function insertSubcontractor(draft: SubcontractorDraft): Promise<vo
 }
 
 export type UpdateSubcontractorPatch = Partial<
-  Pick<SubcontractorRow, "name" | "phone" | "email" | "address" | "active" | "insurance_expiration_date" | "w9_storage_path" | "notes">
+  Pick<
+    SubcontractorRow,
+    | "name"
+    | "phone"
+    | "email"
+    | "address"
+    | "active"
+    | "insurance_expiration_date"
+    | "w9_storage_path"
+    | "notes"
+  >
 >;
 
 /** Update one subcontractor. */
-export async function updateSubcontractor(id: string, patch: UpdateSubcontractorPatch): Promise<SubcontractorRow | null> {
+export async function updateSubcontractor(
+  id: string,
+  patch: UpdateSubcontractorPatch
+): Promise<SubcontractorRow | null> {
   const c = client();
   const payload: Record<string, unknown> = {};
   if (patch.name !== undefined) payload.display_name = patch.name.trim();
@@ -137,13 +150,16 @@ export async function updateSubcontractor(id: string, patch: UpdateSubcontractor
   if (patch.email !== undefined) payload.email = patch.email?.trim() || null;
   if (patch.address !== undefined) payload.address1 = patch.address?.trim() || null;
   if (patch.active !== undefined) payload.status = patch.active ? "active" : "inactive";
-  if (patch.insurance_expiration_date !== undefined) payload.insurance_expiration_date = patch.insurance_expiration_date?.slice(0, 10) || null;
-  if (patch.w9_storage_path !== undefined) payload.w9_storage_path = patch.w9_storage_path?.trim() || null;
+  if (patch.insurance_expiration_date !== undefined)
+    payload.insurance_expiration_date = patch.insurance_expiration_date?.slice(0, 10) || null;
+  if (patch.w9_storage_path !== undefined)
+    payload.w9_storage_path = patch.w9_storage_path?.trim() || null;
   if (patch.notes !== undefined) payload.notes = patch.notes?.trim() || null;
   if (Object.keys(payload).length === 0) return getSubcontractorById(id);
   const { error } = await c.from("subcontractors").update(payload).eq("id", id);
   if (error) {
-    if (!isMissingColumn(error)) throw new Error(error.message ?? "Failed to update subcontractor.");
+    if (!isMissingColumn(error))
+      throw new Error(error.message ?? "Failed to update subcontractor.");
     // Retry without newer columns.
     const basePayload: Record<string, unknown> = {};
     if (payload.display_name !== undefined) basePayload.name = payload.display_name;
@@ -176,7 +192,9 @@ export async function deleteSubcontractor(id: string): Promise<void> {
 const INSURANCE_ALERT_DAYS = 30;
 
 /** Fetch all subcontractors with insurance_alert true when expiration is within 30 days or past. */
-export async function getSubcontractorsWithInsuranceAlerts(): Promise<SubcontractorWithInsuranceAlert[]> {
+export async function getSubcontractorsWithInsuranceAlerts(): Promise<
+  SubcontractorWithInsuranceAlert[]
+> {
   const list = await getSubcontractors();
   const today = new Date();
   today.setHours(0, 0, 0, 0);

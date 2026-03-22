@@ -14,24 +14,24 @@
 
 以下为按你要求的顺序列出的模块。**建议你在本地用 `npm run dev` 逐模块点一遍**（创建测试数据、增删改查、Mark as Paid/审批/上传等），把结果更新到本表。
 
-| 模块 | 状态 | 备注 |
-|------|------|------|
-| **仪表盘 Dashboard** | 需手动验证 | `/dashboard` |
-| **项目 Projects**（含 Estimates、Change Orders） | 需手动验证 | `/projects`、`/estimates`、`/change-orders` |
-| **运营 Operations** | | |
-| ― Tasks | 需手动验证 | `/tasks` |
-| ― Schedule | 需手动验证 | `/schedule` |
-| ― Punch List | ✅ 已修 | 见下方 📝 修复项 |
-| ― Site Photos | ✅ 已修 | 无认证下可删除 |
-| ― Inspection Log | 需手动验证 | `/inspection-log` |
-| **材料 Materials** | 需手动验证 | `/materials/catalog` 等 |
-| **采购 Procurement** | 需手动验证 | `/procurement/purchase-orders` |
-| **劳工 Labor** | | |
-| ― Workers / Reimbursements / Daily Entry / Payroll / Worker Payments | 需手动验证 | `/labor/*` |
-| **财务 Finance**（Invoices、Bills、Expenses、Deposits、Accounts） | 需手动验证 | `/financial/*`、`/finance/*`、`/bills`；Expenses 见 📝 |
-| **客户 Customers** | 需手动验证 | `/customers` |
-| **分包商 Subcontractors** | 需手动验证 | `/subcontractors` |
-| **设置 Settings** | 需手动验证 | `/settings` |
+| 模块                                                                 | 状态       | 备注                                                   |
+| -------------------------------------------------------------------- | ---------- | ------------------------------------------------------ |
+| **仪表盘 Dashboard**                                                 | 需手动验证 | `/dashboard`                                           |
+| **项目 Projects**（含 Estimates、Change Orders）                     | 需手动验证 | `/projects`、`/estimates`、`/change-orders`            |
+| **运营 Operations**                                                  |            |                                                        |
+| ― Tasks                                                              | 需手动验证 | `/tasks`                                               |
+| ― Schedule                                                           | 需手动验证 | `/schedule`                                            |
+| ― Punch List                                                         | ✅ 已修    | 见下方 📝 修复项                                       |
+| ― Site Photos                                                        | ✅ 已修    | 无认证下可删除                                         |
+| ― Inspection Log                                                     | 需手动验证 | `/inspection-log`                                      |
+| **材料 Materials**                                                   | 需手动验证 | `/materials/catalog` 等                                |
+| **采购 Procurement**                                                 | 需手动验证 | `/procurement/purchase-orders`                         |
+| **劳工 Labor**                                                       |            |                                                        |
+| ― Workers / Reimbursements / Daily Entry / Payroll / Worker Payments | 需手动验证 | `/labor/*`                                             |
+| **财务 Finance**（Invoices、Bills、Expenses、Deposits、Accounts）    | 需手动验证 | `/financial/*`、`/finance/*`、`/bills`；Expenses 见 📝 |
+| **客户 Customers**                                                   | 需手动验证 | `/customers`                                           |
+| **分包商 Subcontractors**                                            | 需手动验证 | `/subcontractors`                                      |
+| **设置 Settings**                                                    | 需手动验证 | `/settings`                                            |
 
 ---
 

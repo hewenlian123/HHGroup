@@ -94,14 +94,15 @@ function isMissingTable(err: { message?: string } | null): boolean {
 
 function isNetworkError(err: { message?: string } | null): boolean {
   if (!err) return false;
-  const m = (typeof err === "string" ? err : err?.message ?? "").toLowerCase();
+  const m = (typeof err === "string" ? err : (err?.message ?? "")).toLowerCase();
   return /failed to fetch|network error|load failed|connection|timeout|unable to connect/i.test(m);
 }
 
 /** Avoid appending migration HINT to connection/network errors. */
 function throwInvoiceError(error: { message?: string } | null, fallbackHint: string): never {
   const msg = error?.message ?? "";
-  if (isNetworkError(error)) throw new Error(msg || "Network error. Check connection and Supabase URL.");
+  if (isNetworkError(error))
+    throw new Error(msg || "Network error. Check connection and Supabase URL.");
   throw new Error(msg ? `${msg} ${fallbackHint}` : fallbackHint);
 }
 
@@ -118,8 +119,11 @@ function toLineItem(r: InvoiceItemRow): InvoiceLineItem {
 }
 
 function toInvoice(row: InvoiceRow, items: InvoiceItemRow[]): Invoice {
-  const status = (["Draft", "Sent", "Partially Paid", "Paid", "Void"].includes(row.status) ? row.status : "Draft") as InvoiceStatus;
-  const dueDate = row.due_date?.slice?.(0, 10) ?? (typeof row.due_date === "string" ? row.due_date : "");
+  const status = (
+    ["Draft", "Sent", "Partially Paid", "Paid", "Void"].includes(row.status) ? row.status : "Draft"
+  ) as InvoiceStatus;
+  const dueDate =
+    row.due_date?.slice?.(0, 10) ?? (typeof row.due_date === "string" ? row.due_date : "");
   const issueDate = row.issue_date?.slice?.(0, 10) ?? row.created_at?.slice?.(0, 10) ?? "";
   return {
     id: row.id,
@@ -162,7 +166,8 @@ async function getInvoiceItemsOrEmpty(invoiceId: string): Promise<InvoiceItemRow
 }
 
 /** Select columns; paid/balance are computed from invoice_payments, not stored. */
-const INVOICE_COLS = "id,project_id,invoice_no,client_name,issue_date,due_date,status,total,notes,tax_pct,subtotal,tax_amount,created_at,updated_at";
+const INVOICE_COLS =
+  "id,project_id,invoice_no,client_name,issue_date,due_date,status,total,notes,tax_pct,subtotal,tax_amount,created_at,updated_at";
 
 export async function getInvoices(): Promise<Invoice[]> {
   const c = client();
@@ -206,7 +211,8 @@ export async function getInvoiceById(id: string): Promise<Invoice | null> {
     .maybeSingle();
   if (error || !row) {
     if (error && isMissingTable(error)) throw new Error(`invoices: table not found. ${HINT}`);
-    if (error && isNetworkError(error)) throw new Error(error.message ?? "Network error. Check connection and Supabase URL.");
+    if (error && isNetworkError(error))
+      throw new Error(error.message ?? "Network error. Check connection and Supabase URL.");
     return null;
   }
   const itemRows = await getInvoiceItemsOrEmpty(id);
@@ -236,7 +242,10 @@ export async function getPaymentsByInvoiceId(invoiceId: string): Promise<Invoice
   return ((rows ?? []) as InvoicePaymentRow[]).map(toPayment);
 }
 
-function computeDerived(inv: Invoice, payments: InvoicePayment[]): {
+function computeDerived(
+  inv: Invoice,
+  payments: InvoicePayment[]
+): {
   paidTotal: number;
   balanceDue: number;
   computedStatus: InvoiceComputedStatus;
@@ -247,16 +256,26 @@ function computeDerived(inv: Invoice, payments: InvoicePayment[]): {
   const today = new Date().toISOString().slice(0, 10);
   const hasPayments = payments.filter((p) => p.status !== "Voided").length > 0;
 
-  if (inv.status === "Void") return { paidTotal, balanceDue, computedStatus: "Void", daysOverdue: 0 };
+  if (inv.status === "Void")
+    return { paidTotal, balanceDue, computedStatus: "Void", daysOverdue: 0 };
   if (inv.status === "Draft") {
-    const daysOverdue = balanceDue > 0 && inv.dueDate < today
-      ? Math.max(0, Math.floor((new Date().getTime() - new Date(inv.dueDate).getTime()) / (24 * 60 * 60 * 1000)))
-      : 0;
+    const daysOverdue =
+      balanceDue > 0 && inv.dueDate < today
+        ? Math.max(
+            0,
+            Math.floor(
+              (new Date().getTime() - new Date(inv.dueDate).getTime()) / (24 * 60 * 60 * 1000)
+            )
+          )
+        : 0;
     return { paidTotal, balanceDue, computedStatus: "Draft", daysOverdue };
   }
   if (balanceDue === 0) return { paidTotal, balanceDue, computedStatus: "Paid", daysOverdue: 0 };
   if (inv.dueDate < today) {
-    const daysOverdue = Math.max(0, Math.floor((new Date().getTime() - new Date(inv.dueDate).getTime()) / (24 * 60 * 60 * 1000)));
+    const daysOverdue = Math.max(
+      0,
+      Math.floor((new Date().getTime() - new Date(inv.dueDate).getTime()) / (24 * 60 * 60 * 1000))
+    );
     return { paidTotal, balanceDue, computedStatus: "Overdue", daysOverdue };
   }
   if (hasPayments) return { paidTotal, balanceDue, computedStatus: "Partial", daysOverdue: 0 };
@@ -283,7 +302,8 @@ export async function getInvoicesWithDerived(filters?: {
     return { ...inv, paidTotal, balanceDue, computedStatus, daysOverdue };
   });
   if (filters?.status) withDerived = withDerived.filter((i) => i.computedStatus === filters.status);
-  if (filters?.projectId) withDerived = withDerived.filter((i) => i.projectId === filters.projectId);
+  if (filters?.projectId)
+    withDerived = withDerived.filter((i) => i.projectId === filters.projectId);
   if (filters?.search?.trim()) {
     const q = filters.search.toLowerCase();
     withDerived = withDerived.filter(
@@ -324,7 +344,10 @@ export async function getInvoicesWithDerivedPaged(input?: {
     // PostgREST OR filter across a few columns; keep it simple.
     invQ = invQ.or(`invoice_no.ilike.%${q}%,client_name.ilike.%${q}%`);
   }
-  if (input?.status && ["Draft", "Sent", "Partially Paid", "Paid", "Void"].includes(input.status as string)) {
+  if (
+    input?.status &&
+    ["Draft", "Sent", "Partially Paid", "Paid", "Void"].includes(input.status as string)
+  ) {
     invQ = invQ.eq("status", input.status as InvoiceStatus);
   }
 
@@ -362,7 +385,10 @@ export async function getInvoicesWithDerivedPaged(input?: {
   });
 
   // computedStatus filters (Partial/Unpaid/Overdue) need client-side derivation
-  if (input?.status && !["Draft", "Sent", "Partially Paid", "Paid", "Void"].includes(input.status as string)) {
+  if (
+    input?.status &&
+    !["Draft", "Sent", "Partially Paid", "Paid", "Void"].includes(input.status as string)
+  ) {
     rows = rows.filter((r) => r.computedStatus === input.status);
   }
 
@@ -403,10 +429,14 @@ export async function getOverdueInvoices(): Promise<OverdueInvoiceRow[]> {
   const list = await getInvoicesWithDerived();
   const overdue = list.filter((i) => i.computedStatus === "Overdue" && i.balanceDue > 0);
   if (overdue.length === 0) return [];
-  const projectIds = Array.from(new Set(overdue.map((i) => i.projectId).filter(Boolean))) as string[];
+  const projectIds = Array.from(
+    new Set(overdue.map((i) => i.projectId).filter(Boolean))
+  ) as string[];
   const c = client();
   const { data: projRows } = await c.from("projects").select("id, name").in("id", projectIds);
-  const projectNameById = new Map((projRows ?? []).map((r: { id: string; name?: string }) => [r.id, r.name ?? ""]));
+  const projectNameById = new Map(
+    (projRows ?? []).map((r: { id: string; name?: string }) => [r.id, r.name ?? ""])
+  );
   return overdue.map((i) => ({
     id: i.id,
     invoiceNo: i.invoiceNo,
@@ -523,7 +553,9 @@ export async function createInvoice(payload: {
         tax_amount: taxAmount,
         total,
       })
-      .select("id, invoice_no, project_id, client_name, issue_date, due_date, status, notes, tax_pct, subtotal, tax_amount, total")
+      .select(
+        "id, invoice_no, project_id, client_name, issue_date, due_date, status, notes, tax_pct, subtotal, tax_amount, total"
+      )
       .single();
 
     if (!invErr && invRow) {
@@ -552,7 +584,13 @@ export async function createInvoice(payload: {
 
 export async function updateInvoice(
   invoiceId: string,
-  payload: Partial<{ issueDate: string; dueDate: string; lineItems: InvoiceLineItem[]; taxPct: number; notes: string }>
+  payload: Partial<{
+    issueDate: string;
+    dueDate: string;
+    lineItems: InvoiceLineItem[];
+    taxPct: number;
+    notes: string;
+  }>
 ): Promise<boolean> {
   const c = client();
   const inv = await getInvoiceById(invoiceId);
@@ -602,7 +640,9 @@ export interface ProjectInvoiceARAggregate {
   overdueBalance: number;
 }
 
-export async function getInvoicesByProjectAggregate(projectId: string): Promise<ProjectInvoiceARAggregate> {
+export async function getInvoicesByProjectAggregate(
+  projectId: string
+): Promise<ProjectInvoiceARAggregate> {
   const today = new Date().toISOString().slice(0, 10);
   const list = await getInvoicesByProject(projectId);
   const voidExcluded = list.filter((i) => i.status !== "Void");
@@ -614,7 +654,8 @@ export async function getInvoicesByProjectAggregate(projectId: string): Promise<
     if (!withDerived) continue;
     invoicedTotal += inv.total;
     paidTotal += withDerived.paidTotal;
-    if (withDerived.computedStatus !== "Paid" && inv.dueDate < today) overdueBalance += withDerived.balanceDue;
+    if (withDerived.computedStatus !== "Paid" && inv.dueDate < today)
+      overdueBalance += withDerived.balanceDue;
   }
   return {
     invoicedTotal,
@@ -625,7 +666,9 @@ export async function getInvoicesByProjectAggregate(projectId: string): Promise<
 }
 
 /** Revenue (sum invoices.total) and collected (sum invoice_payments.amount) for a project. No stored derived fields. */
-export async function getProjectRevenueAndCollected(projectId: string): Promise<{ revenue: number; collected: number }> {
+export async function getProjectRevenueAndCollected(
+  projectId: string
+): Promise<{ revenue: number; collected: number }> {
   const c = client();
   const { data: invRows, error: invErr } = await c
     .from("invoices")
@@ -651,14 +694,20 @@ export async function getProjectRevenueAndCollected(projectId: string): Promise<
 }
 
 /** Company-wide revenue (sum invoices.total where not Void) and collected (sum invoice_payments.amount where not Voided). */
-export async function getCompanyRevenueAndCollected(): Promise<{ revenue: number; collected: number }> {
+export async function getCompanyRevenueAndCollected(): Promise<{
+  revenue: number;
+  collected: number;
+}> {
   const c = client();
   const { data: invRows, error: invErr } = await c
     .from("invoices")
     .select("id, total")
     .neq("status", "Void");
   if (invErr) return { revenue: 0, collected: 0 };
-  const revenue = (invRows ?? []).reduce((s, r) => s + Number((r as { total?: number }).total ?? 0), 0);
+  const revenue = (invRows ?? []).reduce(
+    (s, r) => s + Number((r as { total?: number }).total ?? 0),
+    0
+  );
   const { data: payRows, error: payErr } = await c
     .from("invoice_payments")
     .select("amount, status");

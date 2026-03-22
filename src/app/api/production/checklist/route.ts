@@ -16,7 +16,9 @@ export const maxDuration = 300;
 
 type CheckResult = { name: string; ok: boolean; error?: string };
 
-async function runCleanup(_origin: string): Promise<{ deleted: Record<string, number>; errors: string[] }> {
+async function runCleanup(
+  _origin: string
+): Promise<{ deleted: Record<string, number>; errors: string[] }> {
   const c = getServerSupabase();
   if (!c) return { deleted: {}, errors: ["Supabase not configured"] };
   return cleanupTestData(c);
@@ -84,7 +86,10 @@ async function runChecklist(origin: string, doCleanup: boolean) {
   // ── 1. Database integrity ─────────────────────────────────────────────────
   try {
     const schemaRes = await fetch(`${origin}/api/schema-check`, { cache: "no-store" });
-    const schemaData = (await schemaRes.json().catch(() => ({}))) as { status?: string; missing?: string[] };
+    const schemaData = (await schemaRes.json().catch(() => ({}))) as {
+      status?: string;
+      missing?: string[];
+    };
     if (schemaRes.ok && schemaData.status === "ok") {
       report.databaseStatus = "ok";
       report.supabaseConnection = true;
@@ -104,8 +109,14 @@ async function runChecklist(origin: string, doCleanup: boolean) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
     });
-    const crudData = (await crudRes.json().catch(() => ({}))) as { ok?: boolean; tests?: unknown[] };
-    const allPassed = crudRes.ok && crudData.ok === true && (crudData.tests ?? []).every((t) => (t as { ok?: boolean }).ok === true);
+    const crudData = (await crudRes.json().catch(() => ({}))) as {
+      ok?: boolean;
+      tests?: unknown[];
+    };
+    const allPassed =
+      crudRes.ok &&
+      crudData.ok === true &&
+      (crudData.tests ?? []).every((t) => (t as { ok?: boolean }).ok === true);
     report.crudFunctionality = allPassed ? "ok" : "error";
     report.crudDetails = crudData.tests;
     if (!allPassed) report.productionReadiness = "error";
@@ -142,11 +153,17 @@ async function runChecklist(origin: string, doCleanup: boolean) {
   // ── 4. UI tests (run via API) ─────────────────────────────────────────────
   try {
     const uiRes = await fetch(`${origin}/api/test/run-ui-tests`, { method: "POST" });
-    const uiData = (await uiRes.json().catch(() => ({}))) as { ok?: boolean; tests?: unknown[]; error?: string };
+    const uiData = (await uiRes.json().catch(() => ({}))) as {
+      ok?: boolean;
+      tests?: unknown[];
+      error?: string;
+    };
     const uiOk = uiRes.ok && uiData.ok === true;
     report.uiStatus = uiOk ? "ok" : "error";
     report.uiDetails = uiData.tests ?? uiData.error;
-    if (!uiOk) report.productionReadiness = report.productionReadiness === "ok" ? "warning" : report.productionReadiness;
+    if (!uiOk)
+      report.productionReadiness =
+        report.productionReadiness === "ok" ? "warning" : report.productionReadiness;
   } catch {
     report.uiStatus = "skipped";
     report.uiDetails = "UI tests not run (browser unavailable or timeout)";
@@ -156,7 +173,10 @@ async function runChecklist(origin: string, doCleanup: boolean) {
   // ── 5. Run all tests (system + UI + guardian + schema) ────────────────────
   try {
     const runAllRes = await fetch(`${origin}/api/test/run-all-tests`, { method: "POST" });
-    const runAllData = (await runAllRes.json().catch(() => ({}))) as { ok?: boolean; groups?: unknown[] };
+    const runAllData = (await runAllRes.json().catch(() => ({}))) as {
+      ok?: boolean;
+      groups?: unknown[];
+    };
     report.testResults = runAllRes.ok && runAllData.ok === true ? "ok" : "error";
     report.testDetails = runAllData.groups;
     if (report.testResults !== "ok") report.productionReadiness = "error";

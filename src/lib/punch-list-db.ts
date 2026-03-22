@@ -61,7 +61,9 @@ const COLS_BASE =
 
 function isMissingColumn(err: { message?: string } | null): boolean {
   const m = (err?.message ?? "").toLowerCase();
-  return /column.*does not exist|does not exist.*column|undefined column|could not find the.*column|schema cache.*column/i.test(m);
+  return /column.*does not exist|does not exist.*column|undefined column|could not find the.*column|schema cache.*column/i.test(
+    m
+  );
 }
 
 function toItem(r: Record<string, unknown>, extended = true): PunchListItem {
@@ -84,25 +86,39 @@ function toItem(r: Record<string, unknown>, extended = true): PunchListItem {
   };
 }
 
-async function joinItems(c: ReturnType<typeof client>, items: PunchListItem[]): Promise<PunchListItemWithJoins[]> {
+async function joinItems(
+  c: ReturnType<typeof client>,
+  items: PunchListItem[]
+): Promise<PunchListItemWithJoins[]> {
   const projectIds = Array.from(new Set(items.map((i) => i.project_id)));
-  const workerIds = Array.from(new Set(items.map((i) => i.assigned_worker_id).filter(Boolean))) as string[];
+  const workerIds = Array.from(
+    new Set(items.map((i) => i.assigned_worker_id).filter(Boolean))
+  ) as string[];
   const photoIds = Array.from(new Set(items.map((i) => i.photo_id).filter(Boolean))) as string[];
   const [projectsRes, workersRes, sitePhotosRes] = await Promise.all([
     projectIds.length ? c.from("projects").select("id, name").in("id", projectIds) : { data: [] },
     workerIds.length ? c.from("workers").select("id, name").in("id", workerIds) : { data: [] },
-    photoIds.length ? c.from("site_photos").select("id, photo_url").in("id", photoIds) : { data: [] },
+    photoIds.length
+      ? c.from("site_photos").select("id, photo_url").in("id", photoIds)
+      : { data: [] },
   ]);
-  const projectNames = new Map<string, string>(((projectsRes.data ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name ?? ""]));
-  const workerNames = new Map<string, string>(((workersRes.data ?? []) as { id: string; name: string }[]).map((w) => [w.id, w.name ?? ""]));
+  const projectNames = new Map<string, string>(
+    ((projectsRes.data ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name ?? ""])
+  );
+  const workerNames = new Map<string, string>(
+    ((workersRes.data ?? []) as { id: string; name: string }[]).map((w) => [w.id, w.name ?? ""])
+  );
   const sitePhotoUrls = new Map<string, string>(
-    ((sitePhotosRes.data ?? []) as { id: string; photo_url: string }[]).map((s) => [s.id, s.photo_url ?? ""])
+    ((sitePhotosRes.data ?? []) as { id: string; photo_url: string }[]).map((s) => [
+      s.id,
+      s.photo_url ?? "",
+    ])
   );
   return items.map((i) => ({
     ...i,
     project_name: projectNames.get(i.project_id) ?? null,
-    worker_name: i.assigned_worker_id ? workerNames.get(i.assigned_worker_id) ?? null : null,
-    site_photo_url: i.photo_id ? sitePhotoUrls.get(i.photo_id) ?? null : null,
+    worker_name: i.assigned_worker_id ? (workerNames.get(i.assigned_worker_id) ?? null) : null,
+    site_photo_url: i.photo_id ? (sitePhotoUrls.get(i.photo_id) ?? null) : null,
   }));
 }
 
@@ -116,7 +132,10 @@ export async function getPunchListAll(): Promise<PunchListItemWithJoins[]> {
   error = res.error;
   rows = res.data;
   if (error && isMissingColumn(error)) {
-    const fallback = await c.from("punch_list").select(COLS_BASE).order("created_at", { ascending: false });
+    const fallback = await c
+      .from("punch_list")
+      .select(COLS_BASE)
+      .order("created_at", { ascending: false });
     if (!fallback.error) {
       rows = fallback.data;
       extended = false;
@@ -133,9 +152,17 @@ export async function getPunchListByProject(projectId: string): Promise<PunchLis
   const c = client();
   let rows: unknown[] | null = null;
   let extended = true;
-  const res = await c.from("punch_list").select(COLS).eq("project_id", projectId).order("created_at", { ascending: false });
+  const res = await c
+    .from("punch_list")
+    .select(COLS)
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: false });
   if (res.error && isMissingColumn(res.error)) {
-    const fallback = await c.from("punch_list").select(COLS_BASE).eq("project_id", projectId).order("created_at", { ascending: false });
+    const fallback = await c
+      .from("punch_list")
+      .select(COLS_BASE)
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: false });
     if (!fallback.error) {
       rows = fallback.data;
       extended = false;
@@ -154,7 +181,8 @@ export async function getPunchListSummary(): Promise<PunchListSummary> {
   const { data: rows, error } = await c.from("punch_list").select("status");
   if (error) return { open: 0, assigned: 0, completed: 0 };
   const list = (rows ?? []) as { status: string }[];
-  const norm = (s: string) => (s === "in_progress" ? "assigned" : s === "resolved" ? "completed" : s);
+  const norm = (s: string) =>
+    s === "in_progress" ? "assigned" : s === "resolved" ? "completed" : s;
   return {
     open: list.filter((r) => norm(r.status) === "open").length,
     assigned: list.filter((r) => norm(r.status) === "assigned").length,
@@ -187,7 +215,8 @@ export async function createPunchListItem(draft: PunchListDraft): Promise<PunchL
     delete base.photo_id;
     result = await c.from("punch_list").insert(base).select(COLS_BASE).single();
   }
-  if (result.error || !result.data) throw new Error(result.error?.message ?? "Failed to create punch list item.");
+  if (result.error || !result.data)
+    throw new Error(result.error?.message ?? "Failed to create punch list item.");
   const row = result.data as Record<string, unknown>;
   return toItem(row, "priority" in row);
 }
@@ -195,7 +224,19 @@ export async function createPunchListItem(draft: PunchListDraft): Promise<PunchL
 /** Update a punch list item. Sets completed_at when status becomes completed. */
 export async function updatePunchListItem(
   id: string,
-  patch: Partial<Pick<PunchListItem, "issue" | "location" | "description" | "assigned_worker_id" | "priority" | "status" | "photo_url" | "notes">>
+  patch: Partial<
+    Pick<
+      PunchListItem,
+      | "issue"
+      | "location"
+      | "description"
+      | "assigned_worker_id"
+      | "priority"
+      | "status"
+      | "photo_url"
+      | "notes"
+    >
+  >
 ): Promise<PunchListItem | null> {
   const c = client();
   const updates: Record<string, unknown> = {};
@@ -225,7 +266,10 @@ export async function updatePunchListItem(
     }
   }
   if (result.error || !result.data) return null;
-  return toItem(result.data as Record<string, unknown>, "priority" in (result.data as Record<string, unknown>));
+  return toItem(
+    result.data as Record<string, unknown>,
+    "priority" in (result.data as Record<string, unknown>)
+  );
 }
 
 /** Delete a punch list item. */

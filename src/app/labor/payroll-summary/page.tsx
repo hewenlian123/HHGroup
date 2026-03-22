@@ -36,7 +36,9 @@ export default function PayrollSummaryPage() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [detailWorkerId, setDetailWorkerId] = React.useState<string | null>(null);
-  const [detailEntries, setDetailEntries] = React.useState<(DailyWorkEntry & { projectName?: string })[]>([]);
+  const [detailEntries, setDetailEntries] = React.useState<
+    (DailyWorkEntry & { projectName?: string })[]
+  >([]);
 
   const load = React.useCallback(async () => {
     if (!fromDate || !toDate) return;
@@ -90,14 +92,18 @@ export default function PayrollSummaryPage() {
         }
       />
       <div className="flex flex-wrap items-center gap-3 border-b border-border/60 pb-3">
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">From</label>
+        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          From
+        </label>
         <Input
           type="date"
           value={fromDate}
           onChange={(e) => setFromDate(e.target.value)}
           className="h-9 w-[152px] rounded-md"
         />
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">To</label>
+        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          To
+        </label>
         <Input
           type="date"
           value={toDate}
@@ -105,17 +111,23 @@ export default function PayrollSummaryPage() {
           className="h-9 w-[152px] rounded-md"
         />
       </div>
-      {error ? (
-        <p className="py-2 text-sm text-red-600 dark:text-red-400">{error}</p>
-      ) : null}
+      {error ? <p className="py-2 text-sm text-red-600 dark:text-red-400">{error}</p> : null}
       <div className="overflow-x-auto border-b border-border/60">
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Worker</th>
-              <th className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Days Worked</th>
-              <th className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">OT Total</th>
-              <th className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Total Pay</th>
+              <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Worker
+              </th>
+              <th className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Days Worked
+              </th>
+              <th className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                OT Total
+              </th>
+              <th className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Total Pay
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -146,7 +158,9 @@ export default function PayrollSummaryPage() {
                   </td>
                   <td className="py-2 px-4 text-right tabular-nums">{r.daysWorked}</td>
                   <td className="py-2 px-4 text-right tabular-nums">${fmtUsd(r.otTotal)}</td>
-                  <td className="py-2 px-4 text-right tabular-nums font-medium">${fmtUsd(r.totalPay)}</td>
+                  <td className="py-2 px-4 text-right tabular-nums font-medium">
+                    ${fmtUsd(r.totalPay)}
+                  </td>
                 </tr>
               ))
             )}
@@ -168,7 +182,12 @@ export default function PayrollSummaryPage() {
             <h2 className="text-sm font-semibold text-foreground">
               {rows.find((r) => r.workerId === detailWorkerId)?.workerName ?? "Worker"} — Detail
             </h2>
-            <Button variant="ghost" size="sm" className="h-8" onClick={() => setDetailWorkerId(null)}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8"
+              onClick={() => setDetailWorkerId(null)}
+            >
               Close
             </Button>
           </div>
@@ -176,11 +195,21 @@ export default function PayrollSummaryPage() {
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="border-b border-border/60">
-                  <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</th>
-                  <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Project</th>
-                  <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Day Type</th>
-                  <th className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">OT</th>
-                  <th className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Pay</th>
+                  <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Date
+                  </th>
+                  <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Project
+                  </th>
+                  <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Day Type
+                  </th>
+                  <th className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                    OT
+                  </th>
+                  <th className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                    Pay
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -194,10 +223,14 @@ export default function PayrollSummaryPage() {
                   detailEntries.map((e) => (
                     <tr key={e.id} className="border-b border-border/40">
                       <td className="py-2 px-4 tabular-nums">{e.workDate}</td>
-                      <td className="py-2 px-4 text-muted-foreground">{e.projectName ?? e.projectId ?? "—"}</td>
+                      <td className="py-2 px-4 text-muted-foreground">
+                        {e.projectName ?? e.projectId ?? "—"}
+                      </td>
                       <td className="py-2 px-4 capitalize">{e.dayType.replace("_", " ")}</td>
                       <td className="py-2 px-4 text-right tabular-nums">${fmtUsd(e.otAmount)}</td>
-                      <td className="py-2 px-4 text-right tabular-nums font-medium">${fmtUsd(totalPayForEntry(e))}</td>
+                      <td className="py-2 px-4 text-right tabular-nums font-medium">
+                        ${fmtUsd(totalPayForEntry(e))}
+                      </td>
                     </tr>
                   ))
                 )}

@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server";
-import {
-  deleteWorkerReceipt,
-  deleteWorkerReceiptWithClient,
-} from "@/lib/worker-receipts-db";
+import { deleteWorkerReceipt, deleteWorkerReceiptWithClient } from "@/lib/worker-receipts-db";
 import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -22,4 +19,3 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     return NextResponse.json({ message }, { status: 400 });
   }
 }
-

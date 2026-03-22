@@ -42,7 +42,11 @@ async function main() {
   for (const table of TABLES_TO_CHECK) {
     const { count, error } = await c.from(table).select("id", { count: "exact", head: true });
     if (error) {
-      if (/relation.*does not exist|table.*does not exist|could not find the table/i.test(error.message ?? "")) {
+      if (
+        /relation.*does not exist|table.*does not exist|could not find the table/i.test(
+          error.message ?? ""
+        )
+      ) {
         counts[table] = -1; // table missing
       } else {
         console.error(`${table}: ${error.message}`);
@@ -55,7 +59,8 @@ async function main() {
   console.log("Row counts:", counts);
   const nonEmpty = Object.entries(counts).filter(([, n]) => n > 0);
   const missing = Object.entries(counts).filter(([, n]) => n === -1);
-  if (missing.length) console.log("Tables not found (skipped):", missing.map(([t]) => t).join(", "));
+  if (missing.length)
+    console.log("Tables not found (skipped):", missing.map(([t]) => t).join(", "));
   if (nonEmpty.length) {
     console.log("NON-EMPTY:", nonEmpty.map(([t, n]) => `${t}=${n}`).join(", "));
     process.exit(1);

@@ -40,7 +40,8 @@ function client() {
   return c;
 }
 
-const COLS = "id, project_id, item, category, material_id, material_name, supplier, status, notes, created_at";
+const COLS =
+  "id, project_id, item, category, material_id, material_name, supplier, status, notes, created_at";
 
 function toRow(r: Record<string, unknown>): ProjectMaterialSelection {
   return {
@@ -104,7 +105,12 @@ export async function createSelection(
 /** Update a selection. */
 export async function updateSelection(
   id: string,
-  patch: Partial<Pick<ProjectMaterialSelection, "item" | "category" | "material_id" | "material_name" | "supplier" | "status" | "notes">>
+  patch: Partial<
+    Pick<
+      ProjectMaterialSelection,
+      "item" | "category" | "material_id" | "material_name" | "supplier" | "status" | "notes"
+    >
+  >
 ): Promise<ProjectMaterialSelection | null> {
   const c = client();
   const updates: Record<string, unknown> = {};
@@ -116,7 +122,12 @@ export async function updateSelection(
   if (patch.status !== undefined) updates.status = patch.status;
   if (patch.notes !== undefined) updates.notes = patch.notes?.trim() ?? null;
   if (Object.keys(updates).length === 0) return null;
-  const { data: row, error } = await c.from("project_material_selections").update(updates).eq("id", id).select(COLS).single();
+  const { data: row, error } = await c
+    .from("project_material_selections")
+    .update(updates)
+    .eq("id", id)
+    .select(COLS)
+    .single();
   if (error || !row) return null;
   return toRow(row as Record<string, unknown>);
 }

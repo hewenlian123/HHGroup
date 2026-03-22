@@ -59,7 +59,10 @@ export function ProjectPunchListTab({
             </thead>
             <tbody>
               {punchItems.map((r) => (
-                <tr key={r.id} className="border-b border-border/60 last:border-b-0 hover:bg-muted/40">
+                <tr
+                  key={r.id}
+                  className="border-b border-border/60 last:border-b-0 hover:bg-muted/40"
+                >
                   <td className="py-2 px-3 font-medium">{r.issue || "—"}</td>
                   <td className="py-2 px-3 text-muted-foreground">{r.location ?? "—"}</td>
                   <td className="py-2 px-3 text-muted-foreground">{r.worker_name ?? "—"}</td>
@@ -68,8 +71,10 @@ export function ProjectPunchListTab({
                     <span
                       className={cn(
                         "inline-flex items-center gap-1.5 rounded-sm px-1.5 py-0.5 text-xs font-medium",
-                        normStatus(r.status) === "completed" && "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300",
-                        normStatus(r.status) === "assigned" && "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+                        normStatus(r.status) === "completed" &&
+                          "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300",
+                        normStatus(r.status) === "assigned" &&
+                          "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
                         normStatus(r.status) === "open" && "bg-muted text-muted-foreground"
                       )}
                     >

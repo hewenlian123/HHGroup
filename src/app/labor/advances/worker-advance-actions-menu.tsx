@@ -31,12 +31,7 @@ export function WorkerAdvanceActionsMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 rounded-full"
-          disabled={disabled}
-        >
+        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full" disabled={disabled}>
           <MoreHorizontal className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
@@ -64,4 +59,3 @@ export function WorkerAdvanceActionsMenu({
     </DropdownMenu>
   );
 }
-

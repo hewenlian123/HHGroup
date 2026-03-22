@@ -40,7 +40,11 @@ function client() {
 
 function isMissingTable(err: { message?: string; code?: string } | null): boolean {
   const m = (err?.message ?? "").toLowerCase();
-  return /schema cache|relation.*does not exist|could not find the table|table.*does not exist|pgrst205/i.test(m) || err?.code === "PGRST205";
+  return (
+    /schema cache|relation.*does not exist|could not find the table|table.*does not exist|pgrst205/i.test(
+      m
+    ) || err?.code === "PGRST205"
+  );
 }
 
 const COLS_BASE = "id, worker_id, total_amount, payment_method, note, created_at";
@@ -89,9 +93,14 @@ export async function createWorkerPaymentWithClient(
     note: input.notes?.trim() || null,
   };
 
-  const { data, error } = await c.from("worker_payments").insert(payload).select(COLS_BASE).single();
+  const { data, error } = await c
+    .from("worker_payments")
+    .insert(payload)
+    .select(COLS_BASE)
+    .single();
   if (error) {
-    if (isMissingTable(error)) throw new Error("未找到 worker_payments 表。请先创建该表后再记录付款。");
+    if (isMissingTable(error))
+      throw new Error("未找到 worker_payments 表。请先创建该表后再记录付款。");
     throw new Error(error.message ?? "Failed to create worker payment.");
   }
   return fromRow(data as Record<string, unknown>);
@@ -134,7 +143,11 @@ export async function getWorkerPaymentById(id: string): Promise<WorkerPayment | 
   const c = client();
   let { data, error } = await c.from("worker_payments").select(COLS).eq("id", id).maybeSingle();
   if (error && /labor_entry_ids|schema cache/i.test(error.message ?? "")) {
-    ({ data, error } = await c.from("worker_payments").select(COLS_BASE).eq("id", id).maybeSingle());
+    ({ data, error } = await c
+      .from("worker_payments")
+      .select(COLS_BASE)
+      .eq("id", id)
+      .maybeSingle());
   }
   if (error) {
     if (isMissingTable(error)) return null;
@@ -142,4 +155,3 @@ export async function getWorkerPaymentById(id: string): Promise<WorkerPayment | 
   }
   return data ? fromRow(data as Record<string, unknown>) : null;
 }
-

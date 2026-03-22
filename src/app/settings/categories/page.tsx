@@ -73,7 +73,10 @@ export default function CategoriesPage() {
       return;
     }
     try {
-      const { data, error } = await supabase.from("categories").select("*").order("created_at", { ascending: false });
+      const { data, error } = await supabase
+        .from("categories")
+        .select("*")
+        .order("created_at", { ascending: false });
       if (error) throw error;
       setRows((data ?? []) as CategoryRow[]);
     } catch (error: unknown) {
@@ -212,7 +215,9 @@ export default function CategoriesPage() {
       <FilterBar>
         <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div className="space-y-1 sm:col-span-2 lg:col-span-2">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Search</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Search
+            </p>
             <Input
               placeholder="Category name or description…"
               value={query}
@@ -220,10 +225,14 @@ export default function CategoriesPage() {
             />
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Type</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Type
+            </p>
             <Select
               value={typeFilter}
-              onChange={(event) => setTypeFilter((event.target.value as "" | "expense" | "income" | "other") ?? "")}
+              onChange={(event) =>
+                setTypeFilter((event.target.value as "" | "expense" | "income" | "other") ?? "")
+              }
             >
               <option value="">All types</option>
               <option value="expense">expense</option>
@@ -244,17 +253,30 @@ export default function CategoriesPage() {
         <Card className="border-[#EBEBE9] p-4 dark:border-border">
           <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Name</p>
-              <Input value={form.name} onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))} placeholder="Required" />
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+                Name
+              </p>
+              <Input
+                value={form.name}
+                onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
+                placeholder="Required"
+              />
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Type</p>
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+                Type
+              </p>
               <Select
                 value={form.type}
                 onChange={(event) =>
                   setForm((prev) => ({
                     ...prev,
-                    type: event.target.value === "income" ? "income" : event.target.value === "other" ? "other" : "expense",
+                    type:
+                      event.target.value === "income"
+                        ? "income"
+                        : event.target.value === "other"
+                          ? "other"
+                          : "expense",
                   }))
                 }
               >
@@ -264,26 +286,49 @@ export default function CategoriesPage() {
               </Select>
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Status</p>
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+                Status
+              </p>
               <Select
                 value={form.status}
-                onChange={(event) => setForm((prev) => ({ ...prev, status: event.target.value === "inactive" ? "inactive" : "active" }))}
+                onChange={(event) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    status: event.target.value === "inactive" ? "inactive" : "active",
+                  }))
+                }
               >
                 <option value="active">active</option>
                 <option value="inactive">inactive</option>
               </Select>
             </div>
             <div className="space-y-1 md:col-span-2">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Description</p>
-              <Input value={form.description} onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))} />
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+                Description
+              </p>
+              <Input
+                value={form.description}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, description: event.target.value }))
+                }
+              />
             </div>
           </div>
           <div className="mt-4 flex justify-end gap-2 border-t border-border/60 pt-3">
-            <Button size="sm" variant="outline" onClick={() => setEditorOpen(false)} disabled={submitting}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setEditorOpen(false)}
+              disabled={submitting}
+            >
               Cancel
             </Button>
             <Button size="sm" onClick={() => void handleSave()} disabled={submitting}>
-              {submitting ? "Saving..." : editorMode === "create" ? "Create Category" : "Save Changes"}
+              {submitting
+                ? "Saving..."
+                : editorMode === "create"
+                  ? "Create Category"
+                  : "Save Changes"}
             </Button>
           </div>
         </Card>
@@ -312,17 +357,43 @@ export default function CategoriesPage() {
               {filtered.map((row) => (
                 <tr
                   key={row.id}
-                  className={cn(listTableRowClassName, "group border-b border-[#EBEBE9]/80 dark:border-border/30")}
+                  className={cn(
+                    listTableRowClassName,
+                    "group border-b border-[#EBEBE9]/80 dark:border-border/30"
+                  )}
                   onClick={() => openEdit(row)}
                 >
-                  <td className={cn("px-4 py-3 font-medium text-foreground", listTablePrimaryCellClassName, "hover:underline")}>{row.name}</td>
+                  <td
+                    className={cn(
+                      "px-4 py-3 font-medium text-foreground",
+                      listTablePrimaryCellClassName,
+                      "hover:underline"
+                    )}
+                  >
+                    {row.name}
+                  </td>
                   <td className="px-4 py-3 text-muted-foreground">{row.type}</td>
                   <td className="px-4 py-3 text-muted-foreground">{row.description || "—"}</td>
-                  <td className="px-4 py-3"><StatusBadge status={row.status} /></td>
+                  <td className="px-4 py-3">
+                    <StatusBadge status={row.status} />
+                  </td>
                   <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-2">
-                      <Button variant="outline" size="sm" className="h-8 px-3" onClick={() => openEdit(row)}>Edit</Button>
-                      <Button variant="outline" size="sm" className="h-8 px-3" onClick={() => void handleDelete(row)} disabled={deletingId === row.id}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 px-3"
+                        onClick={() => openEdit(row)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 px-3"
+                        onClick={() => void handleDelete(row)}
+                        disabled={deletingId === row.id}
+                      >
                         {deletingId === row.id ? "Deleting..." : "Delete"}
                       </Button>
                     </div>

@@ -59,7 +59,9 @@ function isMissingColumn(err: { message?: string } | null, column: string): bool
 }
 
 function rowDate(r: CommitmentRow): string {
-  return r.commitment_date?.slice(0, 10) ?? r.date?.slice(0, 10) ?? r.created_at?.slice(0, 10) ?? "";
+  return (
+    r.commitment_date?.slice(0, 10) ?? r.date?.slice(0, 10) ?? r.created_at?.slice(0, 10) ?? ""
+  );
 }
 
 async function getAttachments(commitmentId: string): Promise<ExpenseAttachment[]> {
@@ -81,7 +83,13 @@ async function getAttachments(commitmentId: string): Promise<ExpenseAttachment[]
 }
 
 function toCommitment(r: CommitmentRow, attachments: ExpenseAttachment[]): Commitment {
-  const type = (r.commitment_type === "PO" || r.commitment_type === "Subcontract" || r.commitment_type === "Other" ? r.commitment_type : "Other") as CommitmentType;
+  const type = (
+    r.commitment_type === "PO" ||
+    r.commitment_type === "Subcontract" ||
+    r.commitment_type === "Other"
+      ? r.commitment_type
+      : "Other"
+  ) as CommitmentType;
   const status = (r.status === "Closed" ? "Closed" : "Open") as CommitmentStatus;
   return {
     id: r.id,
@@ -98,15 +106,14 @@ function toCommitment(r: CommitmentRow, attachments: ExpenseAttachment[]): Commi
 
 export async function getCommitments(projectId: string): Promise<Commitment[]> {
   const c = client();
-  const { data: rows, error } = await c
-    .from("commitments")
-    .select("*")
-    .eq("project_id", projectId);
+  const { data: rows, error } = await c.from("commitments").select("*").eq("project_id", projectId);
   if (error) {
     if (isMissingTable(error)) throw new Error("commitments: table not found. Run migrations.");
     throw new Error(error.message ?? "Failed to load commitments.");
   }
-  const list = ((rows ?? []) as CommitmentRow[]).sort((a, b) => rowDate(b).localeCompare(rowDate(a)));
+  const list = ((rows ?? []) as CommitmentRow[]).sort((a, b) =>
+    rowDate(b).localeCompare(rowDate(a))
+  );
   const result: Commitment[] = [];
   for (const row of list) {
     const r = row as CommitmentRow;
@@ -116,7 +123,9 @@ export async function getCommitments(projectId: string): Promise<Commitment[]> {
   return result;
 }
 
-export async function createCommitment(payload: Omit<Commitment, "id" | "attachments"> & { attachments?: ExpenseAttachment[] }): Promise<Commitment> {
+export async function createCommitment(
+  payload: Omit<Commitment, "id" | "attachments"> & { attachments?: ExpenseAttachment[] }
+): Promise<Commitment> {
   const c = client();
   const basePayload = {
     project_id: payload.projectId,
@@ -182,12 +191,16 @@ export async function updateCommitment(
   if (patch.status != null) updates.status = patch.status;
   if (patch.notes !== undefined) updates.notes = patch.notes ?? null;
   if (Object.keys(updates).length > 0) {
-    const primaryUpdates = patch.date != null ? { ...updates, commitment_date: patch.date.slice(0, 10) } : updates;
+    const primaryUpdates =
+      patch.date != null ? { ...updates, commitment_date: patch.date.slice(0, 10) } : updates;
     const { error } = await c.from("commitments").update(primaryUpdates).eq("id", id);
     if (error) {
       if (patch.date != null && isMissingColumn(error, "commitment_date")) {
         const fallbackUpdates = { ...updates, date: patch.date.slice(0, 10) };
-        const { error: fallbackError } = await c.from("commitments").update(fallbackUpdates).eq("id", id);
+        const { error: fallbackError } = await c
+          .from("commitments")
+          .update(fallbackUpdates)
+          .eq("id", id);
         if (fallbackError) return false;
       } else {
         return false;
@@ -218,7 +231,9 @@ export async function deleteCommitment(id: string): Promise<boolean> {
 }
 
 /** Open commitments by category for drilldown (materials / labor / vendor / other). */
-export async function getCommittedCostByCategory(projectId: string): Promise<{ materials: number; labor: number; vendor: number; other: number }> {
+export async function getCommittedCostByCategory(
+  projectId: string
+): Promise<{ materials: number; labor: number; vendor: number; other: number }> {
   const list = await getCommitments(projectId);
   const out = { materials: 0, labor: 0, vendor: 0, other: 0 };
   const open = list.filter((c) => c.status === "Open");

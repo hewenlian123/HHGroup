@@ -27,7 +27,11 @@ export async function POST(request: Request) {
   const c = getServerSupabase();
   if (!c) {
     return NextResponse.json(
-      { ok: false, summary: "Supabase not configured.", cleanup: { deleted: {}, errors: ["Supabase not configured"] } },
+      {
+        ok: false,
+        summary: "Supabase not configured.",
+        cleanup: { deleted: {}, errors: ["Supabase not configured"] },
+      },
       { status: 503 }
     );
   }
@@ -48,7 +52,9 @@ export async function POST(request: Request) {
     systemTest = {
       ok: res.ok && data.ok === true,
       details: data.tests,
-      ...(!(res.ok && data.ok) ? { error: (data as { message?: string }).message ?? `HTTP ${res.status}` } : {}),
+      ...(!(res.ok && data.ok)
+        ? { error: (data as { message?: string }).message ?? `HTTP ${res.status}` }
+        : {}),
     };
   } catch (e) {
     systemTest = { ok: false, error: e instanceof Error ? e.message : "Request failed" };
@@ -60,7 +66,9 @@ export async function POST(request: Request) {
     runAllTests = {
       ok: res.ok && data.ok === true,
       details: data.groups,
-      ...(!(res.ok && data.ok) ? { error: (data as { message?: string }).message ?? `HTTP ${res.status}` } : {}),
+      ...(!(res.ok && data.ok)
+        ? { error: (data as { message?: string }).message ?? `HTTP ${res.status}` }
+        : {}),
     };
   } catch (e) {
     runAllTests = { ok: false, error: e instanceof Error ? e.message : "Request failed" };
@@ -68,7 +76,11 @@ export async function POST(request: Request) {
 
   try {
     const res = await fetch(`${origin}/api/test/run-ui-tests`, { method: "POST" });
-    const data = (await res.json().catch(() => ({}))) as { ok?: boolean; tests?: unknown[]; error?: string };
+    const data = (await res.json().catch(() => ({}))) as {
+      ok?: boolean;
+      tests?: unknown[];
+      error?: string;
+    };
     uiTests = {
       ok: res.ok && data.ok === true,
       details: data.tests,

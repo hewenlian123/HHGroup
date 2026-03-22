@@ -4,18 +4,17 @@ import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 const BUCKET = "attachments";
 
-export async function POST(
-  _req: Request,
-  ctx: { params: Promise<{ id: string }> }
-) {
+export async function POST(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id: projectId } = await ctx.params;
-  if (!projectId) return NextResponse.json({ ok: false, message: "Missing project id" }, { status: 400 });
+  if (!projectId)
+    return NextResponse.json({ ok: false, message: "Missing project id" }, { status: 400 });
   try {
     const [punch, project] = await Promise.all([
       getCloseoutPunch(projectId),
       getProjectById(projectId),
     ]);
-    if (!project) return NextResponse.json({ ok: false, message: "Project not found" }, { status: 404 });
+    if (!project)
+      return NextResponse.json({ ok: false, message: "Project not found" }, { status: 404 });
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF();
     let y = 20;
@@ -44,7 +43,10 @@ export async function POST(
         y += 6;
         doc.setFontSize(10);
         for (const row of punch.items) {
-          if (y > 270) { doc.addPage(); y = 20; }
+          if (y > 270) {
+            doc.addPage();
+            y = 20;
+          }
           doc.text(`• ${row.item} [${row.status}]`, 25, y);
           y += 6;
         }
@@ -64,11 +66,13 @@ export async function POST(
     const fileName = `final-punch-${ts}.pdf`;
     const filePath = `projects/${projectId}/closeout/${fileName}`;
     const supabase = getServerSupabaseAdmin();
-    if (!supabase) return NextResponse.json({ ok: false, message: "Supabase not configured" }, { status: 500 });
+    if (!supabase)
+      return NextResponse.json({ ok: false, message: "Supabase not configured" }, { status: 500 });
     const { error: uploadError } = await supabase.storage
       .from(BUCKET)
       .upload(filePath, buf, { contentType: "application/pdf", upsert: true });
-    if (uploadError) return NextResponse.json({ ok: false, message: uploadError.message }, { status: 500 });
+    if (uploadError)
+      return NextResponse.json({ ok: false, message: uploadError.message }, { status: 500 });
     await insertDocument({
       file_name: `Final Punch List - ${project.name}.pdf`,
       file_path: filePath,

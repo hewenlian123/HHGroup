@@ -34,10 +34,7 @@ async function main() {
   const sql = postgres(url, { max: 1, connect_timeout: 10 });
 
   try {
-    const migrationPath = join(
-      process.cwd(),
-      "supabase/migrations/202604171000_customers.sql",
-    );
+    const migrationPath = join(process.cwd(), "supabase/migrations/202604171000_customers.sql");
     const migrationSql = readFileSync(migrationPath, "utf8");
 
     console.log("Running migration 202604171000 (customers module)...");
@@ -52,4 +49,3 @@ async function main() {
 }
 
 main();
-

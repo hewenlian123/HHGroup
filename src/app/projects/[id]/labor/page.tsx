@@ -1,11 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  PageLayout,
-  PageHeader,
-  Divider,
-  SectionHeader,
-} from "@/components/base";
+import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
 import { getProjectById, getLaborEntriesWithJoins, getWorkers } from "@/lib/data";
 
 function fmtUsd(n: number): string {
@@ -25,9 +20,13 @@ export default async function ProjectLaborPage({ params }: Props) {
   if (!project) notFound();
 
   const hourlyRateByWorkerId = new Map(workers.map((w) => [w.id, (w.halfDayRate ?? 0) / 4]));
-  const entryAmount = (workerId: string, hours: number) => (hourlyRateByWorkerId.get(workerId) ?? 0) * hours;
+  const entryAmount = (workerId: string, hours: number) =>
+    (hourlyRateByWorkerId.get(workerId) ?? 0) * hours;
   const approvedLocked = entries.filter((e) => e.status === "Approved" || e.status === "Locked");
-  const totalLaborCost = approvedLocked.reduce((s, e) => s + (e.cost_amount ?? entryAmount(e.worker_id, e.hours)), 0);
+  const totalLaborCost = approvedLocked.reduce(
+    (s, e) => s + (e.cost_amount ?? entryAmount(e.worker_id, e.hours)),
+    0
+  );
 
   const byWorker = approvedLocked.reduce(
     (acc, e) => {
@@ -39,12 +38,14 @@ export default async function ProjectLaborPage({ params }: Props) {
     },
     {} as Record<string, { worker_name: string; days: number; total: number }>
   );
-  const workerRows = Object.entries(byWorker).map(([worker_id, v]) => ({
-    worker_id,
-    worker_name: v.worker_name,
-    days: v.days,
-    total: v.total,
-  })).sort((a, b) => a.worker_name.localeCompare(b.worker_name));
+  const workerRows = Object.entries(byWorker)
+    .map(([worker_id, v]) => ({
+      worker_id,
+      worker_name: v.worker_name,
+      days: v.days,
+      total: v.total,
+    }))
+    .sort((a, b) => a.worker_name.localeCompare(b.worker_name));
 
   const byCostCode = approvedLocked.reduce(
     (acc, e) => {
@@ -55,10 +56,12 @@ export default async function ProjectLaborPage({ params }: Props) {
     },
     {} as Record<string, number>
   );
-  const costCodeRows = Object.entries(byCostCode).map(([cost_code, total]) => ({
-    cost_code,
-    total,
-  })).sort((a, b) => a.cost_code.localeCompare(b.cost_code));
+  const costCodeRows = Object.entries(byCostCode)
+    .map(([cost_code, total]) => ({
+      cost_code,
+      total,
+    }))
+    .sort((a, b) => a.cost_code.localeCompare(b.cost_code));
 
   return (
     <PageLayout
@@ -67,7 +70,10 @@ export default async function ProjectLaborPage({ params }: Props) {
           title="Project Labor"
           description={`Labor cost by worker and cost code for ${project.name}.`}
           actions={
-            <Link href={`/projects/${id}`} className="text-sm text-muted-foreground hover:text-foreground">
+            <Link
+              href={`/projects/${id}`}
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
               Project
             </Link>
           }
@@ -77,7 +83,9 @@ export default async function ProjectLaborPage({ params }: Props) {
       {/* Header: Project name, Total Labor Cost */}
       <div className="flex items-baseline justify-between py-3 border-b border-border/60">
         <h2 className="text-lg font-semibold">{project.name}</h2>
-        <span className="text-xl font-medium tabular-nums">Total Labor Cost: ${fmtUsd(totalLaborCost)}</span>
+        <span className="text-xl font-medium tabular-nums">
+          Total Labor Cost: ${fmtUsd(totalLaborCost)}
+        </span>
       </div>
       <Divider />
 
@@ -87,9 +95,15 @@ export default async function ProjectLaborPage({ params }: Props) {
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Worker</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Days</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Total Earned</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Worker
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Days
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Total Earned
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -119,8 +133,12 @@ export default async function ProjectLaborPage({ params }: Props) {
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Cost Code</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Total</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Cost Code
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Total
+              </th>
             </tr>
           </thead>
           <tbody>

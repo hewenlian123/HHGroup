@@ -15,10 +15,5 @@ export default async function ChangeOrdersPage() {
   );
   const grouped = allOrders.filter((g) => g.changeOrders.length > 0);
 
-  return (
-    <ChangeOrdersView
-      projects={projects}
-      grouped={grouped}
-    />
-  );
+  return <ChangeOrdersView projects={projects} grouped={grouped} />;
 }

@@ -97,10 +97,14 @@ export async function getWorkerPaymentReceiptPayload(
     .eq("worker_payment_id", paymentId)
     .eq("worker_id", workerId);
 
-  const laborFromLink = (!laborRes.error ? laborRes.data ?? [] : []) as LaborRowRaw[];
+  const laborFromLink = (!laborRes.error ? (laborRes.data ?? []) : []) as LaborRowRaw[];
 
   const extraIds = Array.from(
-    new Set((options?.laborEntryIdsFromPayment ?? []).filter((x): x is string => typeof x === "string" && x.length > 0))
+    new Set(
+      (options?.laborEntryIdsFromPayment ?? []).filter(
+        (x): x is string => typeof x === "string" && x.length > 0
+      )
+    )
   );
   let laborFromIds: LaborRowRaw[] = [];
   if (extraIds.length > 0) {
@@ -111,7 +115,7 @@ export async function getWorkerPaymentReceiptPayload(
       )
       .eq("worker_id", workerId)
       .in("id", extraIds);
-    laborFromIds = (!byIdsRes.error ? byIdsRes.data ?? [] : []) as LaborRowRaw[];
+    laborFromIds = (!byIdsRes.error ? (byIdsRes.data ?? []) : []) as LaborRowRaw[];
   }
 
   const laborRaw = mergeLaborRowsById([...laborFromLink, ...laborFromIds]);
@@ -122,7 +126,7 @@ export async function getWorkerPaymentReceiptPayload(
     return {
       id: r.id,
       workDate: (r.work_date ?? "").slice(0, 10),
-      projectName: pid ? projectNameById.get(pid) ?? null : null,
+      projectName: pid ? (projectNameById.get(pid) ?? null) : null,
       session,
       amount: Number(r.cost_amount ?? r.total) || 0,
     };
@@ -136,7 +140,7 @@ export async function getWorkerPaymentReceiptPayload(
     .eq("payment_id", paymentId)
     .order("id", { ascending: false });
 
-  const reimbRaw = (!reimbRes.error ? reimbRes.data ?? [] : []) as {
+  const reimbRaw = (!reimbRes.error ? (reimbRes.data ?? []) : []) as {
     id: string;
     vendor?: string | null;
     amount?: number | null;
@@ -146,7 +150,7 @@ export async function getWorkerPaymentReceiptPayload(
   const reimbLines: ReceiptReimbLine[] = reimbRaw.map((r) => ({
     id: r.id,
     vendor: r.vendor ?? null,
-    projectName: r.project_id ? projectNameById.get(r.project_id) ?? null : null,
+    projectName: r.project_id ? (projectNameById.get(r.project_id) ?? null) : null,
     amount: Number(r.amount) || 0,
   }));
 
@@ -168,7 +172,10 @@ async function computeWorkerBalanceSnapshot(
   workerId: string,
   paymentAmount: number
 ): Promise<WorkerBalanceSnapshot> {
-  const laborFull = await c.from("labor_entries").select("cost_amount, status, worker_payment_id").eq("worker_id", workerId);
+  const laborFull = await c
+    .from("labor_entries")
+    .select("cost_amount, status, worker_payment_id")
+    .eq("worker_id", workerId);
   let laborRows: {
     cost_amount?: number | null;
     status?: string | null;
@@ -179,22 +186,31 @@ async function computeWorkerBalanceSnapshot(
     laborRows = (laborFull.data ?? []) as typeof laborRows;
   } else if (/column.*worker_payment_id|schema cache/i.test(laborFull.error.message ?? "")) {
     laborSettlementMode = "status_fallback";
-    const fb = await c.from("labor_entries").select("cost_amount, status").eq("worker_id", workerId);
-    laborRows = ((fb.data ?? []) as { cost_amount?: number | null; status?: string | null }[]).map((r) => ({
-      ...r,
-      worker_payment_id: null as string | null,
-    }));
+    const fb = await c
+      .from("labor_entries")
+      .select("cost_amount, status")
+      .eq("worker_id", workerId);
+    laborRows = ((fb.data ?? []) as { cost_amount?: number | null; status?: string | null }[]).map(
+      (r) => ({
+        ...r,
+        worker_payment_id: null as string | null,
+      })
+    );
   } else {
     laborRows = [];
   }
 
   let laborOwed = 0;
   for (const r of laborRows) {
-    if (!isLaborUnpaidForWorkerPayroll(r.status, r.worker_payment_id, laborSettlementMode)) continue;
+    if (!isLaborUnpaidForWorkerPayroll(r.status, r.worker_payment_id, laborSettlementMode))
+      continue;
     laborOwed += Number(r.cost_amount) || 0;
   }
 
-  const reimbRes = await c.from("worker_reimbursements").select("amount, status").eq("worker_id", workerId);
+  const reimbRes = await c
+    .from("worker_reimbursements")
+    .select("amount, status")
+    .eq("worker_id", workerId);
   let reimbUnpaid = 0;
   for (const r of (reimbRes.data ?? []) as { amount?: number | null; status?: string | null }[]) {
     if (String(r.status ?? "").toLowerCase() === "paid") continue;

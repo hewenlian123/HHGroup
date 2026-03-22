@@ -54,35 +54,27 @@ export default function SystemMetricsPage() {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
     <div className="page-container page-stack py-6">
-      <PageHeader
-        title="System Metrics"
-        description="Database row counts for core tables."
-      />
+      <PageHeader title="System Metrics" description="Database row counts for core tables." />
 
-      {error ? (
-        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-      ) : null}
+      {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         {METRIC_ITEMS.map(({ key, label }) => (
-          <div
-            key={key}
-            className="rounded-sm border border-border/60 px-4 py-4 w-full"
-          >
+          <div key={key} className="rounded-sm border border-border/60 px-4 py-4 w-full">
             <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               {label}
             </p>
             {loading ? (
               <div className="mt-2 h-8 w-16 animate-pulse rounded bg-muted" />
             ) : (
-              <p className="mt-2 text-2xl font-semibold tabular-nums">
-                {metrics?.[key] ?? 0}
-              </p>
+              <p className="mt-2 text-2xl font-semibold tabular-nums">{metrics?.[key] ?? 0}</p>
             )}
           </div>
         ))}

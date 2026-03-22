@@ -4,7 +4,12 @@ import * as React from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { EstimateStatusBadge } from "../_components/estimate-status-badge";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ChevronDown, MoreHorizontal } from "lucide-react";
 
 export function EstimateDetailHeader({
@@ -48,8 +53,13 @@ export function EstimateDetailHeader({
             Estimates
           </Link>
           <span className="text-muted-foreground">/</span>
-          <span className="text-sm font-semibold text-foreground tabular-nums">{estimateNumber}</span>
-          <EstimateStatusBadge status={status === "Converted" ? "Converted" : status} className="shrink-0 rounded-md text-xs" />
+          <span className="text-sm font-semibold text-foreground tabular-nums">
+            {estimateNumber}
+          </span>
+          <EstimateStatusBadge
+            status={status === "Converted" ? "Converted" : status}
+            className="shrink-0 rounded-md text-xs"
+          />
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
@@ -66,10 +76,23 @@ export function EstimateDetailHeader({
             </Button>
           ) : (
             <>
-              <Button type="button" size="sm" className="rounded-md h-8" disabled={pending} onClick={onSave}>
+              <Button
+                type="button"
+                size="sm"
+                className="rounded-md h-8"
+                disabled={pending}
+                onClick={onSave}
+              >
                 Save
               </Button>
-              <Button type="button" variant="outline" size="sm" className="rounded-md h-8" disabled={pending} onClick={onCancel}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="rounded-md h-8"
+                disabled={pending}
+                onClick={onCancel}
+              >
                 Cancel
               </Button>
             </>
@@ -77,7 +100,13 @@ export function EstimateDetailHeader({
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button type="button" variant="outline" size="sm" className="rounded-md h-8" disabled={pending}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="rounded-md h-8"
+                disabled={pending}
+              >
                 Status <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -107,7 +136,13 @@ export function EstimateDetailHeader({
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-md" aria-label="More">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-md"
+                aria-label="More"
+              >
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>

@@ -226,7 +226,9 @@ function normalizeStatus(s: unknown): LaborEntryStatus {
 }
 
 /** Fetch labor_entries with joins. Includes status and audit fields when column exists. */
-export async function getLaborEntriesWithJoins(filters: LaborEntriesFilters = {}): Promise<LaborEntryWithJoins[]> {
+export async function getLaborEntriesWithJoins(
+  filters: LaborEntriesFilters = {}
+): Promise<LaborEntryWithJoins[]> {
   const c = client();
   const statusFilter = filters.status;
   let hasWorkerPaymentIdCol = true;
@@ -307,25 +309,34 @@ export async function getLaborEntriesWithJoins(filters: LaborEntriesFilters = {}
   if (entries.length === 0) return [];
 
   const workerIds = Array.from(new Set(entries.map((r) => r.worker_id).filter(Boolean)));
-  const projectIds = Array.from(new Set(entries.map((r) => r.project_id).filter((v): v is string => Boolean(v))));
+  const projectIds = Array.from(
+    new Set(entries.map((r) => r.project_id).filter((v): v is string => Boolean(v)))
+  );
 
-  const [{ data: workerRows, error: workerError }, { data: projectRows, error: projectError }] = await Promise.all([
-    workerIds.length
-      ? c.from("labor_workers").select("id, name").in("id", workerIds)
-      : Promise.resolve({ data: [], error: null }),
-    projectIds.length
-      ? c.from("projects").select("id, name").in("id", projectIds)
-      : Promise.resolve({ data: [], error: null }),
-  ]);
+  const [{ data: workerRows, error: workerError }, { data: projectRows, error: projectError }] =
+    await Promise.all([
+      workerIds.length
+        ? c.from("labor_workers").select("id, name").in("id", workerIds)
+        : Promise.resolve({ data: [], error: null }),
+      projectIds.length
+        ? c.from("projects").select("id, name").in("id", projectIds)
+        : Promise.resolve({ data: [], error: null }),
+    ]);
 
   if (workerError) throw new Error(workerError.message ?? "Failed to load labor workers.");
   if (projectError) throw new Error(projectError.message ?? "Failed to load projects.");
 
   const workerNameById = new Map(
-    ((workerRows ?? []) as Array<{ id: string; name: string | null }>).map((row) => [row.id, row.name ?? null])
+    ((workerRows ?? []) as Array<{ id: string; name: string | null }>).map((row) => [
+      row.id,
+      row.name ?? null,
+    ])
   );
   const projectNameById = new Map(
-    ((projectRows ?? []) as Array<{ id: string; name: string | null }>).map((row) => [row.id, row.name ?? null])
+    ((projectRows ?? []) as Array<{ id: string; name: string | null }>).map((row) => [
+      row.id,
+      row.name ?? null,
+    ])
   );
 
   return entries
@@ -339,7 +350,9 @@ export async function getLaborEntriesWithJoins(filters: LaborEntriesFilters = {}
       if (statusFilter && status !== statusFilter) return null;
       const wpid = hasWorkerPaymentIdCol ? row.worker_payment_id : undefined;
       const worker_payment_id =
-        hasWorkerPaymentIdCol && wpid != null && String(wpid).trim() !== "" ? String(wpid).trim() : null;
+        hasWorkerPaymentIdCol && wpid != null && String(wpid).trim() !== ""
+          ? String(wpid).trim()
+          : null;
       return {
         id: (r.id ?? "") as string,
         worker_id: (r.worker_id ?? "") as string,
@@ -360,7 +373,7 @@ export async function getLaborEntriesWithJoins(filters: LaborEntriesFilters = {}
         workflowStatusRaw: rawStatusStr,
         usesPaymentLinkForPayroll: hasWorkerPaymentIdCol,
         worker_name: workerNameById.get(r.worker_id as string) ?? null,
-        project_name: r.project_id ? projectNameById.get(r.project_id as string) ?? null : null,
+        project_name: r.project_id ? (projectNameById.get(r.project_id as string) ?? null) : null,
         ...("morning" in row || "afternoon" in row
           ? {
               morning: row.morning === true,
@@ -450,7 +463,9 @@ export type WorkerPayableSummary = {
 };
 
 /** Fetch one row from worker_payable_summary view for a worker. Supabase only. */
-export async function getWorkerPayableSummary(workerId: string): Promise<WorkerPayableSummary | null> {
+export async function getWorkerPayableSummary(
+  workerId: string
+): Promise<WorkerPayableSummary | null> {
   const c = client();
   const { data: row, error } = await c
     .from("worker_payable_summary")
@@ -477,11 +492,17 @@ export async function getTotalLaborCost(): Promise<number> {
     if (/column .* does not exist|schema cache/i.test(error.message ?? "")) {
       const fallback = await c.from("labor_entries").select("cost_amount");
       if (fallback.error) return 0;
-      return (fallback.data ?? []).reduce((s, r) => s + Number((r as { cost_amount?: number }).cost_amount ?? 0), 0);
+      return (fallback.data ?? []).reduce(
+        (s, r) => s + Number((r as { cost_amount?: number }).cost_amount ?? 0),
+        0
+      );
     }
     return 0;
   }
-  return (rows ?? []).reduce((s, r) => s + Number((r as { cost_amount?: number }).cost_amount ?? 0), 0);
+  return (rows ?? []).reduce(
+    (s, r) => s + Number((r as { cost_amount?: number }).cost_amount ?? 0),
+    0
+  );
 }
 
 export async function getDailyLaborEntriesByDate(workDate: string): Promise<DailyLaborEntryRow[]> {
@@ -539,7 +560,10 @@ export async function insertDailyLaborEntries(
     : { data: [], error: null };
   if (workerError2) throw new Error(workerError2.message ?? "Failed to load worker rates.");
   const hourlyRateByWorkerId2 = new Map(
-    ((workerRows2 ?? []) as Array<{ id: string; half_day_rate?: number | null }>).map((row) => [row.id, (Number(row.half_day_rate) || 0) / 4])
+    ((workerRows2 ?? []) as Array<{ id: string; half_day_rate?: number | null }>).map((row) => [
+      row.id,
+      (Number(row.half_day_rate) || 0) / 4,
+    ])
   );
 
   const payloads = rowsToInsert.map((r) => ({
@@ -554,7 +578,10 @@ export async function insertDailyLaborEntries(
   }));
   if (payloads.length === 0) return [];
   const colsForSelect = LABOR_ENTRIES_COLS_WITH_STATUS;
-  const { data: inserted, error } = await c.from("labor_entries").insert(payloads).select(colsForSelect);
+  const { data: inserted, error } = await c
+    .from("labor_entries")
+    .insert(payloads)
+    .select(colsForSelect);
   if (error) {
     if (isMissingColumn(error)) {
       const payloadsWithoutStatus = payloads.map((p) => {
@@ -562,7 +589,10 @@ export async function insertDailyLaborEntries(
         delete copy.status;
         return copy;
       });
-      const { data: insertedFallback, error: err2 } = await c.from("labor_entries").insert(payloadsWithoutStatus).select(LABOR_ENTRIES_COLS);
+      const { data: insertedFallback, error: err2 } = await c
+        .from("labor_entries")
+        .insert(payloadsWithoutStatus)
+        .select(LABOR_ENTRIES_COLS);
       if (err2) throw new Error(err2.message ?? "Failed to save labor entries.");
       return (insertedFallback ?? []).map((r: Record<string, unknown>) => ({
         id: (r.id as string) ?? "",
@@ -601,7 +631,11 @@ export async function updateDailyLaborEntry(
   draft: DailyLaborEntryDraft
 ): Promise<DailyLaborEntryRow> {
   const c = client();
-  const { data: currentRow } = await c.from("labor_entries").select("status").eq("id", entryId).maybeSingle();
+  const { data: currentRow } = await c
+    .from("labor_entries")
+    .select("status")
+    .eq("id", entryId)
+    .maybeSingle();
   const status = (currentRow as { status?: string } | null)?.status;
   if (status === "Locked") throw new Error("Cannot edit a locked labor entry.");
 
@@ -611,7 +645,8 @@ export async function updateDailyLaborEntry(
     .eq("id", draft.worker_id)
     .maybeSingle();
   if (workerError) throw new Error(workerError.message ?? "Failed to load worker rate.");
-  const hourlyRate = (Number((workerRow as { half_day_rate?: number | null } | null)?.half_day_rate) || 0) / 4;
+  const hourlyRate =
+    (Number((workerRow as { half_day_rate?: number | null } | null)?.half_day_rate) || 0) / 4;
   const payload = {
     worker_id: draft.worker_id,
     project_id: draft.project_id || null,
@@ -690,7 +725,8 @@ export async function updateLaborEntry(
       .filter(Boolean)
       .filter((t) => !/^session=(morning|afternoon|full_day)$/i.test(t) && !/^ot_hours=/i.test(t));
     if (session) tokens.push(`session=${session}`);
-    if (ot !== undefined && Number.isFinite(Number(ot)) && Number(ot) > 0) tokens.push(`ot_hours=${Number(ot)}`);
+    if (ot !== undefined && Number.isFinite(Number(ot)) && Number(ot) > 0)
+      tokens.push(`ot_hours=${Number(ot)}`);
     payload.notes = tokens.length ? tokens.join(" ") : null;
   }
 
@@ -708,20 +744,32 @@ export type ProjectLaborBreakdownRow = {
 };
 
 /** Aggregate labor entries for a project by worker. Supabase RPC only. */
-export async function getProjectLaborBreakdown(projectId: string): Promise<ProjectLaborBreakdownRow[]> {
+export async function getProjectLaborBreakdown(
+  projectId: string
+): Promise<ProjectLaborBreakdownRow[]> {
   const c = client();
-  const { data: rows, error } = await c.rpc("get_project_labor_breakdown", { p_project_id: projectId });
+  const { data: rows, error } = await c.rpc("get_project_labor_breakdown", {
+    p_project_id: projectId,
+  });
   if (error) {
-    if (!isMissingFunction(error)) throw new Error(error.message ?? "Failed to load project labor breakdown.");
+    if (!isMissingFunction(error))
+      throw new Error(error.message ?? "Failed to load project labor breakdown.");
 
     // Fallback for environments missing the RPC: aggregate from labor_entries directly.
     const entries = await getLaborEntriesWithJoins({ project_id: projectId }).catch(() => []);
-    const byWorker = new Map<string, { worker_name: string | null; days: Set<string>; total_labor_cost: number }>();
+    const byWorker = new Map<
+      string,
+      { worker_name: string | null; days: Set<string>; total_labor_cost: number }
+    >();
     for (const e of entries) {
       if (e.status !== "Approved" && e.status !== "Locked") continue;
       const key = e.worker_id;
       if (!key) continue;
-      const cur = byWorker.get(key) ?? { worker_name: e.worker_name ?? null, days: new Set<string>(), total_labor_cost: 0 };
+      const cur = byWorker.get(key) ?? {
+        worker_name: e.worker_name ?? null,
+        days: new Set<string>(),
+        total_labor_cost: 0,
+      };
       cur.worker_name = cur.worker_name ?? e.worker_name ?? null;
       cur.days.add(e.work_date);
       cur.total_labor_cost += Number(e.cost_amount) || 0;
@@ -754,18 +802,26 @@ export type MonthlyPayrollRow = {
 };
 
 /** Monthly payroll summary by worker. Supabase RPC only. */
-export async function getMonthlyPayrollSummary(year: number, month: number): Promise<MonthlyPayrollRow[]> {
+export async function getMonthlyPayrollSummary(
+  year: number,
+  month: number
+): Promise<MonthlyPayrollRow[]> {
   const c = client();
   const { data: rows, error } = await c.rpc("get_monthly_payroll_summary", {
     p_year: year,
     p_month: month,
   });
   if (error) {
-    if (!isMissingFunction(error)) throw new Error(error.message ?? "Failed to load payroll summary.");
+    if (!isMissingFunction(error))
+      throw new Error(error.message ?? "Failed to load payroll summary.");
     // Fallback: aggregate from labor_entries for the given month.
     const monthStr = `${year}-${String(month).padStart(2, "0")}`;
-    const entries = await getLaborEntriesWithJoins({}).catch(() => [] as Awaited<ReturnType<typeof getLaborEntriesWithJoins>>);
-    const filtered = entries.filter((e) => e.work_date?.startsWith(monthStr) && (e.status === "Approved" || e.status === "Locked"));
+    const entries = await getLaborEntriesWithJoins({}).catch(
+      () => [] as Awaited<ReturnType<typeof getLaborEntriesWithJoins>>
+    );
+    const filtered = entries.filter(
+      (e) => e.work_date?.startsWith(monthStr) && (e.status === "Approved" || e.status === "Locked")
+    );
     const byWorker = new Map<string, { worker_name: string | null; total_labor_cost: number }>();
     for (const e of filtered) {
       const key = e.worker_id ?? "";
@@ -813,7 +869,10 @@ export async function insertLaborPayment(payload: LaborPaymentInsert): Promise<v
 }
 
 /** Bulk submit labor entries (Draft -> Submitted). */
-export async function submitLaborEntries(entryIds: string[], submittedBy?: string | null): Promise<void> {
+export async function submitLaborEntries(
+  entryIds: string[],
+  submittedBy?: string | null
+): Promise<void> {
   if (entryIds.length === 0) return;
   const c = client();
   const now = new Date().toISOString();
@@ -830,7 +889,10 @@ export async function submitLaborEntries(entryIds: string[], submittedBy?: strin
 }
 
 /** Bulk approve labor entries (Submitted -> Approved). */
-export async function approveLaborEntries(entryIds: string[], approvedBy?: string | null): Promise<void> {
+export async function approveLaborEntries(
+  entryIds: string[],
+  approvedBy?: string | null
+): Promise<void> {
   if (entryIds.length === 0) return;
   const c = client();
   const now = new Date().toISOString();
@@ -847,7 +909,10 @@ export async function approveLaborEntries(entryIds: string[], approvedBy?: strin
 }
 
 /** Bulk lock labor entries (Approved -> Locked). */
-export async function lockLaborEntries(entryIds: string[], lockedBy?: string | null): Promise<void> {
+export async function lockLaborEntries(
+  entryIds: string[],
+  lockedBy?: string | null
+): Promise<void> {
   if (entryIds.length === 0) return;
   const c = client();
   const now = new Date().toISOString();
@@ -878,7 +943,8 @@ export async function getLaborEntriesRecent(limit: number): Promise<LaborEntryRe
   const c = client();
   const limitNum = Math.max(1, Math.min(limit, 100));
   let rows: Array<Record<string, unknown>> | null = null;
-  const selWithCreated = "id, project_id, work_date, cost_amount, notes, created_at, projects!project_id(name)";
+  const selWithCreated =
+    "id, project_id, work_date, cost_amount, notes, created_at, projects!project_id(name)";
   const { data: dataWithCreated, error: errCreated } = await c
     .from("labor_entries")
     .select(selWithCreated)
@@ -887,7 +953,11 @@ export async function getLaborEntriesRecent(limit: number): Promise<LaborEntryRe
   if (!errCreated && dataWithCreated?.length) {
     rows = dataWithCreated as Array<Record<string, unknown>>;
   }
-  if (!rows?.length && (isMissingColumn(errCreated) || (errCreated?.message ?? "").includes("more than one relationship"))) {
+  if (
+    !rows?.length &&
+    (isMissingColumn(errCreated) ||
+      (errCreated?.message ?? "").includes("more than one relationship"))
+  ) {
     const { data: dataFallback } = await c
       .from("labor_entries")
       .select("id, project_id, work_date, cost_amount, notes")
@@ -898,16 +968,23 @@ export async function getLaborEntriesRecent(limit: number): Promise<LaborEntryRe
       r.created_at = (r as { work_date?: string }).work_date ?? new Date().toISOString();
     }
     if (rows.length > 0) {
-      const projectIds = Array.from(new Set(rows.map((r) => (r as { project_id?: string }).project_id).filter(Boolean))) as string[];
+      const projectIds = Array.from(
+        new Set(rows.map((r) => (r as { project_id?: string }).project_id).filter(Boolean))
+      ) as string[];
       const { data: projRows } = projectIds.length
         ? await c.from("projects").select("id, name").in("id", projectIds)
         : { data: [] };
       const projectNameById = new Map(
-        ((projRows ?? []) as Array<{ id: string; name: string | null }>).map((p) => [p.id, p.name ?? null])
+        ((projRows ?? []) as Array<{ id: string; name: string | null }>).map((p) => [
+          p.id,
+          p.name ?? null,
+        ])
       );
       for (const r of rows) {
         const pid = (r as { project_id?: string }).project_id;
-        (r as Record<string, unknown>).projects = pid ? { name: projectNameById.get(pid) ?? null } : null;
+        (r as Record<string, unknown>).projects = pid
+          ? { name: projectNameById.get(pid) ?? null }
+          : null;
       }
     }
   } else if (!rows?.length && dataWithCreated !== undefined) {

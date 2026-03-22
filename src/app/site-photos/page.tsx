@@ -45,7 +45,11 @@ export default function SitePhotosPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [detailOpen, setDetailOpen] = React.useState(false);
   const [selectedPhoto, setSelectedPhoto] = React.useState<PhotoRow | null>(null);
-  const [detailForm, setDetailForm] = React.useState({ description: "", tags: "", uploaded_by: "" });
+  const [detailForm, setDetailForm] = React.useState({
+    description: "",
+    tags: "",
+    uploaded_by: "",
+  });
   const [submitting, setSubmitting] = React.useState(false);
   const [uploadOpen, setUploadOpen] = React.useState(false);
   const [uploading, setUploading] = React.useState(false);
@@ -62,9 +66,17 @@ export default function SitePhotosPage() {
   const [viewerPhoto, setViewerPhoto] = React.useState<PhotoRow | null>(null);
   const [downloading, setDownloading] = React.useState(false);
   const [punchIssuePhoto, setPunchIssuePhoto] = React.useState<PhotoRow | null>(null);
-  const [punchIssueForm, setPunchIssueForm] = React.useState({ issue: "", location: "", description: "", priority: "Medium", assigned_worker_id: "" });
+  const [punchIssueForm, setPunchIssueForm] = React.useState({
+    issue: "",
+    location: "",
+    description: "",
+    priority: "Medium",
+    assigned_worker_id: "",
+  });
   const [punchIssueSubmitting, setPunchIssueSubmitting] = React.useState(false);
-  const [punchIssueWorkers, setPunchIssueWorkers] = React.useState<{ id: string; name: string }[]>([]);
+  const [punchIssueWorkers, setPunchIssueWorkers] = React.useState<{ id: string; name: string }[]>(
+    []
+  );
   const [editMode, setEditMode] = React.useState(false);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = React.useState(false);
@@ -99,7 +111,6 @@ export default function SitePhotosPage() {
           return next;
         });
       }
-
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load site photos.");
     } finally {
@@ -225,7 +236,8 @@ export default function SitePhotosPage() {
       if (!res.ok) throw new Error("Failed to fetch image");
       const blob = await res.blob();
       const ext = viewerPhoto.photo_url.split(".").pop()?.toLowerCase() || "jpg";
-      const name = viewerPhoto.description?.replace(/[^a-zA-Z0-9-_]/g, "_").slice(0, 40) || "site-photo";
+      const name =
+        viewerPhoto.description?.replace(/[^a-zA-Z0-9-_]/g, "_").slice(0, 40) || "site-photo";
       const filename = `${name}-${viewerPhoto.id.slice(0, 8)}.${ext}`;
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
@@ -359,7 +371,10 @@ export default function SitePhotosPage() {
     try {
       const formData = new FormData();
       formData.set("file", file);
-      const uploadRes = await fetch("/api/operations/site-photos/upload", { method: "POST", body: formData });
+      const uploadRes = await fetch("/api/operations/site-photos/upload", {
+        method: "POST",
+        body: formData,
+      });
       const uploadData = await uploadRes.json();
       if (!uploadData.ok) throw new Error(uploadData.message || "Upload failed");
       const createRes = await fetch("/api/operations/site-photos", {
@@ -396,7 +411,13 @@ export default function SitePhotosPage() {
             <div className="flex items-center gap-2">
               {editMode ? (
                 <>
-                  <Button size="sm" variant="outline" className="rounded-sm" onClick={toggleEditMode} disabled={bulkDeleting}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="rounded-sm"
+                    onClick={toggleEditMode}
+                    disabled={bulkDeleting}
+                  >
                     Cancel
                   </Button>
                   <button
@@ -441,7 +462,9 @@ export default function SitePhotosPage() {
       <div className="max-w-5xl space-y-3">
         <FilterBar className="flex-col items-stretch sm:items-stretch">
           <div className="w-full max-w-md space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Project</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Project
+            </p>
             <Select
               value={projectFilter}
               onChange={(e) => setProjectFilter(e.target.value)}
@@ -449,7 +472,9 @@ export default function SitePhotosPage() {
             >
               <option value="">All projects</option>
               {projects.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
               ))}
             </Select>
           </div>
@@ -460,14 +485,18 @@ export default function SitePhotosPage() {
         ) : error ? (
           <div className="py-10 text-center text-sm text-destructive">{error}</div>
         ) : photos.length === 0 ? (
-          <div className="py-10 text-center text-sm text-muted-foreground">No photos yet. Upload a photo to get started.</div>
+          <div className="py-10 text-center text-sm text-muted-foreground">
+            No photos yet. Upload a photo to get started.
+          </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
             {photos.map((p) => (
               <div
                 key={p.id}
                 className={`group relative text-left rounded-sm border overflow-hidden transition-colors focus-within:ring-2 focus-within:ring-ring ${
-                  editMode && selectedIds.has(p.id) ? "border-foreground/80 ring-1 ring-foreground/20" : "border-[#EBEBE9] hover:bg-[#F7F7F5] dark:border-border/60 dark:hover:bg-muted/30"
+                  editMode && selectedIds.has(p.id)
+                    ? "border-foreground/80 ring-1 ring-foreground/20"
+                    : "border-[#EBEBE9] hover:bg-[#F7F7F5] dark:border-border/60 dark:hover:bg-muted/30"
                 }`}
               >
                 <div
@@ -504,8 +533,16 @@ export default function SitePhotosPage() {
                       <div
                         role="button"
                         tabIndex={0}
-                        onClick={(e) => { e.stopPropagation(); togglePhotoSelection(e, p.id); }}
-                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); togglePhotoSelection(e as unknown as React.MouseEvent, p.id); } }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          togglePhotoSelection(e, p.id);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            togglePhotoSelection(e as unknown as React.MouseEvent, p.id);
+                          }
+                        }}
                         className="absolute top-1.5 left-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-sm border border-border bg-background shadow-sm"
                       >
                         {selectedIds.has(p.id) ? (
@@ -528,9 +565,24 @@ export default function SitePhotosPage() {
                             { label: "Edit", onClick: () => openDetail(p) },
                             {
                               label: "Create Punch Issue",
-                              onClick: () => openPunchIssueModal({ preventDefault: () => {}, stopPropagation: () => {} } as React.MouseEvent, p),
+                              onClick: () =>
+                                openPunchIssueModal(
+                                  {
+                                    preventDefault: () => {},
+                                    stopPropagation: () => {},
+                                  } as React.MouseEvent,
+                                  p
+                                ),
                             },
-                            ...(canDelete ? [{ label: "Delete", onClick: () => setDeleteConfirmPhoto(p), destructive: true }] : []),
+                            ...(canDelete
+                              ? [
+                                  {
+                                    label: "Delete",
+                                    onClick: () => setDeleteConfirmPhoto(p),
+                                    destructive: true,
+                                  },
+                                ]
+                              : []),
                           ]}
                         />
                       </div>
@@ -549,11 +601,20 @@ export default function SitePhotosPage() {
                     )}
                   </div>
                   <div className="p-2 space-y-0.5">
-                    <p className="text-xs font-medium text-foreground truncate">{p.project_name ?? "—"}</p>
+                    <p className="text-xs font-medium text-foreground truncate">
+                      {p.project_name ?? "—"}
+                    </p>
                     <p className="text-xs text-muted-foreground truncate">{p.description || "—"}</p>
-                    <p className="text-xs text-muted-foreground truncate">{p.uploaded_by ? `By ${p.uploaded_by}` : "—"}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {p.uploaded_by ? `By ${p.uploaded_by}` : "—"}
+                    </p>
                     <p className="text-xs text-muted-foreground tabular-nums">
-                      {p.created_at ? new Date(p.created_at).toLocaleString(undefined, { dateStyle: "short", timeStyle: "short" }) : "—"}
+                      {p.created_at
+                        ? new Date(p.created_at).toLocaleString(undefined, {
+                            dateStyle: "short",
+                            timeStyle: "short",
+                          })
+                        : "—"}
                     </p>
                   </div>
                 </div>
@@ -563,36 +624,69 @@ export default function SitePhotosPage() {
         )}
       </div>
 
-      <Dialog open={!!deleteConfirmPhoto} onOpenChange={(open) => !open && setDeleteConfirmPhoto(null)}>
+      <Dialog
+        open={!!deleteConfirmPhoto}
+        onOpenChange={(open) => !open && setDeleteConfirmPhoto(null)}
+      >
         <DialogContent className="max-w-sm border-border/60 rounded-sm">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Delete Photo</DialogTitle>
-            <p className="text-sm text-muted-foreground">Are you sure you want to delete this photo? This action cannot be undone.</p>
+            <p className="text-sm text-muted-foreground">
+              Are you sure you want to delete this photo? This action cannot be undone.
+            </p>
           </DialogHeader>
           <DialogFooter className="gap-2 pt-3 border-t border-border/60">
-            <Button variant="outline" size="sm" className="rounded-sm" onClick={() => setDeleteConfirmPhoto(null)} disabled={deleting}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-sm"
+              onClick={() => setDeleteConfirmPhoto(null)}
+              disabled={deleting}
+            >
               Cancel
             </Button>
-            <Button variant="destructive" size="sm" className="rounded-sm" onClick={handleConfirmDelete} disabled={deleting}>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="rounded-sm"
+              onClick={handleConfirmDelete}
+              disabled={deleting}
+            >
               {deleting ? "Deleting…" : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={bulkDeleteConfirmOpen} onOpenChange={(open) => !open && setBulkDeleteConfirmOpen(false)}>
+      <Dialog
+        open={bulkDeleteConfirmOpen}
+        onOpenChange={(open) => !open && setBulkDeleteConfirmOpen(false)}
+      >
         <DialogContent className="max-w-sm border-border/60 rounded-sm">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Delete photos</DialogTitle>
             <p className="text-sm text-muted-foreground">
-              Delete {selectedIds.size} photo{selectedIds.size !== 1 ? "s" : ""}? This action cannot be undone.
+              Delete {selectedIds.size} photo{selectedIds.size !== 1 ? "s" : ""}? This action cannot
+              be undone.
             </p>
           </DialogHeader>
           <DialogFooter className="gap-2 pt-3 border-t border-border/60">
-            <Button variant="outline" size="sm" className="rounded-sm" onClick={() => setBulkDeleteConfirmOpen(false)} disabled={bulkDeleting}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-sm"
+              onClick={() => setBulkDeleteConfirmOpen(false)}
+              disabled={bulkDeleting}
+            >
               Cancel
             </Button>
-            <Button variant="destructive" size="sm" className="rounded-sm" onClick={handleBulkDelete} disabled={bulkDeleting}>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="rounded-sm"
+              onClick={handleBulkDelete}
+              disabled={bulkDeleting}
+            >
               {bulkDeleting ? "Deleting…" : "Delete"}
             </Button>
           </DialogFooter>
@@ -619,11 +713,22 @@ export default function SitePhotosPage() {
                 )}
               </div>
               <DialogFooter className="gap-2 pt-3 border-t border-border/60 shrink-0">
-                <Button variant="outline" size="sm" className="rounded-sm" onClick={handleDownload} disabled={downloading || failedPhotoIds.has(viewerPhoto.id)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-sm"
+                  onClick={handleDownload}
+                  disabled={downloading || failedPhotoIds.has(viewerPhoto.id)}
+                >
                   <Download className="h-4 w-4 mr-1.5" />
                   {downloading ? "Downloading…" : "Download"}
                 </Button>
-                <Button variant="outline" size="sm" className="rounded-sm" onClick={() => setViewerPhoto(null)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-sm"
+                  onClick={() => setViewerPhoto(null)}
+                >
                   Close
                 </Button>
               </DialogFooter>
@@ -677,7 +782,9 @@ export default function SitePhotosPage() {
                   <label className="text-xs font-medium text-muted-foreground">Description</label>
                   <textarea
                     value={punchIssueForm.description}
-                    onChange={(e) => setPunchIssueForm((f) => ({ ...f, description: e.target.value }))}
+                    onChange={(e) =>
+                      setPunchIssueForm((f) => ({ ...f, description: e.target.value }))
+                    }
                     placeholder="Optional details"
                     rows={2}
                     className="mt-1 w-full rounded-sm border border-border/60 px-2.5 py-2 text-sm"
@@ -697,25 +804,40 @@ export default function SitePhotosPage() {
                   </Select>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground">Assigned Worker</label>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Assigned Worker
+                  </label>
                   <Select
                     value={punchIssueForm.assigned_worker_id}
-                    onChange={(e) => setPunchIssueForm((f) => ({ ...f, assigned_worker_id: e.target.value }))}
+                    onChange={(e) =>
+                      setPunchIssueForm((f) => ({ ...f, assigned_worker_id: e.target.value }))
+                    }
                     className="mt-1 w-full"
                   >
                     <option value="">—</option>
                     {punchIssueWorkers.map((w) => (
-                      <option key={w.id} value={w.id}>{w.name}</option>
+                      <option key={w.id} value={w.id}>
+                        {w.name}
+                      </option>
                     ))}
                   </Select>
                 </div>
                 {error && <p className="text-sm text-destructive">{error}</p>}
               </div>
               <DialogFooter className="gap-2 px-4 py-3 border-t border-border/60 shrink-0">
-                <Button variant="outline" size="sm" onClick={() => setPunchIssuePhoto(null)} disabled={punchIssueSubmitting}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPunchIssuePhoto(null)}
+                  disabled={punchIssueSubmitting}
+                >
                   Cancel
                 </Button>
-                <Button size="sm" onClick={handleCreatePunchIssue} disabled={punchIssueSubmitting || !punchIssueForm.issue.trim()}>
+                <Button
+                  size="sm"
+                  onClick={handleCreatePunchIssue}
+                  disabled={punchIssueSubmitting || !punchIssueForm.issue.trim()}
+                >
                   {punchIssueSubmitting ? "Creating…" : "Create"}
                 </Button>
               </DialogFooter>
@@ -724,7 +846,12 @@ export default function SitePhotosPage() {
         </DialogContent>
       </Dialog>
 
-      <Drawer open={detailOpen} onOpenChange={setDetailOpen} title="Photo detail" description={selectedPhoto?.project_name ?? undefined}>
+      <Drawer
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        title="Photo detail"
+        description={selectedPhoto?.project_name ?? undefined}
+      >
         {selectedPhoto && (
           <div className="space-y-4">
             <div className="rounded-sm border border-[#EBEBE9] overflow-hidden bg-background min-h-[8rem] flex items-center justify-center dark:border-border/60">
@@ -766,11 +893,14 @@ export default function SitePhotosPage() {
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Created: {selectedPhoto.created_at ? new Date(selectedPhoto.created_at).toLocaleString() : "—"}
+              Created:{" "}
+              {selectedPhoto.created_at ? new Date(selectedPhoto.created_at).toLocaleString() : "—"}
             </p>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <div className="flex flex-wrap gap-2 pt-2">
-              <Button size="sm" variant="outline" onClick={() => setDetailOpen(false)}>Cancel</Button>
+              <Button size="sm" variant="outline" onClick={() => setDetailOpen(false)}>
+                Cancel
+              </Button>
               <Button
                 size="sm"
                 variant="destructive"
@@ -779,7 +909,9 @@ export default function SitePhotosPage() {
               >
                 {deleting ? "Deleting…" : "Delete"}
               </Button>
-              <Button size="sm" onClick={handleSaveDetail} disabled={submitting}>Save</Button>
+              <Button size="sm" onClick={handleSaveDetail} disabled={submitting}>
+                Save
+              </Button>
             </div>
           </div>
         )}
@@ -795,7 +927,10 @@ export default function SitePhotosPage() {
         onChange={handleFileSelect}
       />
       {uploadOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm" onClick={() => setUploadOpen(false)}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm"
+          onClick={() => setUploadOpen(false)}
+        >
           <div
             className="bg-background border border-[#EBEBE9] rounded-sm p-4 w-full max-w-sm space-y-3 dark:border-border/60"
             onClick={(e) => e.stopPropagation()}
@@ -810,7 +945,9 @@ export default function SitePhotosPage() {
               >
                 <option value="">Select project</option>
                 {projects.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
                 ))}
               </Select>
             </div>
@@ -843,7 +980,16 @@ export default function SitePhotosPage() {
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => { setUploadOpen(false); setError(null); }}>Cancel</Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setUploadOpen(false);
+                  setError(null);
+                }}
+              >
+                Cancel
+              </Button>
               <Button
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
@@ -852,7 +998,9 @@ export default function SitePhotosPage() {
                 {uploading ? "Uploading…" : "Choose file or capture"}
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">Select a project, then choose file. On mobile, you can capture from camera.</p>
+            <p className="text-xs text-muted-foreground">
+              Select a project, then choose file. On mobile, you can capture from camera.
+            </p>
           </div>
         </div>
       )}

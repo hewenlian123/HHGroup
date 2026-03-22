@@ -1,11 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  PageLayout,
-  PageHeader,
-  Divider,
-  SectionHeader,
-} from "@/components/base";
+import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
 import { getProjectById, getSubcontractsByProject, getSubcontractors } from "@/lib/data";
 import { AddSubcontractButton } from "./add-subcontract-button";
 
@@ -34,7 +29,10 @@ export default async function ProjectSubcontractsPage({ params }: Props) {
           title="Project Subcontracts"
           description={`Subcontracts for ${project.name}.`}
           actions={
-            <Link href={`/projects/${id}`} className="text-sm text-muted-foreground hover:text-foreground">
+            <Link
+              href={`/projects/${id}`}
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
               Project
             </Link>
           }
@@ -51,13 +49,27 @@ export default async function ProjectSubcontractsPage({ params }: Props) {
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Subcontractor</th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Cost Code</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Contract Amount</th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Start Date</th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">End Date</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Subcontractor
+              </th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Cost Code
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Contract Amount
+              </th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Status
+              </th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Start Date
+              </th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                End Date
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -71,12 +83,17 @@ export default async function ProjectSubcontractsPage({ params }: Props) {
               subcontracts.map((r) => (
                 <tr key={r.id} className="border-b border-border/40">
                   <td className="py-1.5 px-3 font-medium">
-                    <Link href={`/projects/${id}/subcontracts/${r.id}`} className="hover:text-foreground hover:underline">
+                    <Link
+                      href={`/projects/${id}/subcontracts/${r.id}`}
+                      className="hover:text-foreground hover:underline"
+                    >
                       {r.subcontractor_name}
                     </Link>
                   </td>
                   <td className="py-1.5 px-3 text-muted-foreground">{r.cost_code ?? "—"}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.contract_amount)}</td>
+                  <td className="py-1.5 px-3 text-right tabular-nums">
+                    ${fmtUsd(r.contract_amount)}
+                  </td>
                   <td className="py-1.5 px-3">{r.status ?? "Draft"}</td>
                   <td className="py-1.5 px-3 tabular-nums">{r.start_date ?? "—"}</td>
                   <td className="py-1.5 px-3 tabular-nums">{r.end_date ?? "—"}</td>

@@ -75,7 +75,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
           advanceDate: String(r.advanceDate ?? "").slice(0, 10),
           status: (r.status as AdvanceRow["status"]) ?? "pending",
           notes: (r.notes as string | null) ?? null,
-        })),
+        }))
       );
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Failed to load advances.");
@@ -349,9 +349,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
         </Button>
       </div>
 
-      {message ? (
-        <p className="text-sm text-muted-foreground">{message}</p>
-      ) : null}
+      {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
 
       <Card className="overflow-hidden">
         <div className="table-responsive">
@@ -384,19 +382,13 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
             <tbody>
               {loading ? (
                 <tr>
-                  <td
-                    colSpan={7}
-                    className="py-6 px-3 text-center text-xs text-muted-foreground"
-                  >
+                  <td colSpan={7} className="py-6 px-3 text-center text-xs text-muted-foreground">
                     Loading…
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan={7}
-                    className="py-6 px-3 text-center text-xs text-muted-foreground"
-                  >
+                  <td colSpan={7} className="py-6 px-3 text-center text-xs text-muted-foreground">
                     No advances yet.
                   </td>
                 </tr>
@@ -407,12 +399,8 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                     className="border-b border-border/40 last:border-b-0 hover:bg-muted/30"
                   >
                     <td className="px-3 py-2 font-medium">{row.workerName}</td>
-                    <td className="px-3 py-2 text-muted-foreground">
-                      {row.projectName ?? "—"}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">
-                      ${row.amount.toFixed(2)}
-                    </td>
+                    <td className="px-3 py-2 text-muted-foreground">{row.projectName ?? "—"}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">${row.amount.toFixed(2)}</td>
                     <td className="px-3 py-2 text-right text-xs tabular-nums text-muted-foreground">
                       {row.advanceDate}
                     </td>
@@ -462,4 +450,3 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
     </div>
   );
 }
-

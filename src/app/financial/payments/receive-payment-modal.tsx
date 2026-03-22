@@ -3,12 +3,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   getInvoicesWithDerived,
   getProjects,
@@ -43,7 +38,9 @@ export function ReceivePaymentModal({
   const [projectId, setProjectId] = React.useState("");
   const [customerName, setCustomerName] = React.useState("");
   const [paymentDate, setPaymentDate] = React.useState(() => new Date().toISOString().slice(0, 10));
-  const [amount, setAmount] = React.useState(remainingBalance != null ? String(remainingBalance) : "");
+  const [amount, setAmount] = React.useState(
+    remainingBalance != null ? String(remainingBalance) : ""
+  );
   const [paymentMethod, setPaymentMethod] = React.useState<string>(PAYMENT_METHODS[0]);
   const [depositAccount, setDepositAccount] = React.useState("");
   const [notes, setNotes] = React.useState("");
@@ -73,7 +70,9 @@ export function ReceivePaymentModal({
         setAmount(remainingBalance != null ? String(remainingBalance) : "");
       }
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [open, preselectedInvoiceId, remainingBalance]);
 
   React.useEffect(() => {
@@ -110,7 +109,8 @@ export function ReceivePaymentModal({
       const payload: CreatePaymentReceivedPayload = {
         invoice_id: invId,
         project_id: projectId || null,
-        customer_name: customerName.trim() || (invoices.find((i) => i.id === invId)?.clientName ?? ""),
+        customer_name:
+          customerName.trim() || (invoices.find((i) => i.id === invId)?.clientName ?? ""),
         payment_date: paymentDate,
         amount: num,
         payment_method: paymentMethod,
@@ -143,7 +143,9 @@ export function ReceivePaymentModal({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 pt-3">
           <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Invoice</label>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Invoice
+            </label>
             <select
               value={invoiceId}
               onChange={(e) => setInvoiceId(e.target.value)}
@@ -160,15 +162,19 @@ export function ReceivePaymentModal({
             </select>
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Project</label>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Project
+            </label>
             <Input
-              value={projectId ? projectNameById.get(projectId) ?? projectId : ""}
+              value={projectId ? (projectNameById.get(projectId) ?? projectId) : ""}
               readOnly
               className="h-9 bg-muted/50"
             />
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Customer</label>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Customer
+            </label>
             <Input
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
@@ -178,7 +184,9 @@ export function ReceivePaymentModal({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Payment Date</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Payment Date
+              </label>
               <Input
                 type="date"
                 value={paymentDate}
@@ -188,7 +196,9 @@ export function ReceivePaymentModal({
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Amount Received</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Amount Received
+              </label>
               <Input
                 type="number"
                 min="0"
@@ -202,7 +212,9 @@ export function ReceivePaymentModal({
             </div>
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Payment Method</label>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Payment Method
+            </label>
             <select
               value={paymentMethod}
               onChange={(e) => setPaymentMethod(e.target.value)}
@@ -216,7 +228,9 @@ export function ReceivePaymentModal({
             </select>
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Deposit Account</label>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Deposit Account
+            </label>
             <Input
               value={depositAccount}
               onChange={(e) => setDepositAccount(e.target.value)}
@@ -225,7 +239,9 @@ export function ReceivePaymentModal({
             />
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Notes</label>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Notes
+            </label>
             <Input
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -234,7 +250,9 @@ export function ReceivePaymentModal({
             />
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Attachment URL (optional)</label>
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Attachment URL (optional)
+            </label>
             <Input
               value={attachmentUrl}
               onChange={(e) => setAttachmentUrl(e.target.value)}
@@ -243,7 +261,13 @@ export function ReceivePaymentModal({
             />
           </div>
           <div className="flex justify-end gap-2 pt-2 border-t border-border/60">
-            <Button type="button" variant="ghost" size="sm" className="h-8" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8"
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
             <Button type="submit" size="sm" className="h-8" disabled={saving}>

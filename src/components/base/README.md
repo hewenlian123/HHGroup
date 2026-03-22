@@ -8,7 +8,8 @@ Minimal Linear-style UI components. Use these across the app as the standard bui
 
 ## Created components
 
-### 1. DataTable  
+### 1. DataTable
+
 **File:** `src/components/base/data-table.tsx`
 
 - Sticky header (via `TableHeader` from `ui/table`)
@@ -22,7 +23,8 @@ Minimal Linear-style UI components. Use these across the app as the standard bui
 
 ---
 
-### 2. PageLayout (PageHeader, ActionBar, Divider, MainContent)  
+### 2. PageLayout (PageHeader, ActionBar, Divider, MainContent)
+
 **File:** `src/components/base/page-layout.tsx`
 
 - **PageHeader** – Title, optional description, optional right-side slot
@@ -44,7 +46,8 @@ Minimal Linear-style UI components. Use these across the app as the standard bui
 
 ---
 
-### 3. StatusBadge  
+### 3. StatusBadge
+
 **File:** `src/components/base/status-badge.tsx`
 
 - Dot + text only (no pill/chip background)
@@ -54,7 +57,8 @@ Minimal Linear-style UI components. Use these across the app as the standard bui
 
 ---
 
-### 4. Button  
+### 4. Button
+
 **File:** `src/components/ui/button.tsx` (variants extended)
 
 - Variants: **primary**, **secondary**, **ghost**, **danger** (plus `default`/`destructive` for backward compatibility)
@@ -64,7 +68,8 @@ Minimal Linear-style UI components. Use these across the app as the standard bui
 
 ---
 
-### 5. Drawer  
+### 5. Drawer
+
 **File:** `src/components/base/drawer.tsx`
 
 - Right-side panel (uses Radix Sheet)
@@ -75,7 +80,8 @@ Minimal Linear-style UI components. Use these across the app as the standard bui
 
 ---
 
-### 6. ConfirmDialog  
+### 6. ConfirmDialog
+
 **File:** `src/components/base/confirm-dialog.tsx`
 
 - Simple modal with title, optional description, Cancel + Confirm
@@ -86,7 +92,8 @@ Minimal Linear-style UI components. Use these across the app as the standard bui
 
 ---
 
-### 7. SectionHeader  
+### 7. SectionHeader
+
 **File:** `src/components/base/section-header.tsx`
 
 - Small uppercase muted label (`table-head-label` style)
@@ -99,16 +106,16 @@ Minimal Linear-style UI components. Use these across the app as the standard bui
 
 ## File locations
 
-| Component        | Path |
-|-----------------|------|
-| DataTable       | `src/components/base/data-table.tsx` |
-| PageLayout etc. | `src/components/base/page-layout.tsx` |
-| StatusBadge     | `src/components/base/status-badge.tsx` |
-| Button (variants) | `src/components/ui/button.tsx` |
-| Drawer          | `src/components/base/drawer.tsx` |
-| ConfirmDialog   | `src/components/base/confirm-dialog.tsx` |
-| SectionHeader   | `src/components/base/section-header.tsx` |
-| Barrel export   | `src/components/base/index.ts` |
+| Component         | Path                                     |
+| ----------------- | ---------------------------------------- |
+| DataTable         | `src/components/base/data-table.tsx`     |
+| PageLayout etc.   | `src/components/base/page-layout.tsx`    |
+| StatusBadge       | `src/components/base/status-badge.tsx`   |
+| Button (variants) | `src/components/ui/button.tsx`           |
+| Drawer            | `src/components/base/drawer.tsx`         |
+| ConfirmDialog     | `src/components/base/confirm-dialog.tsx` |
+| SectionHeader     | `src/components/base/section-header.tsx` |
+| Barrel export     | `src/components/base/index.ts`           |
 
 ---
 

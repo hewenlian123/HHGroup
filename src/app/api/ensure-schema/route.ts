@@ -27,8 +27,7 @@ export async function POST() {
 
   try {
     await ensureConstructionSchema();
-    constructionMessage =
-      "Core schema is managed by Supabase migrations (construction DDL no-op).";
+    constructionMessage = "Core schema is managed by Supabase migrations (construction DDL no-op).";
   } catch (err) {
     constructionOk = false;
     constructionMessage = err instanceof Error ? err.message : String(err);
@@ -47,7 +46,9 @@ export async function POST() {
       hasDatabaseUrl: true,
       message:
         message +
-        (ok ? " If you still see 'column not in schema cache', reload the schema cache in Supabase Dashboard → Project Settings → API." : ""),
+        (ok
+          ? " If you still see 'column not in schema cache', reload the schema cache in Supabase Dashboard → Project Settings → API."
+          : ""),
       construction: { ok: constructionOk, message: constructionMessage },
       autoRepair: {
         ok: autoRepair.ok,

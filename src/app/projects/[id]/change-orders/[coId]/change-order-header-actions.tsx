@@ -78,10 +78,7 @@ export function ChangeOrderStatusDropdown({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {nextOptions.map((opt) => (
-              <DropdownMenuItem
-                key={opt.status}
-                onSelect={() => handleStatus(opt.status)}
-              >
+              <DropdownMenuItem key={opt.status} onSelect={() => handleStatus(opt.status)}>
                 {opt.label}
               </DropdownMenuItem>
             ))}

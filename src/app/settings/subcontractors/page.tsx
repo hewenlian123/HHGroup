@@ -1,10 +1,5 @@
 import Link from "next/link";
-import {
-  PageLayout,
-  PageHeader,
-  Divider,
-  SectionHeader,
-} from "@/components/base";
+import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
 import { getSubcontractors } from "@/lib/data";
 import { SubcontractorsActions } from "./subcontractors-actions";
 import { SubcontractorsTableClient } from "./subcontractors-table-client";
@@ -28,10 +23,7 @@ export default async function SubcontractorsPage() {
         />
       }
     >
-      <SectionHeader
-        label="Subcontractors"
-        action={<SubcontractorsActions />}
-      />
+      <SectionHeader label="Subcontractors" action={<SubcontractorsActions />} />
       <Divider />
 
       <SubcontractorsTableClient rows={rows} />

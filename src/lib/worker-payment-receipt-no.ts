@@ -25,7 +25,10 @@ function formatSeq(n: number): string {
   return n < 1000 ? String(n).padStart(3, "0") : String(n);
 }
 
-export async function computeWorkerPaymentReceiptNo(paymentId: string, paymentDateRaw: string): Promise<string> {
+export async function computeWorkerPaymentReceiptNo(
+  paymentId: string,
+  paymentDateRaw: string
+): Promise<string> {
   const dateKey = paymentDateKey(paymentDateRaw);
   const day = yyyymmdd(dateKey);
   const c = getServerSupabaseAdmin();

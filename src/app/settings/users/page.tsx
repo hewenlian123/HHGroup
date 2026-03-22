@@ -98,7 +98,9 @@ export default function SettingsUsersPage() {
       ) : null}
 
       <Card className="border-[#EBEBE9] p-4 dark:border-border">
-        <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground mb-2">Invite note (optional)</p>
+        <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground mb-2">
+          Invite note (optional)
+        </p>
         <Input
           value={inviteNote}
           onChange={(event) => setInviteNote(event.target.value)}
@@ -111,9 +113,15 @@ export default function SettingsUsersPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
-                <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">Email</th>
-                <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">Role</th>
-                <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">Created</th>
+                <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">
+                  Email
+                </th>
+                <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">
+                  Role
+                </th>
+                <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">
+                  Created
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -133,7 +141,12 @@ export default function SettingsUsersPage() {
                     ) : (
                       <Select
                         value={row.role}
-                        onChange={(event) => void setUserRole(row.id, event.target.value === "admin" ? "admin" : "assistant")}
+                        onChange={(event) =>
+                          void setUserRole(
+                            row.id,
+                            event.target.value === "admin" ? "admin" : "assistant"
+                          )
+                        }
                         disabled={savingId === row.id}
                         className="h-9 max-w-[200px]"
                       >

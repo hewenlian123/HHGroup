@@ -45,8 +45,12 @@ const STATUS_LABEL: Record<string, string> = {
 
 function formatDateRange(start: string | null, end: string | null): string {
   if (!start && !end) return "—";
-  const s = start ? new Date(start).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—";
-  const e = end ? new Date(end).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "—";
+  const s = start
+    ? new Date(start).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    : "—";
+  const e = end
+    ? new Date(end).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    : "—";
   return start && end ? `${s} → ${e}` : s;
 }
 
@@ -100,13 +104,28 @@ function ScheduleCalendarGrid({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <button type="button" onClick={prevMonth} className="text-sm font-medium text-muted-foreground hover:text-foreground px-2 py-1 rounded">←</button>
+        <button
+          type="button"
+          onClick={prevMonth}
+          className="text-sm font-medium text-muted-foreground hover:text-foreground px-2 py-1 rounded"
+        >
+          ←
+        </button>
         <span className="text-sm font-semibold text-foreground">{monthLabel}</span>
-        <button type="button" onClick={nextMonth} className="text-sm font-medium text-muted-foreground hover:text-foreground px-2 py-1 rounded">→</button>
+        <button
+          type="button"
+          onClick={nextMonth}
+          className="text-sm font-medium text-muted-foreground hover:text-foreground px-2 py-1 rounded"
+        >
+          →
+        </button>
       </div>
       <div className="grid grid-cols-7 gap-px border border-[#EBEBE9] rounded-sm overflow-hidden bg-[#EBEBE9] dark:border-border/60 dark:bg-border/40">
         {weekDays.map((w) => (
-          <div key={w} className="bg-background py-1.5 text-center text-xs font-medium text-muted-foreground">
+          <div
+            key={w}
+            className="bg-background py-1.5 text-center text-xs font-medium text-muted-foreground"
+          >
             {w}
           </div>
         ))}
@@ -125,10 +144,7 @@ function ScheduleCalendarGrid({
                   {(itemsByDate.get(c.dateKey) ?? []).map((s) => (
                     <div
                       key={s.id}
-                      className={cn(
-                        "text-xs truncate rounded px-1 py-0.5",
-                        statusStyle(s.status)
-                      )}
+                      className={cn("text-xs truncate rounded px-1 py-0.5", statusStyle(s.status))}
                       title={`${s.title} — ${statusLabel(s.status)}`}
                     >
                       {s.title || "—"}
@@ -258,8 +274,10 @@ export default function SchedulePage() {
     }
   }, [form, load]);
 
-  const statusStyle = React.useCallback((status: string) =>
-    STATUS_STYLES[status] ?? "bg-muted text-muted-foreground", []);
+  const statusStyle = React.useCallback(
+    (status: string) => STATUS_STYLES[status] ?? "bg-muted text-muted-foreground",
+    []
+  );
   const statusLabel = React.useCallback((status: string) => STATUS_LABEL[status] ?? status, []);
 
   return (
@@ -269,7 +287,11 @@ export default function SchedulePage() {
           title="Schedule"
           description="Project schedule across all projects."
           actions={
-            <Button size="touch" className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90 min-h-[44px]" onClick={openModal}>
+            <Button
+              size="touch"
+              className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90 min-h-[44px]"
+              onClick={openModal}
+            >
               + New schedule item
             </Button>
           }
@@ -363,7 +385,11 @@ export default function SchedulePage() {
                 </div>
                 {/* Desktop: month calendar grid */}
                 <div className="hidden lg:block p-4">
-                  <ScheduleCalendarGrid schedule={schedule} statusStyle={statusStyle} statusLabel={statusLabel} />
+                  <ScheduleCalendarGrid
+                    schedule={schedule}
+                    statusStyle={statusStyle}
+                    statusLabel={statusLabel}
+                  />
                 </div>
               </>
             )}
@@ -387,7 +413,9 @@ export default function SchedulePage() {
               >
                 <option value="">Select project</option>
                 {projects.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
                 ))}
               </Select>
             </div>
@@ -436,8 +464,12 @@ export default function SchedulePage() {
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
           <DialogFooter className="border-t border-border/60 pt-4">
-            <Button variant="outline" size="sm" onClick={() => setModalOpen(false)}>Cancel</Button>
-            <Button size="sm" onClick={handleCreate} disabled={submitting}>Add</Button>
+            <Button variant="outline" size="sm" onClick={() => setModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button size="sm" onClick={handleCreate} disabled={submitting}>
+              Add
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

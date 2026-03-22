@@ -3,11 +3,12 @@ import { getAllScheduleWithProject, getProjects, createProjectScheduleItem } fro
 
 export async function GET() {
   try {
-    const [schedule, projects] = await Promise.all([
-      getAllScheduleWithProject(),
-      getProjects(),
-    ]);
-    return NextResponse.json({ ok: true as const, schedule, projects: projects.map((p) => ({ id: p.id, name: p.name })) });
+    const [schedule, projects] = await Promise.all([getAllScheduleWithProject(), getProjects()]);
+    return NextResponse.json({
+      ok: true as const,
+      schedule,
+      projects: projects.map((p) => ({ id: p.id, name: p.name })),
+    });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to load schedule.";
     return NextResponse.json({ ok: false as const, message }, { status: 500 });
@@ -23,7 +24,10 @@ export async function POST(req: Request) {
     const end_date = body.end_date ? String(body.end_date).slice(0, 10) : null;
     const status = (body.status as string) || "planned";
     if (!project_id) {
-      return NextResponse.json({ ok: false as const, message: "project_id is required." }, { status: 400 });
+      return NextResponse.json(
+        { ok: false as const, message: "project_id is required." },
+        { status: 400 }
+      );
     }
     await createProjectScheduleItem({
       project_id,

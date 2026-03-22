@@ -92,7 +92,11 @@ const HINT = "Run supabase/migrations/202602280008_create_expenses.sql";
 
 async function getLinkedBankTxId(expenseId: string): Promise<string | null> {
   const c = client();
-  const { data } = await c.from("bank_transactions").select("id").eq("linked_expense_id", expenseId).maybeSingle();
+  const { data } = await c
+    .from("bank_transactions")
+    .select("id")
+    .eq("linked_expense_id", expenseId)
+    .maybeSingle();
   return data?.id ?? null;
 }
 
@@ -125,13 +129,19 @@ function toExpenseLine(r: ExpenseLineRow): ExpenseLine {
   };
 }
 
-async function toExpense(row: ExpenseRow, lines: ExpenseLineRow[], attachments: ExpenseAttachment[], linkedBankTxId: string | null): Promise<Expense> {
+async function toExpense(
+  row: ExpenseRow,
+  lines: ExpenseLineRow[],
+  attachments: ExpenseAttachment[],
+  linkedBankTxId: string | null
+): Promise<Expense> {
   const s = row.status;
-  const status = s === "approved" || s === "reimbursed" ? s : s === "needs_review" ? "needs_review" : "pending";
+  const status =
+    s === "approved" || s === "reimbursed" ? s : s === "needs_review" ? "needs_review" : "pending";
   return {
     id: row.id,
     date: row.expense_date?.slice(0, 10) ?? "",
-    vendorName: (row.vendor ?? row.vendor_name) ?? "",
+    vendorName: row.vendor ?? row.vendor_name ?? "",
     paymentMethod: row.payment_method ?? "Card",
     referenceNo: row.reference_no ?? undefined,
     notes: row.notes ?? undefined,
@@ -147,9 +157,11 @@ async function toExpense(row: ExpenseRow, lines: ExpenseLineRow[], attachments: 
 }
 
 /** Select columns: base + optional receipt_url, status, worker_id. */
-const EXPENSE_COLS_FULL = "id,expense_date,vendor,vendor_name,notes,payment_method,reference_no,total,line_count,receipt_url,status,worker_id,card_name,account_id";
+const EXPENSE_COLS_FULL =
+  "id,expense_date,vendor,vendor_name,notes,payment_method,reference_no,total,line_count,receipt_url,status,worker_id,card_name,account_id";
 /** Fallback when payment_method column does not exist (e.g. account_id-only schema). */
-const EXPENSE_COLS_FULL_NO_PAYMENT_METHOD = "id,expense_date,vendor,vendor_name,notes,reference_no,total,line_count,receipt_url,status,worker_id,card_name,account_id";
+const EXPENSE_COLS_FULL_NO_PAYMENT_METHOD =
+  "id,expense_date,vendor,vendor_name,notes,reference_no,total,line_count,receipt_url,status,worker_id,card_name,account_id";
 /** Legacy: table may have only vendor (no vendor_name). No payment_method so works when column is missing. */
 const EXPENSE_COLS_LEGACY = "id,expense_date,vendor,notes,reference_no,total,line_count";
 /** Minimal: no reference_no, no payment_method (for schemas that only have core columns). */
@@ -167,23 +179,44 @@ function isMissingColumn(err: { message?: string } | null): boolean {
 export async function getExpenses(): Promise<Expense[]> {
   const c = client();
   let rows: unknown[] = [];
-  const res = await c.from("expenses").select(EXPENSE_COLS_FULL).order("expense_date", { ascending: false });
+  const res = await c
+    .from("expenses")
+    .select(EXPENSE_COLS_FULL)
+    .order("expense_date", { ascending: false });
   if (res.error) {
     if (!isMissingColumn(res.error)) {
       if (isMissingTable(res.error)) throw new Error(`Expenses table not found. ${HINT}`);
       throw new Error(res.error.message ? `${res.error.message} ${HINT}` : HINT);
     }
-    const fallback = await c.from("expenses").select(EXPENSE_COLS_FULL_NO_PAYMENT_METHOD).order("expense_date", { ascending: false });
+    const fallback = await c
+      .from("expenses")
+      .select(EXPENSE_COLS_FULL_NO_PAYMENT_METHOD)
+      .order("expense_date", { ascending: false });
     if (fallback.error && isMissingColumn(fallback.error)) {
-      const legacy = await c.from("expenses").select(EXPENSE_COLS_LEGACY).order("expense_date", { ascending: false });
+      const legacy = await c
+        .from("expenses")
+        .select(EXPENSE_COLS_LEGACY)
+        .order("expense_date", { ascending: false });
       if (legacy.error && isMissingColumn(legacy.error)) {
-        const minimal = await c.from("expenses").select(EXPENSE_COLS_MINIMAL).order("expense_date", { ascending: false });
+        const minimal = await c
+          .from("expenses")
+          .select(EXPENSE_COLS_MINIMAL)
+          .order("expense_date", { ascending: false });
         if (minimal.error && isMissingColumn(minimal.error)) {
-          const minimalLegacy = await c.from("expenses").select(EXPENSE_COLS_MINIMAL_LEGACY).order("expense_date", { ascending: false });
+          const minimalLegacy = await c
+            .from("expenses")
+            .select(EXPENSE_COLS_MINIMAL_LEGACY)
+            .order("expense_date", { ascending: false });
           if (minimalLegacy.error && isMissingColumn(minimalLegacy.error)) {
-            const noTotal = await c.from("expenses").select(EXPENSE_COLS_NO_TOTAL).order("expense_date", { ascending: false });
+            const noTotal = await c
+              .from("expenses")
+              .select(EXPENSE_COLS_NO_TOTAL)
+              .order("expense_date", { ascending: false });
             if (noTotal.error && isMissingColumn(noTotal.error)) {
-              const noTotalLegacy = await c.from("expenses").select(EXPENSE_COLS_NO_TOTAL_LEGACY).order("expense_date", { ascending: false });
+              const noTotalLegacy = await c
+                .from("expenses")
+                .select(EXPENSE_COLS_NO_TOTAL_LEGACY)
+                .order("expense_date", { ascending: false });
               if (noTotalLegacy.error) throw new Error(noTotalLegacy.error.message ?? HINT);
               rows = noTotalLegacy.data ?? [];
             } else if (noTotal.error) {
@@ -235,19 +268,44 @@ export async function getExpenseById(expenseId: string): Promise<Expense | null>
       if (isMissingTable(res.error)) throw new Error(`Expenses table not found. ${HINT}`);
       return null;
     }
-    const fallback = await c.from("expenses").select(EXPENSE_COLS_FULL_NO_PAYMENT_METHOD).eq("id", expenseId).maybeSingle();
+    const fallback = await c
+      .from("expenses")
+      .select(EXPENSE_COLS_FULL_NO_PAYMENT_METHOD)
+      .eq("id", expenseId)
+      .maybeSingle();
     if (fallback.error && isMissingColumn(fallback.error)) {
-      const legacy = await c.from("expenses").select(EXPENSE_COLS_LEGACY).eq("id", expenseId).maybeSingle();
+      const legacy = await c
+        .from("expenses")
+        .select(EXPENSE_COLS_LEGACY)
+        .eq("id", expenseId)
+        .maybeSingle();
       if (legacy.error && isMissingColumn(legacy.error)) {
-        const minimal = await c.from("expenses").select(EXPENSE_COLS_MINIMAL).eq("id", expenseId).maybeSingle();
+        const minimal = await c
+          .from("expenses")
+          .select(EXPENSE_COLS_MINIMAL)
+          .eq("id", expenseId)
+          .maybeSingle();
         if (minimal.error && isMissingColumn(minimal.error)) {
-          const minimalLegacy = await c.from("expenses").select(EXPENSE_COLS_MINIMAL_LEGACY).eq("id", expenseId).maybeSingle();
+          const minimalLegacy = await c
+            .from("expenses")
+            .select(EXPENSE_COLS_MINIMAL_LEGACY)
+            .eq("id", expenseId)
+            .maybeSingle();
           if (minimalLegacy.error && isMissingColumn(minimalLegacy.error)) {
-            const noTotal = await c.from("expenses").select(EXPENSE_COLS_NO_TOTAL).eq("id", expenseId).maybeSingle();
+            const noTotal = await c
+              .from("expenses")
+              .select(EXPENSE_COLS_NO_TOTAL)
+              .eq("id", expenseId)
+              .maybeSingle();
             if (!noTotal.error && noTotal.data) row = noTotal.data as ExpenseRow;
             else if (noTotal.error && isMissingColumn(noTotal.error)) {
-              const noTotalLegacy = await c.from("expenses").select(EXPENSE_COLS_NO_TOTAL_LEGACY).eq("id", expenseId).maybeSingle();
-              if (!noTotalLegacy.error && noTotalLegacy.data) row = noTotalLegacy.data as ExpenseRow;
+              const noTotalLegacy = await c
+                .from("expenses")
+                .select(EXPENSE_COLS_NO_TOTAL_LEGACY)
+                .eq("id", expenseId)
+                .maybeSingle();
+              if (!noTotalLegacy.error && noTotalLegacy.data)
+                row = noTotalLegacy.data as ExpenseRow;
             }
           } else if (!minimalLegacy.error && minimalLegacy.data) {
             row = minimalLegacy.data as ExpenseRow;
@@ -297,7 +355,13 @@ export async function createExpense(payload: {
   notes?: string;
   cardName?: string | null;
   accountId?: string | null;
-  lines: Array<{ projectId: string | null; category: string; costCode?: string | null; memo?: string | null; amount: number }>;
+  lines: Array<{
+    projectId: string | null;
+    category: string;
+    costCode?: string | null;
+    memo?: string | null;
+    amount: number;
+  }>;
   linkedBankTxId?: string | null;
 }): Promise<Expense> {
   const c = client();
@@ -357,7 +421,11 @@ export async function createExpense(payload: {
       };
       let expInsErr: { message?: string } | null = null;
       let expRow: { id: string } | null = null;
-      let ins = await c.from("expenses").insert({ ...insertPayload, payment_method: payload.paymentMethod ?? "Card" }).select("id").single();
+      let ins = await c
+        .from("expenses")
+        .insert({ ...insertPayload, payment_method: payload.paymentMethod ?? "Card" })
+        .select("id")
+        .single();
       if (ins.error && isMissingColumn(ins.error)) {
         ins = await c.from("expenses").insert(insertPayload).select("id").single();
       }
@@ -379,7 +447,9 @@ export async function createExpense(payload: {
           lineInserts,
           lineInserts.map(({ cost_code: _c, memo: _m, ...rest }) => rest),
           lineInserts.map(({ cost_code: _c, memo: _m, category: _cat, ...rest }) => rest),
-          lineInserts.map(({ cost_code: _c, memo: _m, category: _cat, project_id: _p, ...rest }) => rest),
+          lineInserts.map(
+            ({ cost_code: _c, memo: _m, category: _cat, project_id: _p, ...rest }) => rest
+          ),
         ];
         let lineInsErr: { message?: string } | null = null;
         for (const attempt of lineAttempts) {
@@ -449,7 +519,11 @@ export async function createQuickExpense(payload: {
     receipt_url: receiptUrl || null,
     status: "needs_review",
   };
-  let result = await c.from("expenses").insert({ ...insertRow, payment_method: "Other" }).select("id").single();
+  let result = await c
+    .from("expenses")
+    .insert({ ...insertRow, payment_method: "Other" })
+    .select("id")
+    .single();
   if (result.error && isMissingColumn(result.error)) {
     result = await c.from("expenses").insert(insertRow).select("id").single();
   }
@@ -510,7 +584,8 @@ export async function createExpenseFromPaidReimbursement(
   const amount = Number(reimb.amount) ?? 0;
   const date = new Date().toISOString().slice(0, 10);
   const projectId = reimb.projectId ?? null;
-  const vendorName = (reimb.vendor ?? "Worker Reimbursement")?.toString().trim() || "Worker Reimbursement";
+  const vendorName =
+    (reimb.vendor ?? "Worker Reimbursement")?.toString().trim() || "Worker Reimbursement";
   const paymentMethod = (opts?.paymentMethod ?? "").trim() || "—";
   const notes = (opts?.note ?? reimb.description ?? "").toString().trim() || null;
   const referenceNo = `REIM-${reimbursementId}`;
@@ -535,7 +610,9 @@ export async function createExpenseFromPaidReimbursement(
       .maybeSingle();
     existingId = byRef?.id ?? null;
     if (typeof console !== "undefined" && console.log) {
-      console.log("[createExpenseFromPaidReimbursement] duplicate check by reference_no", { existingId });
+      console.log("[createExpenseFromPaidReimbursement] duplicate check by reference_no", {
+        existingId,
+      });
     }
   } catch {
     // reference_no column may not exist; try source/source_id next
@@ -622,17 +699,63 @@ export async function createExpenseFromPaidReimbursement(
       project_id: projectId,
       vendor: vendorName,
     },
-    { expense_date: date, vendor_name: vendorName, notes, reference_no: referenceNo, total: amount, amount, line_count: 1, worker_id: reimb.workerId ?? null, project_id: projectId },
-    { expense_date: date, vendor: vendorName, notes, reference_no: referenceNo, total: amount, amount, line_count: 1, worker_id: reimb.workerId ?? null, project_id: projectId },
-    { expense_date: date, total: amount, amount, line_count: 1, notes, reference_no: referenceNo, worker_id: reimb.workerId ?? null, project_id: projectId },
-    { expense_date: date, total: amount, amount, line_count: 1, worker_id: reimb.workerId ?? null, project_id: projectId },
-    { expense_date: date, vendor: vendorName, total: amount, amount, line_count: 1, project_id: projectId },
+    {
+      expense_date: date,
+      vendor_name: vendorName,
+      notes,
+      reference_no: referenceNo,
+      total: amount,
+      amount,
+      line_count: 1,
+      worker_id: reimb.workerId ?? null,
+      project_id: projectId,
+    },
+    {
+      expense_date: date,
+      vendor: vendorName,
+      notes,
+      reference_no: referenceNo,
+      total: amount,
+      amount,
+      line_count: 1,
+      worker_id: reimb.workerId ?? null,
+      project_id: projectId,
+    },
+    {
+      expense_date: date,
+      total: amount,
+      amount,
+      line_count: 1,
+      notes,
+      reference_no: referenceNo,
+      worker_id: reimb.workerId ?? null,
+      project_id: projectId,
+    },
+    {
+      expense_date: date,
+      total: amount,
+      amount,
+      line_count: 1,
+      worker_id: reimb.workerId ?? null,
+      project_id: projectId,
+    },
+    {
+      expense_date: date,
+      vendor: vendorName,
+      total: amount,
+      amount,
+      line_count: 1,
+      project_id: projectId,
+    },
     { expense_date: date, vendor: vendorName, total: amount, amount, line_count: 1 },
     { expense_date: date, total: amount, amount, line_count: 1, project_id: projectId },
     { expense_date: date, total: amount, amount, line_count: 1 },
   ];
 
-  let result: { data: { id?: string } | null; error: { message?: string } | null } = { data: null, error: null };
+  let result: { data: { id?: string } | null; error: { message?: string } | null } = {
+    data: null,
+    error: null,
+  };
   for (let i = 0; i < attempts.length; i++) {
     const row = attempts[i]!;
     result = await c.from("expenses").insert(row).select("id").single();
@@ -644,8 +767,15 @@ export async function createExpenseFromPaidReimbursement(
       });
     }
     if (!result.error) break;
-    if (isStatusConstraintError(result.error) && (row as Record<string, unknown>).status === "paid") {
-      result = await c.from("expenses").insert({ ...row, status: "approved" }).select("id").single();
+    if (
+      isStatusConstraintError(result.error) &&
+      (row as Record<string, unknown>).status === "paid"
+    ) {
+      result = await c
+        .from("expenses")
+        .insert({ ...row, status: "approved" })
+        .select("id")
+        .single();
       if (!result.error) break;
     }
     if (!isMissingColumn(result.error)) break;
@@ -661,11 +791,30 @@ export async function createExpenseFromPaidReimbursement(
   }
 
   const linePayloads: Record<string, unknown>[] = [
-    { expense_id: expenseId, project_id: projectId, category: REIMBURSEMENT_CATEGORY, memo: notes, amount, total: amount },
-    { expense_id: expenseId, project_id: projectId, category: REIMBURSEMENT_CATEGORY, amount, total: amount },
+    {
+      expense_id: expenseId,
+      project_id: projectId,
+      category: REIMBURSEMENT_CATEGORY,
+      memo: notes,
+      amount,
+      total: amount,
+    },
+    {
+      expense_id: expenseId,
+      project_id: projectId,
+      category: REIMBURSEMENT_CATEGORY,
+      amount,
+      total: amount,
+    },
     { expense_id: expenseId, project_id: projectId, amount, total: amount },
     { expense_id: expenseId, amount, total: amount },
-    { expense_id: expenseId, project_id: projectId, category: REIMBURSEMENT_CATEGORY, memo: notes, amount },
+    {
+      expense_id: expenseId,
+      project_id: projectId,
+      category: REIMBURSEMENT_CATEGORY,
+      memo: notes,
+      amount,
+    },
     { expense_id: expenseId, project_id: projectId, category: REIMBURSEMENT_CATEGORY, amount },
     { expense_id: expenseId, project_id: projectId, amount },
     { expense_id: expenseId, project_id: projectId },
@@ -682,7 +831,10 @@ export async function createExpenseFromPaidReimbursement(
     lineErr = res.error;
     if (!lineErr) {
       if (typeof console !== "undefined" && console.log) {
-        console.log("[createExpenseFromPaidReimbursement] expense_lines inserted", Object.keys(payload));
+        console.log(
+          "[createExpenseFromPaidReimbursement] expense_lines inserted",
+          Object.keys(payload)
+        );
       }
       break;
     }
@@ -710,7 +862,15 @@ export async function createExpenseFromPaidReimbursement(
 
 export async function updateExpense(
   expenseId: string,
-  patch: Partial<{ date: string; vendorName: string; paymentMethod: string; referenceNo: string; notes: string; cardName: string | null; accountId: string | null }>
+  patch: Partial<{
+    date: string;
+    vendorName: string;
+    paymentMethod: string;
+    referenceNo: string;
+    notes: string;
+    cardName: string | null;
+    accountId: string | null;
+  }>
 ): Promise<Expense | null> {
   const c = client();
   const updates: Record<string, unknown> = {};
@@ -764,7 +924,11 @@ export async function updateExpenseForReview(
     await c.from("expenses").update(expUpdates).eq("id", expenseId);
   }
   if (patch.projectId !== undefined || patch.category != null || patch.amount != null) {
-    const { data: lines } = await c.from("expense_lines").select("id").eq("expense_id", expenseId).limit(1);
+    const { data: lines } = await c
+      .from("expense_lines")
+      .select("id")
+      .eq("expense_id", expenseId)
+      .limit(1);
     const firstLine = Array.isArray(lines) ? lines[0] : null;
     if (firstLine && typeof firstLine === "object" && "id" in firstLine) {
       const lineUpdates: Record<string, unknown> = {};
@@ -772,16 +936,26 @@ export async function updateExpenseForReview(
       if (patch.category != null) lineUpdates.category = patch.category;
       if (patch.amount != null) lineUpdates.amount = patch.amount;
       if (Object.keys(lineUpdates).length > 0) {
-        await c.from("expense_lines").update(lineUpdates).eq("id", (firstLine as { id: string }).id).eq("expense_id", expenseId);
+        await c
+          .from("expense_lines")
+          .update(lineUpdates)
+          .eq("id", (firstLine as { id: string }).id)
+          .eq("expense_id", expenseId);
       }
     }
   }
   return getExpenseById(expenseId);
 }
 
-export async function updateExpenseReceiptUrl(expenseId: string, receiptUrl: string): Promise<Expense | null> {
+export async function updateExpenseReceiptUrl(
+  expenseId: string,
+  receiptUrl: string
+): Promise<Expense | null> {
   const c = client();
-  const { error } = await c.from("expenses").update({ receipt_url: receiptUrl }).eq("id", expenseId);
+  const { error } = await c
+    .from("expenses")
+    .update({ receipt_url: receiptUrl })
+    .eq("id", expenseId);
   if (error) {
     if (isMissingColumn(error)) return getExpenseById(expenseId);
     return null;
@@ -816,14 +990,24 @@ export async function markWorkerExpensesReimbursed(workerId: string): Promise<nu
   }
   const ids = (rows ?? []).map((r: { id: string }) => r.id);
   if (ids.length === 0) return 0;
-  const { error: updateError } = await c.from("expenses").update({ status: "reimbursed" }).in("id", ids);
-  if (updateError) throw new Error((updateError as { message?: string }).message ?? "Failed to update");
+  const { error: updateError } = await c
+    .from("expenses")
+    .update({ status: "reimbursed" })
+    .in("id", ids);
+  if (updateError)
+    throw new Error((updateError as { message?: string }).message ?? "Failed to update");
   return ids.length;
 }
 
 export async function addExpenseLine(
   expenseId: string,
-  line: { projectId: string | null; category: string; costCode?: string | null; memo?: string | null; amount: number }
+  line: {
+    projectId: string | null;
+    category: string;
+    costCode?: string | null;
+    memo?: string | null;
+    amount: number;
+  }
 ): Promise<Expense | null> {
   const c = client();
   await c.from("expense_lines").insert({
@@ -855,11 +1039,18 @@ export async function updateExpenseLine(
   return getExpenseById(expenseId);
 }
 
-export async function deleteExpenseLine(expenseId: string, lineId: string): Promise<Expense | null> {
+export async function deleteExpenseLine(
+  expenseId: string,
+  lineId: string
+): Promise<Expense | null> {
   const c = client();
   const { data: lines } = await c.from("expense_lines").select("id").eq("expense_id", expenseId);
   if (lines && lines.length <= 1) {
-    await c.from("expense_lines").update({ project_id: null, category: "Other", amount: 0, cost_code: null, memo: null }).eq("id", lineId).eq("expense_id", expenseId);
+    await c
+      .from("expense_lines")
+      .update({ project_id: null, category: "Other", amount: 0, cost_code: null, memo: null })
+      .eq("id", lineId)
+      .eq("expense_id", expenseId);
   } else {
     await c.from("expense_lines").delete().eq("id", lineId).eq("expense_id", expenseId);
   }
@@ -874,7 +1065,10 @@ export async function deleteExpense(expenseId: string): Promise<boolean> {
   return !error;
 }
 
-export async function addExpenseAttachment(expenseId: string, att: ExpenseAttachment): Promise<Expense | null> {
+export async function addExpenseAttachment(
+  expenseId: string,
+  att: ExpenseAttachment
+): Promise<Expense | null> {
   const c = client();
   await c.from("attachments").insert({
     entity_type: "expense",
@@ -887,7 +1081,10 @@ export async function addExpenseAttachment(expenseId: string, att: ExpenseAttach
   return getExpenseById(expenseId);
 }
 
-export async function deleteExpenseAttachment(expenseId: string, attachmentId: string): Promise<Expense | null> {
+export async function deleteExpenseAttachment(
+  expenseId: string,
+  attachmentId: string
+): Promise<Expense | null> {
   const c = client();
   const { data: att, error: attErr } = await c
     .from("attachments")
@@ -904,7 +1101,12 @@ export async function deleteExpenseAttachment(expenseId: string, attachmentId: s
     if (storageErr) throw new Error(storageErr.message ?? "Failed to delete attachment file.");
   }
 
-  const { error: delErr } = await c.from("attachments").delete().eq("id", attachmentId).eq("entity_type", "expense").eq("entity_id", expenseId);
+  const { error: delErr } = await c
+    .from("attachments")
+    .delete()
+    .eq("id", attachmentId)
+    .eq("entity_type", "expense")
+    .eq("entity_id", expenseId);
   if (delErr) throw new Error(delErr.message ?? "Failed to delete attachment record.");
   return getExpenseById(expenseId);
 }
@@ -914,14 +1116,18 @@ export function getExpenseTotal(expense: Expense): number {
 }
 
 /** Expense lines for a project (for project detail / profit drilldown). */
-export async function getExpenseLinesByProject(projectId: string, limit = 5): Promise<Array<{ expenseId: string; date: string; vendorName: string; line: ExpenseLine }>> {
+export async function getExpenseLinesByProject(
+  projectId: string,
+  limit = 5
+): Promise<Array<{ expenseId: string; date: string; vendorName: string; line: ExpenseLine }>> {
   const c = client();
   const { data: lineRows } = await c
     .from("expense_lines")
     .select("id, expense_id, project_id, category, cost_code, memo, amount")
     .eq("project_id", projectId);
   const lines = (lineRows ?? []) as (ExpenseLineRow & { expense_id: string })[];
-  const result: Array<{ expenseId: string; date: string; vendorName: string; line: ExpenseLine }> = [];
+  const result: Array<{ expenseId: string; date: string; vendorName: string; line: ExpenseLine }> =
+    [];
   for (const l of lines.slice(0, limit * 2)) {
     const exp = await getExpenseById(l.expense_id);
     if (!exp) continue;
@@ -937,14 +1143,17 @@ export async function getExpenseLinesByProject(projectId: string, limit = 5): Pr
 }
 
 /** All expense lines for a project. */
-export async function getProjectExpenseLines(projectId: string): Promise<Array<{ expenseId: string; date: string; vendorName: string; line: ExpenseLine }>> {
+export async function getProjectExpenseLines(
+  projectId: string
+): Promise<Array<{ expenseId: string; date: string; vendorName: string; line: ExpenseLine }>> {
   const c = client();
   const { data: lineRows } = await c
     .from("expense_lines")
     .select("id, expense_id, project_id, category, cost_code, memo, amount")
     .eq("project_id", projectId);
   const lines = (lineRows ?? []) as (ExpenseLineRow & { expense_id: string })[];
-  const result: Array<{ expenseId: string; date: string; vendorName: string; line: ExpenseLine }> = [];
+  const result: Array<{ expenseId: string; date: string; vendorName: string; line: ExpenseLine }> =
+    [];
   for (const l of lines) {
     const exp = await getExpenseById(l.expense_id);
     if (!exp) continue;
@@ -1016,8 +1225,13 @@ export async function getExpensesTotalForMonth(year: number, month: number): Pro
 /** Unlinked expenses for bank tx suggestion. */
 export async function getUnlinkedExpenses(): Promise<Expense[]> {
   const c = client();
-  const { data: btRows } = await c.from("bank_transactions").select("linked_expense_id").not("linked_expense_id", "is", null);
-  const linkedIds = new Set((btRows ?? []).map((r: { linked_expense_id: string }) => r.linked_expense_id));
+  const { data: btRows } = await c
+    .from("bank_transactions")
+    .select("linked_expense_id")
+    .not("linked_expense_id", "is", null);
+  const linkedIds = new Set(
+    (btRows ?? []).map((r: { linked_expense_id: string }) => r.linked_expense_id)
+  );
   const all = await getExpenses();
   return all.filter((e) => !linkedIds.has(e.id));
 }
@@ -1046,20 +1260,36 @@ export async function getExpensesRecent(limit: number): Promise<ExpenseRecentRow
   let error: { message?: string } | null = null;
   let needTotalFromLines = false;
 
-  const primary = await c.from("expenses").select(cols).order("created_at", { ascending: false }).limit(safeLimit);
+  const primary = await c
+    .from("expenses")
+    .select(cols)
+    .order("created_at", { ascending: false })
+    .limit(safeLimit);
   if (!primary.error) {
     rows = (primary.data ?? []) as Array<Record<string, unknown>>;
   } else if (isMissingColumn(primary.error)) {
-    const legacy = await c.from("expenses").select(colsLegacy).order("created_at", { ascending: false }).limit(safeLimit);
+    const legacy = await c
+      .from("expenses")
+      .select(colsLegacy)
+      .order("created_at", { ascending: false })
+      .limit(safeLimit);
     if (!legacy.error) {
       rows = (legacy.data ?? []) as Array<Record<string, unknown>>;
     } else if (isMissingColumn(legacy.error)) {
-      const noTotal = await c.from("expenses").select(colsNoTotal).order("created_at", { ascending: false }).limit(safeLimit);
+      const noTotal = await c
+        .from("expenses")
+        .select(colsNoTotal)
+        .order("created_at", { ascending: false })
+        .limit(safeLimit);
       if (!noTotal.error) {
         rows = (noTotal.data ?? []) as Array<Record<string, unknown>>;
         needTotalFromLines = true;
       } else if (isMissingColumn(noTotal.error)) {
-        const noTotalLegacy = await c.from("expenses").select(colsNoTotalLegacy).order("created_at", { ascending: false }).limit(safeLimit);
+        const noTotalLegacy = await c
+          .from("expenses")
+          .select(colsNoTotalLegacy)
+          .order("created_at", { ascending: false })
+          .limit(safeLimit);
         if (noTotalLegacy.error) error = noTotalLegacy.error;
         else {
           rows = (noTotalLegacy.data ?? []) as Array<Record<string, unknown>>;
@@ -1087,8 +1317,13 @@ export async function getExpensesRecent(limit: number): Promise<ExpenseRecentRow
     .select(needTotalFromLines ? "expense_id, project_id, amount" : "expense_id, project_id")
     .in("expense_id", ids);
   const firstProjectByExpenseId = new Map<string, string>();
-  for (const l of (lineRows ?? []) as unknown as Array<{ expense_id: string; project_id: string | null; amount?: number }>) {
-    if (l.project_id && !firstProjectByExpenseId.has(l.expense_id)) firstProjectByExpenseId.set(l.expense_id, l.project_id);
+  for (const l of (lineRows ?? []) as unknown as Array<{
+    expense_id: string;
+    project_id: string | null;
+    amount?: number;
+  }>) {
+    if (l.project_id && !firstProjectByExpenseId.has(l.expense_id))
+      firstProjectByExpenseId.set(l.expense_id, l.project_id);
     if (needTotalFromLines && l.amount != null) {
       const id = l.expense_id;
       totalByExpenseId.set(id, (totalByExpenseId.get(id) ?? 0) + Number(l.amount));
@@ -1098,12 +1333,19 @@ export async function getExpensesRecent(limit: number): Promise<ExpenseRecentRow
   let projectNameById = new Map<string, string>();
   if (projectIds.length > 0) {
     const { data: projRows } = await c.from("projects").select("id, name").in("id", projectIds);
-    projectNameById = new Map(((projRows ?? []) as Array<{ id: string; name: string | null }>).map((p) => [p.id, p.name ?? ""]));
+    projectNameById = new Map(
+      ((projRows ?? []) as Array<{ id: string; name: string | null }>).map((p) => [
+        p.id,
+        p.name ?? "",
+      ])
+    );
   }
   return list.map((r) => {
     const expenseId = (r.id as string) ?? "";
     const projectId = firstProjectByExpenseId.get(expenseId) ?? null;
-    const total = needTotalFromLines ? (totalByExpenseId.get(expenseId) ?? 0) : Number(r.total) || 0;
+    const total = needTotalFromLines
+      ? (totalByExpenseId.get(expenseId) ?? 0)
+      : Number(r.total) || 0;
     return {
       id: expenseId,
       expense_date: (r.expense_date as string)?.slice(0, 10) ?? "",
@@ -1112,7 +1354,7 @@ export async function getExpensesRecent(limit: number): Promise<ExpenseRecentRow
       total,
       created_at: (r.created_at as string) ?? new Date().toISOString(),
       project_id: projectId,
-      project_name: projectId ? projectNameById.get(projectId) ?? null : null,
+      project_name: projectId ? (projectNameById.get(projectId) ?? null) : null,
     };
   });
 }

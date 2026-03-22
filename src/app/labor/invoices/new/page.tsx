@@ -21,7 +21,9 @@ export default function NewLaborInvoicePage() {
     getLaborWorkers().then((list) => {
       if (!cancelled) setWorkers(list);
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   React.useEffect(() => {
@@ -45,7 +47,9 @@ export default function NewLaborInvoicePage() {
       <section className="border-b border-[#EBEBE9] pb-6 dark:border-border">
         <div className="grid gap-4">
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Worker</label>
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+              Worker
+            </label>
             <Select value={workerId} onChange={(e) => setWorkerId(e.target.value)}>
               <option value="">Select worker</option>
               {workers.map((w) => (
@@ -56,11 +60,20 @@ export default function NewLaborInvoicePage() {
             </Select>
           </div>
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Invoice Date</label>
-            <Input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} className="rounded-sm" />
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+              Invoice Date
+            </label>
+            <Input
+              type="date"
+              value={invoiceDate}
+              onChange={(e) => setInvoiceDate(e.target.value)}
+              className="rounded-sm"
+            />
           </div>
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Amount</label>
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+              Amount
+            </label>
             <Input
               type="number"
               min="0"
@@ -71,7 +84,9 @@ export default function NewLaborInvoicePage() {
             />
           </div>
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Memo</label>
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+              Memo
+            </label>
             <textarea
               value={memo}
               onChange={(e) => setMemo(e.target.value)}
@@ -80,7 +95,12 @@ export default function NewLaborInvoicePage() {
           </div>
         </div>
         <div className="mt-6 flex justify-end gap-2">
-          <Button variant="outline" size="sm" className="rounded-sm" onClick={() => router.push("/labor/invoices")}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-sm"
+            onClick={() => router.push("/labor/invoices")}
+          >
             Cancel
           </Button>
           <Button size="sm" className="rounded-sm" onClick={handleCreate} disabled={!workerId}>

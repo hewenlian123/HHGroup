@@ -35,7 +35,7 @@ export function ProjectCloseoutTab({
     notes: punch?.notes ?? "",
     contractor_signature: punch?.contractor_signature ?? "",
     client_signature: punch?.client_signature ?? "",
-    items: punch?.items ?? [] as { item: string; status: "pending" | "done" }[],
+    items: punch?.items ?? ([] as { item: string; status: "pending" | "done" }[]),
   });
   const [warrantyForm, setWarrantyForm] = React.useState({
     start_date: warranty?.start_date ?? "",
@@ -172,7 +172,9 @@ export function ProjectCloseoutTab({
     setMessage(null);
     try {
       await savePunch();
-      const res = await fetch(`/api/projects/${projectId}/closeout/generate-punch-pdf`, { method: "POST" });
+      const res = await fetch(`/api/projects/${projectId}/closeout/generate-punch-pdf`, {
+        method: "POST",
+      });
       const data = await res.json();
       if (!data.ok) throw new Error(data.message || "PDF failed");
       onRefresh();
@@ -188,7 +190,9 @@ export function ProjectCloseoutTab({
     setGenerating("final-invoice");
     setMessage(null);
     try {
-      const res = await fetch(`/api/projects/${projectId}/closeout/generate-final-invoice-pdf`, { method: "POST" });
+      const res = await fetch(`/api/projects/${projectId}/closeout/generate-final-invoice-pdf`, {
+        method: "POST",
+      });
       const data = await res.json();
       if (!data.ok) throw new Error(data.message || "PDF failed");
       onRefresh();
@@ -233,7 +237,9 @@ export function ProjectCloseoutTab({
     setPunchForm((p) => ({
       ...p,
       items: p.items.map((x, i) =>
-        i === idx ? { ...x, [field]: field === "status" ? (value as "pending" | "done") : value } : x
+        i === idx
+          ? { ...x, [field]: field === "status" ? (value as "pending" | "done") : value }
+          : x
       ),
     }));
   };
@@ -246,7 +252,9 @@ export function ProjectCloseoutTab({
   return (
     <div className="max-w-4xl space-y-8">
       {message && (
-        <p className={cn("text-sm", message.startsWith("PDF") ? "text-green-600" : "text-red-600")}>{message}</p>
+        <p className={cn("text-sm", message.startsWith("PDF") ? "text-green-600" : "text-red-600")}>
+          {message}
+        </p>
       )}
 
       {/* 1. Final Punch List — printable form */}
@@ -281,15 +289,25 @@ export function ProjectCloseoutTab({
             <label className="text-xs font-medium text-muted-foreground">Items checklist</label>
             <div className="mt-1 flex items-center justify-between gap-2">
               <span className="text-xs text-muted-foreground">Add and track items</span>
-              <Button type="button" variant="outline" size="sm" className="rounded-sm no-print" onClick={addPunchItem}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="rounded-sm no-print"
+                onClick={addPunchItem}
+              >
                 + Add item
               </Button>
             </div>
             <table className="w-full text-sm border-collapse mt-2">
               <thead>
                 <tr className="border-b border-border/60">
-                  <th className="text-left py-2 px-2 text-xs font-medium text-muted-foreground">Item</th>
-                  <th className="text-left py-2 px-2 text-xs font-medium text-muted-foreground w-24">Status</th>
+                  <th className="text-left py-2 px-2 text-xs font-medium text-muted-foreground">
+                    Item
+                  </th>
+                  <th className="text-left py-2 px-2 text-xs font-medium text-muted-foreground w-24">
+                    Status
+                  </th>
                   <th className="w-16 no-print" />
                 </tr>
               </thead>
@@ -314,7 +332,13 @@ export function ProjectCloseoutTab({
                       </select>
                     </td>
                     <td className="py-1.5 px-2 no-print">
-                      <Button type="button" variant="ghost" size="sm" className="text-destructive h-9" onClick={() => removePunchItem(idx)}>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive h-9"
+                        onClick={() => removePunchItem(idx)}
+                      >
                         Remove
                       </Button>
                     </td>
@@ -344,20 +368,35 @@ export function ProjectCloseoutTab({
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Contractor signature</label>
+              <label className="text-xs font-medium text-muted-foreground">
+                Contractor signature
+              </label>
               <Input
                 value={punchForm.contractor_signature}
-                onChange={(e) => setPunchForm((p) => ({ ...p, contractor_signature: e.target.value }))}
+                onChange={(e) =>
+                  setPunchForm((p) => ({ ...p, contractor_signature: e.target.value }))
+                }
                 placeholder="Name or signed"
                 className="mt-1 h-9 rounded-sm border-border/60"
               />
             </div>
           </div>
           <div className="flex gap-2 no-print">
-            <Button size="sm" variant="outline" className="rounded-sm" onClick={savePunch} disabled={saving === "punch"}>
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-sm"
+              onClick={savePunch}
+              disabled={saving === "punch"}
+            >
               {saving === "punch" ? "Saving…" : "Save"}
             </Button>
-            <Button size="sm" className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90" onClick={generatePunchPdf} disabled={!!generating}>
+            <Button
+              size="sm"
+              className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90"
+              onClick={generatePunchPdf}
+              disabled={!!generating}
+            >
               {generating === "punch-pdf" ? "Generating…" : "Generate PDF"}
             </Button>
           </div>
@@ -372,7 +411,9 @@ export function ProjectCloseoutTab({
         <div className="p-4 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Start date</label>
+              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Start date
+              </label>
               <Input
                 type="date"
                 value={warrantyForm.start_date}
@@ -381,12 +422,19 @@ export function ProjectCloseoutTab({
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Period (months)</label>
+              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Period (months)
+              </label>
               <Input
                 type="number"
                 min={1}
                 value={warrantyForm.period_months}
-                onChange={(e) => setWarrantyForm((p) => ({ ...p, period_months: parseInt(e.target.value, 10) || 12 }))}
+                onChange={(e) =>
+                  setWarrantyForm((p) => ({
+                    ...p,
+                    period_months: parseInt(e.target.value, 10) || 12,
+                  }))
+                }
                 className="mt-1 h-10 rounded-lg border-gray-200"
               />
             </div>
@@ -398,7 +446,9 @@ export function ProjectCloseoutTab({
             </p>
           )}
           <div>
-            <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</label>
+            <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Notes
+            </label>
             <textarea
               value={warrantyForm.notes}
               onChange={(e) => setWarrantyForm((p) => ({ ...p, notes: e.target.value }))}
@@ -407,7 +457,13 @@ export function ProjectCloseoutTab({
               className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
             />
           </div>
-          <Button size="sm" variant="outline" className="rounded-lg" onClick={saveWarranty} disabled={saving === "warranty"}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="rounded-lg"
+            onClick={saveWarranty}
+            disabled={saving === "warranty"}
+          >
             {saving === "warranty" ? "Saving…" : "Save"}
           </Button>
         </div>
@@ -434,7 +490,12 @@ export function ProjectCloseoutTab({
             <span className="font-medium tabular-nums">${fmtUsd(remainingBalance)}</span>
           </div>
           <div className="pt-2">
-            <Button size="sm" className="rounded-lg bg-black text-white hover:bg-black/90" onClick={createFinalInvoicePdf} disabled={!!generating}>
+            <Button
+              size="sm"
+              className="rounded-lg bg-black text-white hover:bg-black/90"
+              onClick={createFinalInvoicePdf}
+              disabled={!!generating}
+            >
               {generating === "final-invoice" ? "Generating…" : "Create Final Invoice"}
             </Button>
           </div>
@@ -448,30 +509,42 @@ export function ProjectCloseoutTab({
         </div>
         <div className="p-4 space-y-4">
           <div>
-            <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Project</label>
+            <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Project
+            </label>
             <p className="mt-1 text-sm font-medium text-gray-900">{projectName}</p>
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Completion date</label>
+            <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Completion date
+            </label>
             <Input
               type="date"
               value={completionForm.completion_date}
-              onChange={(e) => setCompletionForm((p) => ({ ...p, completion_date: e.target.value }))}
+              onChange={(e) =>
+                setCompletionForm((p) => ({ ...p, completion_date: e.target.value }))
+              }
               className="mt-1 h-10 rounded-lg border-gray-200"
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Contractor name</label>
+              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Contractor name
+              </label>
               <Input
                 value={completionForm.contractor_name}
-                onChange={(e) => setCompletionForm((p) => ({ ...p, contractor_name: e.target.value }))}
+                onChange={(e) =>
+                  setCompletionForm((p) => ({ ...p, contractor_name: e.target.value }))
+                }
                 placeholder="Contractor"
                 className="mt-1 h-10 rounded-lg border-gray-200"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Client name</label>
+              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Client name
+              </label>
               <Input
                 value={completionForm.client_name}
                 onChange={(e) => setCompletionForm((p) => ({ ...p, client_name: e.target.value }))}
@@ -482,30 +555,51 @@ export function ProjectCloseoutTab({
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Contractor signature</label>
+              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Contractor signature
+              </label>
               <Input
                 value={completionForm.contractor_signature}
-                onChange={(e) => setCompletionForm((p) => ({ ...p, contractor_signature: e.target.value }))}
+                onChange={(e) =>
+                  setCompletionForm((p) => ({ ...p, contractor_signature: e.target.value }))
+                }
                 placeholder="Signature"
                 className="mt-1 h-10 rounded-lg border-gray-200"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Client signature</label>
+              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Client signature
+              </label>
               <Input
                 value={completionForm.client_signature}
-                onChange={(e) => setCompletionForm((p) => ({ ...p, client_signature: e.target.value }))}
+                onChange={(e) =>
+                  setCompletionForm((p) => ({ ...p, client_signature: e.target.value }))
+                }
                 placeholder="Signature"
                 className="mt-1 h-10 rounded-lg border-gray-200"
               />
             </div>
           </div>
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" className="rounded-lg" onClick={saveCompletion} disabled={saving === "completion"}>
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-lg"
+              onClick={saveCompletion}
+              disabled={saving === "completion"}
+            >
               {saving === "completion" ? "Saving…" : "Save"}
             </Button>
-            <Button size="sm" className="rounded-lg bg-black text-white hover:bg-black/90" onClick={generateCompletionPdf} disabled={!!generating}>
-              {generating === "completion-pdf" ? "Generating…" : "Generate Completion Certificate PDF"}
+            <Button
+              size="sm"
+              className="rounded-lg bg-black text-white hover:bg-black/90"
+              onClick={generateCompletionPdf}
+              disabled={!!generating}
+            >
+              {generating === "completion-pdf"
+                ? "Generating…"
+                : "Generate Completion Certificate PDF"}
             </Button>
           </div>
         </div>

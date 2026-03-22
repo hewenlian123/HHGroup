@@ -9,4 +9,3 @@ export default async function BillDetailRedirectPage({ params }: Props) {
   const billId = typeof id === "string" ? id : "";
   redirect(billId ? `/bills/${billId}` : "/bills");
 }
-

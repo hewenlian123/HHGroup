@@ -3,10 +3,7 @@ import { getInspectionLogs, getProjects, createInspectionLog } from "@/lib/data"
 
 export async function GET() {
   try {
-    const [entries, projects] = await Promise.all([
-      getInspectionLogs(),
-      getProjects(),
-    ]);
+    const [entries, projects] = await Promise.all([getInspectionLogs(), getProjects()]);
     return NextResponse.json({
       ok: true as const,
       entries,
@@ -23,11 +20,17 @@ export async function POST(req: Request) {
     const body = await req.json();
     const project_id = body.project_id as string | undefined;
     if (!project_id?.trim()) {
-      return NextResponse.json({ ok: false as const, message: "project_id is required." }, { status: 400 });
+      return NextResponse.json(
+        { ok: false as const, message: "project_id is required." },
+        { status: 400 }
+      );
     }
     const status = (body.status as string) || "pending";
     if (!["passed", "failed", "pending"].includes(status)) {
-      return NextResponse.json({ ok: false as const, message: "status must be passed, failed, or pending." }, { status: 400 });
+      return NextResponse.json(
+        { ok: false as const, message: "status must be passed, failed, or pending." },
+        { status: 400 }
+      );
     }
     await createInspectionLog({
       project_id,

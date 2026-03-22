@@ -69,7 +69,10 @@ function createEmptyLine(id: string): SplitLineRow {
   return { id, projectId: null, category: "Other", memo: null, amount: 0 };
 }
 
-function getNextUnmatched(transactions: BankTransaction[], currentId: string | null): BankTransaction | null {
+function getNextUnmatched(
+  transactions: BankTransaction[],
+  currentId: string | null
+): BankTransaction | null {
   const unmatched = transactions.filter((t) => t.status === "unmatched");
   if (unmatched.length === 0) return null;
   if (!currentId) return unmatched[0];
@@ -90,7 +93,11 @@ function isEditableElement(el: EventTarget | null): boolean {
 }
 
 function parseCsv(text: string): Array<{ date: string; description: string; amount: number }> {
-  const lines = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n").filter((l) => l.trim().length > 0);
+  const lines = text
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .split("\n")
+    .filter((l) => l.trim().length > 0);
   if (lines.length === 0) return [];
 
   const parseLine = (line: string): string[] => {
@@ -99,9 +106,9 @@ function parseCsv(text: string): Array<{ date: string; description: string; amou
     let inQuotes = false;
     for (let i = 0; i < line.length; i++) {
       const ch = line[i];
-      if (ch === "\"") {
-        if (inQuotes && line[i + 1] === "\"") {
-          cur += "\"";
+      if (ch === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          cur += '"';
           i++;
         } else {
           inQuotes = !inQuotes;
@@ -118,11 +125,14 @@ function parseCsv(text: string): Array<{ date: string; description: string; amou
   };
 
   const header = parseLine(lines[0]).map((h) => h.toLowerCase());
-  const hasHeader = header.some((h) => h.includes("date")) && header.some((h) => h.includes("amount"));
+  const hasHeader =
+    header.some((h) => h.includes("date")) && header.some((h) => h.includes("amount"));
   const startIdx = hasHeader ? 1 : 0;
 
   const dateIdx = hasHeader ? header.findIndex((h) => h.includes("date")) : 0;
-  const descIdx = hasHeader ? header.findIndex((h) => h.includes("description") || h.includes("memo") || h.includes("name")) : 1;
+  const descIdx = hasHeader
+    ? header.findIndex((h) => h.includes("description") || h.includes("memo") || h.includes("name"))
+    : 1;
   const amtIdx = hasHeader ? header.findIndex((h) => h.includes("amount")) : 2;
 
   const toYmd = (raw: string): string | null => {
@@ -177,7 +187,9 @@ export default function BankReconcileClient() {
   const [importMessage, setImportMessage] = React.useState<string | null>(null);
   const [toastMessage, setToastMessage] = React.useState<string | null>(null);
 
-  const [reconcileType, setReconcileType] = React.useState<"Expense" | "Income" | "Transfer">("Expense");
+  const [reconcileType, setReconcileType] = React.useState<"Expense" | "Income" | "Transfer">(
+    "Expense"
+  );
   const [lines, setLines] = React.useState<SplitLineRow[]>([]);
   const [vendorName, setVendorName] = React.useState("");
   const [paymentMethod, setPaymentMethod] = React.useState("ACH");
@@ -207,13 +219,28 @@ export default function BankReconcileClient() {
     const [txRes, projRes, catRes, venRes, pmRes] = await Promise.all([
       supabase
         .from("bank_transactions")
-        .select("id,txn_date,description,amount,status,reconciled_at,linked_expense_id,reconcile_type")
+        .select(
+          "id,txn_date,description,amount,status,reconciled_at,linked_expense_id,reconcile_type"
+        )
         .order("txn_date", { ascending: false })
         .limit(2000),
-      supabase.from("projects").select("id,name").order("created_at", { ascending: false }).limit(500),
-      supabase.from("categories").select("name,type,status").eq("type", "expense").order("name", { ascending: true }).limit(500),
+      supabase
+        .from("projects")
+        .select("id,name")
+        .order("created_at", { ascending: false })
+        .limit(500),
+      supabase
+        .from("categories")
+        .select("name,type,status")
+        .eq("type", "expense")
+        .order("name", { ascending: true })
+        .limit(500),
       supabase.from("vendors").select("name,status").order("name", { ascending: true }).limit(500),
-      supabase.from("payment_methods").select("name,status").order("name", { ascending: true }).limit(500),
+      supabase
+        .from("payment_methods")
+        .select("name,status")
+        .order("name", { ascending: true })
+        .limit(500),
     ]);
 
     if (txRes.error) {
@@ -245,11 +272,13 @@ export default function BankReconcileClient() {
       setTransactions(list);
     }
 
-    if (projRes.error) setError((prev) => prev ?? projRes.error?.message ?? "Failed to load projects.");
+    if (projRes.error)
+      setError((prev) => prev ?? projRes.error?.message ?? "Failed to load projects.");
     setProjects((projRes.data ?? []) as Array<{ id: string; name: string }>);
 
     if (catRes.error) {
-      if (!isMissingTableError(catRes.error)) setError((prev) => prev ?? catRes.error?.message ?? "Failed to load categories.");
+      if (!isMissingTableError(catRes.error))
+        setError((prev) => prev ?? catRes.error?.message ?? "Failed to load categories.");
       setCategories(["Other"]);
     } else {
       const names = (catRes.data ?? [])
@@ -260,7 +289,8 @@ export default function BankReconcileClient() {
     }
 
     if (venRes.error) {
-      if (!isMissingTableError(venRes.error)) setError((prev) => prev ?? venRes.error?.message ?? "Failed to load vendors.");
+      if (!isMissingTableError(venRes.error))
+        setError((prev) => prev ?? venRes.error?.message ?? "Failed to load vendors.");
       setVendorsList([]);
     } else {
       setVendorsList(
@@ -272,7 +302,8 @@ export default function BankReconcileClient() {
     }
 
     if (pmRes.error) {
-      if (!isMissingTableError(pmRes.error)) setError((prev) => prev ?? pmRes.error?.message ?? "Failed to load payment methods.");
+      if (!isMissingTableError(pmRes.error))
+        setError((prev) => prev ?? pmRes.error?.message ?? "Failed to load payment methods.");
       setPaymentMethodsList(["ACH"]);
     } else {
       const names = (pmRes.data ?? [])
@@ -304,14 +335,17 @@ export default function BankReconcileClient() {
   }, [toastMessage]);
 
   const selected =
-    selectedIds.size === 1 ? transactions.find((t) => t.id === Array.from(selectedIds)[0]) ?? null : null;
+    selectedIds.size === 1
+      ? (transactions.find((t) => t.id === Array.from(selectedIds)[0]) ?? null)
+      : null;
   const selectedList = transactions.filter((t) => selectedIds.has(t.id));
   const isBulkMode = selectedList.length > 1;
 
   const targetAmount = selected ? Math.abs(selected.amount) : 0;
   const linesTotal = lines.reduce((s, l) => s + l.amount, 0);
   const remaining = targetAmount - linesTotal;
-  const canReconcile = reconcileType !== "Expense" || (remaining === 0 && lines.some((l) => l.amount > 0));
+  const canReconcile =
+    reconcileType !== "Expense" || (remaining === 0 && lines.some((l) => l.amount > 0));
 
   const filtered = React.useMemo(() => {
     let list = transactions;
@@ -324,7 +358,10 @@ export default function BankReconcileClient() {
     return list;
   }, [transactions, tab, search]);
 
-  const unmatchedInFiltered = React.useMemo(() => filtered.filter((t) => t.status === "unmatched"), [filtered]);
+  const unmatchedInFiltered = React.useMemo(
+    () => filtered.filter((t) => t.status === "unmatched"),
+    [filtered]
+  );
 
   React.useEffect(() => {
     if (selected) {
@@ -396,12 +433,24 @@ export default function BankReconcileClient() {
         .order("created_at", { ascending: true })
         .limit(500);
 
-      const firstByExpense = new Map<string, { project?: string; category?: string; memo?: string }>();
-      for (const r of (lineRows ?? []) as Array<{ expense_id: string; category: string; memo: string | null; projects?: { name: string } | { name: string }[] | null }>) {
+      const firstByExpense = new Map<
+        string,
+        { project?: string; category?: string; memo?: string }
+      >();
+      for (const r of (lineRows ?? []) as Array<{
+        expense_id: string;
+        category: string;
+        memo: string | null;
+        projects?: { name: string } | { name: string }[] | null;
+      }>) {
         if (firstByExpense.has(r.expense_id)) continue;
         const projRel = r.projects as { name: string } | { name: string }[] | null | undefined;
         const projName = Array.isArray(projRel) ? projRel[0]?.name : projRel?.name;
-        firstByExpense.set(r.expense_id, { project: projName, category: r.category, memo: r.memo ?? undefined });
+        firstByExpense.set(r.expense_id, {
+          project: projName,
+          category: r.category,
+          memo: r.memo ?? undefined,
+        });
       }
 
       setSuggestions(
@@ -423,9 +472,13 @@ export default function BankReconcileClient() {
   const addExpenseCategory = async (name: string): Promise<string> => {
     const v = name.trim();
     if (!v || !supabase) return "";
-    const { error: insErr } = await supabase.from("categories").insert({ name: v, type: "expense", status: "active" });
+    const { error: insErr } = await supabase
+      .from("categories")
+      .insert({ name: v, type: "expense", status: "active" });
     if (!insErr) {
-      setCategories((prev) => (prev.includes(v) ? prev : [...prev, v].sort((a, b) => a.localeCompare(b))));
+      setCategories((prev) =>
+        prev.includes(v) ? prev : [...prev, v].sort((a, b) => a.localeCompare(b))
+      );
       return v;
     }
     setToastMessage(insErr.message);
@@ -437,7 +490,9 @@ export default function BankReconcileClient() {
     if (!v || !supabase) return "";
     const { error: insErr } = await supabase.from("vendors").insert({ name: v, status: "active" });
     if (!insErr) {
-      setVendorsList((prev) => (prev.includes(v) ? prev : [...prev, v].sort((a, b) => a.localeCompare(b))));
+      setVendorsList((prev) =>
+        prev.includes(v) ? prev : [...prev, v].sort((a, b) => a.localeCompare(b))
+      );
       return v;
     }
     setToastMessage(insErr.message);
@@ -447,9 +502,13 @@ export default function BankReconcileClient() {
   const addPaymentMethod = async (name: string): Promise<string> => {
     const v = name.trim();
     if (!v || !supabase) return "";
-    const { error: insErr } = await supabase.from("payment_methods").insert({ name: v, status: "active" });
+    const { error: insErr } = await supabase
+      .from("payment_methods")
+      .insert({ name: v, status: "active" });
     if (!insErr) {
-      setPaymentMethodsList((prev) => (prev.includes(v) ? prev : [...prev, v].sort((a, b) => a.localeCompare(b))));
+      setPaymentMethodsList((prev) =>
+        prev.includes(v) ? prev : [...prev, v].sort((a, b) => a.localeCompare(b))
+      );
       return v;
     }
     setToastMessage(insErr.message);
@@ -460,7 +519,17 @@ export default function BankReconcileClient() {
   const isVendorDisabled = (name: string) => (name ? false : false);
   const isPaymentMethodDisabled = (name: string) => (name ? false : false);
 
-  const reconcileTx = async (tx: BankTransaction, params: { type: "Expense" | "Income" | "Transfer"; vendorName?: string; paymentMethod?: string; lines?: SplitLineRow[]; projectId?: string | null; category?: string }) => {
+  const reconcileTx = async (
+    tx: BankTransaction,
+    params: {
+      type: "Expense" | "Income" | "Transfer";
+      vendorName?: string;
+      paymentMethod?: string;
+      lines?: SplitLineRow[];
+      projectId?: string | null;
+      category?: string;
+    }
+  ) => {
     if (!supabase) return;
 
     if (params.type === "Expense") {
@@ -535,7 +604,12 @@ export default function BankReconcileClient() {
     setBusy(true);
     setError(null);
     try {
-      await reconcileTx(selected, { type: reconcileType, vendorName, paymentMethod, lines: reconcileType === "Expense" ? lines : undefined });
+      await reconcileTx(selected, {
+        type: reconcileType,
+        vendorName,
+        paymentMethod,
+        lines: reconcileType === "Expense" ? lines : undefined,
+      });
       await refresh();
       const next = getNextUnmatched(transactions, selected.id);
       setSelectedIds(next ? new Set([next.id]) : new Set());
@@ -731,7 +805,9 @@ export default function BankReconcileClient() {
     }
   };
 
-  const selectedTxFromList = selected ? transactions.find((t) => t.id === selected.id) ?? selected : null;
+  const selectedTxFromList = selected
+    ? (transactions.find((t) => t.id === selected.id) ?? selected)
+    : null;
   const isReconciled = selectedTxFromList?.status === "reconciled";
   const isLinkedToExpense = !!selectedTxFromList?.linkedExpenseId;
 
@@ -754,7 +830,13 @@ export default function BankReconcileClient() {
         >
           <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between mb-4">
             <div className="flex items-center gap-2 w-full sm:w-auto">
-              <input type="file" accept=".csv" className="hidden" id="bank-csv-upload" onChange={handleFileChange} />
+              <input
+                type="file"
+                accept=".csv"
+                className="hidden"
+                id="bank-csv-upload"
+                onChange={handleFileChange}
+              />
               <Button
                 variant="outline"
                 size="sm"
@@ -772,8 +854,12 @@ export default function BankReconcileClient() {
               className="max-w-xs"
             />
           </div>
-          {importMessage ? <p className="text-sm text-emerald-600 dark:text-emerald-400 mb-2">{importMessage}</p> : null}
-          {toastMessage ? <p className="text-sm text-emerald-600 dark:text-emerald-400 mb-2">{toastMessage}</p> : null}
+          {importMessage ? (
+            <p className="text-sm text-emerald-600 dark:text-emerald-400 mb-2">{importMessage}</p>
+          ) : null}
+          {toastMessage ? (
+            <p className="text-sm text-emerald-600 dark:text-emerald-400 mb-2">{toastMessage}</p>
+          ) : null}
 
           <div className="flex gap-2 mb-3">
             {(["unmatched", "reconciled", "all"] as const).map((t) => (
@@ -783,14 +869,23 @@ export default function BankReconcileClient() {
                 onClick={() => setTab(t)}
                 className={cn(
                   "px-3 py-1.5 rounded-lg text-sm font-medium capitalize",
-                  tab === t ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  tab === t
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
                 )}
               >
                 {t}
               </button>
             ))}
             {unmatchedInFiltered.length > 0 ? (
-              <Button type="button" variant="outline" size="sm" className="ml-auto" onClick={selectAllUnmatched} disabled={busy}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="ml-auto"
+                onClick={selectAllUnmatched}
+                disabled={busy}
+              >
                 <CheckSquare className="h-4 w-4 mr-2" />
                 Select all Unmatched
               </Button>
@@ -804,10 +899,18 @@ export default function BankReconcileClient() {
                   <TableHead className="w-10 text-center">
                     <span className="sr-only">Select</span>
                   </TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Date</TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Description</TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">Amount</TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Status</TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                    Date
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                    Description
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">
+                    Amount
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                    Status
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -827,10 +930,16 @@ export default function BankReconcileClient() {
                   filtered.map((tx) => (
                     <TableRow
                       key={tx.id}
-                      className={cn("cursor-pointer border-b border-zinc-100/50 dark:border-border/30", selectedIds.has(tx.id) && "bg-primary/10")}
+                      className={cn(
+                        "cursor-pointer border-b border-zinc-100/50 dark:border-border/30",
+                        selectedIds.has(tx.id) && "bg-primary/10"
+                      )}
                       onClick={() => setSelectedIds(new Set([tx.id]))}
                     >
-                      <TableCell className="w-10 p-2 text-center" onClick={(e) => e.stopPropagation()}>
+                      <TableCell
+                        className="w-10 p-2 text-center"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <input
                           type="checkbox"
                           checked={selectedIds.has(tx.id)}
@@ -843,13 +952,21 @@ export default function BankReconcileClient() {
                       <TableCell
                         className={cn(
                           "text-right tabular-nums font-medium",
-                          tx.amount >= 0 ? "text-emerald-600/90 dark:text-emerald-400/90" : "text-red-600/90 dark:text-red-400/90"
+                          tx.amount >= 0
+                            ? "text-emerald-600/90 dark:text-emerald-400/90"
+                            : "text-red-600/90 dark:text-red-400/90"
                         )}
                       >
-                        {tx.amount >= 0 ? "+" : ""}${tx.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                        {tx.amount >= 0 ? "+" : ""}$
+                        {tx.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                       </TableCell>
                       <TableCell>
-                        <span className={cn("text-xs font-medium", tx.status === "reconciled" ? "text-emerald-600" : "text-amber-600")}>
+                        <span
+                          className={cn(
+                            "text-xs font-medium",
+                            tx.status === "reconciled" ? "text-emerald-600" : "text-amber-600"
+                          )}
+                        >
                           {tx.status}
                         </span>
                       </TableCell>
@@ -870,7 +987,8 @@ export default function BankReconcileClient() {
             <>
               <h2 className="text-base font-semibold text-foreground mb-1">Bulk Reconcile</h2>
               <p className="text-sm text-muted-foreground mb-4">
-                {selectedList.length} transaction(s) selected. Expenses will use one line each; income will be marked reconciled.
+                {selectedList.length} transaction(s) selected. Expenses will use one line each;
+                income will be marked reconciled.
               </p>
               <div className="space-y-4">
                 <CreatableSelect
@@ -884,7 +1002,9 @@ export default function BankReconcileClient() {
                   }}
                 />
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Project</label>
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Project
+                  </label>
                   <select
                     className="mt-1 flex h-10 w-full rounded-[10px] border border-input bg-white px-3 text-sm"
                     value={bulkProjectId}
@@ -919,7 +1039,11 @@ export default function BankReconcileClient() {
                   }}
                 />
               </div>
-              <Button className="mt-6 w-full" onClick={() => void handleReconcileAll()} disabled={busy}>
+              <Button
+                className="mt-6 w-full"
+                onClick={() => void handleReconcileAll()}
+                disabled={busy}
+              >
                 Reconcile All
               </Button>
             </>
@@ -928,11 +1052,16 @@ export default function BankReconcileClient() {
               <>
                 <h2 className="text-base font-semibold text-foreground mb-2">Reconciled</h2>
                 <p className="text-sm text-muted-foreground mb-2">
-                  {selectedTxFromList?.description} — {selectedTxFromList && (selectedTxFromList.amount >= 0 ? "+" : "")}$
-                  {selectedTxFromList?.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                  {selectedTxFromList?.description} —{" "}
+                  {selectedTxFromList && (selectedTxFromList.amount >= 0 ? "+" : "")}$
+                  {selectedTxFromList?.amount.toLocaleString(undefined, {
+                    maximumFractionDigits: 2,
+                  })}
                 </p>
                 {selectedTxFromList?.reconciledAt ? (
-                  <p className="text-sm text-muted-foreground mb-2">Reconciled on {selectedTxFromList.reconciledAt.slice(0, 10)}</p>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Reconciled on {selectedTxFromList.reconciledAt.slice(0, 10)}
+                  </p>
                 ) : null}
                 {isLinkedToExpense && selectedTxFromList?.linkedExpenseId ? (
                   <p className="text-sm font-medium text-foreground mb-2">Linked to Expense</p>
@@ -940,9 +1069,12 @@ export default function BankReconcileClient() {
                 <span
                   className={cn(
                     "inline-block text-xs font-medium px-2 py-1 rounded mb-4",
-                    selectedTxFromList?.reconcileType === "Expense" && "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-400",
-                    selectedTxFromList?.reconcileType === "Income" && "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400",
-                    selectedTxFromList?.reconcileType === "Transfer" && "bg-zinc-100 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-300"
+                    selectedTxFromList?.reconcileType === "Expense" &&
+                      "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-400",
+                    selectedTxFromList?.reconcileType === "Income" &&
+                      "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400",
+                    selectedTxFromList?.reconcileType === "Transfer" &&
+                      "bg-zinc-100 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-300"
                   )}
                 >
                   {selectedTxFromList?.reconcileType ?? "Reconciled"}
@@ -950,7 +1082,9 @@ export default function BankReconcileClient() {
                 <div className="flex flex-col gap-2">
                   {selectedTxFromList?.linkedExpenseId ? (
                     <Button asChild variant="outline">
-                      <Link href={`/financial/expenses/${selectedTxFromList.linkedExpenseId}`}>Open Expense</Link>
+                      <Link href={`/financial/expenses/${selectedTxFromList.linkedExpenseId}`}>
+                        Open Expense
+                      </Link>
                     </Button>
                   ) : null}
                   {isLinkedToExpense ? (
@@ -973,11 +1107,15 @@ export default function BankReconcileClient() {
                   {selected.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                 </p>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Type</label>
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Type
+                  </label>
                   <select
                     className="mt-1 flex h-10 w-full rounded-[10px] border border-input bg-white px-3 text-sm"
                     value={reconcileType}
-                    onChange={(e) => setReconcileType(e.target.value as "Expense" | "Income" | "Transfer")}
+                    onChange={(e) =>
+                      setReconcileType(e.target.value as "Expense" | "Income" | "Transfer")
+                    }
                   >
                     <option value="Expense">Expense</option>
                     <option value="Income">Income</option>
@@ -989,27 +1127,46 @@ export default function BankReconcileClient() {
                   <>
                     {suggestions.length > 0 ? (
                       <Card className="mt-4 p-4 rounded-xl border border-zinc-200/60 dark:border-border">
-                        <h3 className="text-sm font-semibold text-foreground mb-3">Match Existing Expense</h3>
-                        <p className="text-xs text-muted-foreground mb-3">Link this bank line to an existing expense to avoid duplicates.</p>
+                        <h3 className="text-sm font-semibold text-foreground mb-3">
+                          Match Existing Expense
+                        </h3>
+                        <p className="text-xs text-muted-foreground mb-3">
+                          Link this bank line to an existing expense to avoid duplicates.
+                        </p>
                         <div className="space-y-2 max-h-64 overflow-y-auto">
                           {suggestions.map((s) => (
                             <div
                               key={s.expense.id}
                               className="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-200/60 dark:border-border p-2 text-sm"
                             >
-                              <span className="tabular-nums text-muted-foreground w-20">{s.expense.expense_date}</span>
-                              <span className="font-medium min-w-[100px]">{s.expense.vendor_name}</span>
-                              <span className="tabular-nums font-medium text-red-600/90 dark:text-red-400/90">${s.total.toLocaleString()}</span>
+                              <span className="tabular-nums text-muted-foreground w-20">
+                                {s.expense.expense_date}
+                              </span>
+                              <span className="font-medium min-w-[100px]">
+                                {s.expense.vendor_name}
+                              </span>
+                              <span className="tabular-nums font-medium text-red-600/90 dark:text-red-400/90">
+                                ${s.total.toLocaleString()}
+                              </span>
                               <span className="text-muted-foreground">{s.projectLabel}</span>
                               <span className="text-muted-foreground">{s.categoryLabel}</span>
-                              <span className="text-muted-foreground truncate max-w-[120px]" title={s.memoLabel}>
+                              <span
+                                className="text-muted-foreground truncate max-w-[120px]"
+                                title={s.memoLabel}
+                              >
                                 {s.memoLabel}
                               </span>
                               <div className="ml-auto flex gap-1">
                                 <Button asChild variant="ghost" size="sm" className="h-8">
                                   <Link href={`/financial/expenses/${s.expense.id}`}>View</Link>
                                 </Button>
-                                <Button variant="outline" size="sm" className="h-8" onClick={() => void handleLinkToExpense(s.expense.id)} disabled={busy}>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8"
+                                  onClick={() => void handleLinkToExpense(s.expense.id)}
+                                  disabled={busy}
+                                >
                                   Link
                                 </Button>
                               </div>
@@ -1059,7 +1216,9 @@ export default function BankReconcileClient() {
                     </div>
                   </>
                 ) : (
-                  <p className="text-sm text-muted-foreground mt-4">Mark as reconciled without creating an expense.</p>
+                  <p className="text-sm text-muted-foreground mt-4">
+                    Mark as reconciled without creating an expense.
+                  </p>
                 )}
 
                 <div className="mt-6 flex flex-col gap-2">
@@ -1095,4 +1254,3 @@ export default function BankReconcileClient() {
     </div>
   );
 }
-

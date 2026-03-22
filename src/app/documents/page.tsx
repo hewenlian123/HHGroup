@@ -1,14 +1,18 @@
-import {
-  PageLayout,
-  PageHeader,
-} from "@/components/base";
+import { PageLayout, PageHeader } from "@/components/base";
 import { getDocumentsPaged, getProjectsDashboard } from "@/lib/data";
 import { DocumentsListClient } from "./documents-list-client";
 
 export const dynamic = "force-dynamic";
 
 type Props = {
-  searchParams: Promise<{ search?: string; project_id?: string; file_type?: string; date_from?: string; date_to?: string; page?: string }>;
+  searchParams: Promise<{
+    search?: string;
+    project_id?: string;
+    file_type?: string;
+    date_from?: string;
+    date_to?: string;
+    page?: string;
+  }>;
 };
 
 export default async function DocumentsPage({ searchParams }: Props) {

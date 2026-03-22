@@ -106,9 +106,7 @@ const PunchListRow = React.memo(function PunchListRow({
         </div>
         <div className="flex flex-wrap items-center gap-2 mt-1.5">
           <PriorityBadge priority={item.priority ?? "Medium"} />
-          <span className="text-xs text-muted-foreground">
-            {item.worker_name ?? "Unassigned"}
-          </span>
+          <span className="text-xs text-muted-foreground">{item.worker_name ?? "Unassigned"}</span>
           <StatusBadge status={item.status} />
         </div>
       </button>
@@ -124,10 +122,13 @@ const KanbanCard = React.memo(function KanbanCard({
   item: PunchRow;
   onOpenDrawer: (item: PunchRow) => void;
 }) {
-  const onDragStart = React.useCallback((ev: React.DragEvent) => {
-    ev.dataTransfer.setData("application/json", JSON.stringify({ id: item.id }));
-    ev.dataTransfer.effectAllowed = "move";
-  }, [item.id]);
+  const onDragStart = React.useCallback(
+    (ev: React.DragEvent) => {
+      ev.dataTransfer.setData("application/json", JSON.stringify({ id: item.id }));
+      ev.dataTransfer.effectAllowed = "move";
+    },
+    [item.id]
+  );
   return (
     <div
       draggable
@@ -220,7 +221,9 @@ export default function PunchListPage() {
       list = list.filter((r) => normStatus(r.status) === statusNorm);
     }
     if (priorityFilter) {
-      list = list.filter((r) => (r.priority || "Medium").toLowerCase() === priorityFilter.toLowerCase());
+      list = list.filter(
+        (r) => (r.priority || "Medium").toLowerCase() === priorityFilter.toLowerCase()
+      );
     }
     const q = debouncedSearch.trim().toLowerCase();
     if (q) {
@@ -282,7 +285,10 @@ export default function PunchListPage() {
     try {
       const formData = new FormData();
       formData.set("file", file);
-      const res = await fetch("/api/operations/punch-list/upload", { method: "POST", body: formData });
+      const res = await fetch("/api/operations/punch-list/upload", {
+        method: "POST",
+        body: formData,
+      });
       const data = await res.json();
       if (!data.ok) throw new Error(data.message || "Upload failed");
       setForm((p) => ({ ...p, photo_url: data.path }));
@@ -294,25 +300,31 @@ export default function PunchListPage() {
     }
   }, []);
 
-  const handleDrawerFileChange = React.useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    setError(null);
-    try {
-      const formData = new FormData();
-      formData.set("file", file);
-      const res = await fetch("/api/operations/punch-list/upload", { method: "POST", body: formData });
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.message || "Upload failed");
-      setDrawerForm((p) => ({ ...p, photo_url: data.path }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed.");
-    } finally {
-      setUploading(false);
-      e.target.value = "";
-    }
-  }, []);
+  const handleDrawerFileChange = React.useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      setUploading(true);
+      setError(null);
+      try {
+        const formData = new FormData();
+        formData.set("file", file);
+        const res = await fetch("/api/operations/punch-list/upload", {
+          method: "POST",
+          body: formData,
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.message || "Upload failed");
+        setDrawerForm((p) => ({ ...p, photo_url: data.path }));
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Upload failed.");
+      } finally {
+        setUploading(false);
+        e.target.value = "";
+      }
+    },
+    []
+  );
 
   const handleSaveNew = React.useCallback(async () => {
     if (!form.project_id) {
@@ -369,25 +381,34 @@ export default function PunchListPage() {
     }
   }, [selectedItem, drawerForm, load]);
 
-  const photoUrl = React.useCallback((path: string | null) =>
-    path ? `/api/operations/punch-list/photo?path=${encodeURIComponent(path)}` : null, []);
-  const sitePhotoImageUrl = React.useCallback((path: string | null) =>
-    path ? `/api/operations/site-photos/photo?path=${encodeURIComponent(path)}` : null, []);
+  const photoUrl = React.useCallback(
+    (path: string | null) =>
+      path ? `/api/operations/punch-list/photo?path=${encodeURIComponent(path)}` : null,
+    []
+  );
+  const sitePhotoImageUrl = React.useCallback(
+    (path: string | null) =>
+      path ? `/api/operations/site-photos/photo?path=${encodeURIComponent(path)}` : null,
+    []
+  );
 
-  const handleColumnDrop = React.useCallback(async (columnStatus: string, e: React.DragEvent) => {
-    e.preventDefault();
-    e.currentTarget.classList.remove("ring-1", "ring-[#eee]");
-    const raw = e.dataTransfer.getData("application/json");
-    if (!raw) return;
-    try {
-      const { id } = JSON.parse(raw) as { id: string };
-      const result = await updatePunchListItemAction(id, { status: columnStatus });
-      if (result?.error) return;
-      load();
-    } catch {
-      // ignore
-    }
-  }, [load]);
+  const handleColumnDrop = React.useCallback(
+    async (columnStatus: string, e: React.DragEvent) => {
+      e.preventDefault();
+      e.currentTarget.classList.remove("ring-1", "ring-[#eee]");
+      const raw = e.dataTransfer.getData("application/json");
+      if (!raw) return;
+      try {
+        const { id } = JSON.parse(raw) as { id: string };
+        const result = await updatePunchListItemAction(id, { status: columnStatus });
+        if (result?.error) return;
+        load();
+      } catch {
+        // ignore
+      }
+    },
+    [load]
+  );
 
   return (
     <PageLayout
@@ -396,7 +417,11 @@ export default function PunchListPage() {
           title="Punch List"
           description="Track and resolve construction issues."
           actions={
-            <Button size="touch" className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90 min-h-[44px]" onClick={openModal}>
+            <Button
+              size="touch"
+              className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90 min-h-[44px]"
+              onClick={openModal}
+            >
               + Add Issue
             </Button>
           }
@@ -415,11 +440,15 @@ export default function PunchListPage() {
               <p className="mt-0.5 text-lg font-semibold tabular-nums">{summary.open}</p>
             </div>
             <div className="p-3 border border-[#eee] rounded-lg">
-              <p className="text-xs text-muted-foreground uppercase tracking-wide">Assigned Issues</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                Assigned Issues
+              </p>
               <p className="mt-0.5 text-lg font-semibold tabular-nums">{summary.assigned}</p>
             </div>
             <div className="p-3 border border-[#eee] rounded-lg">
-              <p className="text-xs text-muted-foreground uppercase tracking-wide">Completed Issues</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">
+                Completed Issues
+              </p>
               <p className="mt-0.5 text-lg font-semibold tabular-nums">{summary.completed}</p>
             </div>
           </div>
@@ -464,7 +493,9 @@ export default function PunchListPage() {
             >
               <option value="">All projects</option>
               {projects.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
               ))}
             </select>
           </div>
@@ -490,7 +521,9 @@ export default function PunchListPage() {
             >
               <option value="">All</option>
               {PRIORITIES.map((pr) => (
-                <option key={pr} value={pr}>{pr}</option>
+                <option key={pr} value={pr}>
+                  {pr}
+                </option>
               ))}
             </select>
           </div>
@@ -549,34 +582,39 @@ export default function PunchListPage() {
             ) : (
               <div className="overflow-x-auto overflow-y-hidden scroll-touch-x p-3 sm:p-4">
                 <div className="flex min-w-0 gap-4 sm:grid sm:grid-cols-3 lg:grid-cols-3">
-                {(["open", "in_progress", "completed"] as const).map((columnId) => {
-                  const columnStatus = columnId === "in_progress" ? "assigned" : columnId;
-                  const label = columnId === "open" ? "Open" : columnId === "in_progress" ? "In Progress" : "Completed";
-                  const columnItems = kanbanColumns[columnId];
-                  return (
-                    <div
-                      key={columnId}
-                      className="flex flex-col rounded-lg border border-[#eee] bg-[#fafafa]/50 min-h-[280px] w-[280px] min-w-[280px] sm:min-w-0 sm:w-auto"
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        e.currentTarget.classList.add("ring-1", "ring-[#eee]");
-                      }}
-                      onDragLeave={(e) => {
-                        e.currentTarget.classList.remove("ring-1", "ring-[#eee]");
-                      }}
-                      onDrop={(e) => handleColumnDrop(columnStatus, e)}
-                    >
-                      <div className="p-2.5 border-b border-[#eee] font-medium text-sm text-muted-foreground">
-                        {label} ({columnItems.length})
+                  {(["open", "in_progress", "completed"] as const).map((columnId) => {
+                    const columnStatus = columnId === "in_progress" ? "assigned" : columnId;
+                    const label =
+                      columnId === "open"
+                        ? "Open"
+                        : columnId === "in_progress"
+                          ? "In Progress"
+                          : "Completed";
+                    const columnItems = kanbanColumns[columnId];
+                    return (
+                      <div
+                        key={columnId}
+                        className="flex flex-col rounded-lg border border-[#eee] bg-[#fafafa]/50 min-h-[280px] w-[280px] min-w-[280px] sm:min-w-0 sm:w-auto"
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.currentTarget.classList.add("ring-1", "ring-[#eee]");
+                        }}
+                        onDragLeave={(e) => {
+                          e.currentTarget.classList.remove("ring-1", "ring-[#eee]");
+                        }}
+                        onDrop={(e) => handleColumnDrop(columnStatus, e)}
+                      >
+                        <div className="p-2.5 border-b border-[#eee] font-medium text-sm text-muted-foreground">
+                          {label} ({columnItems.length})
+                        </div>
+                        <div className="flex-1 p-2 space-y-2 overflow-y-auto min-h-0">
+                          {columnItems.map((r) => (
+                            <KanbanCard key={r.id} item={r} onOpenDrawer={openDrawer} />
+                          ))}
+                        </div>
                       </div>
-                      <div className="flex-1 p-2 space-y-2 overflow-y-auto min-h-0">
-                        {columnItems.map((r) => (
-                          <KanbanCard key={r.id} item={r} onOpenDrawer={openDrawer} />
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -621,12 +659,16 @@ export default function PunchListPage() {
               <label className="text-xs font-medium text-muted-foreground">Assigned Worker</label>
               <select
                 value={drawerForm.assigned_worker_id}
-                onChange={(e) => setDrawerForm((p) => ({ ...p, assigned_worker_id: e.target.value }))}
+                onChange={(e) =>
+                  setDrawerForm((p) => ({ ...p, assigned_worker_id: e.target.value }))
+                }
                 className="mt-1 h-9 w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm"
               >
                 <option value="">—</option>
                 {workers.map((w) => (
-                  <option key={w.id} value={w.id}>{w.name}</option>
+                  <option key={w.id} value={w.id}>
+                    {w.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -642,7 +684,14 @@ export default function PunchListPage() {
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Photo</label>
-              <input ref={drawerFileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleDrawerFileChange} />
+              <input
+                ref={drawerFileRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handleDrawerFileChange}
+              />
               <div className="mt-1 flex items-center gap-2">
                 <Button
                   type="button"
@@ -655,14 +704,23 @@ export default function PunchListPage() {
                   {uploading ? "Uploading…" : "Upload photo"}
                 </Button>
                 {drawerForm.photo_url && (
-                  <a href={photoUrl(drawerForm.photo_url) ?? "#"} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:underline">
+                  <a
+                    href={photoUrl(drawerForm.photo_url) ?? "#"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-muted-foreground hover:underline"
+                  >
                     View
                   </a>
                 )}
               </div>
               {drawerForm.photo_url && (
                 <div className="mt-2 rounded-sm border border-border/60 overflow-hidden max-w-[200px]">
-                  <img src={photoUrl(drawerForm.photo_url)!} alt="" className="w-full h-auto object-cover" />
+                  <img
+                    src={photoUrl(drawerForm.photo_url)!}
+                    alt=""
+                    className="w-full h-auto object-cover"
+                  />
                 </div>
               )}
             </div>
@@ -680,8 +738,22 @@ export default function PunchListPage() {
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <div className="flex gap-2 pt-2">
-              <Button size="sm" variant="outline" className="rounded-sm" onClick={() => setDrawerOpen(false)}>Cancel</Button>
-              <Button size="sm" className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90" onClick={handleSaveDrawer} disabled={submitting}>Save</Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-sm"
+                onClick={() => setDrawerOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90"
+                onClick={handleSaveDrawer}
+                disabled={submitting}
+              >
+                Save
+              </Button>
             </div>
           </div>
         )}
@@ -704,7 +776,9 @@ export default function PunchListPage() {
               >
                 <option value="">Select project</option>
                 {projects.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -745,7 +819,9 @@ export default function PunchListPage() {
               >
                 <option value="">—</option>
                 {workers.map((w) => (
-                  <option key={w.id} value={w.id}>{w.name}</option>
+                  <option key={w.id} value={w.id}>
+                    {w.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -757,15 +833,31 @@ export default function PunchListPage() {
                 className="mt-1.5 h-9 w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm"
               >
                 {PRIORITIES.map((pr) => (
-                  <option key={pr} value={pr}>{pr}</option>
+                  <option key={pr} value={pr}>
+                    {pr}
+                  </option>
                 ))}
               </select>
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Photo</label>
-              <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileChange} />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handleFileChange}
+              />
               <div className="mt-1.5 flex items-center gap-2">
-                <Button type="button" variant="outline" size="sm" className="rounded-sm" disabled={uploading} onClick={() => fileInputRef.current?.click()}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-sm"
+                  disabled={uploading}
+                  onClick={() => fileInputRef.current?.click()}
+                >
                   {uploading ? "Uploading…" : "Upload photo"}
                 </Button>
                 {form.photo_url && <span className="text-xs text-muted-foreground">Uploaded</span>}
@@ -774,8 +866,22 @@ export default function PunchListPage() {
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
           <DialogFooter className="border-t border-border/60 pt-4">
-            <Button variant="outline" size="sm" className="rounded-sm" onClick={() => setModalOpen(false)}>Cancel</Button>
-            <Button size="sm" className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90" onClick={handleSaveNew} disabled={submitting}>Save</Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-sm"
+              onClick={() => setModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90"
+              onClick={handleSaveNew}
+              disabled={submitting}
+            >
+              Save
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

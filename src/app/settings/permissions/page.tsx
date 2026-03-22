@@ -142,10 +142,14 @@ export default function SettingsPermissionsPage() {
 
       <FilterBar className="flex-col items-stretch sm:items-stretch">
         <div className="w-full max-w-xs space-y-1">
-          <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Role</p>
+          <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            Role
+          </p>
           <Select
             value={targetRole}
-            onChange={(event) => setTargetRole(event.target.value === "assistant" ? "assistant" : "admin")}
+            onChange={(event) =>
+              setTargetRole(event.target.value === "assistant" ? "assistant" : "admin")
+            }
           >
             <option value="admin">admin</option>
             <option value="assistant">assistant</option>
@@ -156,12 +160,22 @@ export default function SettingsPermissionsPage() {
       <Card className="border-[#EBEBE9] p-5 dark:border-border">
         <div className="space-y-4">
           {PERMISSION_GROUPS.map((group) => (
-            <div key={group.title} className="rounded-sm border border-[#EBEBE9] p-3 dark:border-border/60">
+            <div
+              key={group.title}
+              className="rounded-sm border border-[#EBEBE9] p-3 dark:border-border/60"
+            >
               <p className="mb-2 text-sm font-semibold text-foreground">{group.title}</p>
               <div className="grid gap-2 md:grid-cols-2">
                 {group.keys.map((key) => (
-                  <label key={key} className="inline-flex items-center gap-2 text-sm text-foreground">
-                    <input type="checkbox" checked={Boolean(perms[key])} onChange={() => toggle(key)} />
+                  <label
+                    key={key}
+                    className="inline-flex items-center gap-2 text-sm text-foreground"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={Boolean(perms[key])}
+                      onChange={() => toggle(key)}
+                    />
                     <span>{key}</span>
                   </label>
                 ))}

@@ -3,19 +3,13 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  PageLayout,
-  PageHeader,
-} from "@/components/base";
+import { PageLayout, PageHeader } from "@/components/base";
 import { FilterBar } from "@/components/filter-bar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import {
-  listTableAmountCellClassName,
-  listTableRowClassName,
-} from "@/lib/list-table-interaction";
+import { listTableAmountCellClassName, listTableRowClassName } from "@/lib/list-table-interaction";
 import {
   Dialog,
   DialogContent,
@@ -64,7 +58,9 @@ function laborEntryPayrollLocked(row: LaborEntryWithJoins): boolean {
   );
 }
 
-function laborEntryPayrollStatusBadgeVariant(s: LaborPaymentStatus): "success" | "warning" | "muted" {
+function laborEntryPayrollStatusBadgeVariant(
+  s: LaborPaymentStatus
+): "success" | "warning" | "muted" {
   if (s === "paid") return "success";
   if (s === "partial") return "warning";
   return "muted";
@@ -291,16 +287,22 @@ function DailyEntriesPageInner() {
       <FilterBar>
         <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-6">
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">From</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              From
+            </p>
             <Input
               type="date"
               value={filters.date_from ?? ""}
-              onChange={(e) => setFilters((f) => ({ ...f, date_from: e.target.value || undefined }))}
+              onChange={(e) =>
+                setFilters((f) => ({ ...f, date_from: e.target.value || undefined }))
+              }
               max={new Date().toISOString().slice(0, 10)}
             />
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">To</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              To
+            </p>
             <Input
               type="date"
               value={filters.date_to ?? ""}
@@ -309,35 +311,52 @@ function DailyEntriesPageInner() {
             />
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Worker</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Worker
+            </p>
             <Select
               value={filters.worker_id ?? ""}
-              onChange={(e) => setFilters((f) => ({ ...f, worker_id: e.target.value || undefined }))}
+              onChange={(e) =>
+                setFilters((f) => ({ ...f, worker_id: e.target.value || undefined }))
+              }
             >
               <option value="">All workers</option>
               {workers.map((w) => (
-                <option key={w.id} value={w.id}>{w.name}</option>
+                <option key={w.id} value={w.id}>
+                  {w.name}
+                </option>
               ))}
             </Select>
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Project</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Project
+            </p>
             <Select
               value={filters.project_id ?? ""}
-              onChange={(e) => setFilters((f) => ({ ...f, project_id: e.target.value || undefined }))}
+              onChange={(e) =>
+                setFilters((f) => ({ ...f, project_id: e.target.value || undefined }))
+              }
             >
               <option value="">All projects</option>
               {projects.map((p) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
               ))}
             </Select>
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Status</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Status
+            </p>
             <Select
               value={filters.status ?? ""}
               onChange={(e) =>
-                setFilters((f) => ({ ...f, status: (e.target.value || undefined) as LaborEntriesFilters["status"] }))
+                setFilters((f) => ({
+                  ...f,
+                  status: (e.target.value || undefined) as LaborEntriesFilters["status"],
+                }))
               }
             >
               <option value="">All statuses</option>
@@ -348,7 +367,9 @@ function DailyEntriesPageInner() {
             </Select>
           </div>
           <div className="space-y-1 sm:col-span-2 lg:col-span-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Search</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Search
+            </p>
             <Input
               type="text"
               placeholder="Notes, code, worker, project…"
@@ -397,14 +418,30 @@ function DailyEntriesPageInner() {
                   className="h-4 w-4 rounded border-input"
                 />
               </th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Worker</th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Project</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Hours</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Rate</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Cost</th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Notes</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Date
+              </th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Worker
+              </th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Project
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Hours
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Rate
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Cost
+              </th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Status
+              </th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Notes
+              </th>
               <th className="w-24 px-1" />
             </tr>
           </thead>
@@ -423,7 +460,8 @@ function DailyEntriesPageInner() {
               </tr>
             ) : (
               pageRows.map((row) => {
-                const rate = row.hours > 0 && row.cost_amount != null ? row.cost_amount / row.hours : null;
+                const rate =
+                  row.hours > 0 && row.cost_amount != null ? row.cost_amount / row.hours : null;
                 const cost = row.cost_amount ?? 0;
                 const payrollStatus = getLaborPaymentStatus(
                   row.worker_payment_id ?? null,
@@ -433,73 +471,97 @@ function DailyEntriesPageInner() {
                 const payrollLocked = payrollStatus === "paid";
                 const rowLocked = row.status === "Locked" || payrollLocked;
                 return (
-                <tr
-                  key={row.id}
-                  className={cn(
-                    "border-b border-[#EBEBE9]/80 dark:border-border/40",
-                    !rowLocked && listTableRowClassName
-                  )}
-                  onClick={() => {
-                    if (rowLocked) return;
-                    openEdit(row);
-                  }}
-                >
-                  <td className="py-1.5 px-1" onClick={(e) => e.stopPropagation()}>
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.has(row.id)}
-                      onChange={() => toggleSelect(row.id)}
-                      disabled={rowLocked}
-                      className="h-4 w-4 rounded border-input"
-                    />
-                  </td>
-                  <td className="py-1.5 px-3 tabular-nums text-muted-foreground">{row.work_date}</td>
-                  <td className="py-1.5 px-3">{row.worker_name ?? "—"}</td>
-                  <td className="py-1.5 px-3">{row.project_name ?? "—"}</td>
-                  <td className={cn("py-1.5 px-3 text-right tabular-nums", listTableAmountCellClassName)}>{row.hours}</td>
-                  <td className={cn("py-1.5 px-3 text-right tabular-nums text-muted-foreground", listTableAmountCellClassName)}>
-                    {rate != null ? `$${rate.toFixed(2)}` : "—"}
-                  </td>
-                  <td className={cn("py-1.5 px-3 text-right tabular-nums font-medium", listTableAmountCellClassName)}>
-                    ${cost.toFixed(2)}
-                  </td>
-                  <td className="py-1.5 px-3">
-                    <StatusBadge
-                      label={laborPaymentStatusUiLabel(payrollStatus)}
-                      variant={laborEntryPayrollStatusBadgeVariant(payrollStatus)}
-                    />
-                  </td>
-                  <td className="py-1.5 px-3 max-w-[160px] truncate" title={row.notes ?? ""}>{row.notes ?? "—"}</td>
-                  <td className="py-1.5 px-1" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={() => openEdit(row)}
+                  <tr
+                    key={row.id}
+                    className={cn(
+                      "border-b border-[#EBEBE9]/80 dark:border-border/40",
+                      !rowLocked && listTableRowClassName
+                    )}
+                    onClick={() => {
+                      if (rowLocked) return;
+                      openEdit(row);
+                    }}
+                  >
+                    <td className="py-1.5 px-1" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(row.id)}
+                        onChange={() => toggleSelect(row.id)}
                         disabled={rowLocked}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                        onClick={() => handleDelete(row)}
-                        disabled={rowLocked || deletingId === row.id}
-                      >
-                        {deletingId === row.id ? "…" : "Delete"}
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              );})
+                        className="h-4 w-4 rounded border-input"
+                      />
+                    </td>
+                    <td className="py-1.5 px-3 tabular-nums text-muted-foreground">
+                      {row.work_date}
+                    </td>
+                    <td className="py-1.5 px-3">{row.worker_name ?? "—"}</td>
+                    <td className="py-1.5 px-3">{row.project_name ?? "—"}</td>
+                    <td
+                      className={cn(
+                        "py-1.5 px-3 text-right tabular-nums",
+                        listTableAmountCellClassName
+                      )}
+                    >
+                      {row.hours}
+                    </td>
+                    <td
+                      className={cn(
+                        "py-1.5 px-3 text-right tabular-nums text-muted-foreground",
+                        listTableAmountCellClassName
+                      )}
+                    >
+                      {rate != null ? `$${rate.toFixed(2)}` : "—"}
+                    </td>
+                    <td
+                      className={cn(
+                        "py-1.5 px-3 text-right tabular-nums font-medium",
+                        listTableAmountCellClassName
+                      )}
+                    >
+                      ${cost.toFixed(2)}
+                    </td>
+                    <td className="py-1.5 px-3">
+                      <StatusBadge
+                        label={laborPaymentStatusUiLabel(payrollStatus)}
+                        variant={laborEntryPayrollStatusBadgeVariant(payrollStatus)}
+                      />
+                    </td>
+                    <td className="py-1.5 px-3 max-w-[160px] truncate" title={row.notes ?? ""}>
+                      {row.notes ?? "—"}
+                    </td>
+                    <td className="py-1.5 px-1" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => openEdit(row)}
+                          disabled={rowLocked}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                          onClick={() => handleDelete(row)}
+                          disabled={rowLocked || deletingId === row.id}
+                        >
+                          {deletingId === row.id ? "…" : "Delete"}
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
       </div>
 
-      {total > 0 ? <Pagination page={curPage} pageSize={pageSize} total={total} onPageChange={setPage} /> : null}
+      {total > 0 ? (
+        <Pagination page={curPage} pageSize={pageSize} total={total} onPageChange={setPage} />
+      ) : null}
 
       <Dialog open={!!editEntry} onOpenChange={(open) => !open && closeEdit()}>
         <DialogContent className="max-w-md">
@@ -512,11 +574,15 @@ function DailyEntriesPageInner() {
                 <label className="text-xs font-medium text-muted-foreground">Worker</label>
                 <Select
                   value={editDraft.worker_id}
-                  onChange={(e) => setEditDraft((d) => (d ? { ...d, worker_id: e.target.value } : null))}
+                  onChange={(e) =>
+                    setEditDraft((d) => (d ? { ...d, worker_id: e.target.value } : null))
+                  }
                   className="mt-1 w-full"
                 >
                   {workers.map((w) => (
-                    <option key={w.id} value={w.id}>{w.name}</option>
+                    <option key={w.id} value={w.id}>
+                      {w.name}
+                    </option>
                   ))}
                 </Select>
               </div>
@@ -524,12 +590,16 @@ function DailyEntriesPageInner() {
                 <label className="text-xs font-medium text-muted-foreground">Project</label>
                 <Select
                   value={editDraft.project_id ?? ""}
-                  onChange={(e) => setEditDraft((d) => (d ? { ...d, project_id: e.target.value || null } : null))}
+                  onChange={(e) =>
+                    setEditDraft((d) => (d ? { ...d, project_id: e.target.value || null } : null))
+                  }
                   className="mt-1 w-full"
                 >
                   <option value="">—</option>
                   {projects.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
                   ))}
                 </Select>
               </div>
@@ -541,7 +611,11 @@ function DailyEntriesPageInner() {
                     min="0"
                     step="0.25"
                     value={editDraft.hours || ""}
-                    onChange={(e) => setEditDraft((d) => d ? { ...d, hours: parseFloat(e.target.value) || 0 } : null)}
+                    onChange={(e) =>
+                      setEditDraft((d) =>
+                        d ? { ...d, hours: parseFloat(e.target.value) || 0 } : null
+                      )
+                    }
                     className="mt-1 h-9 text-sm tabular-nums"
                   />
                 </div>
@@ -550,7 +624,9 @@ function DailyEntriesPageInner() {
                   <Input
                     type="text"
                     value={editDraft.cost_code || ""}
-                    onChange={(e) => setEditDraft((d) => d ? { ...d, cost_code: e.target.value || null } : null)}
+                    onChange={(e) =>
+                      setEditDraft((d) => (d ? { ...d, cost_code: e.target.value || null } : null))
+                    }
                     className="mt-1 h-9 text-sm"
                   />
                 </div>
@@ -560,7 +636,9 @@ function DailyEntriesPageInner() {
                 <Input
                   type="text"
                   value={editDraft.notes || ""}
-                  onChange={(e) => setEditDraft((d) => d ? { ...d, notes: e.target.value || null } : null)}
+                  onChange={(e) =>
+                    setEditDraft((d) => (d ? { ...d, notes: e.target.value || null } : null))
+                  }
                   className="mt-1 h-9 text-sm"
                 />
               </div>

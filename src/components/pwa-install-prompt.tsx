@@ -12,12 +12,18 @@ type BeforeInstallPromptEvent = Event & {
 
 function isIOS(): boolean {
   if (typeof window === "undefined") return false;
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  return (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
 }
 
 function isStandalone(): boolean {
   if (typeof window === "undefined") return false;
-  return (window as Window & { standalone?: boolean }).standalone === true || window.matchMedia("(display-mode: standalone)").matches;
+  return (
+    (window as Window & { standalone?: boolean }).standalone === true ||
+    window.matchMedia("(display-mode: standalone)").matches
+  );
 }
 
 export function PWAInstallPrompt() {
@@ -73,7 +79,9 @@ export function PWAInstallPrompt() {
   const handleInstall = async () => {
     setInstallError(null);
     if (!deferredPrompt) {
-      setInstallError("Install not available in this browser. Try Chrome on Android or desktop, or use the browser menu → Install app.");
+      setInstallError(
+        "Install not available in this browser. Try Chrome on Android or desktop, or use the browser menu → Install app."
+      );
       return;
     }
     try {
@@ -118,7 +126,8 @@ export function PWAInstallPrompt() {
             <>
               <p className="text-sm font-medium text-foreground">Install HH Construction</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Tap <Share className="inline h-3.5 w-3.5" /> Share → &quot;Add to Home Screen&quot; to install the app.
+                Tap <Share className="inline h-3.5 w-3.5" /> Share → &quot;Add to Home Screen&quot;
+                to install the app.
               </p>
             </>
           ) : (
@@ -137,12 +146,24 @@ export function PWAInstallPrompt() {
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {showIOSHint ? (
-            <Button size="sm" variant="outline" onClick={handleDismiss} className="h-9" aria-label="Dismiss">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleDismiss}
+              className="h-9"
+              aria-label="Dismiss"
+            >
               <X className="h-4 w-4" />
             </Button>
           ) : (
             <>
-              <Button size="sm" variant="outline" onClick={handleDismiss} className="h-9" aria-label="Not now">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleDismiss}
+                className="h-9"
+                aria-label="Not now"
+              >
                 Not now
               </Button>
               <Button size="sm" onClick={handleInstall} className="h-9" aria-label="Install app">

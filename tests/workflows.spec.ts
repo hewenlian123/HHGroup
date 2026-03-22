@@ -25,12 +25,12 @@ test("new estimate - select customer and autofill", async ({ page }) => {
   await page.goto(`${BASE}/estimates/new`);
   // Next.js often keeps connections open — networkidle hangs; DOM ready is enough.
   await page.waitForLoadState("domcontentloaded");
-  await expect(page.getByText(/^Loading/i)).not.toBeVisible({ timeout: 60_000 }).catch(() => undefined);
+  await expect(page.getByText(/^Loading/i))
+    .not.toBeVisible({ timeout: 60_000 })
+    .catch(() => undefined);
 
   // Some builds show compact summary first; open details if needed.
-  const editDetailsBtn = page
-    .getByRole("button", { name: /^(Edit details|Edit)$/i })
-    .first();
+  const editDetailsBtn = page.getByRole("button", { name: /^(Edit details|Edit)$/i }).first();
   if (await editDetailsBtn.isVisible()) {
     await editDetailsBtn.click();
   }
@@ -55,7 +55,12 @@ test("new estimate - select customer and autofill", async ({ page }) => {
       await pickFirst();
     } catch {
       await search.fill("test");
-      if (await dialog.getByText("No customers found.").isVisible().catch(() => false)) {
+      if (
+        await dialog
+          .getByText("No customers found.")
+          .isVisible()
+          .catch(() => false)
+      ) {
         await search.clear();
         try {
           await pickFirst();
@@ -104,7 +109,7 @@ test("new estimate flow with category rename", async ({ page }) => {
   await expect(addCategoryBtn).toBeVisible({ timeout: 15_000 });
   await addCategoryBtn.click();
 
-  const categoryNameInput = page.locator('details input[placeholder]').first();
+  const categoryNameInput = page.locator("details input[placeholder]").first();
   await expect(categoryNameInput).toBeVisible({ timeout: 10_000 });
   await categoryNameInput.fill("Epoxy Test");
 

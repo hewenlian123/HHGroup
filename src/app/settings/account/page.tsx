@@ -35,10 +35,7 @@ export default function SettingsAccountPage() {
 
   return (
     <div className="page-container page-stack py-6">
-      <PageHeader
-        title="Account"
-        subtitle="View your current signed-in account and access role."
-      />
+      <PageHeader title="Account" subtitle="View your current signed-in account and access role." />
       <section className="border-b border-[#EBEBE9] dark:border-border">
         <div className="flex items-center justify-between border-b border-[#EBEBE9] py-3 dark:border-border">
           <p className="text-sm text-muted-foreground">Email</p>

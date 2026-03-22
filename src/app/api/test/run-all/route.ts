@@ -49,11 +49,7 @@ function shapedRows(
     const message = !t.ok && steps.length > 0 ? steps.join("; ") : "";
     const isSkipped =
       !t.ok && steps.some((s) => /missing|no worker|no project|skip/i.test(String(s)));
-    const status: RunAllTestRow["status"] = t.ok
-      ? "passed"
-      : isSkipped
-      ? "warning"
-      : "failed";
+    const status: RunAllTestRow["status"] = t.ok ? "passed" : isSkipped ? "warning" : "failed";
     return {
       test: displayName,
       status,

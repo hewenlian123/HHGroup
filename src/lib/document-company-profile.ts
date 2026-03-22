@@ -35,7 +35,9 @@ function buildAddressLinesFromProfile(profile: CompanyProfile | null): string[] 
   return lines;
 }
 
-export function companyProfileToDocumentDto(profile: CompanyProfile | null): DocumentCompanyProfileDTO {
+export function companyProfileToDocumentDto(
+  profile: CompanyProfile | null
+): DocumentCompanyProfileDTO {
   const companyName = profile?.org_name?.trim() || "HH Group";
   return {
     companyName,
@@ -59,7 +61,7 @@ export async function fetchDocumentCompanyProfile(): Promise<DocumentCompanyProf
   }
   try {
     const row = await getCompanyProfile(client);
-    if (row?.logo_path?.trim() && !(row.logo_url?.trim())) {
+    if (row?.logo_path?.trim() && !row.logo_url?.trim()) {
       const url = getCompanyLogoPublicUrl(client, row.logo_path.trim());
       return companyProfileToDocumentDto({ ...row, logo_url: url });
     }

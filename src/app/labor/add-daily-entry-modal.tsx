@@ -36,7 +36,12 @@ const OT_MULTIPLIER = 1.5;
 
 type Sel = { morning: boolean; afternoon: boolean; otHours: number };
 
-function computeTotalPay(dailyRate: number, morning: boolean, afternoon: boolean, otHours: number): number {
+function computeTotalPay(
+  dailyRate: number,
+  morning: boolean,
+  afternoon: boolean,
+  otHours: number
+): number {
   const base = morning && afternoon ? dailyRate : morning || afternoon ? dailyRate / 2 : 0;
   const otPay = Math.max(0, otHours) * (dailyRate / 8) * OT_MULTIPLIER;
   return base + otPay;
@@ -93,7 +98,8 @@ const AddDailyEntryWorkerRow = React.memo(function AddDailyEntryWorkerRow({
     []
   );
 
-  const rate = worker.dailyRate != null && Number(worker.dailyRate) >= 0 ? Number(worker.dailyRate) : 0;
+  const rate =
+    worker.dailyRate != null && Number(worker.dailyRate) >= 0 ? Number(worker.dailyRate) : 0;
   const otParsed = parseFloat(otDraft);
   const otLive = Number.isFinite(otParsed) ? Math.max(0, otParsed) : 0;
   const total = computeTotalPay(rate, morning, afternoon, otLive);
@@ -110,7 +116,9 @@ const AddDailyEntryWorkerRow = React.memo(function AddDailyEntryWorkerRow({
         <span className="font-medium truncate block" title={worker.name}>
           {worker.name}
         </span>
-        {disabled ? <span className="block text-xs text-muted-foreground">Already has entry</span> : null}
+        {disabled ? (
+          <span className="block text-xs text-muted-foreground">Already has entry</span>
+        ) : null}
       </div>
       <div className="flex-1 text-muted-foreground whitespace-nowrap text-xs sm:text-sm pr-1 shrink-0">
         ${Math.round(rate)}/d
@@ -226,21 +234,27 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
     };
   }, [open, workDate]);
 
-  const toggleMorning = React.useCallback((workerId: string) => {
-    if (disabledWorkerIds.has(workerId)) return;
-    setSelectionByWorkerId((prev) => {
-      const cur = prev[workerId] ?? defaultSel();
-      return { ...prev, [workerId]: { ...cur, morning: !cur.morning } };
-    });
-  }, [disabledWorkerIds]);
+  const toggleMorning = React.useCallback(
+    (workerId: string) => {
+      if (disabledWorkerIds.has(workerId)) return;
+      setSelectionByWorkerId((prev) => {
+        const cur = prev[workerId] ?? defaultSel();
+        return { ...prev, [workerId]: { ...cur, morning: !cur.morning } };
+      });
+    },
+    [disabledWorkerIds]
+  );
 
-  const toggleAfternoon = React.useCallback((workerId: string) => {
-    if (disabledWorkerIds.has(workerId)) return;
-    setSelectionByWorkerId((prev) => {
-      const cur = prev[workerId] ?? defaultSel();
-      return { ...prev, [workerId]: { ...cur, afternoon: !cur.afternoon } };
-    });
-  }, [disabledWorkerIds]);
+  const toggleAfternoon = React.useCallback(
+    (workerId: string) => {
+      if (disabledWorkerIds.has(workerId)) return;
+      setSelectionByWorkerId((prev) => {
+        const cur = prev[workerId] ?? defaultSel();
+        return { ...prev, [workerId]: { ...cur, afternoon: !cur.afternoon } };
+      });
+    },
+    [disabledWorkerIds]
+  );
 
   const commitOtHours = React.useCallback((workerId: string, value: number) => {
     setSelectionByWorkerId((prev) => {
@@ -330,7 +344,8 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
           </div>
           <div className="border-b border-border/60 pb-2">
             <p className="text-xs text-muted-foreground mb-2">
-              Workers who have completed a full day (AM+PM) on this date are disabled across all projects.
+              Workers who have completed a full day (AM+PM) on this date are disabled across all
+              projects.
             </p>
           </div>
           <div className="flex min-h-0 flex-1 flex-col overflow-x-auto border-b border-border/60 min-w-0">
@@ -431,7 +446,13 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
           >
             Cancel
           </Button>
-          <Button type="submit" form="add-daily-form" size="sm" disabled={busy} className="rounded-sm h-9">
+          <Button
+            type="submit"
+            form="add-daily-form"
+            size="sm"
+            disabled={busy}
+            className="rounded-sm h-9"
+          >
             {busy ? "Saving…" : "Save"}
           </Button>
         </DialogFooter>

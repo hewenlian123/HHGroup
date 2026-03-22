@@ -201,7 +201,10 @@ export function CustomerSelectWithAdd({ label = "Customer", value, onChange }: P
           </DialogHeader>
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="new-customer-name" className="text-xs font-medium text-muted-foreground">
+              <label
+                htmlFor="new-customer-name"
+                className="text-xs font-medium text-muted-foreground"
+              >
                 Name *
               </label>
               <Input
@@ -213,7 +216,10 @@ export function CustomerSelectWithAdd({ label = "Customer", value, onChange }: P
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="new-customer-phone" className="text-xs font-medium text-muted-foreground">
+              <label
+                htmlFor="new-customer-phone"
+                className="text-xs font-medium text-muted-foreground"
+              >
                 Phone
               </label>
               <Input
@@ -227,7 +233,10 @@ export function CustomerSelectWithAdd({ label = "Customer", value, onChange }: P
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="new-customer-email" className="text-xs font-medium text-muted-foreground">
+              <label
+                htmlFor="new-customer-email"
+                className="text-xs font-medium text-muted-foreground"
+              >
                 Email
               </label>
               <Input
@@ -241,7 +250,10 @@ export function CustomerSelectWithAdd({ label = "Customer", value, onChange }: P
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="new-customer-address" className="text-xs font-medium text-muted-foreground">
+              <label
+                htmlFor="new-customer-address"
+                className="text-xs font-medium text-muted-foreground"
+              >
                 Address
               </label>
               <Input
@@ -282,4 +294,3 @@ export function CustomerSelectWithAdd({ label = "Customer", value, onChange }: P
     </div>
   );
 }
-

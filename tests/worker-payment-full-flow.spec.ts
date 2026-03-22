@@ -26,7 +26,12 @@ test.describe("Worker payment full flow: pay → receipt → delete → rollback
 
     await page.goto(`${BASE}/labor/worker-balances`);
     await page.waitForLoadState("domcontentloaded");
-    if (await page.getByText(/Supabase is not configured|Failed to load/i).isVisible().catch(() => false)) {
+    if (
+      await page
+        .getByText(/Supabase is not configured|Failed to load/i)
+        .isVisible()
+        .catch(() => false)
+    ) {
       test.skip(true, "Backend / Supabase unavailable.");
     }
     await expect(page.getByText("Loading…").first()).not.toBeVisible({ timeout: 30_000 });
@@ -36,16 +41,23 @@ test.describe("Worker payment full flow: pay → receipt → delete → rollback
     await workerLink.click();
     await page.waitForLoadState("domcontentloaded");
 
-    await expect(page.getByRole("heading", { name: /Labor Entries/i })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("heading", { name: /Labor Entries/i })).toBeVisible({
+      timeout: 15_000,
+    });
 
     await page.getByRole("button", { name: "Pay Worker" }).click();
     const payDialog = page.getByRole("dialog", { name: /Pay Worker/i });
     await expect(payDialog).toBeVisible();
 
-    const hasLaborBlock = await payDialog.getByText("Unpaid labor entries").isVisible().catch(() => false);
+    const hasLaborBlock = await payDialog
+      .getByText("Unpaid labor entries")
+      .isVisible()
+      .catch(() => false);
     test.skip(!hasLaborBlock, "No unpaid labor block.");
 
-    const totalRow = payDialog.locator("p.text-sm.font-semibold").filter({ hasText: "Total Payment Amount" });
+    const totalRow = payDialog
+      .locator("p.text-sm.font-semibold")
+      .filter({ hasText: "Total Payment Amount" });
     const totalText = (await totalRow.locator("span.tabular-nums").textContent())?.trim() ?? "";
     test.skip(totalText === "$0.00" || totalText === "", "Payment total is zero.");
 
@@ -58,7 +70,11 @@ test.describe("Worker payment full flow: pay → receipt → delete → rollback
     await page.waitForLoadState("domcontentloaded");
     await expect(page.getByText("Loading…").first()).not.toBeVisible({ timeout: 30_000 });
 
-    let payRow = page.locator("tbody tr").filter({ hasText: WORKER_NAME }).filter({ hasText: "E2E Cash" }).first();
+    let payRow = page
+      .locator("tbody tr")
+      .filter({ hasText: WORKER_NAME })
+      .filter({ hasText: "E2E Cash" })
+      .first();
     if ((await payRow.count()) === 0) {
       payRow = page.locator("tbody tr").filter({ hasText: WORKER_NAME }).first();
     }
@@ -73,7 +89,11 @@ test.describe("Worker payment full flow: pay → receipt → delete → rollback
     await page.waitForLoadState("domcontentloaded");
     await expect(page.getByText("Loading…").first()).not.toBeVisible({ timeout: 30_000 });
 
-    let rowToDelete = page.locator("tbody tr").filter({ hasText: WORKER_NAME }).filter({ hasText: "E2E Cash" }).first();
+    let rowToDelete = page
+      .locator("tbody tr")
+      .filter({ hasText: WORKER_NAME })
+      .filter({ hasText: "E2E Cash" })
+      .first();
     if ((await rowToDelete.count()) === 0) {
       rowToDelete = page.locator("tbody tr").filter({ hasText: WORKER_NAME }).first();
     }
@@ -95,18 +115,33 @@ test.describe("Worker payment full flow: pay → receipt → delete → rollback
     await expect(page.getByText("Loading…").first()).not.toBeVisible({ timeout: 30_000 });
     await page.getByRole("link", { name: WORKER_NAME, exact: true }).click();
     await page.waitForLoadState("domcontentloaded");
-    await expect(page.getByRole("heading", { name: /Labor Entries/i })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("heading", { name: /Labor Entries/i })).toBeVisible({
+      timeout: 15_000,
+    });
 
     await page.getByRole("button", { name: "Pay Worker" }).click();
     const again = page.getByRole("dialog", { name: /Pay Worker/i });
     await expect(again).toBeVisible();
     await expect(again.getByText("Unpaid labor entries")).toBeVisible();
-    await expect(again.locator('label input[type="checkbox"]').first()).toBeVisible({ timeout: 10_000 });
+    await expect(again.locator('label input[type="checkbox"]').first()).toBeVisible({
+      timeout: 10_000,
+    });
 
-    const totalAgain = (await again.locator("p.text-sm.font-semibold").filter({ hasText: "Total Payment Amount" }).locator("span.tabular-nums").textContent())?.trim() ?? "";
-    expect(totalAgain, "After delete, unpaid labor should contribute to total again").not.toBe("$0.00");
+    const totalAgain =
+      (
+        await again
+          .locator("p.text-sm.font-semibold")
+          .filter({ hasText: "Total Payment Amount" })
+          .locator("span.tabular-nums")
+          .textContent()
+      )?.trim() ?? "";
+    expect(totalAgain, "After delete, unpaid labor should contribute to total again").not.toBe(
+      "$0.00"
+    );
 
     await again.getByRole("button", { name: "Cancel" }).click();
-    await expect(page.locator("body")).not.toContainText(/Application error|Internal Server Error/i);
+    await expect(page.locator("body")).not.toContainText(
+      /Application error|Internal Server Error/i
+    );
   });
 });

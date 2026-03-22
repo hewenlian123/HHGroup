@@ -120,7 +120,9 @@ export function SplitLinesEditor({
               }}
             />
             {vendorName && isVendorDisabled(vendorName) && (
-              <span className="text-xs text-amber-600 dark:text-amber-400 mt-0.5 inline-block">Disabled</span>
+              <span className="text-xs text-amber-600 dark:text-amber-400 mt-0.5 inline-block">
+                Disabled
+              </span>
             )}
           </div>
           <div>
@@ -140,7 +142,9 @@ export function SplitLinesEditor({
               }}
             />
             {paymentMethod && isPaymentMethodDisabled(paymentMethod) && (
-              <span className="text-xs text-amber-600 dark:text-amber-400 mt-0.5 inline-block">Disabled</span>
+              <span className="text-xs text-amber-600 dark:text-amber-400 mt-0.5 inline-block">
+                Disabled
+              </span>
             )}
           </div>
         </div>
@@ -149,16 +153,29 @@ export function SplitLinesEditor({
       {targetAmount != null && (
         <div className="flex flex-wrap gap-4 rounded-md border border-border/60 bg-background px-4 py-3">
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Needed</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Needed
+            </p>
             <p className="text-lg font-bold tabular-nums">${targetAmount.toLocaleString()}</p>
           </div>
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Lines total</p>
-            <p className="text-lg font-bold tabular-nums text-red-600/90 dark:text-red-400/90">${linesTotal.toLocaleString()}</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Lines total
+            </p>
+            <p className="text-lg font-bold tabular-nums text-red-600/90 dark:text-red-400/90">
+              ${linesTotal.toLocaleString()}
+            </p>
           </div>
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Remaining</p>
-            <p className={cn("text-lg font-bold tabular-nums", remaining !== 0 && "text-red-600 dark:text-red-400")}>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Remaining
+            </p>
+            <p
+              className={cn(
+                "text-lg font-bold tabular-nums",
+                remaining !== 0 && "text-red-600 dark:text-red-400"
+              )}
+            >
               ${remaining.toLocaleString()}
             </p>
           </div>
@@ -167,7 +184,13 @@ export function SplitLinesEditor({
 
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-foreground">Split lines</h3>
-        <Button type="button" variant="outline" size="sm" onClick={onAddLine} className="rounded-lg">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onAddLine}
+          className="rounded-lg"
+        >
           <Plus className="h-4 w-4 mr-1" />
           Add line
         </Button>
@@ -176,13 +199,23 @@ export function SplitLinesEditor({
         <Table>
           <TableHeader>
             <TableRow className="border-b border-zinc-200/40 dark:border-border/60 bg-muted/30">
-              <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Project</TableHead>
-              <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Category</TableHead>
+              <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                Project
+              </TableHead>
+              <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                Category
+              </TableHead>
               {showCostCode && (
-                <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Cost code</TableHead>
+                <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                  Cost code
+                </TableHead>
               )}
-              <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Memo</TableHead>
-              <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">Amount</TableHead>
+              <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                Memo
+              </TableHead>
+              <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">
+                Amount
+              </TableHead>
               <TableHead className="w-10" />
             </TableRow>
           </TableHeader>
@@ -221,7 +254,9 @@ export function SplitLinesEditor({
                       }}
                     />
                     {line.category && isExpenseCategoryDisabled(line.category) && (
-                      <span className="text-xs text-amber-600 dark:text-amber-400 mt-0.5 inline-block">Disabled</span>
+                      <span className="text-xs text-amber-600 dark:text-amber-400 mt-0.5 inline-block">
+                        Disabled
+                      </span>
                     )}
                   </div>
                 </TableCell>
@@ -252,7 +287,9 @@ export function SplitLinesEditor({
                     step={0.01}
                     className="h-8 w-24 text-right tabular-nums ml-auto"
                     value={line.amount}
-                    onChange={(e) => onLineChange(line.id, { amount: parseFloat(e.target.value) || 0 })}
+                    onChange={(e) =>
+                      onLineChange(line.id, { amount: parseFloat(e.target.value) || 0 })
+                    }
                   />
                 </TableCell>
                 <TableCell>

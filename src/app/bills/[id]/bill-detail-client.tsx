@@ -7,7 +7,13 @@ import { useRouter } from "next/navigation";
 import { Divider, SectionHeader, StatusBadge } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import type { ApBillWithProject, ApBillPaymentRow } from "@/lib/data";
 import { addApBillPayment } from "@/lib/data";
 import { deleteBillDraftAction, voidBillAction } from "../actions";
@@ -42,7 +48,12 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
 
   React.useEffect(() => setAddPaymentOpen(initialAddPaymentOpen), [initialAddPaymentOpen]);
 
-  const statusVariant = bill.status === "Paid" ? "success" : bill.status === "Partially Paid" || bill.status === "Pending" ? "warning" : "muted";
+  const statusVariant =
+    bill.status === "Paid"
+      ? "success"
+      : bill.status === "Partially Paid" || bill.status === "Pending"
+        ? "warning"
+        : "muted";
 
   const handleAddPayment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,7 +127,9 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
         <span className="text-muted-foreground">Total amount</span>
         <span className="tabular-nums font-medium">{fmtUsd(bill.amount)}</span>
         <span className="text-muted-foreground">Paid amount</span>
-        <span className="tabular-nums text-emerald-600 dark:text-emerald-400">{fmtUsd(bill.paid_amount)}</span>
+        <span className="tabular-nums text-emerald-600 dark:text-emerald-400">
+          {fmtUsd(bill.paid_amount)}
+        </span>
         <span className="text-muted-foreground">Balance</span>
         <span className="tabular-nums font-medium">{fmtUsd(bill.balance_amount)}</span>
       </div>
@@ -124,8 +137,14 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
       <SectionHeader
         label="Payment history"
         action={
-          bill.status !== "Paid" && bill.status !== "Void" && (
-            <Button variant="outline" size="sm" className="h-8" onClick={() => setAddPaymentOpen(true)}>
+          bill.status !== "Paid" &&
+          bill.status !== "Void" && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8"
+              onClick={() => setAddPaymentOpen(true)}
+            >
               Add payment
             </Button>
           )
@@ -139,11 +158,21 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="border-b border-border/60">
-                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Payment date</th>
-                <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Amount</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Method</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Reference</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Notes</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Payment date
+                </th>
+                <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                  Amount
+                </th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Method
+                </th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Reference
+                </th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Notes
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -153,7 +182,12 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
                   <td className="py-1.5 px-3 text-right tabular-nums">{fmtUsd(p.amount)}</td>
                   <td className="py-1.5 px-3 text-muted-foreground">{p.payment_method ?? "—"}</td>
                   <td className="py-1.5 px-3 text-muted-foreground">{p.reference_no ?? "—"}</td>
-                  <td className="py-1.5 px-3 text-muted-foreground max-w-[200px] truncate" title={p.notes ?? ""}>{p.notes ?? "—"}</td>
+                  <td
+                    className="py-1.5 px-3 text-muted-foreground max-w-[200px] truncate"
+                    title={p.notes ?? ""}
+                  >
+                    {p.notes ?? "—"}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -168,31 +202,63 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
         </>
       ) : null}
       <div className="flex flex-wrap items-center gap-2 pt-4 border-t border-border/60 mt-4">
-        <Button variant="outline" size="sm" asChild><Link href={`/bills/${bill.id}/edit`}>Edit bill</Link></Button>
+        <Button variant="outline" size="sm" asChild>
+          <Link href={`/bills/${bill.id}/edit`}>Edit bill</Link>
+        </Button>
         {bill.attachment_url ? (
-          <Button variant="outline" size="sm" asChild><a href={bill.attachment_url} target="_blank" rel="noopener noreferrer">Open attachment</a></Button>
+          <Button variant="outline" size="sm" asChild>
+            <a href={bill.attachment_url} target="_blank" rel="noopener noreferrer">
+              Open attachment
+            </a>
+          </Button>
         ) : null}
-        {bill.status !== "Void" && (
-          !voidConfirm ? (
-            <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => setVoidConfirm(true)}>Mark void</Button>
+        {bill.status !== "Void" &&
+          (!voidConfirm ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground"
+              onClick={() => setVoidConfirm(true)}
+            >
+              Mark void
+            </Button>
           ) : (
             <>
-              <Button variant="outline" size="sm" className="text-red-600" onClick={handleVoid}>Confirm void</Button>
-              <Button variant="ghost" size="sm" onClick={() => setVoidConfirm(false)}>Cancel</Button>
+              <Button variant="outline" size="sm" className="text-red-600" onClick={handleVoid}>
+                Confirm void
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setVoidConfirm(false)}>
+                Cancel
+              </Button>
             </>
-          )
-        )}
+          ))}
 
-        {bill.status === "Draft" && payments.length === 0 && (
-          !deleteConfirm ? (
-            <Button variant="ghost" size="sm" className="text-red-600" onClick={() => setDeleteConfirm(true)}>Delete</Button>
+        {bill.status === "Draft" &&
+          payments.length === 0 &&
+          (!deleteConfirm ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-red-600"
+              onClick={() => setDeleteConfirm(true)}
+            >
+              Delete
+            </Button>
           ) : (
             <>
-              <Button variant="outline" size="sm" className="text-red-600" onClick={handleDeleteDraft}>Confirm delete</Button>
-              <Button variant="ghost" size="sm" onClick={() => setDeleteConfirm(false)}>Cancel</Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-red-600"
+                onClick={handleDeleteDraft}
+              >
+                Confirm delete
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setDeleteConfirm(false)}>
+                Cancel
+              </Button>
             </>
-          )
-        )}
+          ))}
       </div>
 
       <Dialog open={addPaymentOpen} onOpenChange={setAddPaymentOpen}>
@@ -203,28 +269,65 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
           <form onSubmit={handleAddPayment} className="grid gap-3 py-2">
             <div>
               <label className="text-xs font-medium text-muted-foreground">Payment date</label>
-              <Input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} className="mt-1 h-9" required />
+              <Input
+                type="date"
+                value={paymentDate}
+                onChange={(e) => setPaymentDate(e.target.value)}
+                className="mt-1 h-9"
+                required
+              />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Amount</label>
-              <Input type="number" step="0.01" min="0" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} className="mt-1 h-9" placeholder="0.00" required />
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
+                className="mt-1 h-9"
+                placeholder="0.00"
+                required
+              />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Payment method</label>
-              <Input value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} className="mt-1 h-9" placeholder="e.g. Check, ACH" />
+              <Input
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                className="mt-1 h-9"
+                placeholder="e.g. Check, ACH"
+              />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Reference no.</label>
-              <Input value={paymentRef} onChange={(e) => setPaymentRef(e.target.value)} className="mt-1 h-9" />
+              <Input
+                value={paymentRef}
+                onChange={(e) => setPaymentRef(e.target.value)}
+                className="mt-1 h-9"
+              />
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Notes</label>
-              <Input value={paymentNotes} onChange={(e) => setPaymentNotes(e.target.value)} className="mt-1 h-9" />
+              <Input
+                value={paymentNotes}
+                onChange={(e) => setPaymentNotes(e.target.value)}
+                className="mt-1 h-9"
+              />
             </div>
             {error && <p className="text-xs text-destructive">{error}</p>}
             <DialogFooter>
-              <Button type="button" variant="outline" size="sm" onClick={() => setAddPaymentOpen(false)}>Cancel</Button>
-              <Button type="submit" size="sm" disabled={submitting}>{submitting ? "Saving…" : "Add payment"}</Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setAddPaymentOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" size="sm" disabled={submitting}>
+                {submitting ? "Saving…" : "Add payment"}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

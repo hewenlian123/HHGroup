@@ -1,7 +1,4 @@
-import {
-  PageLayout,
-  PageHeader,
-} from "@/components/base";
+import { PageLayout, PageHeader } from "@/components/base";
 import {
   getSubcontractorsWithInsuranceAlerts,
   getSubcontractsSummaryAll,
@@ -97,34 +94,56 @@ export default async function SubcontractorsPage() {
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="border-b border-border/60">
-                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Subcontractor</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Insurance</th>
-                <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Total Contracts</th>
-                <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Approved</th>
-                <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Paid</th>
-                <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Outstanding</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Subcontractor
+                </th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Insurance
+                </th>
+                <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                  Total Contracts
+                </th>
+                <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                  Approved
+                </th>
+                <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                  Paid
+                </th>
+                <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                  Outstanding
+                </th>
               </tr>
             </thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id} className="border-b border-border/40">
                   <td className="py-1.5 px-3">
-                    <Link href={`/subcontractors/${r.id}`} className="hover:text-foreground hover:underline">
+                    <Link
+                      href={`/subcontractors/${r.id}`}
+                      className="hover:text-foreground hover:underline"
+                    >
                       {r.name}
                     </Link>
                   </td>
                   <td className="py-1.5 px-3">
                     {r.insurance_expiration_date ? (
                       r.insurance_alert ? (
-                        <StatusBadge label={`Expires ${r.insurance_expiration_date}`} variant="warning" />
+                        <StatusBadge
+                          label={`Expires ${r.insurance_expiration_date}`}
+                          variant="warning"
+                        />
                       ) : (
-                        <span className="text-muted-foreground text-xs">{r.insurance_expiration_date}</span>
+                        <span className="text-muted-foreground text-xs">
+                          {r.insurance_expiration_date}
+                        </span>
                       )
                     ) : (
                       <span className="text-muted-foreground text-xs">—</span>
                     )}
                   </td>
-                  <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.totalContracts)}</td>
+                  <td className="py-1.5 px-3 text-right tabular-nums">
+                    ${fmtUsd(r.totalContracts)}
+                  </td>
                   <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.approved)}</td>
                   <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.paid)}</td>
                   <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.outstanding)}</td>

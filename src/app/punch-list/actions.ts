@@ -38,7 +38,16 @@ export async function createPunchListItemAction(draft: {
 
 export async function updatePunchListItemAction(
   id: string,
-  patch: { issue?: string; location?: string | null; description?: string | null; assigned_worker_id?: string | null; priority?: string; status?: string; photo_url?: string | null; notes?: string | null }
+  patch: {
+    issue?: string;
+    location?: string | null;
+    description?: string | null;
+    assigned_worker_id?: string | null;
+    priority?: string;
+    status?: string;
+    photo_url?: string | null;
+    notes?: string | null;
+  }
 ): Promise<{ error?: string }> {
   try {
     await updatePunchListItem(id, patch);

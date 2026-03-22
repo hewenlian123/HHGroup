@@ -21,7 +21,9 @@ export default async function LoginPage({
         setAll() {},
       },
     });
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (user) {
       const params = await searchParams;
       redirect(params.redirect ?? "/dashboard");

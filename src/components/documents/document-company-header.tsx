@@ -76,13 +76,17 @@ export function DocumentCompanyHeader({
             </p>
           ))}
           {company.phone ? (
-            <p className={cn("tabular-nums", compact ? "text-[11px]" : "text-sm")}>{company.phone}</p>
+            <p className={cn("tabular-nums", compact ? "text-[11px]" : "text-sm")}>
+              {company.phone}
+            </p>
           ) : null}
           {company.email ? (
             <p className={cn("break-all", compact ? "text-[11px]" : "text-sm")}>{company.email}</p>
           ) : null}
           {company.website ? (
-            <p className={cn("break-all text-zinc-700", compact ? "text-[11px]" : "text-sm")}>{company.website}</p>
+            <p className={cn("break-all text-zinc-700", compact ? "text-[11px]" : "text-sm")}>
+              {company.website}
+            </p>
           ) : null}
           {company.licenseNumber ? (
             <p className={cn("text-zinc-600", compact ? "text-[10px]" : "text-xs")}>
@@ -93,12 +97,11 @@ export function DocumentCompanyHeader({
       </div>
 
       <div
-        className={cn(
-          "shrink-0 text-right text-sm text-zinc-900",
-          compact ? "text-xs" : "text-sm"
-        )}
+        className={cn("shrink-0 text-right text-sm text-zinc-900", compact ? "text-xs" : "text-sm")}
       >
-        <p className={cn("font-bold text-zinc-950", compact ? "text-base" : "text-lg")}>{documentTitle}</p>
+        <p className={cn("font-bold text-zinc-950", compact ? "text-base" : "text-lg")}>
+          {documentTitle}
+        </p>
         <p className={cn("mt-1 tabular-nums", compact && "text-[11px]")}>
           <span className="text-zinc-500">{documentNoLabel}</span>{" "}
           <span className="font-semibold text-zinc-900">{documentNo}</span>

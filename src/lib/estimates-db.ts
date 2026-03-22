@@ -158,7 +158,9 @@ export function groupEstimateItemsByCategoryId(
     });
   }
 
-  const orphanIds = [...byId.keys()].filter((id) => !persistedIds.has(id)).sort((a, b) => a.localeCompare(b));
+  const orphanIds = [...byId.keys()]
+    .filter((id) => !persistedIds.has(id))
+    .sort((a, b) => a.localeCompare(b));
 
   for (const categoryId of orphanIds) {
     const rows = byId.get(categoryId)!;
@@ -242,7 +244,11 @@ export async function createEstimate(payload: {
   let number: string;
   const { data: numData } = await c.rpc("next_estimate_number");
   if (typeof numData === "string") number = numData;
-  else if (Array.isArray(numData) && numData[0] != null && typeof (numData[0] as { next_estimate_number?: string }).next_estimate_number === "string")
+  else if (
+    Array.isArray(numData) &&
+    numData[0] != null &&
+    typeof (numData[0] as { next_estimate_number?: string }).next_estimate_number === "string"
+  )
     number = (numData[0] as { next_estimate_number: string }).next_estimate_number;
   else number = `EST-${Date.now().toString().slice(-6)}`;
 
@@ -254,9 +260,12 @@ export async function createEstimate(payload: {
     .single();
 
   if (e1) {
-    const hint = "Run supabase/migrations/RUN_ESTIMATES_MIGRATIONS.sql in Supabase Dashboard → SQL Editor.";
+    const hint =
+      "Run supabase/migrations/RUN_ESTIMATES_MIGRATIONS.sql in Supabase Dashboard → SQL Editor.";
     const raw = e1.message ? ` (${e1.message})` : "";
-    const msg = isMissingTable(e1) ? `Estimates table missing. Run Supabase migrations. ${hint}${raw}` : e1.message;
+    const msg = isMissingTable(e1)
+      ? `Estimates table missing. Run Supabase migrations. ${hint}${raw}`
+      : e1.message;
     throw new Error(msg);
   }
   if (!row) throw new Error("Failed to create estimate: no id returned.");
@@ -275,15 +284,19 @@ export async function createEstimate(payload: {
     overhead_pct: payload.overheadPct ?? 0.05,
     profit_pct: payload.profitPct ?? 0.1,
   };
-  if (payload.validUntil != null && payload.validUntil !== "") metaIns.valid_until = payload.validUntil;
+  if (payload.validUntil != null && payload.validUntil !== "")
+    metaIns.valid_until = payload.validUntil;
   if (payload.notes != null) metaIns.notes = payload.notes;
   if (payload.salesPerson != null) metaIns.sales_person = payload.salesPerson;
 
   const { error: e2 } = await c.from("estimate_meta").insert(metaIns);
   if (e2) {
-    const hint = "Run supabase/migrations/RUN_ESTIMATES_MIGRATIONS.sql in Supabase Dashboard → SQL Editor.";
+    const hint =
+      "Run supabase/migrations/RUN_ESTIMATES_MIGRATIONS.sql in Supabase Dashboard → SQL Editor.";
     const raw = e2.message ? ` (${e2.message})` : "";
-    const msg = isMissingTable(e2) ? `estimate_meta table missing. Run Supabase migrations. ${hint}${raw}` : e2.message;
+    const msg = isMissingTable(e2)
+      ? `estimate_meta table missing. Run Supabase migrations. ${hint}${raw}`
+      : e2.message;
     throw new Error(msg);
   }
   return row.id;
@@ -304,8 +317,22 @@ export async function createEstimateWithItems(payload: {
   overheadPct?: number;
   profitPct?: number;
   categoryNames?: Record<string, string>;
-  items: Array<{ costCode: string; desc: string; qty: number; unit: string; unitCost: number; markupPct: number }>;
-  paymentSchedule?: Array<{ title: string; amountType: "percent" | "fixed"; value: number; dueRule: string; dueDate?: string | null; notes?: string | null }>;
+  items: Array<{
+    costCode: string;
+    desc: string;
+    qty: number;
+    unit: string;
+    unitCost: number;
+    markupPct: number;
+  }>;
+  paymentSchedule?: Array<{
+    title: string;
+    amountType: "percent" | "fixed";
+    value: number;
+    dueRule: string;
+    dueDate?: string | null;
+    notes?: string | null;
+  }>;
 }): Promise<string> {
   const id = await createEstimate({
     clientName: payload.clientName,
@@ -326,10 +353,12 @@ export async function createEstimateWithItems(payload: {
   if (payload.categoryNames && Object.keys(payload.categoryNames).length > 0) {
     let orderIdx = 0;
     for (const [cost_code, display_name] of Object.entries(payload.categoryNames)) {
-      await c.from("estimate_categories").upsert(
-        { estimate_id: id, cost_code, display_name, order_index: orderIdx++ },
-        { onConflict: "estimate_id,cost_code" }
-      );
+      await c
+        .from("estimate_categories")
+        .upsert(
+          { estimate_id: id, cost_code, display_name, order_index: orderIdx++ },
+          { onConflict: "estimate_id,cost_code" }
+        );
     }
   }
   for (const it of payload.items) {
@@ -363,9 +392,14 @@ export async function createEstimateWithItems(payload: {
 
 // —— Read ——
 
-export async function getEstimateList(codeToType: (code: string) => "material" | "labor" | "subcontractor" | undefined): Promise<EstimateListItem[]> {
+export async function getEstimateList(
+  codeToType: (code: string) => "material" | "labor" | "subcontractor" | undefined
+): Promise<EstimateListItem[]> {
   const c = client();
-  const { data: rows, error } = await c.from("estimates").select("id, number, client, project, status, updated_at, approved_at").order("updated_at", { ascending: false });
+  const { data: rows, error } = await c
+    .from("estimates")
+    .select("id, number, client, project, status, updated_at, approved_at")
+    .order("updated_at", { ascending: false });
   if (error) {
     if (isMissingTable(error)) return [];
     throw new Error(error.message);
@@ -391,7 +425,11 @@ export async function getEstimateList(codeToType: (code: string) => "material" |
 
 export async function getEstimateById(id: string): Promise<EstimateListItem | null> {
   const c = client();
-  const { data: r, error } = await c.from("estimates").select("id, number, client, project, status, updated_at, approved_at").eq("id", id).single();
+  const { data: r, error } = await c
+    .from("estimates")
+    .select("id, number, client, project, status, updated_at, approved_at")
+    .eq("id", id)
+    .single();
   if (error || !r) {
     if (error?.code === "PGRST116" || isMissingTable(error)) return null;
     return null;
@@ -414,7 +452,11 @@ export async function getEstimateById(id: string): Promise<EstimateListItem | nu
 
 export async function getEstimateMeta(estimateId: string): Promise<EstimateMetaRecord | null> {
   const c = client();
-  const { data: r, error } = await c.from("estimate_meta").select("*").eq("estimate_id", estimateId).single();
+  const { data: r, error } = await c
+    .from("estimate_meta")
+    .select("*")
+    .eq("estimate_id", estimateId)
+    .single();
   if (error || !r) {
     if (isMissingTable(error)) return null;
     return null;
@@ -442,7 +484,10 @@ export async function getEstimateMeta(estimateId: string): Promise<EstimateMetaR
   };
 }
 
-async function nextCategoryOrderIndex(c: ReturnType<typeof client>, estimateId: string): Promise<number> {
+async function nextCategoryOrderIndex(
+  c: ReturnType<typeof client>,
+  estimateId: string
+): Promise<number> {
   const { data } = await c
     .from("estimate_categories")
     .select("order_index")
@@ -467,7 +512,9 @@ async function upsertEstimateCategoryWithOrderFallback(
   c: ReturnType<typeof client>,
   row: { estimate_id: string; cost_code: string; display_name: string; order_index: number }
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { error } = await c.from("estimate_categories").upsert(row, { onConflict: "estimate_id,cost_code" });
+  const { error } = await c
+    .from("estimate_categories")
+    .upsert(row, { onConflict: "estimate_id,cost_code" });
   if (!error) return { ok: true };
   if (isMissingOrderIndexColumnError(error)) {
     const { error: fallbackErr } = await c
@@ -494,16 +541,22 @@ export async function getEstimateCategories(estimateId: string): Promise<Estimat
     if (isMissingTable(error)) return [];
     return [];
   }
-  return (rows ?? []).map((r: { cost_code: string; display_name: string; order_index?: number | null }) => ({
-    costCode: r.cost_code,
-    displayName: r.display_name,
-    orderIndex: r.order_index != null ? Number(r.order_index) : 0,
-  }));
+  return (rows ?? []).map(
+    (r: { cost_code: string; display_name: string; order_index?: number | null }) => ({
+      costCode: r.cost_code,
+      displayName: r.display_name,
+      orderIndex: r.order_index != null ? Number(r.order_index) : 0,
+    })
+  );
 }
 
 export async function getEstimateItems(estimateId: string): Promise<EstimateItemRow[]> {
   const c = client();
-  const { data: rows, error } = await c.from("estimate_items").select("*").eq("estimate_id", estimateId).order("cost_code");
+  const { data: rows, error } = await c
+    .from("estimate_items")
+    .select("*")
+    .eq("estimate_id", estimateId)
+    .order("cost_code");
   if (error) {
     if (isMissingTable(error)) return [];
     throw new Error(error.message);
@@ -529,8 +582,16 @@ function toSnapshotRecord(r: Record<string, unknown>): EstimateSnapshotRecord {
   const meta: (EstimateMetaRecord & { categoryNames?: Record<string, string> }) | null =
     metaJson && typeof metaJson === "object"
       ? ({
-          client: (metaJson.client as EstimateMetaRecord["client"]) ?? { name: "", phone: "", email: "", address: "" },
-          project: (metaJson.project as EstimateMetaRecord["project"]) ?? { name: "", siteAddress: "" },
+          client: (metaJson.client as EstimateMetaRecord["client"]) ?? {
+            name: "",
+            phone: "",
+            email: "",
+            address: "",
+          },
+          project: (metaJson.project as EstimateMetaRecord["project"]) ?? {
+            name: "",
+            siteAddress: "",
+          },
           tax: Number((metaJson.tax as number) ?? 0) || 0,
           discount: Number((metaJson.discount as number) ?? 0) || 0,
           overheadPct: Number((metaJson.overheadPct as number) ?? 0.05) || 0.05,
@@ -575,11 +636,13 @@ function toSnapshotRecord(r: Record<string, unknown>): EstimateSnapshotRecord {
   const frozenPayload = {
     items:
       frozen && Array.isArray(frozen.items)
-        ? (frozen.items as Array<{ qty?: unknown; unitCost?: unknown; markupPct?: unknown }>).map((x) => ({
-            qty: Number(x.qty) || 0,
-            unitCost: Number(x.unitCost) || 0,
-            markupPct: Number(x.markupPct) || 0,
-          }))
+        ? (frozen.items as Array<{ qty?: unknown; unitCost?: unknown; markupPct?: unknown }>).map(
+            (x) => ({
+              qty: Number(x.qty) || 0,
+              unitCost: Number(x.unitCost) || 0,
+              markupPct: Number(x.markupPct) || 0,
+            })
+          )
         : items.map((i) => ({ qty: i.qty, unitCost: i.unitCost, markupPct: i.markupPct })),
     overheadPct: Number(frozen?.overheadPct ?? meta?.overheadPct ?? 0.05) || 0.05,
     profitPct: Number(frozen?.profitPct ?? meta?.profitPct ?? 0.1) || 0.1,
@@ -602,7 +665,9 @@ export async function listEstimateSnapshots(estimateId: string): Promise<Estimat
   const c = client();
   const { data: rows, error } = await c
     .from("estimate_snapshots")
-    .select("id, estimate_id, version, created_at, status_at_snapshot, meta_json, items_json, summary_json, frozen_payload")
+    .select(
+      "id, estimate_id, version, created_at, status_at_snapshot, meta_json, items_json, summary_json, frozen_payload"
+    )
     .eq("estimate_id", estimateId)
     .order("version", { ascending: false });
   if (error) {
@@ -612,11 +677,16 @@ export async function listEstimateSnapshots(estimateId: string): Promise<Estimat
   return (rows ?? []).map((r: Record<string, unknown>) => toSnapshotRecord(r));
 }
 
-export async function getEstimateSnapshotByVersion(estimateId: string, version: number): Promise<EstimateSnapshotRecord | null> {
+export async function getEstimateSnapshotByVersion(
+  estimateId: string,
+  version: number
+): Promise<EstimateSnapshotRecord | null> {
   const c = client();
   const { data: row, error } = await c
     .from("estimate_snapshots")
-    .select("id, estimate_id, version, created_at, status_at_snapshot, meta_json, items_json, summary_json, frozen_payload")
+    .select(
+      "id, estimate_id, version, created_at, status_at_snapshot, meta_json, items_json, summary_json, frozen_payload"
+    )
     .eq("estimate_id", estimateId)
     .eq("version", version)
     .maybeSingle();
@@ -655,7 +725,10 @@ export async function createEstimateSnapshot(estimateId: string): Promise<string
     .eq("estimate_id", estimateId)
     .order("version", { ascending: false })
     .limit(1);
-  const nextVersion = (maxRow && maxRow[0] && Number((maxRow[0] as { version?: number }).version)) ? Number((maxRow[0] as { version?: number }).version) + 1 : 1;
+  const nextVersion =
+    maxRow && maxRow[0] && Number((maxRow[0] as { version?: number }).version)
+      ? Number((maxRow[0] as { version?: number }).version) + 1
+      : 1;
 
   const metaJson = {
     ...meta,
@@ -681,7 +754,8 @@ export async function createEstimateSnapshot(estimateId: string): Promise<string
     .select("id")
     .single();
   if (error) {
-    if (isMissingTable(error)) throw new Error("estimate_snapshots table not found. Run migrations.");
+    if (isMissingTable(error))
+      throw new Error("estimate_snapshots table not found. Run migrations.");
     throw new Error(error.message ?? "Failed to create snapshot.");
   }
   return (inserted as { id?: string } | null)?.id ?? null;
@@ -705,7 +779,10 @@ export async function createNewVersionFromSnapshot(estimateId: string): Promise<
   });
 
   // Unlock estimate for editing by moving back to Draft, then restore meta/items.
-  await c.from("estimates").update({ status: "Draft", updated_at: new Date().toISOString().slice(0, 10) }).eq("id", estimateId);
+  await c
+    .from("estimates")
+    .update({ status: "Draft", updated_at: new Date().toISOString().slice(0, 10) })
+    .eq("id", estimateId);
 
   // Restore meta (bypass updateEstimateMeta restrictions by updating directly).
   const m = latest.meta;
@@ -732,10 +809,12 @@ export async function createNewVersionFromSnapshot(estimateId: string): Promise<
   const catEntries = Object.entries(categoryNames);
   for (let i = 0; i < catEntries.length; i++) {
     const [cost_code, display_name] = catEntries[i];
-    await c.from("estimate_categories").upsert(
-      { estimate_id: estimateId, cost_code, display_name, order_index: i },
-      { onConflict: "estimate_id,cost_code" }
-    );
+    await c
+      .from("estimate_categories")
+      .upsert(
+        { estimate_id: estimateId, cost_code, display_name, order_index: i },
+        { onConflict: "estimate_id,cost_code" }
+      );
   }
 
   // Restore items: replace all
@@ -786,7 +865,8 @@ export async function updateEstimateMeta(
     updates.project_site_address = payload.project?.siteAddress ?? payload.client.address;
   }
   if (payload.project?.name != null) updates.project_name = payload.project.name;
-  if (payload.project?.siteAddress != null) updates.project_site_address = payload.project.siteAddress;
+  if (payload.project?.siteAddress != null)
+    updates.project_site_address = payload.project.siteAddress;
   if (payload.tax != null) updates.tax = payload.tax;
   if (payload.discount != null) updates.discount = payload.discount;
   if (payload.overheadPct != null) updates.overhead_pct = payload.overheadPct;
@@ -797,7 +877,10 @@ export async function updateEstimateMeta(
   if (payload.salesPerson != null) updates.sales_person = payload.salesPerson;
 
   if (Object.keys(updates).length > 0) {
-    const { error: e1 } = await c.from("estimate_meta").update(updates).eq("estimate_id", estimateId);
+    const { error: e1 } = await c
+      .from("estimate_meta")
+      .update(updates)
+      .eq("estimate_id", estimateId);
     if (e1) return false;
     const estRow: Record<string, string> = { updated_at: new Date().toISOString().slice(0, 10) };
     if (payload.client?.name) estRow.client = payload.client.name;
@@ -825,7 +908,10 @@ export async function updateEstimateMeta(
       });
       if (!up.ok) return false;
     }
-    await c.from("estimates").update({ updated_at: new Date().toISOString().slice(0, 10) }).eq("id", estimateId);
+    await c
+      .from("estimates")
+      .update({ updated_at: new Date().toISOString().slice(0, 10) })
+      .eq("id", estimateId);
   }
   return true;
 }
@@ -845,26 +931,41 @@ export async function reorderEstimateCategories(
     .select("cost_code, display_name")
     .eq("estimate_id", estimateId);
   const existingNames: Record<string, string> = Object.fromEntries(
-    (existingRows ?? []).map((r: { cost_code: string; display_name: string }) => [r.cost_code, r.display_name])
+    (existingRows ?? []).map((r: { cost_code: string; display_name: string }) => [
+      r.cost_code,
+      r.display_name,
+    ])
   );
 
   for (let i = 0; i < orderedCostCodes.length; i++) {
     const cost_code = orderedCostCodes[i];
     const fromMap = displayNamesByCode[cost_code]?.trim();
     const display_name = (fromMap || existingNames[cost_code] || cost_code).trim() || cost_code;
-    const { error } = await c.from("estimate_categories").upsert(
-      { estimate_id: estimateId, cost_code, display_name, order_index: i },
-      { onConflict: "estimate_id,cost_code" }
-    );
+    const { error } = await c
+      .from("estimate_categories")
+      .upsert(
+        { estimate_id: estimateId, cost_code, display_name, order_index: i },
+        { onConflict: "estimate_id,cost_code" }
+      );
     if (error) return false;
   }
-  await c.from("estimates").update({ updated_at: new Date().toISOString().slice(0, 10) }).eq("id", estimateId);
+  await c
+    .from("estimates")
+    .update({ updated_at: new Date().toISOString().slice(0, 10) })
+    .eq("id", estimateId);
   return true;
 }
 
 export async function addLineItem(
   estimateId: string,
-  item: { costCode: string; desc: string; qty: number; unit: string; unitCost: number; markupPct: number }
+  item: {
+    costCode: string;
+    desc: string;
+    qty: number;
+    unit: string;
+    unitCost: number;
+    markupPct: number;
+  }
 ): Promise<EstimateItemRow | null> {
   const c = client();
   const { data: est } = await c.from("estimates").select("status").eq("id", estimateId).single();
@@ -898,7 +999,10 @@ export async function addLineItem(
   };
 }
 
-async function generateUniqueCustomCostCode(c: ReturnType<typeof client>, estimateId: string): Promise<string> {
+async function generateUniqueCustomCostCode(
+  c: ReturnType<typeof client>,
+  estimateId: string
+): Promise<string> {
   const { data: catRows } = await c
     .from("estimate_categories")
     .select("cost_code")
@@ -909,8 +1013,10 @@ async function generateUniqueCustomCostCode(c: ReturnType<typeof client>, estima
     .eq("estimate_id", estimateId);
 
   const used = new Set<string>();
-  for (const r of catRows ?? []) used.add(String((r as { cost_code?: string }).cost_code ?? "").trim());
-  for (const r of itemRows ?? []) used.add(String((r as { cost_code?: string }).cost_code ?? "").trim());
+  for (const r of catRows ?? [])
+    used.add(String((r as { cost_code?: string }).cost_code ?? "").trim());
+  for (const r of itemRows ?? [])
+    used.add(String((r as { cost_code?: string }).cost_code ?? "").trim());
 
   let candidate = generateCode(used);
   for (let attempt = 0; attempt < 50; attempt++) {
@@ -932,7 +1038,11 @@ export async function createCustomEstimateCategory(
   const trimmed = displayName.trim();
   if (!trimmed) return { ok: false, error: "Name is required." };
   const c = client();
-  const { data: est } = await c.from("estimates").select("status").eq("id", estimateIdSafe).single();
+  const { data: est } = await c
+    .from("estimates")
+    .select("status")
+    .eq("id", estimateIdSafe)
+    .single();
   if (!est || !["Draft", "Sent"].includes(est.status as string)) {
     return { ok: false, error: "Estimate cannot be edited." };
   }
@@ -940,10 +1050,17 @@ export async function createCustomEstimateCategory(
   const costCode = await generateUniqueCustomCostCode(c, estimateIdSafe);
   const orderIndex = await nextCategoryOrderIndex(c, estimateIdSafe);
 
-  const { error: eCat } = await c.from("estimate_categories").upsert(
-    { estimate_id: estimateIdSafe, cost_code: costCode, display_name: trimmed, order_index: orderIndex },
-    { onConflict: "estimate_id,cost_code" }
-  );
+  const { error: eCat } = await c
+    .from("estimate_categories")
+    .upsert(
+      {
+        estimate_id: estimateIdSafe,
+        cost_code: costCode,
+        display_name: trimmed,
+        order_index: orderIndex,
+      },
+      { onConflict: "estimate_id,cost_code" }
+    );
   if (eCat && isMissingOrderIndexColumnError(eCat)) {
     // Backward-compat guard: some environments haven't refreshed schema cache for order_index yet.
     const { error: fallbackErr } = await c
@@ -962,7 +1079,11 @@ export async function createCustomEstimateCategory(
         markupPct: 0.1,
       });
       if (!item) {
-        await c.from("estimate_categories").delete().eq("estimate_id", estimateIdSafe).eq("cost_code", costCode);
+        await c
+          .from("estimate_categories")
+          .delete()
+          .eq("estimate_id", estimateIdSafe)
+          .eq("cost_code", costCode);
         return { ok: false, error: "Could not create category line item." };
       }
       return { ok: true, costCode, item };
@@ -991,7 +1112,11 @@ export async function createCustomEstimateCategory(
     markupPct: 0.1,
   });
   if (!item) {
-    await c.from("estimate_categories").delete().eq("estimate_id", estimateIdSafe).eq("cost_code", costCode);
+    await c
+      .from("estimate_categories")
+      .delete()
+      .eq("estimate_id", estimateIdSafe)
+      .eq("cost_code", costCode);
     return { ok: false, error: "Could not create category line item." };
   }
   return { ok: true, costCode, item };
@@ -1011,7 +1136,11 @@ export async function createEstimateCategoryWithExplicitCode(
   if (!costCode) return { ok: false, error: "Code is required." };
 
   const c = client();
-  const { data: est } = await c.from("estimates").select("status").eq("id", estimateIdSafe).single();
+  const { data: est } = await c
+    .from("estimates")
+    .select("status")
+    .eq("id", estimateIdSafe)
+    .single();
   if (!est || !["Draft", "Sent"].includes(est.status as string)) {
     return { ok: false, error: "Estimate cannot be edited." };
   }
@@ -1058,7 +1187,11 @@ export async function createEstimateCategoryWithExplicitCode(
         markupPct: 0.1,
       });
       if (!item) {
-        await c.from("estimate_categories").delete().eq("estimate_id", estimateIdSafe).eq("cost_code", costCode);
+        await c
+          .from("estimate_categories")
+          .delete()
+          .eq("estimate_id", estimateIdSafe)
+          .eq("cost_code", costCode);
         return { ok: false, error: "Could not create category line item." };
       }
       return { ok: true, costCode, item };
@@ -1087,7 +1220,11 @@ export async function createEstimateCategoryWithExplicitCode(
     markupPct: 0.1,
   });
   if (!item) {
-    await c.from("estimate_categories").delete().eq("estimate_id", estimateIdSafe).eq("cost_code", costCode);
+    await c
+      .from("estimate_categories")
+      .delete()
+      .eq("estimate_id", estimateIdSafe)
+      .eq("cost_code", costCode);
     return { ok: false, error: "Could not create category line item." };
   }
   return { ok: true, costCode, item };
@@ -1105,7 +1242,11 @@ export async function updateEstimateCategoryDisplayName(
   if (!estimateIdSafe || !costCodeSafe || !nameSafe) return false;
 
   const c = client();
-  const { data: est } = await c.from("estimates").select("status").eq("id", estimateIdSafe).single();
+  const { data: est } = await c
+    .from("estimates")
+    .select("status")
+    .eq("id", estimateIdSafe)
+    .single();
   if (!est || !["Draft", "Sent"].includes(est.status as string)) return false;
 
   const { data: existing } = await c
@@ -1126,7 +1267,10 @@ export async function updateEstimateCategoryDisplayName(
     order_index: oi,
   });
   if (!up.ok) return false;
-  await c.from("estimates").update({ updated_at: new Date().toISOString().slice(0, 10) }).eq("id", estimateIdSafe);
+  await c
+    .from("estimates")
+    .update({ updated_at: new Date().toISOString().slice(0, 10) })
+    .eq("id", estimateIdSafe);
   return true;
 }
 
@@ -1145,9 +1289,16 @@ export async function updateLineItem(
   if (payload.unitCost != null) up.unit_cost = payload.unitCost;
   if (payload.markupPct != null) up.markup_pct = payload.markupPct;
   if (Object.keys(up).length === 0) return true;
-  const { error } = await c.from("estimate_items").update(up).eq("id", itemId).eq("estimate_id", estimateId);
+  const { error } = await c
+    .from("estimate_items")
+    .update(up)
+    .eq("id", itemId)
+    .eq("estimate_id", estimateId);
   if (error) return false;
-  await c.from("estimates").update({ updated_at: new Date().toISOString().slice(0, 10) }).eq("id", estimateId);
+  await c
+    .from("estimates")
+    .update({ updated_at: new Date().toISOString().slice(0, 10) })
+    .eq("id", estimateId);
   return true;
 }
 
@@ -1172,10 +1323,12 @@ export async function moveEstimateItemsToCostCode(
     .maybeSingle();
   if (!catRow) {
     const oi = await nextCategoryOrderIndex(c, estimateId);
-    const { error: e2 } = await c.from("estimate_categories").upsert(
-      { estimate_id: estimateId, cost_code: newCostCode, display_name: hint, order_index: oi },
-      { onConflict: "estimate_id,cost_code" }
-    );
+    const { error: e2 } = await c
+      .from("estimate_categories")
+      .upsert(
+        { estimate_id: estimateId, cost_code: newCostCode, display_name: hint, order_index: oi },
+        { onConflict: "estimate_id,cost_code" }
+      );
     if (e2) return false;
   }
 
@@ -1185,7 +1338,10 @@ export async function moveEstimateItemsToCostCode(
     .in("id", itemIds)
     .eq("estimate_id", estimateId);
   if (error) return false;
-  await c.from("estimates").update({ updated_at: new Date().toISOString().slice(0, 10) }).eq("id", estimateId);
+  await c
+    .from("estimates")
+    .update({ updated_at: new Date().toISOString().slice(0, 10) })
+    .eq("id", estimateId);
   return true;
 }
 
@@ -1193,13 +1349,23 @@ export async function deleteLineItem(estimateId: string, itemId: string): Promis
   const c = client();
   const { data: est } = await c.from("estimates").select("status").eq("id", estimateId).single();
   if (!est || !["Draft", "Sent"].includes(est.status as string)) return false;
-  const { error } = await c.from("estimate_items").delete().eq("id", itemId).eq("estimate_id", estimateId);
+  const { error } = await c
+    .from("estimate_items")
+    .delete()
+    .eq("id", itemId)
+    .eq("estimate_id", estimateId);
   if (error) return false;
-  await c.from("estimates").update({ updated_at: new Date().toISOString().slice(0, 10) }).eq("id", estimateId);
+  await c
+    .from("estimates")
+    .update({ updated_at: new Date().toISOString().slice(0, 10) })
+    .eq("id", estimateId);
   return true;
 }
 
-export async function duplicateLineItem(estimateId: string, itemId: string): Promise<EstimateItemRow | null> {
+export async function duplicateLineItem(
+  estimateId: string,
+  itemId: string
+): Promise<EstimateItemRow | null> {
   const items = await getEstimateItems(estimateId);
   const src = items.find((i) => i.id === itemId);
   if (!src) return null;
@@ -1244,7 +1410,14 @@ export async function getPaymentSchedule(estimateId: string): Promise<PaymentSch
 
 export async function addPaymentMilestone(
   estimateId: string,
-  item: { title: string; amountType: "percent" | "fixed"; value: number; dueRule: string; dueDate?: string | null; notes?: string | null }
+  item: {
+    title: string;
+    amountType: "percent" | "fixed";
+    value: number;
+    dueRule: string;
+    dueDate?: string | null;
+    notes?: string | null;
+  }
 ): Promise<PaymentScheduleItem | null> {
   const c = client();
   const { data: est } = await c.from("estimates").select("status").eq("id", estimateId).single();
@@ -1292,7 +1465,14 @@ export async function addPaymentMilestone(
 export async function updatePaymentMilestone(
   estimateId: string,
   itemId: string,
-  payload: { title?: string; amountType?: "percent" | "fixed"; value?: number; dueRule?: string; dueDate?: string | null; notes?: string | null }
+  payload: {
+    title?: string;
+    amountType?: "percent" | "fixed";
+    value?: number;
+    dueRule?: string;
+    dueDate?: string | null;
+    notes?: string | null;
+  }
 ): Promise<boolean> {
   const c = client();
   const { data: est } = await c.from("estimates").select("status").eq("id", estimateId).single();
@@ -1314,7 +1494,10 @@ export async function updatePaymentMilestone(
 }
 
 /** Reorder payment schedule by updating sort_order for each item. orderedItemIds = ids in desired order. */
-export async function reorderPaymentSchedule(estimateId: string, orderedItemIds: string[]): Promise<boolean> {
+export async function reorderPaymentSchedule(
+  estimateId: string,
+  orderedItemIds: string[]
+): Promise<boolean> {
   const c = client();
   const { data: est } = await c.from("estimates").select("status").eq("id", estimateId).single();
   if (!est || !["Draft", "Sent"].includes(est.status as string)) return false;
@@ -1341,7 +1524,10 @@ export async function deletePaymentMilestone(estimateId: string, itemId: string)
   return !error;
 }
 
-export async function markPaymentMilestonePaid(estimateId: string, itemId: string): Promise<boolean> {
+export async function markPaymentMilestonePaid(
+  estimateId: string,
+  itemId: string
+): Promise<boolean> {
   const c = client();
   const { error } = await c
     .from("estimate_payment_schedule")
@@ -1377,7 +1563,10 @@ export type PaymentScheduleTemplateItem = {
 
 export async function listPaymentTemplates(): Promise<PaymentScheduleTemplate[]> {
   const c = client();
-  const { data: rows, error } = await c.from("payment_schedule_templates").select("id, name").order("name", { ascending: true });
+  const { data: rows, error } = await c
+    .from("payment_schedule_templates")
+    .select("id, name")
+    .order("name", { ascending: true });
   if (error) {
     if (isMissingTable(error)) return [];
     throw new Error(error.message);
@@ -1388,9 +1577,15 @@ export async function listPaymentTemplates(): Promise<PaymentScheduleTemplate[]>
   }));
 }
 
-export async function getPaymentTemplateWithItems(templateId: string): Promise<{ template: PaymentScheduleTemplate; items: PaymentScheduleTemplateItem[] } | null> {
+export async function getPaymentTemplateWithItems(
+  templateId: string
+): Promise<{ template: PaymentScheduleTemplate; items: PaymentScheduleTemplateItem[] } | null> {
   const c = client();
-  const { data: templateRow, error: tErr } = await c.from("payment_schedule_templates").select("*").eq("id", templateId).single();
+  const { data: templateRow, error: tErr } = await c
+    .from("payment_schedule_templates")
+    .select("*")
+    .eq("id", templateId)
+    .single();
   if (tErr || !templateRow) {
     if (tErr && isMissingTable(tErr)) return null;
     return null;
@@ -1423,7 +1618,13 @@ export async function getPaymentTemplateWithItems(templateId: string): Promise<{
 
 export async function createPaymentTemplate(
   name: string,
-  items: Array<{ title: string; amountType: "percent" | "fixed"; value: number; dueRule: string; notes?: string | null }>
+  items: Array<{
+    title: string;
+    amountType: "percent" | "fixed";
+    value: number;
+    dueRule: string;
+    notes?: string | null;
+  }>
 ): Promise<PaymentScheduleTemplate | null> {
   const c = client();
   const { data: inserted, error: tErr } = await c
@@ -1454,7 +1655,10 @@ export async function createPaymentTemplate(
   return { id: templateId, name: (t.name as string) ?? "" };
 }
 
-export async function applyPaymentTemplateToEstimate(estimateId: string, templateId: string): Promise<boolean> {
+export async function applyPaymentTemplateToEstimate(
+  estimateId: string,
+  templateId: string
+): Promise<boolean> {
   const data = await getPaymentTemplateWithItems(templateId);
   if (!data || data.items.length === 0) return false;
   const c = client();
@@ -1488,7 +1692,11 @@ export async function setEstimateStatus(
   nextStatus: EstimateStatus
 ): Promise<boolean> {
   const c = client();
-  const { data: est, error: fetchErr } = await c.from("estimates").select("status").eq("id", estimateId).single();
+  const { data: est, error: fetchErr } = await c
+    .from("estimates")
+    .select("status")
+    .eq("id", estimateId)
+    .single();
   if (fetchErr || !est) return false;
   const current = est.status as EstimateStatus;
   const allowed = ALLOWED_TRANSITIONS[current];
@@ -1503,9 +1711,16 @@ export async function setEstimateStatus(
 }
 
 /** Allow changing status to any value (e.g. correct a misclick). Sets/clears approved_at when switching to/from Approved. */
-export async function updateEstimateStatus(estimateId: string, newStatus: EstimateStatus): Promise<boolean> {
+export async function updateEstimateStatus(
+  estimateId: string,
+  newStatus: EstimateStatus
+): Promise<boolean> {
   const c = client();
-  const { data: est, error: fetchErr } = await c.from("estimates").select("status").eq("id", estimateId).single();
+  const { data: est, error: fetchErr } = await c
+    .from("estimates")
+    .select("status")
+    .eq("id", estimateId)
+    .single();
   if (fetchErr || !est) return false;
 
   const now = new Date().toISOString().slice(0, 10);

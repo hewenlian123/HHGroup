@@ -45,10 +45,14 @@ function isMissingColumn(err: { message?: string } | null): boolean {
 }
 
 /** Fetch one subcontract by id with subcontractor name. Returns null if not found. */
-export async function getSubcontractById(subcontractId: string): Promise<SubcontractWithSubcontractor | null> {
+export async function getSubcontractById(
+  subcontractId: string
+): Promise<SubcontractWithSubcontractor | null> {
   const c = client();
-  const selectCols = "id, project_id, subcontractor_id, cost_code, contract_amount, status, description, start_date, end_date, created_at, subcontractors(name)";
-  const withoutStatusCols = "id, project_id, subcontractor_id, cost_code, contract_amount, description, start_date, end_date, created_at, subcontractors(name)";
+  const selectCols =
+    "id, project_id, subcontractor_id, cost_code, contract_amount, status, description, start_date, end_date, created_at, subcontractors(name)";
+  const withoutStatusCols =
+    "id, project_id, subcontractor_id, cost_code, contract_amount, description, start_date, end_date, created_at, subcontractors(name)";
 
   const { data: row, error } = await c
     .from("subcontracts")
@@ -56,7 +60,11 @@ export async function getSubcontractById(subcontractId: string): Promise<Subcont
     .eq("id", subcontractId)
     .maybeSingle();
   if (error && isMissingColumn(error)) {
-    const retry = await c.from("subcontracts").select(withoutStatusCols).eq("id", subcontractId).maybeSingle();
+    const retry = await c
+      .from("subcontracts")
+      .select(withoutStatusCols)
+      .eq("id", subcontractId)
+      .maybeSingle();
     if (retry.error) throw new Error(retry.error.message ?? "Failed to load subcontract.");
     if (!retry.data) return null;
     const r = retry.data as Record<string, unknown>;
@@ -95,10 +103,14 @@ export async function getSubcontractById(subcontractId: string): Promise<Subcont
 }
 
 /** Fetch subcontracts for a project with subcontractor name. */
-export async function getSubcontractsByProject(projectId: string): Promise<SubcontractWithSubcontractor[]> {
+export async function getSubcontractsByProject(
+  projectId: string
+): Promise<SubcontractWithSubcontractor[]> {
   const c = client();
-  const selectCols = "id, project_id, subcontractor_id, cost_code, contract_amount, status, description, start_date, end_date, created_at, subcontractors(name)";
-  const withoutStatusCols = "id, project_id, subcontractor_id, cost_code, contract_amount, description, start_date, end_date, created_at, subcontractors(name)";
+  const selectCols =
+    "id, project_id, subcontractor_id, cost_code, contract_amount, status, description, start_date, end_date, created_at, subcontractors(name)";
+  const withoutStatusCols =
+    "id, project_id, subcontractor_id, cost_code, contract_amount, description, start_date, end_date, created_at, subcontractors(name)";
 
   const { data: rows, error } = await c
     .from("subcontracts")
@@ -153,10 +165,14 @@ export type SubcontractWithProject = SubcontractRow & {
 };
 
 /** Fetch subcontracts for a subcontractor with project name. */
-export async function getSubcontractsBySubcontractor(subcontractorId: string): Promise<SubcontractWithProject[]> {
+export async function getSubcontractsBySubcontractor(
+  subcontractorId: string
+): Promise<SubcontractWithProject[]> {
   const c = client();
-  const selectCols = "id, project_id, subcontractor_id, cost_code, contract_amount, status, description, start_date, end_date, created_at, projects(name)";
-  const withoutStatusCols = "id, project_id, subcontractor_id, cost_code, contract_amount, description, start_date, end_date, created_at, projects(name)";
+  const selectCols =
+    "id, project_id, subcontractor_id, cost_code, contract_amount, status, description, start_date, end_date, created_at, projects(name)";
+  const withoutStatusCols =
+    "id, project_id, subcontractor_id, cost_code, contract_amount, description, start_date, end_date, created_at, projects(name)";
 
   const { data: rows, error } = await c
     .from("subcontracts")
@@ -207,7 +223,9 @@ export async function getSubcontractsBySubcontractor(subcontractorId: string): P
 }
 
 /** Fetch all subcontracts for summary: id, subcontractor_id, contract_amount. */
-export async function getSubcontractsSummaryAll(): Promise<{ id: string; subcontractor_id: string; contract_amount: number }[]> {
+export async function getSubcontractsSummaryAll(): Promise<
+  { id: string; subcontractor_id: string; contract_amount: number }[]
+> {
   const c = client();
   const { data: rows, error } = await c
     .from("subcontracts")
@@ -222,7 +240,13 @@ export async function getSubcontractsSummaryAll(): Promise<{ id: string; subcont
 
 /** Fetch all subcontracts with subcontractor name and project name for dashboard/summary. */
 export async function getSubcontractsWithDetailsAll(): Promise<
-  { id: string; subcontractor_id: string; project_id: string; subcontractor_name: string; project_name: string }[]
+  {
+    id: string;
+    subcontractor_id: string;
+    project_id: string;
+    subcontractor_name: string;
+    project_name: string;
+  }[]
 > {
   const c = client();
   const { data: rows, error } = await c
@@ -259,7 +283,10 @@ export async function insertSubcontract(draft: SubcontractDraft): Promise<void> 
   if (error) throw new Error(error.message ?? "Failed to add subcontract.");
 }
 
-export async function updateSubcontractStatus(subcontractId: string, status: SubcontractRow["status"]): Promise<void> {
+export async function updateSubcontractStatus(
+  subcontractId: string,
+  status: SubcontractRow["status"]
+): Promise<void> {
   const c = client();
   const { error } = await c.from("subcontracts").update({ status }).eq("id", subcontractId);
   if (error) throw new Error(error.message ?? "Failed to update subcontract status.");

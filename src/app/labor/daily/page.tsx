@@ -2,12 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import {
-  PageLayout,
-  PageHeader,
-  Divider,
-  SectionHeader,
-} from "@/components/base";
+import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -46,7 +41,15 @@ function parseDayTypeAndOt(notes: string | null): { dayType: string; otHours: st
   const dayMatch = /day_type=(\w+)/.exec(notes);
   const otMatch = /ot_hours=([\d.]+)/.exec(notes);
   return {
-    dayType: dayMatch ? (dayMatch[1] === "full_day" ? "Full Day" : dayMatch[1] === "half_day" ? "Half Day" : dayMatch[1] === "absent" ? "Absent" : dayMatch[1]) : dayType,
+    dayType: dayMatch
+      ? dayMatch[1] === "full_day"
+        ? "Full Day"
+        : dayMatch[1] === "half_day"
+          ? "Half Day"
+          : dayMatch[1] === "absent"
+            ? "Absent"
+            : dayMatch[1]
+      : dayType,
     otHours: otMatch ? otMatch[1] : otHours,
   };
 }
@@ -146,11 +149,14 @@ export default function DailyLaborLogPage() {
     [load, loadEntries]
   );
 
-  const handleSaved = React.useCallback((count: number) => {
-    setMessage(`Saved ${count} entr${count === 1 ? "y" : "ies"}.`);
-    setError(null);
-    void loadEntries();
-  }, [loadEntries]);
+  const handleSaved = React.useCallback(
+    (count: number) => {
+      setMessage(`Saved ${count} entr${count === 1 ? "y" : "ies"}.`);
+      setError(null);
+      void loadEntries();
+    },
+    [loadEntries]
+  );
 
   const openEdit = React.useCallback((entry: LaborEntryWithJoins) => {
     setEditing(entry);
@@ -169,21 +175,24 @@ export default function DailyLaborLogPage() {
     setEditError(null);
   }, []);
 
-  const handleDelete = React.useCallback(async (entry: LaborEntryWithJoins) => {
-    if (!window.confirm("Are you sure you want to delete this entry?")) return;
-    setError(null);
-    setMessage(null);
-    const prev = dayEntries;
-    setDayEntries((p) => p.filter((x) => x.id !== entry.id));
-    try {
-      await clearLaborEntry(entry.id);
-      setMessage("Entry deleted.");
-      void loadEntries();
-    } catch (e) {
-      setDayEntries(prev);
-      setError(e instanceof Error ? e.message : "Failed to delete.");
-    }
-  }, [dayEntries, loadEntries]);
+  const handleDelete = React.useCallback(
+    async (entry: LaborEntryWithJoins) => {
+      if (!window.confirm("Are you sure you want to delete this entry?")) return;
+      setError(null);
+      setMessage(null);
+      const prev = dayEntries;
+      setDayEntries((p) => p.filter((x) => x.id !== entry.id));
+      try {
+        await clearLaborEntry(entry.id);
+        setMessage("Entry deleted.");
+        void loadEntries();
+      } catch (e) {
+        setDayEntries(prev);
+        setError(e instanceof Error ? e.message : "Failed to delete.");
+      }
+    },
+    [dayEntries, loadEntries]
+  );
 
   const handleSaveEdit = React.useCallback(async () => {
     if (!editing) return;
@@ -215,7 +224,16 @@ export default function DailyLaborLogPage() {
     } finally {
       setEditBusy(false);
     }
-  }, [editing, editAmount, editHours, editNotes, editProjectId, editSession, closeEdit, loadEntries]);
+  }, [
+    editing,
+    editAmount,
+    editHours,
+    editNotes,
+    editProjectId,
+    editSession,
+    closeEdit,
+    loadEntries,
+  ]);
 
   return (
     <PageLayout
@@ -267,12 +285,8 @@ export default function DailyLaborLogPage() {
         }
       />
       <Divider />
-      {error ? (
-        <p className="py-3 text-sm text-red-600">{error}</p>
-      ) : null}
-      {message ? (
-        <p className="py-3 text-sm text-gray-500">{message}</p>
-      ) : null}
+      {error ? <p className="py-3 text-sm text-red-600">{error}</p> : null}
+      {message ? <p className="py-3 text-sm text-gray-500">{message}</p> : null}
 
       <div className="space-y-2">
         <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
@@ -281,17 +295,29 @@ export default function DailyLaborLogPage() {
         {entriesLoading ? (
           <p className="py-4 text-sm text-gray-500">Loading…</p>
         ) : dayEntries.length === 0 ? (
-          <p className="py-4 text-sm text-gray-500">No entries for this date. Use &quot;+ Add Entry&quot; to add workers.</p>
+          <p className="py-4 text-sm text-gray-500">
+            No entries for this date. Use &quot;+ Add Entry&quot; to add workers.
+          </p>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-[#E5E7EB]">
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="border-b border-[#E5E7EB] bg-gray-50">
-                  <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-gray-500">Worker</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-gray-500">Project</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-gray-500">Day Type</th>
-                  <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-gray-500 tabular-nums">OT</th>
-                  <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-gray-500 tabular-nums">Total Pay</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-gray-500">
+                    Worker
+                  </th>
+                  <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-gray-500">
+                    Project
+                  </th>
+                  <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-gray-500">
+                    Day Type
+                  </th>
+                  <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-gray-500 tabular-nums">
+                    OT
+                  </th>
+                  <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-gray-500 tabular-nums">
+                    Total Pay
+                  </th>
                   <th className="w-20" />
                 </tr>
               </thead>
@@ -302,14 +328,18 @@ export default function DailyLaborLogPage() {
                   const pay = e.cost_amount != null ? Number(e.cost_amount) : 0;
                   return (
                     <tr key={e.id} className="group border-b border-[#E5E7EB] last:border-b-0">
-                      <td className="py-2 px-3 font-medium text-[#111111]">{e.worker_name ?? "—"}</td>
+                      <td className="py-2 px-3 font-medium text-[#111111]">
+                        {e.worker_name ?? "—"}
+                      </td>
                       <td className="py-2 px-3 text-gray-600">{e.project_name ?? "—"}</td>
                       <td className="py-2 px-3 text-gray-600">
                         <span className="mr-1">{sessionTag(sess)}</span>
                         {dayType}
                       </td>
                       <td className="py-2 px-3 text-right tabular-nums text-gray-600">{otHours}</td>
-                      <td className="py-2 px-3 text-right tabular-nums font-medium">${pay.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right tabular-nums font-medium">
+                        ${pay.toFixed(2)}
+                      </td>
                       <td className="py-2 px-3 text-right">
                         <div className="flex justify-end gap-1">
                           <UiButton
@@ -372,7 +402,9 @@ export default function DailyLaborLogPage() {
               >
                 <option value="">—</option>
                 {projects.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -424,8 +456,21 @@ export default function DailyLaborLogPage() {
             {editError ? <p className="text-sm text-destructive">{editError}</p> : null}
           </div>
           <DialogFooter className="px-6 pb-6 max-sm:px-4 max-sm:pb-4 border-t border-border/60 pt-4">
-            <Button variant="outline" size="sm" className="rounded-sm" onClick={closeEdit} disabled={editBusy}>Cancel</Button>
-            <Button size="sm" className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90" onClick={() => void handleSaveEdit()} disabled={editBusy}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-sm"
+              onClick={closeEdit}
+              disabled={editBusy}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90"
+              onClick={() => void handleSaveEdit()}
+              disabled={editBusy}
+            >
               {editBusy ? "Saving…" : "Save Changes"}
             </Button>
           </DialogFooter>
@@ -523,7 +568,7 @@ function QuickTimesheetModal({
       existingWorkerIds: new Set<string>(),
       error: null,
     }),
-    [],
+    []
   );
 
   React.useEffect(() => {
@@ -563,7 +608,7 @@ function QuickTimesheetModal({
     (id: string, updater: (s: ProjectSection) => ProjectSection) => {
       setSections((prev) => prev.map((s) => (s.id === id ? updater(s) : s)));
     },
-    [],
+    []
   );
 
   const addSection = () => {
@@ -579,9 +624,7 @@ function QuickTimesheetModal({
 
   const handleProjectChange = (id: string, projectId: string) => {
     // Prevent duplicate project selection
-    const duplicate = sections.some(
-      (s) => s.id !== id && s.projectId && s.projectId === projectId,
-    );
+    const duplicate = sections.some((s) => s.id !== id && s.projectId && s.projectId === projectId);
     if (duplicate) {
       updateSection(id, (s) => ({
         ...s,
@@ -598,14 +641,17 @@ function QuickTimesheetModal({
     }));
   };
 
-  const toggleWorker = React.useCallback((sectionId: string, workerId: string) => {
-    updateSection(sectionId, (s) => {
-      const next = new Set(s.selectedWorkerIds);
-      if (next.has(workerId)) next.delete(workerId);
-      else next.add(workerId);
-      return { ...s, selectedWorkerIds: next };
-    });
-  }, [updateSection]);
+  const toggleWorker = React.useCallback(
+    (sectionId: string, workerId: string) => {
+      updateSection(sectionId, (s) => {
+        const next = new Set(s.selectedWorkerIds);
+        if (next.has(workerId)) next.delete(workerId);
+        else next.add(workerId);
+        return { ...s, selectedWorkerIds: next };
+      });
+    },
+    [updateSection]
+  );
 
   const setDayTypeForSection = (id: string, value: DayType) => {
     updateSection(id, (s) => ({ ...s, dayType: value }));
@@ -618,9 +664,7 @@ function QuickTimesheetModal({
   const selectAllInSection = (id: string) => {
     const section = sections.find((s) => s.id === id);
     if (!section) return;
-    const allowed = workers.filter(
-      (w) => !fullDayWorkerIds.has(w.id),
-    );
+    const allowed = workers.filter((w) => !fullDayWorkerIds.has(w.id));
     updateSection(id, (s) => ({
       ...s,
       selectedWorkerIds: new Set(allowed.map((w) => w.id)),
@@ -639,14 +683,9 @@ function QuickTimesheetModal({
     const yesterdayStr = d.toISOString().slice(0, 10);
     (async () => {
       try {
-        const entries = await getLaborEntriesByProjectAndDate(
-          section.projectId,
-          yesterdayStr,
-        );
+        const entries = await getLaborEntriesByProjectAndDate(section.projectId, yesterdayStr);
         const ids = new Set(
-          entries
-            .map((e) => e.workerId)
-            .filter((wid) => !fullDayWorkerIds.has(wid)),
+          entries.map((e) => e.workerId).filter((wid) => !fullDayWorkerIds.has(wid))
         );
         updateSection(id, (s) => ({ ...s, selectedWorkerIds: ids }));
       } catch {
@@ -660,7 +699,7 @@ function QuickTimesheetModal({
       ...acc,
       [s.id]: Number(s.otHours) || 0,
     }),
-    {},
+    {}
   );
 
   const totalPayPreview = React.useMemo(() => {
@@ -710,8 +749,8 @@ function QuickTimesheetModal({
                 ...s,
                 error: "Each project can only be used once per day.",
               }
-            : s,
-        ),
+            : s
+        )
       );
       setGlobalError("Each project can only be used once per day.");
       return;
@@ -736,7 +775,7 @@ function QuickTimesheetModal({
           }
         }
         return { ...s, error };
-      }),
+      })
     );
     if (hasError) return;
 
@@ -771,9 +810,7 @@ function QuickTimesheetModal({
             project_id: section.projectId,
             hours: Math.round(equivalentHours * 100) / 100,
             cost_code: null,
-            notes: `day_type=${section.dayType}${
-              ot > 0 ? `, ot_hours=${ot}` : ""
-            }`,
+            notes: `day_type=${section.dayType}${ot > 0 ? `, ot_hours=${ot}` : ""}`,
           });
         }
       }
@@ -788,9 +825,7 @@ function QuickTimesheetModal({
       onSaved(inserted.length);
       onOpenChange(false);
     } catch (e) {
-      setGlobalError(
-        e instanceof Error ? e.message : "Failed to save entries.",
-      );
+      setGlobalError(e instanceof Error ? e.message : "Failed to save entries.");
     } finally {
       setSubmitting(false);
     }
@@ -831,14 +866,10 @@ function QuickTimesheetModal({
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-500">
-                      Project
-                    </label>
+                    <label className="text-xs font-medium text-gray-500">Project</label>
                     <select
                       value={section.projectId}
-                      onChange={(e) =>
-                        handleProjectChange(section.id, e.target.value)
-                      }
+                      onChange={(e) => handleProjectChange(section.id, e.target.value)}
                       className="h-9 min-w-[200px] rounded-lg border border-[#E5E7EB] bg-white px-3 text-sm"
                     >
                       <option value="">Select project</option>
@@ -850,9 +881,7 @@ function QuickTimesheetModal({
                     </select>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-gray-500">
-                      Section {index + 1}
-                    </span>
+                    <span className="text-[11px] text-gray-500">Section {index + 1}</span>
                     {sections.length > 1 && (
                       <Button
                         type="button"
@@ -870,9 +899,7 @@ function QuickTimesheetModal({
 
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-between gap-2">
-                    <label className="text-xs font-medium text-gray-500">
-                      Workers
-                    </label>
+                    <label className="text-xs font-medium text-gray-500">Workers</label>
                     <div className="flex items-center gap-1.5">
                       <Button
                         type="button"
@@ -906,9 +933,7 @@ function QuickTimesheetModal({
                   </div>
                   <div className="max-h-80 min-h-0 overflow-hidden rounded-lg border border-[#E5E7EB] bg-white">
                     {workers.length === 0 ? (
-                      <p className="px-3 py-3 text-xs text-gray-500">
-                        No workers found.
-                      </p>
+                      <p className="px-3 py-3 text-xs text-gray-500">No workers found.</p>
                     ) : workers.length > QUICK_TIMESHEET_VIRTUAL_THRESHOLD ? (
                       <VirtualScrollList
                         count={workers.length}
@@ -948,25 +973,18 @@ function QuickTimesheetModal({
                   </div>
                   {fullDayWorkerIds.size > 0 ? (
                     <p className="text-[11px] text-gray-500">
-                      Workers who have completed a full day (AM+PM) on this
-                      date are disabled across all projects.
+                      Workers who have completed a full day (AM+PM) on this date are disabled across
+                      all projects.
                     </p>
                   ) : null}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col gap-2">
-                    <label className="text-xs font-medium text-gray-500">
-                      Day Type
-                    </label>
+                    <label className="text-xs font-medium text-gray-500">Day Type</label>
                     <select
                       value={section.dayType}
-                      onChange={(e) =>
-                        setDayTypeForSection(
-                          section.id,
-                          e.target.value as DayType,
-                        )
-                      }
+                      onChange={(e) => setDayTypeForSection(section.id, e.target.value as DayType)}
                       className="h-9 rounded-lg border border-[#E5E7EB] bg-white px-3 text-sm"
                     >
                       <option value="full_day">Full Day</option>
@@ -983,9 +1001,7 @@ function QuickTimesheetModal({
                       min="0"
                       step="0.5"
                       value={section.otHours}
-                      onChange={(e) =>
-                        setOtHoursForSection(section.id, e.target.value)
-                      }
+                      onChange={(e) => setOtHoursForSection(section.id, e.target.value)}
                       placeholder="0"
                       className="h-9 text-sm"
                     />
@@ -994,9 +1010,7 @@ function QuickTimesheetModal({
 
                 {section.selectedWorkerIds.size > 0 ? (
                   <div className="flex flex-col gap-2">
-                    <label className="text-xs font-medium text-gray-500">
-                      Attendance
-                    </label>
+                    <label className="text-xs font-medium text-gray-500">Attendance</label>
                     <div className="overflow-x-auto rounded-lg border border-[#E5E7EB]">
                       <table className="w-full text-sm">
                         <thead>
@@ -1016,53 +1030,39 @@ function QuickTimesheetModal({
                           </tr>
                         </thead>
                         <tbody>
-                          {Array.from(section.selectedWorkerIds).map(
-                            (id) => {
-                              const worker = workers.find(
-                                (w) => w.id === id,
-                              );
-                              const dailyRate =
-                                worker?.dailyRate ??
-                                worker?.halfDayRate ??
-                                0;
-                              const basePay =
-                                section.dayType === "full_day"
-                                  ? dailyRate
-                                  : section.dayType === "half_day"
-                                    ? dailyRate / 2
-                                    : 0;
-                              const otRate = (dailyRate / 8) * 1.5;
-                              const pay = basePay + otNum * otRate;
-                              return (
-                                <tr
-                                  key={id}
-                                  className="border-b border-[#E5E7EB] last:border-b-0"
-                                >
-                                  <td className="py-2 px-3 font-medium text-[#111111]">
-                                    {worker?.name ?? id}
-                                  </td>
-                                  <td className="py-2 px-3 text-gray-600">
-                                    {dayLabel}
-                                  </td>
-                                  <td className="py-2 px-3 text-right tabular-nums text-gray-600">
-                                    {otNum > 0 ? otNum : "—"}
-                                  </td>
-                                  <td className="py-2 px-3 text-right tabular-nums font-medium">
-                                    ${pay.toFixed(2)}
-                                  </td>
-                                </tr>
-                              );
-                            },
-                          )}
+                          {Array.from(section.selectedWorkerIds).map((id) => {
+                            const worker = workers.find((w) => w.id === id);
+                            const dailyRate = worker?.dailyRate ?? worker?.halfDayRate ?? 0;
+                            const basePay =
+                              section.dayType === "full_day"
+                                ? dailyRate
+                                : section.dayType === "half_day"
+                                  ? dailyRate / 2
+                                  : 0;
+                            const otRate = (dailyRate / 8) * 1.5;
+                            const pay = basePay + otNum * otRate;
+                            return (
+                              <tr key={id} className="border-b border-[#E5E7EB] last:border-b-0">
+                                <td className="py-2 px-3 font-medium text-[#111111]">
+                                  {worker?.name ?? id}
+                                </td>
+                                <td className="py-2 px-3 text-gray-600">{dayLabel}</td>
+                                <td className="py-2 px-3 text-right tabular-nums text-gray-600">
+                                  {otNum > 0 ? otNum : "—"}
+                                </td>
+                                <td className="py-2 px-3 text-right tabular-nums font-medium">
+                                  ${pay.toFixed(2)}
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
                   </div>
                 ) : null}
 
-                {section.error ? (
-                  <p className="text-xs text-red-600">{section.error}</p>
-                ) : null}
+                {section.error ? <p className="text-xs text-red-600">{section.error}</p> : null}
               </div>
             );
           })}
@@ -1078,9 +1078,7 @@ function QuickTimesheetModal({
             + Add Another Project
           </Button>
 
-          {globalError ? (
-            <p className="text-xs text-red-600">{globalError}</p>
-          ) : null}
+          {globalError ? <p className="text-xs text-red-600">{globalError}</p> : null}
         </div>
 
         <DialogFooter className="flex justify-end gap-2 pt-2">
@@ -1106,4 +1104,3 @@ function QuickTimesheetModal({
     </Dialog>
   );
 }
-

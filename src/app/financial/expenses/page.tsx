@@ -47,7 +47,9 @@ function mergeExpenseReviewPatch(e: Expense, p: ExpenseReviewSavePatch): Expense
   const nextLines =
     e.lines.length > 0
       ? e.lines.map((line, idx) =>
-          idx === 0 ? { ...line, projectId: p.projectId, category: p.category, amount: p.amount } : line,
+          idx === 0
+            ? { ...line, projectId: p.projectId, category: p.category, amount: p.amount }
+            : line
         )
       : [
           {
@@ -72,7 +74,7 @@ function projectLabel(expense: Expense, projectNameById: Map<string, string>): s
   if (ids.length === 0) return "—";
   if (ids.length === 1) {
     const id = ids[0];
-    return id == null ? "Overhead" : projectNameById.get(id) ?? id;
+    return id == null ? "Overhead" : (projectNameById.get(id) ?? id);
   }
   return "Multiple";
 }
@@ -114,7 +116,11 @@ function ExpensesPageInner() {
       appliedProjectIdFromUrl.current = true;
     }
   }, [searchParams]);
-  const [receiptPreview, setReceiptPreview] = React.useState<{ url: string; fileName: string; expenseId?: string } | null>(null);
+  const [receiptPreview, setReceiptPreview] = React.useState<{
+    url: string;
+    fileName: string;
+    expenseId?: string;
+  } | null>(null);
   const [quickExpenseOpen, setQuickExpenseOpen] = React.useState(false);
   const receiptReplaceRef = React.useRef<HTMLInputElement>(null);
   const [receiptReplacing, setReceiptReplacing] = React.useState(false);
@@ -142,24 +148,38 @@ function ExpensesPageInner() {
       const safe = projectsData ?? [];
       setProjects(Array.isArray(safe) ? safe : []);
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [supabase]);
 
   React.useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [expList, cats, workerList] = await Promise.all([getExpenses(), getExpenseCategories(), getWorkers()]);
+      const [expList, cats, workerList] = await Promise.all([
+        getExpenses(),
+        getExpenseCategories(),
+        getWorkers(),
+      ]);
       if (cancelled) return;
       setExpenses(expList);
       setCategoriesList(cats);
       setWorkers(workerList as WorkerRow[]);
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const safeProjects = React.useMemo(() => projects ?? [], [projects]);
-  const projectNameById = React.useMemo(() => new Map(safeProjects.map((p) => [p.id, p.name ?? p.id])), [safeProjects]);
-  const workerNameById = React.useMemo(() => new Map(workers.map((w) => [w.id, w.name])), [workers]);
+  const projectNameById = React.useMemo(
+    () => new Map(safeProjects.map((p) => [p.id, p.name ?? p.id])),
+    [safeProjects]
+  );
+  const workerNameById = React.useMemo(
+    () => new Map(workers.map((w) => [w.id, w.name])),
+    [workers]
+  );
 
   const summary = React.useMemo(() => {
     const now = new Date();
@@ -179,12 +199,14 @@ function ExpensesPageInner() {
       list = list.filter(
         (e) =>
           e.vendorName.toLowerCase().includes(q) ||
-          (e.referenceNo?.toLowerCase().includes(q)) ||
+          e.referenceNo?.toLowerCase().includes(q) ||
           e.lines.some((l) => (l.memo ?? "").toLowerCase().includes(q))
       );
     }
-    if (projectFilter) list = list.filter((e) => e.lines.some((l) => l.projectId === projectFilter));
-    if (categoryFilter) list = list.filter((e) => e.lines.some((l) => l.category === categoryFilter));
+    if (projectFilter)
+      list = list.filter((e) => e.lines.some((l) => l.projectId === projectFilter));
+    if (categoryFilter)
+      list = list.filter((e) => e.lines.some((l) => l.category === categoryFilter));
     return list;
   }, [expenses, search, projectFilter, categoryFilter]);
 
@@ -233,10 +255,16 @@ function ExpensesPageInner() {
           });
           if (!next) {
             flushSync(() => setExpenses(prevList));
-            toast({ title: "Update failed", description: "Expense could not be saved.", variant: "error" });
+            toast({
+              title: "Update failed",
+              description: "Expense could not be saved.",
+              variant: "error",
+            });
             return;
           }
-          flushSync(() => setExpenses((prev) => prev.map((e) => (e.id === patch.expenseId ? next : e))));
+          flushSync(() =>
+            setExpenses((prev) => prev.map((e) => (e.id === patch.expenseId ? next : e)))
+          );
           toast({ title: "Expense updated", variant: "success" });
         } catch (e) {
           flushSync(() => setExpenses(prevList));
@@ -248,7 +276,7 @@ function ExpensesPageInner() {
         }
       })();
     },
-    [toast],
+    [toast]
   );
 
   useOnAppSync(
@@ -288,7 +316,12 @@ function ExpensesPageInner() {
         description="Track and manage company expenses"
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="touch" className="min-h-[44px]" onClick={() => setQuickExpenseOpen(true)}>
+            <Button
+              variant="outline"
+              size="touch"
+              className="min-h-[44px]"
+              onClick={() => setQuickExpenseOpen(true)}
+            >
               Quick Expense
             </Button>
             <Button onClick={handleNew} size="touch" className="min-h-[44px]">
@@ -308,7 +341,9 @@ function ExpensesPageInner() {
             </div>
           </div>
           <div className="px-5 py-5 sm:border-l sm:border-border/60">
-            <div className="text-xs uppercase tracking-wider text-muted-foreground">Total Expenses</div>
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">
+              Total Expenses
+            </div>
             <div className="mt-1 text-2xl font-semibold tabular-nums text-foreground">
               ${summary.allTotal.toLocaleString()}
             </div>
@@ -369,7 +404,9 @@ function ExpensesPageInner() {
               <Plus className="h-5 w-5" />
             </div>
             <p className="text-sm font-medium text-foreground">
-              {search.trim() || projectFilter || categoryFilter ? "No expenses match filters" : "No expenses yet"}
+              {search.trim() || projectFilter || categoryFilter
+                ? "No expenses match filters"
+                : "No expenses yet"}
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
               {search.trim() || projectFilter || categoryFilter
@@ -387,98 +424,137 @@ function ExpensesPageInner() {
           </div>
         ) : (
           <>
-              {/* Mobile: card layout */}
-              <div className="flex flex-col gap-3 md:hidden">
-                {pageRows.map((row) => {
-                  const rowTotal = getExpenseTotal(row);
-                  const workerName = row.workerId ? workerNameById.get(row.workerId) ?? "—" : "—";
-                  const projLabel = projectLabel(row, projectNameById);
-                  const status = row.status ?? "pending";
-                  return (
-                    <button
-                      key={row.id}
-                      type="button"
-                      onClick={() => { setEditExpense(row); setEditModalOpen(true); }}
-                      className="flex min-h-[44px] w-full touch-manipulation flex-col items-stretch gap-1 rounded-sm border border-border/60 bg-background p-4 text-left transition-colors active:bg-muted/30"
-                    >
-                      <span className="font-medium text-foreground truncate">{row.vendorName}</span>
-                      <span className="text-sm text-muted-foreground truncate">{row.date} · {workerName}</span>
-                      <span className="text-sm text-muted-foreground truncate">{projLabel}</span>
-                      <div className="mt-1 flex items-center justify-between gap-2">
-                        <span className="text-xs text-red-600 font-medium tabular-nums dark:text-red-400">−${rowTotal.toLocaleString()}</span>
-                        <span className="text-xs text-muted-foreground">{statusLabel(status)}</span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="hidden overflow-x-auto border-b border-border/60 md:block">
+            {/* Mobile: card layout */}
+            <div className="flex flex-col gap-3 md:hidden">
+              {pageRows.map((row) => {
+                const rowTotal = getExpenseTotal(row);
+                const workerName = row.workerId ? (workerNameById.get(row.workerId) ?? "—") : "—";
+                const projLabel = projectLabel(row, projectNameById);
+                const status = row.status ?? "pending";
+                return (
+                  <button
+                    key={row.id}
+                    type="button"
+                    onClick={() => {
+                      setEditExpense(row);
+                      setEditModalOpen(true);
+                    }}
+                    className="flex min-h-[44px] w-full touch-manipulation flex-col items-stretch gap-1 rounded-sm border border-border/60 bg-background p-4 text-left transition-colors active:bg-muted/30"
+                  >
+                    <span className="font-medium text-foreground truncate">{row.vendorName}</span>
+                    <span className="text-sm text-muted-foreground truncate">
+                      {row.date} · {workerName}
+                    </span>
+                    <span className="text-sm text-muted-foreground truncate">{projLabel}</span>
+                    <div className="mt-1 flex items-center justify-between gap-2">
+                      <span className="text-xs text-red-600 font-medium tabular-nums dark:text-red-400">
+                        −${rowTotal.toLocaleString()}
+                      </span>
+                      <span className="text-xs text-muted-foreground">{statusLabel(status)}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="hidden overflow-x-auto border-b border-border/60 md:block">
               <Table>
                 <TableHeader>
                   <TableRow className="border-b border-border/60 hover:bg-transparent">
-                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Date</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Worker</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Vendor</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Project</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">Amount</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Status</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Receipt</TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right">Actions</TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                      Date
+                    </TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                      Worker
+                    </TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                      Vendor
+                    </TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                      Project
+                    </TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">
+                      Amount
+                    </TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                      Status
+                    </TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                      Receipt
+                    </TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right">
+                      Actions
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {pageRows.map((row) => {
-                  const rowTotal = getExpenseTotal(row);
-                  const workerName = row.workerId ? workerNameById.get(row.workerId) ?? "—" : "—";
-                  const projLabel = projectLabel(row, projectNameById);
-                  const status = row.status ?? "pending";
-                  return (
-                    <TableRow
-                      key={row.id}
-                      className="border-b border-border/30 cursor-pointer hover:bg-muted/30"
-                      onClick={() => { setEditExpense(row); setEditModalOpen(true); }}
-                    >
-                      <TableCell className="tabular-nums text-foreground">{row.date}</TableCell>
-                      <TableCell className="text-muted-foreground">{workerName}</TableCell>
-                      <TableCell className="text-foreground">{row.vendorName}</TableCell>
-                      <TableCell className="text-muted-foreground text-sm">{projLabel}</TableCell>
-                      <TableCell className="text-right tabular-nums font-medium text-red-600/90 dark:text-red-400/90">
-                        −${rowTotal.toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">{statusLabel(status)}</TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        {row.receiptUrl ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8"
-                            onClick={() => setReceiptPreview({ url: row.receiptUrl!, fileName: "Receipt", expenseId: row.id })}
+                    const rowTotal = getExpenseTotal(row);
+                    const workerName = row.workerId
+                      ? (workerNameById.get(row.workerId) ?? "—")
+                      : "—";
+                    const projLabel = projectLabel(row, projectNameById);
+                    const status = row.status ?? "pending";
+                    return (
+                      <TableRow
+                        key={row.id}
+                        className="border-b border-border/30 cursor-pointer hover:bg-muted/30"
+                        onClick={() => {
+                          setEditExpense(row);
+                          setEditModalOpen(true);
+                        }}
+                      >
+                        <TableCell className="tabular-nums text-foreground">{row.date}</TableCell>
+                        <TableCell className="text-muted-foreground">{workerName}</TableCell>
+                        <TableCell className="text-foreground">{row.vendorName}</TableCell>
+                        <TableCell className="text-muted-foreground text-sm">{projLabel}</TableCell>
+                        <TableCell className="text-right tabular-nums font-medium text-red-600/90 dark:text-red-400/90">
+                          −${rowTotal.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {statusLabel(status)}
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          {row.receiptUrl ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8"
+                              onClick={() =>
+                                setReceiptPreview({
+                                  url: row.receiptUrl!,
+                                  fileName: "Receipt",
+                                  expenseId: row.id,
+                                })
+                              }
+                            >
+                              View
+                            </Button>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div
+                            className="flex items-center justify-end gap-1"
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            View
-                          </Button>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                          <Button asChild variant="ghost" size="sm">
-                            <Link href={`/financial/expenses/${row.id}`}>View</Link>
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive"
-                            onClick={() => handleDelete(row)}
-                            aria-label="Delete"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                            <Button asChild variant="ghost" size="sm">
+                              <Link href={`/financial/expenses/${row.id}`}>View</Link>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive"
+                              onClick={() => handleDelete(row)}
+                              aria-label="Delete"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
@@ -493,27 +569,54 @@ function ExpensesPageInner() {
       <Dialog open={!!receiptPreview} onOpenChange={(open) => !open && setReceiptPreview(null)}>
         <DialogContent className="max-h-[90vh] max-w-4xl border-border/60 p-0 gap-0 overflow-hidden flex flex-col">
           <DialogHeader className="shrink-0 border-b border-border/60 px-4 py-2">
-            <DialogTitle className="text-sm font-medium truncate">{receiptPreview?.fileName ?? "Receipt"}</DialogTitle>
+            <DialogTitle className="text-sm font-medium truncate">
+              {receiptPreview?.fileName ?? "Receipt"}
+            </DialogTitle>
           </DialogHeader>
           <div className="flex-1 min-h-0 overflow-auto p-4">
-            {receiptPreview ? (
-              (() => {
-                const u = receiptPreview.url;
-                if (u.toLowerCase().endsWith(".pdf")) {
-                  return <iframe src={u} title="Receipt" className="w-full h-[70vh] min-h-[400px] rounded border border-border/60" />;
-                }
-                if (/\.(jpe?g|png|gif|webp)$/i.test(u)) {
-                  /* eslint-disable-next-line @next/next/no-img-element -- receipt URL is dynamic (storage/external) */
-                  return <img src={u} alt="Receipt" className="max-w-full max-h-[70vh] object-contain rounded border border-border/60" />;
-                }
-                return <p className="text-sm text-muted-foreground"><a href={u} target="_blank" rel="noopener noreferrer" className="text-primary underline">Open receipt</a></p>;
-              })()
-            ) : null}
+            {receiptPreview
+              ? (() => {
+                  const u = receiptPreview.url;
+                  if (u.toLowerCase().endsWith(".pdf")) {
+                    return (
+                      <iframe
+                        src={u}
+                        title="Receipt"
+                        className="w-full h-[70vh] min-h-[400px] rounded border border-border/60"
+                      />
+                    );
+                  }
+                  if (/\.(jpe?g|png|gif|webp)$/i.test(u)) {
+                    /* eslint-disable-next-line @next/next/no-img-element -- receipt URL is dynamic (storage/external) */
+                    return (
+                      <img
+                        src={u}
+                        alt="Receipt"
+                        className="max-w-full max-h-[70vh] object-contain rounded border border-border/60"
+                      />
+                    );
+                  }
+                  return (
+                    <p className="text-sm text-muted-foreground">
+                      <a
+                        href={u}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary underline"
+                      >
+                        Open receipt
+                      </a>
+                    </p>
+                  );
+                })()
+              : null}
           </div>
           {receiptPreview ? (
             <div className="shrink-0 border-t border-border/60 px-4 py-2 flex items-center justify-end gap-2">
               <Button variant="outline" size="sm" className="h-8" asChild>
-                <a href={receiptPreview.url} download target="_blank" rel="noopener noreferrer">Download</a>
+                <a href={receiptPreview.url} download target="_blank" rel="noopener noreferrer">
+                  Download
+                </a>
               </Button>
               {receiptPreview.expenseId && supabase ? (
                 <>
@@ -529,7 +632,12 @@ function ExpensesPageInner() {
                       setReceiptReplacing(true);
                       try {
                         const path = `receipts/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
-                        const { error } = await supabase.storage.from("receipts").upload(path, file, { contentType: file.type || "application/octet-stream", upsert: true });
+                        const { error } = await supabase.storage
+                          .from("receipts")
+                          .upload(path, file, {
+                            contentType: file.type || "application/octet-stream",
+                            upsert: true,
+                          });
                         if (error) throw error;
                         const { data } = supabase.storage.from("receipts").getPublicUrl(path);
                         await updateExpenseReceiptUrl(receiptPreview.expenseId, data.publicUrl);
@@ -541,7 +649,13 @@ function ExpensesPageInner() {
                       }
                     }}
                   />
-                  <Button variant="outline" size="sm" className="h-8" disabled={receiptReplacing} onClick={() => receiptReplaceRef.current?.click()}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8"
+                    disabled={receiptReplacing}
+                    onClick={() => receiptReplaceRef.current?.click()}
+                  >
                     {receiptReplacing ? "Replacing…" : "Replace Receipt"}
                   </Button>
                 </>

@@ -47,9 +47,11 @@ function isMissingTableError(error: unknown): boolean {
   return code === "42P01";
 }
 
-function normalizeProject(rel: OutstandingInvoiceRow["projects"]): { id: string; name: string } | null {
+function normalizeProject(
+  rel: OutstandingInvoiceRow["projects"]
+): { id: string; name: string } | null {
   if (!rel) return null;
-  return Array.isArray(rel) ? rel[0] ?? null : rel;
+  return Array.isArray(rel) ? (rel[0] ?? null) : rel;
 }
 
 function getAgingBucket(dueDate: string): string {
@@ -132,10 +134,14 @@ export function ArClient() {
       );
 
       if (paymentsRes.error) {
-        if (!isMissingTableError(paymentsRes.error)) setError((prev) => prev ?? paymentsRes.error?.message ?? "Failed to load payments.");
+        if (!isMissingTableError(paymentsRes.error))
+          setError((prev) => prev ?? paymentsRes.error?.message ?? "Failed to load payments.");
         setPaidThisMonth(0);
       } else {
-        const paid = (paymentsRes.data ?? []).reduce((sum, r) => sum + safeNumber((r as { amount?: number }).amount), 0);
+        const paid = (paymentsRes.data ?? []).reduce(
+          (sum, r) => sum + safeNumber((r as { amount?: number }).amount),
+          0
+        );
         setPaidThisMonth(paid);
       }
     } catch (e) {
@@ -177,7 +183,10 @@ export function ArClient() {
 
   return (
     <div className="page-container page-stack py-6">
-      <PageHeader title="Accounts Receivable" subtitle="Outstanding invoices and aging. Record payments from invoice detail." />
+      <PageHeader
+        title="Accounts Receivable"
+        subtitle="Outstanding invoices and aging. Record payments from invoice detail."
+      />
 
       {error ? (
         <Card className="p-5">
@@ -200,7 +209,9 @@ export function ArClient() {
                       className={cn(
                         "text-2xl font-bold tabular-nums mt-0.5",
                         label === "Overdue AR" && value > 0 && "text-amber-600 dark:text-amber-400",
-                        label === "Paid This Month" && value > 0 && "text-emerald-600 dark:text-emerald-400"
+                        label === "Paid This Month" &&
+                          value > 0 &&
+                          "text-emerald-600 dark:text-emerald-400"
                       )}
                     >
                       ${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}
@@ -239,33 +250,65 @@ export function ArClient() {
                   <Table>
                     <TableHeader>
                       <TableRow className="border-b border-zinc-200/40 dark:border-border/60 bg-muted/20">
-                        <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Invoice #</TableHead>
-                        <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Project</TableHead>
-                        <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Client</TableHead>
-                        <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Invoice Total</TableHead>
-                        <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Paid</TableHead>
-                        <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Due</TableHead>
-                        <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Balance</TableHead>
-                        <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Status</TableHead>
-                        <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium">Actions</TableHead>
+                        <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                          Invoice #
+                        </TableHead>
+                        <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                          Project
+                        </TableHead>
+                        <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                          Client
+                        </TableHead>
+                        <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                          Invoice Total
+                        </TableHead>
+                        <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                          Paid
+                        </TableHead>
+                        <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                          Due
+                        </TableHead>
+                        <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                          Balance
+                        </TableHead>
+                        <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                          Status
+                        </TableHead>
+                        <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                          Actions
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {byBucket[bucket].map((inv) => (
-                        <TableRow key={inv.id} className="border-b border-zinc-100/50 dark:border-border/30">
+                        <TableRow
+                          key={inv.id}
+                          className="border-b border-zinc-100/50 dark:border-border/30"
+                        >
                           <TableCell className="font-medium">
-                            <Link href={`/financial/invoices/${inv.id}`} className="text-primary hover:underline">
+                            <Link
+                              href={`/financial/invoices/${inv.id}`}
+                              className="text-primary hover:underline"
+                            >
                               {inv.invoice_no}
                             </Link>
                           </TableCell>
-                          <TableCell className="text-muted-foreground">{(normalizeProject(inv.projects)?.name ?? "—")}</TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {normalizeProject(inv.projects)?.name ?? "—"}
+                          </TableCell>
                           <TableCell className="text-foreground">{inv.client_name}</TableCell>
-                          <TableCell className="text-right tabular-nums">${safeNumber(inv.total).toLocaleString()}</TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            ${safeNumber(inv.total).toLocaleString()}
+                          </TableCell>
                           <TableCell className="text-right tabular-nums text-emerald-600/90 dark:text-emerald-400/90">
                             ${safeNumber(inv.paidTotal).toLocaleString()}
                           </TableCell>
-                          <TableCell className="tabular-nums text-muted-foreground">{inv.due_date}</TableCell>
-                          <TableCell className="text-right tabular-nums font-medium">${safeNumber(inv.balanceDue).toLocaleString()}</TableCell>
+                          <TableCell className="tabular-nums text-muted-foreground">
+                            {inv.due_date}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums font-medium">
+                            ${safeNumber(inv.balanceDue).toLocaleString()}
+                          </TableCell>
                           <TableCell>
                             <StatusBadge status={inv.status} />
                           </TableCell>
@@ -296,4 +339,3 @@ export function ArClient() {
     </div>
   );
 }
-

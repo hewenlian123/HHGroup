@@ -28,7 +28,12 @@ export async function POST(req: Request) {
     });
     if (error) {
       return NextResponse.json(
-        { ok: false, message: error.message || "Upload failed. Ensure bucket 'worker-receipts' exists and policies allow upload." },
+        {
+          ok: false,
+          message:
+            error.message ||
+            "Upload failed. Ensure bucket 'worker-receipts' exists and policies allow upload.",
+        },
         { status: 500 }
       );
     }

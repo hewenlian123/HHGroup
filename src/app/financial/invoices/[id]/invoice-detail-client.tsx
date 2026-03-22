@@ -102,7 +102,10 @@ export default function InvoiceDetailClient() {
 
   const recomputeInvoiceTotals = React.useCallback((inv: Invoice, pays: InvoicePayment[]) => {
     const totalInv = safeNumber(inv.total);
-    const paidTotal = pays.reduce((s, p) => (p.status === "Voided" ? s : s + safeNumber(p.amount)), 0);
+    const paidTotal = pays.reduce(
+      (s, p) => (p.status === "Voided" ? s : s + safeNumber(p.amount)),
+      0
+    );
     const balanceDue = Math.max(0, totalInv - paidTotal);
     let status: InvoiceStatus = inv.status;
     if (inv.status !== "Void" && inv.status !== "Draft") {
@@ -133,7 +136,9 @@ export default function InvoiceDetailClient() {
 
     const { data: inv, error: invErr } = await supabase
       .from("invoices")
-      .select("id,invoice_no,project_id,customer_id,client_name,issue_date,due_date,status,notes,tax_pct,subtotal,tax_amount,total")
+      .select(
+        "id,invoice_no,project_id,customer_id,client_name,issue_date,due_date,status,notes,tax_pct,subtotal,tax_amount,total"
+      )
       .eq("id", id)
       .maybeSingle();
 
@@ -157,7 +162,11 @@ export default function InvoiceDetailClient() {
 
     const [projRes, itemsRes, paysRes] = await Promise.all([
       (inv as { project_id: string | null }).project_id
-        ? supabase.from("projects").select("name").eq("id", (inv as { project_id: string }).project_id).maybeSingle()
+        ? supabase
+            .from("projects")
+            .select("name")
+            .eq("id", (inv as { project_id: string }).project_id)
+            .maybeSingle()
         : Promise.resolve({ data: null as null, error: null as null }),
       supabase
         .from("invoice_items")
@@ -173,7 +182,8 @@ export default function InvoiceDetailClient() {
 
     if (projRes.error) {
       setProjectName(null);
-      if (!isMissingTableError(projRes.error)) setError((prev) => prev ?? projRes.error?.message ?? "Failed to load project.");
+      if (!isMissingTableError(projRes.error))
+        setError((prev) => prev ?? projRes.error?.message ?? "Failed to load project.");
     } else {
       setProjectName(((projRes.data as { name?: string } | null)?.name ?? null) as string | null);
     }
@@ -216,7 +226,12 @@ export default function InvoiceDetailClient() {
   );
 
   React.useEffect(() => {
-    if (searchParams.get("recordPayment") === "1" && invoice && invoice.status !== "Void" && invoice.status !== "Paid") {
+    if (
+      searchParams.get("recordPayment") === "1" &&
+      invoice &&
+      invoice.status !== "Void" &&
+      invoice.status !== "Paid"
+    ) {
       setShowPaymentModal(true);
     }
   }, [searchParams, invoice]);
@@ -265,7 +280,10 @@ export default function InvoiceDetailClient() {
       },
       rollback: (s) => setInvoice(s.inv),
       persist: async () => {
-        const { error: updErr } = await supabase.from("invoices").update({ status: "Sent" }).eq("id", id);
+        const { error: updErr } = await supabase
+          .from("invoices")
+          .update({ status: "Sent" })
+          .eq("id", id);
         return updErr ? { error: updErr.message } : undefined;
       },
       onError: (msg) => setError(msg),
@@ -287,7 +305,10 @@ export default function InvoiceDetailClient() {
       },
       rollback: (s) => setInvoice(s.inv),
       persist: async () => {
-        const { error: updErr } = await supabase.from("invoices").update({ status: "Void" }).eq("id", id);
+        const { error: updErr } = await supabase
+          .from("invoices")
+          .update({ status: "Void" })
+          .eq("id", id);
         return updErr ? { error: updErr.message } : undefined;
       },
       onError: (msg) => setError(msg),
@@ -314,7 +335,13 @@ export default function InvoiceDetailClient() {
     const nextPays = [newPayment, ...pays];
     const nextInv = recomputeInvoiceTotals(inv, nextPays);
 
-    type Snap = { inv: Invoice; pays: InvoicePayment[]; payAmt: string; payMemo: string; modal: boolean };
+    type Snap = {
+      inv: Invoice;
+      pays: InvoicePayment[];
+      payAmt: string;
+      payMemo: string;
+      modal: boolean;
+    };
     runOptimisticPersist<Snap>({
       setBusy,
       getSnapshot: () => ({
@@ -371,7 +398,9 @@ export default function InvoiceDetailClient() {
     const target = pays.find((p) => p.id === paymentId);
     if (!target || target.status === "Voided") return;
 
-    const nextPays = pays.map((p) => (p.id === paymentId ? { ...p, status: "Voided" as const } : p));
+    const nextPays = pays.map((p) =>
+      p.id === paymentId ? { ...p, status: "Voided" as const } : p
+    );
     const nextInv = recomputeInvoiceTotals(inv, nextPays);
 
     type Snap = { inv: Invoice; pays: InvoicePayment[] };
@@ -388,7 +417,10 @@ export default function InvoiceDetailClient() {
         setPayments(s.pays);
       },
       persist: async () => {
-        const { error: updErr } = await supabase.from("invoice_payments").update({ status: "Voided" }).eq("id", paymentId);
+        const { error: updErr } = await supabase
+          .from("invoice_payments")
+          .update({ status: "Voided" })
+          .eq("id", paymentId);
         return updErr ? { error: updErr.message } : undefined;
       },
       onError: (msg) => setError(msg),
@@ -439,7 +471,8 @@ export default function InvoiceDetailClient() {
     );
   }
 
-  const isDraft = invoice.status === "Draft" || (invoice.status as string)?.toLowerCase() === "draft";
+  const isDraft =
+    invoice.status === "Draft" || (invoice.status as string)?.toLowerCase() === "draft";
   const isVoid = invoice.status === "Void" || (invoice.status as string)?.toLowerCase() === "void";
   const canDeleteInvoice = isDraft || isVoid;
 
@@ -453,7 +486,10 @@ export default function InvoiceDetailClient() {
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
-          <Link href="/financial/invoices" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+          <Link
+            href="/financial/invoices"
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+          >
             <ArrowLeft className="h-4 w-4" />
             Back
           </Link>
@@ -475,7 +511,12 @@ export default function InvoiceDetailClient() {
                 <Button variant="destructive" size="sm" disabled={busy} onClick={handleDelete}>
                   Confirm Delete
                 </Button>
-                <Button variant="ghost" size="sm" disabled={busy} onClick={() => setDeleteConfirm(false)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => setDeleteConfirm(false)}
+                >
                   Cancel
                 </Button>
               </>
@@ -498,7 +539,12 @@ export default function InvoiceDetailClient() {
             </Button>
           ) : null}
           {canPay ? (
-            <Button variant="outline" size="sm" disabled={busy} onClick={() => setShowPaymentModal(true)}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy}
+              onClick={() => setShowPaymentModal(true)}
+            >
               <CreditCard className="h-4 w-4 mr-2" />
               Record Payment
             </Button>
@@ -509,7 +555,12 @@ export default function InvoiceDetailClient() {
                 <Button variant="destructive" size="sm" disabled={busy} onClick={handleVoid}>
                   Confirm Void
                 </Button>
-                <Button variant="ghost" size="sm" disabled={busy} onClick={() => setVoidConfirm(false)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => setVoidConfirm(false)}
+                >
                   Cancel
                 </Button>
               </>
@@ -532,7 +583,10 @@ export default function InvoiceDetailClient() {
         <h2 className="text-sm font-semibold text-foreground mb-3">Client / Project</h2>
         <p className="text-sm text-muted-foreground">
           {matchedCustomerId ? (
-            <Link href={`/customers/${matchedCustomerId}`} className="font-medium text-foreground hover:underline">
+            <Link
+              href={`/customers/${matchedCustomerId}`}
+              className="font-medium text-foreground hover:underline"
+            >
               {invoice.client_name}
             </Link>
           ) : (
@@ -552,10 +606,18 @@ export default function InvoiceDetailClient() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-zinc-200/40 dark:border-border/60 bg-muted/30">
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Description</th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Qty</th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Unit price</th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Amount</th>
+                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Description
+                </th>
+                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                  Qty
+                </th>
+                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                  Unit price
+                </th>
+                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                  Amount
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -569,9 +631,15 @@ export default function InvoiceDetailClient() {
                 items.map((line) => (
                   <tr key={line.id} className="border-b border-zinc-100/50 dark:border-border/30">
                     <td className="py-3 px-4 text-foreground">{line.description}</td>
-                    <td className="py-3 px-4 text-right tabular-nums text-muted-foreground">{safeNumber(line.qty)}</td>
-                    <td className="py-3 px-4 text-right tabular-nums text-muted-foreground">{money(safeNumber(line.unit_price))}</td>
-                    <td className="py-3 px-4 text-right tabular-nums font-medium">{money(safeNumber(line.amount))}</td>
+                    <td className="py-3 px-4 text-right tabular-nums text-muted-foreground">
+                      {safeNumber(line.qty)}
+                    </td>
+                    <td className="py-3 px-4 text-right tabular-nums text-muted-foreground">
+                      {money(safeNumber(line.unit_price))}
+                    </td>
+                    <td className="py-3 px-4 text-right tabular-nums font-medium">
+                      {money(safeNumber(line.amount))}
+                    </td>
                   </tr>
                 ))
               )}
@@ -594,7 +662,9 @@ export default function InvoiceDetailClient() {
           </div>
           {safeNumber(invoice.tax_amount) > 0 ? (
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Tax {invoice.tax_pct != null ? `(${invoice.tax_pct}%)` : ""}</span>
+              <span className="text-muted-foreground">
+                Tax {invoice.tax_pct != null ? `(${invoice.tax_pct}%)` : ""}
+              </span>
               <span className="tabular-nums">{money(safeNumber(invoice.tax_amount))}</span>
             </div>
           ) : null}
@@ -629,12 +699,24 @@ export default function InvoiceDetailClient() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-zinc-200/40 dark:border-border/60 bg-muted/30">
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Date</th>
-                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Amount</th>
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Method</th>
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Memo</th>
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Status</th>
-                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Actions</th>
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Date
+                  </th>
+                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                    Amount
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Method
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Memo
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Status
+                  </th>
+                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -644,7 +726,9 @@ export default function InvoiceDetailClient() {
                     <td
                       className={cn(
                         "py-3 px-4 text-right tabular-nums font-medium",
-                        p.status === "Posted" ? "text-emerald-600/90 dark:text-emerald-400/90" : "text-muted-foreground line-through"
+                        p.status === "Posted"
+                          ? "text-emerald-600/90 dark:text-emerald-400/90"
+                          : "text-muted-foreground line-through"
                       )}
                     >
                       {money(safeNumber(p.amount))}
@@ -652,7 +736,14 @@ export default function InvoiceDetailClient() {
                     <td className="py-3 px-4 text-muted-foreground">{p.method ?? "—"}</td>
                     <td className="py-3 px-4 text-muted-foreground">{p.memo ?? "—"}</td>
                     <td className="py-3 px-4">
-                      <span className={cn("text-xs font-medium px-2 py-1 rounded", p.status === "Posted" ? "bg-emerald-50 text-emerald-700" : "bg-zinc-100 text-zinc-700")}>
+                      <span
+                        className={cn(
+                          "text-xs font-medium px-2 py-1 rounded",
+                          p.status === "Posted"
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-zinc-100 text-zinc-700"
+                        )}
+                      >
                         {p.status}
                       </span>
                     </td>
@@ -681,16 +772,28 @@ export default function InvoiceDetailClient() {
       </Card>
 
       {showPaymentModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setShowPaymentModal(false)}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+          onClick={() => setShowPaymentModal(false)}
+        >
           <Card className="p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-base font-semibold text-foreground mb-4">Record Payment</h3>
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</label>
-                <Input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} className="mt-1" />
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Date
+                </label>
+                <Input
+                  type="date"
+                  value={paymentDate}
+                  onChange={(e) => setPaymentDate(e.target.value)}
+                  className="mt-1"
+                />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Amount</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Amount
+                </label>
                 <Input
                   type="number"
                   min="0"
@@ -702,7 +805,9 @@ export default function InvoiceDetailClient() {
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Method</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Method
+                </label>
                 <select
                   value={paymentMethod}
                   onChange={(e) => setPaymentMethod(e.target.value)}
@@ -716,12 +821,22 @@ export default function InvoiceDetailClient() {
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Memo (optional)</label>
-                <Input value={paymentMemo} onChange={(e) => setPaymentMemo(e.target.value)} placeholder="Memo" className="mt-1" />
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Memo (optional)
+                </label>
+                <Input
+                  value={paymentMemo}
+                  onChange={(e) => setPaymentMemo(e.target.value)}
+                  placeholder="Memo"
+                  className="mt-1"
+                />
               </div>
             </div>
             <div className="flex gap-2 mt-6">
-              <Button onClick={handleRecordPayment} disabled={!paymentAmount || safeNumber(paymentAmount) <= 0 || busy || !canPay}>
+              <Button
+                onClick={handleRecordPayment}
+                disabled={!paymentAmount || safeNumber(paymentAmount) <= 0 || busy || !canPay}
+              >
                 Record
               </Button>
               <Button variant="outline" onClick={() => setShowPaymentModal(false)} disabled={busy}>
@@ -740,4 +855,3 @@ export default function InvoiceDetailClient() {
     </div>
   );
 }
-
