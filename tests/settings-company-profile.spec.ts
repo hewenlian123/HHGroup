@@ -3,6 +3,7 @@ import { mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { MAX_COMPANY_LOGO_BYTES } from "../src/lib/company-profile-form-validation";
+import { tryCreateDraftInvoiceNavigateToDetail } from "./e2e-helpers";
 
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 /** Set `E2E_BRANDING_FULL=1` to fail (not skip) when storage blocks logo upload. */
@@ -92,9 +93,62 @@ test.describe("Settings → Company Profile", () => {
     await page.getByTestId("company-input-email").fill("not-valid-email");
     await page.getByTestId("company-save-button").click();
 
-    await expect(page.locator('[role="status"]').filter({ hasText: "Invalid email" })).toBeVisible({ timeout: 10_000 });
+    // Title + description from toast; allow either (avoids flake if only body line renders first).
+    await expect(
+      page.locator('[role="status"]').filter({ hasText: /Invalid email|Enter a valid email address/i })
+    ).toBeVisible({ timeout: 20_000 });
     await expect(page.locator('[role="status"]').filter({ hasText: /^Saved$/ })).toHaveCount(0);
     await expect(page.getByTestId("company-save-button")).not.toContainText("Saving...");
+  });
+
+  // Sequential: same `company_profile` row — parallel tests in this block would overwrite each other's fields.
+  test.describe.serial("Company profile mutations (shared row)", () => {
+  test("company name (org_name) changes from HH Group and persists after reload", async ({ page }) => {
+    await page.goto(`${BASE}/settings/company`);
+    await page.waitForLoadState("domcontentloaded");
+    if (await skipIfNoSupabase(page)) test.skip(true, "Supabase not configured.");
+
+    await waitForCompanyProfileReady(page);
+    const orgInput = page.getByTestId("company-input-org_name");
+    await expect(orgInput).toBeVisible({ timeout: 30_000 });
+
+    const newName = `E2E-CompanyName-${Date.now()}`;
+    await orgInput.fill(newName);
+
+    const saveBtn = page.getByTestId("company-save-button");
+    const matchesSavePayload = (req: import("@playwright/test").Request): boolean => {
+      if (!req.url().includes("/api/settings/company-profile") || req.method() !== "POST") return false;
+      const raw = req.postData();
+      if (!raw) return false;
+      try {
+        const j = JSON.parse(raw) as { org_name?: string };
+        return j.org_name === newName;
+      } catch {
+        return false;
+      }
+    };
+    const [saveReq] = await Promise.all([
+      page.waitForRequest((req) => matchesSavePayload(req), { timeout: 35_000 }),
+      saveBtn.click(),
+    ]);
+    const profileRes = await saveReq.response();
+    expect(profileRes, "expected POST /api/settings/company-profile to complete").toBeTruthy();
+    const res = profileRes!;
+    if (res.status() === 200) {
+      const body = (await res.json().catch(() => null)) as
+        | { ok?: boolean; profile?: { org_name?: string } }
+        | null;
+      expect(body?.ok).toBe(true);
+      expect(body?.profile?.org_name).toBe(newName);
+    }
+
+    await expect(page.locator('[role="status"]').filter({ hasText: /^Saved$/ }).first()).toBeVisible({ timeout: 35_000 });
+    await expect(saveBtn).toContainText("Save Profile", { timeout: 15_000 });
+    await expect(orgInput).toHaveValue(newName, { timeout: 15_000 });
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await waitForCompanyProfileReady(page);
+    await expect(page.getByTestId("company-input-org_name")).toHaveValue(newName, { timeout: 45_000 });
   });
 
   test("multi-field save keeps values in UI and does not navigate away", async ({ page }) => {
@@ -153,52 +207,35 @@ test.describe("Settings → Company Profile", () => {
     await expect(page.getByTestId("company-input-state")).toHaveValue(marker, { timeout: 30_000 });
   });
 
-  test("company name (org_name) changes from HH Group and persists after reload", async ({ page }) => {
+  test("invoice print header matches company profile (org_name)", async ({ page }) => {
     await page.goto(`${BASE}/settings/company`);
     await page.waitForLoadState("domcontentloaded");
     if (await skipIfNoSupabase(page)) test.skip(true, "Supabase not configured.");
 
     await waitForCompanyProfileReady(page);
-    const orgInput = page.getByTestId("company-input-org_name");
-    await expect(orgInput).toBeVisible({ timeout: 30_000 });
+    // Persist a fresh name so SSR print (fetchDocumentCompanyProfile) matches DB — input-only can drift vs server row.
+    const marker = `E2E-Print-${Date.now()}`;
+    await page.getByTestId("company-input-org_name").fill(marker);
+    await page.getByTestId("company-save-button").click();
+    await expect(page.locator('[role="status"]').filter({ hasText: /^Saved$/ }).first()).toBeVisible({
+      timeout: 30_000,
+    });
 
-    const newName = `E2E-CompanyName-${Date.now()}`;
-    await orgInput.fill(newName);
+    const inv = await tryCreateDraftInvoiceNavigateToDetail(page, BASE);
+    test.skip(!inv.ok, inv.ok ? "" : inv.skipReason);
 
-    const saveBtn = page.getByTestId("company-save-button");
-    const matchesSavePayload = (req: import("@playwright/test").Request): boolean => {
-      if (!req.url().includes("/api/settings/company-profile") || req.method() !== "POST") return false;
-      const raw = req.postData();
-      if (!raw) return false;
-      try {
-        const j = JSON.parse(raw) as { org_name?: string };
-        return j.org_name === newName;
-      } catch {
-        return false;
-      }
-    };
-    const [saveReq] = await Promise.all([
-      page.waitForRequest((req) => matchesSavePayload(req), { timeout: 35_000 }),
-      saveBtn.click(),
-    ]);
-    const profileRes = await saveReq.response();
-    expect(profileRes, "expected POST /api/settings/company-profile to complete").toBeTruthy();
-    const res = profileRes!;
-    if (res.status() === 200) {
-      const body = (await res.json().catch(() => null)) as
-        | { ok?: boolean; profile?: { org_name?: string } }
-        | null;
-      expect(body?.ok).toBe(true);
-      expect(body?.profile?.org_name).toBe(newName);
-    }
+    const url = page.url();
+    const m = url.match(/\/financial\/invoices\/([^/?#]+)/);
+    const invoiceId = m?.[1];
+    expect(invoiceId && invoiceId !== "new").toBeTruthy();
 
-    await expect(page.locator('[role="status"]').filter({ hasText: /^Saved$/ }).first()).toBeVisible({ timeout: 35_000 });
-    await expect(saveBtn).toContainText("Save Profile", { timeout: 15_000 });
-    await expect(orgInput).toHaveValue(newName, { timeout: 10_000 });
+    await page.goto(`${BASE}/financial/invoices/${invoiceId!}/print`);
+    await page.waitForLoadState("domcontentloaded");
 
-    await page.reload({ waitUntil: "domcontentloaded" });
-    await waitForCompanyProfileReady(page);
-    await expect(page.getByTestId("company-input-org_name")).toHaveValue(newName, { timeout: 35_000 });
+    const header = page.getByTestId("document-company-header");
+    await expect(header).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId("document-company-name")).toHaveText(marker, { timeout: 20_000 });
+    await expect(header.getByText("Invoice", { exact: true })).toBeVisible();
   });
 
   test("logo upload rejects non-image file", async ({ page }) => {
@@ -449,5 +486,6 @@ test.describe("Settings → Company Profile", () => {
       await page.unroute("**/api/settings/company-profile");
       await page.unroute("**/rest/v1/company_profile**");
     }
+  });
   });
 });

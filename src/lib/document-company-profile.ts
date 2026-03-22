@@ -1,3 +1,4 @@
+import { unstable_noStore as noStore } from "next/cache";
 import type { CompanyProfile } from "@/lib/company-profile";
 import { getCompanyLogoPublicUrl, getCompanyProfile } from "@/lib/company-profile";
 import { getServerSupabase } from "@/lib/supabase-server";
@@ -51,6 +52,7 @@ export function companyProfileToDocumentDto(profile: CompanyProfile | null): Doc
  * Server / API: load first `company_profile` row (service role when configured).
  */
 export async function fetchDocumentCompanyProfile(): Promise<DocumentCompanyProfileDTO> {
+  noStore();
   const client = getServerSupabase();
   if (!client) {
     return companyProfileToDocumentDto(null);

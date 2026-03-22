@@ -16,8 +16,7 @@ test("labor modal opens", async ({ page }) => {
 
 test("projects list: status column + status filter (desktop table)", async ({ page }) => {
   test.setTimeout(90_000);
-  // Desktop table is `hidden md:block` in DataTable; mobile uses cards below `md`.
-  await page.setViewportSize({ width: 1280, height: 800 });
+  // Desktop viewport + list wait: {@link openFirstProjectStatusSelect}
   await openFirstProjectStatusSelect(page, BASE);
 });
 

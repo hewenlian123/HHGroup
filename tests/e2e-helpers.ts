@@ -77,7 +77,8 @@ export async function tryCreateDraftInvoiceNavigateToDetail(
   await expect(createBtn).toBeEnabled();
   await createBtn.click();
 
-  await expect(page).toHaveURL(/\/financial\/invoices\/.+/, { timeout: 20_000 });
+  // Do not accept `/financial/invoices/new` — that is the editor, not a created draft detail.
+  await expect(page).toHaveURL(/\/financial\/invoices\/(?!new(?:\/|$))[^/?#]+/i, { timeout: 20_000 });
   await expect(page.locator("body")).not.toContainText("Application error");
   return { ok: true };
 }
@@ -87,10 +88,21 @@ export async function tryCreateDraftInvoiceNavigateToDetail(
  * Asserts list loaded and the Active view filter applies without error.
  */
 export async function openFirstProjectStatusSelect(page: Page, baseUrl: string): Promise<void> {
+  await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto(`${trimBaseUrl(baseUrl)}/projects`);
   await page.waitForLoadState("domcontentloaded");
 
-  await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible({ timeout: 60_000 });
+  await expect(page).toHaveURL(/\/projects\/?($|[?#])/, { timeout: 30_000 });
+
+  // Stable test id on list page h1; fallback: main column + level-1 heading (avoids shell/breadcrumb ambiguity).
+  const byTestId = page.getByTestId("projects-page-heading");
+  const byMainH1 = page
+    .locator("[data-app-main-column] main")
+    .getByRole("heading", { level: 1, name: /^Projects$/ });
+  await expect(byTestId.or(byMainH1).first()).toBeVisible({ timeout: 60_000 });
+
+  // List search only (topbar also has "Search projects, workers…" — avoid strict-mode duplicate match).
+  await expect(page.getByTestId("projects-list-search")).toBeVisible({ timeout: 30_000 });
 
   if (await page.getByText("No projects yet.").isVisible().catch(() => false)) {
     test.skip(true, "No projects.");
