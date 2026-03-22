@@ -184,12 +184,36 @@ test.describe("Settings → Company Profile", () => {
       const s = `E2E-MULTI-${Date.now()}`;
       const p = `+1 555 ${String(Date.now()).slice(-7)}`;
 
+      await zip.click();
+      await zip.clear();
       await zip.fill(z);
+      await stateInput.click();
+      await stateInput.clear();
       await stateInput.fill(s);
+      await phone.click();
+      await phone.clear();
       await phone.fill(p);
 
       const saveBtn = page.getByTestId("company-save-button");
-      await saveBtn.click();
+      const [saveResp] = await Promise.all([
+        page.waitForResponse(
+          (resp) =>
+            resp.url().includes("/api/settings/company-profile") &&
+            resp.request().method() === "POST",
+          { timeout: 35_000 }
+        ),
+        saveBtn.click(),
+      ]);
+      expect(saveResp.status(), "company-profile POST should succeed").toBe(200);
+      const saveBody = (await saveResp.json().catch(() => null)) as {
+        ok?: boolean;
+        profile?: { zip?: string | null; state?: string | null; phone?: string | null };
+      } | null;
+      expect(saveBody?.ok).toBe(true);
+      expect(saveBody?.profile?.zip).toBe(z);
+      expect(saveBody?.profile?.state).toBe(s);
+      expect(saveBody?.profile?.phone).toBe(p);
+
       await expect(
         page
           .locator('[role="status"]')
@@ -199,9 +223,9 @@ test.describe("Settings → Company Profile", () => {
       await expect(saveBtn).toContainText("Save Profile", { timeout: 15_000 });
 
       expect(page.url()).toBe(urlBefore);
-      await expect(zip).toHaveValue(z, { timeout: 10_000 });
-      await expect(stateInput).toHaveValue(s, { timeout: 10_000 });
-      await expect(phone).toHaveValue(p, { timeout: 10_000 });
+      await expect(zip).toHaveValue(z, { timeout: 15_000 });
+      await expect(stateInput).toHaveValue(s, { timeout: 15_000 });
+      await expect(phone).toHaveValue(p, { timeout: 15_000 });
     });
 
     test("save shows Saving… then Saved; field persists after reload", async ({ page }) => {
