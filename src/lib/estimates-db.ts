@@ -1050,17 +1050,15 @@ export async function createCustomEstimateCategory(
   const costCode = await generateUniqueCustomCostCode(c, estimateIdSafe);
   const orderIndex = await nextCategoryOrderIndex(c, estimateIdSafe);
 
-  const { error: eCat } = await c
-    .from("estimate_categories")
-    .upsert(
-      {
-        estimate_id: estimateIdSafe,
-        cost_code: costCode,
-        display_name: trimmed,
-        order_index: orderIndex,
-      },
-      { onConflict: "estimate_id,cost_code" }
-    );
+  const { error: eCat } = await c.from("estimate_categories").upsert(
+    {
+      estimate_id: estimateIdSafe,
+      cost_code: costCode,
+      display_name: trimmed,
+      order_index: orderIndex,
+    },
+    { onConflict: "estimate_id,cost_code" }
+  );
   if (eCat && isMissingOrderIndexColumnError(eCat)) {
     // Backward-compat guard: some environments haven't refreshed schema cache for order_index yet.
     const { error: fallbackErr } = await c

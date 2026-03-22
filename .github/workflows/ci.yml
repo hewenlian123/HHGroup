@@ -1,4 +1,4 @@
-# CI: Vitest + Prettier (scoped) + ESLint (unit tests) + Playwright + production deploy to Vercel (main only).
+# CI: Vitest + Prettier (full repo) + ESLint (unit tests) + Playwright + production deploy to Vercel (main only).
 # Secrets: VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID
 # Optional: vars.NEXT_PUBLIC_SUPABASE_URL, secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY (real app URLs improve E2E)
 # E2E seed (staging): secrets SUPABASE_PROJECT_REF + SUPABASE_ACCESS_TOKEN (Supabase CLI; staging project only)
@@ -40,8 +40,8 @@ jobs:
       - name: Unit tests (Vitest)
         run: npm run test:unit
 
-      - name: Prettier (CI scope)
-        run: npm run format:check:ci
+      - name: Prettier
+        run: npm run format:check
 
       - name: ESLint (src/__tests__ only)
         run: npm run lint:ci

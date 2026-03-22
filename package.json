@@ -19,7 +19,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ci": "playwright test --project chromium",
     "test:local": "CI= npx playwright test --project=chromium",
-    "test:before-push": "CI= npx playwright test --project=chromium && git push origin main",
+    "test:before-push": "npx prettier --write . && CI= npx playwright test --project=chromium && git push origin main",
     "test:e2e:company-profile": "CI= playwright test tests/settings-company-profile.spec.ts --project=chromium",
     "test:e2e:document-header": "CI= playwright test tests/settings-company-profile.spec.ts -g \"invoice print header\" --project=chromium",
     "test:e2e:company-branding": "CI= playwright test tests/settings-company-profile.spec.ts --project=chromium",
