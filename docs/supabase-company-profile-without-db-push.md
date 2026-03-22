@@ -32,7 +32,7 @@
 
 - 确保 **`branding`** 存储桶存在且 **public**
 - **`company_profile`**：`authenticated` 可 `select / insert / update / delete`（开放策略，适合当前阶段）
-- **`storage.objects`**：`authenticated` 可对 `bucket_id = 'branding'` 做 insert/update/delete  
+- **`storage.objects`**：`authenticated` 可对 `bucket_id = 'branding'` 做 insert/update/delete
 - 重建 **`branding_select_public`**（先 `drop if exists`），便于浏览器/PDF 加载公开 Logo URL
 
 ---
@@ -41,10 +41,10 @@
 
 在 **Vercel / 服务器** 与本地 **`.env.local`** 中配置：
 
-| 变量 | 说明 |
-|------|------|
-| `NEXT_PUBLIC_SUPABASE_URL` | 已有 |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | 已有 |
+| 变量                            | 说明                                                                                                                         |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | 已有                                                                                                                         |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | 已有                                                                                                                         |
 | **`SUPABASE_SERVICE_ROLE_KEY`** | **必填**（生产）：Logo API `POST/DELETE /api/settings/company-logo` 使用；单据服务端读 `company_profile` 也常用 service role |
 
 从 **Supabase → Project Settings → API → service_role** 复制（**勿**提交到 Git、勿发给前端）。
@@ -79,7 +79,7 @@
 - Invoice 打印：`/financial/invoices/[id]/print`
 - Estimate 打印 / 预览 / 快照
 - Worker Payment Receipt（页面 + 打印 + 预览 API）
-- Worker Statement 打印  
+- Worker Statement 打印
 - 材料 PDF（如使用公司头信息）
 
 验证：修改 **Company Name** 或 Logo → 再打开上述任一单据 **新生成/新打开** 的视图，应看到 **更新后的公司信息**。
@@ -127,5 +127,5 @@ Logo **完整**上传用例在 Storage 未开放时可能 **skip**；配置 `bra
 
 当前 RLS 对 **`company_profile` / branding** 在 **authenticated** 维度较宽，目的是 **优先保证可用**。后续若恢复 `role_permissions` 或自定义角色表，应：
 
-1. 收紧 `company_profile_*` / `branding_*` 策略  
+1. 收紧 `company_profile_*` / `branding_*` 策略
 2. 在 **`/api/settings/company-logo`** 内增加与角色一致的校验（与 RLS 对齐）

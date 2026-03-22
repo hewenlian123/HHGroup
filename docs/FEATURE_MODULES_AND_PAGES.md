@@ -26,14 +26,14 @@
 
 ### 2.2 工人 (Workers)
 
-| 页面名称       | 主要功能       | 路由 (URL)                            | API 路由 |
-| -------------- | -------------- | ------------------------------------- | -------- |
-| 工人列表       | 增、删、改、查 | `/labor/workers`                      | —        |
-| 新建工人       | 增             | `/labor/workers/new`                  | —        |
+| 页面名称       | 主要功能       | 路由 (URL)                                          | API 路由 |
+| -------------- | -------------- | --------------------------------------------------- | -------- |
+| 工人列表       | 增、删、改、查 | `/labor/workers`                                    | —        |
+| 新建工人       | 增             | `/labor/workers/new`                                | —        |
 | 工人 Dashboard | 查             | `/workers/[id]`（`/labor/workers/[id]` 重定向至此） | —        |
 | 工人资料编辑   | 改             | `/workers/[id]/edit`                                | —        |
-| 工人对账单     | 查             | `/labor/workers/[id]/statement`       | —        |
-| 工人对账单打印 | 查、打印       | `/labor/workers/[id]/statement/print` | —        |
+| 工人对账单     | 查             | `/labor/workers/[id]/statement`                     | —        |
+| 工人对账单打印 | 查、打印       | `/labor/workers/[id]/statement/print`               | —        |
 
 ### 2.3 工人报销 (Reimbursements)
 
@@ -82,9 +82,9 @@
 
 ### 2.8 劳工付款 (Payments)
 
-| 页面名称            | 主要功能               | 路由 (URL)                     | API 路由 |
-| ------------------- | ---------------------- | ------------------------------ | -------- |
-| 劳工付款（Pay Run） | 查、增（登记付款）、删 | `/labor/payments`              | —        |
+| 页面名称            | 主要功能               | 路由 (URL)                                                                       | API 路由 |
+| ------------------- | ---------------------- | -------------------------------------------------------------------------------- | -------- |
+| 劳工付款（Pay Run） | 查、增（登记付款）、删 | `/labor/payments`                                                                | —        |
 | 付款收据            | 查                     | `/receipt/print/[id]`（生产级 PDF 打印）; `/labor/payments/[id]/receipt`（详情） | —        |
 
 ### 2.9 劳工成本与工资
@@ -380,15 +380,15 @@
 
 ## 十八、其他
 
-| 页面名称   | 主要功能 | 路由 (URL) | API 路由                                    |
-| ---------- | -------- | ---------- | ------------------------------------------- |
-| 工人（根） | 查       | `/workers` | —                                           |
-| 工人 Dashboard | 查   | `/workers/[id]` | `GET /api/labor/workers/[id]/financial-summary` 等 |
-| 工人资料编辑   | 改   | `/workers/[id]/edit` | `updateWorker` 等 |
-| 工人汇总   | 查       | `/workers/summary` | —                                      |
-| 业主       | 查       | `/owner`   | —                                           |
-| —          | —        | —          | `POST /api/ensure-schema`（确保 DB 表存在） |
-| —          | —        | —          | `POST /api/seed-workers`（种子工人数据）    |
+| 页面名称       | 主要功能 | 路由 (URL)           | API 路由                                           |
+| -------------- | -------- | -------------------- | -------------------------------------------------- |
+| 工人（根）     | 查       | `/workers`           | —                                                  |
+| 工人 Dashboard | 查       | `/workers/[id]`      | `GET /api/labor/workers/[id]/financial-summary` 等 |
+| 工人资料编辑   | 改       | `/workers/[id]/edit` | `updateWorker` 等                                  |
+| 工人汇总       | 查       | `/workers/summary`   | —                                                  |
+| 业主           | 查       | `/owner`             | —                                                  |
+| —              | —        | —                    | `POST /api/ensure-schema`（确保 DB 表存在）        |
+| —              | —        | —                    | `POST /api/seed-workers`（种子工人数据）           |
 
 ---
 

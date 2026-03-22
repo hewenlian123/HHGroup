@@ -16,11 +16,11 @@ npm run test:unit -- src/__tests__/lib/document-company-profile.test.ts
 npm run test:e2e:company-branding
 ```
 
-| 脚本 | 覆盖 |
-|------|------|
-| `test:e2e:company-profile` | Settings 字段、保存、持久化、Logo 正例/反例、**503/401 时走浏览器直连 fallback** |
-| `test:e2e:document-header` | 改公司名保存 → 新建草稿 Invoice → **打印页**出现 `document-company-header` 与该公司名 |
-| `test:e2e:company-branding` | 以上两者合并 |
+| 脚本                        | 覆盖                                                                                  |
+| --------------------------- | ------------------------------------------------------------------------------------- |
+| `test:e2e:company-profile`  | Settings 字段、保存、持久化、Logo 正例/反例、**503/401 时走浏览器直连 fallback**      |
+| `test:e2e:document-header`  | 改公司名保存 → 新建草稿 Invoice → **打印页**出现 `document-company-header` 与该公司名 |
+| `test:e2e:company-branding` | 以上两者合并                                                                          |
 
 Logo E2E 若因 Storage RLS 失败会 **skip**；强制失败可设 `E2E_BRANDING_FULL=1`（见 `tests/settings-company-profile.spec.ts`）。
 
@@ -28,23 +28,23 @@ Logo E2E 若因 Storage RLS 失败会 **skip**；强制失败可设 `E2E_BRANDIN
 
 ## 一、Company Profile（手动）
 
-| 项 | 操作 |
-|----|------|
-| 字段 | Company Name、Phone、Email、Address（多行）、License 等 |
-| 保存 | 修改任意字段 → **Save Profile** → 出现 **Saved** |
-| UI | 保存后表单与顶部状态立即一致（乐观更新） |
-| 持久化 | **刷新**页面后值仍在 |
+| 项     | 操作                                                    |
+| ------ | ------------------------------------------------------- |
+| 字段   | Company Name、Phone、Email、Address（多行）、License 等 |
+| 保存   | 修改任意字段 → **Save Profile** → 出现 **Saved**        |
+| UI     | 保存后表单与顶部状态立即一致（乐观更新）                |
+| 持久化 | **刷新**页面后值仍在                                    |
 
 ---
 
 ## 二、Logo（手动）
 
-| 项 | 操作 |
-|----|------|
-| PNG / JPG | 上传成功 → 预览出现 |
-| 持久化 | **刷新** Settings 后 Logo 仍在 |
-| 替换 | 再传一张 → 覆盖旧图 |
-| 删除 | **Remove Logo** → 预览消失；刷新后仍无图 |
+| 项        | 操作                                     |
+| --------- | ---------------------------------------- |
+| PNG / JPG | 上传成功 → 预览出现                      |
+| 持久化    | **刷新** Settings 后 Logo 仍在           |
+| 替换      | 再传一张 → 覆盖旧图                      |
+| 删除      | **Remove Logo** → 预览消失；刷新后仍无图 |
 
 **数据库：** 若未登录、Logo API 无 session，需已执行 `20260321140000_company_profile_anon_branding.sql`（或等价 anon 策略），否则 fallback 直连 Storage 会被 RLS 拒绝。详见 `docs/supabase-company-profile-without-db-push.md`。
 
@@ -52,11 +52,11 @@ Logo E2E 若因 Storage RLS 失败会 **skip**；强制失败可设 `E2E_BRANDIN
 
 ## 三、Fallback（手动 / 已由 E2E 部分覆盖）
 
-| 场景 | 期望 |
-|------|------|
+| 场景                                    | 期望                                                     |
+| --------------------------------------- | -------------------------------------------------------- |
 | API **503**（无 service role 或不可用） | 前端自动 **浏览器直连** Storage + 更新 `company_profile` |
-| API **401**（服务端无 cookie 会话） | 同上 fallback |
-| 无登录 + anon 策略 | 上传仍可成功 |
+| API **401**（服务端无 cookie 会话）     | 同上 fallback                                            |
+| 无登录 + anon 策略                      | 上传仍可成功                                             |
 
 ---
 
@@ -64,17 +64,17 @@ Logo E2E 若因 Storage RLS 失败会 **skip**；强制失败可设 `E2E_BRANDIN
 
 以下使用 **`fetchDocumentCompanyProfile()`** + **`DocumentCompanyHeader`**（或等价 props）：
 
-| 区域 | 路径 / 入口 |
-|------|-------------|
-| Invoice 打印 | `/financial/invoices/[id]/print` |
-| Estimate 打印 | `/estimates/[id]/print` |
-| Estimate 预览 | `/estimates/[id]/preview` |
-| Estimate 快照 | `/estimates/[id]/snapshot` |
-| Worker Payment Receipt | `/labor/payments/[id]/receipt` 等 |
-| Receipt 打印 | `/receipt/print/[id]` |
-| Worker Statement 打印 | `/workers/[id]/statement/print` |
-| 材料 PDF API | `POST /api/projects/[id]/materials/generate-pdf` |
-| Receipt 预览 API | `/api/labor/worker-payments/[id]/receipt-preview` |
+| 区域                   | 路径 / 入口                                       |
+| ---------------------- | ------------------------------------------------- |
+| Invoice 打印           | `/financial/invoices/[id]/print`                  |
+| Estimate 打印          | `/estimates/[id]/print`                           |
+| Estimate 预览          | `/estimates/[id]/preview`                         |
+| Estimate 快照          | `/estimates/[id]/snapshot`                        |
+| Worker Payment Receipt | `/labor/payments/[id]/receipt` 等                 |
+| Receipt 打印           | `/receipt/print/[id]`                             |
+| Worker Statement 打印  | `/workers/[id]/statement/print`                   |
+| 材料 PDF API           | `POST /api/projects/[id]/materials/generate-pdf`  |
+| Receipt 预览 API       | `/api/labor/worker-payments/[id]/receipt-preview` |
 
 **左侧应显示（有则显示，无则不占假占位）：**
 
@@ -90,11 +90,11 @@ Logo E2E 若因 Storage RLS 失败会 **skip**；强制失败可设 `E2E_BRANDIN
 
 ## 五、PDF / 打印（手动）
 
-| 项 | 检查 |
-|----|------|
-| 浏览器打印 / 导出 PDF | Header 含 Logo（若有）+ 公司信息 |
-| 布局 | 单页起始区域不被截断；Logo `object-contain` 不变形 |
-| 与屏幕一致 | 打印样式与 `print:` 类一致 |
+| 项                    | 检查                                               |
+| --------------------- | -------------------------------------------------- |
+| 浏览器打印 / 导出 PDF | Header 含 Logo（若有）+ 公司信息                   |
+| 布局                  | 单页起始区域不被截断；Logo `object-contain` 不变形 |
+| 与屏幕一致            | 打印样式与 `print:` 类一致                         |
 
 （具体「下载 PDF」按钮因页面而异：Invoice/Estimate/Receipt 各自入口需在 UI 中点一次验证。）
 
@@ -102,21 +102,21 @@ Logo E2E 若因 Storage RLS 失败会 **skip**；强制失败可设 `E2E_BRANDIN
 
 ## 六、异常与边界（手动）
 
-| 场景 | 期望 |
-|------|------|
-| 无 Logo | 不渲染 Logo `<img>`，**不留空白占位块** |
-| 电话/邮箱等为空 | 对应行不出现，**不破坏**左侧排版 |
-| 无效邮箱 | Save 前校验，**Saved** 不出现 |
+| 场景            | 期望                                    |
+| --------------- | --------------------------------------- |
+| 无 Logo         | 不渲染 Logo `<img>`，**不留空白占位块** |
+| 电话/邮箱等为空 | 对应行不出现，**不破坏**左侧排版        |
+| 无效邮箱        | Save 前校验，**Saved** 不出现           |
 
 ---
 
 ## 七、通过标准（汇总）
 
-- [ ] Settings **Company Profile** 保存与刷新一致  
-- [ ] Logo 上传 / 替换 / 删除稳定  
-- [ ] Logo API 异常时 **fallback** 仍可用（含 anon SQL）  
-- [ ] **Invoice**（及你业务常用的 Estimate / Receipt）**打印或预览** Header 与公司资料一致  
-- [ ] 改一次资料 → **新打开**单据即更新  
+- [ ] Settings **Company Profile** 保存与刷新一致
+- [ ] Logo 上传 / 替换 / 删除稳定
+- [ ] Logo API 异常时 **fallback** 仍可用（含 anon SQL）
+- [ ] **Invoice**（及你业务常用的 Estimate / Receipt）**打印或预览** Header 与公司资料一致
+- [ ] 改一次资料 → **新打开**单据即更新
 
 组件测试锚点（E2E / 调试）：`data-testid="document-company-header"`、`document-company-name`、`document-company-logo`（仅在有 Logo 时存在）。
 
