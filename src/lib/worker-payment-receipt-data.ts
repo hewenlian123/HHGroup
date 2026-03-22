@@ -47,7 +47,10 @@ type LaborRowRaw = {
   id: string;
   work_date?: string;
   project_id?: string | null;
+  project_am_id?: string | null;
+  project_pm_id?: string | null;
   cost_amount?: number | null;
+  total?: number | null;
   morning?: boolean | null;
   afternoon?: boolean | null;
 };
@@ -88,7 +91,9 @@ export async function getWorkerPaymentReceiptPayload(
 
   const laborRes = await c
     .from("labor_entries")
-    .select("id, work_date, project_id, cost_amount, morning, afternoon, worker_payment_id")
+    .select(
+      "id, work_date, project_am_id, project_pm_id, cost_amount, total, morning, afternoon, worker_payment_id"
+    )
     .eq("worker_payment_id", paymentId)
     .eq("worker_id", workerId);
 
@@ -101,7 +106,9 @@ export async function getWorkerPaymentReceiptPayload(
   if (extraIds.length > 0) {
     const byIdsRes = await c
       .from("labor_entries")
-      .select("id, work_date, project_id, cost_amount, morning, afternoon, worker_payment_id")
+      .select(
+        "id, work_date, project_am_id, project_pm_id, cost_amount, total, morning, afternoon, worker_payment_id"
+      )
       .eq("worker_id", workerId)
       .in("id", extraIds);
     laborFromIds = (!byIdsRes.error ? byIdsRes.data ?? [] : []) as LaborRowRaw[];
@@ -110,14 +117,14 @@ export async function getWorkerPaymentReceiptPayload(
   const laborRaw = mergeLaborRowsById([...laborFromLink, ...laborFromIds]);
 
   const laborLines: ReceiptLaborLine[] = laborRaw.map((r) => {
-    const pid = r.project_id ?? null;
+    const pid = r.project_id ?? r.project_am_id ?? r.project_pm_id ?? null;
     const session = laborSessionLabel({ morning: r.morning, afternoon: r.afternoon }) ?? "—";
     return {
       id: r.id,
       workDate: (r.work_date ?? "").slice(0, 10),
       projectName: pid ? projectNameById.get(pid) ?? null : null,
       session,
-      amount: Number(r.cost_amount) || 0,
+      amount: Number(r.cost_amount ?? r.total) || 0,
     };
   });
 
@@ -194,17 +201,17 @@ async function computeWorkerBalanceSnapshot(
     reimbUnpaid += Number(r.amount) || 0;
   }
 
-  const payRes = await c.from("worker_payments").select("amount").eq("worker_id", workerId);
+  const payRes = await c.from("worker_payments").select("total_amount").eq("worker_id", workerId);
   let totalPayments = 0;
   if (!payRes.error) {
-    for (const r of (payRes.data ?? []) as { amount?: number | null }[]) {
-      totalPayments += Number(r.amount) || 0;
+    for (const r of (payRes.data ?? []) as { total_amount?: number | null }[]) {
+      totalPayments += Number(r.total_amount) || 0;
     }
-  } else if (/column.*amount|schema cache/i.test(payRes.error.message ?? "")) {
-    const payFb = await c.from("worker_payments").select("total_amount").eq("worker_id", workerId);
+  } else if (/column.*total_amount|schema cache/i.test(payRes.error.message ?? "")) {
+    const payFb = await c.from("worker_payments").select("amount").eq("worker_id", workerId);
     if (!payFb.error) {
-      for (const r of (payFb.data ?? []) as { total_amount?: number | null }[]) {
-        totalPayments += Number(r.total_amount) || 0;
+      for (const r of (payFb.data ?? []) as { amount?: number | null }[]) {
+        totalPayments += Number(r.amount) || 0;
       }
     }
   }

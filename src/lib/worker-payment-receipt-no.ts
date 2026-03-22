@@ -1,5 +1,5 @@
 /**
- * Display-only receipt number: R-YYYYMMDD-NNN (same calendar `payment_date`, ordered by created_at, id).
+ * Display-only receipt number: R-YYYYMMDD-NNN (same calendar day in UTC by created_at, ordered by created_at, id).
  * Does not persist to DB; UUID remains the canonical id for URLs and storage.
  */
 
@@ -33,29 +33,18 @@ export async function computeWorkerPaymentReceiptNo(paymentId: string, paymentDa
     return `R-${day}-001`;
   }
 
-  let rows: { id: string }[] = [];
+  const start = `${dateKey}T00:00:00.000Z`;
+  const end = `${dateKey}T23:59:59.999Z`;
 
-  const byPaymentDate = await c
+  const { data, error } = await c
     .from("worker_payments")
     .select("id, created_at")
-    .eq("payment_date", dateKey)
+    .gte("created_at", start)
+    .lte("created_at", end)
     .order("created_at", { ascending: true })
     .order("id", { ascending: true });
 
-  if (!byPaymentDate.error && byPaymentDate.data) {
-    rows = byPaymentDate.data as { id: string }[];
-  } else if (byPaymentDate.error && /payment_date|schema cache/i.test(byPaymentDate.error.message ?? "")) {
-    const wide = await c
-      .from("worker_payments")
-      .select("id, created_at, payment_date")
-      .order("created_at", { ascending: true })
-      .order("id", { ascending: true });
-    if (!wide.error && wide.data) {
-      rows = (wide.data as { id: string; payment_date?: string | null }[])
-        .filter((r) => (r.payment_date ?? "").slice(0, 10) === dateKey)
-        .map((r) => ({ id: r.id }));
-    }
-  }
+  const rows = (!error && data ? data : []) as { id: string }[];
 
   if (rows.length === 0) {
     return `R-${day}-001`;

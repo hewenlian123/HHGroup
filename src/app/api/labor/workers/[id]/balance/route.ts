@@ -99,6 +99,9 @@ export async function GET(
     let laborRes: RawResult = { data: null, error: null };
     let laborColsApplied = "";
     for (const cols of [
+      "id, worker_id, project_am_id, project_pm_id, work_date, cost_amount, total, status, worker_payment_id, morning, afternoon, hours, notes",
+      "id, worker_id, project_am_id, project_pm_id, work_date, cost_amount, total, status, worker_payment_id, morning, afternoon",
+      "id, worker_id, project_am_id, project_pm_id, work_date, cost_amount, total, status, worker_payment_id",
       "id, worker_id, project_id, work_date, cost_amount, status, worker_payment_id, morning, afternoon, hours, notes",
       "id, worker_id, project_id, work_date, cost_amount, status, worker_payment_id, morning, afternoon",
       "id, worker_id, project_id, work_date, cost_amount, status, worker_payment_id",
@@ -116,21 +119,21 @@ export async function GET(
     }
     const laborSettlementMode = laborPayrollSettlementModeFromSelectList(laborColsApplied);
 
-    // worker_payments — progressively strip missing columns, then drop ordering
+    // worker_payments — canonical: total_amount, note, created_at
     let paymentsRes: RawResult = { data: null, error: null };
     for (const cols of [
-      "id, worker_id, payment_date, amount, payment_method, notes",
-      "id, worker_id, payment_date, amount, notes",
-      "id, worker_id, payment_date, amount",
+      "id, worker_id, total_amount, payment_method, note, created_at",
+      "id, worker_id, total_amount, note, created_at",
+      "id, worker_id, total_amount, created_at",
     ]) {
-      paymentsRes = await queryWorker(c, "worker_payments", cols, "payment_date");
+      paymentsRes = await queryWorker(c, "worker_payments", cols, "created_at");
       if (!paymentsRes.error || !isMissingColumn(paymentsRes.error)) break;
     }
     if (paymentsRes.error) {
-      paymentsRes = await queryWorker(c, "worker_payments", "id, worker_id, amount");
+      paymentsRes = await queryWorker(c, "worker_payments", "id, worker_id, amount, created_at", "created_at");
     }
     if (paymentsRes.error) {
-      paymentsRes = await queryWorker(c, "worker_payments", "id, amount");
+      paymentsRes = await queryWorker(c, "worker_payments", "id, amount, created_at", "created_at");
     }
 
     const [reimbRes, projectsRes] = await Promise.all([
@@ -153,9 +156,12 @@ export async function GET(
 
     const laborRaw = (laborRes.data ?? []) as {
       id: string;
-      project_id: string | null;
+      project_id?: string | null;
+      project_am_id?: string | null;
+      project_pm_id?: string | null;
       work_date?: string;
       cost_amount?: number | null;
+      total?: number | null;
       status?: string | null;
       worker_payment_id?: string | null;
       morning?: boolean | null;
@@ -169,6 +175,7 @@ export async function GET(
       return String(a.id).localeCompare(String(b.id));
     });
     const laborEntries: LaborEntryRow[] = laborSorted.map((r) => {
+      const projectKey = r.project_id ?? r.project_am_id ?? r.project_pm_id ?? null;
       const workerPaymentId =
         laborSettlementMode === "payment_link"
           ? (r.worker_payment_id != null ? String(r.worker_payment_id).trim() || null : null)
@@ -177,9 +184,9 @@ export async function GET(
       return {
         id: r.id,
         date: (r.work_date ?? "").slice(0, 10),
-        projectId: r.project_id ?? null,
-        projectName: r.project_id ? (projectNameById.get(r.project_id) ?? null) : null,
-        amount: Number(r.cost_amount) || 0,
+        projectId: projectKey,
+        projectName: projectKey ? (projectNameById.get(projectKey) ?? null) : null,
+        amount: Number(r.cost_amount ?? r.total) || 0,
         status: String(r.status ?? "").trim() || "—",
         workerPaymentId,
         payrollSettled,
@@ -208,25 +215,28 @@ export async function GET(
     const payRaw = (paymentsRes.data ?? []) as {
       id: string;
       payment_date?: string;
+      created_at?: string;
       amount?: number | null;
+      total_amount?: number | null;
       payment_method?: string | null;
       notes?: string | null;
+      note?: string | null;
     }[];
     const payments: PaymentRow[] = payRaw.map((r) => ({
       id: r.id,
-      date: (r.payment_date ?? "").slice(0, 10),
-      amount: Number(r.amount) || 0,
+      date: (r.payment_date ?? r.created_at ?? "").slice(0, 10),
+      amount: Number(r.total_amount ?? r.amount) || 0,
       paymentMethod: r.payment_method ?? null,
-      notes: r.notes ?? null,
+      notes: (r.notes ?? r.note ?? null) as string | null,
     }));
 
     const laborOwed = laborRaw
       .filter((r) => isLaborUnpaidForWorkerPayroll(r.status, r.worker_payment_id, laborSettlementMode))
-      .reduce((s, r) => s + (Number(r.cost_amount) || 0), 0);
+      .reduce((s, r) => s + (Number(r.cost_amount ?? r.total) || 0), 0);
     const reimbUnpaid = reimbRaw
       .filter((r) => String(r.status ?? "").toLowerCase() !== "paid")
       .reduce((s, r) => s + (Number(r.amount) || 0), 0);
-    const totalPayments = payRaw.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    const totalPayments = payRaw.reduce((s, r) => s + (Number(r.total_amount ?? r.amount) || 0), 0);
     const advancesRows = !advancesRes.error
       ? ((advancesRes.data ?? []) as {
           worker_id: string;

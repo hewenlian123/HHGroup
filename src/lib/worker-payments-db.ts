@@ -9,7 +9,9 @@ import { getSupabaseClient } from "@/lib/supabase";
 export type WorkerPayment = {
   id: string;
   workerId: string;
+  /** Legacy UI field; DB has no project scope on worker_payments — always null. */
   projectId: string | null;
+  /** Calendar date for display / receipt sequencing (from created_at). */
   paymentDate: string;
   amount: number;
   paymentMethod: string | null;
@@ -21,8 +23,10 @@ export type WorkerPayment = {
 
 export type CreateWorkerPaymentInput = {
   workerId: string;
+  /** Ignored at insert — column removed from worker_payments. */
   projectId?: string | null;
-  paymentDate?: string; // YYYY-MM-DD
+  /** Ignored at insert — use server created_at; kept for API compatibility. */
+  paymentDate?: string;
   amount: number;
   paymentMethod: string;
   notes?: string | null;
@@ -39,7 +43,7 @@ function isMissingTable(err: { message?: string; code?: string } | null): boolea
   return /schema cache|relation.*does not exist|could not find the table|table.*does not exist|pgrst205/i.test(m) || err?.code === "PGRST205";
 }
 
-const COLS_BASE = "id, worker_id, project_id, payment_date, amount, payment_method, notes, created_at";
+const COLS_BASE = "id, worker_id, total_amount, payment_method, note, created_at";
 const COLS = `${COLS_BASE}, labor_entry_ids`;
 
 function parseLaborEntryIds(raw: unknown): string[] | null {
@@ -52,15 +56,16 @@ function parseLaborEntryIds(raw: unknown): string[] | null {
 }
 
 function fromRow(r: Record<string, unknown>): WorkerPayment {
+  const createdAt = (r.created_at as string) ?? "";
   return {
     id: (r.id as string) ?? "",
     workerId: (r.worker_id as string) ?? "",
-    projectId: (r.project_id as string | null) ?? null,
-    paymentDate: ((r.payment_date as string) ?? "").slice(0, 10),
-    amount: Number(r.amount) || 0,
+    projectId: null,
+    paymentDate: createdAt.slice(0, 10),
+    amount: Number(r.total_amount ?? r.amount) || 0,
     paymentMethod: (r.payment_method as string | null) ?? null,
-    notes: (r.notes as string | null) ?? null,
-    createdAt: (r.created_at as string) ?? "",
+    notes: ((r.note ?? r.notes) as string | null) ?? null,
+    createdAt,
     laborEntryIds: parseLaborEntryIds(r.labor_entry_ids),
   };
 }
@@ -79,11 +84,9 @@ export async function createWorkerPaymentWithClient(
 
   const payload = {
     worker_id: input.workerId,
-    project_id: input.projectId ?? null,
-    payment_date: (input.paymentDate ?? new Date().toISOString().slice(0, 10)).slice(0, 10),
-    amount: amt,
+    total_amount: amt,
     payment_method: method,
-    notes: input.notes?.trim() || null,
+    note: input.notes?.trim() || null,
   };
 
   const { data, error } = await c.from("worker_payments").insert(payload).select(COLS_BASE).single();
@@ -107,11 +110,11 @@ export async function getWorkerPayments(filters?: {
 }): Promise<WorkerPayment[]> {
   const c = client();
   async function runSelect(cols: string) {
-    let q = c.from("worker_payments").select(cols).order("payment_date", { ascending: false }).order("created_at", { ascending: false });
+    let q = c.from("worker_payments").select(cols).order("created_at", { ascending: false });
     if (filters?.workerId) q = q.eq("worker_id", filters.workerId);
-    if (filters?.projectId) q = q.eq("project_id", filters.projectId);
-    if (filters?.fromDate) q = q.gte("payment_date", filters.fromDate);
-    if (filters?.toDate) q = q.lte("payment_date", filters.toDate);
+    // worker_payments has no project_id — ignore projectId filter.
+    if (filters?.fromDate) q = q.gte("created_at", `${filters.fromDate}T00:00:00.000Z`);
+    if (filters?.toDate) q = q.lte("created_at", `${filters.toDate}T23:59:59.999Z`);
     if (filters?.limit) q = q.limit(Math.max(1, Math.min(filters.limit, 500)));
     return q;
   }

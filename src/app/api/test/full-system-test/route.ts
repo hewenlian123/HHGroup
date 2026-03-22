@@ -900,12 +900,11 @@ export async function POST(req: Request) {
         .from("worker_payments")
         .insert({
           worker_id: workerId,
-          project_id: projectId,
-          payment_date: today,
-          amount: 50,
+          total_amount: 50,
           payment_method: "Test",
+          note: "full-system-test",
         })
-        .select("id, amount")
+        .select("id, total_amount")
         .single();
       if (payErr || !payment) throw new Error(`Worker payment create failed: ${payErr?.message}`);
       paymentId = (payment as { id: string }).id;
@@ -915,11 +914,11 @@ export async function POST(req: Request) {
       // Verify payment stored
       const { data: storedPayment } = await c
         .from("worker_payments")
-        .select("id, amount")
+        .select("id, total_amount")
         .eq("id", paymentId)
         .maybeSingle();
       if (!storedPayment) throw new Error("Worker payment not found after insert");
-      if (Number((storedPayment as { amount?: number }).amount) < 1)
+      if (Number((storedPayment as { total_amount?: number }).total_amount) < 1)
         throw new Error("Worker payment amount incorrect");
       steps.push("worker payment verified");
       log("labor_workflow", "worker payment verified");

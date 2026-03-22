@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
  * Total Labor = SUM(labor_entries.cost_amount) for this worker.
  * Total Reimbursements = SUM(worker_reimbursements.amount).
  * Total Worker Invoices = SUM(worker_invoices.amount).
- * Total Payments = SUM(worker_payments.amount).
+ * Total Payments = SUM(worker_payments.total_amount).
  * Balance = Labor + Reimbursements + Invoices - Payments.
  */
 export async function GET(
@@ -50,13 +50,13 @@ export async function GET(
     const invoiceRows = (invoicesRes.data ?? []) as { amount?: number | null }[];
     const totalWorkerInvoices = invoiceRows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
 
-    let paymentsRes: RawResult = await query("worker_payments", "worker_id, amount");
-    if (paymentsRes.error && /column.*amount|schema cache/i.test(paymentsRes.error.message ?? "")) {
-      paymentsRes = await query("worker_payments", "worker_id, total_amount");
+    let paymentsRes: RawResult = await query("worker_payments", "worker_id, total_amount");
+    if (paymentsRes.error && /column.*total_amount|schema cache/i.test(paymentsRes.error.message ?? "")) {
+      paymentsRes = await query("worker_payments", "worker_id, amount");
     }
     const paymentRows = (paymentsRes.data ?? []) as { amount?: number | null; total_amount?: number | null }[];
     const totalPayments = paymentRows.reduce(
-      (s, r) => s + (Number(r.amount ?? r.total_amount) || 0),
+      (s, r) => s + (Number(r.total_amount ?? r.amount) || 0),
       0
     );
 

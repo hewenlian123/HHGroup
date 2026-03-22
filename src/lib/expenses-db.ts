@@ -987,16 +987,11 @@ export async function getTotalExpenses(): Promise<number> {
 /** Sum of all expense_lines amounts (amount or total column). For finance overview. */
 export async function getTotalExpenseLinesSum(): Promise<number> {
   const c = client();
-  const { data: rows, error } = await c.from("expense_lines").select("amount, total");
+  const { data: rows, error } = await c.from("expense_lines").select("amount");
   if (error) {
-    if (/column .* does not exist|schema cache/i.test(error.message ?? "")) {
-      const fallback = await c.from("expense_lines").select("total");
-      if (fallback.error) return 0;
-      return (fallback.data ?? []).reduce((s, r) => s + Number((r as { total?: number }).total ?? 0), 0);
-    }
     return 0;
   }
-  return (rows ?? []).reduce((s, r) => s + Number((r as { amount?: number; total?: number }).amount ?? (r as { total?: number }).total ?? 0), 0);
+  return (rows ?? []).reduce((s, r) => s + Number((r as { amount?: number }).amount ?? 0), 0);
 }
 
 /** Sum of expense line amounts for expenses with expense_date in the given month. For dashboard "Expenses This Month". */

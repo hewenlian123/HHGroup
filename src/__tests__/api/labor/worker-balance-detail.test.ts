@@ -89,7 +89,15 @@ describe("GET /api/labor/workers/[id]/balance", () => {
         worker: { id: "w1", name: "Worker One" },
         labor: [{ id: "l1", project_id: "p1", work_date: "2025-01-01", cost_amount: 100, status: "pending" }],
         reimb: [{ id: "r1", project_id: null, vendor: "V", amount: 20, status: "pending", created_at: "2025-01-02" }],
-        payments: [{ id: "pay1", payment_date: "2025-01-03", amount: 50, payment_method: "cash", notes: null }],
+        payments: [
+          {
+            id: "pay1",
+            created_at: "2025-01-03T12:00:00.000Z",
+            total_amount: 50,
+            payment_method: "cash",
+            note: null,
+          },
+        ],
       });
     const { GET } = await import("@/app/api/labor/workers/[id]/balance/route");
     const res = await GET(new Request("http://x"), { params: Promise.resolve({ id: "w1" }) });

@@ -51,13 +51,14 @@ function isMissingColumn(err: { message?: string } | null): boolean {
  *   - Approved change orders = project_change_orders where status = 'Approved' (amount or total/total_amount).
  *
  * Actual cost = labor cost + expense cost + subcontract cost
- *   - Labor cost = sum(labor_entries.cost_amount) for this project (locked at entry time).
- *   - Expense cost = sum(expense_lines.amount or total) for this project (direct project expenses).
+ *   - Labor cost = sum(labor_entries.cost_amount or total) allocated to this project via project_am_id / project_pm_id
+ *     (or legacy project_id when present). Split-day rows share cost 50/50 across two projects when AM ≠ PM.
+ *   - Expense cost = sum(expense_lines.amount) for this project (expense_lines.project_id).
  *   - Subcontract cost = sum(subcontract_bills.amount) for this project where status = 'Approved'.
  *
  * Legacy note: labor_cost_allocation trigger/RPC (migrations 202603082200/2300/2400) updates projects.spent,
  * but canonical does NOT read projects.spent and therefore those legacy mechanisms do NOT affect canonical cost.
- * Canonical labor cost is always derived from labor_entries.cost_amount (status Approved/Locked), aggregated by project_id.
+ * Canonical labor cost is derived from labor_entries rows linked to the project (AM/PM columns or legacy project_id).
  *
  * Double-counting rule: expense_lines and subcontract_bills are mutually exclusive by design.
  * - expense_lines = direct project expenses (materials, permits, etc.).
@@ -79,6 +80,104 @@ function isMissingColumn(err: { message?: string } | null): boolean {
  */
 let expenseLinesHasProjectId: boolean | null = null;
 
+type LaborCostRow = {
+  project_id?: string | null;
+  project_am_id?: string | null;
+  project_pm_id?: string | null;
+  cost_amount?: unknown;
+  total?: unknown;
+  status?: unknown;
+};
+
+const LABOR_EXCLUDE_STATUS = new Set(["paid", "void"]);
+
+function laborLineAmountForProject(row: LaborCostRow, projectId: string): number {
+  const full = toNum(row.cost_amount ?? row.total);
+  const legacyPid = row.project_id != null ? String(row.project_id) : "";
+  if (legacyPid) {
+    return legacyPid === projectId ? full : 0;
+  }
+  const am = row.project_am_id ?? null;
+  const pm = row.project_pm_id ?? null;
+  if (am === projectId && pm === projectId) return full;
+  if (am === projectId && pm && pm !== projectId) return full * 0.5;
+  if (pm === projectId && am && am !== projectId) return full * 0.5;
+  if (am === projectId && !pm) return full;
+  if (pm === projectId && !am) return full;
+  return 0;
+}
+
+async function fetchLaborCostForProject(projectId: string): Promise<number> {
+  const c = client();
+  const modern = await c
+    .from("labor_entries")
+    .select("project_id, project_am_id, project_pm_id, cost_amount, total, status")
+    .or(`project_am_id.eq.${projectId},project_pm_id.eq.${projectId}`);
+
+  let rows: LaborCostRow[] = [];
+  if (!modern.error && Array.isArray(modern.data)) {
+    rows = modern.data as LaborCostRow[];
+  } else if (modern.error && isMissingColumn(modern.error)) {
+    const legacy = await c.from("labor_entries").select("project_id, cost_amount, total, status").eq("project_id", projectId);
+    if (!legacy.error && Array.isArray(legacy.data)) {
+      rows = legacy.data as LaborCostRow[];
+    } else if (legacy.error && !isMissingColumn(legacy.error)) {
+      devLogFail("labor_entries", legacy.error);
+      return 0;
+    }
+  } else if (modern.error) {
+    devLogFail("labor_entries", modern.error);
+    return 0;
+  }
+
+  let sum = 0;
+  for (const l of rows) {
+    const st = l.status != null ? String(l.status).toLowerCase() : "";
+    if (LABOR_EXCLUDE_STATUS.has(st)) continue;
+    sum += laborLineAmountForProject(l, projectId);
+  }
+  return sum;
+}
+
+async function fetchLaborCostBatch(projectIds: string[]): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  for (const id of projectIds) map.set(id, 0);
+  const idList = projectIds.filter(Boolean).join(",");
+  if (!idList) return map;
+
+  const c = client();
+  const modern = await c
+    .from("labor_entries")
+    .select("project_id, project_am_id, project_pm_id, cost_amount, total, status")
+    .or(`project_am_id.in.(${idList}),project_pm_id.in.(${idList})`);
+
+  let list: LaborCostRow[] = [];
+  if (!modern.error && Array.isArray(modern.data)) {
+    list = modern.data as LaborCostRow[];
+  } else if (modern.error && isMissingColumn(modern.error)) {
+    const legacy = await c.from("labor_entries").select("project_id, cost_amount, total, status").in("project_id", projectIds);
+    if (!legacy.error && Array.isArray(legacy.data)) {
+      list = legacy.data as LaborCostRow[];
+    } else if (legacy.error && !isMissingColumn(legacy.error)) {
+      devLogFail("labor_entries batch", legacy.error);
+      return map;
+    }
+  } else if (modern.error) {
+    devLogFail("labor_entries batch", modern.error);
+    return map;
+  }
+
+  for (const l of list) {
+    const st = l.status != null ? String(l.status).toLowerCase() : "";
+    if (LABOR_EXCLUDE_STATUS.has(st)) continue;
+    for (const pid of projectIds) {
+      const add = laborLineAmountForProject(l, pid);
+      if (add !== 0) map.set(pid, (map.get(pid) ?? 0) + add);
+    }
+  }
+  return map;
+}
+
 /**
  * Fetch expense cost for a single project.
  * Detects schema on first call and caches the result for all subsequent calls.
@@ -88,15 +187,9 @@ async function getExpenseCostForProject(projectId: string): Promise<number> {
 
   // Fast path: already know the schema
   if (expenseLinesHasProjectId === true) {
-    const { data, error } = await c
-      .from("expense_lines")
-      .select("amount, total")
-      .eq("project_id", projectId);
+    const { data, error } = await c.from("expense_lines").select("amount").eq("project_id", projectId);
     if (!error && Array.isArray(data)) {
-      return (data as Array<{ amount?: unknown; total?: unknown }>).reduce(
-        (s, e) => s + toNum(e.amount ?? e.total),
-        0
-      );
+      return (data as Array<{ amount?: unknown }>).reduce((s, e) => s + toNum(e.amount), 0);
     }
     devLogFail("expense_lines (direct)", error);
     return 0;
@@ -107,24 +200,16 @@ async function getExpenseCostForProject(projectId: string): Promise<number> {
   }
 
   // Schema unknown — probe it
-  const { error } = await c
-    .from("expense_lines")
-    .select("amount, total")
-    .eq("project_id", projectId)
-    .limit(1);
+  const { error } = await c.from("expense_lines").select("amount").eq("project_id", projectId).limit(1);
 
   if (!error) {
     expenseLinesHasProjectId = true;
-    // Re-run without limit for actual result
-    const full = await c
-      .from("expense_lines")
-      .select("amount, total")
-      .eq("project_id", projectId);
-    if (full.error) { devLogFail("expense_lines (full)", full.error); return 0; }
-    return (full.data as Array<{ amount?: unknown; total?: unknown }>).reduce(
-      (s, e) => s + toNum(e.amount ?? e.total),
-      0
-    );
+    const full = await c.from("expense_lines").select("amount").eq("project_id", projectId);
+    if (full.error) {
+      devLogFail("expense_lines (full)", full.error);
+      return 0;
+    }
+    return (full.data as Array<{ amount?: unknown }>).reduce((s, e) => s + toNum(e.amount), 0);
   }
 
   if (isMissingColumn(error)) {
@@ -136,33 +221,17 @@ async function getExpenseCostForProject(projectId: string): Promise<number> {
   return 0;
 }
 
-/** Fallback: expense_lines has no project_id — join through expenses table. */
-async function getExpenseCostViaJoin(projectId: string): Promise<number> {
-  const c = client();
-  const { data: expRows, error: expErr } = await c
-    .from("expenses")
-    .select("id")
-    .eq("project_id", projectId);
-  if (expErr || !expRows?.length) return 0;
-  const expenseIds = (expRows as Array<{ id: string }>).map((r) => r.id);
-  const { data: lineRows, error: lineErr } = await c
-    .from("expense_lines")
-    .select("amount, total")
-    .in("expense_id", expenseIds);
-  if (lineErr) { devLogFail("expense_lines (join)", lineErr); return 0; }
-  return ((lineRows ?? []) as Array<{ amount?: unknown; total?: unknown }>).reduce(
-    (s, e) => s + toNum(e.amount ?? e.total),
-    0
-  );
+/** Fallback when expense_lines.project_id is missing (canonical schema has project_id on lines, not expenses). */
+async function getExpenseCostViaJoin(_projectId: string): Promise<number> {
+  return 0;
 }
 
 export async function getCanonicalProjectProfit(projectId: string): Promise<CanonicalProjectProfit> {
   const c = client();
 
-  const [projectRes, approvedChangeOrdersRes, laborCostRes, subcontractBillsRes] = await Promise.all([
+  const [projectRes, approvedChangeOrdersRes, subcontractBillsRes] = await Promise.all([
     c.from("projects").select("budget").eq("id", projectId).single(),
     c.from("project_change_orders").select("*").eq("project_id", projectId).eq("status", "Approved"),
-    c.from("labor_entries").select("cost_amount, status").eq("project_id", projectId),
     c.from("subcontract_bills").select("amount").eq("project_id", projectId).eq("status", "Approved"),
   ]);
 
@@ -185,22 +254,7 @@ export async function getCanonicalProjectProfit(projectId: string): Promise<Cano
     devLogFail("project_change_orders", approvedChangeOrdersRes.error);
   }
 
-  // Labor cost: all entries for this project count (Draft, Submitted, Approved, Locked).
-  // Exclude only paid/void if present so "Spent" reflects actual labor cost.
-  let laborCost = 0;
-  if (!laborCostRes.error && Array.isArray(laborCostRes.data)) {
-    const excludeStatus = new Set(["paid", "void"]);
-    for (const l of laborCostRes.data as Array<{ cost_amount?: unknown; status?: unknown }>) {
-      const s = l?.status != null ? String(l.status) : "";
-      if (excludeStatus.has(s.toLowerCase())) continue;
-      laborCost += toNum(l?.cost_amount);
-    }
-  } else if (laborCostRes.error) {
-    const msg = laborCostRes.error?.message ?? "";
-    if (!/column.*does not exist|does not exist.*column/i.test(msg)) {
-      devLogFail("labor_entries.cost_amount", laborCostRes.error);
-    }
-  }
+  const laborCost = await fetchLaborCostForProject(projectId);
 
   // Expense cost via schema-aware helper (caches detection)
   const expenseCost = await getExpenseCostForProject(projectId);
@@ -236,29 +290,14 @@ export async function getCanonicalProjectProfitBatch(
 
   const c = client();
 
-  // 1. Budgets
-  const [projectsRes, cosRes, laborRes, subBillsRes] = await Promise.all([
+  // 1. Budgets + non-labor cost sources
+  const [projectsRes, cosRes, subBillsRes, expenseByProject, laborByProject] = await Promise.all([
     c.from("projects").select("id, budget").in("id", projectIds),
     c.from("project_change_orders").select("project_id, amount, total, total_amount").in("project_id", projectIds).eq("status", "Approved"),
-    c.from("labor_entries").select("project_id, cost_amount, status").in("project_id", projectIds),
     c.from("subcontract_bills").select("project_id, amount").in("project_id", projectIds).eq("status", "Approved"),
+    getExpenseCostBatch(projectIds),
+    fetchLaborCostBatch(projectIds),
   ]);
-
-  // 2. Expense cost — schema-aware bulk fetch
-  let expenseByProject = new Map<string, number>();
-  expenseByProject = await getExpenseCostBatch(projectIds);
-
-  // Aggregate labor by project (all statuses except paid/void)
-  const laborByProject = new Map<string, number>();
-  const excludeStatus = new Set(["paid", "void"]);
-  if (!laborRes.error && Array.isArray(laborRes.data)) {
-    for (const l of laborRes.data as Array<{ project_id?: string; cost_amount?: unknown; status?: unknown }>) {
-      const s = l.status != null ? String(l.status).toLowerCase() : "";
-      if (excludeStatus.has(s)) continue;
-      const pid = l.project_id ?? "";
-      laborByProject.set(pid, (laborByProject.get(pid) ?? 0) + toNum(l.cost_amount));
-    }
-  }
 
   // Aggregate subcontract cost by project
   const subByProject = new Map<string, number>();
@@ -310,14 +349,11 @@ async function getExpenseCostBatch(projectIds: string[]): Promise<Map<string, nu
 
   // Fast path: already know the schema
   if (expenseLinesHasProjectId === true) {
-    const { data, error } = await c
-      .from("expense_lines")
-      .select("project_id, amount, total")
-      .in("project_id", projectIds);
+    const { data, error } = await c.from("expense_lines").select("project_id, amount").in("project_id", projectIds);
     if (!error && Array.isArray(data)) {
-      for (const e of data as Array<{ project_id?: string; amount?: unknown; total?: unknown }>) {
+      for (const e of data as Array<{ project_id?: string; amount?: unknown }>) {
         const pid = e.project_id ?? "";
-        map.set(pid, (map.get(pid) ?? 0) + toNum(e.amount ?? e.total));
+        map.set(pid, (map.get(pid) ?? 0) + toNum(e.amount));
       }
     }
     return map;
@@ -328,19 +364,15 @@ async function getExpenseCostBatch(projectIds: string[]): Promise<Map<string, nu
   }
 
   // Probe
-  const { error } = await c
-    .from("expense_lines")
-    .select("project_id, amount, total")
-    .in("project_id", projectIds)
-    .limit(1);
+  const { error } = await c.from("expense_lines").select("project_id, amount").in("project_id", projectIds).limit(1);
 
   if (!error) {
     expenseLinesHasProjectId = true;
-    const full = await c.from("expense_lines").select("project_id, amount, total").in("project_id", projectIds);
+    const full = await c.from("expense_lines").select("project_id, amount").in("project_id", projectIds);
     if (!full.error && Array.isArray(full.data)) {
-      for (const e of full.data as Array<{ project_id?: string; amount?: unknown; total?: unknown }>) {
+      for (const e of full.data as Array<{ project_id?: string; amount?: unknown }>) {
         const pid = e.project_id ?? "";
-        map.set(pid, (map.get(pid) ?? 0) + toNum(e.amount ?? e.total));
+        map.set(pid, (map.get(pid) ?? 0) + toNum(e.amount));
       }
     }
     return map;
@@ -355,34 +387,9 @@ async function getExpenseCostBatch(projectIds: string[]): Promise<Map<string, nu
   return map;
 }
 
-/** Batch fallback: join expense_lines through expenses. */
+/** Batch fallback when expense_lines.project_id is unavailable. */
 async function getExpenseCostBatchViaJoin(projectIds: string[]): Promise<Map<string, number>> {
   const map = new Map<string, number>();
-  const c = client();
-
-  const { data: expRows, error: expErr } = await c
-    .from("expenses")
-    .select("id, project_id")
-    .in("project_id", projectIds);
-  if (expErr || !expRows?.length) return map;
-
-  const expenseProjectMap = new Map<string, string>();
-  for (const r of expRows as Array<{ id: string; project_id: string }>) {
-    expenseProjectMap.set(r.id, r.project_id);
-  }
-
-  const expenseIds = Array.from(expenseProjectMap.keys());
-  const { data: lineRows, error: lineErr } = await c
-    .from("expense_lines")
-    .select("expense_id, amount, total")
-    .in("expense_id", expenseIds);
-  if (lineErr) { devLogFail("expense_lines batch (join)", lineErr); return map; }
-
-  for (const e of (lineRows ?? []) as Array<{ expense_id?: string; amount?: unknown; total?: unknown }>) {
-    const expId = e.expense_id ?? "";
-    const pid = expenseProjectMap.get(expId) ?? "";
-    if (!pid) continue;
-    map.set(pid, (map.get(pid) ?? 0) + toNum(e.amount ?? e.total));
-  }
+  for (const id of projectIds) map.set(id, 0);
   return map;
 }

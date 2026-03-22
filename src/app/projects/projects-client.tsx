@@ -30,7 +30,7 @@ type ProjectRow = {
 type BillMiniRow = {
   project_id: string | null;
   status: string | null;
-  total: number | null;
+  amount: number | null;
 };
 
 function money(value: number): string {
@@ -102,7 +102,7 @@ export function ProjectsClient() {
 
     const projectIds = nextRows.map((p) => p.id).filter(Boolean);
     const billsRes = projectIds.length
-      ? await supabase.from("bills").select("project_id,status,total").in("project_id", projectIds)
+      ? await supabase.from("ap_bills").select("project_id,status,amount").in("project_id", projectIds)
       : { data: [] as unknown[], error: null as unknown };
     const billRows = (billsRes as { error?: unknown; data?: unknown[] }).error ? ([] as BillMiniRow[]) : (((billsRes as { data?: unknown[] }).data ?? []) as BillMiniRow[]);
     const totals = new Map<string, number>();
@@ -111,7 +111,7 @@ export function ProjectsClient() {
       if (!pid) continue;
       const status = (b.status ?? "").toString().toLowerCase();
       if (status === "void") continue;
-      totals.set(pid, (totals.get(pid) ?? 0) + safeNumber(b.total));
+      totals.set(pid, (totals.get(pid) ?? 0) + safeNumber(b.amount));
     }
 
     setRows(nextRows);
