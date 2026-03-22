@@ -51,10 +51,6 @@ type BillRow = {
   subcontractors?: { id: string; display_name: string | null } | null;
 };
 
-type BillRowRaw = Omit<BillRow, "subcontractors"> & {
-  subcontractors?: Array<{ id: string; display_name: string | null }> | { id: string; display_name: string | null } | null;
-};
-
 type ProjectDetailState = {
   configured: boolean;
   loading: boolean;
@@ -84,6 +80,37 @@ function ymd(value: string | null | undefined): string {
 function one<T>(value: T | T[] | null | undefined): T | null {
   if (!value) return null;
   return Array.isArray(value) ? value[0] ?? null : value;
+}
+
+type ApBillApiRow = {
+  id: string;
+  bill_no: string | null;
+  issue_date: string | null;
+  due_date: string | null;
+  status: string | null;
+  amount: number | null;
+  balance_amount: number | null;
+  vendor_name: string | null;
+};
+
+function mapApBillToBillRow(row: ApBillApiRow): BillRow {
+  const st = (row.status ?? "").toLowerCase();
+  let status: BillRow["status"] = "draft";
+  if (st === "void") status = "void";
+  else if (st === "paid") status = "paid";
+  else if (st === "draft") status = "draft";
+  else if (st === "pending" || st === "partially paid") status = "approved";
+  return {
+    id: row.id,
+    bill_number: row.bill_no,
+    bill_date: row.issue_date,
+    due_date: row.due_date,
+    status,
+    total: row.amount,
+    balance: row.balance_amount,
+    payee_name: row.vendor_name,
+    subcontractors: null,
+  };
 }
 
 export function ProjectDetailClient({ id }: { id: string }) {
@@ -128,10 +155,10 @@ export function ProjectDetailClient({ id }: { id: string }) {
     const [projectRes, billsRes, subsRes] = await Promise.all([
       supabase.from("projects").select("id,name,status,budget,spent,created_at,updated_at").eq("id", id).maybeSingle(),
       supabase
-        .from("bills")
-        .select("id,bill_number,bill_date,due_date,status,total,balance,payee_name,subcontractors(id,display_name)")
+        .from("ap_bills")
+        .select("id,bill_no,issue_date,due_date,status,amount,balance_amount,vendor_name")
         .eq("project_id", id)
-        .order("bill_date", { ascending: false })
+        .order("issue_date", { ascending: false })
         .limit(25),
       supabase
         .from("project_subcontractors")
@@ -154,7 +181,7 @@ export function ProjectDetailClient({ id }: { id: string }) {
 
     const bills: BillRow[] = billsRes.error
       ? (tableMissing(billsRes.error) ? [] : [])
-      : ((billsRes.data ?? []) as unknown as BillRowRaw[]).map((row) => ({ ...row, subcontractors: one(row.subcontractors) }));
+      : ((billsRes.data ?? []) as unknown as ApBillApiRow[]).map(mapApBillToBillRow);
 
     const subs: ProjectSubcontractorRow[] = subsRes.error
       ? (tableMissing(subsRes.error) ? [] : [])

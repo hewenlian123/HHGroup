@@ -11,10 +11,9 @@ const AUTO_REPAIR_DDL: string[] = [
   `CREATE TABLE IF NOT EXISTS public.worker_payments (
   id uuid primary key default gen_random_uuid(),
   worker_id uuid,
-  amount numeric not null,
-  payment_date timestamptz default now(),
-  method text,
-  notes text,
+  total_amount numeric not null,
+  payment_method text,
+  note text,
   created_at timestamptz default now()
 )`,
 

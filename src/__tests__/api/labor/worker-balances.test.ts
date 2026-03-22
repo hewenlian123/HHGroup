@@ -41,7 +41,7 @@ describe("GET /api/labor/worker-balances", () => {
     const workers = [{ id: "w1", name: "Worker One" }];
     const labor = [{ worker_id: "w1", cost_amount: 100, status: "pending" }];
     const reimb = [{ worker_id: "w1", amount: 20, status: "pending" }];
-    const payments = [{ worker_id: "w1", amount: 50 }];
+    const payments = [{ worker_id: "w1", total_amount: 50 }];
 
     mockSupabaseGetter = () =>
       ({

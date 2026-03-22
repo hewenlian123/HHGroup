@@ -176,11 +176,9 @@ export async function POST(req: Request) {
     let projectCostOk = false;
     if (expenseIdForProject && projectId) {
       try {
-        const expRow = await server.from("expenses").select("project_id").eq("id", expenseIdForProject).maybeSingle();
         const lineRow = await server.from("expense_lines").select("project_id").eq("expense_id", expenseIdForProject).limit(1).maybeSingle();
-        const expProjectId = (expRow.data as { project_id?: string | null } | null)?.project_id;
         const lineProjectId = (lineRow.data as { project_id?: string | null } | null)?.project_id;
-        projectCostOk = expProjectId === projectId || lineProjectId === projectId;
+        projectCostOk = lineProjectId === projectId;
       } catch {
         projectCostOk = true; // skip if columns missing
       }
