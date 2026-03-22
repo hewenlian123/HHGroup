@@ -1,11 +1,12 @@
 /**
- * Bills module — uses `bills` table (id, vendor_id, project_id, amount, status, due_date, vendor_name, bill_type, issue_date, notes, category, updated_at, created_at).
- * Payments use ap_bill_payments when present.
+ * Bills module — uses `ap_bills` (see migration 202603151000_ap_bills_module.sql).
+ * Legacy `public.bills` (subcontractor AP) has a different shape; do not use it here.
+ * Payments: `ap_bill_payments` (FK → ap_bills.id).
  */
 
 import { getSupabaseClient } from "@/lib/supabase";
 
-const BILLS_TABLE = "bills";
+const BILLS_TABLE = "ap_bills";
 
 export const AP_BILL_TYPES = ["Vendor", "Labor", "Overhead", "Utility", "Permit", "Equipment", "Other"] as const;
 export type ApBillType = (typeof AP_BILL_TYPES)[number];

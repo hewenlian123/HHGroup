@@ -1,6 +1,15 @@
 # Supabase 迁移
 
-请通过 Supabase 迁移创建和更新表，不要在 SQL Editor 里手动执行 SQL。
+## 数据库规范（强制）
+
+- **所有数据库结构改动**必须通过 **migration 文件**（`supabase/migrations/` 下新的时间戳 SQL），禁止在 Supabase Dashboard 里手改表结构（DDL）。
+- **禁止**依赖 SQL Editor 做结构演进；Dashboard 仅用于查询或经审批的一次性数据修复，不作为 schema 来源。
+- **每次改完 schema** 必须在本地执行 **`npx supabase db reset`**（项目目录、Docker 已启动）验证迁移 + `seed.sql` 能从头跑通。
+- **已提交的 migration 文件不允许再改**（不编辑、不重命名）；需要修正时 **只能新建** 一条迁移。
+
+---
+
+请通过 Supabase 迁移创建和更新表；除下方历史说明外，不要在 SQL Editor 里执行 DDL。
 
 ## 自动建表（推荐）
 

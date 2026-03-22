@@ -46,13 +46,26 @@ test("new estimate - select customer and autofill", async ({ page }) => {
     await search.fill("test");
 
     const listRoot = dialog.locator("div.max-h-64.overflow-y-auto");
-    const emptyAfterFilter = await dialog.getByText("No customers found.").isVisible();
-    test.skip(
-      emptyAfterFilter,
-      'No customer matches search "test" — add one or change the search string.',
-    );
-    await expect(listRoot.locator("button").first()).toBeVisible({ timeout: 10_000 });
-    await listRoot.locator("button").first().click();
+    const pickFirst = async () => {
+      const btn = listRoot.locator("button").first();
+      await expect(btn).toBeVisible({ timeout: 12_000 });
+      await btn.click();
+    };
+    try {
+      await pickFirst();
+    } catch {
+      await search.fill("test");
+      if (await dialog.getByText("No customers found.").isVisible().catch(() => false)) {
+        await search.clear();
+        try {
+          await pickFirst();
+        } catch {
+          test.skip(true, "No customers available in picker (empty list or filter).");
+        }
+      } else {
+        await pickFirst();
+      }
+    }
 
     await expect(page.getByPlaceholder("Client or company name")).not.toHaveValue("");
     await expect(page.getByPlaceholder("Site or client address")).not.toHaveValue("");

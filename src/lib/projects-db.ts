@@ -128,7 +128,8 @@ async function parseForeignKeyError(
   return { __deleteBlocked: true, counts: { [blockingKey]: n } };
 }
 
-const HINT = "Run supabase/migrations/202603081650_projects.sql in Supabase Dashboard → SQL Editor.";
+const HINT =
+  "Run supabase/migrations/20260228000301_projects.sql in Supabase Dashboard → SQL Editor.";
 
 function toProject(r: ProjectRow): Project {
   const status = (r.status === "active" || r.status === "pending" || r.status === "completed" ? r.status : "pending") as ProjectStatus;

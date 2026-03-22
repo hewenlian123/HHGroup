@@ -1,6 +1,7 @@
 # CI: Vitest + Prettier (scoped) + ESLint (unit tests) + Playwright + production deploy to Vercel (main only).
 # Secrets: VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID
 # Optional: vars.NEXT_PUBLIC_SUPABASE_URL, secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY (real app URLs improve E2E)
+# E2E seed (staging): secrets SUPABASE_PROJECT_REF + SUPABASE_ACCESS_TOKEN (Supabase CLI; staging project only)
 
 name: CI
 
@@ -50,6 +51,16 @@ jobs:
 
       - name: Build Next.js
         run: npm run build
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Seed remote database for E2E (staging)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: supabase db execute --file supabase/seed.sql --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
 
       - name: E2E tests (Playwright — project chromium)
         run: npm run test:e2e:ci

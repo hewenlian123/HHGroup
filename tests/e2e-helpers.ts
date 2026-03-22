@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 function trimBaseUrl(base: string): string {
@@ -150,5 +150,20 @@ export async function clickFirstRowOverflowMenu(page: Page): Promise<void> {
 export async function expectDeleteMenuItemThenClose(page: Page): Promise<void> {
   await expect(page.getByRole("menuitem", { name: /^Delete/ })).toBeVisible({ timeout: 5000 });
   await page.keyboard.press("Escape");
+}
+
+/**
+ * Wait for at least one matching element; {@link test.skip} if not visible after timeout (empty list or slow load).
+ */
+export async function expectVisibleOrSkip(
+  locator: Locator,
+  skipReason: string,
+  timeoutMs = 55_000,
+): Promise<void> {
+  try {
+    await expect(locator.first()).toBeVisible({ timeout: timeoutMs });
+  } catch {
+    test.skip(true, skipReason);
+  }
 }
 

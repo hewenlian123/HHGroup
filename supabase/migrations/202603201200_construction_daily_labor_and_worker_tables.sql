@@ -49,6 +49,10 @@ CREATE TABLE IF NOT EXISTS public.worker_reimbursements (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
+-- Older DBs may already have worker_reimbursements without this column (IF NOT EXISTS skips full CREATE).
+ALTER TABLE public.worker_reimbursements
+  ADD COLUMN IF NOT EXISTS reimbursement_date date NOT NULL DEFAULT current_date;
+
 CREATE INDEX IF NOT EXISTS idx_worker_reimbursements_worker_id ON public.worker_reimbursements (worker_id);
 CREATE INDEX IF NOT EXISTS idx_worker_reimbursements_date ON public.worker_reimbursements (reimbursement_date);
 
@@ -80,6 +84,37 @@ CREATE TABLE IF NOT EXISTS public.worker_invoices (
   attachment_url text,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+
+-- Legacy `worker_invoices` from 202603120001 lacks invoice_number / invoice_date / attachment_url.
+ALTER TABLE public.worker_invoices ADD COLUMN IF NOT EXISTS invoice_number text;
+ALTER TABLE public.worker_invoices ADD COLUMN IF NOT EXISTS invoice_date date;
+ALTER TABLE public.worker_invoices ADD COLUMN IF NOT EXISTS attachment_url text;
+
+UPDATE public.worker_invoices
+SET invoice_number = COALESCE(NULLIF(trim(invoice_number), ''), 'INV-' || replace(id::text, '-', ''))
+WHERE invoice_number IS NULL;
+
+UPDATE public.worker_invoices
+SET invoice_date = COALESCE(invoice_date, (created_at AT TIME ZONE 'UTC')::date, current_date)
+WHERE invoice_date IS NULL;
+
+DO $sync_attachment$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'worker_invoices' AND column_name = 'invoice_file'
+  ) THEN
+    UPDATE public.worker_invoices
+    SET attachment_url = COALESCE(attachment_url, invoice_file)
+    WHERE attachment_url IS NULL AND invoice_file IS NOT NULL;
+  END IF;
+END $sync_attachment$;
+
+ALTER TABLE public.worker_invoices ALTER COLUMN amount SET DEFAULT 0;
+UPDATE public.worker_invoices SET amount = COALESCE(amount, 0) WHERE amount IS NULL;
+
+ALTER TABLE public.worker_invoices ALTER COLUMN invoice_number SET NOT NULL;
+ALTER TABLE public.worker_invoices ALTER COLUMN invoice_date SET NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_worker_invoices_worker_id ON public.worker_invoices (worker_id);
 CREATE INDEX IF NOT EXISTS idx_worker_invoices_invoice_date ON public.worker_invoices (invoice_date);

@@ -10,8 +10,22 @@ CREATE INDEX IF NOT EXISTS idx_expense_lines_expense_id ON public.expense_lines 
 -- Worker reimbursements: filter by status (pending)
 CREATE INDEX IF NOT EXISTS idx_worker_reimbursements_status ON public.worker_reimbursements (status);
 
--- Labor: entries filtered by date range and status
-CREATE INDEX IF NOT EXISTS idx_labor_entries_entry_date ON public.labor_entries (entry_date);
+-- Labor: entries filtered by date range and status (schema varies: entry_date vs work_date)
+DO $idx$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'labor_entries' AND column_name = 'entry_date'
+  ) THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_labor_entries_entry_date ON public.labor_entries (entry_date)';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'labor_entries' AND column_name = 'work_date'
+  ) THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_labor_entries_work_date ON public.labor_entries (work_date)';
+  END IF;
+END $idx$;
 CREATE INDEX IF NOT EXISTS idx_labor_entries_status ON public.labor_entries (status);
 CREATE INDEX IF NOT EXISTS idx_labor_entries_worker_id ON public.labor_entries (worker_id);
 
