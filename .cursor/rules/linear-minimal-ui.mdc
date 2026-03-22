@@ -1,0 +1,36 @@
+---
+description: Strict Linear-style minimal UI; all new features must follow this design system
+alwaysApply: true
+---
+
+# Linear-style minimal UI
+
+This app uses a **strict minimal UI** inspired by Linear. All new features and UI changes must follow these rules.
+
+## Do not use
+
+- **Card containers** – no `Card`, no boxed panels
+- **Gray background blocks** – no `bg-muted`, `bg-gray-100`, or similar fill blocks for sections
+- **Heavy rounded corners** – avoid `rounded-xl`, `rounded-2xl`; prefer `rounded-sm` or default border radius only
+- **Shadows** – no `shadow-md`, `shadow-lg`, or decorative shadows (only minimal tokens like `shadow-[var(--shadow-popover)]` for dropdowns if already in the design system)
+- **Boxed layouts** – do not wrap content in bordered boxes; use **border separators** (e.g. `border-b border-border/60`) between sections instead
+
+## Do use
+
+- **Table-first design** – prefer `DataTable` and table layouts for lists and data; dense rows
+- **Border separators** – `Divider`, `border-b border-border/60` between sections instead of cards
+- **Dense layout** – compact spacing, `table-row-compact`, minimal padding
+- **Minimal buttons** – small size (`size="sm"`), outline/ghost variants; avoid large primary buttons unless for a single primary action
+- **Status as dot + text** – status shown as a colored dot plus label (e.g. `StatusBadge` with dot variant if available), not only pills
+- **Clean whitespace** – consistent vertical rhythm, no extra wrappers; use existing base components (`PageLayout`, `PageHeader`, `SectionHeader`, `Divider`, `DataTable`, `StatusBadge`)
+
+## Quick check
+
+Before adding or changing UI:
+
+- No new `Card` or card-like wrappers.
+- No section backgrounds (gray blocks).
+- No heavy rounding or shadows.
+- Use borders/dividers for separation; tables for lists.
+- Buttons and controls are minimal and small.
+- Status uses dot + text where applicable.

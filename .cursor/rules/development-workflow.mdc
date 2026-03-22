@@ -1,0 +1,38 @@
+---
+description: Local-first dev workflow, tests before push, Supabase + Playwright commands
+alwaysApply: true
+---
+
+# 开发流程规范
+
+- 每次写完代码必须先在本地测试通过再 push。
+- 禁止直接 push 未测试的代码。
+
+## 本地测试命令
+
+- 启动环境：`npx supabase start && npm run dev`（在 `hh-unified-web` 目录；需 Docker）
+- 跑测试：`npm run test:local`
+- 测试通过后推送：`npm run test:before-push`
+
+## 测试标准
+
+- 必须全部 passed 才能 push。
+- flaky 测试必须再跑一次确认。
+- 禁止用 `test.skip()` 掩盖应该通过的测试；允许在环境缺数据/缺配置时使用 `expectVisibleOrSkip`。
+
+## 新功能开发步骤
+
+1. 先写 migration 文件（如涉及数据库）
+2. 运行 `npx supabase db reset` 验证
+3. 写前端和 API 代码
+4. 运行 `npm run test:local`
+5. 全部通过后 `git push origin main`
+
+## 数据库规范
+
+- 所有数据库改动必须通过 migration 文件。
+- 禁止手动在 Supabase Dashboard 改表结构。
+- 每次改完 schema 必须运行 `npx supabase db reset` 验证。
+- migration 文件一旦提交不允许修改，只能新建。
+
+（与 `database-migrations.mdc` 一致；以 migration 为唯一结构来源。）

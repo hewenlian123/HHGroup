@@ -1,0 +1,23 @@
+---
+description: TypeScript 严格规范
+alwaysApply: true
+---
+
+# TypeScript 严格规范
+
+## 类型规范
+- 禁止使用 any，用 unknown 替代
+- 所有函数必须有返回类型
+- 所有 props 必须有 interface 定义
+- 禁止 as any 类型断言
+
+## 错误处理
+- 所有 async 函数必须有 try/catch
+- 禁止 silent fail（catch 里什么都不做）
+- API 错误必须用 toast 提示用户
+- 禁止 console.log，用 console.error
+
+## 组件规范
+- 文件名 PascalCase
+- 每个组件只做一件事
+- 优先 Server Component，需要交互才用 use client

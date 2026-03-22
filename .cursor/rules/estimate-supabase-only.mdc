@@ -1,0 +1,38 @@
+---
+description: Estimate module must use Supabase only; no mock-data or in-memory storage
+globs: "**/estimates/**","**/estimates-db.ts","**/lib/data/index.ts","**/mock-data.ts"
+alwaysApply: false
+---
+
+# Estimate module: Supabase only
+
+From this point forward, **do not** implement any Estimate logic with mock-data or in-memory storage.
+
+## Rules
+
+1. **Do not read from `src/lib/mock-data.ts` for Estimate**  
+   Estimate list, detail, meta, items, snapshots, and status must come from Supabase (via `src/lib/estimates-db.ts` or equivalent Supabase queries only).
+
+2. **Do not write Estimate data to memory**  
+   No in-memory arrays or objects for estimates, estimate_meta, estimate_items, or estimate_snapshots. All writes go to Supabase tables.
+
+3. **Use Supabase as the source of truth**  
+   All Estimate CRUD, snapshots, and status changes use the `estimates`, `estimate_meta`, `estimate_items`, and `estimate_snapshots` tables. The public API in `src/lib/data/index.ts` should delegate to `src/lib/estimates-db.ts` (or direct Supabase calls), not to mock-data.
+
+4. **If Supabase schema is missing something**  
+   Propose the **minimal schema change** first (e.g. a new column or table, migration snippet). Do not work around missing schema by storing Estimate data in mock or memory.
+
+5. **New Estimate features**  
+   Any new Estimate feature must be built on **real persisted data** (Supabase). Add migrations and `estimates-db` (or equivalent) logic as needed; do not add new Estimate-related exports or state in `mock-data.ts`.
+
+## Allowed use of mock-data for Estimate
+
+- **None.** No Estimate reads or writes in `src/lib/mock-data.ts`.  
+- Non-Estimate data (e.g. `costCodeMaster`, `projectsFromEstimates` for Convert-to-Project) may stay in mock-data if out of scope for this rule.
+
+## Quick check
+
+Before adding or changing Estimate behavior, confirm:
+
+- Reads: from Supabase (e.g. `estDb.getEstimateById`, `getEstimateList`, `getEstimateItems`, etc.) or from `src/lib/data` which in turn uses `estimates-db`.
+- Writes: through `estimates-db` or Supabase client only; no new or updated Estimate state in `mock-data.ts`.

@@ -1,0 +1,15 @@
+---
+description: CI/CD — Vitest, Playwright, Prettier, ESLint, GitHub Actions, Vercel deploy
+globs: ".github/workflows/**/*.yml,package.json,playwright.config.ts,vitest.config.ts,.prettierrc.json,.eslintrc.json"
+alwaysApply: false
+---
+
+# CI and deployment
+
+- **Unit tests:** `npm run test:unit` (Vitest). Config: `vitest.config.ts`, tests under `src/__tests__/`.
+- **E2E:** `@playwright/test` in `devDependencies`. Config: `playwright.config.ts`. CI runs `npm run test:e2e:ci` (project `chromium` only). When `CI=true`, Playwright starts `npm run start` via `webServer` after `npm run build`.
+- **Prettier:** `npm run format` / `npm run format:check`. CI uses **`npm run format:check:ci`** (smaller path set) because full `format:check` still flags ~400+ legacy files.
+- **ESLint:** `npm run lint` = `next lint` (full app, may have debt). CI uses **`npm run lint:ci`** = ESLint on `src/__tests__` only for a green gate.
+- **GitHub Actions:** `.github/workflows/ci.yml` — test job on PR + push; **Vercel production deploy** only on `push` to `main` (needs `VERCEL_*` secrets). Details: `docs/CI_GITHUB_VERCEL.md`.
+
+When editing the workflow, keep `NEXT_PUBLIC_*` build-time env in mind for `next build` on GitHub runners.

@@ -1,0 +1,28 @@
+---
+description: Supabase 查询安全规范
+alwaysApply: true
+---
+
+# Supabase 查询安全规范
+
+## 列名安全
+- 写任何 Supabase 查询前，必须先确认列名存在于 migration 文件
+- 禁止使用未在 migration 里定义的列名
+- 表名必须用实际表名：ap_bills（不是 bills）、expenses（不是 cost）
+
+## 查询规范
+- 每次查询必须处理 error：
+  const { data, error } = await supabase.from(...)
+  if (error) throw error
+- 禁止 .single() 除非确定只有一条
+- 禁止忽略 error
+
+## 类型安全
+- 必须使用 supabase gen types 生成的类型
+- 禁止手写表的 interface
+- 生成命令：npm run db:types
+
+## Server Action 规范
+- 写操作统一放在 app/actions/
+- 每个 action 必须验证用户身份
+- 禁止在客户端组件直接 insert/update/delete

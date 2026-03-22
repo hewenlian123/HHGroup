@@ -1,0 +1,13 @@
+---
+description: Supabase/Postgres schema changes — migrations only, no dashboard DDL, verify with db reset
+alwaysApply: true
+---
+
+# Database & migrations (mandatory)
+
+- **All structural changes** (tables, columns, indexes, constraints, RLS policies, functions tied to schema) MUST be done via **new files** under `hh-unified-web/supabase/migrations/` (or the app’s configured migrations path). Do not rely on ad-hoc SQL in Dashboard or app-only DDL for anything that should exist in every environment.
+- **Never change production schema** through Supabase Dashboard SQL Editor for structural DDL. Dashboard is for queries / one-off data fixes only, not for evolving the canonical schema.
+- **After every schema change**, run **`npx supabase db reset`** (from `hh-unified-web`, Docker running) so migrations + `seed.sql` apply cleanly on a fresh local DB. Fix forward with new migrations if reset fails.
+- **Committed migrations are immutable**: do not edit or rename migration files that are already in `main`/shared history. **Only add** a new timestamped migration to correct or extend behavior.
+
+When suggesting schema work, prefer `supabase migration new <name>` (or equivalent) and keep each migration focused and idempotent where possible (`IF NOT EXISTS`, etc.).
