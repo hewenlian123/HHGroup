@@ -12,6 +12,13 @@ export const HH_APP_SYNC_EVENT = "hh:app-sync";
 
 export type AppSyncDetail = { reason?: string; at: number };
 
+/**
+ * Dispatched after an optimistic project edit on the detail page.
+ * `ProjectDetailTabsClient` skips `router.refresh()` for this reason so the UI stays snappy;
+ * other surfaces (e.g. projects list) still refresh as usual.
+ */
+export const HH_PROJECT_EDIT_OPTIMISTIC_REASON = "project-edit-optimistic";
+
 export function dispatchClientDataSync(detail?: Partial<AppSyncDetail>) {
   if (typeof window === "undefined") return;
   const payload: AppSyncDetail = { at: Date.now(), ...detail };

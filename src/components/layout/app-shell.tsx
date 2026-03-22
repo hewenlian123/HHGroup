@@ -71,7 +71,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Sidebar className="h-full w-full border-none" onNavigate={() => setMobileOpen(false)} />
             </SheetContent>
           </Sheet>
-          <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <div
+            data-app-main-column
+            className="flex min-w-0 flex-1 flex-col overflow-hidden"
+          >
             <Topbar
               onOpenSidebar={() => setMobileOpen(true)}
               onToggleSidebar={() => setCollapsed((c) => !c)}

@@ -24,4 +24,25 @@
     overflow: visible !important;
     background: white !important;
   }
+
+  /*
+   * In-place print: hide app + overlay; keep only the dialog content node.
+   * Radix portals Overlay and Content as separate <body> children. The dialog root IS the element
+   * with .receipt-preview-dialog-root — :has(.receipt-preview-dialog-root) does NOT match self,
+   * so the old `> *:not(:has(...))` rule hid the dialog too → blank print preview.
+   */
+  html.print-worker-receipt-preview
+    body:has(.receipt-preview-dialog-root[data-state="open"])
+    > *:not(.receipt-preview-dialog-root):not(:has(.receipt-preview-dialog-root)) {
+    display: none !important;
+  }
+  html.print-worker-receipt-preview
+    body:has(.receipt-preview-dialog-root[data-state="open"])
+    > .receipt-preview-dialog-root {
+    display: block !important;
+    position: static !important;
+    inset: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
 }

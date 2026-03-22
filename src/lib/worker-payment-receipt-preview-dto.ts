@@ -1,7 +1,10 @@
 import type { WorkerPaymentReceiptPayload } from "@/lib/worker-payment-receipt-data";
+import type { DocumentCompanyProfileDTO } from "@/lib/document-company-profile";
 
 /** JSON from GET /api/labor/worker-payments/[id]/receipt-preview — mirrors print page inputs. */
 export type WorkerPaymentReceiptPreviewDto = {
+  /** From `company_profile` (same as print route). */
+  company: DocumentCompanyProfileDTO;
   /** Human-readable receipt no. (derived; UUID stays canonical in `payment.id`). */
   receiptNo: string;
   payment: {

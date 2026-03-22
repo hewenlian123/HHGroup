@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
 import { getWorkerById, getWorkerEarningsAllocations, getWorkerLaborPayments } from "@/lib/data";
+import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
+import { DocumentCompanyHeader } from "@/components/documents/document-company-header";
 
 export default async function WorkerStatementPrintPage({
   params,
@@ -14,7 +16,7 @@ export default async function WorkerStatementPrintPage({
   const end = qs.end ?? new Date().toISOString().slice(0, 10);
   const project = qs.project || undefined;
 
-  const worker = await getWorkerById(id);
+  const [worker, company] = await Promise.all([getWorkerById(id), fetchDocumentCompanyProfile()]);
   if (!worker) notFound();
 
   const earningsRows = await getWorkerEarningsAllocations(id, start, end, project);
@@ -25,12 +27,23 @@ export default async function WorkerStatementPrintPage({
 
   return (
     <div className="min-h-screen bg-white text-black p-8 mx-auto" style={{ maxWidth: "8.5in" }}>
-      <header className="border-b border-zinc-300 pb-4 mb-6">
-        <h1 className="text-2xl font-bold">HH Group</h1>
-        <p className="text-lg font-semibold mt-1">Worker Statement</p>
-        <p className="text-sm mt-2">{worker.name} {worker.trade ? `• ${worker.trade}` : ""} {worker.phone ? `• ${worker.phone}` : ""}</p>
-        <p className="text-sm text-zinc-600">Period: {start} to {end}</p>
-      </header>
+      <DocumentCompanyHeader
+        company={company}
+        documentTitle="Worker Statement"
+        documentNo={`WS-${id.replace(/-/g, "").slice(0, 12)}`}
+        documentDate={end}
+        documentNoLabel="Statement No"
+      />
+      <section className="mb-6 text-sm text-zinc-800">
+        <p className="font-medium text-zinc-900">
+          {worker.name}
+          {worker.trade?.trim() ? ` · ${worker.trade.trim()}` : ""}
+          {worker.phone?.trim() ? ` · ${worker.phone.trim()}` : ""}
+        </p>
+        <p className="text-zinc-600 tabular-nums mt-1">
+          Period: {start} to {end}
+        </p>
+      </section>
 
       <section className="grid grid-cols-3 gap-3 mb-6 text-sm">
         <div className="border border-zinc-300 rounded-lg p-3">

@@ -64,9 +64,12 @@ test.describe("Worker payment → receipt labor lines", () => {
     await payRow.getByRole("link", { name: "View Receipt" }).click();
     await page.waitForLoadState("load");
 
-    await expect(page.getByText(/Labor included in this payment/i)).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Worker Payment Receipt/i })).toBeVisible();
+    await expect(page.locator(".receipt-summary").getByText("Subtotal", { exact: true })).toBeVisible();
     await expect(page.getByText(/^0 lines$/)).not.toBeVisible();
     await expect(page.locator("body")).not.toContainText(/Application error|Internal Server Error/i);
-    await expect(page.getByRole("table").filter({ has: page.getByText(/Labor subtotal/i) })).toBeVisible();
+    await expect(
+      page.getByRole("table").filter({ has: page.getByRole("columnheader", { name: "Session" }) }),
+    ).toBeVisible();
   });
 });

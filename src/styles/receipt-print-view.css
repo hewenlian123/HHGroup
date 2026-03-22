@@ -1,0 +1,70 @@
+/**
+ * /receipt/print/* — isolate the route when printing (visibility on body subtree).
+ * Receipt typography: `worker-payment-receipt-print.css` (WorkerPaymentReceiptBody).
+ */
+
+.receipt-print-route {
+  box-sizing: border-box;
+}
+
+/* Screen: simple preview area */
+@media screen {
+  .receipt-print-route {
+    min-height: 100%;
+    background: #e5e5e5;
+    padding: 12px 10px 24px;
+  }
+}
+
+@media print {
+  /* Only print the receipt route subtree (hide sidebar, header, etc.) */
+  body * {
+    visibility: hidden;
+  }
+
+  .receipt-print-route,
+  .receipt-print-route * {
+    visibility: visible;
+  }
+
+  .receipt-print-route {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background: #fff !important;
+  }
+
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 12px !important;
+    line-height: 1.25 !important;
+    color: #000 !important;
+    background: #fff !important;
+    height: auto !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* @page and receipt typography live in worker-payment-receipt-print.css (shared with modal). */
+
+  .no-break {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  button,
+  .no-print,
+  [data-receipt-toolbar="true"] {
+    display: none !important;
+  }
+
+  a {
+    color: #000 !important;
+    text-decoration: none !important;
+  }
+}

@@ -10,6 +10,7 @@ import {
 } from "@/lib/data";
 import { EstimatePreviewContent } from "./estimate-preview-content";
 import { EstimatePreviewShell } from "./estimate-preview-shell";
+import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,7 @@ export default async function EstimatePreviewPage({
 }) {
   const { id } = await params;
 
-  const [estimate, meta, items, categories, summary, paymentSchedule, costCodes] = await Promise.all([
+  const [estimate, meta, items, categories, summary, paymentSchedule, costCodes, company] = await Promise.all([
     getEstimateById(id),
     getEstimateMeta(id),
     getEstimateItems(id),
@@ -28,6 +29,7 @@ export default async function EstimatePreviewPage({
     getEstimateSummary(id),
     getPaymentSchedule(id),
     getCostCodes(),
+    fetchDocumentCompanyProfile(),
   ]);
 
   if (!estimate || !meta) redirect("/estimates");
@@ -39,6 +41,7 @@ export default async function EstimatePreviewPage({
     <div className="page-container py-6">
       <EstimatePreviewShell estimateId={id} estimateNumber={estimate.number}>
         <EstimatePreviewContent
+          company={company}
           estimate={{
             number: estimate.number,
             status: estimate.status,

@@ -1,6 +1,6 @@
 "use client";
 
-import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { dispatchClientDataSync } from "@/lib/sync-router-client";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import { useRouter, usePathname } from "next/navigation";
@@ -22,7 +22,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { createProjectTaskAction, updateProjectTaskAction } from "@/app/projects/actions";
+import { runOptimisticPersist } from "@/lib/optimistic-save";
 import { cn } from "@/lib/utils";
+import { flushSync } from "react-dom";
 import { MoreHorizontal } from "lucide-react";
 
 type TaskRow = {
@@ -133,6 +135,11 @@ export default function TasksPage() {
     [load]
   );
 
+  const tasksRef = React.useRef<TaskRow[]>([]);
+  React.useEffect(() => {
+    tasksRef.current = tasks;
+  }, [tasks]);
+
   const clearStaleTask = React.useCallback(
     (taskId: string) => {
       setTasks((prev) => prev.filter((t) => t.id !== taskId));
@@ -189,96 +196,219 @@ export default function TasksPage() {
     setDrawerOpen(true);
   };
 
-  const handleSaveNew = async () => {
+  const handleSaveNew = () => {
     if (!form.project_id) {
       setError("Select a project.");
       return;
     }
-    setSubmitting(true);
-    setError(null);
-    try {
-      // Defensive: if for any reason state doesn't reflect the visible input (e.g. extension/IME issues),
-      // prefer the actual input value to avoid creating a blank title.
-      const rawTitle = (form.title || titleInputRef.current?.value || "").trim();
-      const result = await createProjectTaskAction(form.project_id, {
-        title: rawTitle || "Untitled",
-        description: form.description || null,
-        assigned_worker_id: form.assigned_worker_id || null,
-        due_date: form.due_date || null,
-        priority: form.priority,
-        status: form.status,
-      });
-      if (result.error) {
-        setError(result.error);
-        return;
-      }
-      setModalOpen(false);
-      await load();
-      void syncRouterAndClients(router);
-    } finally {
-      setSubmitting(false);
-    }
+    const rawTitle = (form.title || titleInputRef.current?.value || "").trim();
+    const projectId = form.project_id;
+    const project_name = projects.find((p) => p.id === projectId)?.name ?? null;
+    const assigned = form.assigned_worker_id || null;
+    const worker_name = assigned ? workers.find((w) => w.id === assigned)?.name ?? null : null;
+    const tempId =
+      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? `temp-${crypto.randomUUID()}`
+        : `temp-${Date.now()}`;
+    const nowIso = new Date().toISOString();
+    const formSnap = { ...form };
+
+    type NewSnap = { tasks: TaskRow[]; modalOpen: boolean };
+    runOptimisticPersist<NewSnap>({
+      setBusy: setSubmitting,
+      getSnapshot: () => ({ tasks: [...tasksRef.current], modalOpen: true }),
+      apply: () => {
+        const optimisticRow: TaskRow = {
+          id: tempId,
+          project_id: projectId,
+          project_name,
+          title: rawTitle || "Untitled",
+          description: formSnap.description || null,
+          status: formSnap.status,
+          assigned_worker_id: assigned,
+          worker_name,
+          due_date: formSnap.due_date || null,
+          priority: formSnap.priority,
+          created_at: nowIso,
+        };
+        setTasks((prev) => [optimisticRow, ...prev]);
+        setModalOpen(false);
+        setError(null);
+      },
+      rollback: (s) => {
+        setTasks(s.tasks);
+        setModalOpen(s.modalOpen);
+      },
+      persist: () =>
+        createProjectTaskAction(projectId, {
+          title: rawTitle || "Untitled",
+          description: formSnap.description || null,
+          assigned_worker_id: assigned,
+          due_date: formSnap.due_date || null,
+          priority: formSnap.priority,
+          status: formSnap.status,
+        }).then((result) => {
+          if (result.error) return { error: result.error };
+          const t = result.task;
+          if (!t) return { error: "Task was not returned." };
+          const row: TaskRow = {
+            id: t.id,
+            project_id: t.project_id,
+            project_name,
+            title: t.title,
+            description: t.description,
+            status: t.status,
+            assigned_worker_id: t.assigned_worker_id,
+            worker_name: t.assigned_worker_id
+              ? workers.find((w) => w.id === t.assigned_worker_id)?.name ?? null
+              : null,
+            due_date: t.due_date,
+            priority: t.priority,
+            created_at: t.created_at,
+          };
+          flushSync(() => {
+            setTasks((prev) => prev.map((x) => (x.id === tempId ? row : x)));
+          });
+          dispatchClientDataSync({ reason: "task-created" });
+          return undefined;
+        }),
+      onError: (msg) => setError(msg),
+    });
   };
 
-  const handleToggleDone = async (e: React.MouseEvent, task: TaskRow) => {
+  const handleToggleDone = (e: React.MouseEvent, task: TaskRow) => {
     e.stopPropagation();
     e.preventDefault();
     const nextStatus = task.status === "done" ? "todo" : "done";
-    setTasks((prev) =>
-      prev.map((t) => (t.id === task.id ? { ...t, status: nextStatus } : t))
-    );
-    if (selectedTask?.id === task.id) {
-      setSelectedTask((prev) => (prev?.id === task.id ? { ...prev, status: nextStatus } : prev));
-      setDrawerForm((prev) => ({ ...prev, status: nextStatus }));
-    }
-    const result = await updateProjectTaskAction(task.project_id, task.id, { status: nextStatus });
-    if (result.error) {
-      const isNotFound = /not found|already deleted/i.test(result.error);
-      if (isNotFound) {
-        clearStaleTask(task.id);
-        return;
-      }
-      setTasks((prev) =>
-        prev.map((t) => (t.id === task.id ? { ...t, status: task.status } : t))
-      );
-      if (selectedTask?.id === task.id) {
-        setSelectedTask((prev) => (prev?.id === task.id ? { ...prev, status: task.status } : prev));
-        setDrawerForm((prev) => ({ ...prev, status: task.status as "todo" | "in_progress" | "done" }));
-      }
-      setError(result.error);
-      return;
-    }
-    void syncRouterAndClients(router);
+    const sel = selectedTask;
+    const df = { ...drawerForm };
+
+    type ToggleSnap = { tasks: TaskRow[]; selected: TaskRow | null; drawerForm: typeof drawerForm };
+    runOptimisticPersist<ToggleSnap>({
+      setBusy: () => {},
+      getSnapshot: () => ({
+        tasks: [...tasksRef.current],
+        selected: sel,
+        drawerForm: df,
+      }),
+      apply: () => {
+        setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, status: nextStatus } : t)));
+        if (sel?.id === task.id) {
+          setSelectedTask((prev) => (prev?.id === task.id ? { ...prev, status: nextStatus } : prev));
+          setDrawerForm((prev) => ({ ...prev, status: nextStatus }));
+        }
+        setError(null);
+      },
+      rollback: (s) => {
+        setTasks(s.tasks);
+        setSelectedTask(s.selected);
+        setDrawerForm(s.drawerForm);
+      },
+      persist: () =>
+        updateProjectTaskAction(task.project_id, task.id, { status: nextStatus }).then((result) => {
+          if (result.error) {
+            if (/not found|already deleted/i.test(result.error)) {
+              clearStaleTask(task.id);
+              return undefined;
+            }
+            return { error: result.error };
+          }
+          dispatchClientDataSync({ reason: "task-toggle-done" });
+          return undefined;
+        }),
+      onError: (msg) => setError(msg),
+    });
   };
 
-  const handleSaveDrawer = async () => {
+  const handleSaveDrawer = () => {
     if (!selectedTask) return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      const result = await updateProjectTaskAction(selectedTask.project_id, selectedTask.id, {
-        title: drawerForm.title || selectedTask.title,
-        description: drawerForm.description || null,
-        assigned_worker_id: drawerForm.assigned_worker_id || null,
-        due_date: drawerForm.due_date || null,
-        priority: drawerForm.priority,
-        status: drawerForm.status,
-      });
-      if (result.error) {
-        const isNotFound = /not found|already deleted/i.test(result.error);
-        if (isNotFound) {
-          clearStaleTask(selectedTask.id);
-          return;
-        }
-        setError(result.error);
-        return;
-      }
-      setDrawerOpen(false);
-      await load();
-      void syncRouterAndClients(router);
-    } finally {
-      setSubmitting(false);
-    }
+    const st = selectedTask;
+    const df = { ...drawerForm };
+    const title = df.title || st.title;
+    const wid = df.assigned_worker_id || null;
+    const worker_name = wid ? workers.find((w) => w.id === wid)?.name ?? null : null;
+    const patch = {
+      title,
+      description: df.description || null,
+      assigned_worker_id: wid,
+      due_date: df.due_date || null,
+      priority: df.priority,
+      status: df.status,
+    };
+
+    const updatedRow: TaskRow = {
+      ...st,
+      title,
+      description: patch.description,
+      assigned_worker_id: wid,
+      worker_name,
+      due_date: patch.due_date,
+      priority: patch.priority,
+      status: patch.status,
+    };
+
+    type DrawerSnap = {
+      tasks: TaskRow[];
+      selected: TaskRow | null;
+      drawerOpen: boolean;
+      drawerForm: typeof drawerForm;
+    };
+    runOptimisticPersist<DrawerSnap>({
+      setBusy: setSubmitting,
+      getSnapshot: () => ({
+        tasks: [...tasksRef.current],
+        selected: st,
+        drawerOpen: true,
+        drawerForm: df,
+      }),
+      apply: () => {
+        setTasks((prev) => prev.map((t) => (t.id === st.id ? updatedRow : t)));
+        setSelectedTask(updatedRow);
+        setDrawerOpen(false);
+        setError(null);
+      },
+      rollback: (s) => {
+        setTasks(s.tasks);
+        setSelectedTask(s.selected);
+        setDrawerOpen(s.drawerOpen);
+        setDrawerForm(s.drawerForm);
+      },
+      persist: () =>
+        updateProjectTaskAction(st.project_id, st.id, patch).then((result) => {
+          if (result.error) {
+            if (/not found|already deleted/i.test(result.error)) {
+              clearStaleTask(st.id);
+              return undefined;
+            }
+            return { error: result.error };
+          }
+          const t = result.task;
+          if (t) {
+            const row: TaskRow = {
+              id: t.id,
+              project_id: t.project_id,
+              project_name: st.project_name,
+              title: t.title,
+              description: t.description,
+              status: t.status,
+              assigned_worker_id: t.assigned_worker_id,
+              worker_name: t.assigned_worker_id
+                ? workers.find((w) => w.id === t.assigned_worker_id)?.name ?? null
+                : null,
+              due_date: t.due_date,
+              priority: t.priority,
+              created_at: t.created_at,
+            };
+            flushSync(() => {
+              setTasks((prev) => prev.map((x) => (x.id === row.id ? row : x)));
+              setSelectedTask((prev) => (prev?.id === row.id ? row : prev));
+            });
+          }
+          dispatchClientDataSync({ reason: "task-drawer-save" });
+          return undefined;
+        }),
+      onError: (msg) => setError(msg),
+    });
   };
 
   const handleDeleteTask = async () => {
@@ -286,36 +416,55 @@ export default function TasksPage() {
     await handleDeleteTaskById(selectedTask.id);
   };
 
-  const handleDeleteTaskById = async (taskId: string) => {
+  const handleDeleteTaskById = (taskId: string) => {
     if (typeof window !== "undefined" && !window.confirm("Are you sure you want to delete this task?")) return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/tasks/${taskId}`, { method: "DELETE", cache: "no-store" });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        if (res.status === 404) {
-          clearStaleTask(taskId);
-          return;
+    const selectedId = selectedTask?.id;
+
+    type DelSnap = { tasks: TaskRow[]; drawerOpen: boolean; selected: TaskRow | null };
+    runOptimisticPersist<DelSnap>({
+      setBusy: setSubmitting,
+      getSnapshot: () => ({
+        tasks: [...tasksRef.current],
+        drawerOpen,
+        selected: selectedTask,
+      }),
+      apply: () => {
+        setTasks((prev) => prev.filter((t) => t.id !== taskId));
+        if (selectedId === taskId) {
+          setDrawerOpen(false);
+          setSelectedTask(null);
         }
-        const msg = (data as { message?: string }).message ?? "Failed to delete task.";
-        console.error("[Tasks] Delete failed:", res.status, msg, data);
+        setError(null);
+      },
+      rollback: (s) => {
+        setTasks(s.tasks);
+        setDrawerOpen(s.drawerOpen);
+        setSelectedTask(s.selected);
+      },
+      persist: () =>
+        fetch(`/api/tasks/${taskId}`, { method: "DELETE", cache: "no-store" })
+          .then(async (res) => {
+            const data = await res.json().catch(() => ({}));
+            if (res.status === 404) {
+              clearStaleTask(taskId);
+              return undefined;
+            }
+            if (!res.ok) {
+              const msg = (data as { message?: string }).message ?? "Failed to delete task.";
+              console.error("[Tasks] Delete failed:", res.status, msg, data);
+              return { error: msg };
+            }
+            dispatchClientDataSync({ reason: "task-deleted" });
+            return undefined;
+          })
+          .catch((e) => ({
+            error: e instanceof Error ? e.message : "Failed to delete task.",
+          })),
+      onError: (msg) => {
+        console.error("[Tasks] Delete error:", msg);
         setError(msg);
-        return;
-      }
-      setTasks((prev) => prev.filter((t) => t.id !== taskId));
-      if (selectedTask?.id === taskId) {
-        setDrawerOpen(false);
-        setSelectedTask(null);
-      }
-      void syncRouterAndClients(router);
-    } catch (e) {
-      const errMsg = e instanceof Error ? e.message : "Failed to delete task.";
-      console.error("[Tasks] Delete error:", e);
-      setError(errMsg);
-    } finally {
-      setSubmitting(false);
-    }
+      },
+    });
   };
 
   const filterTabs: { value: Filter; label: string }[] = [

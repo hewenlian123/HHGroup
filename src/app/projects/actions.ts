@@ -17,7 +17,7 @@ import {
 import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server";
 import type { ProjectUsageCounts } from "@/lib/data";
 import type { DeleteBlockedPayload } from "@/lib/projects-db";
-import type { ProjectTaskStatus } from "@/lib/project-tasks-db";
+import type { ProjectTask, ProjectTaskStatus } from "@/lib/project-tasks-db";
 
 export async function createProjectAction(prevState: { error?: string } | null, formData: FormData): Promise<{ error?: string } | null> {
   const name = (formData.get("name") as string)?.trim();
@@ -175,10 +175,10 @@ export async function createProjectTaskAction(projectId: string, draft: {
   due_date?: string | null;
   priority?: "low" | "medium" | "high";
   status?: ProjectTaskStatus;
-}): Promise<{ error?: string }> {
+}): Promise<{ error?: string; task?: ProjectTask }> {
   if (!projectId?.trim()) return { error: "Project ID is required." };
   try {
-    await createProjectTask({
+    const task = await createProjectTask({
       project_id: projectId,
       title: draft.title.trim() || "Untitled",
       description: draft.description?.trim() || null,
@@ -189,7 +189,7 @@ export async function createProjectTaskAction(projectId: string, draft: {
     });
     revalidatePath(`/projects/${projectId}`);
     revalidatePath("/tasks");
-    return {};
+    return { task };
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to create task.";
     return { error: message };
@@ -200,16 +200,17 @@ export async function updateProjectTaskAction(
   projectId: string,
   taskId: string,
   patch: { title?: string; description?: string | null; status?: ProjectTaskStatus; assigned_worker_id?: string | null; due_date?: string | null; priority?: "low" | "medium" | "high" }
-): Promise<{ error?: string }> {
+): Promise<{ error?: string; task?: ProjectTask | null }> {
   if (!projectId?.trim() || !taskId?.trim()) return { error: "Project and task ID are required." };
   try {
     const updated = await updateProjectTask(taskId, patch);
-    if (patch.status === "done" && updated?.project_id) {
+    if (!updated) return { error: "Task not found or could not be updated.", task: null };
+    if (patch.status === "done" && updated.project_id) {
       await insertActivityLog(updated.project_id, "task_completed", "Task completed");
     }
     revalidatePath(`/projects/${projectId}`);
     revalidatePath("/tasks");
-    return {};
+    return { task: updated };
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to update task.";
     return { error: message };

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { flushSync } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
@@ -21,6 +22,7 @@ import {
   getWorkers,
   deleteExpense,
   updateExpenseReceiptUrl,
+  updateExpenseForReview,
   type Expense,
 } from "@/lib/data";
 import { createBrowserClient } from "@/lib/supabase";
@@ -29,8 +31,9 @@ import { Pagination } from "@/components/ui/pagination";
 import { useSearchParams } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { QuickExpenseModal } from "./quick-expense-modal";
-import { EditExpenseModal } from "./edit-expense-modal";
+import { EditExpenseModal, type ExpenseReviewSavePatch } from "./edit-expense-modal";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
+import { useToast } from "@/components/toast/toast-provider";
 
 type ProjectRow = { id: string; name: string | null };
 type WorkerRow = { id: string; name: string };
@@ -38,6 +41,30 @@ type WorkerRow = { id: string; name: string };
 function statusLabel(s: string): string {
   if (s === "needs_review") return "Needs Review";
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function mergeExpenseReviewPatch(e: Expense, p: ExpenseReviewSavePatch): Expense {
+  const nextLines =
+    e.lines.length > 0
+      ? e.lines.map((line, idx) =>
+          idx === 0 ? { ...line, projectId: p.projectId, category: p.category, amount: p.amount } : line,
+        )
+      : [
+          {
+            id: `optimistic-line-${p.expenseId}`,
+            projectId: p.projectId,
+            category: p.category,
+            amount: p.amount,
+          },
+        ];
+  return {
+    ...e,
+    vendorName: p.vendorName,
+    notes: p.notes ?? e.notes,
+    status: p.status,
+    workerId: p.workerId,
+    lines: nextLines,
+  };
 }
 
 function projectLabel(expense: Expense, projectNameById: Map<string, string>): string {
@@ -60,6 +87,7 @@ export default function ExpensesPage() {
 
 function ExpensesPageInner() {
   const router = useRouter();
+  const { toast } = useToast();
   const searchParams = useSearchParams();
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -92,6 +120,8 @@ function ExpensesPageInner() {
   const [receiptReplacing, setReceiptReplacing] = React.useState(false);
   const [editExpense, setEditExpense] = React.useState<Expense | null>(null);
   const [editModalOpen, setEditModalOpen] = React.useState(false);
+  const expensesRef = React.useRef<Expense[]>([]);
+  expensesRef.current = expenses;
 
   React.useEffect(() => {
     if (!supabase) {
@@ -178,6 +208,48 @@ function ExpensesPageInner() {
     const list = await getExpenses();
     setExpenses(list);
   }, []);
+
+  const handleExpenseSave = React.useCallback(
+    (patch: ExpenseReviewSavePatch) => {
+      const prevList = expensesRef.current;
+      const target = prevList.find((e) => e.id === patch.expenseId);
+      if (!target) return;
+      const merged = mergeExpenseReviewPatch(target, patch);
+      flushSync(() => {
+        setExpenses((prev) => prev.map((e) => (e.id === patch.expenseId ? merged : e)));
+        setEditModalOpen(false);
+        setEditExpense(null);
+      });
+      void (async () => {
+        try {
+          const next = await updateExpenseForReview(patch.expenseId, {
+            vendorName: patch.vendorName,
+            amount: patch.amount,
+            projectId: patch.projectId,
+            workerId: patch.workerId,
+            category: patch.category,
+            notes: patch.notes,
+            status: patch.status,
+          });
+          if (!next) {
+            flushSync(() => setExpenses(prevList));
+            toast({ title: "Update failed", description: "Expense could not be saved.", variant: "error" });
+            return;
+          }
+          flushSync(() => setExpenses((prev) => prev.map((e) => (e.id === patch.expenseId ? next : e))));
+          toast({ title: "Expense updated", variant: "success" });
+        } catch (e) {
+          flushSync(() => setExpenses(prevList));
+          toast({
+            title: "Update failed",
+            description: e instanceof Error ? e.message : "Unknown error",
+            variant: "error",
+          });
+        }
+      })();
+    },
+    [toast],
+  );
 
   useOnAppSync(
     React.useCallback(() => {
@@ -491,7 +563,7 @@ function ExpensesPageInner() {
         projects={safeProjects}
         workers={workers}
         categories={categoriesList}
-        onSuccess={refresh}
+        onSave={handleExpenseSave}
       />
     </div>
   );

@@ -15,6 +15,7 @@ import {
   type PermissionKey,
   type PermissionMap,
 } from "@/lib/permissions";
+import { runOptimisticPersist } from "@/lib/optimistic-save";
 
 type PermissionRow = {
   role: AppRole;
@@ -45,6 +46,7 @@ export default function SettingsPermissionsPage() {
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [message, setMessage] = React.useState<string | null>(null);
+  const savedPermsRef = React.useRef<PermissionMap>(DEFAULT_ROLE_PERMISSIONS.admin);
 
   const loadRole = React.useCallback(async () => {
     if (!supabase) {
@@ -61,12 +63,16 @@ export default function SettingsPermissionsPage() {
       .maybeSingle();
     if (error) {
       setMessage(error.message || "Failed to load role permissions.");
-      setPerms(DEFAULT_ROLE_PERMISSIONS[targetRole]);
+      const def = DEFAULT_ROLE_PERMISSIONS[targetRole];
+      setPerms(def);
+      savedPermsRef.current = { ...def };
       setLoading(false);
       return;
     }
     const row = (data ?? null) as PermissionRow | null;
-    setPerms(coercePerms(row?.perms, targetRole));
+    const loaded = coercePerms(row?.perms, targetRole);
+    setPerms(loaded);
+    savedPermsRef.current = { ...loaded };
     setLoading(false);
   }, [supabase, targetRole]);
 
@@ -85,23 +91,36 @@ export default function SettingsPermissionsPage() {
     setPerms((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const save = async () => {
+  const save = () => {
     if (!supabase) {
       setMessage("Supabase is not configured.");
       return;
     }
-    setSaving(true);
-    setMessage(null);
-    const { error } = await supabase
-      .from("role_permissions")
-      .upsert([{ role: targetRole, perms }], { onConflict: "role" });
-    if (error) {
-      setMessage(error.message || "Failed to save permissions.");
-      setSaving(false);
-      return;
-    }
-    setSaving(false);
-    setMessage("Permissions saved.");
+    const permsToSave = { ...perms };
+    const lastSaved = { ...savedPermsRef.current };
+    const prevMessage = message;
+
+    type Snap = { perms: PermissionMap; message: string | null };
+    runOptimisticPersist<Snap>({
+      setBusy: setSaving,
+      getSnapshot: () => ({ perms: lastSaved, message: prevMessage }),
+      apply: () => setMessage("Permissions saved."),
+      rollback: (s) => {
+        setPerms(s.perms);
+        setMessage(s.message);
+      },
+      persist: async () => {
+        const { error } = await supabase
+          .from("role_permissions")
+          .upsert([{ role: targetRole, perms: permsToSave }], { onConflict: "role" });
+        if (error) return { error: error.message || "Failed to save permissions." };
+        return undefined;
+      },
+      onError: (msg) => setMessage(msg),
+      onSuccess: () => {
+        savedPermsRef.current = { ...permsToSave };
+      },
+    });
   };
 
   return (

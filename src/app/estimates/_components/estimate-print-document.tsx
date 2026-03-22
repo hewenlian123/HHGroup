@@ -9,8 +9,11 @@ import {
 import type { EstimateMetaRecord } from "@/lib/data";
 import { splitLineItemDesc } from "@/lib/sanitize-line-item-html";
 import { LineItemDescriptionBodyPreview } from "@/app/estimates/_components/line-item-description-body-preview";
+import type { DocumentCompanyProfileDTO } from "@/lib/document-company-profile";
+import { DocumentCompanyHeader } from "@/components/documents/document-company-header";
 
 export type EstimatePrintDocumentProps = {
+  company: DocumentCompanyProfileDTO;
   estimate: { number: string; status: string; updatedAt: string };
   meta: EstimateMetaRecord | null;
   categories: { costCode: string; displayName: string }[];
@@ -24,6 +27,7 @@ const fmt = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 
 
 /** Read-only, print-optimized estimate document. No navigation or buttons. */
 export function EstimatePrintDocument({
+  company,
   estimate,
   meta,
   categories,
@@ -34,23 +38,28 @@ export function EstimatePrintDocument({
 }: EstimatePrintDocumentProps) {
   const estimateTotal = summary?.grandTotal ?? 0;
   const costSections = groupEstimateItemsByCategoryId(items, categories, catalogNameByCode);
+  const estimateDateStr = meta?.estimateDate ?? (estimate.updatedAt ? estimate.updatedAt.slice(0, 10) : "—");
+  const statusLabel = estimate.status === "Converted" ? "Converted to Project" : estimate.status;
 
   return (
     <article className="bg-white text-zinc-900 mx-auto max-w-[8.5in] px-6 py-6 print:px-0 print:py-0 print:max-w-none">
-      {/* Company / branding header */}
-      <header className="flex justify-between items-start border-b border-zinc-200 pb-6 mb-6 print:break-after-avoid">
-        <div>
-          <p className="text-xl font-semibold text-zinc-900 tracking-tight">HH Group</p>
-          <p className="text-sm text-zinc-500 mt-0.5">Estimate</p>
-        </div>
-        <div className="text-right">
-          <p className="text-sm font-medium text-zinc-900">Estimate {estimate.number}</p>
-          <p className="text-xs text-zinc-500 mt-0.5">{estimate.status}</p>
-          <span className="inline-block mt-2 rounded-md border border-zinc-300 bg-zinc-50 px-2.5 py-1 text-xs font-medium text-zinc-700 print:border-zinc-400">
-            {estimate.status}
-          </span>
-        </div>
-      </header>
+      <DocumentCompanyHeader
+        company={company}
+        documentTitle="Estimate"
+        documentNo={estimate.number}
+        documentDate={estimateDateStr}
+        documentNoLabel="Estimate No"
+        extraRight={
+          <>
+            <span className="inline-block rounded-sm border border-zinc-300 bg-zinc-50 px-2 py-0.5 text-xs font-medium text-zinc-800 print:border-zinc-400">
+              {statusLabel}
+            </span>
+            {meta?.validUntil ? (
+              <p className="text-xs text-zinc-500 tabular-nums">Valid until: {meta.validUntil}</p>
+            ) : null}
+          </>
+        }
+      />
 
       {/* Client / Project / Dates / Status */}
       {meta && (
@@ -224,7 +233,7 @@ export function EstimatePrintDocument({
       )}
 
       <footer className="text-xs text-zinc-400 border-t border-zinc-200 pt-6 mt-8 print:break-before-avoid">
-        Estimate — HH Group
+        Estimate — {company.companyName}
       </footer>
     </article>
   );

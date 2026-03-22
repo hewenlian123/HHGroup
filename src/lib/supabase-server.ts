@@ -7,7 +7,7 @@
  */
 
 import { createServerClient } from "@supabase/ssr";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
 
 function envUrl(): string | null {
   return process.env.NEXT_PUBLIC_SUPABASE_URL ?? null;
@@ -78,4 +78,41 @@ export async function createServerSupabaseClient(): Promise<SupabaseClient | nul
       },
     },
   });
+}
+
+/**
+ * Resolve the Supabase user for a Route Handler request.
+ * 1) `Authorization: Bearer <access_token>` (browser session without SSR cookies)
+ * 2) Session cookies via `@supabase/ssr` server client
+ */
+export async function getSupabaseUserFromRequest(req: Request): Promise<User | null> {
+  const url = envUrl();
+  const anon = envAnon();
+  if (!url || !anon) return null;
+
+  const authHeader = req.headers.get("authorization") ?? req.headers.get("Authorization");
+  const bearer = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
+  if (bearer) {
+    const sb = createClient(url, anon, { auth: { persistSession: false, autoRefreshToken: false } });
+    const {
+      data: { user },
+      error,
+    } = await sb.auth.getUser(bearer);
+    if (!error && user) return user;
+  }
+
+  const cookieClient = await createServerSupabaseClient();
+  if (!cookieClient) return null;
+  const {
+    data: { user },
+    error,
+  } = await cookieClient.auth.getUser();
+  if (!error && user) return user;
+  return null;
+}
+
+/** Single-tenant / dev only: allow logo API with service role when no session is present. */
+export function isCompanyLogoServerUploadWithoutSessionAllowed(): boolean {
+  const v = process.env.ALLOW_COMPANY_LOGO_SERVER_WITHOUT_SESSION;
+  return v === "1" || v === "true";
 }

@@ -5,6 +5,7 @@ import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { createBrowserClient } from "@/lib/supabase";
+import { runOptimisticPersist } from "@/lib/optimistic-save";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -62,6 +63,8 @@ export default function CustomerDetailPage() {
     notes: "",
     status: "active",
   });
+  /** Last server-aligned form; used to rollback on failed save without refetching. */
+  const serverFormRef = React.useRef<CustomerForm | null>(null);
 
   const refresh = React.useCallback(async () => {
     if (!id) {
@@ -89,7 +92,7 @@ export default function CustomerDetailPage() {
       return;
     }
     const row = data as CustomerRow;
-    setForm({
+    const next: CustomerForm = {
       name: row.name ?? "",
       contact_person: row.contact_person ?? "",
       phone: row.phone ?? "",
@@ -97,7 +100,9 @@ export default function CustomerDetailPage() {
       address: row.address ?? "",
       notes: row.notes ?? "",
       status: row.status === "inactive" ? "inactive" : "active",
-    });
+    };
+    setForm(next);
+    serverFormRef.current = { ...next };
     setLoading(false);
   }, [id, supabase]);
 
@@ -112,13 +117,14 @@ export default function CustomerDetailPage() {
     [refresh]
   );
 
-  const handleSave = React.useCallback(async () => {
+  const handleSave = React.useCallback(() => {
     if (!id || !supabase) {
       setMessage("Supabase is not configured.");
       return;
     }
-    setSaving(true);
-    setMessage(null);
+    const baseline = serverFormRef.current;
+    if (!baseline) return;
+
     const payload = {
       name: toNullable(form.name),
       contact_person: toNullable(form.contact_person),
@@ -128,16 +134,30 @@ export default function CustomerDetailPage() {
       notes: toNullable(form.notes),
       status: form.status,
     };
-    const { error } = await supabase.from("customers").update(payload).eq("id", id);
-    if (error) {
-      setMessage(error.message || "Failed to save customer.");
-      setSaving(false);
-      return;
-    }
-    setSaving(false);
-    setMessage("Customer saved.");
-    void refresh();
-  }, [form, id, refresh, supabase]);
+    const formCommitted = { ...form };
+
+    type Snap = { serverForm: CustomerForm; message: string | null };
+    runOptimisticPersist<Snap>({
+      setBusy: setSaving,
+      getSnapshot: () => ({ serverForm: { ...baseline }, message }),
+      apply: () => {
+        setMessage("Customer saved.");
+      },
+      rollback: (s) => {
+        setForm(s.serverForm);
+        setMessage(s.message);
+      },
+      onError: (msg) => setMessage(msg),
+      persist: async () => {
+        const { error } = await supabase.from("customers").update(payload).eq("id", id);
+        if (error) return { error: error.message || "Failed to save customer." };
+        return undefined;
+      },
+      onSuccess: () => {
+        serverFormRef.current = { ...formCommitted };
+      },
+    });
+  }, [form, id, supabase, message]);
 
   if (loading) {
     return <div className="page-container page-stack py-6 text-sm text-muted-foreground">Loading customer...</div>;
