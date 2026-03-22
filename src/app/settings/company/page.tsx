@@ -164,12 +164,38 @@ export default function SettingsCompanyPage() {
     }
     setLoading(true);
     try {
+      const res = await fetch("/api/settings/company-profile", {
+        method: "GET",
+        credentials: "include",
+      });
+      const json = (await res.json().catch(() => null)) as
+        | { ok?: boolean; profile?: CompanyProfile; fallback?: string; message?: string }
+        | null;
+
+      if (res.ok && json?.ok && json.profile) {
+        setProfile(json.profile);
+        setForm(toFormState(json.profile));
+        return;
+      }
+
+      if (res.status !== 503 || json?.fallback !== "client") {
+        const msg = json?.message || `Load failed (${res.status}).`;
+        toast({ title: "Load failed", description: msg, variant: "error" });
+        return;
+      }
+
       const row = await ensureCompanyProfile(supabase);
       setProfile(row);
       setForm(toFormState(row));
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      toast({ title: "Load failed", description: msg || "Failed to load company profile.", variant: "error" });
+      try {
+        const row = await ensureCompanyProfile(supabase);
+        setProfile(row);
+        setForm(toFormState(row));
+      } catch {
+        const msg = e instanceof Error ? e.message : String(e);
+        toast({ title: "Load failed", description: msg || "Failed to load company profile.", variant: "error" });
+      }
     } finally {
       setLoading(false);
     }
