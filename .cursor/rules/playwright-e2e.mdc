@@ -1,0 +1,27 @@
+---
+description: Playwright E2E 测试规范
+alwaysApply: true
+---
+
+# Playwright E2E 测试规范
+
+## Selector 规范
+- 优先用 getByRole()
+- href 跳转链接允许用 `locator('a[href=...]')`
+- 禁止用其他 CSS selector 和 xpath
+- 禁止用 setTimeout，用 expect().toBeVisible()
+
+## 等待规范
+- 页面跳转后用 waitForLoadState("networkidle")
+- 关键元素用 timeout: 60_000
+- 禁止 race condition（未加载就断言）
+
+## Skip 规范
+- 允许：环境缺数据时 skip（expectVisibleOrSkip）
+- 禁止：用 test.skip() 掩盖应该通过的测试
+- 禁止：用 test.fixme() 长期搁置
+
+## 测试结构
+- 可复用操作放在 tests/e2e-helpers.ts
+- 每个测试必须独立，不依赖其他测试状态
+- 新功能必须有对应 E2E 测试
