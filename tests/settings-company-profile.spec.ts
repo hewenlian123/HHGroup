@@ -239,9 +239,17 @@ test.describe("Settings → Company Profile", () => {
 
       // Prefer `state` for persistence: some DBs omit newer columns from updates (retry strips unknown fields).
       const marker = `E2E-ST-${Date.now()}`;
+      await stateInput.click();
+      await stateInput.clear();
       await stateInput.fill(marker);
 
       const saveBtn = page.getByTestId("company-save-button");
+      const saveRespP = page.waitForResponse(
+        (resp) =>
+          resp.url().includes("/api/settings/company-profile") &&
+          resp.request().method() === "POST",
+        { timeout: 35_000 }
+      );
       await saveBtn.click();
       await expect(saveBtn).toContainText("Saving...", { timeout: 5000 });
       await expect(
@@ -251,7 +259,17 @@ test.describe("Settings → Company Profile", () => {
           .first()
       ).toBeVisible({ timeout: 30_000 });
       await expect(saveBtn).toContainText("Save Profile", { timeout: 15_000 });
-      await expect(stateInput).toHaveValue(marker, { timeout: 10_000 });
+
+      const saveResp = await saveRespP;
+      expect(saveResp.status(), "company-profile POST should succeed").toBe(200);
+      const saveBody = (await saveResp.json().catch(() => null)) as {
+        ok?: boolean;
+        profile?: { state?: string | null };
+      } | null;
+      expect(saveBody?.ok).toBe(true);
+      expect(saveBody?.profile?.state).toBe(marker);
+
+      await expect(stateInput).toHaveValue(marker, { timeout: 15_000 });
 
       await page.reload({ waitUntil: "domcontentloaded" });
       await waitForCompanyProfileReady(page);
