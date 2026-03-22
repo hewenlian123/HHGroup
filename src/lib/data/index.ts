@@ -1886,9 +1886,7 @@ export async function getExpenseLinesByProject(
   return expensesDb.getExpenseLinesByProject(projectId, limit);
 }
 
-export async function getProjectExpenseLines(
-  projectId: string
-): Promise<
+export async function getProjectExpenseLines(projectId: string): Promise<
   Array<{
     expenseId: string;
     date: string;
@@ -2761,9 +2759,7 @@ export function getProjectTransactions(projectId: string): ProjectTransactionRow
   return [];
 }
 
-export async function getProjectEstimate(
-  projectId: string
-): Promise<
+export async function getProjectEstimate(projectId: string): Promise<
   | {
       projectId: string;
       revenue: number;
@@ -2808,9 +2804,7 @@ export type {
 } from "../estimates-db";
 export { groupEstimateItemsByCategoryId } from "../estimates-db";
 
-export function getEstimateSnapshots(
-  estimateId: string
-): Promise<
+export function getEstimateSnapshots(estimateId: string): Promise<
   {
     snapshotId: string;
     estimateId: string;
