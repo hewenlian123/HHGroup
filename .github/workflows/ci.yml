@@ -1,6 +1,14 @@
 # CI: Vitest + Prettier (full repo) + ESLint (unit tests) + Playwright + production deploy to Vercel (main only).
 # Secrets: VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID
-# Optional: vars.NEXT_PUBLIC_SUPABASE_URL, secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY (real app URLs improve E2E)
+#
+# E2E (Playwright):
+# - baseURL / webServer: Playwright starts `npm run start` (next start) and opens `E2E_BASE_URL` (default localhost).
+# - Database: NOT chosen by Playwright. `NEXT_PUBLIC_SUPABASE_*` is inlined at `npm run build` time (job-level `env` below).
+#   Use your *staging* Supabase URL + anon key in GitHub Actions variables/secrets so E2E hits staging, not production.
+# - Seed step: `SUPABASE_PROJECT_REF` must be the *same* Supabase project as `vars.NEXT_PUBLIC_SUPABASE_URL`, or data
+#   seeded in staging will not match the DB the app uses (and production must never be seeded by this job).
+#
+# Optional: vars.NEXT_PUBLIC_SUPABASE_URL, secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY (required for real E2E data; else placeholders)
 # E2E seed (staging): secrets SUPABASE_PROJECT_REF + SUPABASE_ACCESS_TOKEN (PAT with database_write; Management API)
 
 name: CI
@@ -67,6 +75,10 @@ jobs:
         run: npm run test:e2e:ci
         env:
           CI: "true"
+          NODE_ENV: production
+          # Must match playwright.config.ts webServer `url` and `next start` bind (PORT).
+          PORT: "3000"
+          E2E_BASE_URL: "http://127.0.0.1:3000"
 
   deploy-vercel:
     name: Deploy to Vercel (production)
