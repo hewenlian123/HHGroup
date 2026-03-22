@@ -152,6 +152,7 @@ export function ProjectsListClient({
       <div className="mb-10 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-3">
           <h1
+            data-testid="projects-page-heading"
             className={cn(
               titleFontClassName,
               "text-4xl font-extrabold leading-none tracking-[-0.03em] text-graphite sm:text-[52px]"
@@ -182,6 +183,7 @@ export function ProjectsListClient({
           <div className="relative min-w-[200px] max-w-sm flex-1">
             <Search className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-graphite/40" />
             <Input
+              data-testid="projects-list-search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search projects…"

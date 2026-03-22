@@ -4,6 +4,9 @@ import { getInvoiceById, getProjectById } from "@/lib/data";
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 import { DocumentCompanyHeader } from "@/components/documents/document-company-header";
 
+/** Company block must reflect latest `company_profile` after Settings saves (no stale RSC cache). */
+export const dynamic = "force-dynamic";
+
 export default async function InvoicePrintPage({
   params,
 }: {
