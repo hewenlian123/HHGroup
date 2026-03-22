@@ -13,7 +13,7 @@
     "lint:ci": "eslint \"src/__tests__/**/*.{ts,tsx}\" --max-warnings 0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "format:check:ci": "prettier --check \".github/workflows/**/*.yml\" \"docs/**/*.md\" \"README.md\" \"package.json\" \"tsconfig.json\" \"vitest.config.ts\" \"playwright.config.ts\" \".eslintrc.json\" \".prettierrc.json\" \"next.config.mjs\"",
+    "format:check:ci": "prettier --check \".github/workflows/**/*.yml\" \"docs/**/*.md\" \"README.md\" \"package.json\" \"tsconfig.json\" \"vitest.config.ts\" \"playwright.config.ts\" \".eslintrc.json\" \".prettierrc.json\" \"next.config.mjs\" \"src/**\"",
     "test": "NODE_ENV=test vitest",
     "test:unit": "NODE_ENV=test vitest run",
     "test:e2e": "playwright test",

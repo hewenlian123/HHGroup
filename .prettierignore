@@ -11,3 +11,8 @@ test-results
 *.min.js
 pnpm-lock.yaml
 yarn.lock
+
+# Binaries under src/ — `prettier --check "src/**"` (or similar globs) would otherwise error: No parser could be inferred
+**/*.ico
+**/*.woff
+**/*.woff2
