@@ -31,6 +31,24 @@ const CORE_DDL: string[] = [
   logo_path text,
   logo_url text
 )`,
+  // Legacy DBs may use company_name / address_line_*; align before relying on org_name (see migration 20260322104500).
+  `DO $hh_cp_rename$ BEGIN
+    IF to_regclass('public.company_profile') IS NULL THEN RETURN; END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'company_profile' AND column_name = 'company_name')
+       AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'company_profile' AND column_name = 'org_name') THEN
+      EXECUTE 'ALTER TABLE public.company_profile RENAME COLUMN company_name TO org_name';
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'company_profile' AND column_name = 'address_line1')
+       AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'company_profile' AND column_name = 'address1') THEN
+      EXECUTE 'ALTER TABLE public.company_profile RENAME COLUMN address_line1 TO address1';
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'company_profile' AND column_name = 'address_line2')
+       AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'company_profile' AND column_name = 'address2') THEN
+      EXECUTE 'ALTER TABLE public.company_profile RENAME COLUMN address_line2 TO address2';
+    END IF;
+  END $hh_cp_rename$`,
+  `ALTER TABLE public.company_profile ADD COLUMN IF NOT EXISTS org_name text`,
+  `UPDATE public.company_profile SET org_name = 'HH Group' WHERE org_name IS NULL OR btrim(org_name) = ''`,
   // ─── PROJECTS ───
   `CREATE TABLE IF NOT EXISTS public.projects (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

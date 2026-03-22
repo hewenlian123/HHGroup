@@ -53,6 +53,8 @@
 
 **会话说明：** Logo API 会依次尝试 **`Authorization: Bearer <access_token>`**（前端已自动附带）与 **SSR Cookie**。若两者都没有且仍要用服务端上传，可设 **`ALLOW_COMPANY_LOGO_SERVER_WITHOUT_SESSION=1`**（仅建议单租户/内网；生产优先用真实登录或 anon 迁移）。
 
+**Company Profile 保存 API（`POST /api/settings/company-profile`）：** 只要配置了 **`SUPABASE_SERVICE_ROLE_KEY`**，默认**不要求**浏览器 Supabase 会话即可写入（适合未接 Auth 的单租户）。若你希望强制登录后再保存，在服务器环境变量中设置 **`REQUIRE_SUPABASE_SESSION_FOR_SETTINGS_API=1`**。
+
 ---
 
 ## 三、手动验证清单

@@ -59,4 +59,15 @@ describe("parseCompanyProfileSaveBody", () => {
     expect(p.email).toBe("a@b.co");
     expect(() => parseCompanyProfileSaveBody({ default_tax_pct: "x" })).toThrow(/Invalid type/);
   });
+
+  it("accepts orgName camelCase when org_name omitted", () => {
+    const p = parseCompanyProfileSaveBody({ orgName: "Pacific Builders", phone: "808" });
+    expect(p.org_name).toBe("Pacific Builders");
+    expect(p.phone).toBe("808");
+  });
+
+  it("prefers org_name over orgName when both present", () => {
+    const p = parseCompanyProfileSaveBody({ org_name: "A", orgName: "B" });
+    expect(p.org_name).toBe("A");
+  });
 });

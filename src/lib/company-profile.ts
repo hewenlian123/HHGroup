@@ -158,7 +158,16 @@ export function parseCompanyProfileSaveBody(raw: unknown): Partial<CompanyProfil
     if (v !== undefined) out[key] = v;
   };
 
-  maybe("org_name", str("org_name") ?? undefined);
+  // Accept org_name (DB) or orgName (some clients); snake_case wins if both sent.
+  const orgSnake = str("org_name");
+  const orgCamel =
+    "orgName" in o && typeof o.orgName === "string"
+      ? o.orgName
+      : "orgName" in o && o.orgName === null
+        ? null
+        : undefined;
+  const orgResolved = orgSnake !== undefined ? orgSnake : orgCamel;
+  maybe("org_name", orgResolved ?? undefined);
   maybe("legal_name", str("legal_name"));
   maybe("phone", str("phone"));
   maybe("email", str("email"));
@@ -208,6 +217,12 @@ export async function ensureCompanyProfile(client: SupabaseClient): Promise<Comp
     if (error && isMissingColumn(error)) {
       const col = extractMissingColumnName(error.message);
       if (col && col in payload) {
+        // Never drop org_name: stripping it makes saves "succeed" while the DB still shows the default name.
+        if (col === "org_name") {
+          throw new Error(
+            "company_profile.org_name is missing in the database. Apply migrations so company_profile includes org_name."
+          );
+        }
         delete payload[col];
         continue;
       }
@@ -240,6 +255,11 @@ export async function saveCompanyProfile(
         if (isMissingColumn(error)) {
           const col = extractMissingColumnName(error.message);
           if (col && col in payload) {
+            if (col === "org_name") {
+              throw new Error(
+                "company_profile.org_name is missing in the database. Apply migrations so company_profile includes org_name."
+              );
+            }
             delete payload[col];
             continue;
           }
@@ -252,15 +272,20 @@ export async function saveCompanyProfile(
           "Company profile was not updated (0 rows). Check RLS policies for update on company_profile."
         );
       }
-      return row;
+      return { ...row, org_name: merged.org_name };
     }
 
     const { data, error } = await client.from("company_profile").insert(payload).select("*").single();
-    if (!error && data) return data as CompanyProfile;
+    if (!error && data) return { ...(data as CompanyProfile), org_name: merged.org_name };
     if (error) {
       if (isMissingColumn(error)) {
         const col = extractMissingColumnName(error.message);
         if (col && col in payload) {
+          if (col === "org_name") {
+            throw new Error(
+              "company_profile.org_name is missing in the database. Apply migrations so company_profile includes org_name."
+            );
+          }
           delete payload[col];
           continue;
         }
