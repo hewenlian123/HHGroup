@@ -28,7 +28,8 @@ async function waitForCompanyProfileReady(page: import("@playwright/test").Page)
 }
 
 test.describe("Settings → Company Profile", () => {
-  test.describe.configure({ timeout: 120_000 });
+  // Single global `company_profile` row: any parallel test here races and flakes (ZIP/STATE markers).
+  test.describe.configure({ timeout: 120_000, mode: "serial" });
 
   test("renders page, branding section, and all profile fields", async ({ page }) => {
     await page.goto(`${BASE}/settings/company`);
@@ -101,7 +102,7 @@ test.describe("Settings → Company Profile", () => {
     await expect(page.getByTestId("company-save-button")).not.toContainText("Saving...");
   });
 
-  // Sequential: same `company_profile` row — parallel tests in this block would overwrite each other's fields.
+  // Nested serial kept for clarity; outer describe is already serial.
   test.describe.serial("Company profile mutations (shared row)", () => {
   test("company name (org_name) changes from HH Group and persists after reload", async ({ page }) => {
     await page.goto(`${BASE}/settings/company`);
