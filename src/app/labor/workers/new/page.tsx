@@ -30,23 +30,42 @@ export default function NewWorkerPage() {
 
   return (
     <div className="mx-auto max-w-[680px] flex flex-col gap-6 p-6">
-      <PageHeader title="New Worker" description="Create a worker profile with default half-day rate." />
+      <PageHeader
+        title="New Worker"
+        description="Create a worker profile with default half-day rate."
+      />
       <section className="border-b border-[#EBEBE9] pb-6 dark:border-border">
         <div className="grid gap-4">
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Name *</label>
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+              Name *
+            </label>
             <Input value={name} onChange={(e) => setName(e.target.value)} className="rounded-sm" />
           </div>
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Phone</label>
-            <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="rounded-sm" />
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+              Phone
+            </label>
+            <Input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="rounded-sm"
+            />
           </div>
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Trade</label>
-            <Input value={trade} onChange={(e) => setTrade(e.target.value)} className="rounded-sm" />
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+              Trade
+            </label>
+            <Input
+              value={trade}
+              onChange={(e) => setTrade(e.target.value)}
+              className="rounded-sm"
+            />
           </div>
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Half-day Rate</label>
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+              Half-day Rate
+            </label>
             <Input
               type="number"
               min="0"
@@ -57,7 +76,9 @@ export default function NewWorkerPage() {
             />
           </div>
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Notes</label>
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+              Notes
+            </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -66,7 +87,12 @@ export default function NewWorkerPage() {
           </div>
         </div>
         <div className="mt-6 flex justify-end gap-2">
-          <Button variant="outline" size="sm" className="rounded-sm" onClick={() => router.push("/workers")}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-sm"
+            onClick={() => router.push("/workers")}
+          >
             Cancel
           </Button>
           <Button size="sm" className="rounded-sm" onClick={handleCreate} disabled={!name.trim()}>

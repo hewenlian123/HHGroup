@@ -110,9 +110,7 @@ export function WorkerAdvanceFormDialog({
             </p>
             <select
               value={form.workerId}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, workerId: e.target.value }))
-              }
+              onChange={(e) => setForm((f) => ({ ...f, workerId: e.target.value }))}
               className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
               disabled={mode === "edit"}
             >
@@ -125,9 +123,7 @@ export function WorkerAdvanceFormDialog({
             </select>
           </div>
           <div className="space-y-1">
-            <p className="text-xs font-medium text-muted-foreground">
-              Project (optional)
-            </p>
+            <p className="text-xs font-medium text-muted-foreground">Project (optional)</p>
             <select
               value={form.projectId ?? ""}
               onChange={(e) =>
@@ -153,9 +149,7 @@ export function WorkerAdvanceFormDialog({
               min="0"
               step="0.01"
               value={form.amount}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, amount: e.target.value }))
-              }
+              onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
               className="h-9 text-sm"
             />
           </div>
@@ -164,9 +158,7 @@ export function WorkerAdvanceFormDialog({
             <Input
               type="date"
               value={form.advanceDate}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, advanceDate: e.target.value }))
-              }
+              onChange={(e) => setForm((f) => ({ ...f, advanceDate: e.target.value }))}
               className="h-9 text-sm tabular-nums"
             />
           </div>
@@ -174,17 +166,13 @@ export function WorkerAdvanceFormDialog({
             <p className="text-xs font-medium text-muted-foreground">Notes</p>
             <Input
               value={form.notes}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, notes: e.target.value }))
-              }
+              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
               placeholder="Optional"
               className="h-9 text-sm"
             />
           </div>
 
-          {error ? (
-            <p className="text-xs text-red-600">{error}</p>
-          ) : null}
+          {error ? <p className="text-xs text-red-600">{error}</p> : null}
 
           <DialogFooter className="mt-2 gap-2 border-t border-border/60 pt-3">
             <Button
@@ -197,12 +185,7 @@ export function WorkerAdvanceFormDialog({
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              size="sm"
-              className="h-9 rounded-sm"
-              disabled={submitting}
-            >
+            <Button type="submit" size="sm" className="h-9 rounded-sm" disabled={submitting}>
               {submitting ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>
@@ -211,4 +194,3 @@ export function WorkerAdvanceFormDialog({
     </Dialog>
   );
 }
-

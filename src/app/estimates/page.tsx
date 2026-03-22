@@ -41,7 +41,12 @@ export default async function EstimatesListPage({
                 Create test estimate
               </Button>
             </form>
-            <Button asChild variant="ghost" size="sm" className="rounded-sm text-foreground hover:bg-[#F7F7F5] dark:hover:bg-muted/30">
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="rounded-sm text-foreground hover:bg-[#F7F7F5] dark:hover:bg-muted/30"
+            >
               <Link href="/estimates/new">
                 <Plus className="mr-2 h-4 w-4" />
                 New Estimate
@@ -75,13 +80,27 @@ export default async function EstimatesListPage({
           <Table>
             <TableHeader>
               <TableRow className="border-b border-[#EBEBE9] bg-[#F7F7F5] hover:bg-transparent dark:border-border dark:bg-muted/30">
-                <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Estimate #</TableHead>
-                <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Client</TableHead>
-                <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Project</TableHead>
-                <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Status</TableHead>
-                <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium text-right tabular-nums">Total</TableHead>
-                <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">Updated</TableHead>
-                <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium w-0">Actions</TableHead>
+                <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Estimate #
+                </TableHead>
+                <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Client
+                </TableHead>
+                <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Project
+                </TableHead>
+                <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Status
+                </TableHead>
+                <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium text-right tabular-nums">
+                  Total
+                </TableHead>
+                <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Updated
+                </TableHead>
+                <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium w-0">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

@@ -8,10 +8,7 @@ const NO_CACHE_HEADERS = {
   Pragma: "no-cache",
 };
 
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const admin = getServerSupabaseAdmin();
   if (!admin) {
     return NextResponse.json({ message: "Supabase not configured" }, { status: 500 });
@@ -22,7 +19,7 @@ export async function GET(
     const { data, error } = await admin
       .from("worker_advances")
       .select(
-        "id, worker_id, project_id, amount, advance_date, status, notes, created_at, workers(name), projects(name)",
+        "id, worker_id, project_id, amount, advance_date, status, notes, created_at, workers(name), projects(name)"
       )
       .eq("id", id)
       .maybeSingle();
@@ -50,10 +47,7 @@ export async function GET(
   }
 }
 
-export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const admin = getServerSupabaseAdmin();
   if (!admin) {
     return NextResponse.json({ message: "Supabase not configured" }, { status: 500 });
@@ -77,7 +71,7 @@ export async function PATCH(
       .update(patch)
       .eq("id", id)
       .select(
-        "id, worker_id, project_id, amount, advance_date, status, notes, created_at, workers(name), projects(name)",
+        "id, worker_id, project_id, amount, advance_date, status, notes, created_at, workers(name), projects(name)"
       )
       .maybeSingle();
 
@@ -105,10 +99,7 @@ export async function PATCH(
   }
 }
 
-export async function DELETE(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const admin = getServerSupabaseAdmin();
   if (!admin) {
     return NextResponse.json({ message: "Supabase not configured" }, { status: 500 });
@@ -124,4 +115,3 @@ export async function DELETE(
     return NextResponse.json({ message }, { status: 500 });
   }
 }
-

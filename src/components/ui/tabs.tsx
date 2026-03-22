@@ -42,7 +42,10 @@ const TabsContent = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <TabsPrimitive.Content
     ref={ref}
-    className={cn("mt-4 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/40", className)}
+    className={cn(
+      "mt-4 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/40",
+      className
+    )}
     {...props}
   />
 ));

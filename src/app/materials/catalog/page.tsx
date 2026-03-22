@@ -202,7 +202,9 @@ export default function MaterialCatalogPage() {
       setSubmitting(false);
       void load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : editingMaterial ? "Failed to update." : "Failed to create.");
+      setError(
+        e instanceof Error ? e.message : editingMaterial ? "Failed to update." : "Failed to create."
+      );
     } finally {
       setSubmitting(false);
     }
@@ -215,7 +217,11 @@ export default function MaterialCatalogPage() {
           title="Material Catalog"
           description="Standard materials library."
           actions={
-            <Button size="sm" className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90" onClick={openModal}>
+            <Button
+              size="sm"
+              className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90"
+              onClick={openModal}
+            >
               + Add Material
             </Button>
           }
@@ -229,22 +235,37 @@ export default function MaterialCatalogPage() {
           ) : error && materials.length === 0 ? (
             <div className="py-10 text-center text-sm text-destructive">{error}</div>
           ) : materials.length === 0 ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">No materials yet. Add one to get started.</div>
+            <div className="py-10 text-center text-sm text-muted-foreground">
+              No materials yet. Add one to get started.
+            </div>
           ) : (
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="border-b border-border/60">
                   <th className="w-12 py-2 px-2 sm:px-3" aria-label="Photo" />
-                  <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground">Category</th>
-                  <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground">Material name</th>
-                  <th className="hidden sm:table-cell text-left py-2 px-3 font-medium text-muted-foreground">Supplier</th>
-                  <th className="text-right py-2 px-2 sm:px-3 font-medium text-muted-foreground">Cost</th>
-                  <th className="text-right py-2 px-2 sm:px-3 font-medium text-muted-foreground w-[140px]">Actions</th>
+                  <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground">
+                    Category
+                  </th>
+                  <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground">
+                    Material name
+                  </th>
+                  <th className="hidden sm:table-cell text-left py-2 px-3 font-medium text-muted-foreground">
+                    Supplier
+                  </th>
+                  <th className="text-right py-2 px-2 sm:px-3 font-medium text-muted-foreground">
+                    Cost
+                  </th>
+                  <th className="text-right py-2 px-2 sm:px-3 font-medium text-muted-foreground w-[140px]">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {materials.map((m) => (
-                  <tr key={m.id} className="border-b border-border/60 last:border-b-0 hover:bg-muted/40 transition-colors">
+                  <tr
+                    key={m.id}
+                    className="border-b border-border/60 last:border-b-0 hover:bg-muted/40 transition-colors"
+                  >
                     <td className="py-2 px-2 sm:px-3">
                       {m.photo_url ? (
                         <a
@@ -260,7 +281,10 @@ export default function MaterialCatalogPage() {
                           />
                         </a>
                       ) : (
-                        <span className="block w-10 h-10 rounded-sm border border-border/60 bg-muted/30" aria-hidden />
+                        <span
+                          className="block w-10 h-10 rounded-sm border border-border/60 bg-muted/30"
+                          aria-hidden
+                        />
                       )}
                     </td>
                     <td className="py-2 px-2 sm:px-3 text-muted-foreground">
@@ -281,9 +305,13 @@ export default function MaterialCatalogPage() {
                         {m.material_name || "—"}
                       </button>
                     </td>
-                    <td className="hidden sm:table-cell py-2 px-3 text-muted-foreground">{m.supplier ?? "—"}</td>
+                    <td className="hidden sm:table-cell py-2 px-3 text-muted-foreground">
+                      {m.supplier ?? "—"}
+                    </td>
                     <td className="py-2 px-2 sm:px-3 text-right tabular-nums text-muted-foreground">
-                      {m.cost != null ? `$${Number(m.cost).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "—"}
+                      {m.cost != null
+                        ? `$${Number(m.cost).toLocaleString("en-US", { minimumFractionDigits: 2 })}`
+                        : "—"}
                     </td>
                     <td className="py-2 px-2 sm:px-3 text-right align-middle">
                       <Button
@@ -396,7 +424,12 @@ export default function MaterialCatalogPage() {
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
           <DialogFooter className="border-t border-border/60 pt-4">
-            <Button variant="outline" size="sm" className="rounded-sm" onClick={() => handleModalOpenChange(false)}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-sm"
+              onClick={() => handleModalOpenChange(false)}
+            >
               Cancel
             </Button>
             <Button

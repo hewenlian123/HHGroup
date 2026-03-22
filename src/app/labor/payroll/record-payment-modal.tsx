@@ -1,12 +1,7 @@
 "use client";
 
 import * as React from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { recordPaymentAction } from "./actions";
 
@@ -20,9 +15,7 @@ type Props = {
 };
 
 export function RecordPaymentModal({ open, onOpenChange, workerId, onSuccess }: Props) {
-  const [paymentDate, setPaymentDate] = React.useState(() =>
-    new Date().toISOString().slice(0, 10)
-  );
+  const [paymentDate, setPaymentDate] = React.useState(() => new Date().toISOString().slice(0, 10));
   const [amount, setAmount] = React.useState("");
   const [method, setMethod] = React.useState<string>("Cash");
   const [note, setNote] = React.useState("");
@@ -120,9 +113,7 @@ export function RecordPaymentModal({ open, onOpenChange, workerId, onSuccess }: 
               className="h-9 text-sm"
             />
           </div>
-          {error ? (
-            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-          ) : null}
+          {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
           <div className="flex justify-end gap-2 pt-2 border-t border-border/40">
             <button
               type="button"

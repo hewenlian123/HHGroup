@@ -1,28 +1,25 @@
-import { test, expect } from '@playwright/test';
-import { e2eTargetOrigin } from './e2e-env-helpers';
+import { test, expect } from "@playwright/test";
+import { e2eTargetOrigin } from "./e2e-env-helpers";
 
 /** Same default as other specs: local dev. Override with `E2E_BASE_URL=https://…` for prod smoke. */
 const BASE = e2eTargetOrigin();
 
-async function checkPage(
-  page: import('@playwright/test').Page,
-  path: string
-) {
+async function checkPage(page: import("@playwright/test").Page, path: string) {
   const response = await page.goto(`${BASE}${path}`, {
-    waitUntil: 'domcontentloaded',
+    waitUntil: "domcontentloaded",
     timeout: 60_000,
   });
-  await page.waitForLoadState('domcontentloaded');
+  await page.waitForLoadState("domcontentloaded");
 
   expect(response?.status()).not.toBe(500);
   if (response?.status() === 404) {
     test.skip(true, `Route 404: ${path}`);
   }
 
-  const body = page.locator('body');
-  await expect(body).not.toContainText('Application error: a client-side exception has occurred');
-  await expect(body).not.toContainText('Internal Server Error');
-  await expect(body).not.toContainText('This page could not be found');
+  const body = page.locator("body");
+  await expect(body).not.toContainText("Application error: a client-side exception has occurred");
+  await expect(body).not.toContainText("Internal Server Error");
+  await expect(body).not.toContainText("This page could not be found");
 
   /**
    * Root layout loads AppShell with `dynamic(..., { ssr: false })`, so first paint is only
@@ -38,7 +35,10 @@ async function checkPage(
         { timeout: 60_000 }
       );
     } catch {
-      test.skip(true, `App shell did not hydrate in time: ${path} (dev server slow or route blocked).`);
+      test.skip(
+        true,
+        `App shell did not hydrate in time: ${path} (dev server slow or route blocked).`
+      );
     }
   }
 

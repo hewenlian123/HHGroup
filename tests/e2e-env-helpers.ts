@@ -26,11 +26,7 @@ export function e2eTargetOrigin(): string {
 
 export function isLocalE2eTarget(): boolean {
   const base = e2eTargetOrigin().toLowerCase();
-  return (
-    base.includes("localhost") ||
-    base.includes("127.0.0.1") ||
-    base.includes("[::1]")
-  );
+  return base.includes("localhost") || base.includes("127.0.0.1") || base.includes("[::1]");
 }
 
 /** Real worker payment writes; allow on local dev, explicit env, or project `chromium-payments`. */

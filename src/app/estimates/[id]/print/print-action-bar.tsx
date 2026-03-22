@@ -14,7 +14,9 @@ export function PrintActionBar({ estimateId }: { estimateId: string }) {
         </Link>
       </Button>
       <div className="flex items-center gap-2">
-        <span className="text-sm text-zinc-500">Save as PDF via your browser&apos;s Print dialog.</span>
+        <span className="text-sm text-zinc-500">
+          Save as PDF via your browser&apos;s Print dialog.
+        </span>
         <Button
           type="button"
           size="sm"

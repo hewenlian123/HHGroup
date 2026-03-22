@@ -1,10 +1,5 @@
 import Link from "next/link";
-import {
-  PageLayout,
-  PageHeader,
-  Divider,
-  SectionHeader,
-} from "@/components/base";
+import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
 import {
   getInvoicesWithDerived,
   getPaymentsSummaryAll,
@@ -82,7 +77,9 @@ export default async function CashflowPage() {
     const projectId = subcontractIdToProjectId.get(p.subcontract_id) ?? "";
     cashOutByProject.set(projectId, (cashOutByProject.get(projectId) ?? 0) + p.amount);
   }
-  const projectExpenseTotals = await Promise.all(projects.map((p) => getExpenseTotalsByProject(p.id)));
+  const projectExpenseTotals = await Promise.all(
+    projects.map((p) => getExpenseTotalsByProject(p.id))
+  );
   projects.forEach((p, i) => {
     const exp = projectExpenseTotals[i] ?? 0;
     cashOutByProject.set(p.id, (cashOutByProject.get(p.id) ?? 0) + exp);
@@ -116,7 +113,9 @@ export default async function CashflowPage() {
         <span className="text-sm text-muted-foreground">Cash Out</span>
         <span className="text-lg font-medium tabular-nums">${fmtUsd(cashOut)}</span>
         <span className="text-sm text-muted-foreground">Net Cash</span>
-        <span className={`text-lg font-medium tabular-nums ${netCash >= 0 ? "text-foreground" : "text-destructive"}`}>
+        <span
+          className={`text-lg font-medium tabular-nums ${netCash >= 0 ? "text-foreground" : "text-destructive"}`}
+        >
           ${fmtUsd(netCash)}
         </span>
       </div>
@@ -136,10 +135,18 @@ export default async function CashflowPage() {
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Project</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Cash In</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Cash Out</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Net</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Project
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Cash In
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Cash Out
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Net
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -148,7 +155,9 @@ export default async function CashflowPage() {
                 <td className="py-1.5 px-3">{r.name}</td>
                 <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.cashIn)}</td>
                 <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.cashOut)}</td>
-                <td className={`py-1.5 px-3 text-right tabular-nums ${r.net >= 0 ? "" : "text-destructive"}`}>
+                <td
+                  className={`py-1.5 px-3 text-right tabular-nums ${r.net >= 0 ? "" : "text-destructive"}`}
+                >
                   ${fmtUsd(r.net)}
                 </td>
               </tr>

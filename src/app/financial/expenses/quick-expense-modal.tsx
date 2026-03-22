@@ -36,8 +36,14 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess }: Props) {
   const handleFile = async (file: File | null) => {
     if (!file) return;
     if (!supabase) {
-      setError("Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.");
-      toast({ title: "Configuration required", description: "Supabase must be configured to upload and save expenses.", variant: "error" });
+      setError(
+        "Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY."
+      );
+      toast({
+        title: "Configuration required",
+        description: "Supabase must be configured to upload and save expenses.",
+        variant: "error",
+      });
       return;
     }
     setError(null);
@@ -83,7 +89,11 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess }: Props) {
         receiptUrl,
       });
 
-      toast({ title: "Quick expense created", description: `${vendorName} — $${totalAmount.toLocaleString()}`, variant: "success" });
+      toast({
+        title: "Quick expense created",
+        description: `${vendorName} — $${totalAmount.toLocaleString()}`,
+        variant: "success",
+      });
       onSuccess();
       onOpenChange(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -99,61 +109,68 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess }: Props) {
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md border-border/60 sm:max-w-md">
-        <DialogHeader className="border-b border-border/60 pb-3">
-          <DialogTitle className="text-base font-medium">Quick Expense Upload</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          {!supabase ? (
-            <p className="text-sm text-amber-600 dark:text-amber-400">
-              Supabase is not configured. Configure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to upload receipts and save expenses to your database.
-            </p>
-          ) : (
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">Receipt Photo</p>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) void handleFile(f);
-              }}
-            />
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-12 flex-1 text-base sm:h-11"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-              >
-                <Camera className="mr-2 h-5 w-5" />
-                Take Photo
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-12 flex-1 text-base sm:h-11"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-              >
-                <Upload className="mr-2 h-5 w-5" />
-                Upload File
-              </Button>
-            </div>
-            <p className="mt-2 text-xs text-muted-foreground">Use camera or choose an image. OCR will extract vendor and amount.</p>
+        <DialogContent className="max-w-md border-border/60 sm:max-w-md">
+          <DialogHeader className="border-b border-border/60 pb-3">
+            <DialogTitle className="text-base font-medium">Quick Expense Upload</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {!supabase ? (
+              <p className="text-sm text-amber-600 dark:text-amber-400">
+                Supabase is not configured. Configure NEXT_PUBLIC_SUPABASE_URL and
+                NEXT_PUBLIC_SUPABASE_ANON_KEY to upload receipts and save expenses to your database.
+              </p>
+            ) : (
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
+                  Receipt Photo
+                </p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) void handleFile(f);
+                  }}
+                />
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-12 flex-1 text-base sm:h-11"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                  >
+                    <Camera className="mr-2 h-5 w-5" />
+                    Take Photo
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-12 flex-1 text-base sm:h-11"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                  >
+                    <Upload className="mr-2 h-5 w-5" />
+                    Upload File
+                  </Button>
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Use camera or choose an image. OCR will extract vendor and amount.
+                </p>
+              </div>
+            )}
+            {error ? <p className="text-sm text-destructive">{error}</p> : null}
+            {uploading ? (
+              <p className="text-sm text-muted-foreground">Uploading and creating expense…</p>
+            ) : null}
           </div>
-          )}
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
-          {uploading ? <p className="text-sm text-muted-foreground">Uploading and creating expense…</p> : null}
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

@@ -43,7 +43,10 @@ function append(type: SystemLogType, args: unknown[]) {
   let fullMessage = message;
   if (rest.length > 0) {
     try {
-      fullMessage = [message, ...rest.map((a) => (typeof a === "string" ? a : JSON.stringify(a)))].join(" ");
+      fullMessage = [
+        message,
+        ...rest.map((a) => (typeof a === "string" ? a : JSON.stringify(a))),
+      ].join(" ");
     } catch {
       fullMessage = message + " " + String(rest[0]);
     }

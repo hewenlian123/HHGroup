@@ -16,8 +16,13 @@ function normalizeFormDataFile(entry: FormDataEntryValue | null): File | null {
   // Runtimes may expose a plain Blob for file fields; DOM typings only list File | string.
   const blob = entry as Blob;
   const type = blob.type || "application/octet-stream";
-  const ext =
-    type.includes("png") ? "png" : type.includes("jpeg") || type.includes("jpg") ? "jpg" : type.includes("svg") ? "svg" : "png";
+  const ext = type.includes("png")
+    ? "png"
+    : type.includes("jpeg") || type.includes("jpg")
+      ? "jpg"
+      : type.includes("svg")
+        ? "svg"
+        : "png";
   try {
     return new File([blob], `upload.${ext}`, { type });
   } catch {
@@ -34,13 +39,20 @@ function normalizeFormDataFile(entry: FormDataEntryValue | null): File | null {
 export async function POST(req: Request) {
   const admin = getServerSupabaseAdmin();
   if (!admin) {
-    return NextResponse.json({ ok: false, fallback: "client", message: "Server upload unavailable." }, { status: 503 });
+    return NextResponse.json(
+      { ok: false, fallback: "client", message: "Server upload unavailable." },
+      { status: 503 }
+    );
   }
 
   const user = await getSupabaseUserFromRequest(req);
   if (!user && !isCompanyLogoServerUploadWithoutSessionAllowed()) {
     return NextResponse.json(
-      { ok: false, fallback: "client", message: "You must be signed in (or use client upload with anon RLS)." },
+      {
+        ok: false,
+        fallback: "client",
+        message: "You must be signed in (or use client upload with anon RLS).",
+      },
       { status: 401 }
     );
   }
@@ -74,13 +86,20 @@ export async function POST(req: Request) {
 export async function DELETE(req: Request) {
   const admin = getServerSupabaseAdmin();
   if (!admin) {
-    return NextResponse.json({ ok: false, fallback: "client", message: "Server remove unavailable." }, { status: 503 });
+    return NextResponse.json(
+      { ok: false, fallback: "client", message: "Server remove unavailable." },
+      { status: 503 }
+    );
   }
 
   const user = await getSupabaseUserFromRequest(req);
   if (!user && !isCompanyLogoServerUploadWithoutSessionAllowed()) {
     return NextResponse.json(
-      { ok: false, fallback: "client", message: "You must be signed in (or use client remove with anon RLS)." },
+      {
+        ok: false,
+        fallback: "client",
+        message: "You must be signed in (or use client remove with anon RLS).",
+      },
       { status: 401 }
     );
   }

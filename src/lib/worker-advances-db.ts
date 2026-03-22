@@ -43,7 +43,11 @@ function client() {
 
 function isMissingTable(err: { message?: string; code?: string } | null): boolean {
   const m = (err?.message ?? "").toLowerCase();
-  return /schema cache|relation.*does not exist|could not find the table|table.*does not exist|pgrst205/i.test(m) || err?.code === "PGRST205";
+  return (
+    /schema cache|relation.*does not exist|could not find the table|table.*does not exist|pgrst205/i.test(
+      m
+    ) || err?.code === "PGRST205"
+  );
 }
 
 const COLS =
@@ -95,9 +99,13 @@ export async function getWorkerAdvances(filters?: {
   limit?: number;
 }): Promise<WorkerAdvance[]> {
   const c = client();
-  let q = c.from("worker_advances").select(COLS).order("advance_date", { ascending: false }).order("created_at", {
-    ascending: false,
-  });
+  let q = c
+    .from("worker_advances")
+    .select(COLS)
+    .order("advance_date", { ascending: false })
+    .order("created_at", {
+      ascending: false,
+    });
 
   if (filters?.workerId) q = q.eq("worker_id", filters.workerId);
   if (filters?.projectId) q = q.eq("project_id", filters.projectId);
@@ -130,7 +138,7 @@ export async function getWorkerAdvanceById(id: string): Promise<WorkerAdvance | 
 
 export async function updateWorkerAdvance(
   id: string,
-  patch: UpdateWorkerAdvanceInput,
+  patch: UpdateWorkerAdvanceInput
 ): Promise<WorkerAdvance | null> {
   const c = client();
   const payload: Record<string, unknown> = {};
@@ -161,4 +169,3 @@ export async function deleteWorkerAdvance(id: string): Promise<void> {
     throw new Error(error.message ?? "Failed to delete worker advance.");
   }
 }
-

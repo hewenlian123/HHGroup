@@ -6,21 +6,16 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const admin = getServerSupabaseAdmin();
   if (!admin) {
-    return NextResponse.json(
-      { message: "Supabase not configured." },
-      { status: 500 },
-    );
+    return NextResponse.json({ message: "Supabase not configured." }, { status: 500 });
   }
   const { data, error } = await admin
     .from("customers")
-    .select(
-      "id,name,email,phone,address,city,state,zip,notes,created_at",
-    )
+    .select("id,name,email,phone,address,city,state,zip,notes,created_at")
     .order("name", { ascending: true });
   if (error) {
     return NextResponse.json(
       { message: error.message ?? "Failed to load customers." },
-      { status: 500 },
+      { status: 500 }
     );
   }
   return NextResponse.json({ customers: data ?? [] });
@@ -29,10 +24,7 @@ export async function GET() {
 export async function POST(request: Request) {
   const admin = getServerSupabaseAdmin();
   if (!admin) {
-    return NextResponse.json(
-      { message: "Supabase not configured." },
-      { status: 500 },
-    );
+    return NextResponse.json({ message: "Supabase not configured." }, { status: 500 });
   }
   const body = (await request.json()) as {
     name?: string;
@@ -46,10 +38,7 @@ export async function POST(request: Request) {
   };
   const name = body.name?.trim();
   if (!name) {
-    return NextResponse.json(
-      { message: "Name is required." },
-      { status: 400 },
-    );
+    return NextResponse.json({ message: "Name is required." }, { status: 400 });
   }
   const payload = {
     name,
@@ -64,16 +53,13 @@ export async function POST(request: Request) {
   const { data, error } = await admin
     .from("customers")
     .insert(payload)
-    .select(
-      "id,name,email,phone,address,city,state,zip,notes,created_at",
-    )
+    .select("id,name,email,phone,address,city,state,zip,notes,created_at")
     .single();
   if (error) {
     return NextResponse.json(
       { message: error.message ?? "Failed to create customer." },
-      { status: 500 },
+      { status: 500 }
     );
   }
   return NextResponse.json(data, { status: 201 });
 }
-

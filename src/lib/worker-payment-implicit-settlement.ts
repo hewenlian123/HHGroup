@@ -72,7 +72,8 @@ async function loadUnpaidPayItems(
 
   for (const r of laborRaw) {
     if (projectId && (r.project_id ?? null) !== projectId) continue;
-    if (!isLaborUnpaidForWorkerPayroll(r.status, r.worker_payment_id, laborSettlementMode)) continue;
+    if (!isLaborUnpaidForWorkerPayroll(r.status, r.worker_payment_id, laborSettlementMode))
+      continue;
     const cents = toCents(Number(r.cost_amount) || 0);
     if (cents <= 0) continue;
     items.push({ kind: "labor", id: r.id, cents });

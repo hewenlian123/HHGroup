@@ -15,11 +15,7 @@ export type RecentExpenseLineRow = {
   amount: number;
 };
 
-export function RecentExpenseLines({
-  rows,
-}: {
-  rows: RecentExpenseLineRow[];
-}) {
+export function RecentExpenseLines({ rows }: { rows: RecentExpenseLineRow[] }) {
   const [open, setOpen] = React.useState(false);
   const [selected, setSelected] = React.useState<RecentExpenseLineRow | null>(null);
 
@@ -68,7 +64,12 @@ export function RecentExpenseLines({
                   <td className="py-2 px-4 font-medium text-foreground">{row.vendorName}</td>
                   <td className="py-2 px-4 text-muted-foreground">{row.category}</td>
                   <td className="py-2 px-4 text-muted-foreground">{row.memo ?? "—"}</td>
-                  <td className={cn("py-2 px-4 num font-medium", row.amount > 0 ? "text-red-600/90 dark:text-red-400/90" : "text-foreground")}>
+                  <td
+                    className={cn(
+                      "py-2 px-4 num font-medium",
+                      row.amount > 0 ? "text-red-600/90 dark:text-red-400/90" : "text-foreground"
+                    )}
+                  >
                     −${Math.abs(row.amount).toLocaleString()}
                   </td>
                 </tr>
@@ -86,32 +87,45 @@ export function RecentExpenseLines({
           {selected ? (
             <div className="mt-4 space-y-4 text-sm">
               <div className="space-y-1">
-                <div className="text-xs uppercase tracking-[0.08em] text-muted-foreground">Vendor</div>
+                <div className="text-xs uppercase tracking-[0.08em] text-muted-foreground">
+                  Vendor
+                </div>
                 <div className="font-medium text-foreground">{selected.vendorName}</div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <div className="text-xs uppercase tracking-[0.08em] text-muted-foreground">Date</div>
+                  <div className="text-xs uppercase tracking-[0.08em] text-muted-foreground">
+                    Date
+                  </div>
                   <div className="tabular-nums text-foreground">{selected.date}</div>
                 </div>
                 <div className="space-y-1">
-                  <div className="text-xs uppercase tracking-[0.08em] text-muted-foreground">Amount</div>
+                  <div className="text-xs uppercase tracking-[0.08em] text-muted-foreground">
+                    Amount
+                  </div>
                   <div className="tabular-nums font-medium text-red-600/90 dark:text-red-400/90">
                     −${Math.abs(selected.amount).toLocaleString()}
                   </div>
                 </div>
               </div>
               <div className="space-y-1">
-                <div className="text-xs uppercase tracking-[0.08em] text-muted-foreground">Category</div>
+                <div className="text-xs uppercase tracking-[0.08em] text-muted-foreground">
+                  Category
+                </div>
                 <div className="text-foreground">{selected.category}</div>
               </div>
               <div className="space-y-1">
-                <div className="text-xs uppercase tracking-[0.08em] text-muted-foreground">Memo</div>
+                <div className="text-xs uppercase tracking-[0.08em] text-muted-foreground">
+                  Memo
+                </div>
                 <div className="text-foreground">{selected.memo ?? "—"}</div>
               </div>
 
               <div className="pt-2 border-t border-zinc-200/70 dark:border-border">
-                <Link href={`/financial/expenses/${selected.expenseId}`} className="text-sm text-muted-foreground hover:text-foreground">
+                <Link
+                  href={`/financial/expenses/${selected.expenseId}`}
+                  className="text-sm text-muted-foreground hover:text-foreground"
+                >
                   Open expense
                 </Link>
               </div>
@@ -122,4 +136,3 @@ export function RecentExpenseLines({
     </>
   );
 }
-

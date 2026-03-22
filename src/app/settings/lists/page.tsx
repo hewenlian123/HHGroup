@@ -4,12 +4,7 @@ import * as React from "react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   getExpenseCategories,
   getVendors,
@@ -54,24 +49,31 @@ function useListState(tab: TabId, refresh: number, config: ListConfig) {
   const [addValue, setAddValue] = React.useState("");
   const [renameFor, setRenameFor] = React.useState<string | null>(null);
   const [renameValue, setRenameValue] = React.useState("");
-  const [deleteBlocked, setDeleteBlocked] = React.useState<{ name: string; count: number } | null>(null);
+  const [deleteBlocked, setDeleteBlocked] = React.useState<{ name: string; count: number } | null>(
+    null
+  );
   const [items, setItems] = React.useState<ListRow[]>([]);
 
   React.useEffect(() => {
     let cancelled = false;
-    config.getItems(true).then((names) => {
-      if (cancelled) return;
-      return Promise.all(
-        names.map(async (name) => ({
-          name,
-          used: await config.getUsage(name),
-          disabled: await config.isDisabled(name),
-        }))
-      );
-    }).then((rows) => {
-      if (!cancelled && rows) setItems(rows);
-    });
-    return () => { cancelled = true; };
+    config
+      .getItems(true)
+      .then((names) => {
+        if (cancelled) return;
+        return Promise.all(
+          names.map(async (name) => ({
+            name,
+            used: await config.getUsage(name),
+            disabled: await config.isDisabled(name),
+          }))
+        );
+      })
+      .then((rows) => {
+        if (!cancelled && rows) setItems(rows);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [tab, refresh, config]);
 
   const filtered = React.useMemo(() => {
@@ -131,7 +133,8 @@ export default function SettingsListsPage() {
   const vendorsState = useListState("vendors", refresh, vendorsConfig);
   const paymentState = useListState("paymentMethods", refresh, paymentConfig);
 
-  const state = tab === "categories" ? categoriesState : tab === "vendors" ? vendorsState : paymentState;
+  const state =
+    tab === "categories" ? categoriesState : tab === "vendors" ? vendorsState : paymentState;
 
   const handleAdd = async () => {
     const v = state.addValue.trim();
@@ -212,7 +215,11 @@ export default function SettingsListsPage() {
                 : "border-[#EBEBE9] bg-background text-muted-foreground hover:bg-[#F7F7F5]/60 dark:border-border"
             )}
           >
-            {t === "categories" ? "Expense categories" : t === "vendors" ? "Vendors" : "Payment methods"}
+            {t === "categories"
+              ? "Expense categories"
+              : t === "vendors"
+                ? "Vendors"
+                : "Payment methods"}
           </button>
         ))}
       </div>
@@ -227,7 +234,12 @@ export default function SettingsListsPage() {
             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
             className="max-w-[240px] rounded-sm"
           />
-          <Button size="sm" className="rounded-sm" onClick={handleAdd} disabled={!state.addValue.trim()}>
+          <Button
+            size="sm"
+            className="rounded-sm"
+            onClick={handleAdd}
+            disabled={!state.addValue.trim()}
+          >
             Add
           </Button>
           <Input
@@ -242,8 +254,12 @@ export default function SettingsListsPage() {
             <thead>
               <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border dark:bg-muted/30">
                 <th className="text-left py-3 px-4 font-medium text-muted-foreground">Name</th>
-                <th className="text-right py-3 px-4 font-medium text-muted-foreground w-24">Used</th>
-                <th className="text-left py-3 px-4 font-medium text-muted-foreground w-24">Status</th>
+                <th className="text-right py-3 px-4 font-medium text-muted-foreground w-24">
+                  Used
+                </th>
+                <th className="text-left py-3 px-4 font-medium text-muted-foreground w-24">
+                  Status
+                </th>
                 <th className="text-right py-3 px-4 font-medium text-muted-foreground">Actions</th>
               </tr>
             </thead>
@@ -269,14 +285,23 @@ export default function SettingsListsPage() {
                             }
                           }}
                         />
-                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={handleRenameSave} aria-label="Save">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8"
+                          onClick={handleRenameSave}
+                          aria-label="Save"
+                        >
                           <Check className="h-4 w-4 text-emerald-600" />
                         </Button>
                         <Button
                           size="icon"
                           variant="ghost"
                           className="h-8 w-8"
-                          onClick={() => { state.setRenameFor(null); state.setRenameValue(""); }}
+                          onClick={() => {
+                            state.setRenameFor(null);
+                            state.setRenameValue("");
+                          }}
                           aria-label="Cancel"
                         >
                           <X className="h-4 w-4" />
@@ -286,7 +311,9 @@ export default function SettingsListsPage() {
                       <span className="font-medium">{row.name}</span>
                     )}
                   </td>
-                  <td className="py-2.5 px-4 text-right tabular-nums text-muted-foreground">{row.used}</td>
+                  <td className="py-2.5 px-4 text-right tabular-nums text-muted-foreground">
+                    {row.used}
+                  </td>
                   <td className="px-4 py-2.5">
                     <span className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground">
                       <span
@@ -344,7 +371,10 @@ export default function SettingsListsPage() {
         </div>
       </section>
 
-      <Dialog open={!!state.deleteBlocked} onOpenChange={(open) => !open && state.setDeleteBlocked(null)}>
+      <Dialog
+        open={!!state.deleteBlocked}
+        onOpenChange={(open) => !open && state.setDeleteBlocked(null)}
+      >
         <DialogContent className="rounded-sm">
           <DialogHeader>
             <DialogTitle>Cannot delete</DialogTitle>

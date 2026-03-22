@@ -69,7 +69,9 @@ export function CommitmentsSection({
       setRows(list);
       setVendors(v);
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [projectId]);
 
   const refresh = React.useCallback(async () => {
@@ -147,9 +149,7 @@ export function CommitmentsSection({
     setAttachments((prev) => [...prev, ...next]);
   };
 
-  const totalCommitted = rows
-    .filter((r) => r.status === "Open")
-    .reduce((s, r) => s + r.amount, 0);
+  const totalCommitted = rows.filter((r) => r.status === "Open").reduce((s, r) => s + r.amount, 0);
   const totalCost = actualSpent + totalCommitted;
   const remainingBudget = budgetCostBaseline - totalCost;
 
@@ -171,21 +171,39 @@ export function CommitmentsSection({
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
           <div className="rounded-md border border-border/60 bg-background px-3 py-2">
-            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Total Committed</p>
-            <p className="text-base font-semibold tabular-nums text-amber-700 dark:text-amber-400">{formatMoney(totalCommitted)}</p>
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              Total Committed
+            </p>
+            <p className="text-base font-semibold tabular-nums text-amber-700 dark:text-amber-400">
+              {formatMoney(totalCommitted)}
+            </p>
           </div>
           <div className="rounded-md border border-border/60 bg-background px-3 py-2">
-            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Total Spent</p>
-            <p className="text-base font-semibold tabular-nums text-foreground">{formatMoney(actualSpent)}</p>
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              Total Spent
+            </p>
+            <p className="text-base font-semibold tabular-nums text-foreground">
+              {formatMoney(actualSpent)}
+            </p>
           </div>
           <div className="rounded-xl border border-zinc-200/60 dark:border-border bg-card px-3 py-2">
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Total Cost</p>
-            <p className="text-base font-semibold tabular-nums text-foreground">{formatMoney(totalCost)}</p>
+            <p className="text-base font-semibold tabular-nums text-foreground">
+              {formatMoney(totalCost)}
+            </p>
           </div>
           <div className="rounded-xl border border-zinc-200/60 dark:border-border bg-card px-3 py-2">
-            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Remaining Budget</p>
-            <p className={cn("text-base font-semibold tabular-nums", remainingBudget < 0 ? "text-red-600 dark:text-red-400" : "text-foreground")}>
-              {remainingBudget < 0 ? "−" : ""}{formatMoney(remainingBudget)}
+            <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+              Remaining Budget
+            </p>
+            <p
+              className={cn(
+                "text-base font-semibold tabular-nums",
+                remainingBudget < 0 ? "text-red-600 dark:text-red-400" : "text-foreground"
+              )}
+            >
+              {remainingBudget < 0 ? "−" : ""}
+              {formatMoney(remainingBudget)}
             </p>
           </div>
         </div>
@@ -194,20 +212,38 @@ export function CommitmentsSection({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-zinc-200/40 dark:border-border/60 bg-muted/30">
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Date</th>
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Vendor</th>
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Type</th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Amount</th>
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Status</th>
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Notes</th>
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Attachment</th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Actions</th>
+                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Date
+                </th>
+                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Vendor
+                </th>
+                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Type
+                </th>
+                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                  Amount
+                </th>
+                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Status
+                </th>
+                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Notes
+                </th>
+                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Attachment
+                </th>
+                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-6 text-center text-muted-foreground">No commitments yet</td>
+                  <td colSpan={8} className="py-6 text-center text-muted-foreground">
+                    No commitments yet
+                  </td>
                 </tr>
               ) : (
                 rows.map((row) => (
@@ -215,16 +251,27 @@ export function CommitmentsSection({
                     <td className="py-3 px-4 tabular-nums">{row.date}</td>
                     <td className="py-3 px-4 font-medium text-foreground">{row.vendorName}</td>
                     <td className="py-3 px-4 text-muted-foreground">{row.type}</td>
-                    <td className="py-3 px-4 text-right tabular-nums font-medium">{formatMoney(row.amount)}</td>
+                    <td className="py-3 px-4 text-right tabular-nums font-medium">
+                      {formatMoney(row.amount)}
+                    </td>
                     <td className="py-3 px-4">
-                      <span className={cn(
-                        "inline-block text-xs font-medium px-2 py-1 rounded",
-                        row.status === "Open" ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-400" : "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400"
-                      )}>
+                      <span
+                        className={cn(
+                          "inline-block text-xs font-medium px-2 py-1 rounded",
+                          row.status === "Open"
+                            ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-400"
+                            : "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400"
+                        )}
+                      >
                         {row.status}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-muted-foreground max-w-[220px] truncate" title={row.notes ?? undefined}>{row.notes ?? "—"}</td>
+                    <td
+                      className="py-3 px-4 text-muted-foreground max-w-[220px] truncate"
+                      title={row.notes ?? undefined}
+                    >
+                      {row.notes ?? "—"}
+                    </td>
                     <td className="py-3 px-4">
                       {row.attachments?.length ? (
                         <div className="flex items-center gap-1">
@@ -232,7 +279,10 @@ export function CommitmentsSection({
                             variant="ghost"
                             size="sm"
                             className="h-8"
-                            onClick={() => { setPreviewAttachment(row.attachments[0]); setPreviewOpen(true); }}
+                            onClick={() => {
+                              setPreviewAttachment(row.attachments[0]);
+                              setPreviewOpen(true);
+                            }}
                             title="Preview"
                           >
                             <Eye className="h-4 w-4" />
@@ -252,7 +302,9 @@ export function CommitmentsSection({
                           >
                             <Download className="h-4 w-4" />
                           </Button>
-                          <span className="text-xs text-muted-foreground">{row.attachments.length}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {row.attachments.length}
+                          </span>
                         </div>
                       ) : (
                         <span className="text-xs text-muted-foreground">—</span>
@@ -260,10 +312,22 @@ export function CommitmentsSection({
                     </td>
                     <td className="py-3 px-4 text-right">
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="sm" className="h-8" onClick={() => openEdit(row)} title="Edit">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8"
+                          onClick={() => openEdit(row)}
+                          title="Edit"
+                        >
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="sm" className="h-8 text-red-600 hover:text-red-700" onClick={() => handleDelete(row)} title="Delete">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 text-red-600 hover:text-red-700"
+                          onClick={() => handleDelete(row)}
+                          title="Delete"
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -277,48 +341,100 @@ export function CommitmentsSection({
       </Card>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setOpen(false)}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+          onClick={() => setOpen(false)}
+        >
           <Card className="p-6 w-full max-w-xl mx-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-base font-semibold text-foreground mb-4">{editing ? "Edit Commitment" : "New Commitment"}</h3>
+            <h3 className="text-base font-semibold text-foreground mb-4">
+              {editing ? "Edit Commitment" : "New Commitment"}
+            </h3>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</label>
-                <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="mt-1" />
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Date
+                </label>
+                <Input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="mt-1"
+                />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Vendor</label>
-                <Input list="commitment-vendors" value={vendorName} onChange={(e) => setVendorName(e.target.value)} className="mt-1" placeholder="Vendor" />
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Vendor
+                </label>
+                <Input
+                  list="commitment-vendors"
+                  value={vendorName}
+                  onChange={(e) => setVendorName(e.target.value)}
+                  className="mt-1"
+                  placeholder="Vendor"
+                />
                 <datalist id="commitment-vendors">
-                  {vendors.map((v) => <option key={v} value={v} />)}
+                  {vendors.map((v) => (
+                    <option key={v} value={v} />
+                  ))}
                 </datalist>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Type</label>
-                <select value={type} onChange={(e) => setType(e.target.value as CommitmentType)} className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Type
+                </label>
+                <select
+                  value={type}
+                  onChange={(e) => setType(e.target.value as CommitmentType)}
+                  className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                >
                   <option value="PO">PO</option>
                   <option value="Subcontract">Subcontract</option>
                   <option value="Other">Other</option>
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Amount</label>
-                <Input type="number" min="0" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} className="mt-1 rounded-lg" />
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Amount
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="mt-1 rounded-lg"
+                />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</label>
-                <select value={status} onChange={(e) => setStatus(e.target.value as CommitmentStatus)} className="mt-1 flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Status
+                </label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as CommitmentStatus)}
+                  className="mt-1 flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm"
+                >
                   <option value="Open">Open</option>
                   <option value="Closed">Closed</option>
                 </select>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Notes</label>
-                <Input value={notes} onChange={(e) => setNotes(e.target.value)} className="mt-1 rounded-lg" placeholder="Optional" />
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Notes
+                </label>
+                <Input
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="mt-1 rounded-lg"
+                  placeholder="Optional"
+                />
               </div>
             </div>
 
             <div className="mt-4">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Attachment</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Attachment
+              </label>
               <input
                 ref={uploadRef}
                 type="file"
@@ -343,11 +459,23 @@ export function CommitmentsSection({
                 }}
               />
               <div className="mt-1 flex gap-2">
-                <Button type="button" variant="outline" size="sm" className="rounded-lg" onClick={() => uploadRef.current?.click()}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-lg"
+                  onClick={() => uploadRef.current?.click()}
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   Upload
                 </Button>
-                <Button type="button" variant="outline" size="sm" className="rounded-lg" onClick={() => cameraRef.current?.click()}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-lg"
+                  onClick={() => cameraRef.current?.click()}
+                >
                   <Camera className="h-4 w-4 mr-2" />
                   Camera
                 </Button>
@@ -355,12 +483,17 @@ export function CommitmentsSection({
               {attachments.length > 0 && (
                 <ul className="mt-2 space-y-1">
                   {attachments.map((att) => (
-                    <li key={att.id} className="flex items-center justify-between text-xs border rounded px-2 py-1 border-zinc-200/60 dark:border-border">
+                    <li
+                      key={att.id}
+                      className="flex items-center justify-between text-xs border rounded px-2 py-1 border-zinc-200/60 dark:border-border"
+                    >
                       <span className="truncate max-w-[260px]">{att.fileName}</span>
                       <button
                         type="button"
                         className="text-red-600 hover:underline"
-                        onClick={() => setAttachments((prev) => prev.filter((a) => a.id !== att.id))}
+                        onClick={() =>
+                          setAttachments((prev) => prev.filter((a) => a.id !== att.id))
+                        }
                       >
                         Remove
                       </button>
@@ -371,7 +504,11 @@ export function CommitmentsSection({
             </div>
 
             <div className="flex gap-2 mt-6">
-              <Button className="rounded-lg" onClick={handleSave} disabled={!vendorName.trim() || !amount}>
+              <Button
+                className="rounded-lg"
+                onClick={handleSave}
+                disabled={!vendorName.trim() || !amount}
+              >
                 Save
               </Button>
               <Button variant="outline" className="rounded-lg" onClick={() => setOpen(false)}>
@@ -382,8 +519,11 @@ export function CommitmentsSection({
         </div>
       )}
 
-      <AttachmentPreviewDialog attachment={previewAttachment} open={previewOpen} onOpenChange={setPreviewOpen} />
+      <AttachmentPreviewDialog
+        attachment={previewAttachment}
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+      />
     </section>
   );
 }
-

@@ -32,9 +32,7 @@ export function SearchableSelect({
 
   const q = query.trim().toLowerCase();
   const filtered =
-    q === ""
-      ? options
-      : options.filter((opt) => opt.label.toLowerCase().includes(q));
+    q === "" ? options : options.filter((opt) => opt.label.toLowerCase().includes(q));
 
   const selectedOption = options.find((o) => o.id === value);
   const displayLabel = selectedOption?.label ?? "";
@@ -77,7 +75,12 @@ export function SearchableSelect({
         <span className={!displayLabel ? "text-muted-foreground/70" : ""}>
           {displayLabel || placeholder}
         </span>
-        <svg className="h-4 w-4 shrink-0 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg
+          className="h-4 w-4 shrink-0 text-muted-foreground"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>

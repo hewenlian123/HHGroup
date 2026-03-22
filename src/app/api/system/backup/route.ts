@@ -73,7 +73,11 @@ function todayStr(): string {
 export async function POST(): Promise<NextResponse> {
   const c = getServerSupabase();
   if (!c) {
-    addSystemLog({ module: "Backup", type: "Error", message: "Backup failed: Supabase not configured" });
+    addSystemLog({
+      module: "Backup",
+      type: "Error",
+      message: "Backup failed: Supabase not configured",
+    });
     return NextResponse.json({ ok: false, message: "Supabase not configured" }, { status: 500 });
   }
 
@@ -143,7 +147,9 @@ export async function POST(): Promise<NextResponse> {
 
   return NextResponse.json({
     ok: saved,
-    message: saved ? "Backup created" : `Backup data exported (filesystem write failed: ${saveError})`,
+    message: saved
+      ? "Backup created"
+      : `Backup data exported (filesystem write failed: ${saveError})`,
     filename,
     date: dateStr,
     sizeBytes,

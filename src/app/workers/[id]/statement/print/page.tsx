@@ -61,7 +61,9 @@ export default async function WorkerStatementPrintPage({
       </section>
 
       <section className="mb-6">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">Earnings detail</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">
+          Earnings detail
+        </h2>
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b-2 border-zinc-300">
@@ -73,7 +75,10 @@ export default async function WorkerStatementPrintPage({
           </thead>
           <tbody>
             {earningsRows.map((row, idx) => (
-              <tr key={`${row.date}-${row.projectId}-${row.shift}-${idx}`} className="border-b border-zinc-200">
+              <tr
+                key={`${row.date}-${row.projectId}-${row.shift}-${idx}`}
+                className="border-b border-zinc-200"
+              >
                 <td className="py-2">{row.date}</td>
                 <td className="py-2">{row.projectName}</td>
                 <td className="py-2">{row.shift}</td>
@@ -85,7 +90,9 @@ export default async function WorkerStatementPrintPage({
       </section>
 
       <section>
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">Payments</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">
+          Payments
+        </h2>
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b-2 border-zinc-300">

@@ -39,12 +39,15 @@ type LineMiniRow = {
 };
 
 type LineMiniRowRaw = Omit<LineMiniRow, "projects"> & {
-  projects?: Array<{ id: string; name: string | null }> | { id: string; name: string | null } | null;
+  projects?:
+    | Array<{ id: string; name: string | null }>
+    | { id: string; name: string | null }
+    | null;
 };
 
 function one<T>(value: T | T[] | null | undefined): T | null {
   if (!value) return null;
-  return Array.isArray(value) ? value[0] ?? null : value;
+  return Array.isArray(value) ? (value[0] ?? null) : value;
 }
 
 function safeNumber(n: number | null | undefined): number {
@@ -83,17 +86,21 @@ export function ExpensesClient() {
       setBusy(true);
       if (!append) setError(null);
       type ExpRaw = { data: Record<string, unknown>[] | null; error: { message: string } | null };
-      let expRes: ExpRaw = await supabase
+      let expRes: ExpRaw = (await supabase
         .from("expenses")
-        .select("id,expense_date,vendor_name,payment_method,reference_no,total,line_count,created_at,worker_id,project_id,workers(id,name),projects(id,name)")
+        .select(
+          "id,expense_date,vendor_name,payment_method,reference_no,total,line_count,created_at,worker_id,project_id,workers(id,name),projects(id,name)"
+        )
         .order("expense_date", { ascending: false })
-        .range(offset, offset + PAGE_SIZE - 1) as ExpRaw;
+        .range(offset, offset + PAGE_SIZE - 1)) as ExpRaw;
       if (expRes.error) {
-        expRes = await supabase
+        expRes = (await supabase
           .from("expenses")
-          .select("id,expense_date,vendor_name,payment_method,reference_no,total,line_count,created_at")
+          .select(
+            "id,expense_date,vendor_name,payment_method,reference_no,total,line_count,created_at"
+          )
           .order("expense_date", { ascending: false })
-          .range(offset, offset + PAGE_SIZE - 1) as ExpRaw;
+          .range(offset, offset + PAGE_SIZE - 1)) as ExpRaw;
       }
       if (expRes.error) {
         setError(expRes.error.message || "Failed to load expenses.");
@@ -104,11 +111,26 @@ export function ExpensesClient() {
         setBusy(false);
         return;
       }
-      const rawExpenses = (expRes.data ?? []) as (ExpenseRow & { workers?: unknown; projects?: unknown })[];
+      const rawExpenses = (expRes.data ?? []) as (ExpenseRow & {
+        workers?: unknown;
+        projects?: unknown;
+      })[];
       const expenses: ExpenseRow[] = rawExpenses.map((r) => ({
         ...r,
-        workers: one(r.workers as { id: string; name: string | null } | { id: string; name: string | null }[] | null) ?? undefined,
-        projects: one(r.projects as { id: string; name: string | null } | { id: string; name: string | null }[] | null) ?? undefined,
+        workers:
+          one(
+            r.workers as
+              | { id: string; name: string | null }
+              | { id: string; name: string | null }[]
+              | null
+          ) ?? undefined,
+        projects:
+          one(
+            r.projects as
+              | { id: string; name: string | null }
+              | { id: string; name: string | null }[]
+              | null
+          ) ?? undefined,
       }));
       setHasMore(expenses.length === PAGE_SIZE);
       const ids = expenses.map((e) => e.id);
@@ -120,7 +142,10 @@ export function ExpensesClient() {
           .in("expense_id", ids);
         lineRows = lineRes.error
           ? []
-          : ((lineRes.data ?? []) as unknown as LineMiniRowRaw[]).map((r) => ({ ...r, projects: one(r.projects) }));
+          : ((lineRes.data ?? []) as unknown as LineMiniRowRaw[]).map((r) => ({
+              ...r,
+              projects: one(r.projects),
+            }));
       }
       if (append) {
         setRows((prev) => [...prev, ...expenses]);
@@ -205,13 +230,19 @@ export function ExpensesClient() {
       }
       if (projectFilter) {
         const meta = expenseMeta.get(e.id);
-        const has = meta ? Array.from(meta.projects).some((nameOrId) => nameOrId === projectFilter) : false;
-        const hasLineProject = lines.some((l) => l.expense_id === e.id && l.project_id === projectFilter);
+        const has = meta
+          ? Array.from(meta.projects).some((nameOrId) => nameOrId === projectFilter)
+          : false;
+        const hasLineProject = lines.some(
+          (l) => l.expense_id === e.id && l.project_id === projectFilter
+        );
         const hasExpenseProject = e.project_id === projectFilter;
         if (!has && !hasLineProject && !hasExpenseProject) return false;
       }
       if (categoryFilter) {
-        const hasCat = lines.some((l) => l.expense_id === e.id && (l.category ?? "") === categoryFilter);
+        const hasCat = lines.some(
+          (l) => l.expense_id === e.id && (l.category ?? "") === categoryFilter
+        );
         if (!hasCat) return false;
       }
       return true;
@@ -250,8 +281,13 @@ export function ExpensesClient() {
           ? projectCount === 1
             ? Array.from(meta!.projects.values())[0]!
             : `${projectCount} projects`
-          : e.projects?.name ?? "Overhead";
-      const catSuffix = categoryCount === 0 ? "" : categoryCount === 1 ? ` • ${Array.from(meta!.categories.values())[0]}` : ` • ${categoryCount} categories`;
+          : (e.projects?.name ?? "Overhead");
+      const catSuffix =
+        categoryCount === 0
+          ? ""
+          : categoryCount === 1
+            ? ` • ${Array.from(meta!.categories.values())[0]}`
+            : ` • ${categoryCount} categories`;
       return { ...e, summary: `${projectLabel}${catSuffix}` };
     });
   }, [expenseMeta, filtered]);
@@ -260,34 +296,58 @@ export function ExpensesClient() {
     {
       key: "expense_date",
       header: "Date",
-      render: (row) => <span className="tabular-nums text-foreground">{(row.expense_date ?? row.created_at ?? "").slice(0, 10) || "—"}</span>,
+      render: (row) => (
+        <span className="tabular-nums text-foreground">
+          {(row.expense_date ?? row.created_at ?? "").slice(0, 10) || "—"}
+        </span>
+      ),
     },
     {
       key: "vendor_name",
       header: "Vendor",
-      render: (row) => <span className="font-medium text-foreground">{row.vendor_name?.trim() || "Untitled Expense"}</span>,
+      render: (row) => (
+        <span className="font-medium text-foreground">
+          {row.vendor_name?.trim() || "Untitled Expense"}
+        </span>
+      ),
     },
     {
       key: "worker",
       header: "Worker",
-      render: (row) => <span className="text-muted-foreground">{row.workers?.name?.trim() ?? "—"}</span>,
+      render: (row) => (
+        <span className="text-muted-foreground">{row.workers?.name?.trim() ?? "—"}</span>
+      ),
     },
-    { key: "payment_method", header: "Payment", render: (row) => <span className="text-muted-foreground">{row.payment_method || "—"}</span> },
+    {
+      key: "payment_method",
+      header: "Payment",
+      render: (row) => <span className="text-muted-foreground">{row.payment_method || "—"}</span>,
+    },
     {
       key: "total",
       header: "Total",
       align: "right",
       className: "tabular-nums",
-      render: (row) => <span className="tabular-nums font-medium text-red-600">−{money(safeNumber(row.total))}</span>,
+      render: (row) => (
+        <span className="tabular-nums font-medium text-red-600">
+          −{money(safeNumber(row.total))}
+        </span>
+      ),
     },
     {
       key: "line_count",
       header: "#Lines",
       align: "right",
       className: "tabular-nums",
-      render: (row) => <span className="tabular-nums text-muted-foreground">{safeNumber(row.line_count)}</span>,
+      render: (row) => (
+        <span className="tabular-nums text-muted-foreground">{safeNumber(row.line_count)}</span>
+      ),
     },
-    { key: "summary", header: "Project / Category", render: (row) => <span className="text-muted-foreground">{row.summary}</span> },
+    {
+      key: "summary",
+      header: "Project / Category",
+      render: (row) => <span className="text-muted-foreground">{row.summary}</span>,
+    },
     {
       key: "actions",
       header: "",
@@ -313,11 +373,19 @@ export function ExpensesClient() {
         subtitle="Track vendor receipts and split costs across projects."
         actions={
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <Button onClick={() => void handleNew()} className="min-h-[44px] sm:min-h-0 w-full sm:w-auto">
+            <Button
+              onClick={() => void handleNew()}
+              className="min-h-[44px] sm:min-h-0 w-full sm:w-auto"
+            >
               <Plus className="h-4 w-4" />
               New Expense
             </Button>
-            <Button variant="outline" onClick={() => void refresh()} disabled={loading} className="min-h-[44px] sm:min-h-0 w-full sm:w-auto">
+            <Button
+              variant="outline"
+              onClick={() => void refresh()}
+              disabled={loading}
+              className="min-h-[44px] sm:min-h-0 w-full sm:w-auto"
+            >
               {loading ? "Loading…" : "Refresh"}
             </Button>
           </div>
@@ -333,14 +401,23 @@ export function ExpensesClient() {
       <FilterBar>
         <div className="grid w-full gap-4 sm:grid-cols-3">
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Search</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Search
+            </p>
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-muted-foreground" />
-              <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Vendor or reference..." className="pl-9" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Vendor or reference..."
+                className="pl-9"
+              />
             </div>
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Project</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Project
+            </p>
             <Select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)}>
               <option value="">All projects</option>
               {projectsForFilter.map((p) => (
@@ -351,7 +428,9 @@ export function ExpensesClient() {
             </Select>
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Category</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Category
+            </p>
             <Select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
               <option value="">All categories</option>
               {categoriesForFilter.map((c) => (
@@ -384,7 +463,12 @@ export function ExpensesClient() {
             />
             {hasMore && data.length > 0 && (
               <div className="border-t border-border/60 p-3 flex justify-center">
-                <Button variant="outline" size="sm" disabled={loadingMore} onClick={() => fetchPage(rows.length, true)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={loadingMore}
+                  onClick={() => fetchPage(rows.length, true)}
+                >
                   {loadingMore ? "Loading…" : "Load more"}
                 </Button>
               </div>
@@ -395,4 +479,3 @@ export function ExpensesClient() {
     </div>
   );
 }
-

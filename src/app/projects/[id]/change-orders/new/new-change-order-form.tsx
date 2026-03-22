@@ -53,7 +53,9 @@ export function NewChangeOrderForm({
             <Input name="title" placeholder="e.g. Additional scope – Phase 2" className="w-full" />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-muted-foreground">Description</label>
+            <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              Description
+            </label>
             <textarea
               name="description"
               placeholder="Describe the change and reason."
@@ -63,15 +65,21 @@ export function NewChangeOrderForm({
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Amount (revenue impact)</label>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                Amount (revenue impact)
+              </label>
               <Input name="amount" type="number" step="0.01" min="0" placeholder="0" />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Cost impact</label>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                Cost impact
+              </label>
               <Input name="costImpact" type="number" step="0.01" placeholder="0" />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-muted-foreground">Schedule impact (days)</label>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                Schedule impact (days)
+              </label>
               <Input name="scheduleImpactDays" type="number" step="1" min="0" placeholder="0" />
             </div>
           </div>

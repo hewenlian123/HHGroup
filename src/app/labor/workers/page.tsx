@@ -50,7 +50,10 @@ export default function LaborWorkersPage() {
     setLoading(true);
     setMessage(null);
     try {
-      const res = await fetch(`/api/labor/workers?t=${Date.now()}`, { cache: "no-store", headers: { Pragma: "no-cache" } });
+      const res = await fetch(`/api/labor/workers?t=${Date.now()}`, {
+        cache: "no-store",
+        headers: { Pragma: "no-cache" },
+      });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.message ?? "Failed to fetch workers.");
@@ -64,7 +67,10 @@ export default function LaborWorkersPage() {
           role: (w.role ?? w.trade) as string | null,
           phone: (w.phone as string | null) ?? null,
           half_day_rate: Number(w.half_day_rate ?? w.daily_rate ?? 0) || 0,
-          status: (w.status === "active" || w.status === "inactive" ? w.status : "active") as "active" | "inactive" | null,
+          status: (w.status === "active" || w.status === "inactive" ? w.status : "active") as
+            | "active"
+            | "inactive"
+            | null,
         }))
       );
     } catch (err: unknown) {
@@ -225,7 +231,9 @@ export default function LaborWorkersPage() {
       </FilterBar>
 
       {message ? (
-        <p className="border-b border-[#EBEBE9] pb-3 text-sm text-muted-foreground dark:border-border">{message}</p>
+        <p className="border-b border-[#EBEBE9] pb-3 text-sm text-muted-foreground dark:border-border">
+          {message}
+        </p>
       ) : null}
       {editorOpen ? (
         <section className="border-b border-[#EBEBE9] pb-4 dark:border-border">
@@ -270,11 +278,16 @@ export default function LaborWorkersPage() {
               />
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Status</p>
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                Status
+              </p>
               <Select
                 value={form.status}
                 onChange={(e) =>
-                  setForm((prev) => ({ ...prev, status: e.target.value === "inactive" ? "inactive" : "active" }))
+                  setForm((prev) => ({
+                    ...prev,
+                    status: e.target.value === "inactive" ? "inactive" : "active",
+                  }))
                 }
                 disabled={submitting}
               >
@@ -284,10 +297,21 @@ export default function LaborWorkersPage() {
             </div>
           </div>
           <div className="mt-4 flex flex-col-reverse items-stretch justify-end gap-2 border-t border-[#EBEBE9] pt-3 sm:flex-row sm:items-center dark:border-border">
-            <Button variant="outline" size="sm" className="rounded-sm sm:w-auto" onClick={closeEditor} disabled={submitting}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-sm sm:w-auto"
+              onClick={closeEditor}
+              disabled={submitting}
+            >
               Cancel
             </Button>
-            <Button size="sm" className="rounded-sm sm:w-auto" onClick={handleSave} disabled={submitting}>
+            <Button
+              size="sm"
+              className="rounded-sm sm:w-auto"
+              onClick={handleSave}
+              disabled={submitting}
+            >
               {submitting ? "Saving…" : editorMode === "create" ? "Create Worker" : "Save Changes"}
             </Button>
           </div>
@@ -325,7 +349,9 @@ export default function LaborWorkersPage() {
                     <td className="py-3 px-4 font-medium text-foreground">{w.name || "—"}</td>
                     <td className="py-3 px-4 text-muted-foreground">{w.role || "—"}</td>
                     <td className="py-3 px-4 text-muted-foreground">{w.phone || "—"}</td>
-                    <td className="py-3 px-4 text-right tabular-nums">${Number(w.half_day_rate ?? 0).toLocaleString()}</td>
+                    <td className="py-3 px-4 text-right tabular-nums">
+                      ${Number(w.half_day_rate ?? 0).toLocaleString()}
+                    </td>
                     <td className="py-3 px-4">
                       <StatusBadge status={w.status === "active" ? "active" : "inactive"} />
                     </td>

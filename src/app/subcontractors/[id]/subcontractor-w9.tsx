@@ -75,7 +75,13 @@ export function SubcontractorW9({
           <Button type="button" variant="outline" size="sm" onClick={handleView}>
             View W9
           </Button>
-          <Button type="button" variant="ghost" size="sm" onClick={handleRemove} disabled={uploading}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleRemove}
+            disabled={uploading}
+          >
             Remove
           </Button>
         </>

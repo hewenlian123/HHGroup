@@ -6,7 +6,9 @@ test("new estimate flow with category rename", async ({ page }) => {
   test.setTimeout(90_000);
   await page.goto(`${BASE}/estimates/new`);
   await page.waitForLoadState("domcontentloaded");
-  await expect(page.getByText(/^Loading/i)).not.toBeVisible({ timeout: 60_000 }).catch(() => undefined);
+  await expect(page.getByText(/^Loading/i))
+    .not.toBeVisible({ timeout: 60_000 })
+    .catch(() => undefined);
 
   const editDetailsBtn = page.getByRole("button", { name: /^(Edit details|Edit)$/i }).first();
   if (await editDetailsBtn.isVisible().catch(() => false)) {
@@ -27,7 +29,7 @@ test("new estimate flow with category rename", async ({ page }) => {
   await addCategoryBtn.click();
 
   // Rename the added category display name.
-  const categoryNameInput = page.locator('details input[placeholder]').first();
+  const categoryNameInput = page.locator("details input[placeholder]").first();
   await expect(categoryNameInput).toBeVisible({ timeout: 10_000 });
   await categoryNameInput.fill("Epoxy Test");
 
@@ -44,4 +46,3 @@ test("new estimate flow with category rename", async ({ page }) => {
   await expect(page.locator("body")).not.toContainText(/error|undefined/i);
   await page.waitForURL(/\/estimates\/[^/]+\??.*$/, { timeout: 20_000 });
 });
-

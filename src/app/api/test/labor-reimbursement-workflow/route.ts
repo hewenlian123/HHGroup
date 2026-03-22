@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
-import { insertWorkerReceiptWithClient, approveWorkerReceiptWithClient } from "@/lib/worker-receipts-db";
+import {
+  insertWorkerReceiptWithClient,
+  approveWorkerReceiptWithClient,
+} from "@/lib/worker-receipts-db";
 import { getWorkerReimbursements } from "@/lib/worker-reimbursements-db";
 
 export const dynamic = "force-dynamic";
@@ -31,11 +34,14 @@ export async function POST(req: Request) {
   try {
     const server = getServerSupabase();
     if (!server) {
-      return NextResponse.json({
-        ok: false,
-        message: "Supabase not configured",
-        steps: [{ step: "init", ok: false, error: "No server Supabase" }],
-      }, { status: 500 });
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "Supabase not configured",
+          steps: [{ step: "init", ok: false, error: "No server Supabase" }],
+        },
+        { status: 500 }
+      );
     }
 
     let workerId: string;
@@ -52,12 +58,15 @@ export async function POST(req: Request) {
       const w = wRes.data as { id: string } | null;
       const p = pRes.data as { id: string } | null;
       if (!w?.id) {
-        return NextResponse.json({
-          ok: false,
-          message: "No workers in DB; add a worker first",
-          steps: [{ step: "init", ok: false, error: "No workers" }],
-        }, { status: 400 });
-        }
+        return NextResponse.json(
+          {
+            ok: false,
+            message: "No workers in DB; add a worker first",
+            steps: [{ step: "init", ok: false, error: "No workers" }],
+          },
+          { status: 400 }
+        );
+      }
       workerId = w.id;
       if (p?.id) projectId = p.id;
     }
@@ -79,13 +88,28 @@ export async function POST(req: Request) {
     // ——— Step 2: Approve → reimbursement created ———
     const { reimbursementCreated } = await approveWorkerReceiptWithClient(server, receipt.id);
     if (!reimbursementCreated) {
-      steps.push({ step: "2_reimbursement_created", ok: false, error: "reimbursementCreated null" });
-      return NextResponse.json({ ok: false, message: "Approve did not create reimbursement", steps }, { status: 400 });
+      steps.push({
+        step: "2_reimbursement_created",
+        ok: false,
+        error: "reimbursementCreated null",
+      });
+      return NextResponse.json(
+        { ok: false, message: "Approve did not create reimbursement", steps },
+        { status: 400 }
+      );
     }
     if (reimbursementCreated.status !== "pending") {
-      steps.push({ step: "2_reimbursement_created", ok: false, error: `status=${reimbursementCreated.status}` });
+      steps.push({
+        step: "2_reimbursement_created",
+        ok: false,
+        error: `status=${reimbursementCreated.status}`,
+      });
     } else {
-      steps.push({ step: "2_reimbursement_created", ok: true, detail: `id=${reimbursementCreated.id}, status=pending` });
+      steps.push({
+        step: "2_reimbursement_created",
+        ok: true,
+        detail: `id=${reimbursementCreated.id}, status=pending`,
+      });
     }
 
     const reimbursementId = reimbursementCreated.id;
@@ -102,9 +126,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, message: "Mark Paid failed", steps }, { status: 400 });
     }
     if (payData.reimbursement?.status !== "paid") {
-      steps.push({ step: "3_mark_paid", ok: false, error: `status=${payData.reimbursement?.status}` });
+      steps.push({
+        step: "3_mark_paid",
+        ok: false,
+        error: `status=${payData.reimbursement?.status}`,
+      });
     } else {
-      steps.push({ step: "3_mark_paid", ok: true, detail: `status=paid, expenseId=${payData.expenseId ?? "—"}` });
+      steps.push({
+        step: "3_mark_paid",
+        ok: true,
+        detail: `status=paid, expenseId=${payData.expenseId ?? "—"}`,
+      });
     }
 
     const firstExpenseId = payData.expenseId ?? null;
@@ -114,12 +146,20 @@ export async function POST(req: Request) {
     const refNo = `REIM-${reimbursementId}`;
     let expFound: { id: string } | null = null;
     if (firstExpenseId) {
-      const byId = await server.from("expenses").select("id").eq("id", firstExpenseId).maybeSingle();
+      const byId = await server
+        .from("expenses")
+        .select("id")
+        .eq("id", firstExpenseId)
+        .maybeSingle();
       expFound = byId.data as { id: string } | null;
     }
     if (!expFound) {
       try {
-        const byRef = await server.from("expenses").select("id").eq("reference_no", refNo).maybeSingle();
+        const byRef = await server
+          .from("expenses")
+          .select("id")
+          .eq("reference_no", refNo)
+          .maybeSingle();
         expFound = byRef.data as { id: string } | null;
       } catch {
         // reference_no column may not exist
@@ -127,7 +167,11 @@ export async function POST(req: Request) {
     }
     if (!expFound) {
       try {
-        const bySource = await server.from("expenses").select("id").eq("source_id", reimbursementId).maybeSingle();
+        const bySource = await server
+          .from("expenses")
+          .select("id")
+          .eq("source_id", reimbursementId)
+          .maybeSingle();
         expFound = bySource.data as { id: string } | null;
       } catch {
         // source_id column may not exist
@@ -137,7 +181,9 @@ export async function POST(req: Request) {
       steps.push({
         step: "4_expense_exists",
         ok: false,
-        error: payWarning ? `Expense not created: ${payWarning}` : `No expense with reference_no or source_id for ${reimbursementId}`,
+        error: payWarning
+          ? `Expense not created: ${payWarning}`
+          : `No expense with reference_no or source_id for ${reimbursementId}`,
       });
     } else {
       steps.push({ step: "4_expense_exists", ok: true, detail: `id=${expFound.id}` });
@@ -155,7 +201,11 @@ export async function POST(req: Request) {
     } else {
       const secondExpenseId = payData2.expenseId;
       if (firstExpenseId && secondExpenseId && secondExpenseId !== firstExpenseId) {
-        steps.push({ step: "5_duplicate_protection", ok: false, error: `Duplicate expense: ${secondExpenseId}` });
+        steps.push({
+          step: "5_duplicate_protection",
+          ok: false,
+          error: `Duplicate expense: ${secondExpenseId}`,
+        });
       } else {
         steps.push({ step: "5_duplicate_protection", ok: true, detail: "No duplicate expense" });
       }
@@ -166,9 +216,17 @@ export async function POST(req: Request) {
     const pendingIds = list.filter((r) => r.status === "pending").map((r) => r.id);
     const stillInPending = pendingIds.includes(reimbursementId);
     if (stillInPending) {
-      steps.push({ step: "6_not_in_pending_list", ok: false, error: "Reimbursement still in pending list" });
+      steps.push({
+        step: "6_not_in_pending_list",
+        ok: false,
+        error: "Reimbursement still in pending list",
+      });
     } else {
-      steps.push({ step: "6_not_in_pending_list", ok: true, detail: "Reimbursement not in pending list" });
+      steps.push({
+        step: "6_not_in_pending_list",
+        ok: true,
+        detail: "Reimbursement not in pending list",
+      });
     }
 
     // ——— Step 7: Project cost impact (expense or expense_lines linked to project) ———
@@ -176,7 +234,12 @@ export async function POST(req: Request) {
     let projectCostOk = false;
     if (expenseIdForProject && projectId) {
       try {
-        const lineRow = await server.from("expense_lines").select("project_id").eq("expense_id", expenseIdForProject).limit(1).maybeSingle();
+        const lineRow = await server
+          .from("expense_lines")
+          .select("project_id")
+          .eq("expense_id", expenseIdForProject)
+          .limit(1)
+          .maybeSingle();
         const lineProjectId = (lineRow.data as { project_id?: string | null } | null)?.project_id;
         projectCostOk = lineProjectId === projectId;
       } catch {
@@ -210,10 +273,13 @@ export async function POST(req: Request) {
     if (typeof console !== "undefined" && console.error) {
       console.error("[workflow test] workflow failed", err);
     }
-    return NextResponse.json({
-      ok: false,
-      message: err.message,
-      steps,
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        ok: false,
+        message: err.message,
+        steps,
+      },
+      { status: 500 }
+    );
   }
 }

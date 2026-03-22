@@ -8,12 +8,7 @@ import { useParams } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   getLaborPaymentStatus,
   laborPaymentStatusUiLabel,
@@ -91,7 +86,8 @@ export default function WorkerBalanceDetailPage() {
   const [selectedReimbIds, setSelectedReimbIds] = React.useState<Set<string>>(new Set());
   const [paySubmitting, setPaySubmitting] = React.useState(false);
   const [payError, setPayError] = React.useState<string | null>(null);
-  const [laborPayrollMode, setLaborPayrollMode] = React.useState<LaborPayrollSettlementMode>("payment_link");
+  const [laborPayrollMode, setLaborPayrollMode] =
+    React.useState<LaborPayrollSettlementMode>("payment_link");
 
   const load = React.useCallback(async () => {
     if (!workerId) return;
@@ -146,7 +142,8 @@ export default function WorkerBalanceDetailPage() {
   const unpaidLabor = React.useMemo(
     () =>
       laborEntries.filter(
-        (e) => getLaborPaymentStatus(e.workerPaymentId ?? null, e.status, laborPayrollMode) !== "paid"
+        (e) =>
+          getLaborPaymentStatus(e.workerPaymentId ?? null, e.status, laborPayrollMode) !== "paid"
       ),
     [laborEntries, laborPayrollMode]
   );
@@ -245,11 +242,20 @@ export default function WorkerBalanceDetailPage() {
         actions={
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <Link href="/labor/worker-balances" className="w-full sm:w-auto">
-              <Button size="sm" variant="outline" className="min-h-[44px] sm:min-h-9 w-full sm:w-auto">
+              <Button
+                size="sm"
+                variant="outline"
+                className="min-h-[44px] sm:min-h-9 w-full sm:w-auto"
+              >
                 Back to Balances
               </Button>
             </Link>
-            <Button size="sm" className="min-h-[44px] sm:min-h-9 w-full sm:w-auto" onClick={openPayModal} disabled={loading || (unpaidLabor.length === 0 && unpaidReimb.length === 0)}>
+            <Button
+              size="sm"
+              className="min-h-[44px] sm:min-h-9 w-full sm:w-auto"
+              onClick={openPayModal}
+              disabled={loading || (unpaidLabor.length === 0 && unpaidReimb.length === 0)}
+            >
               {paySubmitting ? "Saving…" : "Pay Worker"}
             </Button>
           </div>
@@ -268,23 +274,33 @@ export default function WorkerBalanceDetailPage() {
           {summary != null && (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 border-b border-border/60 pb-4">
               <div>
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Labor Owed</p>
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Labor Owed
+                </p>
                 <p className="text-lg font-medium tabular-nums">{fmtUsd(summary.laborOwed)}</p>
               </div>
               <div>
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Reimbursements</p>
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Reimbursements
+                </p>
                 <p className="text-lg font-medium tabular-nums">{fmtUsd(summary.reimbursements)}</p>
               </div>
               <div>
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Payments</p>
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Payments
+                </p>
                 <p className="text-lg font-medium tabular-nums">{fmtUsd(summary.payments)}</p>
               </div>
               <div>
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Advances</p>
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Advances
+                </p>
                 <p className="text-lg font-medium tabular-nums">{fmtUsd(summary.advances)}</p>
               </div>
               <div className="col-span-2 sm:col-span-1 md:col-span-1">
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Balance</p>
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Balance
+                </p>
                 <p className="text-lg font-semibold tabular-nums">{fmtUsd(summary.balance)}</p>
               </div>
             </div>
@@ -292,10 +308,12 @@ export default function WorkerBalanceDetailPage() {
 
           {/* A) Labor Entries */}
           <div className="border-b border-border/60 pb-4">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-1">Labor Entries</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+              Labor Entries
+            </h2>
             <p className="text-xs text-muted-foreground mb-3 max-w-2xl">
-              One row per saved labor entry (same calendar date can appear more than once — e.g. different projects or
-              morning vs afternoon). Totals match{" "}
+              One row per saved labor entry (same calendar date can appear more than once — e.g.
+              different projects or morning vs afternoon). Totals match{" "}
               <Link href="/labor" className="underline underline-offset-2 hover:text-foreground">
                 Labor
               </Link>{" "}
@@ -305,34 +323,56 @@ export default function WorkerBalanceDetailPage() {
               <table className="w-full text-sm border-collapse min-w-[400px] sm:min-w-0">
                 <thead>
                   <tr className="border-b border-border/60">
-                    <th className="text-left py-2 px-2 sm:px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</th>
-                    <th className="text-left py-2 px-2 sm:px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Session</th>
-                    <th className="text-left py-2 px-2 sm:px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Project</th>
-                    <th className="text-right py-2 px-2 sm:px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Amount</th>
-                    <th className="text-left py-2 px-2 sm:px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                    <th className="text-left py-2 px-2 sm:px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Date
+                    </th>
+                    <th className="text-left py-2 px-2 sm:px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Session
+                    </th>
+                    <th className="text-left py-2 px-2 sm:px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Project
+                    </th>
+                    <th className="text-right py-2 px-2 sm:px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                      Amount
+                    </th>
+                    <th className="text-left py-2 px-2 sm:px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Status
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {laborEntries.length === 0 ? (
                     <tr className="border-b border-border/40">
-                      <td colSpan={5} className="py-4 px-4 text-center text-muted-foreground text-xs">No labor entries.</td>
+                      <td
+                        colSpan={5}
+                        className="py-4 px-4 text-center text-muted-foreground text-xs"
+                      >
+                        No labor entries.
+                      </td>
                     </tr>
                   ) : (
                     laborEntries.map((r) => {
-                      const paySt = getLaborPaymentStatus(r.workerPaymentId ?? null, r.status, laborPayrollMode);
+                      const paySt = getLaborPaymentStatus(
+                        r.workerPaymentId ?? null,
+                        r.status,
+                        laborPayrollMode
+                      );
                       return (
-                      <tr key={r.id} className="border-b border-border/40 hover:bg-muted/10">
-                        <td className="py-2 px-4 tabular-nums">{r.date}</td>
-                        <td className="py-2 px-4 text-muted-foreground">{r.session ?? "—"}</td>
-                        <td className="py-2 px-4 text-muted-foreground">{r.projectName ?? r.projectId ?? "—"}</td>
-                        <td className="py-2 px-4 text-right tabular-nums">{fmtUsd(r.amount)}</td>
-                        <td className="py-2 px-4 text-muted-foreground">
-                          <span className={paySt === "paid" ? "text-foreground" : ""}>
-                            {laborPaymentStatusUiLabel(paySt)}
-                          </span>
-                        </td>
-                      </tr>
-                    );})
+                        <tr key={r.id} className="border-b border-border/40 hover:bg-muted/10">
+                          <td className="py-2 px-4 tabular-nums">{r.date}</td>
+                          <td className="py-2 px-4 text-muted-foreground">{r.session ?? "—"}</td>
+                          <td className="py-2 px-4 text-muted-foreground">
+                            {r.projectName ?? r.projectId ?? "—"}
+                          </td>
+                          <td className="py-2 px-4 text-right tabular-nums">{fmtUsd(r.amount)}</td>
+                          <td className="py-2 px-4 text-muted-foreground">
+                            <span className={paySt === "paid" ? "text-foreground" : ""}>
+                              {laborPaymentStatusUiLabel(paySt)}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -341,29 +381,48 @@ export default function WorkerBalanceDetailPage() {
 
           {/* B) Reimbursements */}
           <div className="border-b border-border/60 pb-4">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-2">Reimbursements</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+              Reimbursements
+            </h2>
             <div className="table-responsive">
               <table className="w-full text-sm border-collapse min-w-[400px] sm:min-w-0">
                 <thead>
                   <tr className="border-b border-border/60">
-                    <th className="text-left py-2 px-2 sm:px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</th>
-                    <th className="text-left py-2 px-2 sm:px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Vendor</th>
-                    <th className="text-left py-2 px-2 sm:px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Project</th>
-                    <th className="text-right py-2 px-2 sm:px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Amount</th>
-                    <th className="text-left py-2 px-2 sm:px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                    <th className="text-left py-2 px-2 sm:px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Date
+                    </th>
+                    <th className="text-left py-2 px-2 sm:px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Vendor
+                    </th>
+                    <th className="text-left py-2 px-2 sm:px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Project
+                    </th>
+                    <th className="text-right py-2 px-2 sm:px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                      Amount
+                    </th>
+                    <th className="text-left py-2 px-2 sm:px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Status
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {reimbursements.length === 0 ? (
                     <tr className="border-b border-border/40">
-                      <td colSpan={5} className="py-4 px-4 text-center text-muted-foreground text-xs">No reimbursements.</td>
+                      <td
+                        colSpan={5}
+                        className="py-4 px-4 text-center text-muted-foreground text-xs"
+                      >
+                        No reimbursements.
+                      </td>
                     </tr>
                   ) : (
                     reimbursements.map((r) => (
                       <tr key={r.id} className="border-b border-border/40 hover:bg-muted/10">
                         <td className="py-2 px-4 tabular-nums">{r.date}</td>
                         <td className="py-2 px-4 text-muted-foreground">{r.vendor ?? "—"}</td>
-                        <td className="py-2 px-4 text-muted-foreground">{r.projectName ?? r.projectId ?? "—"}</td>
+                        <td className="py-2 px-4 text-muted-foreground">
+                          {r.projectName ?? r.projectId ?? "—"}
+                        </td>
                         <td className="py-2 px-4 text-right tabular-nums">{fmtUsd(r.amount)}</td>
                         <td className="py-2 px-4 text-muted-foreground">{r.status}</td>
                       </tr>
@@ -376,29 +435,53 @@ export default function WorkerBalanceDetailPage() {
 
           {/* C) Payments */}
           <div>
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-2">Payments</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+              Payments
+            </h2>
             <div className="table-responsive">
               <table className="w-full text-sm border-collapse min-w-[320px] sm:min-w-0">
                 <thead>
                   <tr className="border-b border-border/60">
-                    <th className="text-left py-2 px-2 sm:px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</th>
-                    <th className="text-right py-2 px-2 sm:px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Amount</th>
-                    <th className="text-left py-2 px-2 sm:px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Payment Method</th>
-                    <th className="text-left py-2 px-2 sm:px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Notes</th>
+                    <th className="text-left py-2 px-2 sm:px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Date
+                    </th>
+                    <th className="text-right py-2 px-2 sm:px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                      Amount
+                    </th>
+                    <th className="text-left py-2 px-2 sm:px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Payment Method
+                    </th>
+                    <th className="text-left py-2 px-2 sm:px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Notes
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {payments.length === 0 ? (
                     <tr className="border-b border-border/40">
-                      <td colSpan={4} className="py-4 px-4 text-center text-muted-foreground text-xs">No payments yet.</td>
+                      <td
+                        colSpan={4}
+                        className="py-4 px-4 text-center text-muted-foreground text-xs"
+                      >
+                        No payments yet.
+                      </td>
                     </tr>
                   ) : (
                     payments.map((r) => (
                       <tr key={r.id} className="border-b border-border/40 hover:bg-muted/10">
                         <td className="py-2 px-4 tabular-nums">{r.date}</td>
-                        <td className="py-2 px-4 text-right tabular-nums font-medium">{fmtUsd(r.amount)}</td>
-                        <td className="py-2 px-4 text-muted-foreground">{r.paymentMethod ?? "—"}</td>
-                        <td className="py-2 px-4 text-muted-foreground max-w-[200px] truncate" title={r.notes ?? undefined}>{r.notes ?? "—"}</td>
+                        <td className="py-2 px-4 text-right tabular-nums font-medium">
+                          {fmtUsd(r.amount)}
+                        </td>
+                        <td className="py-2 px-4 text-muted-foreground">
+                          {r.paymentMethod ?? "—"}
+                        </td>
+                        <td
+                          className="py-2 px-4 text-muted-foreground max-w-[200px] truncate"
+                          title={r.notes ?? undefined}
+                        >
+                          {r.notes ?? "—"}
+                        </td>
                       </tr>
                     ))
                   )}
@@ -416,21 +499,30 @@ export default function WorkerBalanceDetailPage() {
             <DialogTitle>Pay Worker</DialogTitle>
           </DialogHeader>
           <form onSubmit={handlePaySubmit} className="space-y-4">
-            <p className="text-xs text-muted-foreground">Select items to include in this payment. Total will be calculated automatically.</p>
+            <p className="text-xs text-muted-foreground">
+              Select items to include in this payment. Total will be calculated automatically.
+            </p>
 
             {unpaidLabor.length > 0 && (
               <div>
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">Unpaid labor entries</p>
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
+                  Unpaid labor entries
+                </p>
                 <div className="max-h-32 overflow-y-auto border border-border/60 rounded-sm divide-y divide-border/40">
                   {unpaidLabor.map((e) => (
-                    <label key={e.id} className="flex items-center justify-between gap-2 px-3 py-2 hover:bg-muted/10 cursor-pointer">
+                    <label
+                      key={e.id}
+                      className="flex items-center justify-between gap-2 px-3 py-2 hover:bg-muted/10 cursor-pointer"
+                    >
                       <input
                         type="checkbox"
                         checked={selectedLaborIds.has(e.id)}
                         onChange={() => toggleLabor(e.id)}
                         className="h-4 w-4 rounded border-input"
                       />
-                      <span className="text-sm flex-1 truncate">{e.date} · {e.projectName ?? "—"}</span>
+                      <span className="text-sm flex-1 truncate">
+                        {e.date} · {e.projectName ?? "—"}
+                      </span>
                       <span className="text-sm tabular-nums font-medium">{fmtUsd(e.amount)}</span>
                     </label>
                   ))}
@@ -440,17 +532,24 @@ export default function WorkerBalanceDetailPage() {
 
             {unpaidReimb.length > 0 && (
               <div>
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">Unpaid reimbursements</p>
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
+                  Unpaid reimbursements
+                </p>
                 <div className="max-h-32 overflow-y-auto border border-border/60 rounded-sm divide-y divide-border/40">
                   {unpaidReimb.map((r) => (
-                    <label key={r.id} className="flex items-center justify-between gap-2 px-3 py-2 hover:bg-muted/10 cursor-pointer">
+                    <label
+                      key={r.id}
+                      className="flex items-center justify-between gap-2 px-3 py-2 hover:bg-muted/10 cursor-pointer"
+                    >
                       <input
                         type="checkbox"
                         checked={selectedReimbIds.has(r.id)}
                         onChange={() => toggleReimb(r.id)}
                         className="h-4 w-4 rounded border-input"
                       />
-                      <span className="text-sm flex-1 truncate">{r.date} · {r.vendor ?? "—"}</span>
+                      <span className="text-sm flex-1 truncate">
+                        {r.date} · {r.vendor ?? "—"}
+                      </span>
                       <span className="text-sm tabular-nums font-medium">{fmtUsd(r.amount)}</span>
                     </label>
                   ))}
@@ -466,7 +565,9 @@ export default function WorkerBalanceDetailPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground block">Payment method</label>
+              <label className="text-xs font-medium text-muted-foreground block">
+                Payment method
+              </label>
               <Input
                 value={payMethod}
                 onChange={(e) => setPayMethod(e.target.value)}
@@ -475,7 +576,9 @@ export default function WorkerBalanceDetailPage() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground block">Payment date</label>
+              <label className="text-xs font-medium text-muted-foreground block">
+                Payment date
+              </label>
               <Input
                 type="date"
                 value={payDate}
@@ -484,7 +587,9 @@ export default function WorkerBalanceDetailPage() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground block">Notes (optional)</label>
+              <label className="text-xs font-medium text-muted-foreground block">
+                Notes (optional)
+              </label>
               <Input
                 value={payNotes}
                 onChange={(e) => setPayNotes(e.target.value)}
@@ -496,7 +601,12 @@ export default function WorkerBalanceDetailPage() {
             {payError ? <p className="text-sm text-destructive">{payError}</p> : null}
 
             <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => setPayModalOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setPayModalOpen(false)}
+              >
                 Cancel
               </Button>
               <Button type="submit" size="sm" disabled={paySubmitting || totalPaymentAmount <= 0}>

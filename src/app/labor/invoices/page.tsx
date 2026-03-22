@@ -7,7 +7,13 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { getLaborInvoices, getWorkers, deleteLaborInvoice, voidLaborInvoice, type LaborInvoice } from "@/lib/data";
+import {
+  getLaborInvoices,
+  getWorkers,
+  deleteLaborInvoice,
+  voidLaborInvoice,
+  type LaborInvoice,
+} from "@/lib/data";
 import { FilterBar } from "@/components/filter-bar";
 import { StatusBadge } from "@/components/status-badge";
 
@@ -25,7 +31,9 @@ export default function LaborInvoicesPage() {
     getLaborInvoices().then((list) => {
       if (!cancelled) setRows(list);
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   React.useEffect(() => {
@@ -33,7 +41,9 @@ export default function LaborInvoicesPage() {
     getWorkers().then((list) => {
       if (!cancelled) setWorkers(list);
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const workersMap = React.useMemo(() => new Map(workers.map((w) => [w.id, w.name])), [workers]);
@@ -107,31 +117,60 @@ export default function LaborInvoicesPage() {
           placeholder="Search invoice # or worker"
           className="h-10 rounded-sm"
         />
-        <Select value={status} onChange={(e) => setStatus(e.target.value as "" | LaborInvoice["status"])}>
+        <Select
+          value={status}
+          onChange={(e) => setStatus(e.target.value as "" | LaborInvoice["status"])}
+        >
           <option value="">All status</option>
           <option value="draft">Draft</option>
           <option value="reviewed">Reviewed</option>
           <option value="confirmed">Confirmed</option>
           <option value="void">Void</option>
         </Select>
-        <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="h-10 rounded-sm" />
-        <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="h-10 rounded-sm" />
+        <Input
+          type="date"
+          value={fromDate}
+          onChange={(e) => setFromDate(e.target.value)}
+          className="h-10 rounded-sm"
+        />
+        <Input
+          type="date"
+          value={toDate}
+          onChange={(e) => setToDate(e.target.value)}
+          className="h-10 rounded-sm"
+        />
       </FilterBar>
       {message ? (
-        <p className="border-b border-[#EBEBE9] pb-3 text-sm text-muted-foreground dark:border-border">{message}</p>
+        <p className="border-b border-[#EBEBE9] pb-3 text-sm text-muted-foreground dark:border-border">
+          {message}
+        </p>
       ) : null}
       <div className="overflow-hidden rounded-sm border border-[#EBEBE9] dark:border-border">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Invoice #</th>
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Worker</th>
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Date</th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Amount</th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Split Projects</th>
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Status</th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Actions</th>
+                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Invoice #
+                </th>
+                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Worker
+                </th>
+                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Date
+                </th>
+                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Amount
+                </th>
+                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Split Projects
+                </th>
+                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Status
+                </th>
+                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -144,10 +183,16 @@ export default function LaborInvoicesPage() {
                   <td className="py-3 px-4">{workersMap.get(row.workerId) ?? "Unknown worker"}</td>
                   <td className="py-3 px-4 tabular-nums">{row.invoiceDate}</td>
                   <td className="py-3 px-4 text-right tabular-nums">
-                    {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(row.amount)}
+                    {new Intl.NumberFormat("en-US", {
+                      style: "currency",
+                      currency: "USD",
+                      maximumFractionDigits: 2,
+                    }).format(row.amount)}
                   </td>
                   <td className="py-3 px-4 text-right tabular-nums">{row.projectSplits.length}</td>
-                  <td className="py-3 px-4"><StatusBadge status={row.status} /></td>
+                  <td className="py-3 px-4">
+                    <StatusBadge status={row.status} />
+                  </td>
                   <td className="py-3 px-4">
                     <div className="flex justify-end gap-2">
                       <Link href={`/labor/invoices/${row.id}`}>
@@ -164,7 +209,12 @@ export default function LaborInvoicesPage() {
                       >
                         Void
                       </Button>
-                      <Button size="sm" variant="outline" className="h-8 rounded-sm" onClick={() => handleDelete(row.id)}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 rounded-sm"
+                        onClick={() => handleDelete(row.id)}
+                      >
                         Delete
                       </Button>
                     </div>

@@ -26,7 +26,12 @@ test.describe("Worker payment → receipt labor lines", () => {
 
     await page.goto(`${BASE}/labor/worker-balances`);
     await page.waitForLoadState("domcontentloaded");
-    if (await page.getByText(/Supabase is not configured|Failed to load/i).isVisible().catch(() => false)) {
+    if (
+      await page
+        .getByText(/Supabase is not configured|Failed to load/i)
+        .isVisible()
+        .catch(() => false)
+    ) {
       test.skip(true, "Backend / Supabase unavailable.");
     }
     await expect(page.getByText("Loading…").first()).not.toBeVisible({ timeout: 30_000 });
@@ -36,19 +41,32 @@ test.describe("Worker payment → receipt labor lines", () => {
     await workerLink.click();
     await page.waitForLoadState("domcontentloaded");
 
-    await expect(page.getByRole("heading", { name: /Labor Entries/i })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("heading", { name: /Labor Entries/i })).toBeVisible({
+      timeout: 15_000,
+    });
 
     await page.getByRole("button", { name: "Pay Worker" }).click();
     const dialog = page.getByRole("dialog", { name: /Pay Worker/i });
     await expect(dialog).toBeVisible();
 
-    const hasLaborBlock = await dialog.getByText("Unpaid labor entries").isVisible().catch(() => false);
-    test.skip(!hasLaborBlock, "No unpaid labor entries block in modal (nothing to assert on receipt).");
+    const hasLaborBlock = await dialog
+      .getByText("Unpaid labor entries")
+      .isVisible()
+      .catch(() => false);
+    test.skip(
+      !hasLaborBlock,
+      "No unpaid labor entries block in modal (nothing to assert on receipt)."
+    );
 
     await expect(dialog.locator('label input[type="checkbox"]').first()).toBeVisible();
-    const totalRow = dialog.locator("p.text-sm.font-semibold").filter({ hasText: "Total Payment Amount" });
+    const totalRow = dialog
+      .locator("p.text-sm.font-semibold")
+      .filter({ hasText: "Total Payment Amount" });
     const totalText = (await totalRow.locator("span.tabular-nums").textContent())?.trim() ?? "";
-    test.skip(totalText === "$0.00" || totalText === "", "Payment total is zero; select items or add unpaid labor.");
+    test.skip(
+      totalText === "$0.00" || totalText === "",
+      "Payment total is zero; select items or add unpaid labor."
+    );
 
     await dialog.getByPlaceholder(/Check|ACH|Cash/i).fill("E2E Cash");
     await dialog.getByRole("button", { name: "Confirm Payment" }).click();
@@ -65,11 +83,15 @@ test.describe("Worker payment → receipt labor lines", () => {
     await page.waitForLoadState("load");
 
     await expect(page.getByRole("heading", { name: /Worker Payment Receipt/i })).toBeVisible();
-    await expect(page.locator(".receipt-summary").getByText("Subtotal", { exact: true })).toBeVisible();
-    await expect(page.getByText(/^0 lines$/)).not.toBeVisible();
-    await expect(page.locator("body")).not.toContainText(/Application error|Internal Server Error/i);
     await expect(
-      page.getByRole("table").filter({ has: page.getByRole("columnheader", { name: "Session" }) }),
+      page.locator(".receipt-summary").getByText("Subtotal", { exact: true })
+    ).toBeVisible();
+    await expect(page.getByText(/^0 lines$/)).not.toBeVisible();
+    await expect(page.locator("body")).not.toContainText(
+      /Application error|Internal Server Error/i
+    );
+    await expect(
+      page.getByRole("table").filter({ has: page.getByRole("columnheader", { name: "Session" }) })
     ).toBeVisible();
   });
 });

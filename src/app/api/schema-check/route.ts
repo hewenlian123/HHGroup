@@ -72,10 +72,7 @@ export async function GET() {
       return NextResponse.json({ status: "error", missing });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      return NextResponse.json(
-        { status: "error", missing: [], message: msg },
-        { status: 500 }
-      );
+      return NextResponse.json({ status: "error", missing: [], message: msg }, { status: 500 });
     }
   }
 
@@ -93,21 +90,26 @@ export async function GET() {
   for (const { table, column } of REQUIRED) {
     try {
       if (column) {
-        const { error } = await server
-          .from(table)
-          .select(column)
-          .limit(1)
-          .maybeSingle();
+        const { error } = await server.from(table).select(column).limit(1).maybeSingle();
         const code = (error as { code?: string } | null)?.code;
         const msg = (error as { message?: string } | null)?.message ?? "";
-        if (error && (code === "42703" || /column.*(does not exist|not find)|(does not exist|not find).*column/i.test(msg) || msg.includes(column))) {
+        if (
+          error &&
+          (code === "42703" ||
+            /column.*(does not exist|not find)|(does not exist|not find).*column/i.test(msg) ||
+            msg.includes(column))
+        ) {
           missing.push(toKey({ table, column }));
         }
       } else {
         const { error } = await server.from(table).select("id").limit(1).maybeSingle();
         const code = (error as { code?: string } | null)?.code;
         const msg = (error as { message?: string } | null)?.message ?? "";
-        if (error && (code === "42P01" || /relation.*does not exist|does not exist|not find|not exist/i.test(msg))) {
+        if (
+          error &&
+          (code === "42P01" ||
+            /relation.*does not exist|does not exist|not find|not exist/i.test(msg))
+        ) {
           missing.push(table);
         }
       }

@@ -11,7 +11,9 @@ import { createBrowserClient } from "@/lib/supabase";
 
 type WorkerOption = { id: string; name: string };
 
-async function getNextInvoiceNo(supabase: NonNullable<ReturnType<typeof createBrowserClient>>): Promise<string> {
+async function getNextInvoiceNo(
+  supabase: NonNullable<ReturnType<typeof createBrowserClient>>
+): Promise<string> {
   const year = new Date().getFullYear();
   const prefix = `LI-${year}-`;
   const { data, error } = await supabase
@@ -63,7 +65,13 @@ export default function NewLaborInvoiceClient() {
       .order("created_at", { ascending: false })
       .limit(500);
     if (err) setError(err.message);
-    else setWorkers((data ?? []).map((w) => ({ id: (w as { id: string }).id, name: (w as { name: string }).name ?? "" })));
+    else
+      setWorkers(
+        (data ?? []).map((w) => ({
+          id: (w as { id: string }).id,
+          name: (w as { name: string }).name ?? "",
+        }))
+      );
     setLoading(false);
   }, [supabase, configured]);
 
@@ -98,7 +106,12 @@ export default function NewLaborInvoiceClient() {
           memo: memo.trim() || null,
           status: "draft",
           project_splits: [],
-          checklist: { verifiedWorker: false, verifiedAmount: false, verifiedAllocation: false, verifiedAttachment: false },
+          checklist: {
+            verifiedWorker: false,
+            verifiedAmount: false,
+            verifiedAllocation: false,
+            verifiedAttachment: false,
+          },
         })
         .select("id")
         .single();
@@ -115,7 +128,10 @@ export default function NewLaborInvoiceClient() {
   if (loading) {
     return (
       <div className="mx-auto max-w-[680px] flex flex-col gap-6 p-6">
-        <PageHeader title="New Labor Invoice" description="Create a worker invoice/receipt record." />
+        <PageHeader
+          title="New Labor Invoice"
+          description="Create a worker invoice/receipt record."
+        />
         <section className="border-b border-[#EBEBE9] py-12 text-center text-muted-foreground dark:border-border">
           Loading…
         </section>
@@ -127,12 +143,16 @@ export default function NewLaborInvoiceClient() {
     <div className="mx-auto max-w-[680px] flex flex-col gap-6 p-6">
       <PageHeader title="New Labor Invoice" description="Create a worker invoice/receipt record." />
       {error ? (
-        <p className="border-b border-red-200/80 pb-3 text-sm text-red-700 dark:border-red-900 dark:text-red-300">{error}</p>
+        <p className="border-b border-red-200/80 pb-3 text-sm text-red-700 dark:border-red-900 dark:text-red-300">
+          {error}
+        </p>
       ) : null}
       <section className="border-b border-[#EBEBE9] pb-6 dark:border-border">
         <div className="grid gap-4">
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Worker</label>
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+              Worker
+            </label>
             <Select value={workerId} onChange={(e) => setWorkerId(e.target.value)}>
               <option value="">Select worker</option>
               {workers.map((w) => (
@@ -143,11 +163,20 @@ export default function NewLaborInvoiceClient() {
             </Select>
           </div>
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Invoice Date</label>
-            <Input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} className="rounded-sm" />
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+              Invoice Date
+            </label>
+            <Input
+              type="date"
+              value={invoiceDate}
+              onChange={(e) => setInvoiceDate(e.target.value)}
+              className="rounded-sm"
+            />
           </div>
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Amount</label>
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+              Amount
+            </label>
             <Input
               type="number"
               min="0"
@@ -158,7 +187,9 @@ export default function NewLaborInvoiceClient() {
             />
           </div>
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Memo</label>
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+              Memo
+            </label>
             <textarea
               value={memo}
               onChange={(e) => setMemo(e.target.value)}
@@ -167,10 +198,21 @@ export default function NewLaborInvoiceClient() {
           </div>
         </div>
         <div className="mt-6 flex justify-end gap-2">
-          <Button variant="outline" size="sm" className="rounded-sm" onClick={() => router.push("/labor/invoices")} disabled={submitting}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-sm"
+            onClick={() => router.push("/labor/invoices")}
+            disabled={submitting}
+          >
             Cancel
           </Button>
-          <Button size="sm" className="rounded-sm" onClick={handleCreate} disabled={!workerId || submitting}>
+          <Button
+            size="sm"
+            className="rounded-sm"
+            onClick={handleCreate}
+            disabled={!workerId || submitting}
+          >
             Create
           </Button>
         </div>

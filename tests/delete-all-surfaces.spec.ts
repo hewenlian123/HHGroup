@@ -24,13 +24,26 @@ async function waitForListLoaded(page: import("@playwright/test").Page): Promise
 }
 
 async function skipIfSupabaseMissing(page: import("@playwright/test").Page): Promise<void> {
-  if (await page.getByText(/Supabase is not configured/i).isVisible().catch(() => false)) {
+  if (
+    await page
+      .getByText(/Supabase is not configured/i)
+      .isVisible()
+      .catch(() => false)
+  ) {
     test.skip(true, "Supabase not configured.");
   }
 }
 
-async function skipIfBackendError(page: import("@playwright/test").Page, re: RegExp): Promise<void> {
-  if (await page.getByText(re).isVisible().catch(() => false)) {
+async function skipIfBackendError(
+  page: import("@playwright/test").Page,
+  re: RegExp
+): Promise<void> {
+  if (
+    await page
+      .getByText(re)
+      .isVisible()
+      .catch(() => false)
+  ) {
     test.skip(true, "Backend unavailable.");
   }
 }
@@ -46,7 +59,9 @@ test.describe("Delete surface catalog (read-only)", () => {
     await page.goto(`${BASE}/customers`);
     await page.waitForLoadState("domcontentloaded");
     await skipIfSupabaseMissing(page);
-    await expect(page.getByText(/Loading/i).first()).not.toBeVisible({ timeout: LIST_LOAD_MS }).catch(() => undefined);
+    await expect(page.getByText(/Loading/i).first())
+      .not.toBeVisible({ timeout: LIST_LOAD_MS })
+      .catch(() => undefined);
     const row = page.locator("tbody tr").first();
     await expectVisibleOrSkip(row, "No customer rows.", LIST_LOAD_MS);
     await clickFirstRowOverflowMenu(page);
@@ -68,7 +83,9 @@ test.describe("Delete surface catalog (read-only)", () => {
     await page.goto(`${BASE}/tasks`);
     await page.waitForLoadState("domcontentloaded");
     await skipIfBackendError(page, /Failed to load tasks/i);
-    await expect(page.getByText(/Loading/i).first()).not.toBeVisible({ timeout: LIST_LOAD_MS }).catch(() => undefined);
+    await expect(page.getByText(/Loading/i).first())
+      .not.toBeVisible({ timeout: LIST_LOAD_MS })
+      .catch(() => undefined);
     const row = page.locator("table tbody tr").first();
     await expectVisibleOrSkip(row, "No task rows.", LIST_LOAD_MS);
     await clickFirstRowOverflowMenu(page);
@@ -89,7 +106,9 @@ test.describe("Delete surface catalog (read-only)", () => {
     await page.goto(`${BASE}/documents`);
     await page.waitForLoadState("domcontentloaded");
     await skipIfSupabaseMissing(page);
-    await expect(page.getByText(/Loading/i).first()).not.toBeVisible({ timeout: LIST_LOAD_MS }).catch(() => undefined);
+    await expect(page.getByText(/Loading/i).first())
+      .not.toBeVisible({ timeout: LIST_LOAD_MS })
+      .catch(() => undefined);
     const row = page.locator("tbody tr").first();
     await expectVisibleOrSkip(row, "No document rows.", LIST_LOAD_MS);
     const del = row.getByRole("button", { name: /^Delete$/ });
@@ -100,7 +119,9 @@ test.describe("Delete surface catalog (read-only)", () => {
     await page.goto(`${BASE}/financial/expenses`);
     await page.waitForLoadState("domcontentloaded");
     await skipIfSupabaseMissing(page);
-    await expect(page.getByText(/Loading/i).first()).not.toBeVisible({ timeout: LIST_LOAD_MS }).catch(() => undefined);
+    await expect(page.getByText(/Loading/i).first())
+      .not.toBeVisible({ timeout: LIST_LOAD_MS })
+      .catch(() => undefined);
     const row = page.locator("tbody tr").first();
     await expectVisibleOrSkip(row, "No expense rows.", LIST_LOAD_MS);
     const del = row.getByRole("button", { name: "Delete" });
@@ -111,7 +132,9 @@ test.describe("Delete surface catalog (read-only)", () => {
     await page.goto(`${BASE}/financial/accounts`);
     await page.waitForLoadState("domcontentloaded");
     await skipIfSupabaseMissing(page);
-    await expect(page.getByText(/Loading/i).first()).not.toBeVisible({ timeout: LIST_LOAD_MS }).catch(() => undefined);
+    await expect(page.getByText(/Loading/i).first())
+      .not.toBeVisible({ timeout: LIST_LOAD_MS })
+      .catch(() => undefined);
     const row = page.locator("tbody tr").first();
     await expectVisibleOrSkip(row, "No account rows.", LIST_LOAD_MS);
     const del = row.getByRole("button", { name: "Delete" });
@@ -122,7 +145,9 @@ test.describe("Delete surface catalog (read-only)", () => {
     await page.goto(`${BASE}/financial/payments`);
     await page.waitForLoadState("domcontentloaded");
     await skipIfSupabaseMissing(page);
-    await expect(page.getByText(/Loading/i).first()).not.toBeVisible({ timeout: LIST_LOAD_MS }).catch(() => undefined);
+    await expect(page.getByText(/Loading/i).first())
+      .not.toBeVisible({ timeout: LIST_LOAD_MS })
+      .catch(() => undefined);
     const row = page.locator("tbody tr").first();
     await expectVisibleOrSkip(row, "No payment rows.", LIST_LOAD_MS);
     const del = row.getByRole("button", { name: "Delete" });
@@ -133,10 +158,16 @@ test.describe("Delete surface catalog (read-only)", () => {
     await page.goto(`${BASE}/labor/entries`);
     await page.waitForLoadState("domcontentloaded");
     await skipIfSupabaseMissing(page);
-    await expect(page.getByText(/Loading/i).first()).not.toBeVisible({ timeout: LIST_LOAD_MS }).catch(() => undefined);
+    await expect(page.getByText(/Loading/i).first())
+      .not.toBeVisible({ timeout: LIST_LOAD_MS })
+      .catch(() => undefined);
     // Entries table is the only Delete-button region on this page; row filter can miss slow hydration.
     const del = page.getByRole("button", { name: /^Delete$/ }).first();
-    await expectVisibleOrSkip(del, "No labor entry rows with Delete (empty, filtered, or all locked).", LIST_LOAD_MS);
+    await expectVisibleOrSkip(
+      del,
+      "No labor entry rows with Delete (empty, filtered, or all locked).",
+      LIST_LOAD_MS
+    );
     await expect(del).toBeVisible({ timeout: 20_000 });
     await expectDeleteControlVisibleWithoutHover(page, del, 8_000);
   });
@@ -145,8 +176,12 @@ test.describe("Delete surface catalog (read-only)", () => {
     await page.goto(`${BASE}/labor/review`);
     await page.waitForLoadState("domcontentloaded");
     await skipIfSupabaseMissing(page);
-    await expect(page.getByText(/Loading/i).first()).not.toBeVisible({ timeout: LIST_LOAD_MS }).catch(() => undefined);
-    const reviewRows = page.locator("tbody tr").filter({ has: page.getByRole("button", { name: /^Delete$/ }) });
+    await expect(page.getByText(/Loading/i).first())
+      .not.toBeVisible({ timeout: LIST_LOAD_MS })
+      .catch(() => undefined);
+    const reviewRows = page
+      .locator("tbody tr")
+      .filter({ has: page.getByRole("button", { name: /^Delete$/ }) });
     await expectVisibleOrSkip(reviewRows, "No review rows with Delete.", LIST_LOAD_MS);
     const row = reviewRows.first();
     const del = row.getByRole("button", { name: /^Delete$/ });
@@ -158,7 +193,9 @@ test.describe("Delete surface catalog (read-only)", () => {
     await page.waitForLoadState("domcontentloaded");
     await skipIfSupabaseMissing(page);
     await waitForListLoaded(page);
-    await expect(page.locator("tbody tr").first()).not.toContainText(/\bLoading\b/i, { timeout: LIST_LOAD_MS }).catch(() => undefined);
+    await expect(page.locator("tbody tr").first())
+      .not.toContainText(/\bLoading\b/i, { timeout: LIST_LOAD_MS })
+      .catch(() => undefined);
     const row = page.locator("tbody tr").first();
     await expectVisibleOrSkip(row, "No labor invoice rows or list still loading.", LIST_LOAD_MS);
     const rowText = (await row.innerText()).trim();
@@ -174,7 +211,9 @@ test.describe("Delete surface catalog (read-only)", () => {
     await page.waitForLoadState("domcontentloaded");
     await skipIfSupabaseMissing(page);
     await waitForListLoaded(page);
-    await expect(page.locator("tbody tr").first()).not.toContainText(/\bLoading\b/i, { timeout: LIST_LOAD_MS }).catch(() => undefined);
+    await expect(page.locator("tbody tr").first())
+      .not.toContainText(/\bLoading\b/i, { timeout: LIST_LOAD_MS })
+      .catch(() => undefined);
     const row = page.locator("tbody tr").first();
     await expectVisibleOrSkip(row, "No reimbursement rows or list still loading.", LIST_LOAD_MS);
     const rowText = (await row.innerText()).trim();
@@ -188,7 +227,9 @@ test.describe("Delete surface catalog (read-only)", () => {
     await page.goto(`${BASE}/labor/daily`);
     await page.waitForLoadState("domcontentloaded");
     await skipIfSupabaseMissing(page);
-    await expect(page.getByText(/Loading/i).first()).not.toBeVisible({ timeout: LIST_LOAD_MS }).catch(() => undefined);
+    await expect(page.getByText(/Loading/i).first())
+      .not.toBeVisible({ timeout: LIST_LOAD_MS })
+      .catch(() => undefined);
     const row = page.locator("tbody tr").first();
     await expectVisibleOrSkip(row, "No daily labor rows.", LIST_LOAD_MS);
     const del = row.getByRole("button", { name: /Delete entry/i });
@@ -199,7 +240,9 @@ test.describe("Delete surface catalog (read-only)", () => {
     await page.goto(`${BASE}/labor/worker-invoices`);
     await page.waitForLoadState("domcontentloaded");
     await skipIfSupabaseMissing(page);
-    await expect(page.locator("tbody tr").first()).not.toContainText(/\bLoading\b/i, { timeout: LIST_LOAD_MS }).catch(() => undefined);
+    await expect(page.locator("tbody tr").first())
+      .not.toContainText(/\bLoading\b/i, { timeout: LIST_LOAD_MS })
+      .catch(() => undefined);
     const row = page.locator("tbody tr").first();
     await expectVisibleOrSkip(row, "No worker invoice rows or list still loading.", LIST_LOAD_MS);
     const rowText = (await row.innerText()).trim();
@@ -214,7 +257,9 @@ test.describe("Delete surface catalog (read-only)", () => {
     await page.waitForLoadState("domcontentloaded");
     await skipIfSupabaseMissing(page);
     await waitForListLoaded(page);
-    await expect(page.locator("tbody tr").first()).not.toContainText(/\bLoading\b/i, { timeout: LIST_LOAD_MS }).catch(() => undefined);
+    await expect(page.locator("tbody tr").first())
+      .not.toContainText(/\bLoading\b/i, { timeout: LIST_LOAD_MS })
+      .catch(() => undefined);
     const row = page.locator("tbody tr").first();
     await expectVisibleOrSkip(row, "No worker payment rows or list still loading.", LIST_LOAD_MS);
     const rowText = (await row.innerText()).trim();
@@ -228,7 +273,9 @@ test.describe("Delete surface catalog (read-only)", () => {
     await page.goto(`${BASE}/site-photos`);
     await page.waitForLoadState("domcontentloaded");
     await skipIfSupabaseMissing(page);
-    await expect(page.getByText(/Loading/i).first()).not.toBeVisible({ timeout: LIST_LOAD_MS }).catch(() => undefined);
+    await expect(page.getByText(/Loading/i).first())
+      .not.toBeVisible({ timeout: LIST_LOAD_MS })
+      .catch(() => undefined);
     const menuBtn = page.getByRole("button", { name: /^Actions for photo$/ }).first();
     await expectVisibleOrSkip(menuBtn, "No site photos.", LIST_LOAD_MS);
     await menuBtn.click();

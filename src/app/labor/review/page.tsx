@@ -22,15 +22,21 @@ export default function LaborReviewPage() {
   const [rows, setRows] = React.useState<LaborEntry[]>([]);
   const [selected, setSelected] = React.useState<LaborEntry | null>(null);
   const [message, setMessage] = React.useState<string | null>(null);
-  const [workerOptions, setWorkerOptions] = React.useState<Awaited<ReturnType<typeof getWorkers>>>([]);
-  const [projectOptions, setProjectOptions] = React.useState<Awaited<ReturnType<typeof getProjects>>>([]);
+  const [workerOptions, setWorkerOptions] = React.useState<Awaited<ReturnType<typeof getWorkers>>>(
+    []
+  );
+  const [projectOptions, setProjectOptions] = React.useState<
+    Awaited<ReturnType<typeof getProjects>>
+  >([]);
 
   React.useEffect(() => {
     let cancelled = false;
     getWorkers().then((list) => {
       if (!cancelled) setWorkerOptions(list);
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   React.useEffect(() => {
@@ -38,11 +44,19 @@ export default function LaborReviewPage() {
     getProjects().then((list) => {
       if (!cancelled) setProjectOptions(list);
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const workers = React.useMemo(() => new Map(workerOptions.map((w) => [w.id, w.name])), [workerOptions]);
-  const projects = React.useMemo(() => new Map(projectOptions.map((p) => [p.id, p.name])), [projectOptions]);
+  const workers = React.useMemo(
+    () => new Map(workerOptions.map((w) => [w.id, w.name])),
+    [workerOptions]
+  );
+  const projects = React.useMemo(
+    () => new Map(projectOptions.map((p) => [p.id, p.name])),
+    [projectOptions]
+  );
 
   const refresh = React.useCallback(async () => {
     const list = await getLaborEntries();
@@ -111,7 +125,10 @@ export default function LaborReviewPage() {
 
   return (
     <div className="page-container page-stack py-6">
-      <PageHeader title="Labor Review" description="Review labor drafts and confirm entries for project actual labor." />
+      <PageHeader
+        title="Labor Review"
+        description="Review labor drafts and confirm entries for project actual labor."
+      />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Input
@@ -140,7 +157,9 @@ export default function LaborReviewPage() {
       </div>
 
       {message ? (
-        <p className="border-b border-[#EBEBE9] pb-3 text-sm text-muted-foreground dark:border-border">{message}</p>
+        <p className="border-b border-[#EBEBE9] pb-3 text-sm text-muted-foreground dark:border-border">
+          {message}
+        </p>
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_440px]">
@@ -149,13 +168,27 @@ export default function LaborReviewPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Date</th>
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Worker</th>
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Project</th>
-                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Hours</th>
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Cost Code</th>
-                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Total</th>
-                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Actions</th>
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Date
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Worker
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Project
+                  </th>
+                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Hours
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Cost Code
+                  </th>
+                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Total
+                  </th>
+                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -166,18 +199,34 @@ export default function LaborReviewPage() {
                   >
                     <td className="py-3 px-4 tabular-nums">{row.date}</td>
                     <td className="py-3 px-4">{workers.get(row.workerId) ?? "Unknown worker"}</td>
-                    <td className="py-3 px-4">{row.projectId ? projects.get(row.projectId) ?? row.projectId : "—"}</td>
+                    <td className="py-3 px-4">
+                      {row.projectId ? (projects.get(row.projectId) ?? row.projectId) : "—"}
+                    </td>
                     <td className="py-3 px-4 text-right tabular-nums">{Number(row.hours) || 0}</td>
                     <td className="py-3 px-4">{row.costCode ?? "—"}</td>
                     <td className="py-3 px-4 text-right tabular-nums">
-                      {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(computeTotal(row))}
+                      {new Intl.NumberFormat("en-US", {
+                        style: "currency",
+                        currency: "USD",
+                        maximumFractionDigits: 2,
+                      }).format(computeTotal(row))}
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex justify-end gap-2">
-                        <Button size="sm" variant="outline" className="h-8 rounded-sm" onClick={() => setSelected({ ...row })}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 rounded-sm"
+                          onClick={() => setSelected({ ...row })}
+                        >
                           Review
                         </Button>
-                        <Button size="sm" variant="outline" className="h-8 rounded-sm" onClick={() => handleDelete(row)}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 rounded-sm"
+                          onClick={() => handleDelete(row)}
+                        >
                           Delete
                         </Button>
                       </div>
@@ -203,10 +252,14 @@ export default function LaborReviewPage() {
             <div className="space-y-4">
               <h3 className="text-sm font-semibold text-foreground">Review Drawer</h3>
               <div className="grid gap-3">
-                <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Project</label>
+                <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                  Project
+                </label>
                 <Select
                   value={selected.projectId ?? ""}
-                  onChange={(e) => setSelected((prev) => (prev ? { ...prev, projectId: e.target.value } : prev))}
+                  onChange={(e) =>
+                    setSelected((prev) => (prev ? { ...prev, projectId: e.target.value } : prev))
+                  }
                 >
                   <option value="">Select project</option>
                   {projectOptions.map((p) => (
@@ -215,40 +268,63 @@ export default function LaborReviewPage() {
                     </option>
                   ))}
                 </Select>
-                <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Hours</label>
+                <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                  Hours
+                </label>
                 <Input
                   type="number"
                   min="0"
                   step="0.25"
                   value={selected.hours ?? ""}
-                  onChange={(e) => setSelected((prev) => (prev ? { ...prev, hours: Number(e.target.value) || 0 } : prev))}
+                  onChange={(e) =>
+                    setSelected((prev) =>
+                      prev ? { ...prev, hours: Number(e.target.value) || 0 } : prev
+                    )
+                  }
                   className="rounded-sm text-right tabular-nums"
                 />
-                <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Cost Code</label>
+                <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                  Cost Code
+                </label>
                 <Input
                   type="text"
                   value={selected.costCode ?? ""}
-                  onChange={(e) => setSelected((prev) => (prev ? { ...prev, costCode: e.target.value } : prev))}
+                  onChange={(e) =>
+                    setSelected((prev) => (prev ? { ...prev, costCode: e.target.value } : prev))
+                  }
                   placeholder="Cost code"
                   className="rounded-sm"
                 />
-                <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Notes</label>
+                <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                  Notes
+                </label>
                 <Input
                   type="text"
                   value={selected.notes ?? ""}
-                  onChange={(e) => setSelected((prev) => (prev ? { ...prev, notes: e.target.value } : prev))}
+                  onChange={(e) =>
+                    setSelected((prev) => (prev ? { ...prev, notes: e.target.value } : prev))
+                  }
                   placeholder="Notes"
                   className="rounded-sm"
                 />
                 <p className="text-sm">
                   Total:{" "}
                   <span className="font-semibold tabular-nums">
-                    {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(computeTotal(selected))}
+                    {new Intl.NumberFormat("en-US", {
+                      style: "currency",
+                      currency: "USD",
+                      maximumFractionDigits: 2,
+                    }).format(computeTotal(selected))}
                   </span>
                 </p>
               </div>
               <div className="flex justify-end gap-2">
-                <Button variant="outline" size="sm" className="rounded-sm" onClick={() => setSelected(null)}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-sm"
+                  onClick={() => setSelected(null)}
+                >
                   Close
                 </Button>
                 <Button size="sm" className="rounded-sm" onClick={handleSaveSelected}>

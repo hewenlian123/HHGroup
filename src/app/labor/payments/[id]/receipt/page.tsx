@@ -6,7 +6,11 @@ import { getWorkerPaymentReceiptPayload } from "@/lib/worker-payment-receipt-dat
 import { computeWorkerPaymentReceiptNo } from "@/lib/worker-payment-receipt-no";
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 
-export default async function WorkerPaymentReceiptPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function WorkerPaymentReceiptPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
 
   const payment = await getWorkerPaymentById(id);

@@ -64,7 +64,9 @@ export default function LaborInvoiceDetailPage() {
         setProjects(p);
       }
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const reloadLookups = React.useCallback(async () => {
@@ -85,7 +87,11 @@ export default function LaborInvoiceDetailPage() {
     return (
       <div className="mx-auto max-w-[900px] flex flex-col gap-6 p-6">
         <p className="text-muted-foreground">Labor invoice not found.</p>
-        <Button variant="outline" className="rounded-lg w-fit" onClick={() => router.push("/labor/invoices")}>
+        <Button
+          variant="outline"
+          className="rounded-lg w-fit"
+          onClick={() => router.push("/labor/invoices")}
+        >
           Back to list
         </Button>
       </div>
@@ -102,9 +108,17 @@ export default function LaborInvoiceDetailPage() {
     invoice.checklist.verifiedAllocation &&
     invoice.checklist.verifiedAttachment;
   const validSplitRows = invoice.projectSplits.every((s) => !!s.projectId && s.amount > 0);
-  const canConfirm = invoice.status !== "void" && invoice.status !== "confirmed" && invoice.amount > 0 && isRemainingZero && allChecked && validSplitRows;
+  const canConfirm =
+    invoice.status !== "void" &&
+    invoice.status !== "confirmed" &&
+    invoice.amount > 0 &&
+    isRemainingZero &&
+    allChecked &&
+    validSplitRows;
 
-  const handleHeaderSave = (patch: Partial<Pick<LaborInvoice, "workerId" | "invoiceDate" | "amount" | "memo">>) => {
+  const handleHeaderSave = (
+    patch: Partial<Pick<LaborInvoice, "workerId" | "invoiceDate" | "amount" | "memo">>
+  ) => {
     updateLaborInvoice(invoice.id, patch);
     refresh();
   };
@@ -128,12 +142,16 @@ export default function LaborInvoiceDetailPage() {
   };
 
   const handleSplitAdd = () => {
-    updateLaborInvoice(invoice.id, { projectSplits: [...invoice.projectSplits, { projectId: "", amount: 0 }] });
+    updateLaborInvoice(invoice.id, {
+      projectSplits: [...invoice.projectSplits, { projectId: "", amount: 0 }],
+    });
     refresh();
   };
 
   const handleSplitRemove = (idx: number) => {
-    updateLaborInvoice(invoice.id, { projectSplits: invoice.projectSplits.filter((_, i) => i !== idx) });
+    updateLaborInvoice(invoice.id, {
+      projectSplits: invoice.projectSplits.filter((_, i) => i !== idx),
+    });
     refresh();
   };
 
@@ -181,20 +199,27 @@ export default function LaborInvoiceDetailPage() {
   return (
     <div className="mx-auto max-w-[1100px] flex flex-col gap-6 p-6">
       <div className="flex items-center gap-4">
-        <Link href="/labor/invoices" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+        <Link
+          href="/labor/invoices"
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+        >
           <ArrowLeft className="h-4 w-4" />
           Back
         </Link>
       </div>
 
       {message ? (
-        <p className="border-b border-[#EBEBE9] pb-3 text-sm text-muted-foreground dark:border-border">{message}</p>
+        <p className="border-b border-[#EBEBE9] pb-3 text-sm text-muted-foreground dark:border-border">
+          {message}
+        </p>
       ) : null}
 
       <section className="border-b border-[#EBEBE9] pb-6 dark:border-border">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Invoice #</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+              Invoice #
+            </p>
             <p className="text-lg font-semibold text-foreground">{invoice.invoiceNo}</p>
           </div>
           <span className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground">
@@ -206,19 +231,33 @@ export default function LaborInvoiceDetailPage() {
           <Button size="sm" className="rounded-sm" onClick={handleSaveDraft} disabled={isReadOnly}>
             Save
           </Button>
-          <Button variant="outline" size="sm" className="rounded-sm" onClick={handleMarkReviewed} disabled={isReadOnly}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-sm"
+            onClick={handleMarkReviewed}
+            disabled={isReadOnly}
+          >
             Mark Reviewed
           </Button>
           <Button size="sm" className="rounded-sm" onClick={handleConfirm} disabled={!canConfirm}>
             Confirm
           </Button>
-          <Button variant="outline" size="sm" className="rounded-sm" onClick={handleVoid} disabled={invoice.status === "void"}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-sm"
+            onClick={handleVoid}
+            disabled={invoice.status === "void"}
+          >
             Void
           </Button>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Worker</label>
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+              Worker
+            </label>
             <Select
               value={invoice.workerId}
               onChange={(e) => handleHeaderSave({ workerId: e.target.value })}
@@ -232,7 +271,9 @@ export default function LaborInvoiceDetailPage() {
             </Select>
           </div>
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Date</label>
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+              Date
+            </label>
             <Input
               type="date"
               value={invoice.invoiceDate}
@@ -242,7 +283,9 @@ export default function LaborInvoiceDetailPage() {
             />
           </div>
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Amount</label>
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+              Amount
+            </label>
             <Input
               type="number"
               min="0"
@@ -254,7 +297,9 @@ export default function LaborInvoiceDetailPage() {
             />
           </div>
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Status</label>
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+              Status
+            </label>
             <div className="flex h-10 items-center">
               <span className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground">
                 <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-foreground/50" />
@@ -264,7 +309,9 @@ export default function LaborInvoiceDetailPage() {
           </div>
         </div>
         <div className="mt-4 grid gap-1.5">
-          <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Memo</label>
+          <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            Memo
+          </label>
           <textarea
             value={invoice.memo ?? ""}
             onChange={(e) => handleHeaderSave({ memo: e.target.value })}
@@ -288,29 +335,62 @@ export default function LaborInvoiceDetailPage() {
           className="hidden"
           onChange={handleFileChange}
         />
-        <Button variant="outline" size="sm" className="rounded-sm" onClick={() => fileInputRef.current?.click()} disabled={isReadOnly}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="rounded-sm"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isReadOnly}
+        >
           <Plus className="h-4 w-4 mr-2" />
           Add Attachment
         </Button>
         <ul className="mt-3 space-y-2">
           {invoice.attachments.map((att) => (
-            <li key={att.id} className="flex items-center gap-2 border border-[#EBEBE9] p-3 dark:border-border">
+            <li
+              key={att.id}
+              className="flex items-center gap-2 border border-[#EBEBE9] p-3 dark:border-border"
+            >
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-foreground">{att.fileName}</p>
-                <p className="text-xs text-muted-foreground">{att.size > 1024 ? `${(att.size / 1024).toFixed(1)} KB` : `${att.size} B`}</p>
+                <p className="text-xs text-muted-foreground">
+                  {att.size > 1024 ? `${(att.size / 1024).toFixed(1)} KB` : `${att.size} B`}
+                </p>
               </div>
-              <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => { setPreviewAttachment(att); setPreviewOpen(true); }} aria-label="Preview">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8"
+                onClick={() => {
+                  setPreviewAttachment(att);
+                  setPreviewOpen(true);
+                }}
+                aria-label="Preview"
+              >
                 <Eye className="h-4 w-4" />
               </Button>
-              <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => {
-                const a = document.createElement("a");
-                a.href = att.url;
-                a.download = att.fileName;
-                a.click();
-              }} aria-label="Download">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8"
+                onClick={() => {
+                  const a = document.createElement("a");
+                  a.href = att.url;
+                  a.download = att.fileName;
+                  a.click();
+                }}
+                aria-label="Download"
+              >
                 <Download className="h-4 w-4" />
               </Button>
-              <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDeleteAttachment(att)} aria-label="Delete" disabled={isReadOnly}>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 text-destructive"
+                onClick={() => handleDeleteAttachment(att)}
+                aria-label="Delete"
+                disabled={isReadOnly}
+              >
                 <Trash2 className="h-4 w-4" />
               </Button>
             </li>
@@ -321,13 +401,22 @@ export default function LaborInvoiceDetailPage() {
       <section className="border-b border-[#EBEBE9] pb-6 dark:border-border">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-foreground">Split Allocation</h2>
-          <Button size="sm" variant="outline" className="h-8 rounded-sm" onClick={handleSplitAdd} disabled={isReadOnly}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 rounded-sm"
+            onClick={handleSplitAdd}
+            disabled={isReadOnly}
+          >
             + Add line
           </Button>
         </div>
         <div className="mt-4 space-y-3">
           {invoice.projectSplits.map((split, idx) => (
-            <div key={`${split.projectId}-${idx}`} className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[1fr_160px_auto]">
+            <div
+              key={`${split.projectId}-${idx}`}
+              className="grid grid-cols-1 items-center gap-2 sm:grid-cols-[1fr_160px_auto]"
+            >
               <Select
                 value={split.projectId}
                 onChange={(e) => handleSplitChange(idx, { projectId: e.target.value })}
@@ -349,14 +438,25 @@ export default function LaborInvoiceDetailPage() {
                 disabled={isReadOnly}
                 className="rounded-sm text-right tabular-nums"
               />
-              <Button size="sm" variant="outline" className="h-10 rounded-sm" onClick={() => handleSplitRemove(idx)} disabled={isReadOnly}>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-10 rounded-sm"
+                onClick={() => handleSplitRemove(idx)}
+                disabled={isReadOnly}
+              >
                 Remove
               </Button>
             </div>
           ))}
         </div>
         <p className="mt-3 text-sm text-muted-foreground">
-          Split Total: {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(splitTotal)}
+          Split Total:{" "}
+          {new Intl.NumberFormat("en-US", {
+            style: "currency",
+            currency: "USD",
+            maximumFractionDigits: 2,
+          }).format(splitTotal)}
         </p>
         <p className="mt-4 text-sm text-muted-foreground">
           Remaining:{" "}
@@ -367,7 +467,11 @@ export default function LaborInvoiceDetailPage() {
                 : "font-medium text-amber-600 dark:text-amber-400"
             }
           >
-            {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(remaining)}
+            {new Intl.NumberFormat("en-US", {
+              style: "currency",
+              currency: "USD",
+              maximumFractionDigits: 2,
+            }).format(remaining)}
           </span>
         </p>
       </section>
@@ -376,19 +480,39 @@ export default function LaborInvoiceDetailPage() {
         <h2 className="mb-3 text-sm font-semibold text-foreground">Review Checklist</h2>
         <div className="space-y-2">
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={invoice.checklist.verifiedWorker} onChange={(e) => handleChecklist({ verifiedWorker: e.target.checked })} disabled={isReadOnly} />
+            <input
+              type="checkbox"
+              checked={invoice.checklist.verifiedWorker}
+              onChange={(e) => handleChecklist({ verifiedWorker: e.target.checked })}
+              disabled={isReadOnly}
+            />
             Verified worker
           </label>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={invoice.checklist.verifiedAmount} onChange={(e) => handleChecklist({ verifiedAmount: e.target.checked })} disabled={isReadOnly} />
+            <input
+              type="checkbox"
+              checked={invoice.checklist.verifiedAmount}
+              onChange={(e) => handleChecklist({ verifiedAmount: e.target.checked })}
+              disabled={isReadOnly}
+            />
             Verified amount
           </label>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={invoice.checklist.verifiedAllocation} onChange={(e) => handleChecklist({ verifiedAllocation: e.target.checked })} disabled={isReadOnly} />
+            <input
+              type="checkbox"
+              checked={invoice.checklist.verifiedAllocation}
+              onChange={(e) => handleChecklist({ verifiedAllocation: e.target.checked })}
+              disabled={isReadOnly}
+            />
             Verified allocation
           </label>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={invoice.checklist.verifiedAttachment} onChange={(e) => handleChecklist({ verifiedAttachment: e.target.checked })} disabled={isReadOnly} />
+            <input
+              type="checkbox"
+              checked={invoice.checklist.verifiedAttachment}
+              onChange={(e) => handleChecklist({ verifiedAttachment: e.target.checked })}
+              disabled={isReadOnly}
+            />
             Verified attachment
           </label>
         </div>
@@ -397,12 +521,18 @@ export default function LaborInvoiceDetailPage() {
             Confirm
           </Button>
           {!canConfirm ? (
-            <p className="mt-2 text-xs text-muted-foreground">Confirm requires Remaining = 0 and all checklist items checked.</p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Confirm requires Remaining = 0 and all checklist items checked.
+            </p>
           ) : null}
         </div>
       </section>
 
-      <AttachmentPreviewDialog attachment={previewAttachment} open={previewOpen} onOpenChange={setPreviewOpen} />
+      <AttachmentPreviewDialog
+        attachment={previewAttachment}
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+      />
     </div>
   );
 }

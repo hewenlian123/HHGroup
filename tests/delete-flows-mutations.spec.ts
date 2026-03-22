@@ -28,7 +28,12 @@ test.describe("Delete mutations: create then delete", () => {
   test("financial vendors: create then delete", async ({ page }) => {
     await page.goto(`${BASE}/financial/vendors`);
     await page.waitForLoadState("domcontentloaded");
-    if (await page.getByText(/Supabase is not configured/i).isVisible().catch(() => false)) {
+    if (
+      await page
+        .getByText(/Supabase is not configured/i)
+        .isVisible()
+        .catch(() => false)
+    ) {
       test.skip(true, "Supabase not configured.");
     }
 
@@ -41,7 +46,11 @@ test.describe("Delete mutations: create then delete", () => {
     try {
       await expect(row).toBeVisible({ timeout: 25_000 });
     } catch {
-      const banner = await page.locator(".text-muted-foreground").first().textContent().catch(() => "");
+      const banner = await page
+        .locator(".text-muted-foreground")
+        .first()
+        .textContent()
+        .catch(() => "");
       test.skip(true, `Vendor did not appear after create. ${banner ?? ""}`);
     }
 
@@ -56,7 +65,12 @@ test.describe("Delete mutations: create then delete", () => {
   test("settings categories: create then delete", async ({ page }) => {
     await page.goto(`${BASE}/settings/categories`);
     await page.waitForLoadState("domcontentloaded");
-    if (await page.getByText(/Supabase is not configured/i).isVisible().catch(() => false)) {
+    if (
+      await page
+        .getByText(/Supabase is not configured/i)
+        .isVisible()
+        .catch(() => false)
+    ) {
       test.skip(true, "Supabase not configured.");
     }
 
@@ -81,7 +95,12 @@ test.describe("Delete mutations: create then delete", () => {
   test("labor workers: create then delete", async ({ page }) => {
     await page.goto(`${BASE}/labor/workers`);
     await page.waitForLoadState("domcontentloaded");
-    if (await page.getByText(/Failed to fetch workers/i).isVisible().catch(() => false)) {
+    if (
+      await page
+        .getByText(/Failed to fetch workers/i)
+        .isVisible()
+        .catch(() => false)
+    ) {
       test.skip(true, "Workers API unavailable.");
     }
 
@@ -107,7 +126,12 @@ test.describe("Delete mutations: create then delete", () => {
   test("labor subcontractors: create then delete", async ({ page }) => {
     await page.goto(`${BASE}/labor/subcontractors`);
     await page.waitForLoadState("domcontentloaded");
-    if (await page.getByText(/Supabase is not configured/i).isVisible().catch(() => false)) {
+    if (
+      await page
+        .getByText(/Supabase is not configured/i)
+        .isVisible()
+        .catch(() => false)
+    ) {
       test.skip(true, "Supabase not configured.");
     }
 
@@ -133,7 +157,12 @@ test.describe("Delete mutations: create then delete", () => {
     const label = `PW-CUST-${Date.now()}`;
     await page.goto(`${BASE}/customers`);
     await page.waitForLoadState("domcontentloaded");
-    if (await page.getByText(/Supabase is not configured/i).isVisible().catch(() => false)) {
+    if (
+      await page
+        .getByText(/Supabase is not configured/i)
+        .isVisible()
+        .catch(() => false)
+    ) {
       test.skip(true, "Supabase not configured.");
     }
     await page.getByRole("button", { name: /\+ New Customer/i }).click();
@@ -149,7 +178,9 @@ test.describe("Delete mutations: create then delete", () => {
     }
     await row.locator("td").last().getByRole("button").first().click();
     await page.getByRole("menuitem", { name: /Delete…/ }).click();
-    await expect(page.getByRole("dialog", { name: /Delete customer/i })).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("dialog", { name: /Delete customer/i })).toBeVisible({
+      timeout: 10_000,
+    });
     await page.getByRole("button", { name: /^Delete$/ }).click();
     await expect(row).toHaveCount(0, { timeout: ROW_REMOVED_MS });
   });
@@ -159,10 +190,17 @@ test.describe("Delete mutations: create then delete", () => {
     const title = `PW-TASK-${Date.now()}`;
     await page.goto(`${BASE}/tasks`);
     await page.waitForLoadState("domcontentloaded");
-    if (await page.getByText(/Failed to load tasks/i).isVisible().catch(() => false)) {
+    if (
+      await page
+        .getByText(/Failed to load tasks/i)
+        .isVisible()
+        .catch(() => false)
+    ) {
       test.skip(true, "Tasks API unavailable.");
     }
-    await expect(page.getByText(/Loading/i).first()).not.toBeVisible({ timeout: LIST_LOAD_MS }).catch(() => undefined);
+    await expect(page.getByText(/Loading/i).first())
+      .not.toBeVisible({ timeout: LIST_LOAD_MS })
+      .catch(() => undefined);
 
     await page.getByRole("button", { name: /\+ New Task/i }).click();
     const taskDlg = page.getByRole("dialog", { name: /New Task/i });

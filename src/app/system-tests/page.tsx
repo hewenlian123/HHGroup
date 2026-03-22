@@ -42,23 +42,29 @@ const FULL_SYSTEM_OPTIONS: { id: string; label: string }[] = [
 
 function StatusBadge({ status }: { status: TestRow["status"] }) {
   if (status === "passed")
-    return <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">● Passed</span>;
+    return (
+      <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+        ● Passed
+      </span>
+    );
   if (status === "warning")
-    return <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">● Warning</span>;
-  return <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400">● Failed</span>;
+    return (
+      <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
+        ● Warning
+      </span>
+    );
+  return (
+    <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400">● Failed</span>
+  );
 }
 
 function ResultsTable({ tests, running }: { tests: TestRow[]; running: boolean }) {
   if (running && tests.length === 0) {
-    return (
-      <p className="py-4 text-sm text-muted-foreground">Running tests…</p>
-    );
+    return <p className="py-4 text-sm text-muted-foreground">Running tests…</p>;
   }
 
   if (tests.length === 0) {
-    return (
-      <p className="py-4 text-sm text-muted-foreground">Click a button to run tests.</p>
-    );
+    return <p className="py-4 text-sm text-muted-foreground">Click a button to run tests.</p>;
   }
 
   return (
@@ -137,9 +143,7 @@ export default function SystemTestsPage() {
     setWorkflowTests([]);
     setWorkflowTime(null);
     try {
-      const { tests, totalExecutionTimeMs, error } = await callRunAll(
-        only ? { only } : {}
-      );
+      const { tests, totalExecutionTimeMs, error } = await callRunAll(only ? { only } : {});
       setWorkflowTests(tests);
       setWorkflowTime(totalExecutionTimeMs);
       if (error) setWorkflowError(error);
@@ -217,9 +221,7 @@ export default function SystemTestsPage() {
             {runAllRunning ? "Running…" : "Run All Tests"}
           </Button>
         </div>
-        {runAllError && (
-          <p className="text-sm text-red-600 dark:text-red-400">{runAllError}</p>
-        )}
+        {runAllError && <p className="text-sm text-red-600 dark:text-red-400">{runAllError}</p>}
         {runAllTotalTime != null && !runAllRunning && (
           <p className="text-xs text-muted-foreground">
             Completed in {(runAllTotalTime / 1000).toFixed(1)}s
@@ -298,13 +300,9 @@ export default function SystemTestsPage() {
             </Button>
           ))}
         </div>
-        {workflowError && (
-          <p className="text-sm text-red-600 dark:text-red-400">{workflowError}</p>
-        )}
+        {workflowError && <p className="text-sm text-red-600 dark:text-red-400">{workflowError}</p>}
         {workflowTime != null && (
-          <p className="text-xs text-muted-foreground">
-            Completed in {workflowTime} ms
-          </p>
+          <p className="text-xs text-muted-foreground">Completed in {workflowTime} ms</p>
         )}
         <ResultsTable tests={workflowTests} running={workflowRunning} />
       </div>
@@ -317,8 +315,8 @@ export default function SystemTestsPage() {
           Full System Test — CRUD &amp; Workflows
         </p>
         <p className="text-xs text-muted-foreground -mt-1">
-          Creates, verifies, and deletes real rows in each table. All test data is tagged
-          "Workflow Test" and cleaned up automatically.
+          Creates, verifies, and deletes real rows in each table. All test data is tagged "Workflow
+          Test" and cleaned up automatically.
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <Button
@@ -343,13 +341,9 @@ export default function SystemTestsPage() {
             </Button>
           ))}
         </div>
-        {systemError && (
-          <p className="text-sm text-red-600 dark:text-red-400">{systemError}</p>
-        )}
+        {systemError && <p className="text-sm text-red-600 dark:text-red-400">{systemError}</p>}
         {systemTime != null && (
-          <p className="text-xs text-muted-foreground">
-            Completed in {systemTime} ms
-          </p>
+          <p className="text-xs text-muted-foreground">Completed in {systemTime} ms</p>
         )}
         <ResultsTable tests={systemTests} running={systemRunning} />
       </div>

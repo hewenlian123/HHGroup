@@ -46,9 +46,7 @@ function findSystemChrome(): string | undefined {
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-type TestOutcome =
-  | { name: string; ok: true }
-  | { name: string; ok: false; error: string };
+type TestOutcome = { name: string; ok: true } | { name: string; ok: false; error: string };
 
 /** Run a single test function. Returns { name, ok, error? }. */
 async function runTest(name: string, fn: () => Promise<void>): Promise<TestOutcome> {
@@ -164,7 +162,10 @@ async function smokeTestModulePage(
 }
 
 /** XPath first match (legacy `Page.$x` — not always in typings). */
-async function xpathFirst(page: Page, expression: string): Promise<ElementHandle<Element> | undefined> {
+async function xpathFirst(
+  page: Page,
+  expression: string
+): Promise<ElementHandle<Element> | undefined> {
   const legacy = page as unknown as { $x?: (xpath: string) => Promise<ElementHandle<Element>[]> };
   if (!legacy.$x) throw new Error("Puppeteer Page.$x is not available");
   const handles = await legacy.$x(expression);
@@ -400,19 +401,28 @@ async function main() {
           await page.keyboard.press("Escape");
           return;
         }
-        await page.select('select', firstProjectValue);
-        const titleInput = await page.$('input[placeholder*="Task title"], input[placeholder*="title"]');
+        await page.select("select", firstProjectValue);
+        const titleInput = await page.$(
+          'input[placeholder*="Task title"], input[placeholder*="title"]'
+        );
         if (!titleInput) throw new Error("Task title input not found");
         await titleInput.type(taskTitle, { delay: 20 });
         const saveBtn = await xpathFirst(page, '//button[contains(., "Save")]');
         if (!saveBtn) throw new Error("Save button not found");
         await saveBtn.click();
-        await page.waitForFunction(
-          () => !document.querySelector('[role="dialog"]') && !document.querySelector('[class*="dialog"][data-state="open"]'),
-          { timeout: WAIT_TIMEOUT }
-        ).catch(() => {});
+        await page
+          .waitForFunction(
+            () =>
+              !document.querySelector('[role="dialog"]') &&
+              !document.querySelector('[class*="dialog"][data-state="open"]'),
+            { timeout: WAIT_TIMEOUT }
+          )
+          .catch(() => {});
         await new Promise((r) => setTimeout(r, 800));
-        const hasRow = await page.evaluate((title) => document.body.innerText.includes(title), taskTitle);
+        const hasRow = await page.evaluate(
+          (title) => document.body.innerText.includes(title),
+          taskTitle
+        );
         if (!hasRow) throw new Error(`New task row "${taskTitle}" did not appear`);
         const rowEl = await xpathFirst(
           page,
@@ -426,7 +436,10 @@ async function main() {
         page.once("dialog", (d: { accept: () => void }) => d.accept());
         await deleteBtn.click();
         await new Promise((r) => setTimeout(r, 1200));
-        const stillThere = await page.evaluate((title) => document.body.innerText.includes(title), taskTitle);
+        const stillThere = await page.evaluate(
+          (title) => document.body.innerText.includes(title),
+          taskTitle
+        );
         if (stillThere) throw new Error("Task row still visible after delete");
       } finally {
         await page.close();
@@ -521,8 +534,6 @@ async function main() {
 
 main().catch((fatal) => {
   const msg = fatal instanceof Error ? fatal.message : String(fatal);
-  process.stdout.write(
-    JSON.stringify({ ok: false, tests: [], error: `Fatal: ${msg}` }) + "\n"
-  );
+  process.stdout.write(JSON.stringify({ ok: false, tests: [], error: `Fatal: ${msg}` }) + "\n");
   process.exit(1);
 });

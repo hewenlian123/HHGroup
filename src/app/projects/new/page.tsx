@@ -13,16 +13,19 @@ export default function NewProjectPage() {
   const [status, setStatus] = React.useState<"active" | "pending" | "completed">("pending");
   const [submitting, setSubmitting] = React.useState(false);
 
-  const handleSubmit = React.useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (submitting) return;
-    setError(null);
-    setSubmitting(true);
-    const formData = new FormData(e.currentTarget);
-    const result = await createProjectAction(null, formData);
-    if (result?.error) setError(result.error);
-    setSubmitting(false);
-  }, [submitting]);
+  const handleSubmit = React.useCallback(
+    async (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      if (submitting) return;
+      setError(null);
+      setSubmitting(true);
+      const formData = new FormData(e.currentTarget);
+      const result = await createProjectAction(null, formData);
+      if (result?.error) setError(result.error);
+      setSubmitting(false);
+    },
+    [submitting]
+  );
 
   return (
     <div className="page-container page-stack py-6">
@@ -43,7 +46,9 @@ export default function NewProjectPage() {
               name="status"
               className="h-10 rounded-[10px] border border-input bg-muted/20 px-3 text-sm"
               value={status}
-              onChange={(e) => setStatus((e.target.value as "active" | "pending" | "completed") ?? "pending")}
+              onChange={(e) =>
+                setStatus((e.target.value as "active" | "pending" | "completed") ?? "pending")
+              }
               disabled={submitting}
             >
               <option value="pending">Pending</option>
@@ -56,12 +61,12 @@ export default function NewProjectPage() {
             <Button type="button" variant="outline" asChild>
               <Link href="/projects">Cancel</Link>
             </Button>
-            <Button type="submit" disabled={submitting}>{submitting ? "Creating..." : "Create Project"}</Button>
+            <Button type="submit" disabled={submitting}>
+              {submitting ? "Creating..." : "Create Project"}
+            </Button>
           </div>
         </form>
       </Card>
     </div>
   );
 }
-
-

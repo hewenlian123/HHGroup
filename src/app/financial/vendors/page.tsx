@@ -78,7 +78,10 @@ export default function VendorsPage() {
       return;
     }
     try {
-      const { data, error } = await supabase.from("vendors").select("*").order("created_at", { ascending: false });
+      const { data, error } = await supabase
+        .from("vendors")
+        .select("*")
+        .order("created_at", { ascending: false });
       if (error) throw error;
       setRows((data ?? []) as VendorRow[]);
     } catch (error: unknown) {
@@ -222,7 +225,12 @@ export default function VendorsPage() {
             <Button asChild variant="outline" size="sm" className="rounded-sm">
               <Link href="/settings/lists?tab=vendors">Open Lists View</Link>
             </Button>
-            <Button size="sm" className="rounded-sm" onClick={openCreate} disabled={submitting || !!deletingId}>
+            <Button
+              size="sm"
+              className="rounded-sm"
+              onClick={openCreate}
+              disabled={submitting || !!deletingId}
+            >
               + New Vendor
             </Button>
           </div>
@@ -239,7 +247,9 @@ export default function VendorsPage() {
       </FilterBar>
 
       {message ? (
-        <p className="border-b border-[#EBEBE9] pb-3 text-sm text-muted-foreground dark:border-border">{message}</p>
+        <p className="border-b border-[#EBEBE9] pb-3 text-sm text-muted-foreground dark:border-border">
+          {message}
+        </p>
       ) : null}
 
       {editorOpen ? (
@@ -247,33 +257,59 @@ export default function VendorsPage() {
           <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">Name</p>
-              <Input value={form.name} onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))} placeholder="Required" />
+              <Input
+                value={form.name}
+                onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
+                placeholder="Required"
+              />
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">Contact Name</p>
-              <Input value={form.contact_name} onChange={(event) => setForm((prev) => ({ ...prev, contact_name: event.target.value }))} />
+              <Input
+                value={form.contact_name}
+                onChange={(event) =>
+                  setForm((prev) => ({ ...prev, contact_name: event.target.value }))
+                }
+              />
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">Phone</p>
-              <Input value={form.phone} onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))} />
+              <Input
+                value={form.phone}
+                onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))}
+              />
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">Email</p>
-              <Input value={form.email} onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))} />
+              <Input
+                value={form.email}
+                onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
+              />
             </div>
             <div className="space-y-1 md:col-span-2">
               <p className="text-xs text-muted-foreground">Address</p>
-              <Input value={form.address} onChange={(event) => setForm((prev) => ({ ...prev, address: event.target.value }))} />
+              <Input
+                value={form.address}
+                onChange={(event) => setForm((prev) => ({ ...prev, address: event.target.value }))}
+              />
             </div>
             <div className="space-y-1 md:col-span-2">
               <p className="text-xs text-muted-foreground">Notes</p>
-              <Input value={form.notes} onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))} />
+              <Input
+                value={form.notes}
+                onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
+              />
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">Status</p>
               <Select
                 value={form.status}
-                onChange={(event) => setForm((prev) => ({ ...prev, status: event.target.value === "inactive" ? "inactive" : "active" }))}
+                onChange={(event) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    status: event.target.value === "inactive" ? "inactive" : "active",
+                  }))
+                }
               >
                 <option value="active">active</option>
                 <option value="inactive">inactive</option>
@@ -281,11 +317,26 @@ export default function VendorsPage() {
             </div>
           </div>
           <div className="mt-4 flex flex-col-reverse justify-end gap-2 border-t border-[#EBEBE9] pt-3 sm:flex-row sm:items-center dark:border-border">
-            <Button variant="outline" size="sm" className="rounded-sm" onClick={() => setEditorOpen(false)} disabled={submitting}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-sm"
+              onClick={() => setEditorOpen(false)}
+              disabled={submitting}
+            >
               Cancel
             </Button>
-            <Button size="sm" className="rounded-sm" onClick={() => void handleSave()} disabled={submitting}>
-              {submitting ? "Saving..." : editorMode === "create" ? "Create Vendor" : "Save Changes"}
+            <Button
+              size="sm"
+              className="rounded-sm"
+              onClick={() => void handleSave()}
+              disabled={submitting}
+            >
+              {submitting
+                ? "Saving..."
+                : editorMode === "create"
+                  ? "Create Vendor"
+                  : "Save Changes"}
             </Button>
           </div>
         </section>
@@ -321,10 +372,17 @@ export default function VendorsPage() {
                   <td className="px-4 py-3 text-muted-foreground">{row.contact_name || "—"}</td>
                   <td className="px-4 py-3 text-muted-foreground">{row.phone || "—"}</td>
                   <td className="px-4 py-3 text-muted-foreground">{row.email || "—"}</td>
-                  <td className="px-4 py-3"><StatusBadge status={row.status} /></td>
+                  <td className="px-4 py-3">
+                    <StatusBadge status={row.status} />
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-2">
-                      <Button variant="outline" size="sm" className="h-8 rounded-sm px-3" onClick={() => openEdit(row)}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 rounded-sm px-3"
+                        onClick={() => openEdit(row)}
+                      >
                         Edit
                       </Button>
                       <Button

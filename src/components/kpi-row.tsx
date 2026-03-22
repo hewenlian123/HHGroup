@@ -25,8 +25,15 @@ export function KpiRow({ items }: { items: KpiItem[] }) {
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-xs uppercase tracking-[0.08em] text-muted-foreground">{item.label}</p>
-                <p className={cn("mt-2 text-3xl font-semibold leading-tight tabular-nums", item.emphasis && "text-[32px]")}>
+                <p className="text-xs uppercase tracking-[0.08em] text-muted-foreground">
+                  {item.label}
+                </p>
+                <p
+                  className={cn(
+                    "mt-2 text-3xl font-semibold leading-tight tabular-nums",
+                    item.emphasis && "text-[32px]"
+                  )}
+                >
                   {item.value}
                 </p>
               </div>

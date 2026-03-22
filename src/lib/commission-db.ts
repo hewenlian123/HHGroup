@@ -60,7 +60,9 @@ function toCommission(r: Record<string, unknown>): ProjectCommission {
     rate: Number(r.rate) || 0,
     base_amount: Number(r.base_amount) || 0,
     commission_amount: Number(r.commission_amount) || 0,
-    status: (r.status === "Approved" || r.status === "Paid" || r.status === "Cancelled" ? r.status : "Pending") as CommissionStatus,
+    status: (r.status === "Approved" || r.status === "Paid" || r.status === "Cancelled"
+      ? r.status
+      : "Pending") as CommissionStatus,
     notes: r.notes != null ? String(r.notes) : null,
     created_at: String(r.created_at ?? "").slice(0, 19),
   };
@@ -136,8 +138,13 @@ export async function updateCommission(
   if (data.base_amount !== undefined) updates.base_amount = Math.max(0, data.base_amount);
   if (data.status !== undefined) updates.status = data.status;
   if (data.notes !== undefined) updates.notes = data.notes?.trim() || null;
-  if (data.commission_amount !== undefined) updates.commission_amount = Math.max(0, data.commission_amount);
-  if (data.calculation_mode === "Auto" && data.base_amount !== undefined && data.rate !== undefined) {
+  if (data.commission_amount !== undefined)
+    updates.commission_amount = Math.max(0, data.commission_amount);
+  if (
+    data.calculation_mode === "Auto" &&
+    data.base_amount !== undefined &&
+    data.rate !== undefined
+  ) {
     updates.commission_amount = Math.round(data.base_amount * data.rate * 100) / 100;
   }
   if (Object.keys(updates).length === 0) return getCommissionById(id);
@@ -153,7 +160,11 @@ export async function updateCommission(
 
 export async function getCommissionById(id: string): Promise<ProjectCommission | null> {
   const c = client();
-  const { data: row, error } = await c.from("project_commissions").select(COLS).eq("id", id).maybeSingle();
+  const { data: row, error } = await c
+    .from("project_commissions")
+    .select(COLS)
+    .eq("id", id)
+    .maybeSingle();
   if (error || !row) return null;
   return toCommission(row as Record<string, unknown>);
 }
@@ -182,7 +193,9 @@ function toPaymentRecord(r: Record<string, unknown>): CommissionPaymentRecord {
   };
 }
 
-export async function getPaymentRecordsByCommissionId(commissionId: string): Promise<CommissionPaymentRecord[]> {
+export async function getPaymentRecordsByCommissionId(
+  commissionId: string
+): Promise<CommissionPaymentRecord[]> {
   const c = client();
   const { data: rows, error } = await c
     .from("commission_payment_records")
@@ -271,7 +284,10 @@ export async function getCommissionSummary(): Promise<{
     .from("commission_payment_records")
     .select("amount")
     .gte("payment_date", monthStart);
-  const thisMonthPaid = (monthPayments ?? []).reduce((s, p) => s + (Number((p as { amount: number }).amount) || 0), 0);
+  const thisMonthPaid = (monthPayments ?? []).reduce(
+    (s, p) => s + (Number((p as { amount: number }).amount) || 0),
+    0
+  );
   return {
     totalCommission,
     paidCommission,

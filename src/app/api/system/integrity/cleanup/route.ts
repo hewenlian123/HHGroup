@@ -12,17 +12,10 @@ import postgres from "postgres";
 export const dynamic = "force-dynamic";
 
 /** Must match integrity/route.ts: only specific test terms, word-boundary matching. */
-const TEST_KEYWORDS = [
-  "Workflow Test",
-  "Test Worker",
-  "Test Project",
-  "Test Vendor",
-];
+const TEST_KEYWORDS = ["Workflow Test", "Test Worker", "Test Project", "Test Vendor"];
 
 /** Must match integrity/route.ts: real projects never deleted by stale cleanup. */
-const WHITELIST_PROJECT_IDS = [
-  "9d14a300-a682-498a-9e5e-3bd4a7e070c4",
-];
+const WHITELIST_PROJECT_IDS = ["9d14a300-a682-498a-9e5e-3bd4a7e070c4"];
 
 type CleanupCategory = "orphaned" | "ghost" | "duplicate" | "stale";
 
@@ -33,7 +26,10 @@ export async function POST(request: Request) {
     category = body?.category;
     if (!category || !["orphaned", "ghost", "duplicate", "stale"].includes(category)) {
       return NextResponse.json(
-        { ok: false, message: "Missing or invalid category. Use: orphaned, ghost, duplicate, stale." },
+        {
+          ok: false,
+          message: "Missing or invalid category. Use: orphaned, ghost, duplicate, stale.",
+        },
         { status: 400 }
       );
     }
@@ -46,7 +42,10 @@ export async function POST(request: Request) {
 
   if (!url) {
     return NextResponse.json(
-      { ok: false, message: "Database URL not configured (SUPABASE_DATABASE_URL or DATABASE_URL)." },
+      {
+        ok: false,
+        message: "Database URL not configured (SUPABASE_DATABASE_URL or DATABASE_URL).",
+      },
       { status: 503 }
     );
   }
@@ -54,10 +53,7 @@ export async function POST(request: Request) {
   const deleted: Record<string, number> = {};
   const errors: string[] = [];
 
-  async function deleteTaskIds(
-    sqlClient: postgres.Sql,
-    ids: string[]
-  ): Promise<void> {
+  async function deleteTaskIds(sqlClient: postgres.Sql, ids: string[]): Promise<void> {
     if (ids.length === 0) return;
     if (admin) {
       const { error } = await admin.from("project_tasks").delete().in("id", ids);
@@ -71,10 +67,7 @@ export async function POST(request: Request) {
     }
   }
 
-  async function deleteProjectIds(
-    sqlClient: postgres.Sql,
-    ids: string[]
-  ): Promise<void> {
+  async function deleteProjectIds(sqlClient: postgres.Sql, ids: string[]): Promise<void> {
     if (ids.length === 0) return;
     if (admin) {
       const { error } = await admin.from("projects").delete().in("id", ids);

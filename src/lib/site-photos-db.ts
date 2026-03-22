@@ -59,7 +59,9 @@ export async function getSitePhotos(projectId?: string | null): Promise<SitePhot
   const projectIds = Array.from(new Set(items.map((i) => i.project_id)));
   if (projectIds.length === 0) return items.map((i) => ({ ...i, project_name: null }));
   const { data: projects } = await c.from("projects").select("id, name").in("id", projectIds);
-  const projectNames = new Map<string, string>(((projects ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name ?? ""]));
+  const projectNames = new Map<string, string>(
+    ((projects ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name ?? ""])
+  );
   return items.map((i) => ({
     ...i,
     project_name: projectNames.get(i.project_id) ?? null,
@@ -72,7 +74,11 @@ export async function getSitePhotoById(id: string): Promise<SitePhotoWithProject
   const { data: row, error } = await c.from("site_photos").select(COLS).eq("id", id).maybeSingle();
   if (error || !row) return null;
   const item = toRow(row as Record<string, unknown>);
-  const { data: proj } = await c.from("projects").select("id, name").eq("id", item.project_id).maybeSingle();
+  const { data: proj } = await c
+    .from("projects")
+    .select("id, name")
+    .eq("id", item.project_id)
+    .maybeSingle();
   const project_name = (proj as { name?: string } | null)?.name ?? null;
   return { ...item, project_name };
 }
@@ -106,7 +112,12 @@ export async function updateSitePhoto(
   if (patch.tags !== undefined) updates.tags = patch.tags?.trim() ?? null;
   if (patch.uploaded_by !== undefined) updates.uploaded_by = patch.uploaded_by?.trim() ?? null;
   if (Object.keys(updates).length === 0) return null;
-  const { data: row, error } = await c.from("site_photos").update(updates).eq("id", id).select(COLS).single();
+  const { data: row, error } = await c
+    .from("site_photos")
+    .update(updates)
+    .eq("id", id)
+    .select(COLS)
+    .single();
   if (error || !row) return null;
   return toRow(row as Record<string, unknown>);
 }

@@ -25,23 +25,19 @@ export async function getAllCustomers(): Promise<Customer[]> {
   const c = admin();
   const { data, error } = await c
     .from("customers")
-    .select(
-      "id,name,email,phone,address,city,state,zip,notes,created_at",
-    )
+    .select("id,name,email,phone,address,city,state,zip,notes,created_at")
     .order("name", { ascending: true });
   if (error) throw new Error(error.message ?? "Failed to load customers.");
   return (data ?? []) as Customer[];
 }
 
 export async function getCustomerById(
-  id: string,
+  id: string
 ): Promise<(Customer & { projects_count: number }) | null> {
   const c = admin();
   const { data, error } = await c
     .from("customers")
-    .select(
-      "id,name,email,phone,address,city,state,zip,notes,created_at",
-    )
+    .select("id,name,email,phone,address,city,state,zip,notes,created_at")
     .eq("id", id)
     .maybeSingle();
   if (error) throw new Error(error.message ?? "Failed to load customer.");
@@ -64,9 +60,7 @@ export type CustomerDraft = {
   notes?: string | null;
 };
 
-export async function createCustomer(
-  draft: CustomerDraft,
-): Promise<Customer> {
+export async function createCustomer(draft: CustomerDraft): Promise<Customer> {
   const c = admin();
   const payload = {
     name: draft.name.trim(),
@@ -81,18 +75,13 @@ export async function createCustomer(
   const { data, error } = await c
     .from("customers")
     .insert(payload)
-    .select(
-      "id,name,email,phone,address,city,state,zip,notes,created_at",
-    )
+    .select("id,name,email,phone,address,city,state,zip,notes,created_at")
     .single();
   if (error) throw new Error(error.message ?? "Failed to create customer.");
   return data as Customer;
 }
 
-export async function updateCustomer(
-  id: string,
-  patch: Partial<CustomerDraft>,
-): Promise<Customer> {
+export async function updateCustomer(id: string, patch: Partial<CustomerDraft>): Promise<Customer> {
   const c = admin();
   const payload: Record<string, string | null> = {};
   if (patch.name !== undefined) payload.name = patch.name.trim();
@@ -110,16 +99,14 @@ export async function updateCustomer(
     .from("customers")
     .update(payload)
     .eq("id", id)
-    .select(
-      "id,name,email,phone,address,city,state,zip,notes,created_at",
-    )
+    .select("id,name,email,phone,address,city,state,zip,notes,created_at")
     .single();
   if (error) throw new Error(error.message ?? "Failed to update customer.");
   return data as Customer;
 }
 
 export async function deleteCustomer(
-  id: string,
+  id: string
 ): Promise<{ ok: true } | { ok: false; reason: string }> {
   const c = admin();
   const { count } = await c
@@ -141,4 +128,3 @@ export async function deleteCustomer(
   }
   return { ok: true };
 }
-

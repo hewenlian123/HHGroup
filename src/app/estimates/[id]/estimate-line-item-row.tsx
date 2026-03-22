@@ -94,46 +94,91 @@ export function EstimateLineItemRow({
           {isLocked ? (
             <span className="font-medium text-foreground">{title || row.desc}</span>
           ) : (
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} onBlur={submitForm} className="h-8 text-sm" placeholder="Title" />
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onBlur={submitForm}
+              className="h-8 text-sm"
+              placeholder="Title"
+            />
           )}
         </td>
         <td className="py-2 px-4 text-right align-top">
           {isLocked ? (
             row.qty
           ) : (
-            <Input form={formId} type="number" name="qty" step="1" value={qty} onChange={(e) => setQty(Number(e.target.value) || 0)} onBlur={submitForm} className="h-8 w-16 text-right" />
+            <Input
+              form={formId}
+              type="number"
+              name="qty"
+              step="1"
+              value={qty}
+              onChange={(e) => setQty(Number(e.target.value) || 0)}
+              onBlur={submitForm}
+              className="h-8 w-16 text-right"
+            />
           )}
         </td>
         <td className="py-2 px-4 align-top">
           {isLocked ? (
             row.unit
           ) : (
-            <Input form={formId} name="unit" value={unit} onChange={(e) => setUnit(e.target.value)} onBlur={submitForm} className="h-8 w-14" />
+            <Input
+              form={formId}
+              name="unit"
+              value={unit}
+              onChange={(e) => setUnit(e.target.value)}
+              onBlur={submitForm}
+              className="h-8 w-14"
+            />
           )}
         </td>
         <td className="py-2 px-4 text-right align-top">
           {isLocked ? (
             `$${row.unitCost.toLocaleString()}`
           ) : (
-            <Input form={formId} type="number" name="unitCost" step="0.01" value={unitCost} onChange={(e) => setUnitCost(Number(e.target.value) || 0)} onBlur={submitForm} className="h-8 w-20 text-right" />
+            <Input
+              form={formId}
+              type="number"
+              name="unitCost"
+              step="0.01"
+              value={unitCost}
+              onChange={(e) => setUnitCost(Number(e.target.value) || 0)}
+              onBlur={submitForm}
+              className="h-8 w-20 text-right"
+            />
           )}
         </td>
         <td className="py-2 px-4 align-top text-muted-foreground text-xs">{code.code}</td>
-        <td className="py-2 px-4 align-top text-right tabular-nums font-medium">${lineTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+        <td className="py-2 px-4 align-top text-right tabular-nums font-medium">
+          ${lineTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+        </td>
         {!isLocked && (
           <td className="py-2 px-2 align-top">
             <div className="flex items-center gap-1">
               <form action={duplicateLineItemAction} className="inline">
                 <input type="hidden" name="estimateId" value={estimateId} />
                 <input type="hidden" name="itemId" value={row.id} />
-                <Button type="submit" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" title="Duplicate">
+                <Button
+                  type="submit"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                  title="Duplicate"
+                >
                   <Copy className="h-4 w-4" />
                 </Button>
               </form>
               <form action={deleteLineItemAction} className="inline">
                 <input type="hidden" name="estimateId" value={estimateId} />
                 <input type="hidden" name="itemId" value={row.id} />
-                <Button type="submit" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" title="Delete">
+                <Button
+                  type="submit"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                  title="Delete"
+                >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </form>
@@ -144,10 +189,18 @@ export function EstimateLineItemRow({
       <tr className="border-b border-zinc-100/50 dark:border-border/30 bg-zinc-50/30 dark:bg-zinc-900/20">
         <td colSpan={isLocked ? 6 : 7} className="py-1.5 px-4 align-top">
           {isLocked ? (
-            description ? <span className="text-sm text-muted-foreground">{description}</span> : null
+            description ? (
+              <span className="text-sm text-muted-foreground">{description}</span>
+            ) : null
           ) : (
             <>
-              <form ref={formRef} action={updateLineItemAction} id={formId} className="hidden" aria-hidden>
+              <form
+                ref={formRef}
+                action={updateLineItemAction}
+                id={formId}
+                className="hidden"
+                aria-hidden
+              >
                 <input type="hidden" name="estimateId" value={estimateId} />
                 <input type="hidden" name="itemId" value={row.id} />
                 <input type="hidden" name="desc" value={combinedDesc} />

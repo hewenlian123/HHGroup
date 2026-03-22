@@ -1,12 +1,7 @@
 "use client";
 
 import * as React from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,7 +10,10 @@ import {
   markWorkerInvoicesPaid,
   getProjects,
 } from "@/lib/data";
-import { WorkerAdvanceSelector, type WorkerAdvanceOption } from "@/components/labor/worker-advance-selector";
+import {
+  WorkerAdvanceSelector,
+  type WorkerAdvanceOption,
+} from "@/components/labor/worker-advance-selector";
 
 const METHODS = ["Cash", "Check", "Bank Transfer", "Zelle", "Other"] as const;
 
@@ -39,7 +37,9 @@ export function PayWorkerModal({
   const [projects, setProjects] = React.useState<Awaited<ReturnType<typeof getProjects>>>([]);
   const [projectId, setProjectId] = React.useState<string>("");
   const [paymentDate, setPaymentDate] = React.useState(() => new Date().toISOString().slice(0, 10));
-  const [amount, setAmount] = React.useState(() => (defaultAmount ? String(defaultAmount.toFixed(2)) : ""));
+  const [amount, setAmount] = React.useState(() =>
+    defaultAmount ? String(defaultAmount.toFixed(2)) : ""
+  );
   const [method, setMethod] = React.useState<string>(METHODS[0]);
   const [notes, setNotes] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
@@ -78,7 +78,7 @@ export function PayWorkerModal({
               projectName: (r.projectName as string | null) ?? null,
               notes: (r.notes as string | null) ?? null,
               status: (r.status as "pending" | "deducted" | "cancelled") ?? "pending",
-            })),
+            }))
           );
         } else {
           setAdvances([]);
@@ -122,7 +122,7 @@ export function PayWorkerModal({
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ status: "deducted" }),
-              }),
+              })
             )
           : []),
       ]);
@@ -166,7 +166,12 @@ export function PayWorkerModal({
 
           <div className="space-y-2">
             <label className="text-xs font-medium text-muted-foreground">Payment Date</label>
-            <Input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} className="h-9 text-sm" />
+            <Input
+              type="date"
+              value={paymentDate}
+              onChange={(e) => setPaymentDate(e.target.value)}
+              className="h-9 text-sm"
+            />
           </div>
 
           <div className="space-y-2">
@@ -199,11 +204,18 @@ export function PayWorkerModal({
 
           <div className="space-y-2">
             <label className="text-xs font-medium text-muted-foreground">Notes</label>
-            <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional" className="h-9 text-sm" />
+            <Input
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Optional"
+              className="h-9 text-sm"
+            />
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">Apply advances (optional)</label>
+            <label className="text-xs font-medium text-muted-foreground">
+              Apply advances (optional)
+            </label>
             <WorkerAdvanceSelector
               advances={advances}
               selectedIds={selectedAdvanceIds}
@@ -214,7 +226,13 @@ export function PayWorkerModal({
           {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
 
           <div className="flex justify-end gap-2 pt-2 border-t border-border/40">
-            <Button type="button" variant="outline" size="sm" className="h-9" onClick={() => onOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9"
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
             <Button type="submit" size="sm" className="h-9" disabled={busy}>
@@ -226,4 +244,3 @@ export function PayWorkerModal({
     </Dialog>
   );
 }
-

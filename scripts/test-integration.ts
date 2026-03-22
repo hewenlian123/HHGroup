@@ -165,9 +165,7 @@ async function main() {
       `;
       const laborOwed = Number(agg?.labor_owed ?? 0);
       if (Math.abs(laborOwed - costAmount) > 0.01) {
-        throw new Error(
-          `Labor owed mismatch: expected ${costAmount}, got ${laborOwed}`,
-        );
+        throw new Error(`Labor owed mismatch: expected ${costAmount}, got ${laborOwed}`);
       }
       steps.push("worker balance labor_owed matches labor_entries");
 
@@ -230,9 +228,7 @@ async function main() {
       `;
       const spent = Number(agg?.total ?? 0);
       if (Math.abs(spent - amount) > 0.01) {
-        throw new Error(
-          `Project spent mismatch from expenses: expected ${amount}, got ${spent}`,
-        );
+        throw new Error(`Project spent mismatch from expenses: expected ${amount}, got ${spent}`);
       }
       steps.push("project spent reflects expense amount (via expenses)");
 
@@ -334,4 +330,3 @@ main().catch((e) => {
   console.error("Unexpected error:", toError(e));
   process.exit(1);
 });
-

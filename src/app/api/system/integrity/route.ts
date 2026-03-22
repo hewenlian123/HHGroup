@@ -17,17 +17,10 @@ import postgres from "postgres";
 export const dynamic = "force-dynamic";
 
 /** Only very specific test terms; no generic words like "Test", "Example", "Demo", "Untitled". */
-const TEST_KEYWORDS = [
-  "Workflow Test",
-  "Test Worker",
-  "Test Project",
-  "Test Vendor",
-];
+const TEST_KEYWORDS = ["Workflow Test", "Test Worker", "Test Project", "Test Vendor"];
 
 /** Known real projects to exclude from stale test data check and cleanup. */
-const WHITELIST_PROJECT_IDS = [
-  "9d14a300-a682-498a-9e5e-3bd4a7e070c4",
-];
+const WHITELIST_PROJECT_IDS = ["9d14a300-a682-498a-9e5e-3bd4a7e070c4"];
 
 export type IntegrityCheck = {
   ok: boolean;

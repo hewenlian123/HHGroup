@@ -1,12 +1,7 @@
 "use client";
 
 import * as React from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import type { ExpenseAttachment } from "@/lib/data";
 
@@ -32,7 +27,9 @@ export function AttachmentPreviewDialog({
         onPointerDownOutside={(e) => e.preventDefault()}
       >
         <DialogHeader className="px-6 pt-6 pb-2">
-          <DialogTitle className="text-base truncate">{attachment?.fileName ?? "Preview"}</DialogTitle>
+          <DialogTitle className="text-base truncate">
+            {attachment?.fileName ?? "Preview"}
+          </DialogTitle>
         </DialogHeader>
         <div className="flex-1 min-h-0 overflow-auto px-6 pb-6 flex items-center justify-center bg-muted/30">
           {attachment && (
@@ -55,7 +52,9 @@ export function AttachmentPreviewDialog({
                 />
               )}
               {!isImage && !isPdf && (
-                <p className="text-sm text-muted-foreground">Preview not available for this file type.</p>
+                <p className="text-sm text-muted-foreground">
+                  Preview not available for this file type.
+                </p>
               )}
             </>
           )}

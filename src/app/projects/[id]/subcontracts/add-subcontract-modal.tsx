@@ -1,12 +1,7 @@
 "use client";
 
 import * as React from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { addSubcontractAction } from "./actions";
 
@@ -90,7 +85,9 @@ export function AddSubcontractModal({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">Subcontractor (required)</label>
+            <label className="text-xs font-medium text-muted-foreground">
+              Subcontractor (required)
+            </label>
             <select
               value={subcontractorId}
               onChange={(e) => setSubcontractorId(e.target.value)}
@@ -115,7 +112,9 @@ export function AddSubcontractModal({
             />
           </div>
           <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">Contract Amount (required)</label>
+            <label className="text-xs font-medium text-muted-foreground">
+              Contract Amount (required)
+            </label>
             <Input
               type="number"
               step="0.01"
@@ -154,9 +153,7 @@ export function AddSubcontractModal({
               className="h-9 text-sm"
             />
           </div>
-          {error ? (
-            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-          ) : null}
+          {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
           <div className="flex justify-end gap-2 pt-2 border-t border-border/40">
             <button
               type="button"

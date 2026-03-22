@@ -70,7 +70,14 @@ const TRUNCATE_TABLES = [
   "workers",
 ];
 
-const VERIFY_TABLES = ["project_tasks", "punch_list", "projects", "workers", "invoices", "expenses"];
+const VERIFY_TABLES = [
+  "project_tasks",
+  "punch_list",
+  "projects",
+  "workers",
+  "invoices",
+  "expenses",
+];
 const NIL_UUID = "00000000-0000-0000-0000-000000000000";
 
 async function main() {
@@ -80,11 +87,19 @@ async function main() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const maskUrl = (u: string) =>
-    u ? u.replace(/https?:\/\/([^.]+\.)?([^/]+)/, (_, sub, host) => `${host ? host.slice(0, 8) + "…" : "…"}`) : "?";
+    u
+      ? u.replace(
+          /https?:\/\/([^.]+\.)?([^/]+)/,
+          (_, sub, host) => `${host ? host.slice(0, 8) + "…" : "…"}`
+        )
+      : "?";
 
   if (dbUrl) {
     // TRUNCATE via direct Postgres (bypasses RLS, most reliable).
-    console.log("Using TRUNCATE via SUPABASE_DATABASE_URL. Project:", maskUrl(supabaseUrl || dbUrl));
+    console.log(
+      "Using TRUNCATE via SUPABASE_DATABASE_URL. Project:",
+      maskUrl(supabaseUrl || dbUrl)
+    );
     const sql = postgres(dbUrl, { max: 1, connect_timeout: 10 });
     const truncated: string[] = [];
     const errors: string[] = [];
@@ -132,8 +147,13 @@ async function main() {
     );
     process.exit(1);
   }
-  console.log("No SUPABASE_DATABASE_URL; using DELETE via Supabase client. Project:", maskUrl(supabaseUrl));
-  console.warn("Tip: Set SUPABASE_DATABASE_URL for TRUNCATE (bypasses RLS). See scripts/clear-data.sql for manual run.");
+  console.log(
+    "No SUPABASE_DATABASE_URL; using DELETE via Supabase client. Project:",
+    maskUrl(supabaseUrl)
+  );
+  console.warn(
+    "Tip: Set SUPABASE_DATABASE_URL for TRUNCATE (bypasses RLS). See scripts/clear-data.sql for manual run."
+  );
   const c = createClient(supabaseUrl, serviceKey);
   const deleted: Record<string, number> = {};
   const errors: string[] = [];
@@ -141,7 +161,10 @@ async function main() {
     try {
       const { data, error } = await c.from(table).delete().neq("id", NIL_UUID).select("id");
       if (error) {
-        if (/relation.*does not exist|table.*does not exist|could not find/i.test(error.message ?? "")) continue;
+        if (
+          /relation.*does not exist|table.*does not exist|could not find/i.test(error.message ?? "")
+        )
+          continue;
         errors.push(`${table}: ${error.message}`);
         continue;
       }
@@ -156,7 +179,8 @@ async function main() {
   const counts: Record<string, number> = {};
   for (const table of VERIFY_TABLES) {
     const { count, error } = await c.from(table).select("id", { count: "exact", head: true });
-    counts[table] = error && !/relation.*does not exist/i.test(error.message ?? "") ? -1 : (count ?? 0);
+    counts[table] =
+      error && !/relation.*does not exist/i.test(error.message ?? "") ? -1 : (count ?? 0);
   }
   console.log("Verification:", counts);
   const nonEmpty = Object.entries(counts).filter(([, n]) => n > 0);

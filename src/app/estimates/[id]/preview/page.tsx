@@ -14,23 +14,20 @@ import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 
 export const dynamic = "force-dynamic";
 
-export default async function EstimatePreviewPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function EstimatePreviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const [estimate, meta, items, categories, summary, paymentSchedule, costCodes, company] = await Promise.all([
-    getEstimateById(id),
-    getEstimateMeta(id),
-    getEstimateItems(id),
-    getEstimateCategories(id),
-    getEstimateSummary(id),
-    getPaymentSchedule(id),
-    getCostCodes(),
-    fetchDocumentCompanyProfile(),
-  ]);
+  const [estimate, meta, items, categories, summary, paymentSchedule, costCodes, company] =
+    await Promise.all([
+      getEstimateById(id),
+      getEstimateMeta(id),
+      getEstimateItems(id),
+      getEstimateCategories(id),
+      getEstimateSummary(id),
+      getPaymentSchedule(id),
+      getCostCodes(),
+      fetchDocumentCompanyProfile(),
+    ]);
 
   if (!estimate || !meta) redirect("/estimates");
 

@@ -3,36 +3,25 @@ import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const admin = getServerSupabaseAdmin();
   if (!admin) {
-    return NextResponse.json(
-      { message: "Supabase not configured." },
-      { status: 500 },
-    );
+    return NextResponse.json({ message: "Supabase not configured." }, { status: 500 });
   }
   const { data, error } = await admin
     .from("customers")
-    .select(
-      "id,name,email,phone,address,city,state,zip,notes,created_at",
-    )
+    .select("id,name,email,phone,address,city,state,zip,notes,created_at")
     .eq("id", id)
     .maybeSingle();
   if (error) {
     return NextResponse.json(
       { message: error.message ?? "Failed to load customer." },
-      { status: 500 },
+      { status: 500 }
     );
   }
   if (!data) {
-    return NextResponse.json(
-      { message: "Customer not found." },
-      { status: 404 },
-    );
+    return NextResponse.json({ message: "Customer not found." }, { status: 404 });
   }
   const { count } = await admin
     .from("projects")
@@ -44,17 +33,11 @@ export async function GET(
   });
 }
 
-export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const admin = getServerSupabaseAdmin();
   if (!admin) {
-    return NextResponse.json(
-      { message: "Supabase not configured." },
-      { status: 500 },
-    );
+    return NextResponse.json({ message: "Supabase not configured." }, { status: 500 });
   }
   const body = (await request.json()) as {
     name?: string;
@@ -82,30 +65,22 @@ export async function PATCH(
     .from("customers")
     .update(payload)
     .eq("id", id)
-    .select(
-      "id,name,email,phone,address,city,state,zip,notes,created_at",
-    )
+    .select("id,name,email,phone,address,city,state,zip,notes,created_at")
     .single();
   if (error) {
     return NextResponse.json(
       { message: error.message ?? "Failed to update customer." },
-      { status: 500 },
+      { status: 500 }
     );
   }
   return NextResponse.json(data);
 }
 
-export async function DELETE(
-  _request: Request,
-  { params }: { params: Promise<{ id: string }> },
-) {
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const admin = getServerSupabaseAdmin();
   if (!admin) {
-    return NextResponse.json(
-      { message: "Supabase not configured." },
-      { status: 500 },
-    );
+    return NextResponse.json({ message: "Supabase not configured." }, { status: 500 });
   }
 
   const { count } = await admin
@@ -118,7 +93,7 @@ export async function DELETE(
         message:
           "This customer has linked projects and cannot be deleted. Reassign or delete those projects first.",
       },
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -126,9 +101,8 @@ export async function DELETE(
   if (error) {
     return NextResponse.json(
       { message: error.message ?? "Failed to delete customer." },
-      { status: 500 },
+      { status: 500 }
     );
   }
   return new NextResponse(null, { status: 204 });
 }
-

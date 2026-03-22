@@ -110,7 +110,10 @@ export default function TasksPage() {
   const load = React.useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/operations/tasks?t=${Date.now()}`, { cache: "no-store", headers: { Pragma: "no-cache" } });
+      const res = await fetch(`/api/operations/tasks?t=${Date.now()}`, {
+        cache: "no-store",
+        headers: { Pragma: "no-cache" },
+      });
       const data = await res.json();
       if (!data.ok) throw new Error(data.message || "Failed to load");
       const taskList = data.tasks ?? [];
@@ -163,8 +166,10 @@ export default function TasksPage() {
   const filtered = React.useMemo(() => {
     if (filter === "completed") return tasks.filter((t) => t.status === "done");
     if (filter === "today") return tasks.filter((t) => t.status !== "done" && isToday(t.due_date));
-    if (filter === "this_week") return tasks.filter((t) => t.status !== "done" && isThisWeek(t.due_date));
-    if (filter === "overdue") return tasks.filter((t) => t.status !== "done" && isOverdue(t.due_date));
+    if (filter === "this_week")
+      return tasks.filter((t) => t.status !== "done" && isThisWeek(t.due_date));
+    if (filter === "overdue")
+      return tasks.filter((t) => t.status !== "done" && isOverdue(t.due_date));
     return tasks;
   }, [tasks, filter]);
 
@@ -205,7 +210,7 @@ export default function TasksPage() {
     const projectId = form.project_id;
     const project_name = projects.find((p) => p.id === projectId)?.name ?? null;
     const assigned = form.assigned_worker_id || null;
-    const worker_name = assigned ? workers.find((w) => w.id === assigned)?.name ?? null : null;
+    const worker_name = assigned ? (workers.find((w) => w.id === assigned)?.name ?? null) : null;
     const tempId =
       typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
         ? `temp-${crypto.randomUUID()}`
@@ -260,7 +265,7 @@ export default function TasksPage() {
             status: t.status,
             assigned_worker_id: t.assigned_worker_id,
             worker_name: t.assigned_worker_id
-              ? workers.find((w) => w.id === t.assigned_worker_id)?.name ?? null
+              ? (workers.find((w) => w.id === t.assigned_worker_id)?.name ?? null)
               : null,
             due_date: t.due_date,
             priority: t.priority,
@@ -294,7 +299,9 @@ export default function TasksPage() {
       apply: () => {
         setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, status: nextStatus } : t)));
         if (sel?.id === task.id) {
-          setSelectedTask((prev) => (prev?.id === task.id ? { ...prev, status: nextStatus } : prev));
+          setSelectedTask((prev) =>
+            prev?.id === task.id ? { ...prev, status: nextStatus } : prev
+          );
           setDrawerForm((prev) => ({ ...prev, status: nextStatus }));
         }
         setError(null);
@@ -326,7 +333,7 @@ export default function TasksPage() {
     const df = { ...drawerForm };
     const title = df.title || st.title;
     const wid = df.assigned_worker_id || null;
-    const worker_name = wid ? workers.find((w) => w.id === wid)?.name ?? null : null;
+    const worker_name = wid ? (workers.find((w) => w.id === wid)?.name ?? null) : null;
     const patch = {
       title,
       description: df.description || null,
@@ -393,7 +400,7 @@ export default function TasksPage() {
               status: t.status,
               assigned_worker_id: t.assigned_worker_id,
               worker_name: t.assigned_worker_id
-                ? workers.find((w) => w.id === t.assigned_worker_id)?.name ?? null
+                ? (workers.find((w) => w.id === t.assigned_worker_id)?.name ?? null)
                 : null,
               due_date: t.due_date,
               priority: t.priority,
@@ -417,7 +424,11 @@ export default function TasksPage() {
   };
 
   const handleDeleteTaskById = (taskId: string) => {
-    if (typeof window !== "undefined" && !window.confirm("Are you sure you want to delete this task?")) return;
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm("Are you sure you want to delete this task?")
+    )
+      return;
     const selectedId = selectedTask?.id;
 
     type DelSnap = { tasks: TaskRow[]; drawerOpen: boolean; selected: TaskRow | null };
@@ -482,7 +493,11 @@ export default function TasksPage() {
           title="Tasks"
           description="Construction tasks across all projects."
           actions={
-            <Button size="touch" className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90 min-h-[44px]" onClick={openModal}>
+            <Button
+              size="touch"
+              className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90 min-h-[44px]"
+              onClick={openModal}
+            >
               + New Task
             </Button>
           }
@@ -515,7 +530,11 @@ export default function TasksPage() {
           ) : filtered.length === 0 ? (
             <div className="py-10 text-center">
               <p className="text-sm text-muted-foreground">No tasks match the filter.</p>
-              <Button onClick={openModal} className="mt-4 max-md:min-h-[44px] max-md:w-full max-md:max-w-[280px]" size="sm">
+              <Button
+                onClick={openModal}
+                className="mt-4 max-md:min-h-[44px] max-md:w-full max-md:max-w-[280px]"
+                size="sm"
+              >
                 Create Task
               </Button>
             </div>
@@ -536,21 +555,38 @@ export default function TasksPage() {
                       <span
                         className={cn(
                           "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-sm border",
-                          t.status === "done" ? "border-[#111111] bg-[#111111] text-white" : "border-border"
+                          t.status === "done"
+                            ? "border-[#111111] bg-[#111111] text-white"
+                            : "border-border"
                         )}
-                        onClick={(e) => { e.stopPropagation(); handleToggleDone(e, t); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleDone(e, t);
+                        }}
                       >
                         {t.status === "done" ? "✓" : null}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className={cn("font-medium truncate", t.status === "done" && "text-muted-foreground line-through")}>{t.title || "—"}</p>
-                        <p className="text-xs text-muted-foreground truncate">{t.project_name ?? "—"} · Due {t.due_date ? new Date(t.due_date).toLocaleDateString() : "—"}</p>
+                        <p
+                          className={cn(
+                            "font-medium truncate",
+                            t.status === "done" && "text-muted-foreground line-through"
+                          )}
+                        >
+                          {t.title || "—"}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {t.project_name ?? "—"} · Due{" "}
+                          {t.due_date ? new Date(t.due_date).toLocaleDateString() : "—"}
+                        </p>
                       </div>
                       <span
                         className={cn(
                           "shrink-0 rounded-sm px-1.5 py-0.5 text-xs font-medium",
-                          t.priority === "high" && "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
-                          t.priority === "medium" && "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+                          t.priority === "high" &&
+                            "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
+                          t.priority === "medium" &&
+                            "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
                           t.priority === "low" && "bg-muted text-muted-foreground"
                         )}
                       >
@@ -574,7 +610,10 @@ export default function TasksPage() {
                           align="end"
                           className="min-w-[160px] rounded-md border border-border/60 bg-popover text-xs shadow-[var(--shadow-popover)]"
                         >
-                          <DropdownMenuItem onSelect={() => openDrawer(t)} className="cursor-pointer">
+                          <DropdownMenuItem
+                            onSelect={() => openDrawer(t)}
+                            className="cursor-pointer"
+                          >
                             Edit
                           </DropdownMenuItem>
                           <DropdownMenuItem
@@ -591,102 +630,136 @@ export default function TasksPage() {
               </div>
               {/* Desktop: table */}
               <table className="hidden w-full text-sm border-collapse table-fixed sm:table-auto md:table">
-              <thead>
-                <tr className="border-b border-border/60">
-                  <th className="w-9 text-left py-2 px-2 sm:px-3" aria-label="Done" />
-                  <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground">Task</th>
-                  <th className="hidden sm:table-cell text-left py-2 px-3 font-medium text-muted-foreground">Project</th>
-                  <th className="hidden md:table-cell text-left py-2 px-3 font-medium text-muted-foreground">Assigned</th>
-                  <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground">Due</th>
-                  <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground">Priority</th>
-                  <th className="w-9 text-right py-2 px-2 sm:px-3" aria-label="Actions" />
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((t) => (
-                  <tr
-                    key={t.id}
-                    onClick={() => openDrawer(t)}
-                    className="border-b border-border/60 last:border-b-0 hover:bg-muted/40 cursor-pointer transition-colors"
-                  >
-                    <td className="py-2 px-2 sm:px-3" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        type="button"
-                        onClick={(e) => handleToggleDone(e, t)}
-                        className="rounded border-border/60 text-[#111111] focus:outline-none focus:ring-2 focus:ring-ring"
-                        aria-label={t.status === "done" ? "Mark not done" : "Mark done"}
-                      >
+                <thead>
+                  <tr className="border-b border-border/60">
+                    <th className="w-9 text-left py-2 px-2 sm:px-3" aria-label="Done" />
+                    <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground">
+                      Task
+                    </th>
+                    <th className="hidden sm:table-cell text-left py-2 px-3 font-medium text-muted-foreground">
+                      Project
+                    </th>
+                    <th className="hidden md:table-cell text-left py-2 px-3 font-medium text-muted-foreground">
+                      Assigned
+                    </th>
+                    <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground">
+                      Due
+                    </th>
+                    <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground">
+                      Priority
+                    </th>
+                    <th className="w-9 text-right py-2 px-2 sm:px-3" aria-label="Actions" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((t) => (
+                    <tr
+                      key={t.id}
+                      onClick={() => openDrawer(t)}
+                      className="border-b border-border/60 last:border-b-0 hover:bg-muted/40 cursor-pointer transition-colors"
+                    >
+                      <td className="py-2 px-2 sm:px-3" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={(e) => handleToggleDone(e, t)}
+                          className="rounded border-border/60 text-[#111111] focus:outline-none focus:ring-2 focus:ring-ring"
+                          aria-label={t.status === "done" ? "Mark not done" : "Mark done"}
+                        >
+                          <span
+                            className={cn(
+                              "inline-flex h-4 w-4 items-center justify-center rounded-sm border",
+                              t.status === "done"
+                                ? "border-[#111111] bg-[#111111] text-white"
+                                : "border-border"
+                            )}
+                          >
+                            {t.status === "done" ? "✓" : null}
+                          </span>
+                        </button>
+                      </td>
+                      <td className="py-2 px-2 sm:px-3">
                         <span
                           className={cn(
-                            "inline-flex h-4 w-4 items-center justify-center rounded-sm border",
-                            t.status === "done" ? "border-[#111111] bg-[#111111] text-white" : "border-border"
+                            "font-medium",
+                            t.status === "done" && "text-muted-foreground line-through"
                           )}
                         >
-                          {t.status === "done" ? "✓" : null}
+                          {t.title || "—"}
                         </span>
-                      </button>
-                    </td>
-                    <td className="py-2 px-2 sm:px-3">
-                      <span className={cn("font-medium", t.status === "done" && "text-muted-foreground line-through")}>
-                        {t.title || "—"}
-                      </span>
-                    </td>
-                    <td className="hidden sm:table-cell py-2 px-3 text-muted-foreground">{t.project_name ?? "—"}</td>
-                    <td className="hidden md:table-cell py-2 px-3 text-muted-foreground">{t.worker_name ?? "—"}</td>
-                    <td className="py-2 px-2 sm:px-3 text-muted-foreground tabular-nums">
-                      {t.due_date ? new Date(t.due_date).toLocaleDateString() : "—"}
-                    </td>
-                    <td className="py-2 px-2 sm:px-3">
-                      <span
-                        className={cn(
-                          "inline-flex rounded-sm px-1.5 py-0.5 text-xs font-medium",
-                          t.priority === "high" && "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
-                          t.priority === "medium" && "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
-                          t.priority === "low" && "bg-muted text-muted-foreground"
-                        )}
-                      >
-                        {PRIORITY_LABEL[t.priority] ?? t.priority}
-                      </span>
-                    </td>
-                    <td className="py-2 px-2 sm:px-3 text-right" onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 rounded-sm"
-                            aria-label="Task actions"
-                            disabled={submitting}
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          className="min-w-[160px] rounded-md border border-border/60 bg-popover text-xs shadow-[var(--shadow-popover)]"
+                      </td>
+                      <td className="hidden sm:table-cell py-2 px-3 text-muted-foreground">
+                        {t.project_name ?? "—"}
+                      </td>
+                      <td className="hidden md:table-cell py-2 px-3 text-muted-foreground">
+                        {t.worker_name ?? "—"}
+                      </td>
+                      <td className="py-2 px-2 sm:px-3 text-muted-foreground tabular-nums">
+                        {t.due_date ? new Date(t.due_date).toLocaleDateString() : "—"}
+                      </td>
+                      <td className="py-2 px-2 sm:px-3">
+                        <span
+                          className={cn(
+                            "inline-flex rounded-sm px-1.5 py-0.5 text-xs font-medium",
+                            t.priority === "high" &&
+                              "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
+                            t.priority === "medium" &&
+                              "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+                            t.priority === "low" && "bg-muted text-muted-foreground"
+                          )}
                         >
-                          <DropdownMenuItem onSelect={() => openDrawer(t)} className="cursor-pointer">
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onSelect={() => handleDeleteTaskById(t.id)}
-                            className="cursor-pointer text-destructive focus:text-destructive"
+                          {PRIORITY_LABEL[t.priority] ?? t.priority}
+                        </span>
+                      </td>
+                      <td
+                        className="py-2 px-2 sm:px-3 text-right"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 rounded-sm"
+                              aria-label="Task actions"
+                              disabled={submitting}
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            align="end"
+                            className="min-w-[160px] rounded-md border border-border/60 bg-popover text-xs shadow-[var(--shadow-popover)]"
                           >
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                            <DropdownMenuItem
+                              onSelect={() => openDrawer(t)}
+                              className="cursor-pointer"
+                            >
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onSelect={() => handleDeleteTaskById(t.id)}
+                              className="cursor-pointer text-destructive focus:text-destructive"
+                            >
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </>
           )}
         </div>
       </div>
 
-      <Drawer open={drawerOpen} onOpenChange={setDrawerOpen} title={selectedTask?.title ?? "Task"} description={selectedTask?.project_name ?? undefined}>
+      <Drawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        title={selectedTask?.title ?? "Task"}
+        description={selectedTask?.project_name ?? undefined}
+      >
         {selectedTask && (
           <div className="space-y-4">
             <div>
@@ -710,12 +783,16 @@ export default function TasksPage() {
               <label className="text-xs font-medium text-muted-foreground">Assigned</label>
               <select
                 value={drawerForm.assigned_worker_id}
-                onChange={(e) => setDrawerForm((p) => ({ ...p, assigned_worker_id: e.target.value }))}
+                onChange={(e) =>
+                  setDrawerForm((p) => ({ ...p, assigned_worker_id: e.target.value }))
+                }
                 className="mt-1 h-9 w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm"
               >
                 <option value="">—</option>
                 {workers.map((w) => (
-                  <option key={w.id} value={w.id}>{w.name}</option>
+                  <option key={w.id} value={w.id}>
+                    {w.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -732,7 +809,12 @@ export default function TasksPage() {
               <label className="text-xs font-medium text-muted-foreground">Priority</label>
               <select
                 value={drawerForm.priority}
-                onChange={(e) => setDrawerForm((p) => ({ ...p, priority: e.target.value as "low" | "medium" | "high" }))}
+                onChange={(e) =>
+                  setDrawerForm((p) => ({
+                    ...p,
+                    priority: e.target.value as "low" | "medium" | "high",
+                  }))
+                }
                 className="mt-1 h-9 w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm"
               >
                 <option value="low">Low</option>
@@ -744,11 +826,18 @@ export default function TasksPage() {
               <label className="text-xs font-medium text-muted-foreground">Status</label>
               <select
                 value={drawerForm.status}
-                onChange={(e) => setDrawerForm((p) => ({ ...p, status: e.target.value as "todo" | "in_progress" | "done" }))}
+                onChange={(e) =>
+                  setDrawerForm((p) => ({
+                    ...p,
+                    status: e.target.value as "todo" | "in_progress" | "done",
+                  }))
+                }
                 className="mt-1 h-9 w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm"
               >
                 {STATUS_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
                 ))}
               </select>
             </div>
@@ -764,8 +853,23 @@ export default function TasksPage() {
                 Delete
               </Button>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" className="rounded-sm" onClick={() => setDrawerOpen(false)} disabled={submitting}>Cancel</Button>
-                <Button size="sm" className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90" onClick={handleSaveDrawer} disabled={submitting}>Save</Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="rounded-sm"
+                  onClick={() => setDrawerOpen(false)}
+                  disabled={submitting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90"
+                  onClick={handleSaveDrawer}
+                  disabled={submitting}
+                >
+                  Save
+                </Button>
               </div>
             </div>
           </div>
@@ -788,7 +892,9 @@ export default function TasksPage() {
               >
                 <option value="">Select project</option>
                 {projects.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -821,7 +927,9 @@ export default function TasksPage() {
               >
                 <option value="">—</option>
                 {workers.map((w) => (
-                  <option key={w.id} value={w.id}>{w.name}</option>
+                  <option key={w.id} value={w.id}>
+                    {w.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -838,7 +946,9 @@ export default function TasksPage() {
               <label className="text-xs font-medium text-muted-foreground">Priority</label>
               <select
                 value={form.priority}
-                onChange={(e) => setForm((p) => ({ ...p, priority: e.target.value as "low" | "medium" | "high" }))}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, priority: e.target.value as "low" | "medium" | "high" }))
+                }
                 className="mt-1.5 h-9 w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm"
               >
                 <option value="low">Low</option>
@@ -850,19 +960,40 @@ export default function TasksPage() {
               <label className="text-xs font-medium text-muted-foreground">Status</label>
               <select
                 value={form.status}
-                onChange={(e) => setForm((p) => ({ ...p, status: e.target.value as "todo" | "in_progress" | "done" }))}
+                onChange={(e) =>
+                  setForm((p) => ({
+                    ...p,
+                    status: e.target.value as "todo" | "in_progress" | "done",
+                  }))
+                }
                 className="mt-1.5 h-9 w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm"
               >
                 {STATUS_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
                 ))}
               </select>
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
           <DialogFooter className="border-t border-border/60 pt-4">
-            <Button variant="outline" size="sm" className="rounded-sm" onClick={() => setModalOpen(false)}>Cancel</Button>
-            <Button size="sm" className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90" onClick={handleSaveNew} disabled={submitting}>Save</Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-sm"
+              onClick={() => setModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90"
+              onClick={handleSaveNew}
+              disabled={submitting}
+            >
+              Save
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

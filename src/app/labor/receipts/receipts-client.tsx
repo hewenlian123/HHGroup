@@ -59,13 +59,16 @@ export function ReceiptsClient({ initialRows }: { initialRows: ReceiptRow[] }) {
     }
     const projData = projRes.ok ? await projRes.json() : { projects: [] };
     const projectById = new Map<string, string>(
-      (projData.projects ?? []).map((p: { id: string; name: string | null }) => [p.id, p.name ?? ""])
+      (projData.projects ?? []).map((p: { id: string; name: string | null }) => [
+        p.id,
+        p.name ?? "",
+      ])
     );
     const list = (recData.receipts ?? []) as WorkerReceipt[];
     setRows(
       list.map((r) => ({
         ...r,
-        projectName: r.projectId ? projectById.get(r.projectId) ?? "" : "",
+        projectName: r.projectId ? (projectById.get(r.projectId) ?? "") : "",
       }))
     );
     setMessage(null);
@@ -88,9 +91,7 @@ export function ReceiptsClient({ initialRows }: { initialRows: ReceiptRow[] }) {
       if (!res.ok) throw new Error(data.message ?? "Approve failed");
       // Update local row so we don't need full reload; keep existing projectName
       setRows((prev) =>
-        prev.map((r) =>
-          r.id === id ? { ...data.receipt, projectName: r.projectName } : r
-        )
+        prev.map((r) => (r.id === id ? { ...data.receipt, projectName: r.projectName } : r))
       );
       if (data.reimbursementCreated) {
         setSuccessMessage("Approved. Added to Reimbursements.");
@@ -111,9 +112,7 @@ export function ReceiptsClient({ initialRows }: { initialRows: ReceiptRow[] }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message ?? "Reset failed");
       setRows((prev) =>
-        prev.map((r) =>
-          r.id === id ? { ...data.receipt, projectName: r.projectName } : r
-        )
+        prev.map((r) => (r.id === id ? { ...data.receipt, projectName: r.projectName } : r))
       );
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Reset failed");
@@ -210,52 +209,91 @@ export function ReceiptsClient({ initialRows }: { initialRows: ReceiptRow[] }) {
         {rows.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">No receipt uploads yet.</p>
         ) : (
-        rows.map((r) => (
-          <div key={r.id} className="rounded-sm border border-border/60 bg-background p-4">
-            <p className="font-medium text-foreground truncate">{r.workerName}</p>
-            <p className="text-sm text-muted-foreground truncate">{r.projectName || "—"} · {r.expenseType || "—"}</p>
-            <p className="text-sm text-muted-foreground truncate">{r.vendor || "—"}</p>
-            <div className="mt-2 flex items-center justify-between gap-2">
-              <span className="tabular-nums font-medium">${fmtUsd(r.amount)}</span>
-              <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
-                <span className={`h-1.5 w-1.5 rounded-full ${statusDot(r.status)}`} />
-                {r.status}
-              </span>
+          rows.map((r) => (
+            <div key={r.id} className="rounded-sm border border-border/60 bg-background p-4">
+              <p className="font-medium text-foreground truncate">{r.workerName}</p>
+              <p className="text-sm text-muted-foreground truncate">
+                {r.projectName || "—"} · {r.expenseType || "—"}
+              </p>
+              <p className="text-sm text-muted-foreground truncate">{r.vendor || "—"}</p>
+              <div className="mt-2 flex items-center justify-between gap-2">
+                <span className="tabular-nums font-medium">${fmtUsd(r.amount)}</span>
+                <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <span className={`h-1.5 w-1.5 rounded-full ${statusDot(r.status)}`} />
+                  {r.status}
+                </span>
+              </div>
+              <div className="mt-2 flex justify-end">
+                <RowActionsMenu
+                  ariaLabel={`Actions for receipt ${r.id}`}
+                  actions={[
+                    ...(r.receiptUrl
+                      ? [{ label: "View receipt", onClick: () => setViewReceiptUrl(r.receiptUrl!) }]
+                      : []),
+                    ...(r.status === "Pending"
+                      ? [
+                          {
+                            label: "Approve",
+                            onClick: () => approve(r.id),
+                            disabled: busyId === r.id,
+                          },
+                          {
+                            label: "Reject",
+                            onClick: () => openReject(r.id),
+                            disabled: busyId === r.id,
+                          },
+                        ]
+                      : []),
+                    ...(r.status === "Approved"
+                      ? [
+                          {
+                            label: "Reset to Pending",
+                            onClick: () => resetToPending(r.id),
+                            disabled: busyId === r.id,
+                          },
+                        ]
+                      : []),
+                    {
+                      label: "Delete",
+                      onClick: () => handleDelete(r.id),
+                      destructive: true,
+                      disabled: busyId === r.id,
+                    },
+                  ]}
+                />
+              </div>
             </div>
-            <div className="mt-2 flex justify-end">
-              <RowActionsMenu
-                ariaLabel={`Actions for receipt ${r.id}`}
-                actions={[
-                  ...(r.receiptUrl ? [{ label: "View receipt", onClick: () => setViewReceiptUrl(r.receiptUrl!) }] : []),
-                  ...(r.status === "Pending"
-                    ? [
-                        { label: "Approve", onClick: () => approve(r.id), disabled: busyId === r.id },
-                        { label: "Reject", onClick: () => openReject(r.id), disabled: busyId === r.id },
-                      ]
-                    : []),
-                  ...(r.status === "Approved"
-                    ? [{ label: "Reset to Pending", onClick: () => resetToPending(r.id), disabled: busyId === r.id }]
-                    : []),
-                  { label: "Delete", onClick: () => handleDelete(r.id), destructive: true, disabled: busyId === r.id },
-                ]}
-              />
-            </div>
-          </div>
-        ))
+          ))
         )}
       </div>
       <div className="table-responsive hidden rounded-sm border border-border/60 md:block">
         <table className="w-full min-w-[700px] text-sm border-collapse table-row-compact md:min-w-0">
           <thead>
             <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Worker</th>
-              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Project</th>
-              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Expense Type</th>
-              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Vendor</th>
-              <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground tabular-nums">Amount</th>
-              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Receipt</th>
-              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Status</th>
-              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Date</th>
+              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Worker
+              </th>
+              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Project
+              </th>
+              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Expense Type
+              </th>
+              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Vendor
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground tabular-nums">
+                Amount
+              </th>
+              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Receipt
+              </th>
+              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Status
+              </th>
+              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Date
+              </th>
               <th className="w-10 text-right py-2 px-3" aria-label="Actions" />
             </tr>
           </thead>
@@ -293,7 +331,10 @@ export function ReceiptsClient({ initialRows }: { initialRows: ReceiptRow[] }) {
                       <span className="text-muted-foreground">{r.status}</span>
                     </span>
                     {r.status === "Rejected" && r.rejectionReason ? (
-                      <span className="block text-xs text-muted-foreground mt-0.5 truncate max-w-[180px]" title={r.rejectionReason}>
+                      <span
+                        className="block text-xs text-muted-foreground mt-0.5 truncate max-w-[180px]"
+                        title={r.rejectionReason}
+                      >
                         {r.rejectionReason}
                       </span>
                     ) : null}
@@ -305,17 +346,43 @@ export function ReceiptsClient({ initialRows }: { initialRows: ReceiptRow[] }) {
                     <RowActionsMenu
                       ariaLabel={`Actions for receipt`}
                       actions={[
-                        ...(r.receiptUrl ? [{ label: "View receipt", onClick: () => setViewReceiptUrl(r.receiptUrl!) }] : []),
+                        ...(r.receiptUrl
+                          ? [
+                              {
+                                label: "View receipt",
+                                onClick: () => setViewReceiptUrl(r.receiptUrl!),
+                              },
+                            ]
+                          : []),
                         ...(r.status === "Pending"
                           ? [
-                              { label: "Approve", onClick: () => approve(r.id), disabled: busyId === r.id },
-                              { label: "Reject", onClick: () => openReject(r.id), disabled: busyId === r.id },
+                              {
+                                label: "Approve",
+                                onClick: () => approve(r.id),
+                                disabled: busyId === r.id,
+                              },
+                              {
+                                label: "Reject",
+                                onClick: () => openReject(r.id),
+                                disabled: busyId === r.id,
+                              },
                             ]
                           : []),
                         ...(r.status === "Approved"
-                          ? [{ label: "Reset to Pending", onClick: () => resetToPending(r.id), disabled: busyId === r.id }]
+                          ? [
+                              {
+                                label: "Reset to Pending",
+                                onClick: () => resetToPending(r.id),
+                                disabled: busyId === r.id,
+                              },
+                            ]
                           : []),
-                        { label: "Delete", onClick: () => handleDelete(r.id), destructive: true, disabled: busyId === r.id },
+                        {
+                          label: "Delete",
+                          onClick: () => handleDelete(r.id),
+                          destructive: true,
+                          disabled: busyId === r.id,
+                        },
                       ]}
                     />
                   </td>
@@ -341,10 +408,23 @@ export function ReceiptsClient({ initialRows }: { initialRows: ReceiptRow[] }) {
             />
           </div>
           <DialogFooter className="border-t border-border/60 pt-3 gap-2">
-            <Button type="button" variant="outline" size="sm" className="rounded-sm h-9" onClick={() => setRejectOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-sm h-9"
+              onClick={() => setRejectOpen(false)}
+            >
               Cancel
             </Button>
-            <Button type="button" size="sm" variant="destructive" className="rounded-sm h-9" onClick={confirmReject} disabled={!!busyId}>
+            <Button
+              type="button"
+              size="sm"
+              variant="destructive"
+              className="rounded-sm h-9"
+              onClick={confirmReject}
+              disabled={!!busyId}
+            >
               Reject
             </Button>
           </DialogFooter>
@@ -359,9 +439,17 @@ export function ReceiptsClient({ initialRows }: { initialRows: ReceiptRow[] }) {
           {viewReceiptUrl && (
             <div className="flex-1 min-h-0 overflow-auto flex items-center justify-center bg-muted/30 rounded-sm">
               {isPdfReceipt ? (
-                <iframe src={viewReceiptUrl} title="Receipt" className="w-full min-h-[70vh] border-0 rounded-sm" />
+                <iframe
+                  src={viewReceiptUrl}
+                  title="Receipt"
+                  className="w-full min-h-[70vh] border-0 rounded-sm"
+                />
               ) : (
-                <img src={viewReceiptUrl} alt="Receipt" className="max-w-full max-h-[85vh] object-contain" />
+                <img
+                  src={viewReceiptUrl}
+                  alt="Receipt"
+                  className="max-w-full max-h-[85vh] object-contain"
+                />
               )}
             </div>
           )}

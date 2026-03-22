@@ -24,7 +24,9 @@ export async function PATCH(req: Request, { params }: RouteParams) {
     const worker = await updateWorker(id, {
       ...(name !== undefined && { name }),
       ...(body.phone !== undefined && { phone: (body.phone as string)?.trim() ?? null }),
-      ...((body.role !== undefined || body.trade !== undefined) && { trade: ((body.role ?? body.trade) as string)?.trim() ?? null }),
+      ...((body.role !== undefined || body.trade !== undefined) && {
+        trade: ((body.role ?? body.trade) as string)?.trim() ?? null,
+      }),
       ...(body.half_day_rate !== undefined && { halfDayRate: Number(body.half_day_rate) }),
       ...(body.status === "inactive" && { status: "inactive" as const }),
       ...(body.status === "active" && { status: "active" as const }),

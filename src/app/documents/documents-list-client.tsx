@@ -10,10 +10,7 @@ import { FilterBar } from "@/components/filter-bar";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import {
-  listTablePrimaryCellClassName,
-  listTableRowClassName,
-} from "@/lib/list-table-interaction";
+import { listTablePrimaryCellClassName, listTableRowClassName } from "@/lib/list-table-interaction";
 import {
   Dialog,
   DialogContent,
@@ -212,7 +209,9 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
           </div>
           <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-6">
             <div className="space-y-1 sm:col-span-2">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Search</p>
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+                Search
+              </p>
               <Input
                 type="text"
                 placeholder="File name…"
@@ -223,30 +222,53 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
               />
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Project</p>
-              <Select value={projectId} onChange={(e) => setFilters({ project_id: e.target.value })}>
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+                Project
+              </p>
+              <Select
+                value={projectId}
+                onChange={(e) => setFilters({ project_id: e.target.value })}
+              >
                 <option value="">All projects</option>
                 {projects.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
                 ))}
               </Select>
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Type</p>
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+                Type
+              </p>
               <Select value={fileType} onChange={(e) => setFilters({ file_type: e.target.value })}>
                 <option value="">All types</option>
                 {DOCUMENT_FILE_TYPES.map((t) => (
-                  <option key={t} value={t}>{t}</option>
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
                 ))}
               </Select>
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">From</p>
-              <Input type="date" value={dateFrom} onChange={(e) => setFilters({ date_from: e.target.value })} />
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+                From
+              </p>
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setFilters({ date_from: e.target.value })}
+              />
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">To</p>
-              <Input type="date" value={dateTo} onChange={(e) => setFilters({ date_to: e.target.value })} />
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+                To
+              </p>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setFilters({ date_to: e.target.value })}
+              />
             </div>
           </div>
         </div>
@@ -267,11 +289,21 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
-                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">File</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Project</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Type</th>
-                <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Size</th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Uploaded</th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  File
+                </th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Project
+                </th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Type
+                </th>
+                <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                  Size
+                </th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Uploaded
+                </th>
                 <th className="w-40 px-1" />
               </tr>
             </thead>
@@ -279,60 +311,71 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
               {localDocuments.map((doc) => {
                 const relatedUrl = getRelatedRecordUrl(doc);
                 return (
-                <tr
-                  key={doc.id}
-                  className={cn(listTableRowClassName, "border-b border-[#EBEBE9]/80 dark:border-border/40")}
-                  onClick={() => void handlePreview(doc)}
-                >
-                  <td
-                    className={cn("py-1.5 px-3 font-medium truncate max-w-[200px]", listTablePrimaryCellClassName)}
-                    title={doc.file_name}
+                  <tr
+                    key={doc.id}
+                    className={cn(
+                      listTableRowClassName,
+                      "border-b border-[#EBEBE9]/80 dark:border-border/40"
+                    )}
+                    onClick={() => void handlePreview(doc)}
                   >
-                    {doc.file_name}
-                  </td>
-                  <td className="py-1.5 px-3 text-muted-foreground">{doc.project_name ?? "—"}</td>
-                  <td className="py-1.5 px-3 text-muted-foreground">{doc.file_type}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums text-muted-foreground">{formatBytes(doc.size_bytes)}</td>
-                  <td className="py-1.5 px-3 text-muted-foreground">{formatDate(doc.uploaded_at)}</td>
-                  <td className="py-1.5 px-1" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center gap-1 flex-wrap">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={() => handlePreview(doc)}
-                        disabled={loadingPreview}
-                      >
-                        Preview
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={() => handleDownload(doc)}
-                      >
-                        Download
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs text-red-600"
-                        onClick={() => handleDelete(doc)}
-                        disabled={deletingId === doc.id}
-                      >
-                        {deletingId === doc.id ? "Deleting…" : "Delete"}
-                      </Button>
-                      {relatedUrl ? (
-                        <Link href={relatedUrl}>
-                          <Button variant="ghost" size="sm" className="h-7 text-xs">
-                            Open related
-                          </Button>
-                        </Link>
-                      ) : null}
-                    </div>
-                  </td>
-                </tr>
-              );})}
+                    <td
+                      className={cn(
+                        "py-1.5 px-3 font-medium truncate max-w-[200px]",
+                        listTablePrimaryCellClassName
+                      )}
+                      title={doc.file_name}
+                    >
+                      {doc.file_name}
+                    </td>
+                    <td className="py-1.5 px-3 text-muted-foreground">{doc.project_name ?? "—"}</td>
+                    <td className="py-1.5 px-3 text-muted-foreground">{doc.file_type}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums text-muted-foreground">
+                      {formatBytes(doc.size_bytes)}
+                    </td>
+                    <td className="py-1.5 px-3 text-muted-foreground">
+                      {formatDate(doc.uploaded_at)}
+                    </td>
+                    <td className="py-1.5 px-1" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => handlePreview(doc)}
+                          disabled={loadingPreview}
+                        >
+                          Preview
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => handleDownload(doc)}
+                        >
+                          Download
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs text-red-600"
+                          onClick={() => handleDelete(doc)}
+                          disabled={deletingId === doc.id}
+                        >
+                          {deletingId === doc.id ? "Deleting…" : "Delete"}
+                        </Button>
+                        {relatedUrl ? (
+                          <Link href={relatedUrl}>
+                            <Button variant="ghost" size="sm" className="h-7 text-xs">
+                              Open related
+                            </Button>
+                          </Link>
+                        ) : null}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -347,11 +390,7 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
         mimeType={previewDoc?.mime_type ?? null}
         fileName={previewDoc?.file_name ?? ""}
       />
-      {deleteError ? (
-        <p className="mt-2 text-xs text-destructive">
-          {deleteError}
-        </p>
-      ) : null}
+      {deleteError ? <p className="mt-2 text-xs text-destructive">{deleteError}</p> : null}
 
       <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
         <DialogContent className="max-w-md">
@@ -370,11 +409,15 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Project (optional)</label>
+              <label className="text-xs font-medium text-muted-foreground">
+                Project (optional)
+              </label>
               <Select name="project_id" className="mt-1 w-full">
                 <option value="">— General —</option>
                 {projects.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
                 ))}
               </Select>
             </div>
@@ -382,7 +425,9 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
               <label className="text-xs font-medium text-muted-foreground">Type</label>
               <Select name="file_type" defaultValue="Other" className="mt-1 w-full">
                 {DOCUMENT_FILE_TYPES.map((t) => (
-                  <option key={t} value={t}>{t}</option>
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
                 ))}
               </Select>
             </div>
@@ -392,7 +437,12 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
             </div>
             {uploadError ? <p className="text-xs text-destructive">{uploadError}</p> : null}
             <DialogFooter>
-              <Button type="button" variant="outline" size="sm" onClick={() => setUploadOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setUploadOpen(false)}
+              >
                 Cancel
               </Button>
               <Button type="submit" size="sm" disabled={uploading}>

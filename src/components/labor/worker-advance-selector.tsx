@@ -27,11 +27,7 @@ export function WorkerAdvanceSelector({ advances, selectedIds, onChange }: Props
   };
 
   if (!advances.length) {
-    return (
-      <p className="text-xs text-muted-foreground">
-        No pending advances for this worker.
-      </p>
-    );
+    return <p className="text-xs text-muted-foreground">No pending advances for this worker.</p>;
   }
 
   const totalSelected = advances
@@ -56,20 +52,14 @@ export function WorkerAdvanceSelector({ advances, selectedIds, onChange }: Props
               />
               <div className="flex-1 space-y-0.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-medium">
-                    ${a.amount.toFixed(2)}
-                  </span>
+                  <span className="font-medium">${a.amount.toFixed(2)}</span>
                   <span className="tabular-nums text-[11px] text-muted-foreground">
                     {a.advanceDate}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                  <span className="truncate max-w-[160px]">
-                    {a.projectName ?? "No project"}
-                  </span>
-                  {a.notes ? (
-                    <span className="truncate max-w-[160px]">{a.notes}</span>
-                  ) : null}
+                  <span className="truncate max-w-[160px]">{a.projectName ?? "No project"}</span>
+                  {a.notes ? <span className="truncate max-w-[160px]">{a.notes}</span> : null}
                 </div>
               </div>
             </label>
@@ -78,11 +68,8 @@ export function WorkerAdvanceSelector({ advances, selectedIds, onChange }: Props
       </div>
       <div className="flex items-center justify-between text-xs">
         <span className="text-muted-foreground">Total to deduct</span>
-        <span className="font-medium tabular-nums">
-          ${totalSelected.toFixed(2)}
-        </span>
+        <span className="font-medium tabular-nums">${totalSelected.toFixed(2)}</span>
       </div>
     </div>
   );
 }
-

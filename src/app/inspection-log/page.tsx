@@ -197,16 +197,28 @@ export default function InspectionLogPage() {
           ) : error ? (
             <div className="py-10 text-center text-sm text-destructive px-3">{error}</div>
           ) : entries.length === 0 ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">No inspections yet.</div>
+            <div className="py-10 text-center text-sm text-muted-foreground">
+              No inspections yet.
+            </div>
           ) : (
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
-                  <th className="text-left py-2 px-2 sm:px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">Date</th>
-                  <th className="text-left py-2 px-2 sm:px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">Project</th>
-                  <th className="text-left py-2 px-2 sm:px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">Inspection Type</th>
-                  <th className="hidden md:table-cell text-left py-2 px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">Inspector</th>
-                  <th className="text-left py-2 px-2 sm:px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">Status</th>
+                  <th className="text-left py-2 px-2 sm:px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Date
+                  </th>
+                  <th className="text-left py-2 px-2 sm:px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Project
+                  </th>
+                  <th className="text-left py-2 px-2 sm:px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Inspection Type
+                  </th>
+                  <th className="hidden md:table-cell text-left py-2 px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Inspector
+                  </th>
+                  <th className="text-left py-2 px-2 sm:px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Status
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -214,14 +226,31 @@ export default function InspectionLogPage() {
                   <tr
                     key={row.id}
                     onClick={() => openDrawer(row)}
-                    className={cn(listTableRowClassName, "border-b border-[#EBEBE9]/80 last:border-b-0 dark:border-border/40")}
+                    className={cn(
+                      listTableRowClassName,
+                      "border-b border-[#EBEBE9]/80 last:border-b-0 dark:border-border/40"
+                    )}
                   >
                     <td className="py-2 px-2 sm:px-3 text-muted-foreground tabular-nums">
-                      {row.inspection_date ? new Date(row.inspection_date).toLocaleDateString() : "—"}
+                      {row.inspection_date
+                        ? new Date(row.inspection_date).toLocaleDateString()
+                        : "—"}
                     </td>
-                    <td className="py-2 px-2 sm:px-3 text-muted-foreground">{row.project_name ?? "—"}</td>
-                    <td className={cn("py-2 px-2 sm:px-3 font-medium", listTablePrimaryCellClassName, "hover:underline")}>{row.inspection_type || "—"}</td>
-                    <td className="hidden md:table-cell py-2 px-3 text-muted-foreground">{row.inspector ?? "—"}</td>
+                    <td className="py-2 px-2 sm:px-3 text-muted-foreground">
+                      {row.project_name ?? "—"}
+                    </td>
+                    <td
+                      className={cn(
+                        "py-2 px-2 sm:px-3 font-medium",
+                        listTablePrimaryCellClassName,
+                        "hover:underline"
+                      )}
+                    >
+                      {row.inspection_type || "—"}
+                    </td>
+                    <td className="hidden md:table-cell py-2 px-3 text-muted-foreground">
+                      {row.inspector ?? "—"}
+                    </td>
                     <td className="py-2 px-2 sm:px-3">
                       <span
                         className={cn(
@@ -240,7 +269,12 @@ export default function InspectionLogPage() {
         </div>
       </div>
 
-      <Drawer open={drawerOpen} onOpenChange={setDrawerOpen} title="Inspection detail" description={selectedEntry?.project_name ?? undefined}>
+      <Drawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        title="Inspection detail"
+        description={selectedEntry?.project_name ?? undefined}
+      >
         {selectedEntry && (
           <div className="space-y-4">
             <div>
@@ -272,11 +306,18 @@ export default function InspectionLogPage() {
               <label className="text-xs font-medium text-muted-foreground">Status</label>
               <Select
                 value={drawerForm.status}
-                onChange={(e) => setDrawerForm((f) => ({ ...f, status: e.target.value as "passed" | "failed" | "pending" }))}
+                onChange={(e) =>
+                  setDrawerForm((f) => ({
+                    ...f,
+                    status: e.target.value as "passed" | "failed" | "pending",
+                  }))
+                }
                 className="mt-1 w-full"
               >
                 {STATUS_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
                 ))}
               </Select>
             </div>
@@ -291,8 +332,12 @@ export default function InspectionLogPage() {
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
             <div className="flex gap-2 pt-2">
-              <Button size="sm" variant="outline" onClick={() => setDrawerOpen(false)}>Cancel</Button>
-              <Button size="sm" onClick={handleSaveDrawer} disabled={submitting}>Save</Button>
+              <Button size="sm" variant="outline" onClick={() => setDrawerOpen(false)}>
+                Cancel
+              </Button>
+              <Button size="sm" onClick={handleSaveDrawer} disabled={submitting}>
+                Save
+              </Button>
             </div>
           </div>
         )}
@@ -314,7 +359,9 @@ export default function InspectionLogPage() {
               >
                 <option value="">Select project</option>
                 {projects.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
                 ))}
               </Select>
             </div>
@@ -349,11 +396,18 @@ export default function InspectionLogPage() {
               <label className="text-xs font-medium text-muted-foreground">Status</label>
               <Select
                 value={form.status}
-                onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as "passed" | "failed" | "pending" }))}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    status: e.target.value as "passed" | "failed" | "pending",
+                  }))
+                }
                 className="mt-1.5 w-full"
               >
                 {STATUS_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
                 ))}
               </Select>
             </div>
@@ -370,8 +424,12 @@ export default function InspectionLogPage() {
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
           <DialogFooter className="border-t border-border/60 pt-4">
-            <Button variant="outline" size="sm" onClick={() => setModalOpen(false)}>Cancel</Button>
-            <Button size="sm" onClick={handleCreate} disabled={submitting}>Add</Button>
+            <Button variant="outline" size="sm" onClick={() => setModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button size="sm" onClick={handleCreate} disabled={submitting}>
+              Add
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

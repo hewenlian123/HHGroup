@@ -9,7 +9,12 @@ import { Button } from "@/components/ui/button";
 import type { SubcontractWithSubcontractor } from "@/lib/data";
 import { updateSubcontractStatusAction } from "./actions";
 
-const STATUSES: Array<SubcontractWithSubcontractor["status"]> = ["Draft", "Active", "Completed", "Cancelled"];
+const STATUSES: Array<SubcontractWithSubcontractor["status"]> = [
+  "Draft",
+  "Active",
+  "Completed",
+  "Cancelled",
+];
 
 export function SubcontractDetailClient({
   projectId,
@@ -53,7 +58,10 @@ export function SubcontractDetailClient({
   };
 
   const options = allowedTransitions(status);
-  const optionsSet = React.useMemo(() => new Set<string>(options as unknown as string[]), [options]);
+  const optionsSet = React.useMemo(
+    () => new Set<string>(options as unknown as string[]),
+    [options]
+  );
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -77,4 +85,3 @@ export function SubcontractDetailClient({
     </div>
   );
 }
-

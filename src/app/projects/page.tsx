@@ -13,7 +13,9 @@ const manrope = Manrope({
 
 export default async function ProjectsPage() {
   const projects = await getProjects();
-  const profitMap = await getCanonicalProjectProfitBatch(projects.map((p) => p.id)).catch(() => new Map());
+  const profitMap = await getCanonicalProjectProfitBatch(projects.map((p) => p.id)).catch(
+    () => new Map()
+  );
 
   const rows: ProjectsListRow[] = projects.map((p) => {
     const c = profitMap.get(p.id);

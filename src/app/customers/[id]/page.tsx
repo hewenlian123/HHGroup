@@ -160,7 +160,11 @@ export default function CustomerDetailPage() {
   }, [form, id, supabase, message]);
 
   if (loading) {
-    return <div className="page-container page-stack py-6 text-sm text-muted-foreground">Loading customer...</div>;
+    return (
+      <div className="page-container page-stack py-6 text-sm text-muted-foreground">
+        Loading customer...
+      </div>
+    );
   }
 
   if (notFound) {
@@ -200,8 +204,14 @@ export default function CustomerDetailPage() {
       <Card className="border-[#EBEBE9] p-4 dark:border-border">
         <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Customer Name</p>
-            <Input value={form.name} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} placeholder="Optional" />
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Customer Name
+            </p>
+            <Input
+              value={form.name}
+              onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+              placeholder="Optional"
+            />
           </div>
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground">Contact Person</p>
@@ -212,26 +222,57 @@ export default function CustomerDetailPage() {
             />
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Phone</p>
-            <Input value={form.phone} onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))} placeholder="Optional" />
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Phone
+            </p>
+            <Input
+              value={form.phone}
+              onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
+              placeholder="Optional"
+            />
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Email</p>
-            <Input value={form.email} onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))} placeholder="Optional" />
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Email
+            </p>
+            <Input
+              value={form.email}
+              onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
+              placeholder="Optional"
+            />
           </div>
           <div className="space-y-1 md:col-span-2">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Address</p>
-            <Input value={form.address} onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))} placeholder="Optional" />
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Address
+            </p>
+            <Input
+              value={form.address}
+              onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))}
+              placeholder="Optional"
+            />
           </div>
           <div className="space-y-1 md:col-span-2">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Notes</p>
-            <Input value={form.notes} onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))} placeholder="Optional" />
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Notes
+            </p>
+            <Input
+              value={form.notes}
+              onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
+              placeholder="Optional"
+            />
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Status</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Status
+            </p>
             <Select
               value={form.status}
-              onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value === "inactive" ? "inactive" : "active" }))}
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  status: e.target.value === "inactive" ? "inactive" : "active",
+                }))
+              }
             >
               <option value="active">active</option>
               <option value="inactive">inactive</option>

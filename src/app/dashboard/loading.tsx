@@ -35,7 +35,10 @@ export default function LoadingDashboard() {
         <div className="space-y-6 lg:col-span-2">
           <section className="border border-zinc-200/70 dark:border-border rounded-lg overflow-hidden bg-background">
             <div className="px-4 py-3 border-b border-zinc-200/70 dark:border-border bg-muted/20">
-              <SectionHeader title="Project Health" subtitle="Revenue, cost, profit, and margin by project." />
+              <SectionHeader
+                title="Project Health"
+                subtitle="Revenue, cost, profit, and margin by project."
+              />
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -70,7 +73,10 @@ export default function LoadingDashboard() {
 
           <section>
             <div className="py-3">
-              <SectionHeader title="Outstanding Subcontracts" subtitle="Subcontracts with balance due." />
+              <SectionHeader
+                title="Outstanding Subcontracts"
+                subtitle="Subcontracts with balance due."
+              />
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm border-collapse">
@@ -115,7 +121,10 @@ export default function LoadingDashboard() {
             <div className="p-4 space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="rounded-md border border-zinc-200/70 bg-background px-3 py-2 dark:border-border">
+                  <div
+                    key={i}
+                    className="rounded-md border border-zinc-200/70 bg-background px-3 py-2 dark:border-border"
+                  >
                     <Skeleton className="h-3 w-24 rounded-md" />
                     <Skeleton className="mt-2 h-4 w-20 rounded-md" />
                   </div>
@@ -154,4 +163,3 @@ export default function LoadingDashboard() {
     </div>
   );
 }
-

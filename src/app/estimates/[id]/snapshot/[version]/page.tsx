@@ -13,10 +13,7 @@ export default async function EstimateSnapshotPage({
   const v = Number(version);
   if (!Number.isFinite(v) || v <= 0) notFound();
 
-  const [snapshot, costCodes] = await Promise.all([
-    getEstimateSnapshot(id, v),
-    getCostCodes(),
-  ]);
+  const [snapshot, costCodes] = await Promise.all([getEstimateSnapshot(id, v), getCostCodes()]);
   if (!snapshot || !snapshot.meta) notFound();
 
   const summary = snapshot.summary

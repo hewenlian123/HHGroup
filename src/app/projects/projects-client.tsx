@@ -64,7 +64,9 @@ export function ProjectsClient() {
   const [rows, setRows] = React.useState<ProjectRow[]>([]);
   const [billsByProject, setBillsByProject] = React.useState<Map<string, number>>(new Map());
   const [query, setQuery] = React.useState("");
-  const [statusFilter, setStatusFilter] = React.useState<"" | "active" | "pending" | "completed">("");
+  const [statusFilter, setStatusFilter] = React.useState<"" | "active" | "pending" | "completed">(
+    ""
+  );
   const [page, setPage] = React.useState(1);
   const pageSize = 20;
   const [total, setTotal] = React.useState(0);
@@ -102,9 +104,14 @@ export function ProjectsClient() {
 
     const projectIds = nextRows.map((p) => p.id).filter(Boolean);
     const billsRes = projectIds.length
-      ? await supabase.from("ap_bills").select("project_id,status,amount").in("project_id", projectIds)
+      ? await supabase
+          .from("ap_bills")
+          .select("project_id,status,amount")
+          .in("project_id", projectIds)
       : { data: [] as unknown[], error: null as unknown };
-    const billRows = (billsRes as { error?: unknown; data?: unknown[] }).error ? ([] as BillMiniRow[]) : (((billsRes as { data?: unknown[] }).data ?? []) as BillMiniRow[]);
+    const billRows = (billsRes as { error?: unknown; data?: unknown[] }).error
+      ? ([] as BillMiniRow[])
+      : (((billsRes as { data?: unknown[] }).data ?? []) as BillMiniRow[]);
     const totals = new Map<string, number>();
     for (const b of billRows) {
       const pid = b.project_id;
@@ -150,7 +157,10 @@ export function ProjectsClient() {
     const active = rows.filter((p) => asStatus(p.status) === "active").length;
     const completed = rows.filter((p) => asStatus(p.status) === "completed").length;
     const totalBudget = rows.reduce((s, p) => s + safeNumber(p.budget), 0);
-    const totalCost = rows.reduce((s, p) => s + safeNumber(p.spent) + (billsByProject.get(p.id) ?? 0), 0);
+    const totalCost = rows.reduce(
+      (s, p) => s + safeNumber(p.spent) + (billsByProject.get(p.id) ?? 0),
+      0
+    );
     const totalProfit = totalBudget - totalCost;
     return { total, active, completed, totalBudget, totalProfit };
   }, [billsByProject, rows]);
@@ -191,14 +201,18 @@ export function ProjectsClient() {
       header: "Budget",
       align: "right",
       className: "tabular-nums",
-      render: (row) => <span className="tabular-nums text-muted-foreground">{money(safeNumber(row.budget))}</span>,
+      render: (row) => (
+        <span className="tabular-nums text-muted-foreground">{money(safeNumber(row.budget))}</span>
+      ),
     },
     {
       key: "actualCost",
       header: "Actual Cost",
       align: "right",
       className: "tabular-nums",
-      render: (row) => <span className="tabular-nums text-muted-foreground">{money(row.actualCost)}</span>,
+      render: (row) => (
+        <span className="tabular-nums text-muted-foreground">{money(row.actualCost)}</span>
+      ),
     },
     {
       key: "profit",
@@ -206,8 +220,14 @@ export function ProjectsClient() {
       align: "right",
       className: "tabular-nums",
       render: (row) => (
-        <span className={cn("tabular-nums font-semibold", row.profit < 0 ? "text-red-600" : "text-emerald-600")}>
-          {row.profit < 0 ? "−" : ""}{money(Math.abs(row.profit))}
+        <span
+          className={cn(
+            "tabular-nums font-semibold",
+            row.profit < 0 ? "text-red-600" : "text-emerald-600"
+          )}
+        >
+          {row.profit < 0 ? "−" : ""}
+          {money(Math.abs(row.profit))}
         </span>
       ),
     },
@@ -217,7 +237,16 @@ export function ProjectsClient() {
       align: "right",
       className: "tabular-nums",
       render: (row) => (
-        <span className={cn("tabular-nums", row.marginPct < 0 ? "text-red-600" : row.marginPct < 20 ? "text-amber-600" : "text-muted-foreground")}>
+        <span
+          className={cn(
+            "tabular-nums",
+            row.marginPct < 0
+              ? "text-red-600"
+              : row.marginPct < 20
+                ? "text-amber-600"
+                : "text-muted-foreground"
+          )}
+        >
           {row.marginPct.toFixed(0)}%
         </span>
       ),
@@ -240,9 +269,7 @@ export function ProjectsClient() {
           <h1 className="text-2xl font-semibold tracking-tight text-[#2D2D2D] dark:text-foreground sm:text-3xl">
             Projects
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Manage all construction projects.
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">Manage all construction projects.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:flex-shrink-0">
           <Button asChild size="sm">
@@ -266,28 +293,70 @@ export function ProjectsClient() {
       <Card className="overflow-hidden border-[#EBEBE9] p-0 dark:border-border">
         <div className="grid divide-y divide-[#EBEBE9] sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-5 lg:divide-x dark:divide-border/60">
           <div className="p-4">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Total Projects</p>
-            {loading ? <Skeleton className="mt-2 h-7 w-16" /> : <p className="mt-1 text-xl font-semibold tabular-nums text-[#2D2D2D] dark:text-foreground">{summary.total}</p>}
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Total Projects
+            </p>
+            {loading ? (
+              <Skeleton className="mt-2 h-7 w-16" />
+            ) : (
+              <p className="mt-1 text-xl font-semibold tabular-nums text-[#2D2D2D] dark:text-foreground">
+                {summary.total}
+              </p>
+            )}
           </div>
           <div className="p-4">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Active</p>
-            {loading ? <Skeleton className="mt-2 h-7 w-16" /> : <p className="mt-1 text-xl font-semibold tabular-nums text-[#2D2D2D] dark:text-foreground">{summary.active}</p>}
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Active
+            </p>
+            {loading ? (
+              <Skeleton className="mt-2 h-7 w-16" />
+            ) : (
+              <p className="mt-1 text-xl font-semibold tabular-nums text-[#2D2D2D] dark:text-foreground">
+                {summary.active}
+              </p>
+            )}
           </div>
           <div className="p-4">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Completed</p>
-            {loading ? <Skeleton className="mt-2 h-7 w-16" /> : <p className="mt-1 text-xl font-semibold tabular-nums text-[#2D2D2D] dark:text-foreground">{summary.completed}</p>}
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Completed
+            </p>
+            {loading ? (
+              <Skeleton className="mt-2 h-7 w-16" />
+            ) : (
+              <p className="mt-1 text-xl font-semibold tabular-nums text-[#2D2D2D] dark:text-foreground">
+                {summary.completed}
+              </p>
+            )}
           </div>
           <div className="p-4">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Total Budget</p>
-            {loading ? <Skeleton className="mt-2 h-7 w-28" /> : <p className="mt-1 text-xl font-semibold tabular-nums text-[#2D2D2D] dark:text-foreground">{money(summary.totalBudget)}</p>}
-          </div>
-          <div className="p-4 sm:col-span-2 lg:col-span-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Total Profit</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Total Budget
+            </p>
             {loading ? (
               <Skeleton className="mt-2 h-7 w-28" />
             ) : (
-              <p className={cn("mt-1 text-xl font-semibold tabular-nums", summary.totalProfit < 0 ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400")}>
-                {summary.totalProfit < 0 ? "−" : ""}{money(Math.abs(summary.totalProfit))}
+              <p className="mt-1 text-xl font-semibold tabular-nums text-[#2D2D2D] dark:text-foreground">
+                {money(summary.totalBudget)}
+              </p>
+            )}
+          </div>
+          <div className="p-4 sm:col-span-2 lg:col-span-1">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Total Profit
+            </p>
+            {loading ? (
+              <Skeleton className="mt-2 h-7 w-28" />
+            ) : (
+              <p
+                className={cn(
+                  "mt-1 text-xl font-semibold tabular-nums",
+                  summary.totalProfit < 0
+                    ? "text-red-600 dark:text-red-400"
+                    : "text-emerald-600 dark:text-emerald-400"
+                )}
+              >
+                {summary.totalProfit < 0 ? "−" : ""}
+                {money(Math.abs(summary.totalProfit))}
               </p>
             )}
           </div>
@@ -297,7 +366,9 @@ export function ProjectsClient() {
       <FilterBar className="flex-col items-stretch sm:items-stretch">
         <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1 sm:col-span-2 lg:col-span-3">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Search</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Search
+            </p>
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-muted-foreground" />
               <Input
@@ -309,10 +380,14 @@ export function ProjectsClient() {
             </div>
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Status</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Status
+            </p>
             <Select
               value={statusFilter}
-              onChange={(e) => setStatusFilter((e.target.value as "" | "active" | "pending" | "completed") ?? "")}
+              onChange={(e) =>
+                setStatusFilter((e.target.value as "" | "active" | "pending" | "completed") ?? "")
+              }
               aria-label="Filter by status"
             >
               <option value="">All statuses</option>
@@ -355,4 +430,3 @@ export function ProjectsClient() {
     </div>
   );
 }
-

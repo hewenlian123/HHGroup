@@ -36,7 +36,17 @@ import {
   type InvoiceWithDerived,
   type InvoicePayment,
 } from "@/lib/data";
-import { ArrowLeft, Send, CreditCard, FileText, Trash2, ChevronDown, Ban, CircleDollarSign, RotateCcw } from "lucide-react";
+import {
+  ArrowLeft,
+  Send,
+  CreditCard,
+  FileText,
+  Trash2,
+  ChevronDown,
+  Ban,
+  CircleDollarSign,
+  RotateCcw,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { deleteInvoiceAction } from "../actions";
 import { ReceivePaymentModal } from "@/app/financial/payments/receive-payment-modal";
@@ -50,8 +60,12 @@ export default function InvoiceDetailPage() {
   const [invoice, setInvoice] = React.useState<InvoiceWithDerived | null>(null);
   const [notFound, setNotFound] = React.useState(false);
   const [payments, setPayments] = React.useState<InvoicePayment[]>([]);
-  const [paymentsReceived, setPaymentsReceived] = React.useState<Awaited<ReturnType<typeof getPaymentsReceivedByInvoiceId>>>([]);
-  const [deposits, setDeposits] = React.useState<Awaited<ReturnType<typeof getDepositsByInvoiceId>>>([]);
+  const [paymentsReceived, setPaymentsReceived] = React.useState<
+    Awaited<ReturnType<typeof getPaymentsReceivedByInvoiceId>>
+  >([]);
+  const [deposits, setDeposits] = React.useState<
+    Awaited<ReturnType<typeof getDepositsByInvoiceId>>
+  >([]);
   const [showPaymentModal, setShowPaymentModal] = React.useState(false);
   const [showReceivePaymentModal, setShowReceivePaymentModal] = React.useState(false);
   const [paymentDate, setPaymentDate] = React.useState(() => new Date().toISOString().slice(0, 10));
@@ -72,7 +86,9 @@ export default function InvoiceDetailPage() {
       getPaymentsReceivedByInvoiceId(id),
       getDepositsByInvoiceId(id).catch(() => []),
     ]);
-    const inv = (invRes && invRes.ok ? (invRes.invoice as InvoiceWithDerived) : null) as InvoiceWithDerived | null;
+    const inv = (
+      invRes && invRes.ok ? (invRes.invoice as InvoiceWithDerived) : null
+    ) as InvoiceWithDerived | null;
     setInvoice(inv);
     setPayments(pays);
     setPaymentsReceived(received ?? []);
@@ -85,13 +101,20 @@ export default function InvoiceDetailPage() {
   }, [refresh]);
 
   React.useEffect(() => {
-    if (searchParams.get("recordPayment") === "1" && invoice && invoice.computedStatus !== "Void" && invoice.computedStatus !== "Paid") {
+    if (
+      searchParams.get("recordPayment") === "1" &&
+      invoice &&
+      invoice.computedStatus !== "Void" &&
+      invoice.computedStatus !== "Paid"
+    ) {
       setShowPaymentModal(true);
     }
   }, [searchParams, invoice]);
 
   const [methods, setMethods] = React.useState<string[]>([]);
-  const [project, setProject] = React.useState<Awaited<ReturnType<typeof getProjectById>> | null>(null);
+  const [project, setProject] = React.useState<Awaited<ReturnType<typeof getProjectById>> | null>(
+    null
+  );
   React.useEffect(() => {
     getPaymentMethods().then(setMethods);
   }, []);
@@ -230,7 +253,11 @@ export default function InvoiceDetailPage() {
                   className="text-red-600 focus:text-red-700"
                   onSelect={(e) => {
                     e.preventDefault();
-                    if (window.confirm("Void this invoice? Total and balance will be set to zero. This cannot be undone.")) {
+                    if (
+                      window.confirm(
+                        "Void this invoice? Total and balance will be set to zero. This cannot be undone."
+                      )
+                    ) {
                       void handleVoid();
                     }
                   }}
@@ -257,7 +284,11 @@ export default function InvoiceDetailPage() {
                 onSelect={(e) => {
                   e.preventDefault();
                   if (isDraft) {
-                    if (window.confirm("Permanently delete this draft invoice? This cannot be undone.")) {
+                    if (
+                      window.confirm(
+                        "Permanently delete this draft invoice? This cannot be undone."
+                      )
+                    ) {
                       void handleDelete();
                     }
                   } else {
@@ -272,19 +303,37 @@ export default function InvoiceDetailPage() {
             </DropdownMenuContent>
           </DropdownMenu>
           {isDraft && (
-            <Button variant="outline" size="sm" className="rounded-sm" onClick={handleMarkSent} disabled={actionBusy}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-sm"
+              onClick={handleMarkSent}
+              disabled={actionBusy}
+            >
               <Send className="h-4 w-4 mr-2" />
               Mark Sent
             </Button>
           )}
           {canPay && (
-            <Button variant="outline" size="sm" className="rounded-lg" onClick={() => setShowPaymentModal(true)} disabled={actionBusy}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-lg"
+              onClick={() => setShowPaymentModal(true)}
+              disabled={actionBusy}
+            >
               <CreditCard className="h-4 w-4 mr-2" />
               Record Payment
             </Button>
           )}
           {!isVoid && (
-            <Button variant="outline" size="sm" className="rounded-sm" onClick={() => setShowReceivePaymentModal(true)} disabled={actionBusy}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-sm"
+              onClick={() => setShowReceivePaymentModal(true)}
+              disabled={actionBusy}
+            >
               <CircleDollarSign className="h-4 w-4 mr-2" />
               Receive Payment
             </Button>
@@ -303,13 +352,20 @@ export default function InvoiceDetailPage() {
           <span className="text-muted-foreground">Status</span>
           <InvoiceStatusBadge status={invoice.computedStatus} />
           <span className="ml-2 text-muted-foreground">Due date</span>
-          <span className={cn("tabular-nums", invoice.computedStatus === "Overdue" && "text-red-600 dark:text-red-400")}>
+          <span
+            className={cn(
+              "tabular-nums",
+              invoice.computedStatus === "Overdue" && "text-red-600 dark:text-red-400"
+            )}
+          >
             {invoice.dueDate}
           </span>
           {invoice.daysOverdue > 0 && (
             <>
               <span className="ml-2 text-muted-foreground">Days overdue</span>
-              <span className="font-medium tabular-nums text-red-600 dark:text-red-400">{invoice.daysOverdue}</span>
+              <span className="font-medium tabular-nums text-red-600 dark:text-red-400">
+                {invoice.daysOverdue}
+              </span>
             </>
           )}
         </div>
@@ -322,10 +378,18 @@ export default function InvoiceDetailPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Description</th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Qty</th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Unit price</th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Amount</th>
+                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Description
+                </th>
+                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                  Qty
+                </th>
+                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                  Unit price
+                </th>
+                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                  Amount
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -335,9 +399,15 @@ export default function InvoiceDetailPage() {
                   className="border-b border-[#EBEBE9]/80 transition-colors hover:bg-[#F7F7F5] dark:border-border/40 dark:hover:bg-muted/20"
                 >
                   <td className="py-3 px-4 text-foreground">{line.description}</td>
-                  <td className="py-3 px-4 text-right tabular-nums text-muted-foreground">{line.qty}</td>
-                  <td className="py-3 px-4 text-right tabular-nums text-muted-foreground">${line.unitPrice.toLocaleString()}</td>
-                  <td className="py-3 px-4 text-right tabular-nums font-medium">${line.amount.toLocaleString()}</td>
+                  <td className="py-3 px-4 text-right tabular-nums text-muted-foreground">
+                    {line.qty}
+                  </td>
+                  <td className="py-3 px-4 text-right tabular-nums text-muted-foreground">
+                    ${line.unitPrice.toLocaleString()}
+                  </td>
+                  <td className="py-3 px-4 text-right tabular-nums font-medium">
+                    ${line.amount.toLocaleString()}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -354,7 +424,9 @@ export default function InvoiceDetailPage() {
           </div>
           {invoice.taxAmount != null && invoice.taxAmount > 0 && (
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Tax {invoice.taxPct != null ? `(${invoice.taxPct}%)` : ""}</span>
+              <span className="text-muted-foreground">
+                Tax {invoice.taxPct != null ? `(${invoice.taxPct}%)` : ""}
+              </span>
               <span className="tabular-nums">${invoice.taxAmount.toLocaleString()}</span>
             </div>
           )}
@@ -382,11 +454,21 @@ export default function InvoiceDetailPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Date</th>
-                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Amount</th>
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Method</th>
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Memo</th>
-                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Actions</th>
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Date
+                  </th>
+                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                    Amount
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Method
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Memo
+                  </th>
+                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -429,11 +511,21 @@ export default function InvoiceDetailPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Date</th>
-                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Amount</th>
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Method</th>
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Account</th>
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Notes</th>
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Date
+                  </th>
+                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                    Amount
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Method
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Account
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Notes
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -448,7 +540,12 @@ export default function InvoiceDetailPage() {
                     </td>
                     <td className="py-3 px-4 text-muted-foreground">{p.payment_method ?? "—"}</td>
                     <td className="py-3 px-4 text-muted-foreground">{p.deposit_account ?? "—"}</td>
-                    <td className="py-3 px-4 text-muted-foreground max-w-[200px] truncate" title={p.notes ?? undefined}>{p.notes ?? "—"}</td>
+                    <td
+                      className="py-3 px-4 text-muted-foreground max-w-[200px] truncate"
+                      title={p.notes ?? undefined}
+                    >
+                      {p.notes ?? "—"}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -460,16 +557,26 @@ export default function InvoiceDetailPage() {
       <div className="overflow-hidden rounded-sm border border-[#EBEBE9] dark:border-border">
         <h2 className="p-4 pb-2 text-sm font-semibold text-foreground">Deposits</h2>
         {deposits.length === 0 ? (
-          <p className="text-sm text-muted-foreground px-4 pb-4">No deposits linked to this invoice.</p>
+          <p className="text-sm text-muted-foreground px-4 pb-4">
+            No deposits linked to this invoice.
+          </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Deposit Date</th>
-                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Amount</th>
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Payment Method</th>
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Account</th>
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Deposit Date
+                  </th>
+                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                    Amount
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Payment Method
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Account
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -478,12 +585,16 @@ export default function InvoiceDetailPage() {
                     key={d.id}
                     className="border-b border-[#EBEBE9]/80 transition-colors hover:bg-[#F7F7F5] dark:border-border/40 dark:hover:bg-muted/20"
                   >
-                    <td className="py-3 px-4 tabular-nums">{(d as { date?: string }).date ?? "—"}</td>
+                    <td className="py-3 px-4 tabular-nums">
+                      {(d as { date?: string }).date ?? "—"}
+                    </td>
                     <td className="py-3 px-4 text-right tabular-nums font-medium text-emerald-600/90 dark:text-emerald-400/90">
                       ${d.amount.toLocaleString()}
                     </td>
                     <td className="py-3 px-4 text-muted-foreground">—</td>
-                    <td className="py-3 px-4 text-muted-foreground">{(d as { account?: string | null }).account ?? "—"}</td>
+                    <td className="py-3 px-4 text-muted-foreground">
+                      {(d as { account?: string | null }).account ?? "—"}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -493,7 +604,10 @@ export default function InvoiceDetailPage() {
       </div>
 
       {showPaymentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setShowPaymentModal(false)}>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+          onClick={() => setShowPaymentModal(false)}
+        >
           <div
             className="mx-4 w-full max-w-md rounded-sm border border-[#EBEBE9] bg-background p-6 dark:border-border"
             onClick={(e) => e.stopPropagation()}
@@ -501,7 +615,9 @@ export default function InvoiceDetailPage() {
             <h3 className="mb-4 text-base font-semibold text-foreground">Record Payment</h3>
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Date</label>
+                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Date
+                </label>
                 <Input
                   type="date"
                   value={paymentDate}
@@ -510,7 +626,9 @@ export default function InvoiceDetailPage() {
                 />
               </div>
               <div>
-                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Amount</label>
+                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Amount
+                </label>
                 <Input
                   type="number"
                   min="0"
@@ -522,7 +640,9 @@ export default function InvoiceDetailPage() {
                 />
               </div>
               <div>
-                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Method</label>
+                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Method
+                </label>
                 <Select
                   value={paymentMethod}
                   onChange={(e) => setPaymentMethod(e.target.value)}
@@ -536,7 +656,9 @@ export default function InvoiceDetailPage() {
                 </Select>
               </div>
               <div>
-                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Memo (optional)</label>
+                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Memo (optional)
+                </label>
                 <Input
                   value={paymentMemo}
                   onChange={(e) => setPaymentMemo(e.target.value)}
@@ -546,10 +668,20 @@ export default function InvoiceDetailPage() {
               </div>
             </div>
             <div className="mt-6 flex gap-2">
-              <Button size="sm" className="rounded-sm" onClick={handleRecordPayment} disabled={!paymentAmount || parseFloat(paymentAmount) <= 0}>
+              <Button
+                size="sm"
+                className="rounded-sm"
+                onClick={handleRecordPayment}
+                disabled={!paymentAmount || parseFloat(paymentAmount) <= 0}
+              >
                 Record
               </Button>
-              <Button variant="outline" size="sm" className="rounded-sm" onClick={() => setShowPaymentModal(false)}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-sm"
+                onClick={() => setShowPaymentModal(false)}
+              >
                 Cancel
               </Button>
             </div>
@@ -590,7 +722,12 @@ export default function InvoiceDetailPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="pt-3 border-t border-border/60">
-            <Button variant="outline" size="sm" onClick={() => setRevertOpen(false)} disabled={actionBusy}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setRevertOpen(false)}
+              disabled={actionBusy}
+            >
               Cancel
             </Button>
             <Button size="sm" onClick={handleRevertToDraft} disabled={actionBusy}>

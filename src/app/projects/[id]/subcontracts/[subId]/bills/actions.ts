@@ -29,7 +29,12 @@ export async function updateSubcontractBillAction(
   projectId: string,
   subcontractId: string,
   billId: string,
-  patch: { bill_date?: string; due_date?: string | null; amount?: number; description?: string | null }
+  patch: {
+    bill_date?: string;
+    due_date?: string | null;
+    amount?: number;
+    description?: string | null;
+  }
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     await updateSubcontractBill(billId, patch);
@@ -71,7 +76,14 @@ export async function voidSubcontractBillAction(
 export async function recordSubcontractPaymentAction(
   projectId: string,
   subcontractId: string,
-  input: { subcontract_id: string; bill_id: string; payment_date: string; amount: number; method?: string | null; note?: string | null }
+  input: {
+    subcontract_id: string;
+    bill_id: string;
+    payment_date: string;
+    amount: number;
+    method?: string | null;
+    note?: string | null;
+  }
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     await recordSubcontractPayment(input);

@@ -1,12 +1,7 @@
 "use client";
 
 import * as React from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { createWorkerAction } from "./actions";
 import type { WorkerStatus, WorkerRow } from "@/lib/workers-db";
@@ -159,9 +154,7 @@ export function AddWorkerModal({ open, onOpenChange, onSuccess }: Props) {
               className="h-9 text-sm"
             />
           </div>
-          {error ? (
-            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-          ) : null}
+          {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
           <div className="flex justify-end gap-2 border-t border-border/40 pt-2">
             <button
               type="button"

@@ -1,10 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 /** Dynamic base URL for local dev (default :3000) or CI override. */
-const resolvedBase = (process.env.E2E_BASE_URL || "http://localhost:3000").replace(
-  /\/$/,
-  "",
-);
+const resolvedBase = (process.env.E2E_BASE_URL || "http://localhost:3000").replace(/\/$/, "");
 // Helpers that read process.env.E2E_BASE_URL stay in sync when unset.
 if (!process.env.E2E_BASE_URL) {
   process.env.E2E_BASE_URL = resolvedBase;

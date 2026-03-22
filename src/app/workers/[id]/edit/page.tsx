@@ -8,14 +8,22 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { getWorkerById, updateWorker, getWorkerUsage, disableWorker, deleteWorker } from "@/lib/data";
+import {
+  getWorkerById,
+  updateWorker,
+  getWorkerUsage,
+  disableWorker,
+  deleteWorker,
+} from "@/lib/data";
 
 export default function WorkerProfileEditPage() {
   const params = useParams();
   const router = useRouter();
   const id = params?.id as string | undefined;
   const [message, setMessage] = React.useState<string | null>(null);
-  const [worker, setWorker] = React.useState<Awaited<ReturnType<typeof getWorkerById>> | undefined>(undefined);
+  const [worker, setWorker] = React.useState<Awaited<ReturnType<typeof getWorkerById>> | undefined>(
+    undefined
+  );
   const [usage, setUsage] = React.useState<Awaited<ReturnType<typeof getWorkerUsage>> | null>(null);
 
   const [name, setName] = React.useState("");
@@ -142,24 +150,42 @@ export default function WorkerProfileEditPage() {
         }
       />
       {message ? (
-        <p className="border-b border-[#EBEBE9] pb-3 text-sm text-muted-foreground dark:border-border">{message}</p>
+        <p className="border-b border-[#EBEBE9] pb-3 text-sm text-muted-foreground dark:border-border">
+          {message}
+        </p>
       ) : null}
       <section className="border-b border-[#EBEBE9] pb-6 dark:border-border">
         <div className="grid gap-4">
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Name *</label>
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+              Name *
+            </label>
             <Input value={name} onChange={(e) => setName(e.target.value)} className="rounded-sm" />
           </div>
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Phone</label>
-            <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="rounded-sm" />
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+              Phone
+            </label>
+            <Input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="rounded-sm"
+            />
           </div>
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Trade</label>
-            <Input value={trade} onChange={(e) => setTrade(e.target.value)} className="rounded-sm" />
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+              Trade
+            </label>
+            <Input
+              value={trade}
+              onChange={(e) => setTrade(e.target.value)}
+              className="rounded-sm"
+            />
           </div>
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Half-day Rate</label>
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+              Half-day Rate
+            </label>
             <Input
               type="number"
               min="0"
@@ -170,14 +196,21 @@ export default function WorkerProfileEditPage() {
             />
           </div>
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Status</label>
-            <Select value={status} onChange={(e) => setStatus(e.target.value as "active" | "inactive")}>
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+              Status
+            </label>
+            <Select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as "active" | "inactive")}
+            >
               <option value="active">active</option>
               <option value="inactive">inactive</option>
             </Select>
           </div>
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Notes</label>
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+              Notes
+            </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -185,7 +218,8 @@ export default function WorkerProfileEditPage() {
             />
           </div>
           <p className="text-xs text-muted-foreground">
-            Created: {worker.createdAt} {usageRes.used ? "• Used in labor records" : "• Not used yet"}
+            Created: {worker.createdAt}{" "}
+            {usageRes.used ? "• Used in labor records" : "• Not used yet"}
           </p>
         </div>
         <div className="mt-6 flex flex-wrap justify-end gap-2">
@@ -195,7 +229,13 @@ export default function WorkerProfileEditPage() {
             </Button>
           </Link>
           {usageRes.used ? (
-            <Button variant="outline" size="sm" className="rounded-sm" disabled={status === "inactive"} onClick={handleDisable}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-sm"
+              disabled={status === "inactive"}
+              onClick={handleDisable}
+            >
               Disable
             </Button>
           ) : (

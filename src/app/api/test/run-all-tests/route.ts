@@ -48,7 +48,10 @@ export async function POST(req: Request): Promise<NextResponse> {
       const ok = res.ok && data.ok === true;
       const failed = (data.tests ?? []).filter((t) => t.status === "failed");
       const error = !ok
-        ? (data.message ?? (failed.length > 0 ? failed.map((t) => `${t.test}: ${t.message || "failed"}`).join("; ") : `HTTP ${res.status}`))
+        ? (data.message ??
+          (failed.length > 0
+            ? failed.map((t) => `${t.test}: ${t.message || "failed"}`).join("; ")
+            : `HTTP ${res.status}`))
         : undefined;
       groups.push({
         name: "System Tests",
@@ -86,7 +89,10 @@ export async function POST(req: Request): Promise<NextResponse> {
       const error = skipped
         ? (data.error ?? data.skipped ?? "UI tests skipped (Chrome not available)")
         : !ok
-          ? (data.error ?? (failed.length > 0 ? failed.map((t) => `${t.name}: ${t.error || "failed"}`).join("; ") : `HTTP ${res.status}`))
+          ? (data.error ??
+            (failed.length > 0
+              ? failed.map((t) => `${t.name}: ${t.error || "failed"}`).join("; ")
+              : `HTTP ${res.status}`))
           : undefined;
       groups.push({
         name: "UI Tests",
@@ -118,7 +124,9 @@ export async function POST(req: Request): Promise<NextResponse> {
       const ok = res.ok && data.ok === true;
       const failed = (data.checks ?? []).filter((c) => !c.ok);
       const error = !ok
-        ? (failed.length > 0 ? failed.map((c) => `${c.name}: ${c.error ?? "failed"}`).join("; ") : `HTTP ${res.status}`)
+        ? failed.length > 0
+          ? failed.map((c) => `${c.name}: ${c.error ?? "failed"}`).join("; ")
+          : `HTTP ${res.status}`
         : undefined;
       groups.push({
         name: "API Health Check",
@@ -150,7 +158,9 @@ export async function POST(req: Request): Promise<NextResponse> {
       const elapsed = Date.now() - start;
       const ok = res.ok && data.status === "ok";
       const error = !ok
-        ? (data.missing?.length ? `Missing tables or columns: ${data.missing.join(", ")}` : data.message ?? `HTTP ${res.status}`)
+        ? data.missing?.length
+          ? `Missing tables or columns: ${data.missing.join(", ")}`
+          : (data.message ?? `HTTP ${res.status}`)
         : undefined;
       groups.push({
         name: "Database Schema Check",

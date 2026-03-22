@@ -14,7 +14,9 @@ export async function voidBillAction(billId: string): Promise<{ ok: boolean; err
   }
 }
 
-export async function deleteBillDraftAction(billId: string): Promise<{ ok: boolean; error?: string }> {
+export async function deleteBillDraftAction(
+  billId: string
+): Promise<{ ok: boolean; error?: string }> {
   try {
     await deleteApBillDraft(billId);
     revalidatePath("/bills");

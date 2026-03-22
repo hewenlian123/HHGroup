@@ -23,7 +23,8 @@ export type EstimatePrintDocumentProps = {
   summary: EstimateSummaryResult | null;
 };
 
-const fmt = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmt = (n: number) =>
+  n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /** Read-only, print-optimized estimate document. No navigation or buttons. */
 export function EstimatePrintDocument({
@@ -38,7 +39,8 @@ export function EstimatePrintDocument({
 }: EstimatePrintDocumentProps) {
   const estimateTotal = summary?.grandTotal ?? 0;
   const costSections = groupEstimateItemsByCategoryId(items, categories, catalogNameByCode);
-  const estimateDateStr = meta?.estimateDate ?? (estimate.updatedAt ? estimate.updatedAt.slice(0, 10) : "—");
+  const estimateDateStr =
+    meta?.estimateDate ?? (estimate.updatedAt ? estimate.updatedAt.slice(0, 10) : "—");
   const statusLabel = estimate.status === "Converted" ? "Converted to Project" : estimate.status;
 
   return (
@@ -64,7 +66,9 @@ export function EstimatePrintDocument({
       {/* Client / Project / Dates / Status */}
       {meta && (
         <section className="mb-8 print:break-inside-avoid">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-4">Client & Project</h2>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-4">
+            Client & Project
+          </h2>
           <div className="grid grid-cols-2 gap-6 text-sm">
             <div>
               <p className="text-xs font-medium text-zinc-500 mb-1">Client / Customer</p>
@@ -76,7 +80,9 @@ export function EstimatePrintDocument({
             </div>
             <div className="col-span-2">
               <p className="text-xs font-medium text-zinc-500 mb-1">Address</p>
-              <p className="text-zinc-700">{meta.client.address || meta.project.siteAddress || "—"}</p>
+              <p className="text-zinc-700">
+                {meta.client.address || meta.project.siteAddress || "—"}
+              </p>
             </div>
             <div>
               <p className="text-xs font-medium text-zinc-500 mb-1">Estimate Date</p>
@@ -92,7 +98,9 @@ export function EstimatePrintDocument({
 
       {/* Cost breakdown by category */}
       <section className="mb-8 print:break-inside-avoid">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-4">Cost Breakdown</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-4">
+          Cost Breakdown
+        </h2>
         {costSections.length === 0 ? (
           <p className="text-sm text-zinc-500 py-4">No line items.</p>
         ) : (
@@ -115,24 +123,28 @@ export function EstimatePrintDocument({
                     {rows.map((row) => {
                       const { title: itemTitle, body } = splitLineItemDesc(row.desc ?? "");
                       return (
-                      <tr key={row.id} className="border-b border-zinc-100">
-                        <td className="py-2.5 pr-4">
-                          <p className="font-medium text-zinc-900">{itemTitle || row.desc}</p>
-                          {body.trim() ? (
-                            <div className="mt-1 text-xs text-zinc-600">
-                              <LineItemDescriptionBodyPreview body={body} />
-                            </div>
-                          ) : null}
-                        </td>
-                        <td className="py-2.5 px-2 text-right tabular-nums text-zinc-900">{row.qty}</td>
-                        <td className="py-2.5 px-2 text-zinc-700">{row.unit}</td>
-                        <td className="py-2.5 px-2 text-right tabular-nums text-zinc-900">${fmt(row.unitCost)}</td>
-                        <td className="py-2.5 px-2 text-zinc-600 text-xs">{row.costCode}</td>
-                        <td className="py-2.5 pl-4 text-right tabular-nums font-medium text-zinc-900">
-                          ${fmt(estimateLineTotal(row))}
-                        </td>
-                      </tr>
-                    );
+                        <tr key={row.id} className="border-b border-zinc-100">
+                          <td className="py-2.5 pr-4">
+                            <p className="font-medium text-zinc-900">{itemTitle || row.desc}</p>
+                            {body.trim() ? (
+                              <div className="mt-1 text-xs text-zinc-600">
+                                <LineItemDescriptionBodyPreview body={body} />
+                              </div>
+                            ) : null}
+                          </td>
+                          <td className="py-2.5 px-2 text-right tabular-nums text-zinc-900">
+                            {row.qty}
+                          </td>
+                          <td className="py-2.5 px-2 text-zinc-700">{row.unit}</td>
+                          <td className="py-2.5 px-2 text-right tabular-nums text-zinc-900">
+                            ${fmt(row.unitCost)}
+                          </td>
+                          <td className="py-2.5 px-2 text-zinc-600 text-xs">{row.costCode}</td>
+                          <td className="py-2.5 pl-4 text-right tabular-nums font-medium text-zinc-900">
+                            ${fmt(estimateLineTotal(row))}
+                          </td>
+                        </tr>
+                      );
                     })}
                   </tbody>
                 </table>
@@ -147,7 +159,9 @@ export function EstimatePrintDocument({
 
       {/* Payment schedule */}
       <section className="mb-8 print:break-inside-avoid">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-4">Payment Schedule</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-4">
+          Payment Schedule
+        </h2>
         {paymentSchedule.length === 0 ? (
           <p className="text-sm text-zinc-500 py-4">No payment milestones.</p>
         ) : (
@@ -171,7 +185,9 @@ export function EstimatePrintDocument({
                     <td className="py-2.5 px-2 text-right tabular-nums text-zinc-900">
                       {item.amountType === "percent" ? `${item.value}%` : `$${fmt(item.value)}`}
                     </td>
-                    <td className="py-2.5 px-2 text-right tabular-nums font-medium text-zinc-900">${fmt(amount)}</td>
+                    <td className="py-2.5 px-2 text-right tabular-nums font-medium text-zinc-900">
+                      ${fmt(amount)}
+                    </td>
                     <td className="py-2.5 pl-4 text-zinc-700">{item.dueRule || "—"}</td>
                   </tr>
                 );
@@ -184,7 +200,9 @@ export function EstimatePrintDocument({
       {/* Summary totals */}
       {summary && (
         <section className="mb-8 print:break-inside-avoid">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-4">Summary</h2>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-4">
+            Summary
+          </h2>
           <div className="max-w-xs ml-auto border border-zinc-200 rounded-lg p-5 text-sm space-y-2">
             <div className="flex justify-between text-zinc-600">
               <span>Material Cost</span>
@@ -225,7 +243,9 @@ export function EstimatePrintDocument({
       {/* Notes */}
       {meta?.notes && meta.notes.trim() !== "" && (
         <section className="mb-8 print:break-inside-avoid">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-3">Notes</h2>
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-3">
+            Notes
+          </h2>
           <div className="rounded-lg border border-zinc-200 bg-zinc-50/50 p-4 text-sm text-zinc-700 whitespace-pre-wrap">
             {meta.notes}
           </div>

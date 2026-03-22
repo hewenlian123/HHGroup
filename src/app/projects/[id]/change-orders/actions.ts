@@ -24,20 +24,28 @@ export async function createChangeOrderAction(
     const costImpact = costImpactRaw != null && costImpactRaw !== "" ? Number(costImpactRaw) : null;
     const scheduleImpactDaysRaw = formData.get("scheduleImpactDays");
     const scheduleImpactDays =
-      scheduleImpactDaysRaw != null && scheduleImpactDaysRaw !== "" ? Number(scheduleImpactDaysRaw) : null;
+      scheduleImpactDaysRaw != null && scheduleImpactDaysRaw !== ""
+        ? Number(scheduleImpactDaysRaw)
+        : null;
     const co = await createChangeOrder(projectId, {
       title: title || null,
       description,
       amount: amount != null && Number.isFinite(amount) ? amount : null,
       costImpact: costImpact != null && Number.isFinite(costImpact) ? costImpact : null,
-      scheduleImpactDays: scheduleImpactDays != null && Number.isFinite(scheduleImpactDays) ? scheduleImpactDays : null,
+      scheduleImpactDays:
+        scheduleImpactDays != null && Number.isFinite(scheduleImpactDays)
+          ? scheduleImpactDays
+          : null,
     });
     revalidatePath(`/projects/${projectId}`);
     redirect(`/projects/${projectId}/change-orders/${co.id}`);
   } catch (e) {
     // Let Next handle redirects/notFound; those are implemented as exceptions.
     const digest = (e as { digest?: unknown } | null)?.digest;
-    if (typeof digest === "string" && (digest.startsWith("NEXT_REDIRECT") || digest.startsWith("NEXT_NOT_FOUND"))) {
+    if (
+      typeof digest === "string" &&
+      (digest.startsWith("NEXT_REDIRECT") || digest.startsWith("NEXT_NOT_FOUND"))
+    ) {
       throw e;
     }
 
@@ -74,12 +82,20 @@ export async function updateChangeOrderAction(
   const title = (formData.get("title") as string)?.trim();
   const description = (formData.get("description") as string)?.trim();
   const amountRaw = formData.get("amount");
-  const amount = amountRaw != null && amountRaw !== "" && Number.isFinite(Number(amountRaw)) ? Number(amountRaw) : undefined;
+  const amount =
+    amountRaw != null && amountRaw !== "" && Number.isFinite(Number(amountRaw))
+      ? Number(amountRaw)
+      : undefined;
   const costImpactRaw = formData.get("costImpact");
-  const costImpact = costImpactRaw != null && costImpactRaw !== "" && Number.isFinite(Number(costImpactRaw)) ? Number(costImpactRaw) : undefined;
+  const costImpact =
+    costImpactRaw != null && costImpactRaw !== "" && Number.isFinite(Number(costImpactRaw))
+      ? Number(costImpactRaw)
+      : undefined;
   const scheduleImpactDaysRaw = formData.get("scheduleImpactDays");
   const scheduleImpactDays =
-    scheduleImpactDaysRaw != null && scheduleImpactDaysRaw !== "" && Number.isFinite(Number(scheduleImpactDaysRaw))
+    scheduleImpactDaysRaw != null &&
+    scheduleImpactDaysRaw !== "" &&
+    Number.isFinite(Number(scheduleImpactDaysRaw))
       ? Number(scheduleImpactDaysRaw)
       : undefined;
   const patch: import("@/lib/data").UpdateChangeOrderPatch = {};

@@ -97,7 +97,9 @@ const SEGMENT_LABELS: Record<string, string> = {
 function getBreadcrumbLabel(segment: string, pathSegments: string[], index: number): string {
   const lower = segment.toLowerCase();
   if (pathSegments[0] === "labor" && lower === "payments") return "Worker Payments";
-  return SEGMENT_LABELS[lower] ?? segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, " ");
+  return (
+    SEGMENT_LABELS[lower] ?? segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, " ")
+  );
 }
 
 function buildBreadcrumbs(pathname: string): string[] {
@@ -174,23 +176,36 @@ export function Topbar({
         </Button>
 
         {/* HH GROUP / Breadcrumbs — hidden on mobile, visible tablet+ */}
-        <nav
-          className="hidden min-w-0 items-center gap-1 text-sm sm:flex"
-          aria-label="Breadcrumb"
-        >
+        <nav className="hidden min-w-0 items-center gap-1 text-sm sm:flex" aria-label="Breadcrumb">
           <span className="shrink-0 text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400">
             {orgName.replace(/\s+/g, " ").toUpperCase()}
           </span>
           {breadcrumbs.length > 0 && (
             <>
-              <svg className="h-[10px] w-[10px] shrink-0 opacity-30 text-[#9ca3af] dark:text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden>
+              <svg
+                className="h-[10px] w-[10px] shrink-0 opacity-30 text-[#9ca3af] dark:text-muted-foreground"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                aria-hidden
+              >
                 <path d="M9 18l6-6-6-6" />
               </svg>
               <div className="flex min-w-0 items-center gap-1">
                 {breadcrumbs.map((label, i) => (
                   <React.Fragment key={`${label}-${i}`}>
                     {i > 0 && (
-                      <svg className="h-[10px] w-[10px] shrink-0 opacity-30 text-[#9ca3af] dark:text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden>
+                      <svg
+                        className="h-[10px] w-[10px] shrink-0 opacity-30 text-[#9ca3af] dark:text-muted-foreground"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        aria-hidden
+                      >
                         <path d="M9 18l6-6-6-6" />
                       </svg>
                     )}
@@ -214,9 +229,16 @@ export function Topbar({
 
       {/* Global Search — 320px desktop, shrunk on tablet/mobile */}
       <div className="flex min-w-0 shrink items-center gap-2">
-        <label className="relative w-[120px] sm:w-[200px] md:w-[260px] lg:w-[320px]" htmlFor="topbar-search">
+        <label
+          className="relative w-[120px] sm:w-[200px] md:w-[260px] lg:w-[320px]"
+          htmlFor="topbar-search"
+        >
           <span className="sr-only">Search</span>
-          <Search className="absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 shrink-0 text-gray-500 dark:text-muted-foreground" strokeWidth={1.75} aria-hidden />
+          <Search
+            className="absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 shrink-0 text-gray-500 dark:text-muted-foreground"
+            strokeWidth={1.75}
+            aria-hidden
+          />
           <input
             id="topbar-search"
             type="search"
@@ -238,7 +260,10 @@ export function Topbar({
             <Bell className="h-4 w-4 text-[#6b7280] dark:text-muted-foreground" />
           </Button>
           {systemHealth.status === "warning" && (
-            <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-red-500" aria-hidden />
+            <span
+              className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-red-500"
+              aria-hidden
+            />
           )}
         </div>
       </div>
@@ -313,7 +338,10 @@ export function Topbar({
         {/* User avatar + dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-9 w-9 min-h-[44px] min-w-[44px] shrink-0 rounded-full p-0 sm:min-h-0 sm:min-w-0">
+            <Button
+              variant="ghost"
+              className="relative h-9 w-9 min-h-[44px] min-w-[44px] shrink-0 rounded-full p-0 sm:min-h-0 sm:min-w-0"
+            >
               <Avatar className="h-8 w-8">
                 {logoUrl ? (
                   <AvatarImage src={logoUrl} alt={orgName} className="object-contain" />

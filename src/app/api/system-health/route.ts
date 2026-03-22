@@ -86,8 +86,15 @@ export async function GET(request: Request) {
   try {
     const origin = new URL(request.url).origin;
     const schemaRes = await fetch(`${origin}/api/schema-check`, { cache: "no-store" });
-    const schemaData = (await schemaRes.json().catch(() => ({}))) as { status?: string; missing?: string[] };
-    if (schemaData.status === "error" && Array.isArray(schemaData.missing) && schemaData.missing.length > 0) {
+    const schemaData = (await schemaRes.json().catch(() => ({}))) as {
+      status?: string;
+      missing?: string[];
+    };
+    if (
+      schemaData.status === "error" &&
+      Array.isArray(schemaData.missing) &&
+      schemaData.missing.length > 0
+    ) {
       status = "warning";
       schemaMissing = schemaData.missing;
     }
@@ -96,7 +103,11 @@ export async function GET(request: Request) {
     schemaMissing = [];
   }
 
-  const body: { status: SystemHealthStatus; modules: SystemHealthModule[]; schemaMissing?: string[] } = {
+  const body: {
+    status: SystemHealthStatus;
+    modules: SystemHealthModule[];
+    schemaMissing?: string[];
+  } = {
     status,
     modules,
   };

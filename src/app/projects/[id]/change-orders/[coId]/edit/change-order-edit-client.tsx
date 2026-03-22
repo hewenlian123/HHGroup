@@ -4,15 +4,14 @@ import { syncRouterAndClients } from "@/lib/sync-router-client";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { useRouter } from "next/navigation";
 import { useTransition, useState, useCallback, type FormEvent } from "react";
-import {
-  SectionHeader,
-  Divider,
-  DataTable,
-  type DataTableColumn,
-} from "@/components/base";
+import { SectionHeader, Divider, DataTable, type DataTableColumn } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { addChangeOrderItemAction, deleteChangeOrderItemAction, updateChangeOrderAction } from "../../actions";
+import {
+  addChangeOrderItemAction,
+  deleteChangeOrderItemAction,
+  updateChangeOrderAction,
+} from "../../actions";
 import type { ChangeOrderItem, ChangeOrder } from "@/lib/data";
 
 export function ChangeOrderEditClient({
@@ -107,29 +106,65 @@ export function ChangeOrderEditClient({
   return (
     <>
       <SectionHeader label="Details" />
-      <form onSubmit={handleSaveDetails} className="mb-6 grid gap-3 rounded border border-border/60 p-4 sm:grid-cols-2 lg:grid-cols-4">
+      <form
+        onSubmit={handleSaveDetails}
+        className="mb-6 grid gap-3 rounded border border-border/60 p-4 sm:grid-cols-2 lg:grid-cols-4"
+      >
         <div>
           <label className="mb-1 block text-xs text-muted-foreground">Title</label>
-          <Input name="title" defaultValue={changeOrder.title ?? ""} placeholder="Title" className="h-8 text-sm" />
+          <Input
+            name="title"
+            defaultValue={changeOrder.title ?? ""}
+            placeholder="Title"
+            className="h-8 text-sm"
+          />
         </div>
         <div className="sm:col-span-2">
           <label className="mb-1 block text-xs text-muted-foreground">Description</label>
-          <Input name="description" defaultValue={changeOrder.description ?? ""} placeholder="Description" className="h-8 text-sm" />
+          <Input
+            name="description"
+            defaultValue={changeOrder.description ?? ""}
+            placeholder="Description"
+            className="h-8 text-sm"
+          />
         </div>
         <div>
           <label className="mb-1 block text-xs text-muted-foreground">Amount (revenue)</label>
-          <Input name="amount" type="number" step="0.01" defaultValue={changeOrder.amount ?? ""} placeholder="0" className="h-8 text-sm" />
+          <Input
+            name="amount"
+            type="number"
+            step="0.01"
+            defaultValue={changeOrder.amount ?? ""}
+            placeholder="0"
+            className="h-8 text-sm"
+          />
         </div>
         <div>
           <label className="mb-1 block text-xs text-muted-foreground">Cost impact</label>
-          <Input name="costImpact" type="number" step="0.01" defaultValue={changeOrder.costImpact ?? ""} placeholder="0" className="h-8 text-sm" />
+          <Input
+            name="costImpact"
+            type="number"
+            step="0.01"
+            defaultValue={changeOrder.costImpact ?? ""}
+            placeholder="0"
+            className="h-8 text-sm"
+          />
         </div>
         <div>
           <label className="mb-1 block text-xs text-muted-foreground">Schedule impact (days)</label>
-          <Input name="scheduleImpactDays" type="number" step="1" defaultValue={changeOrder.scheduleImpactDays ?? ""} placeholder="0" className="h-8 text-sm" />
+          <Input
+            name="scheduleImpactDays"
+            type="number"
+            step="1"
+            defaultValue={changeOrder.scheduleImpactDays ?? ""}
+            placeholder="0"
+            className="h-8 text-sm"
+          />
         </div>
         <div className="flex items-end">
-          <Button type="submit" size="sm" disabled={pending}>Save details</Button>
+          <Button type="submit" size="sm" disabled={pending}>
+            Save details
+          </Button>
         </div>
       </form>
       <Divider />
@@ -138,16 +173,31 @@ export function ChangeOrderEditClient({
         action={
           <form onSubmit={handleAdd} className="flex flex-wrap items-center gap-2">
             <Input name="costCode" placeholder="Cost code" className="h-8 w-24 text-xs" />
-            <Input name="description" placeholder="Description" className="h-8 min-w-[120px] text-xs" />
-            <Input name="qty" type="number" step="any" placeholder="Qty" className="h-8 w-16 text-xs" defaultValue={1} />
+            <Input
+              name="description"
+              placeholder="Description"
+              className="h-8 min-w-[120px] text-xs"
+            />
+            <Input
+              name="qty"
+              type="number"
+              step="any"
+              placeholder="Qty"
+              className="h-8 w-16 text-xs"
+              defaultValue={1}
+            />
             <Input name="unit" placeholder="Unit" className="h-8 w-14 text-xs" defaultValue="EA" />
-            <Input name="unitPrice" type="number" step="0.01" placeholder="Unit price" className="h-8 w-24 text-xs" />
+            <Input
+              name="unitPrice"
+              type="number"
+              step="0.01"
+              placeholder="Unit price"
+              className="h-8 w-24 text-xs"
+            />
             <Button type="submit" size="sm" className="h-8 text-xs" disabled={pending}>
               Add
             </Button>
-            {validationError && (
-              <span className="text-xs text-destructive">{validationError}</span>
-            )}
+            {validationError && <span className="text-xs text-destructive">{validationError}</span>}
           </form>
         }
       />

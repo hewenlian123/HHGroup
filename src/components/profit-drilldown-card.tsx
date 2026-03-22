@@ -68,7 +68,9 @@ export function ProfitDrilldownCard({
     <Card className="overflow-hidden p-6">
       <div className="mb-4">
         <h2 className="text-base font-semibold text-foreground">Profit Drilldown</h2>
-        <p className="text-sm text-muted-foreground mt-0.5">Category variance, top vendors, and recent costs. Internal only.</p>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          Category variance, top vendors, and recent costs. Internal only.
+        </p>
       </div>
       <div className="flex gap-2 mb-4 border-b border-zinc-200/60 dark:border-border pb-2">
         {(
@@ -85,7 +87,9 @@ export function ProfitDrilldownCard({
             onClick={() => setTab(id)}
             className={cn(
               "px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
-              tab === id ? "bg-foreground text-background" : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
+              tab === id
+                ? "bg-foreground text-background"
+                : "text-muted-foreground hover:bg-muted/30 hover:text-foreground"
             )}
           >
             {label}
@@ -98,18 +102,28 @@ export function ProfitDrilldownCard({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-zinc-200/40 dark:border-border/60 bg-muted/30">
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Category</th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Budget</th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Actual</th>
+                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Category
+                </th>
+                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                  Budget
+                </th>
+                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                  Actual
+                </th>
                 {hasBudget && (
-                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Variance</th>
+                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                    Variance
+                  </th>
                 )}
               </tr>
             </thead>
             <tbody>
               {BUCKETS.map((bucket) => {
                 const actual = categorySpend[bucket.toLowerCase() as keyof CategorySpend];
-                const budget = hasBudget ? budgetBreakdown[bucket.toLowerCase() as keyof SnapshotBreakdown] : null;
+                const budget = hasBudget
+                  ? budgetBreakdown[bucket.toLowerCase() as keyof SnapshotBreakdown]
+                  : null;
                 const variance = budget != null ? actual - budget : null;
                 return (
                   <tr key={bucket} className="border-b border-zinc-100/50 dark:border-border/30">
@@ -117,15 +131,21 @@ export function ProfitDrilldownCard({
                     <td className="py-3 px-4 text-right tabular-nums text-foreground">
                       {hasBudget && budget != null ? `$${budget.toLocaleString()}` : "—"}
                     </td>
-                    <td className="py-3 px-4 text-right tabular-nums text-foreground">${actual.toLocaleString()}</td>
+                    <td className="py-3 px-4 text-right tabular-nums text-foreground">
+                      ${actual.toLocaleString()}
+                    </td>
                     {hasBudget && (
                       <td
                         className={cn(
                           "py-3 px-4 text-right tabular-nums font-medium",
-                          variance != null && variance > 0 && "text-amber-600/90 dark:text-amber-500/90"
+                          variance != null &&
+                            variance > 0 &&
+                            "text-amber-600/90 dark:text-amber-500/90"
                         )}
                       >
-                        {variance != null ? `${variance >= 0 ? "+" : "−"}$${Math.abs(variance).toLocaleString()}` : "—"}
+                        {variance != null
+                          ? `${variance >= 0 ? "+" : "−"}$${Math.abs(variance).toLocaleString()}`
+                          : "—"}
                       </td>
                     )}
                   </tr>
@@ -141,10 +161,18 @@ export function ProfitDrilldownCard({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-zinc-200/40 dark:border-border/60 bg-muted/30">
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Vendor</th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Total</th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">#Tx</th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Last Date</th>
+                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Vendor
+                </th>
+                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                  Total
+                </th>
+                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                  #Tx
+                </th>
+                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                  Last Date
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -166,7 +194,9 @@ export function ProfitDrilldownCard({
                     <td className="py-3 px-4">
                       <button
                         type="button"
-                        onClick={() => setVendorFilter(vendorFilter === row.vendorName ? null : row.vendorName)}
+                        onClick={() =>
+                          setVendorFilter(vendorFilter === row.vendorName ? null : row.vendorName)
+                        }
                         className="font-medium text-foreground hover:text-primary underline-offset-2 hover:underline"
                       >
                         {row.vendorName}
@@ -175,8 +205,12 @@ export function ProfitDrilldownCard({
                     <td className="py-3 px-4 text-right tabular-nums text-foreground font-medium text-red-600/90 dark:text-red-400/90">
                       −${row.total.toLocaleString()}
                     </td>
-                    <td className="py-3 px-4 text-right tabular-nums text-muted-foreground">{row.txCount}</td>
-                    <td className="py-3 px-4 text-right tabular-nums text-muted-foreground">{row.lastDate}</td>
+                    <td className="py-3 px-4 text-right tabular-nums text-muted-foreground">
+                      {row.txCount}
+                    </td>
+                    <td className="py-3 px-4 text-right tabular-nums text-muted-foreground">
+                      {row.lastDate}
+                    </td>
                   </tr>
                 ))
               )}
@@ -203,12 +237,24 @@ export function ProfitDrilldownCard({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-zinc-200/40 dark:border-border/60 bg-muted/30">
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Date</th>
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Vendor</th>
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Category</th>
-                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Amount</th>
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Memo</th>
-                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Actions</th>
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Date
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Vendor
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Category
+                  </th>
+                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                    Amount
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Memo
+                  </th>
+                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -220,14 +266,20 @@ export function ProfitDrilldownCard({
                   </tr>
                 ) : (
                   filteredRecent.map((row, idx) => (
-                    <tr key={`${row.expenseId}-${row.date}-${idx}`} className="border-b border-zinc-100/50 dark:border-border/30">
+                    <tr
+                      key={`${row.expenseId}-${row.date}-${idx}`}
+                      className="border-b border-zinc-100/50 dark:border-border/30"
+                    >
                       <td className="py-3 px-4 tabular-nums text-foreground">{row.date}</td>
                       <td className="py-3 px-4 font-medium text-foreground">{row.vendorName}</td>
                       <td className="py-3 px-4 text-muted-foreground">{row.category}</td>
                       <td className="py-3 px-4 text-right tabular-nums font-medium text-red-600/90 dark:text-red-400/90">
                         −${row.amount.toLocaleString()}
                       </td>
-                      <td className="py-3 px-4 text-muted-foreground max-w-[180px] truncate" title={row.memo ?? undefined}>
+                      <td
+                        className="py-3 px-4 text-muted-foreground max-w-[180px] truncate"
+                        title={row.memo ?? undefined}
+                      >
                         {row.memo ?? "—"}
                       </td>
                       <td className="py-3 px-4 text-right">
@@ -252,12 +304,24 @@ export function ProfitDrilldownCard({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-zinc-200/40 dark:border-border/60 bg-muted/30">
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Category</th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Committed</th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Actual</th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Total</th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Budget</th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">Variance</th>
+                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                  Category
+                </th>
+                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                  Committed
+                </th>
+                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                  Actual
+                </th>
+                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                  Total
+                </th>
+                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                  Budget
+                </th>
+                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                  Variance
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -265,22 +329,34 @@ export function ProfitDrilldownCard({
                 const committed = committedSpend[bucket.toLowerCase() as keyof CategorySpend] ?? 0;
                 const actual = categorySpend[bucket.toLowerCase() as keyof CategorySpend] ?? 0;
                 const total = committed + actual;
-                const budget = budgetBreakdown ? budgetBreakdown[bucket.toLowerCase() as keyof SnapshotBreakdown] : 0;
+                const budget = budgetBreakdown
+                  ? budgetBreakdown[bucket.toLowerCase() as keyof SnapshotBreakdown]
+                  : 0;
                 const variance = budget - total;
                 return (
                   <tr key={bucket} className="border-b border-zinc-100/50 dark:border-border/30">
                     <td className="py-3 px-4 font-medium text-foreground">{bucket}</td>
-                    <td className="py-3 px-4 text-right tabular-nums text-amber-700 dark:text-amber-400">${committed.toLocaleString()}</td>
-                    <td className="py-3 px-4 text-right tabular-nums text-foreground">${actual.toLocaleString()}</td>
-                    <td className="py-3 px-4 text-right tabular-nums font-medium text-foreground">${total.toLocaleString()}</td>
-                    <td className="py-3 px-4 text-right tabular-nums text-foreground">{budgetBreakdown ? `$${budget.toLocaleString()}` : "—"}</td>
+                    <td className="py-3 px-4 text-right tabular-nums text-amber-700 dark:text-amber-400">
+                      ${committed.toLocaleString()}
+                    </td>
+                    <td className="py-3 px-4 text-right tabular-nums text-foreground">
+                      ${actual.toLocaleString()}
+                    </td>
+                    <td className="py-3 px-4 text-right tabular-nums font-medium text-foreground">
+                      ${total.toLocaleString()}
+                    </td>
+                    <td className="py-3 px-4 text-right tabular-nums text-foreground">
+                      {budgetBreakdown ? `$${budget.toLocaleString()}` : "—"}
+                    </td>
                     <td
                       className={cn(
                         "py-3 px-4 text-right tabular-nums font-medium",
                         variance < 0 && "text-amber-600/90 dark:text-amber-500/90"
                       )}
                     >
-                      {budgetBreakdown ? `${variance >= 0 ? "+" : "−"}$${Math.abs(variance).toLocaleString()}` : "—"}
+                      {budgetBreakdown
+                        ? `${variance >= 0 ? "+" : "−"}$${Math.abs(variance).toLocaleString()}`
+                        : "—"}
                     </td>
                   </tr>
                 );
@@ -307,17 +383,27 @@ export function ProfitDrilldownCard({
                 return (
                   <tr className="bg-muted/20">
                     <td className="py-3 px-4 font-semibold text-foreground">Total</td>
-                    <td className="py-3 px-4 text-right tabular-nums font-semibold text-amber-700 dark:text-amber-400">${committedTotal.toLocaleString()}</td>
-                    <td className="py-3 px-4 text-right tabular-nums font-semibold text-foreground">${actualTotal.toLocaleString()}</td>
-                    <td className="py-3 px-4 text-right tabular-nums font-semibold text-foreground">${totalCost.toLocaleString()}</td>
-                    <td className="py-3 px-4 text-right tabular-nums font-semibold text-foreground">{budgetBreakdown ? `$${budgetTotal.toLocaleString()}` : "—"}</td>
+                    <td className="py-3 px-4 text-right tabular-nums font-semibold text-amber-700 dark:text-amber-400">
+                      ${committedTotal.toLocaleString()}
+                    </td>
+                    <td className="py-3 px-4 text-right tabular-nums font-semibold text-foreground">
+                      ${actualTotal.toLocaleString()}
+                    </td>
+                    <td className="py-3 px-4 text-right tabular-nums font-semibold text-foreground">
+                      ${totalCost.toLocaleString()}
+                    </td>
+                    <td className="py-3 px-4 text-right tabular-nums font-semibold text-foreground">
+                      {budgetBreakdown ? `$${budgetTotal.toLocaleString()}` : "—"}
+                    </td>
                     <td
                       className={cn(
                         "py-3 px-4 text-right tabular-nums font-semibold",
                         varianceTotal < 0 && "text-amber-600/90 dark:text-amber-500/90"
                       )}
                     >
-                      {budgetBreakdown ? `${varianceTotal >= 0 ? "+" : "−"}$${Math.abs(varianceTotal).toLocaleString()}` : "—"}
+                      {budgetBreakdown
+                        ? `${varianceTotal >= 0 ? "+" : "−"}$${Math.abs(varianceTotal).toLocaleString()}`
+                        : "—"}
                     </td>
                   </tr>
                 );

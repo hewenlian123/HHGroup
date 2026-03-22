@@ -39,7 +39,10 @@ async function main() {
   const sql = postgres(url, { max: 1, connect_timeout: 10 });
 
   try {
-    const migrationPath = join(process.cwd(), "supabase/migrations/202604141000_expenses_source_source_id_paid.sql");
+    const migrationPath = join(
+      process.cwd(),
+      "supabase/migrations/202604141000_expenses_source_source_id_paid.sql"
+    );
     const migrationSql = readFileSync(migrationPath, "utf8");
 
     console.log("Running migration 202604141000...");
@@ -52,7 +55,10 @@ async function main() {
       and column_name in ('source', 'source_id')
       order by column_name
     `;
-    console.log("expenses columns (source, source_id):", cols.length === 2 ? "both exist" : cols.map((r) => r.column_name));
+    console.log(
+      "expenses columns (source, source_id):",
+      cols.length === 2 ? "both exist" : cols.map((r) => r.column_name)
+    );
   } catch (e) {
     console.error(e);
     process.exit(1);

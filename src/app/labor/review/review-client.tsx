@@ -74,9 +74,18 @@ export default function LaborReviewClient() {
     [configured, url, anon]
   );
 
-  const halfDayRates = React.useMemo(() => new Map(workerOptions.map((w) => [w.id, w.halfDayRate])), [workerOptions]);
-  const workers = React.useMemo(() => new Map(workerOptions.map((w) => [w.id, w.name])), [workerOptions]);
-  const projects = React.useMemo(() => new Map(projectOptions.map((p) => [p.id, p.name])), [projectOptions]);
+  const halfDayRates = React.useMemo(
+    () => new Map(workerOptions.map((w) => [w.id, w.halfDayRate])),
+    [workerOptions]
+  );
+  const workers = React.useMemo(
+    () => new Map(workerOptions.map((w) => [w.id, w.name])),
+    [workerOptions]
+  );
+  const projects = React.useMemo(
+    () => new Map(projectOptions.map((p) => [p.id, p.name])),
+    [projectOptions]
+  );
 
   const refresh = React.useCallback(async () => {
     if (!supabase) {
@@ -94,8 +103,16 @@ export default function LaborReviewClient() {
         .select("id,worker_id,project_id,work_date,hours,cost_code,notes")
         .order("work_date", { ascending: false })
         .limit(500),
-      supabase.from("workers").select("id,name,half_day_rate").order("created_at", { ascending: false }).limit(500),
-      supabase.from("projects").select("id,name").order("created_at", { ascending: false }).limit(500),
+      supabase
+        .from("workers")
+        .select("id,name,half_day_rate")
+        .order("created_at", { ascending: false })
+        .limit(500),
+      supabase
+        .from("projects")
+        .select("id,name")
+        .order("created_at", { ascending: false })
+        .limit(500),
     ]);
 
     if (entriesRes.error) {
@@ -112,8 +129,10 @@ export default function LaborReviewClient() {
       setProjectOptions(projOpts);
       setRows(list.map(rowToEntry));
     }
-    if (workersRes.error && !isMissingTableError(workersRes.error)) setError((e) => e ?? workersRes.error?.message ?? null);
-    if (projectsRes.error && !isMissingTableError(projectsRes.error)) setError((e) => e ?? projectsRes.error?.message ?? null);
+    if (workersRes.error && !isMissingTableError(workersRes.error))
+      setError((e) => e ?? workersRes.error?.message ?? null);
+    if (projectsRes.error && !isMissingTableError(projectsRes.error))
+      setError((e) => e ?? projectsRes.error?.message ?? null);
     setLoading(false);
   }, [configured, supabase]);
 
@@ -174,10 +193,9 @@ export default function LaborReviewClient() {
       notes: selected.notes || null,
       cost_amount: (selected.hours ?? 0) * hourlyRate,
     };
-    const { error: upsertErr } = await supabase.from("labor_entries").upsert(
-      { id: selected.id, ...payload },
-      { onConflict: "id" }
-    );
+    const { error: upsertErr } = await supabase
+      .from("labor_entries")
+      .upsert({ id: selected.id, ...payload }, { onConflict: "id" });
     if (upsertErr) setError(upsertErr.message);
     else {
       setMessage("Changes saved.");
@@ -188,7 +206,10 @@ export default function LaborReviewClient() {
 
   return (
     <div className="page-container page-stack py-6">
-      <PageHeader title="Labor Review" description="Review labor drafts and confirm entries for project actual labor." />
+      <PageHeader
+        title="Labor Review"
+        description="Review labor drafts and confirm entries for project actual labor."
+      />
 
       {error ? (
         <Card className="p-5">
@@ -197,7 +218,12 @@ export default function LaborReviewClient() {
       ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} max={new Date().toISOString().slice(0, 10)} />
+        <Input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          max={new Date().toISOString().slice(0, 10)}
+        />
         <select
           value={workerFilter}
           onChange={(e) => setWorkerFilter(e.target.value)}
@@ -205,7 +231,9 @@ export default function LaborReviewClient() {
         >
           <option value="">All workers</option>
           {workerOptions.map((w) => (
-            <option key={w.id} value={w.id}>{w.name}</option>
+            <option key={w.id} value={w.id}>
+              {w.name}
+            </option>
           ))}
         </select>
         <select
@@ -215,7 +243,9 @@ export default function LaborReviewClient() {
         >
           <option value="">All projects</option>
           {projectOptions.map((p) => (
-            <option key={p.id} value={p.id}>{p.name}</option>
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
           ))}
         </select>
       </div>
@@ -232,13 +262,27 @@ export default function LaborReviewClient() {
             <table className="w-full min-w-[560px] text-sm md:min-w-0">
               <thead>
                 <tr className="border-b border-zinc-200/40 dark:border-border/60 bg-muted/30">
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Date</th>
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Worker</th>
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Project</th>
-                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Hours</th>
-                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Cost Code</th>
-                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Total</th>
-                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">Actions</th>
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Date
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Worker
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Project
+                  </th>
+                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Hours
+                  </th>
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Cost Code
+                  </th>
+                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Total
+                  </th>
+                  <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -261,18 +305,36 @@ export default function LaborReviewClient() {
                     <tr key={row.id} className="border-b border-zinc-100/50 dark:border-border/30">
                       <td className="py-3 px-4 tabular-nums">{row.date}</td>
                       <td className="py-3 px-4">{workers.get(row.workerId) ?? "—"}</td>
-                      <td className="py-3 px-4">{row.projectId ? projects.get(row.projectId) ?? "—" : "—"}</td>
+                      <td className="py-3 px-4">
+                        {row.projectId ? (projects.get(row.projectId) ?? "—") : "—"}
+                      </td>
                       <td className="py-3 px-4 text-right tabular-nums">{row.hours ?? 0}</td>
                       <td className="py-3 px-4">{row.costCode ?? "—"}</td>
                       <td className="py-3 px-4 text-right tabular-nums">
-                        {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(computeTotal(row))}
+                        {new Intl.NumberFormat("en-US", {
+                          style: "currency",
+                          currency: "USD",
+                          maximumFractionDigits: 2,
+                        }).format(computeTotal(row))}
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex justify-end gap-2">
-                          <Button size="sm" variant="outline" className="h-8" onClick={() => setSelected({ ...row })} disabled={busy}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8"
+                            onClick={() => setSelected({ ...row })}
+                            disabled={busy}
+                          >
                             Review
                           </Button>
-                          <Button size="sm" variant="outline" className="h-8" onClick={() => handleDelete(row)} disabled={busy}>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8"
+                            onClick={() => handleDelete(row)}
+                            disabled={busy}
+                          >
                             Delete
                           </Button>
                         </div>
@@ -295,12 +357,16 @@ export default function LaborReviewClient() {
                 <label className="text-xs font-medium text-muted-foreground">Project</label>
                 <select
                   value={selected.projectId ?? ""}
-                  onChange={(e) => setSelected((prev) => (prev ? { ...prev, projectId: e.target.value } : prev))}
+                  onChange={(e) =>
+                    setSelected((prev) => (prev ? { ...prev, projectId: e.target.value } : prev))
+                  }
                   className="h-10 rounded-[10px] border border-input bg-white px-3 text-sm"
                 >
                   <option value="">Select project</option>
                   {projectOptions.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
                   ))}
                 </select>
                 <label className="text-xs font-medium text-muted-foreground">Hours</label>
@@ -309,33 +375,58 @@ export default function LaborReviewClient() {
                   min="0"
                   step="0.25"
                   value={selected.hours ?? ""}
-                  onChange={(e) => setSelected((prev) => (prev ? { ...prev, hours: Number(e.target.value) || 0 } : prev))}
+                  onChange={(e) =>
+                    setSelected((prev) =>
+                      prev ? { ...prev, hours: Number(e.target.value) || 0 } : prev
+                    )
+                  }
                   className="text-right tabular-nums"
                 />
                 <label className="text-xs font-medium text-muted-foreground">Cost Code</label>
                 <Input
                   type="text"
                   value={selected.costCode ?? ""}
-                  onChange={(e) => setSelected((prev) => (prev ? { ...prev, costCode: e.target.value } : prev))}
+                  onChange={(e) =>
+                    setSelected((prev) => (prev ? { ...prev, costCode: e.target.value } : prev))
+                  }
                   placeholder="Cost code"
                 />
                 <label className="text-xs font-medium text-muted-foreground">Notes</label>
                 <Input
                   type="text"
                   value={selected.notes ?? ""}
-                  onChange={(e) => setSelected((prev) => (prev ? { ...prev, notes: e.target.value } : prev))}
+                  onChange={(e) =>
+                    setSelected((prev) => (prev ? { ...prev, notes: e.target.value } : prev))
+                  }
                   placeholder="Notes"
                 />
                 <p className="text-sm">
                   Total:{" "}
                   <span className="font-semibold tabular-nums">
-                    {new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(computeTotal(selected))}
+                    {new Intl.NumberFormat("en-US", {
+                      style: "currency",
+                      currency: "USD",
+                      maximumFractionDigits: 2,
+                    }).format(computeTotal(selected))}
                   </span>
                 </p>
               </div>
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setSelected(null)} disabled={busy} className="min-h-[44px] sm:min-h-0">Close</Button>
-                <Button onClick={handleSaveSelected} disabled={busy} className="min-h-[44px] sm:min-h-0">{busy ? "Saving…" : "Save changes"}</Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setSelected(null)}
+                  disabled={busy}
+                  className="min-h-[44px] sm:min-h-0"
+                >
+                  Close
+                </Button>
+                <Button
+                  onClick={handleSaveSelected}
+                  disabled={busy}
+                  className="min-h-[44px] sm:min-h-0"
+                >
+                  {busy ? "Saving…" : "Save changes"}
+                </Button>
               </div>
             </div>
           )}

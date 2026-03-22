@@ -93,7 +93,9 @@ export async function getSupabaseUserFromRequest(req: Request): Promise<User | n
   const authHeader = req.headers.get("authorization") ?? req.headers.get("Authorization");
   const bearer = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
   if (bearer) {
-    const sb = createClient(url, anon, { auth: { persistSession: false, autoRefreshToken: false } });
+    const sb = createClient(url, anon, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
     const {
       data: { user },
       error,

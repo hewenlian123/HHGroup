@@ -19,11 +19,7 @@ export interface StatusBadgeProps {
 }
 
 /** Minimal status: dot + text. No pill background or heavy styling. */
-export function StatusBadge({
-  label,
-  variant = "default",
-  className,
-}: StatusBadgeProps) {
+export function StatusBadge({ label, variant = "default", className }: StatusBadgeProps) {
   return (
     <span
       className={cn(
@@ -33,10 +29,7 @@ export function StatusBadge({
         className
       )}
     >
-      <span
-        className={cn("h-1.5 w-1.5 shrink-0 rounded-full", dotColors[variant])}
-        aria-hidden
-      />
+      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", dotColors[variant])} aria-hidden />
       {label}
     </span>
   );

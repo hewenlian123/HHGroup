@@ -20,7 +20,11 @@ import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function fmtUsd(n: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(n);
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2,
+  }).format(n);
 }
 
 function monthKeyFromDate(workDate: string): string {
@@ -93,7 +97,11 @@ function groupEntriesByProjectForMonth(entries: LaborEntryWithJoins[]) {
   return Array.from(map.entries())
     .map(([projectId, list]) => ({
       projectId,
-      projectName: list[0]?.project_name?.trim() ? list[0].project_name! : projectId ? "(Unknown project)" : "—",
+      projectName: list[0]?.project_name?.trim()
+        ? list[0].project_name!
+        : projectId
+          ? "(Unknown project)"
+          : "—",
       entries: list,
       earned: list.reduce((s, x) => s + entryEarned(x), 0),
     }))
@@ -104,9 +112,13 @@ export default function WorkerDashboardPage() {
   const params = useParams();
   const id = params?.id as string | undefined;
 
-  const [worker, setWorker] = React.useState<Awaited<ReturnType<typeof getWorkerById>> | undefined>(undefined);
+  const [worker, setWorker] = React.useState<Awaited<ReturnType<typeof getWorkerById>> | undefined>(
+    undefined
+  );
   const [usage, setUsage] = React.useState<Awaited<ReturnType<typeof getWorkerUsage>> | null>(null);
-  const [laborLedgerEntries, setLaborLedgerEntries] = React.useState<LaborEntryWithJoins[] | null>(null);
+  const [laborLedgerEntries, setLaborLedgerEntries] = React.useState<LaborEntryWithJoins[] | null>(
+    null
+  );
   const [expandedMonthKey, setExpandedMonthKey] = React.useState<string | null>(null);
 
   const [financialSummary, setFinancialSummary] = React.useState<{
@@ -131,7 +143,9 @@ export default function WorkerDashboardPage() {
     setWorker(w);
     setUsage(u);
     if (w) {
-      const ledger = await getLaborEntriesWithJoins({ worker_id: id }).catch(() => [] as LaborEntryWithJoins[]);
+      const ledger = await getLaborEntriesWithJoins({ worker_id: id }).catch(
+        () => [] as LaborEntryWithJoins[]
+      );
       setLaborLedgerEntries(ledger);
 
       try {
@@ -150,7 +164,9 @@ export default function WorkerDashboardPage() {
       try {
         const [invoicesAll, payments] = await Promise.all([
           getWorkerInvoices().catch(() => [] as WorkerInvoice[]),
-          getWorkerPayments({ workerId: id, fromDate: from, toDate: to, limit: 500 }).catch(() => []),
+          getWorkerPayments({ workerId: id, fromDate: from, toDate: to, limit: 500 }).catch(
+            () => []
+          ),
         ]);
         let labor = 0;
         for (const e of ledger) {
@@ -203,7 +219,9 @@ export default function WorkerDashboardPage() {
 
   const expandedMonthEntries = React.useMemo(() => {
     if (!laborLedgerEntries || !expandedMonthKey) return [];
-    const inMonth = laborLedgerEntries.filter((e) => monthKeyFromDate(e.work_date) === expandedMonthKey);
+    const inMonth = laborLedgerEntries.filter(
+      (e) => monthKeyFromDate(e.work_date) === expandedMonthKey
+    );
     return groupEntriesByProjectForMonth(inMonth);
   }, [laborLedgerEntries, expandedMonthKey]);
 
@@ -279,7 +297,9 @@ export default function WorkerDashboardPage() {
       />
 
       <section className="border-b border-border/60 pb-4">
-        <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">Profile</h2>
+        <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Profile
+        </h2>
         <dl className="grid gap-2 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-muted-foreground">Phone</dt>
@@ -299,7 +319,9 @@ export default function WorkerDashboardPage() {
           </div>
           <div className="sm:col-span-2">
             <dt className="text-muted-foreground">Notes</dt>
-            <dd className="mt-0.5 whitespace-pre-wrap text-foreground/90">{worker.notes?.trim() ? worker.notes : "—"}</dd>
+            <dd className="mt-0.5 whitespace-pre-wrap text-foreground/90">
+              {worker.notes?.trim() ? worker.notes : "—"}
+            </dd>
           </div>
           <div className="sm:col-span-2 text-xs text-muted-foreground">
             Created: {worker.createdAt}
@@ -309,9 +331,12 @@ export default function WorkerDashboardPage() {
       </section>
 
       <section className="border-b border-border/60 pb-4">
-        <h2 className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">Labor ledger</h2>
+        <h2 className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Labor ledger
+        </h2>
         <p className="mb-3 text-xs text-muted-foreground">
-          From labor entries: work days = row count per period; earned = sum of <code className="text-[11px]">cost_amount</code>.
+          From labor entries: work days = row count per period; earned = sum of{" "}
+          <code className="text-[11px]">cost_amount</code>.
         </p>
         {laborLedgerEntries === null ? (
           <p className="text-sm text-muted-foreground">Loading labor…</p>
@@ -347,8 +372,12 @@ export default function WorkerDashboardPage() {
                             onClick={() => toggleMonth(row.monthKey)}
                           >
                             <td className="px-2 py-1.5 font-medium">{row.label}</td>
-                            <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">{row.workDays}</td>
-                            <td className="px-2 py-1.5 text-right tabular-nums font-medium">{fmtUsd(row.earned)}</td>
+                            <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">
+                              {row.workDays}
+                            </td>
+                            <td className="px-2 py-1.5 text-right tabular-nums font-medium">
+                              {fmtUsd(row.earned)}
+                            </td>
                             <td className="px-1 py-1.5 text-right">
                               <Button
                                 type="button"
@@ -363,7 +392,10 @@ export default function WorkerDashboardPage() {
                                 }}
                               >
                                 <ChevronRight
-                                  className={cn("h-4 w-4 transition-transform", open && "rotate-90")}
+                                  className={cn(
+                                    "h-4 w-4 transition-transform",
+                                    open && "rotate-90"
+                                  )}
                                   aria-hidden
                                 />
                               </Button>
@@ -373,14 +405,18 @@ export default function WorkerDashboardPage() {
                             <tr className="border-b border-border/40">
                               <td colSpan={4} className="px-2 py-3 align-top">
                                 <p className="mb-3 text-xs text-muted-foreground">
-                                  By project — date, session (Full / Half / Absent; not raw hours), amount ({row.label})
+                                  By project — date, session (Full / Half / Absent; not raw hours),
+                                  amount ({row.label})
                                 </p>
                                 {expandedMonthEntries.length === 0 ? (
                                   <p className="text-sm text-muted-foreground">No rows.</p>
                                 ) : (
                                   <div className="space-y-4">
                                     {expandedMonthEntries.map((grp) => (
-                                      <div key={grp.projectId || "none"} className="border-b border-border/50 pb-3 last:border-0 last:pb-0">
+                                      <div
+                                        key={grp.projectId || "none"}
+                                        className="border-b border-border/50 pb-3 last:border-0 last:pb-0"
+                                      >
                                         <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                                           {grp.projectName}
                                         </p>
@@ -401,7 +437,9 @@ export default function WorkerDashboardPage() {
                                           <tbody>
                                             {grp.entries.map((e) => (
                                               <tr key={e.id} className="border-b border-border/30">
-                                                <td className="py-1 pr-3 tabular-nums text-muted-foreground">{e.work_date}</td>
+                                                <td className="py-1 pr-3 tabular-nums text-muted-foreground">
+                                                  {e.work_date}
+                                                </td>
                                                 <td className="py-1 pr-3">
                                                   {formatLaborEntrySessionLabel(e.notes, e.hours, {
                                                     costAmount: entryEarned(e),
@@ -411,7 +449,9 @@ export default function WorkerDashboardPage() {
                                                     afternoon: e.afternoon,
                                                   })}
                                                 </td>
-                                                <td className="py-1 text-right tabular-nums">{fmtUsd(entryEarned(e))}</td>
+                                                <td className="py-1 text-right tabular-nums">
+                                                  {fmtUsd(entryEarned(e))}
+                                                </td>
                                               </tr>
                                             ))}
                                           </tbody>
@@ -433,7 +473,9 @@ export default function WorkerDashboardPage() {
 
             <div>
               <h3 className="mb-1 text-sm font-medium text-foreground">Project totals</h3>
-              <p className="mb-2 text-xs text-muted-foreground">All time, by project · sorted by earned (high → low).</p>
+              <p className="mb-2 text-xs text-muted-foreground">
+                All time, by project · sorted by earned (high → low).
+              </p>
               {projectTotalsAll.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No project breakdown.</p>
               ) : (
@@ -454,10 +496,17 @@ export default function WorkerDashboardPage() {
                     </thead>
                     <tbody>
                       {projectTotalsAll.map((row) => (
-                        <tr key={row.projectId || "none"} className="border-b border-border/40 hover:bg-muted/10">
+                        <tr
+                          key={row.projectId || "none"}
+                          className="border-b border-border/40 hover:bg-muted/10"
+                        >
                           <td className="px-2 py-1.5 font-medium">{row.projectName}</td>
-                          <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">{row.workDays}</td>
-                          <td className="px-2 py-1.5 text-right tabular-nums">{fmtUsd(row.earned)}</td>
+                          <td className="px-2 py-1.5 text-right tabular-nums text-muted-foreground">
+                            {row.workDays}
+                          </td>
+                          <td className="px-2 py-1.5 text-right tabular-nums">
+                            {fmtUsd(row.earned)}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -471,8 +520,12 @@ export default function WorkerDashboardPage() {
 
       {financialSummary !== null ? (
         <section className="border-b border-border/60 pb-4">
-          <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">Financial summary</h2>
-          <p className="mb-3 text-xs text-muted-foreground">All-time totals (labor, reimbursements, invoices, payments).</p>
+          <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Financial summary
+          </h2>
+          <p className="mb-3 text-xs text-muted-foreground">
+            All-time totals (labor, reimbursements, invoices, payments).
+          </p>
           <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-5">
             <div>
               <span className="text-muted-foreground">Total Labor</span>
@@ -480,11 +533,15 @@ export default function WorkerDashboardPage() {
             </div>
             <div>
               <span className="text-muted-foreground">Reimbursements</span>
-              <p className="font-medium tabular-nums">{fmtUsd(financialSummary.totalReimbursements)}</p>
+              <p className="font-medium tabular-nums">
+                {fmtUsd(financialSummary.totalReimbursements)}
+              </p>
             </div>
             <div>
               <span className="text-muted-foreground">Worker Invoices</span>
-              <p className="font-medium tabular-nums">{fmtUsd(financialSummary.totalWorkerInvoices)}</p>
+              <p className="font-medium tabular-nums">
+                {fmtUsd(financialSummary.totalWorkerInvoices)}
+              </p>
             </div>
             <div>
               <span className="text-muted-foreground">Payments</span>
@@ -500,7 +557,9 @@ export default function WorkerDashboardPage() {
 
       {monthly ? (
         <section className="border-b border-border/60 pb-4">
-          <h2 className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">This month</h2>
+          <h2 className="mb-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            This month
+          </h2>
           <p className="mb-3 text-xs text-muted-foreground">
             {monthly.from} — {monthly.to}: labor (entries) + worker invoices vs worker payments.
           </p>

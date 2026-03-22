@@ -20,7 +20,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { type Account, type AccountType } from "@/lib/data";
-import { createAccountAction, deleteAccountAction, getAccountsAction, updateAccountAction } from "./actions";
+import {
+  createAccountAction,
+  deleteAccountAction,
+  getAccountsAction,
+  updateAccountAction,
+} from "./actions";
 import { Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/toast/toast-provider";
@@ -77,7 +82,9 @@ function AccountsPageInner() {
     load().finally(() => {
       if (!cancelled) setLoading(false);
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [load]);
 
   useOnAppSync(
@@ -235,9 +242,15 @@ function AccountsPageInner() {
             <Table>
               <TableHeader>
                 <TableRow className="border-b border-[#EBEBE9] bg-[#F7F7F5] hover:bg-transparent dark:border-border/60 dark:bg-muted/30">
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Account Name</TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Type</TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">Last 4</TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                    Account Name
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                    Type
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">
+                    Last 4
+                  </TableHead>
                   <TableHead className="w-10" />
                 </TableRow>
               </TableHeader>
@@ -245,14 +258,25 @@ function AccountsPageInner() {
                 {accounts.map((row) => (
                   <TableRow
                     key={row.id}
-                    className={cn(listTableRowClassName, "group border-b border-[#EBEBE9]/80 dark:border-border/30")}
+                    className={cn(
+                      listTableRowClassName,
+                      "group border-b border-[#EBEBE9]/80 dark:border-border/30"
+                    )}
                     onClick={() => openEdit(row)}
                   >
-                    <TableCell className={cn("font-medium text-foreground", listTablePrimaryCellClassName, "hover:underline")}>
+                    <TableCell
+                      className={cn(
+                        "font-medium text-foreground",
+                        listTablePrimaryCellClassName,
+                        "hover:underline"
+                      )}
+                    >
                       {row.name}
                     </TableCell>
                     <TableCell className="text-muted-foreground">{row.type}</TableCell>
-                    <TableCell className="text-right tabular-nums text-muted-foreground">{row.lastFour ?? "—"}</TableCell>
+                    <TableCell className="text-right tabular-nums text-muted-foreground">
+                      {row.lastFour ?? "—"}
+                    </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end gap-2">
                         <DeleteRowAction
@@ -278,11 +302,15 @@ function AccountsPageInner() {
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader className="border-b border-border/60 pb-3">
-            <DialogTitle className="text-base font-medium">{editingId ? "Edit Account" : "Add Account"}</DialogTitle>
+            <DialogTitle className="text-base font-medium">
+              {editingId ? "Edit Account" : "Add Account"}
+            </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4 pt-3">
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Account Name</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Account Name
+              </label>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -293,7 +321,9 @@ function AccountsPageInner() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Type</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Type
+              </label>
               <Select value={type} onChange={(e) => setType(e.target.value as AccountType)}>
                 {ACCOUNT_TYPES.map((t) => (
                   <option key={t} value={t}>
@@ -303,7 +333,9 @@ function AccountsPageInner() {
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Last 4 digits (optional)</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Last 4 digits (optional)
+              </label>
               <Input
                 value={lastFour}
                 onChange={(e) => setLastFour(e.target.value.replace(/\D/g, "").slice(0, 4))}
@@ -313,7 +345,9 @@ function AccountsPageInner() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Notes (optional)</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Notes (optional)
+              </label>
               <Input
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}

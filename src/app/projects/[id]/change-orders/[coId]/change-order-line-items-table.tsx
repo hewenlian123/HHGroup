@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  DataTable,
-  type DataTableColumn,
-} from "@/components/base";
+import { DataTable, type DataTableColumn } from "@/components/base";
 import type { ChangeOrderItem } from "@/lib/data";
 
 export function ChangeOrderLineItemsTable({ items }: { items: ChangeOrderItem[] }) {
@@ -26,11 +23,5 @@ export function ChangeOrderLineItemsTable({ items }: { items: ChangeOrderItem[] 
     },
   ];
 
-  return (
-    <DataTable<ChangeOrderItem>
-      columns={lineColumns}
-      data={items}
-      getRowId={(r) => r.id}
-    />
-  );
+  return <DataTable<ChangeOrderItem> columns={lineColumns} data={items} getRowId={(r) => r.id} />;
 }

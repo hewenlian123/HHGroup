@@ -71,7 +71,10 @@ function toNullable(value: string): string | null {
   return t ? t : null;
 }
 
-function asNameList(rows: Array<{ name: string; status?: string | null }>): { options: string[]; disabled: Set<string> } {
+function asNameList(rows: Array<{ name: string; status?: string | null }>): {
+  options: string[];
+  disabled: Set<string>;
+} {
   const disabled = new Set<string>();
   const names = rows
     .map((r) => {
@@ -99,9 +102,18 @@ export function ExpenseDetailClient({ id }: { id: string }) {
   const [expense, setExpense] = React.useState<ExpenseRow | null>(null);
   const [lines, setLines] = React.useState<ExpenseLineRow[]>([]);
   const [projects, setProjects] = React.useState<ProjectOption[]>([]);
-  const [categories, setCategories] = React.useState<{ options: string[]; disabled: Set<string> }>({ options: [], disabled: new Set() });
-  const [vendors, setVendors] = React.useState<{ options: string[]; disabled: Set<string> }>({ options: [], disabled: new Set() });
-  const [paymentMethods, setPaymentMethods] = React.useState<{ options: string[]; disabled: Set<string> }>({ options: [], disabled: new Set() });
+  const [categories, setCategories] = React.useState<{ options: string[]; disabled: Set<string> }>({
+    options: [],
+    disabled: new Set(),
+  });
+  const [vendors, setVendors] = React.useState<{ options: string[]; disabled: Set<string> }>({
+    options: [],
+    disabled: new Set(),
+  });
+  const [paymentMethods, setPaymentMethods] = React.useState<{
+    options: string[];
+    disabled: Set<string>;
+  }>({ options: [], disabled: new Set() });
   const [attachments, setAttachments] = React.useState<AttachmentRow[]>([]);
   const [previewAttachment, setPreviewAttachment] = React.useState<PreviewAttachment | null>(null);
   const [previewOpen, setPreviewOpen] = React.useState(false);
@@ -117,15 +129,41 @@ export function ExpenseDetailClient({ id }: { id: string }) {
     setError(null);
     setMessage(null);
 
-    const [expRes, linesRes, projectRes, vendorsRes, categoriesRes, pmRes, attachmentsRes] = await Promise.all([
-      supabase.from("expenses").select("*").eq("id", id).maybeSingle(),
-      supabase.from("expense_lines").select("*").eq("expense_id", id).order("created_at", { ascending: true }),
-      supabase.from("projects").select("id,name").order("created_at", { ascending: false }).limit(500),
-      supabase.from("vendors").select("id,name,status").order("created_at", { ascending: false }).limit(500),
-      supabase.from("categories").select("id,name,status").order("created_at", { ascending: false }).limit(500),
-      supabase.from("payment_methods").select("id,name,status").order("created_at", { ascending: false }).limit(500),
-      supabase.from("attachments").select("*").eq("entity_type", "expense").eq("entity_id", id).order("created_at", { ascending: false }),
-    ]);
+    const [expRes, linesRes, projectRes, vendorsRes, categoriesRes, pmRes, attachmentsRes] =
+      await Promise.all([
+        supabase.from("expenses").select("*").eq("id", id).maybeSingle(),
+        supabase
+          .from("expense_lines")
+          .select("*")
+          .eq("expense_id", id)
+          .order("created_at", { ascending: true }),
+        supabase
+          .from("projects")
+          .select("id,name")
+          .order("created_at", { ascending: false })
+          .limit(500),
+        supabase
+          .from("vendors")
+          .select("id,name,status")
+          .order("created_at", { ascending: false })
+          .limit(500),
+        supabase
+          .from("categories")
+          .select("id,name,status")
+          .order("created_at", { ascending: false })
+          .limit(500),
+        supabase
+          .from("payment_methods")
+          .select("id,name,status")
+          .order("created_at", { ascending: false })
+          .limit(500),
+        supabase
+          .from("attachments")
+          .select("*")
+          .eq("entity_type", "expense")
+          .eq("entity_id", id)
+          .order("created_at", { ascending: false }),
+      ]);
 
     if (expRes.error) {
       setError(expRes.error.message || "Failed to load expense.");
@@ -142,9 +180,30 @@ export function ExpenseDetailClient({ id }: { id: string }) {
     setLines((linesRes.data ?? []) as ExpenseLineRow[]);
     setProjects((projectRes.data ?? []) as ProjectOption[]);
 
-    setVendors(asNameList(((vendorsRes.data ?? []) as unknown as NameRow[]).map((r) => ({ name: r.name, status: r.status }))));
-    setCategories(asNameList(((categoriesRes.data ?? []) as unknown as NameRow[]).map((r) => ({ name: r.name, status: r.status }))));
-    setPaymentMethods(asNameList(((pmRes.data ?? []) as unknown as NameRow[]).map((r) => ({ name: r.name, status: r.status }))));
+    setVendors(
+      asNameList(
+        ((vendorsRes.data ?? []) as unknown as NameRow[]).map((r) => ({
+          name: r.name,
+          status: r.status,
+        }))
+      )
+    );
+    setCategories(
+      asNameList(
+        ((categoriesRes.data ?? []) as unknown as NameRow[]).map((r) => ({
+          name: r.name,
+          status: r.status,
+        }))
+      )
+    );
+    setPaymentMethods(
+      asNameList(
+        ((pmRes.data ?? []) as unknown as NameRow[]).map((r) => ({
+          name: r.name,
+          status: r.status,
+        }))
+      )
+    );
 
     setAttachments((attachmentsRes.data ?? []) as AttachmentRow[]);
     setLoading(false);
@@ -255,18 +314,19 @@ export function ExpenseDetailClient({ id }: { id: string }) {
     const payload: Partial<ExpenseLineRow> = {
       project_id: patch.projectId !== undefined ? patch.projectId : existing.project_id,
       category: patch.category !== undefined ? patch.category : existing.category,
-      cost_code: patch.costCode !== undefined ? patch.costCode ?? null : existing.cost_code,
-      memo: patch.memo !== undefined ? patch.memo ?? null : existing.memo,
+      cost_code: patch.costCode !== undefined ? (patch.costCode ?? null) : existing.cost_code,
+      memo: patch.memo !== undefined ? (patch.memo ?? null) : existing.memo,
       amount: patch.amount !== undefined ? patch.amount : existing.amount,
     };
-    const { error: upError } = await supabase.from("expense_lines").update(payload).eq("id", lineId);
+    const { error: upError } = await supabase
+      .from("expense_lines")
+      .update(payload)
+      .eq("id", lineId);
     if (upError) {
       setError(upError.message || "Failed to update line.");
       return;
     }
-    setLines((prev) =>
-      prev.map((l) => (l.id === lineId ? { ...l, ...payload } : l))
-    );
+    setLines((prev) => prev.map((l) => (l.id === lineId ? { ...l, ...payload } : l)));
   };
 
   const addLine = async () => {
@@ -297,7 +357,9 @@ export function ExpenseDetailClient({ id }: { id: string }) {
     if (!supabase) return "";
     const v = name.trim();
     if (!v) return "";
-    const { error: insError } = await supabase.from("vendors").insert([{ name: v, status: "active" }]);
+    const { error: insError } = await supabase
+      .from("vendors")
+      .insert([{ name: v, status: "active" }]);
     if (insError) setError(insError.message || "Failed to add vendor.");
     else
       setVendors((prev) => ({
@@ -311,7 +373,9 @@ export function ExpenseDetailClient({ id }: { id: string }) {
     if (!supabase) return "";
     const v = name.trim();
     if (!v) return "";
-    const { error: insError } = await supabase.from("categories").insert([{ name: v, type: "expense", status: "active" }]);
+    const { error: insError } = await supabase
+      .from("categories")
+      .insert([{ name: v, type: "expense", status: "active" }]);
     if (insError) setError(insError.message || "Failed to add category.");
     else
       setCategories((prev) => ({
@@ -325,7 +389,9 @@ export function ExpenseDetailClient({ id }: { id: string }) {
     if (!supabase) return "";
     const v = name.trim();
     if (!v) return "";
-    const { error: insError } = await supabase.from("payment_methods").insert([{ name: v, status: "active" }]);
+    const { error: insError } = await supabase
+      .from("payment_methods")
+      .insert([{ name: v, status: "active" }]);
     if (insError) setError(insError.message || "Failed to add payment method.");
     else
       setPaymentMethods((prev) => ({
@@ -392,7 +458,9 @@ export function ExpenseDetailClient({ id }: { id: string }) {
 
   const openAttachment = async (row: AttachmentRow) => {
     if (!supabase) return;
-    const { data, error: signError } = await supabase.storage.from("attachments").createSignedUrl(row.file_path, 60);
+    const { data, error: signError } = await supabase.storage
+      .from("attachments")
+      .createSignedUrl(row.file_path, 60);
     if (signError || !data?.signedUrl) {
       setError(signError?.message || "Unable to open attachment.");
       return;
@@ -434,7 +502,8 @@ export function ExpenseDetailClient({ id }: { id: string }) {
       <div className="page-container page-stack">
         <Card className="p-5">
           <p className="text-sm text-muted-foreground">
-            Supabase is not configured. Set <code>NEXT_PUBLIC_SUPABASE_URL</code> and <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>.
+            Supabase is not configured. Set <code>NEXT_PUBLIC_SUPABASE_URL</code> and{" "}
+            <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>.
           </p>
         </Card>
       </div>
@@ -444,17 +513,32 @@ export function ExpenseDetailClient({ id }: { id: string }) {
   return (
     <div className="page-container page-stack">
       <div className="flex items-center justify-between gap-3">
-        <Link href="/financial/expenses" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+        <Link
+          href="/financial/expenses"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+        >
           <ArrowLeft className="h-4 w-4" />
           Expenses
         </Link>
-        <Button variant="outline" onClick={() => void syncRouterAndClients(router)} disabled={saving}>
+        <Button
+          variant="outline"
+          onClick={() => void syncRouterAndClients(router)}
+          disabled={saving}
+        >
           Refresh
         </Button>
       </div>
 
-      {error ? <div className="rounded-[12px] border border-[#E5E7EB] bg-white px-4 py-3 text-sm text-muted-foreground">{error}</div> : null}
-      {message ? <div className="rounded-[12px] border border-[#E5E7EB] bg-white px-4 py-3 text-sm text-emerald-700">{message}</div> : null}
+      {error ? (
+        <div className="rounded-[12px] border border-[#E5E7EB] bg-white px-4 py-3 text-sm text-muted-foreground">
+          {error}
+        </div>
+      ) : null}
+      {message ? (
+        <div className="rounded-[12px] border border-[#E5E7EB] bg-white px-4 py-3 text-sm text-emerald-700">
+          {message}
+        </div>
+      ) : null}
 
       <Card className="p-5">
         {loading || !expense ? (
@@ -472,7 +556,9 @@ export function ExpenseDetailClient({ id }: { id: string }) {
                   value={expense.vendor_name ?? ""}
                   options={vendors.options}
                   placeholder="Vendor name"
-                  onChange={(v) => setExpense((prev) => (prev ? { ...prev, vendor_name: v } : prev))}
+                  onChange={(v) =>
+                    setExpense((prev) => (prev ? { ...prev, vendor_name: v } : prev))
+                  }
                   onCreate={async (name) => {
                     const v = await addVendor(name);
                     if (v) setExpense((prev) => (prev ? { ...prev, vendor_name: v } : prev));
@@ -483,11 +569,15 @@ export function ExpenseDetailClient({ id }: { id: string }) {
                 ) : null}
               </div>
               <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Date
+                </p>
                 <Input
                   type="date"
                   value={expense.expense_date ?? new Date().toISOString().slice(0, 10)}
-                  onChange={(e) => setExpense((prev) => (prev ? { ...prev, expense_date: e.target.value } : prev))}
+                  onChange={(e) =>
+                    setExpense((prev) => (prev ? { ...prev, expense_date: e.target.value } : prev))
+                  }
                 />
               </div>
               <div>
@@ -496,7 +586,9 @@ export function ExpenseDetailClient({ id }: { id: string }) {
                   value={expense.payment_method ?? "ACH"}
                   options={paymentMethods.options}
                   placeholder="Payment method"
-                  onChange={(v) => setExpense((prev) => (prev ? { ...prev, payment_method: v } : prev))}
+                  onChange={(v) =>
+                    setExpense((prev) => (prev ? { ...prev, payment_method: v } : prev))
+                  }
                   onCreate={async (name) => {
                     const v = await addPaymentMethod(name);
                     if (v) setExpense((prev) => (prev ? { ...prev, payment_method: v } : prev));
@@ -507,17 +599,29 @@ export function ExpenseDetailClient({ id }: { id: string }) {
                 ) : null}
               </div>
               <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Reference #</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Reference #
+                </p>
                 <Input
                   value={expense.reference_no ?? ""}
-                  onChange={(e) => setExpense((prev) => (prev ? { ...prev, reference_no: e.target.value } : prev))}
+                  onChange={(e) =>
+                    setExpense((prev) => (prev ? { ...prev, reference_no: e.target.value } : prev))
+                  }
                   placeholder="Optional"
                 />
               </div>
             </div>
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Notes</p>
-              <Input value={expense.notes ?? ""} onChange={(e) => setExpense((prev) => (prev ? { ...prev, notes: e.target.value } : prev))} placeholder="Optional" />
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Notes
+              </p>
+              <Input
+                value={expense.notes ?? ""}
+                onChange={(e) =>
+                  setExpense((prev) => (prev ? { ...prev, notes: e.target.value } : prev))
+                }
+                placeholder="Optional"
+              />
             </div>
             <div className="flex justify-end text-xs text-muted-foreground">
               {saving ? "Saving…" : message === "Saved." ? "Saved" : null}
@@ -530,7 +634,9 @@ export function ExpenseDetailClient({ id }: { id: string }) {
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-foreground">Receipt attachments</p>
-            <p className="text-xs text-muted-foreground">Stored in Supabase Storage bucket: attachments</p>
+            <p className="text-xs text-muted-foreground">
+              Stored in Supabase Storage bucket: attachments
+            </p>
           </div>
           <div>
             <input
@@ -546,7 +652,11 @@ export function ExpenseDetailClient({ id }: { id: string }) {
                 e.target.value = "";
               }}
             />
-            <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={saving}>
+            <Button
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={saving}
+            >
               <Plus className="h-4 w-4" />
               Add receipt
             </Button>
@@ -564,20 +674,41 @@ export function ExpenseDetailClient({ id }: { id: string }) {
             <p className="text-sm text-muted-foreground">No data yet.</p>
           ) : (
             attachments.map((att) => (
-              <div key={att.id} className="flex items-center gap-3 rounded-[12px] border border-[#E5E7EB] bg-white px-4 py-3">
-                <button type="button" className="flex min-w-0 flex-1 items-center gap-3 text-left" onClick={() => void openAttachment(att)}>
+              <div
+                key={att.id}
+                className="flex items-center gap-3 rounded-[12px] border border-[#E5E7EB] bg-white px-4 py-3"
+              >
+                <button
+                  type="button"
+                  className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                  onClick={() => void openAttachment(att)}
+                >
                   <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-foreground">{att.file_name}</p>
                     <p className="text-xs text-muted-foreground tabular-nums">
-                      {(att.size_bytes ?? 0) > 1024 ? `${((att.size_bytes ?? 0) / 1024).toFixed(1)} KB` : `${att.size_bytes ?? 0} B`}
+                      {(att.size_bytes ?? 0) > 1024
+                        ? `${((att.size_bytes ?? 0) / 1024).toFixed(1)} KB`
+                        : `${att.size_bytes ?? 0} B`}
                     </p>
                   </div>
                 </button>
-                <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => void openAttachment(att)} aria-label="Open">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9"
+                  onClick={() => void openAttachment(att)}
+                  aria-label="Open"
+                >
                   <Download className="h-4 w-4" />
                 </Button>
-                <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive" onClick={() => void deleteAttachment(att)} aria-label="Delete">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 text-destructive"
+                  onClick={() => void deleteAttachment(att)}
+                  aria-label="Delete"
+                >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
@@ -626,21 +757,34 @@ export function ExpenseDetailClient({ id }: { id: string }) {
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div className="rounded-[12px] border border-[#E5E7EB] bg-white p-4">
-            <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">Lines total</p>
-            <p className="mt-1 text-xl font-semibold tabular-nums text-red-600">−{money(linesTotal)}</p>
+            <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+              Lines total
+            </p>
+            <p className="mt-1 text-xl font-semibold tabular-nums text-red-600">
+              −{money(linesTotal)}
+            </p>
           </div>
           <div className="rounded-[12px] border border-[#E5E7EB] bg-white p-4">
-            <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">Per project</p>
+            <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+              Per project
+            </p>
             <ul className="mt-2 space-y-1 text-sm">
               {Array.from(byProject.entries()).map(([projectId, amount]) => (
-                <li key={projectId ?? "overhead"} className="flex items-center justify-between tabular-nums">
+                <li
+                  key={projectId ?? "overhead"}
+                  className="flex items-center justify-between tabular-nums"
+                >
                   <span className="text-muted-foreground">
-                    {projectId == null ? "Overhead" : projects.find((p) => p.id === projectId)?.name ?? projectId}
+                    {projectId == null
+                      ? "Overhead"
+                      : (projects.find((p) => p.id === projectId)?.name ?? projectId)}
                   </span>
                   <span className="text-foreground">−{money(amount)}</span>
                 </li>
               ))}
-              {byProject.size === 0 ? <li className="text-sm text-muted-foreground">No data yet.</li> : null}
+              {byProject.size === 0 ? (
+                <li className="text-sm text-muted-foreground">No data yet.</li>
+              ) : null}
             </ul>
           </div>
         </div>
@@ -663,4 +807,3 @@ export function ExpenseDetailClient({ id }: { id: string }) {
     </div>
   );
 }
-

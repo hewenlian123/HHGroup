@@ -11,4 +11,3 @@ export function pageToRange(page: number, pageSize: number): { from: number; to:
   const to = from + ps - 1;
   return { from, to };
 }
-

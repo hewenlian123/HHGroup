@@ -40,7 +40,9 @@ describe("validateLogoFileForUpload", () => {
   });
 
   it("rejects oversize files", () => {
-    const f = new File([new Uint8Array(MAX_COMPANY_LOGO_BYTES + 1)], "big.png", { type: "image/png" });
+    const f = new File([new Uint8Array(MAX_COMPANY_LOGO_BYTES + 1)], "big.png", {
+      type: "image/png",
+    });
     expect(validateLogoFileForUpload(f)).toMatch(/5MB/i);
   });
 });

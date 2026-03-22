@@ -3,13 +3,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ArrowLeft, Send, CheckCircle, FolderKanban, Lock, FileText } from "lucide-react";
 
 type Status = "Draft" | "Sent" | "Approved" | "Rejected" | "Converted";
@@ -60,7 +54,10 @@ export function EstimateHeader({
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-4">
-        <Link href="/estimates" className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+        <Link
+          href="/estimates"
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+        >
           <ArrowLeft className="h-4 w-4" />
           Back
         </Link>
@@ -68,7 +65,18 @@ export function EstimateHeader({
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             Estimate #{estimateNumber}
           </h1>
-          <Badge variant={status === "Draft" ? "secondary" : status === "Rejected" ? "destructive" : status === "Approved" || status === "Converted" ? "default" : "outline"} className="text-[10px] font-medium">
+          <Badge
+            variant={
+              status === "Draft"
+                ? "secondary"
+                : status === "Rejected"
+                  ? "destructive"
+                  : status === "Approved" || status === "Converted"
+                    ? "default"
+                    : "outline"
+            }
+            className="text-[10px] font-medium"
+          >
             Status: {status === "Converted" ? "Converted to Project" : status}
           </Badge>
           {latestApproved && (
@@ -97,7 +105,11 @@ export function EstimateHeader({
           </a>
         </Button>
         <Button variant="outline" size="sm" className="rounded-lg border-zinc-200/60" asChild>
-          <a href={`/estimates/${estimateId}/print?autoprint=1`} target="_blank" rel="noopener noreferrer">
+          <a
+            href={`/estimates/${estimateId}/print?autoprint=1`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             Download PDF
           </a>
         </Button>
@@ -106,7 +118,12 @@ export function EstimateHeader({
             {sendAction && (
               <form action={sendAction} className="inline-block">
                 <input type="hidden" name="estimateId" value={estimateId} />
-                <Button type="submit" variant="outline" size="sm" className="rounded-lg border-zinc-200/60">
+                <Button
+                  type="submit"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-lg border-zinc-200/60"
+                >
                   <Send className="h-4 w-4 mr-2" />
                   Send
                 </Button>
@@ -114,17 +131,27 @@ export function EstimateHeader({
             )}
             <form action={approveAction} className="inline-block">
               <input type="hidden" name="estimateId" value={estimateId} />
-              <Button type="submit" variant="outline" size="sm" className="rounded-lg border-zinc-200/60">
+              <Button
+                type="submit"
+                variant="outline"
+                size="sm"
+                className="rounded-lg border-zinc-200/60"
+              >
                 <CheckCircle className="h-4 w-4 mr-2" />
                 Approve
               </Button>
             </form>
           </>
         )}
-        {(status === "Sent" && rejectAction) && (
+        {status === "Sent" && rejectAction && (
           <form action={rejectAction} className="inline-block">
             <input type="hidden" name="estimateId" value={estimateId} />
-            <Button type="submit" variant="outline" size="sm" className="rounded-lg border-zinc-200/60 text-destructive hover:text-destructive">
+            <Button
+              type="submit"
+              variant="outline"
+              size="sm"
+              className="rounded-lg border-zinc-200/60 text-destructive hover:text-destructive"
+            >
               Reject
             </Button>
           </form>
@@ -132,7 +159,12 @@ export function EstimateHeader({
         {canCreateNewVersion && (status === "Approved" || status === "Converted") && (
           <form action={createNewVersionAction} className="inline-block">
             <input type="hidden" name="estimateId" value={estimateId} />
-            <Button type="submit" variant="outline" size="sm" className="rounded-lg border-zinc-200/60">
+            <Button
+              type="submit"
+              variant="outline"
+              size="sm"
+              className="rounded-lg border-zinc-200/60"
+            >
               <FileText className="h-4 w-4 mr-2" />
               Create New Version
             </Button>
@@ -140,7 +172,12 @@ export function EstimateHeader({
         )}
         <Sheet>
           <SheetTrigger asChild>
-            <Button type="button" variant="outline" size="sm" className="rounded-lg border-zinc-200/60">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-lg border-zinc-200/60"
+            >
               View Versions
             </Button>
           </SheetTrigger>
@@ -150,14 +187,17 @@ export function EstimateHeader({
             </SheetHeader>
             <div className="mt-6 space-y-2">
               {snapshots.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No snapshots yet. Approve to create v1.</p>
+                <p className="text-sm text-muted-foreground">
+                  No snapshots yet. Approve to create v1.
+                </p>
               ) : (
                 snapshots.map((s) => {
                   const grandTotal = s.frozenPayload.items.reduce(
                     (sum, i) => sum + i.qty * i.unitCost * (1 + i.markupPct),
                     0
                   );
-                  const withOverhead = grandTotal * (1 + s.frozenPayload.overheadPct + s.frozenPayload.profitPct);
+                  const withOverhead =
+                    grandTotal * (1 + s.frozenPayload.overheadPct + s.frozenPayload.profitPct);
                   return (
                     <Link
                       key={s.snapshotId}

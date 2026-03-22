@@ -25,15 +25,11 @@ export async function POST(req: Request) {
     const notes = typeof body.notes === "string" ? body.notes.trim() : null;
     const receiptDateRaw = typeof body.receiptDate === "string" ? body.receiptDate.trim() : "";
     const today = new Date();
-    const todayIso = new Date(
-      Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())
-    )
+    const todayIso = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()))
       .toISOString()
       .slice(0, 10);
     const receiptDate =
-      receiptDateRaw && /^\d{4}-\d{2}-\d{2}$/.test(receiptDateRaw)
-        ? receiptDateRaw
-        : todayIso;
+      receiptDateRaw && /^\d{4}-\d{2}-\d{2}$/.test(receiptDateRaw) ? receiptDateRaw : todayIso;
 
     if (!workerName && !workerId) {
       return NextResponse.json({ message: "Worker is required." }, { status: 400 });

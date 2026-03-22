@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
 import { getSelectionsByProject, getMaterialCatalog, createMaterialSelection } from "@/lib/data";
 
-export async function GET(
-  _req: Request,
-  ctx: { params: Promise<{ id: string }> }
-) {
+export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
-  if (!id?.trim()) return NextResponse.json({ ok: false, message: "Missing project id" }, { status: 400 });
+  if (!id?.trim())
+    return NextResponse.json({ ok: false, message: "Missing project id" }, { status: 400 });
   try {
     const [selections, catalog] = await Promise.all([
       getSelectionsByProject(id),
@@ -19,12 +17,10 @@ export async function GET(
   }
 }
 
-export async function POST(
-  req: Request,
-  ctx: { params: Promise<{ id: string }> }
-) {
+export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id: projectId } = await ctx.params;
-  if (!projectId?.trim()) return NextResponse.json({ ok: false, message: "Missing project id" }, { status: 400 });
+  if (!projectId?.trim())
+    return NextResponse.json({ ok: false, message: "Missing project id" }, { status: 400 });
   try {
     const body = await req.json();
     const selection = await createMaterialSelection({

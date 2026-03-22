@@ -20,11 +20,17 @@ export type PermissionKey =
 export type PermissionMap = Record<PermissionKey, boolean>;
 
 export const PERMISSION_GROUPS: Array<{ title: string; keys: PermissionKey[] }> = [
-  { title: "Projects", keys: ["projects.view", "projects.create", "projects.update", "projects.delete"] },
+  {
+    title: "Projects",
+    keys: ["projects.view", "projects.create", "projects.update", "projects.delete"],
+  },
   { title: "Workers", keys: ["workers.view", "workers.manage", "workers.delete"] },
   { title: "Timesheets", keys: ["timesheets.submit", "timesheets.approve"] },
   { title: "Finance", keys: ["finance.view", "finance.manage", "finance.pay"] },
-  { title: "Settings", keys: ["settings.view", "settings.company_edit", "settings.permissions_manage"] },
+  {
+    title: "Settings",
+    keys: ["settings.view", "settings.company_edit", "settings.permissions_manage"],
+  },
 ];
 
 export const DEFAULT_ROLE_PERMISSIONS: Record<AppRole, PermissionMap> = {

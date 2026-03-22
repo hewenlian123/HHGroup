@@ -79,7 +79,12 @@ export async function createMaterial(draft: MaterialCatalogDraft): Promise<Mater
 /** Update a material. */
 export async function updateMaterial(
   id: string,
-  patch: Partial<Pick<MaterialCatalogRow, "category" | "material_name" | "supplier" | "cost" | "photo_url" | "description">>
+  patch: Partial<
+    Pick<
+      MaterialCatalogRow,
+      "category" | "material_name" | "supplier" | "cost" | "photo_url" | "description"
+    >
+  >
 ): Promise<MaterialCatalogRow | null> {
   const c = client();
   const updates: Record<string, unknown> = {};
@@ -90,7 +95,12 @@ export async function updateMaterial(
   if (patch.photo_url !== undefined) updates.photo_url = patch.photo_url?.trim() ?? null;
   if (patch.description !== undefined) updates.description = patch.description?.trim() ?? null;
   if (Object.keys(updates).length === 0) return null;
-  const { data: row, error } = await c.from("material_catalog").update(updates).eq("id", id).select(COLS).single();
+  const { data: row, error } = await c
+    .from("material_catalog")
+    .update(updates)
+    .eq("id", id)
+    .select(COLS)
+    .single();
   if (error || !row) return null;
   return toRow(row as Record<string, unknown>);
 }

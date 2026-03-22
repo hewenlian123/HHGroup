@@ -39,7 +39,10 @@ export async function createInvoiceDraftAction(payload: {
     const supabase = admin ?? (await createServerSupabaseClient());
     if (!supabase) return { ok: false, error: "Supabase is not configured." };
     if (!admin) {
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
       if (authError || !user) return { ok: false, error: "You must be signed in." };
     }
 
@@ -72,7 +75,8 @@ export async function createInvoiceDraftAction(payload: {
       })
       .select("id")
       .single();
-    if (invErr || !invRow?.id) return { ok: false, error: invErr?.message ?? "Failed to create invoice." };
+    if (invErr || !invRow?.id)
+      return { ok: false, error: invErr?.message ?? "Failed to create invoice." };
 
     const invoiceId = String(invRow.id);
     const itemRows = items.map((l) => ({
@@ -83,11 +87,11 @@ export async function createInvoiceDraftAction(payload: {
       amount: Math.max(0, l.qty) * Math.max(0, l.unitPrice),
     }));
     const { error: itemsErr } = await supabase.from("invoice_items").insert(itemRows);
-    if (itemsErr) return { ok: false, error: itemsErr.message ?? "Failed to create invoice items." };
+    if (itemsErr)
+      return { ok: false, error: itemsErr.message ?? "Failed to create invoice items." };
 
     return { ok: true, invoiceId };
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : "操作失败" };
   }
 }
-

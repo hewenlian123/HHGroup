@@ -2,7 +2,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 function isMissingColumn(err: { message?: string } | null): boolean {
   const m = err?.message ?? "";
-  return /column .* does not exist|does not exist.*column|schema cache|could not find the '.*' column/i.test(m);
+  return /column .* does not exist|does not exist.*column|schema cache|could not find the '.*' column/i.test(
+    m
+  );
 }
 
 function isUniqueViolationError(err: { code?: string; message?: string } | null): boolean {
@@ -154,7 +156,10 @@ export function parseCompanyProfileSaveBody(raw: unknown): Partial<CompanyProfil
     throw new Error(`Invalid type for ${k}`);
   };
 
-  const maybe = <K extends keyof CompanyProfileInput>(key: K, v: CompanyProfileInput[K] | undefined) => {
+  const maybe = <K extends keyof CompanyProfileInput>(
+    key: K,
+    v: CompanyProfileInput[K] | undefined
+  ) => {
     if (v !== undefined) out[key] = v;
   };
 
@@ -199,7 +204,11 @@ export async function ensureCompanyProfile(client: SupabaseClient): Promise<Comp
   // Retry up to 15 times, stripping whichever column the DB doesn't recognise each time.
   const payload: Record<string, unknown> = { ...DEFAULT_PROFILE };
   for (let i = 0; i < 15; i++) {
-    const { data, error } = await client.from("company_profile").insert(payload).select("*").single();
+    const { data, error } = await client
+      .from("company_profile")
+      .insert(payload)
+      .select("*")
+      .single();
     if (!error && data) return data as CompanyProfile;
 
     if (error && isUniqueViolationError(error)) {
@@ -275,7 +284,11 @@ export async function saveCompanyProfile(
       return { ...row, org_name: merged.org_name };
     }
 
-    const { data, error } = await client.from("company_profile").insert(payload).select("*").single();
+    const { data, error } = await client
+      .from("company_profile")
+      .insert(payload)
+      .select("*")
+      .single();
     if (!error && data) return { ...(data as CompanyProfile), org_name: merged.org_name };
     if (error) {
       if (isMissingColumn(error)) {
@@ -301,7 +314,7 @@ export async function uploadCompanyLogo(
   client: SupabaseClient,
   file: File
 ): Promise<{ path: string; url: string; profile: CompanyProfile }> {
-  const extension = file.name.includes(".") ? file.name.split(".").pop() ?? "png" : "png";
+  const extension = file.name.includes(".") ? (file.name.split(".").pop() ?? "png") : "png";
   const safeExt = extension.toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
   const path = `company/logo.${safeExt}`;
 
@@ -333,4 +346,3 @@ export function getCompanyInitials(name: string | null | undefined): string {
   const words = clean.split(/\s+/).slice(0, 2);
   return words.map((word) => word[0]?.toUpperCase() ?? "").join("") || "HH";
 }
-

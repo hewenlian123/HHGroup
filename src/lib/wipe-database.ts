@@ -60,7 +60,8 @@ export async function wipeAllData(c: SupabaseClient): Promise<WipeResult> {
         .select(keyColumn);
       if (error) {
         const msg = error.message ?? "";
-        if (/relation.*does not exist|table.*does not exist|could not find the table/i.test(msg)) continue;
+        if (/relation.*does not exist|table.*does not exist|could not find the table/i.test(msg))
+          continue;
         errors.push(`${table}: ${msg}`);
         continue;
       }

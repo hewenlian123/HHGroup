@@ -161,7 +161,10 @@ export function FloatingActionButton() {
                 }
               }}
             >
-              <Hammer className="h-5 w-5 shrink-0 text-muted-foreground pointer-events-none" aria-hidden />
+              <Hammer
+                className="h-5 w-5 shrink-0 text-muted-foreground pointer-events-none"
+                aria-hidden
+              />
               Add Labor Entry
             </button>
             {LINK_ACTIONS_REST.map(({ label, href, icon }) => (

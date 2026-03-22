@@ -1,17 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  PageLayout,
-  PageHeader,
-  Divider,
-  SectionHeader,
-} from "@/components/base";
+import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
 import { Button } from "@/components/ui/button";
-import {
-  getWorkerById,
-  getLaborEntriesWithJoins,
-  getLaborPaymentsByWorkerId,
-} from "@/lib/data";
+import { getWorkerById, getLaborEntriesWithJoins, getLaborPaymentsByWorkerId } from "@/lib/data";
 
 function fmtUsd(n: number): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -77,10 +68,18 @@ export default async function WorkerStatementPage({ params }: Props) {
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Project</th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Cost Code</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Amount</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Date
+              </th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Project
+              </th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Cost Code
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Amount
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -96,7 +95,9 @@ export default async function WorkerStatementPage({ params }: Props) {
                   <td className="py-1.5 px-3 tabular-nums">{e.work_date}</td>
                   <td className="py-1.5 px-3">{e.project_name ?? "—"}</td>
                   <td className="py-1.5 px-3 text-muted-foreground">{e.cost_code ?? "—"}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(entryAmount(e.hours))}</td>
+                  <td className="py-1.5 px-3 text-right tabular-nums">
+                    ${fmtUsd(entryAmount(e.hours))}
+                  </td>
                 </tr>
               ))
             )}
@@ -111,9 +112,15 @@ export default async function WorkerStatementPage({ params }: Props) {
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">Method</th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">Amount</th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Date
+              </th>
+              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Method
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+                Amount
+              </th>
             </tr>
           </thead>
           <tbody>

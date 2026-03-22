@@ -6,7 +6,10 @@ import { deleteSubcontractor, updateSubcontractor } from "@/lib/data";
 const BUCKET = "attachments";
 const W9_PREFIX = "w9/subcontractors";
 
-export async function uploadW9(subcontractorId: string, formData: FormData): Promise<{ ok: boolean; error?: string }> {
+export async function uploadW9(
+  subcontractorId: string,
+  formData: FormData
+): Promise<{ ok: boolean; error?: string }> {
   const file = formData.get("file") as File | null;
   const supabase = getSupabaseClient();
   if (!file?.size || !supabase) return { ok: false, error: "No file or Supabase not configured." };
@@ -22,7 +25,10 @@ export async function uploadW9(subcontractorId: string, formData: FormData): Pro
   return { ok: true };
 }
 
-export async function removeW9(subcontractorId: string, storagePath: string): Promise<{ ok: boolean; error?: string }> {
+export async function removeW9(
+  subcontractorId: string,
+  storagePath: string
+): Promise<{ ok: boolean; error?: string }> {
   const supabase = getSupabaseClient();
   if (!supabase) return { ok: false, error: "Supabase not configured." };
   const { error: storageError } = await supabase.storage.from(BUCKET).remove([storagePath]);
@@ -31,7 +37,9 @@ export async function removeW9(subcontractorId: string, storagePath: string): Pr
   return { ok: true };
 }
 
-export async function getW9SignedUrl(storagePath: string): Promise<{ url: string | null; error?: string }> {
+export async function getW9SignedUrl(
+  storagePath: string
+): Promise<{ url: string | null; error?: string }> {
   const supabase = getSupabaseClient();
   if (!supabase) return { url: null, error: "Supabase not configured." };
   const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(storagePath, 60);
@@ -52,7 +60,8 @@ export async function updateSubcontractorProfile(
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     if (!subcontractorId) return { ok: false, error: "Missing subcontractor id." };
-    if (patch.name !== undefined && !patch.name.trim()) return { ok: false, error: "Name is required." };
+    if (patch.name !== undefined && !patch.name.trim())
+      return { ok: false, error: "Name is required." };
     await updateSubcontractor(subcontractorId, patch);
     return { ok: true };
   } catch (e) {
@@ -60,7 +69,9 @@ export async function updateSubcontractorProfile(
   }
 }
 
-export async function deleteSubcontractorAction(subcontractorId: string): Promise<{ ok: boolean; error?: string }> {
+export async function deleteSubcontractorAction(
+  subcontractorId: string
+): Promise<{ ok: boolean; error?: string }> {
   try {
     if (!subcontractorId) return { ok: false, error: "Missing subcontractor id." };
     await deleteSubcontractor(subcontractorId);

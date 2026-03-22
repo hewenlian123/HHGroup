@@ -57,4 +57,3 @@ export function Pagination({
     </div>
   );
 }
-

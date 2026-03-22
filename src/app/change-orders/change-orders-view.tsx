@@ -43,7 +43,12 @@ function statusClass(s: string): string {
 
 function formatAmount(total: number, amount: number | null): string {
   const n = amount != null ? amount : total;
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(n);
 }
 
 export function ChangeOrdersView({
@@ -87,9 +92,7 @@ export function ChangeOrdersView({
                 ) : (
                   projects.map((p) => (
                     <DropdownMenuItem key={p.id} asChild>
-                      <Link href={`/projects/${p.id}/change-orders/new`}>
-                        {p.name}
-                      </Link>
+                      <Link href={`/projects/${p.id}/change-orders/new`}>{p.name}</Link>
                     </DropdownMenuItem>
                   ))
                 )}
@@ -99,7 +102,10 @@ export function ChangeOrdersView({
         />
       }
     >
-      <div className="min-w-0 font-sans" style={{ fontFamily: "var(--font-inter), Inter, system-ui, sans-serif" }}>
+      <div
+        className="min-w-0 font-sans"
+        style={{ fontFamily: "var(--font-inter), Inter, system-ui, sans-serif" }}
+      >
         {grouped.length === 0 ? (
           <div className="py-24 text-center">
             <p className="text-[15px] text-[#6b7280]">No change orders yet.</p>
@@ -107,10 +113,12 @@ export function ChangeOrdersView({
               Create a project first, then add change orders from the project.
             </p>
             {projects.length > 0 && (
-              <Button asChild size="sm" className="mt-6 rounded-lg bg-[#111] text-white hover:bg-[#333]">
-                <Link href={`/projects/${projects[0].id}/change-orders/new`}>
-                  New Change Order
-                </Link>
+              <Button
+                asChild
+                size="sm"
+                className="mt-6 rounded-lg bg-[#111] text-white hover:bg-[#333]"
+              >
+                <Link href={`/projects/${projects[0].id}/change-orders/new`}>New Change Order</Link>
               </Button>
             )}
           </div>
@@ -129,9 +137,7 @@ export function ChangeOrdersView({
                       className="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-[#fafafa] border-b border-[#eee] last:border-b-0"
                     >
                       <div className="min-w-0 flex-1">
-                        <div className="font-medium text-[#111] text-[15px]">
-                          {co.number}
-                        </div>
+                        <div className="font-medium text-[#111] text-[15px]">{co.number}</div>
                         <div className="text-sm text-[#6b7280] truncate mt-0.5">
                           {co.title || "Untitled"}
                         </div>

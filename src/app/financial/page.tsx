@@ -48,7 +48,9 @@ export default async function FinancialPage() {
           {kpis.map(({ label, value, icon: Icon }) => (
             <div key={label}>
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">{label}</span>
+                <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                  {label}
+                </span>
                 <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               </div>
               <p
@@ -65,19 +67,29 @@ export default async function FinancialPage() {
 
         {cash.cashDifference !== 0 && (
           <div className="mt-4 border-b border-amber-400/40 pb-3 dark:border-amber-600/40">
-            <p className="text-sm font-medium text-amber-800 dark:text-amber-400">Cash mismatch detected</p>
+            <p className="text-sm font-medium text-amber-800 dark:text-amber-400">
+              Cash mismatch detected
+            </p>
           </div>
         )}
 
         <div className="mt-6">
-          <h3 className="mb-3 text-sm font-semibold text-foreground">Recent Unreconciled Transactions</h3>
+          <h3 className="mb-3 text-sm font-semibold text-foreground">
+            Recent Unreconciled Transactions
+          </h3>
           <div className="overflow-x-auto rounded-sm border border-[#EBEBE9] dark:border-border">
             <Table>
               <TableHeader>
                 <TableRow className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border dark:bg-muted/30">
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Date</TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">Description</TableHead>
-                  <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground tabular-nums">Amount</TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                    Date
+                  </TableHead>
+                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                    Description
+                  </TableHead>
+                  <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground tabular-nums">
+                    Amount
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -98,7 +110,9 @@ export default async function FinancialPage() {
                       <TableCell
                         className={cn(
                           "text-right font-medium tabular-nums",
-                          tx.amount >= 0 ? "text-emerald-600/90 dark:text-emerald-400/90" : "text-red-600/90 dark:text-red-400/90"
+                          tx.amount >= 0
+                            ? "text-emerald-600/90 dark:text-emerald-400/90"
+                            : "text-red-600/90 dark:text-red-400/90"
                         )}
                       >
                         {tx.amount >= 0 ? "+" : ""}

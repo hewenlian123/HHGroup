@@ -103,21 +103,34 @@ export function ProjectTasksTab({
       </div>
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
         {tasks.length === 0 ? (
-          <div className="py-8 text-center text-sm text-gray-500">No tasks yet. Add one to get started.</div>
+          <div className="py-8 text-center text-sm text-gray-500">
+            No tasks yet. Add one to get started.
+          </div>
         ) : (
           <table className="w-full text-sm border-collapse">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
                 <th className="w-10 py-2.5 px-3 text-left" />
-                <th className="text-left py-2.5 px-3 text-xs font-medium uppercase tracking-wide text-gray-500">Title</th>
-                <th className="text-left py-2.5 px-3 text-xs font-medium uppercase tracking-wide text-gray-500">Assigned</th>
-                <th className="text-left py-2.5 px-3 text-xs font-medium uppercase tracking-wide text-gray-500">Due date</th>
-                <th className="text-left py-2.5 px-3 text-xs font-medium uppercase tracking-wide text-gray-500">Priority</th>
+                <th className="text-left py-2.5 px-3 text-xs font-medium uppercase tracking-wide text-gray-500">
+                  Title
+                </th>
+                <th className="text-left py-2.5 px-3 text-xs font-medium uppercase tracking-wide text-gray-500">
+                  Assigned
+                </th>
+                <th className="text-left py-2.5 px-3 text-xs font-medium uppercase tracking-wide text-gray-500">
+                  Due date
+                </th>
+                <th className="text-left py-2.5 px-3 text-xs font-medium uppercase tracking-wide text-gray-500">
+                  Priority
+                </th>
               </tr>
             </thead>
             <tbody>
               {tasks.map((t) => (
-                <tr key={t.id} className="border-b border-gray-200 last:border-b-0 hover:bg-gray-50/80 transition-colors">
+                <tr
+                  key={t.id}
+                  className="border-b border-gray-200 last:border-b-0 hover:bg-gray-50/80 transition-colors"
+                >
                   <td className="py-2 px-3">
                     <input
                       type="checkbox"
@@ -129,7 +142,9 @@ export function ProjectTasksTab({
                   </td>
                   <td className="py-2 px-3 font-medium text-gray-900">{t.title || "—"}</td>
                   <td className="py-2 px-3 text-gray-600">{t.worker_name ?? "—"}</td>
-                  <td className="py-2 px-3 text-gray-600">{t.due_date ? new Date(t.due_date).toLocaleDateString() : "—"}</td>
+                  <td className="py-2 px-3 text-gray-600">
+                    {t.due_date ? new Date(t.due_date).toLocaleDateString() : "—"}
+                  </td>
                   <td className="py-2 px-3">
                     <span
                       className={cn(
@@ -157,7 +172,9 @@ export function ProjectTasksTab({
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Title</label>
+              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Title
+              </label>
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -166,7 +183,9 @@ export function ProjectTasksTab({
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Description</label>
+              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Description
+              </label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -176,7 +195,9 @@ export function ProjectTasksTab({
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned Worker</label>
+              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Assigned Worker
+              </label>
               <select
                 value={assignedWorkerId}
                 onChange={(e) => setAssignedWorkerId(e.target.value)}
@@ -191,7 +212,9 @@ export function ProjectTasksTab({
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</label>
+              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Due Date
+              </label>
               <Input
                 type="date"
                 value={dueDate}
@@ -200,7 +223,9 @@ export function ProjectTasksTab({
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</label>
+              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Priority
+              </label>
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as "low" | "medium" | "high")}
@@ -214,10 +239,20 @@ export function ProjectTasksTab({
             {error && <p className="text-sm text-red-600">{error}</p>}
           </div>
           <DialogFooter className="border-t border-gray-200 pt-4">
-            <Button variant="outline" size="sm" onClick={() => setModalOpen(false)} className="rounded-lg">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setModalOpen(false)}
+              className="rounded-lg"
+            >
               Cancel
             </Button>
-            <Button size="sm" className="rounded-lg bg-black text-white hover:bg-black/90" onClick={handleSave} disabled={submitting}>
+            <Button
+              size="sm"
+              className="rounded-lg bg-black text-white hover:bg-black/90"
+              onClick={handleSave}
+              disabled={submitting}
+            >
               Save
             </Button>
           </DialogFooter>

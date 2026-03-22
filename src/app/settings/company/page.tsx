@@ -168,9 +168,12 @@ export default function SettingsCompanyPage() {
         method: "GET",
         credentials: "include",
       });
-      const json = (await res.json().catch(() => null)) as
-        | { ok?: boolean; profile?: CompanyProfile; fallback?: string; message?: string }
-        | null;
+      const json = (await res.json().catch(() => null)) as {
+        ok?: boolean;
+        profile?: CompanyProfile;
+        fallback?: string;
+        message?: string;
+      } | null;
 
       if (res.ok && json?.ok && json.profile) {
         setProfile(json.profile);
@@ -194,7 +197,11 @@ export default function SettingsCompanyPage() {
         setForm(toFormState(row));
       } catch {
         const msg = e instanceof Error ? e.message : String(e);
-        toast({ title: "Load failed", description: msg || "Failed to load company profile.", variant: "error" });
+        toast({
+          title: "Load failed",
+          description: msg || "Failed to load company profile.",
+          variant: "error",
+        });
       }
     } finally {
       setLoading(false);
@@ -276,9 +283,12 @@ export default function SettingsCompanyPage() {
             credentials: "include",
             body: JSON.stringify(persistPayload),
           });
-          const json = (await res.json().catch(() => null)) as
-            | { ok?: boolean; profile?: CompanyProfile; message?: string; fallback?: string }
-            | null;
+          const json = (await res.json().catch(() => null)) as {
+            ok?: boolean;
+            profile?: CompanyProfile;
+            message?: string;
+            fallback?: string;
+          } | null;
 
           if (res.ok && json?.ok && json.profile) {
             flushSync(() => {
@@ -315,7 +325,11 @@ export default function SettingsCompanyPage() {
         }
       },
       onError: (msg) =>
-        toast({ title: "Save failed", description: msg || "Failed to save profile.", variant: "error" }),
+        toast({
+          title: "Save failed",
+          description: msg || "Failed to save profile.",
+          variant: "error",
+        }),
       onSuccess: () => toast({ title: "Saved", variant: "success" }),
     });
   };
@@ -338,9 +352,12 @@ export default function SettingsCompanyPage() {
         credentials: "include",
         headers: auth,
       });
-      const json = (await res.json().catch(() => null)) as
-        | { ok?: boolean; profile?: CompanyProfile; message?: string; fallback?: string }
-        | null;
+      const json = (await res.json().catch(() => null)) as {
+        ok?: boolean;
+        profile?: CompanyProfile;
+        message?: string;
+        fallback?: string;
+      } | null;
 
       if (res.ok && json?.ok && json.profile) {
         setProfile(json.profile);
@@ -378,7 +395,11 @@ export default function SettingsCompanyPage() {
       toast({ title: "Upload failed", description: msg, variant: "error" });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      toast({ title: "Upload failed", description: msg || "Logo upload failed.", variant: "error" });
+      toast({
+        title: "Upload failed",
+        description: msg || "Logo upload failed.",
+        variant: "error",
+      });
     } finally {
       setUploading(false);
     }
@@ -400,9 +421,12 @@ export default function SettingsCompanyPage() {
         credentials: "include",
         headers: auth,
       });
-      const json = (await res.json().catch(() => null)) as
-        | { ok?: boolean; profile?: CompanyProfile; message?: string; fallback?: string }
-        | null;
+      const json = (await res.json().catch(() => null)) as {
+        ok?: boolean;
+        profile?: CompanyProfile;
+        message?: string;
+        fallback?: string;
+      } | null;
 
       if (res.ok && json?.ok && json.profile) {
         setProfile(json.profile);
@@ -439,7 +463,11 @@ export default function SettingsCompanyPage() {
       toast({ title: "Remove failed", description: msg, variant: "error" });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      toast({ title: "Remove failed", description: msg || "Failed to remove logo.", variant: "error" });
+      toast({
+        title: "Remove failed",
+        description: msg || "Failed to remove logo.",
+        variant: "error",
+      });
     } finally {
       setUploading(false);
     }
@@ -457,12 +485,16 @@ export default function SettingsCompanyPage() {
 
       {!configured ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
-          Supabase is not configured. Set `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` to enable save and upload.
+          Supabase is not configured. Set `NEXT_PUBLIC_SUPABASE_URL` and
+          `NEXT_PUBLIC_SUPABASE_ANON_KEY` to enable save and upload.
         </div>
       ) : null}
 
       <section className="border-b border-[#EBEBE9] pb-8 dark:border-border">
-        <SectionHeader title="Branding" subtitle="Upload logo for sidebar, topbar, and future PDF output." />
+        <SectionHeader
+          title="Branding"
+          subtitle="Upload logo for sidebar, topbar, and future PDF output."
+        />
         <div className="mt-4 grid gap-4 md:grid-cols-[1fr_auto]">
           <label
             htmlFor="logo-upload"
@@ -522,7 +554,10 @@ export default function SettingsCompanyPage() {
       </section>
 
       <section className="pt-2" data-testid="company-profile-section">
-        <SectionHeader title="Company Profile" subtitle="This profile is shared globally across HH Unified." />
+        <SectionHeader
+          title="Company Profile"
+          subtitle="This profile is shared globally across HH Unified."
+        />
         <div className="mt-4 grid gap-3 md:grid-cols-2" data-testid="company-profile-fields">
           <Input
             className="rounded-sm"
@@ -673,4 +708,3 @@ export default function SettingsCompanyPage() {
     </div>
   );
 }
-

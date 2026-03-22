@@ -43,7 +43,8 @@ function client(): SupabaseClient {
   return c;
 }
 
-const COLS = "id, project_id, title, description, status, assigned_worker_id, due_date, priority, created_at";
+const COLS =
+  "id, project_id, title, description, status, assigned_worker_id, due_date, priority, created_at";
 
 /** Title prefix used by full-system-test for test tasks. Used to hide and protect test data from UI. */
 export const TEST_TASK_TITLE_PREFIX = "Workflow Test";
@@ -68,7 +69,9 @@ function toTask(r: Record<string, unknown>): ProjectTask {
 }
 
 /** Get all tasks across all projects (for Operations Tasks page), with project and worker names. */
-export async function getAllTasksWithProject(): Promise<(ProjectTaskWithWorker & { project_name: string | null })[]> {
+export async function getAllTasksWithProject(): Promise<
+  (ProjectTaskWithWorker & { project_name: string | null })[]
+> {
   const c = client();
   const { data: rows, error } = await c
     .from("project_tasks")
@@ -77,17 +80,23 @@ export async function getAllTasksWithProject(): Promise<(ProjectTaskWithWorker &
   if (error) throw new Error(error.message ?? "Failed to load tasks.");
   const tasks = (rows ?? []).map((r) => toTask(r as Record<string, unknown>));
   const projectIds = Array.from(new Set(tasks.map((t) => t.project_id)));
-  const workerIds = Array.from(new Set(tasks.map((t) => t.assigned_worker_id).filter(Boolean))) as string[];
+  const workerIds = Array.from(
+    new Set(tasks.map((t) => t.assigned_worker_id).filter(Boolean))
+  ) as string[];
   const [projectsRes, workersRes] = await Promise.all([
     projectIds.length ? c.from("projects").select("id, name").in("id", projectIds) : { data: [] },
     workerIds.length ? c.from("workers").select("id, name").in("id", workerIds) : { data: [] },
   ]);
-  const projectNames = new Map<string, string>(((projectsRes.data ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name ?? ""]));
-  const workerNames = new Map<string, string>(((workersRes.data ?? []) as { id: string; name: string }[]).map((w) => [w.id, w.name ?? ""]));
+  const projectNames = new Map<string, string>(
+    ((projectsRes.data ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name ?? ""])
+  );
+  const workerNames = new Map<string, string>(
+    ((workersRes.data ?? []) as { id: string; name: string }[]).map((w) => [w.id, w.name ?? ""])
+  );
   return tasks.map((t) => ({
     ...t,
     project_name: projectNames.get(t.project_id) ?? null,
-    worker_name: t.assigned_worker_id ? workerNames.get(t.assigned_worker_id) ?? null : null,
+    worker_name: t.assigned_worker_id ? (workerNames.get(t.assigned_worker_id) ?? null) : null,
   }));
 }
 
@@ -101,22 +110,30 @@ export async function getProjectTasks(projectId: string): Promise<ProjectTaskWit
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message ?? "Failed to load tasks.");
   const tasks = (rows ?? []).map((r) => toTask(r as Record<string, unknown>));
-  const workerIds = Array.from(new Set(tasks.map((t) => t.assigned_worker_id).filter(Boolean))) as string[];
+  const workerIds = Array.from(
+    new Set(tasks.map((t) => t.assigned_worker_id).filter(Boolean))
+  ) as string[];
   const workerNames = new Map<string, string>();
   if (workerIds.length > 0) {
     const { data: workers } = await c.from("workers").select("id, name").in("id", workerIds);
-    (workers ?? []).forEach((w: { id: string; name: string }) => workerNames.set(w.id, w.name ?? ""));
+    (workers ?? []).forEach((w: { id: string; name: string }) =>
+      workerNames.set(w.id, w.name ?? "")
+    );
   }
   return tasks.map((t) => ({
     ...t,
-    worker_name: t.assigned_worker_id ? workerNames.get(t.assigned_worker_id) ?? null : null,
+    worker_name: t.assigned_worker_id ? (workerNames.get(t.assigned_worker_id) ?? null) : null,
   }));
 }
 
 /** Get one task by id. */
 export async function getProjectTaskById(taskId: string): Promise<ProjectTask | null> {
   const c = client();
-  const { data: row, error } = await c.from("project_tasks").select(COLS).eq("id", taskId).maybeSingle();
+  const { data: row, error } = await c
+    .from("project_tasks")
+    .select(COLS)
+    .eq("id", taskId)
+    .maybeSingle();
   if (error) throw new Error(error.message ?? "Failed to load task.");
   return row ? toTask(row as Record<string, unknown>) : null;
 }
@@ -144,7 +161,12 @@ export async function createProjectTask(draft: ProjectTaskDraft): Promise<Projec
 /** Update a task. Returns updated task or null. */
 export async function updateProjectTask(
   taskId: string,
-  patch: Partial<Pick<ProjectTask, "title" | "description" | "status" | "assigned_worker_id" | "due_date" | "priority">>
+  patch: Partial<
+    Pick<
+      ProjectTask,
+      "title" | "description" | "status" | "assigned_worker_id" | "due_date" | "priority"
+    >
+  >
 ): Promise<ProjectTask | null> {
   const c = client();
   const updates: Record<string, unknown> = {};
@@ -155,7 +177,12 @@ export async function updateProjectTask(
   if (patch.due_date !== undefined) updates.due_date = patch.due_date?.slice(0, 10) ?? null;
   if (patch.priority !== undefined) updates.priority = patch.priority;
   if (Object.keys(updates).length === 0) return getProjectTaskById(taskId);
-  const { data: row, error } = await c.from("project_tasks").update(updates).eq("id", taskId).select(COLS).single();
+  const { data: row, error } = await c
+    .from("project_tasks")
+    .update(updates)
+    .eq("id", taskId)
+    .select(COLS)
+    .single();
   if (error || !row) return null;
   return toTask(row as Record<string, unknown>);
 }
@@ -168,12 +195,11 @@ export async function deleteProjectTask(taskId: string): Promise<void> {
 }
 
 /** Delete a task using the given Supabase client (e.g. server client). Verifies one row was deleted. */
-export async function deleteProjectTaskWithClient(c: SupabaseClient, taskId: string): Promise<number> {
-  const { data, error } = await c
-    .from("project_tasks")
-    .delete()
-    .eq("id", taskId)
-    .select("id");
+export async function deleteProjectTaskWithClient(
+  c: SupabaseClient,
+  taskId: string
+): Promise<number> {
+  const { data, error } = await c.from("project_tasks").delete().eq("id", taskId).select("id");
   const rowsDeleted = data?.length ?? 0;
   if (error) throw new Error(error.message ?? "Failed to delete task.");
   if (!data?.length) throw new Error("Task not found or already deleted.");

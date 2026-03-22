@@ -5,12 +5,10 @@ const ROLES = ["Designer", "Sales", "Referral", "Agent", "Other"];
 const MODES = ["Auto", "Manual"];
 const STATUSES = ["Pending", "Approved", "Paid", "Cancelled"];
 
-export async function POST(
-  req: Request,
-  ctx: { params: Promise<{ id: string }> }
-) {
+export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id: projectId } = await ctx.params;
-  if (!projectId) return NextResponse.json({ ok: false, message: "Missing project id" }, { status: 400 });
+  if (!projectId)
+    return NextResponse.json({ ok: false, message: "Missing project id" }, { status: 400 });
   try {
     const body = await req.json();
     const person_name = String(body.person_name ?? "").trim();

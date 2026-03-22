@@ -57,7 +57,9 @@ export async function getPaymentsReceived(): Promise<PaymentReceivedWithMeta[]> 
   const c = client();
   const { data: rows, error } = await c
     .from("payments_received")
-    .select("id, invoice_id, project_id, customer_name, payment_date, amount, payment_method, deposit_account, notes, attachment_url, created_at")
+    .select(
+      "id, invoice_id, project_id, customer_name, payment_date, amount, payment_method, deposit_account, notes, attachment_url, created_at"
+    )
     .order("payment_date", { ascending: false });
   if (error) {
     if (isMissingTable(error)) return [];
@@ -69,23 +71,36 @@ export async function getPaymentsReceived(): Promise<PaymentReceivedWithMeta[]> 
   const projectIds = Array.from(new Set(list.map((r) => r.project_id).filter(Boolean))) as string[];
   const [invRes, projRes] = await Promise.all([
     c.from("invoices").select("id, invoice_no").in("id", invoiceIds),
-    projectIds.length ? c.from("projects").select("id, name").in("id", projectIds) : Promise.resolve({ data: [] }),
+    projectIds.length
+      ? c.from("projects").select("id, name").in("id", projectIds)
+      : Promise.resolve({ data: [] }),
   ]);
-  const invoiceNoById = new Map((invRes.data ?? []).map((r: { id: string; invoice_no?: string }) => [r.id, r.invoice_no ?? null]));
-  const projectNameById = new Map((projRes.data ?? []).map((r: { id: string; name?: string }) => [r.id, r.name ?? null]));
+  const invoiceNoById = new Map(
+    (invRes.data ?? []).map((r: { id: string; invoice_no?: string }) => [
+      r.id,
+      r.invoice_no ?? null,
+    ])
+  );
+  const projectNameById = new Map(
+    (projRes.data ?? []).map((r: { id: string; name?: string }) => [r.id, r.name ?? null])
+  );
   return list.map((r) => ({
     ...r,
     invoice_no: invoiceNoById.get(r.invoice_id) ?? null,
-    project_name: r.project_id ? projectNameById.get(r.project_id) ?? null : null,
+    project_name: r.project_id ? (projectNameById.get(r.project_id) ?? null) : null,
   }));
 }
 
 /** Get payments for a single invoice. */
-export async function getPaymentsReceivedByInvoiceId(invoiceId: string): Promise<PaymentReceivedRow[]> {
+export async function getPaymentsReceivedByInvoiceId(
+  invoiceId: string
+): Promise<PaymentReceivedRow[]> {
   const c = client();
   const { data: rows, error } = await c
     .from("payments_received")
-    .select("id, invoice_id, project_id, customer_name, payment_date, amount, payment_method, deposit_account, notes, attachment_url, created_at")
+    .select(
+      "id, invoice_id, project_id, customer_name, payment_date, amount, payment_method, deposit_account, notes, attachment_url, created_at"
+    )
     .eq("invoice_id", invoiceId)
     .order("payment_date", { ascending: false });
   if (error) {
@@ -115,7 +130,9 @@ function isMissingColumn(err: { message?: string } | null): boolean {
   return /column .* does not exist|could not find the .* column|schema cache/i.test(m);
 }
 
-export async function createPaymentReceived(payload: CreatePaymentReceivedPayload): Promise<PaymentReceivedRow> {
+export async function createPaymentReceived(
+  payload: CreatePaymentReceivedPayload
+): Promise<PaymentReceivedRow> {
   const c = client();
   const paymentDate = payload.payment_date.slice(0, 10);
 

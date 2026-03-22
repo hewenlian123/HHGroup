@@ -17,7 +17,13 @@ import { createBrowserClient } from "@/lib/supabase";
 import { getInvoicesWithDerivedPaged } from "@/lib/data";
 import { deleteInvoiceAction } from "./actions";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
 import { Pagination } from "@/components/ui/pagination";
 
@@ -101,17 +107,24 @@ export function InvoicesClient() {
     setVoidConfirmId(null);
 
     try {
-      const [{ rows: list, total: totalCount }, { data: projectData, error: projectError }] = await Promise.all([
-        getInvoicesWithDerivedPaged({
-          page,
-          pageSize,
-          status: statusFilter || undefined,
-          projectId: projectFilter || undefined,
-          search: search.trim() || undefined,
-        }),
-        supabase.from("projects").select("id,name").order("created_at", { ascending: false }).limit(500),
-      ]);
-      const projectMap = new Map(((projectData ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name]));
+      const [{ rows: list, total: totalCount }, { data: projectData, error: projectError }] =
+        await Promise.all([
+          getInvoicesWithDerivedPaged({
+            page,
+            pageSize,
+            status: statusFilter || undefined,
+            projectId: projectFilter || undefined,
+            search: search.trim() || undefined,
+          }),
+          supabase
+            .from("projects")
+            .select("id,name")
+            .order("created_at", { ascending: false })
+            .limit(500),
+        ]);
+      const projectMap = new Map(
+        ((projectData ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name])
+      );
       const normalized: InvoiceRow[] = list.map((inv) => ({
         id: inv.id,
         invoice_no: inv.invoiceNo,
@@ -123,7 +136,9 @@ export function InvoicesClient() {
         total: inv.total,
         paidTotal: inv.paidTotal,
         balanceDue: inv.balanceDue,
-        projects: inv.projectId ? { id: inv.projectId, name: projectMap.get(inv.projectId) ?? "" } : null,
+        projects: inv.projectId
+          ? { id: inv.projectId, name: projectMap.get(inv.projectId) ?? "" }
+          : null,
       }));
       setInvoices(normalized);
       setTotal(totalCount ?? normalized.length);
@@ -249,7 +264,9 @@ export function InvoicesClient() {
       <FilterBar>
         <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1 sm:col-span-2 lg:col-span-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Search</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Search
+            </p>
             <Input
               placeholder="Invoice #, client, project…"
               value={search}
@@ -257,7 +274,9 @@ export function InvoicesClient() {
             />
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Status</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Status
+            </p>
             <Select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as "" | InvoiceStatus)}
@@ -270,7 +289,9 @@ export function InvoicesClient() {
             </Select>
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Project</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Project
+            </p>
             <Select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)}>
               <option value="">All projects</option>
               {projects.map((p) => (
@@ -307,7 +328,13 @@ export function InvoicesClient() {
             amountColumnKeys={["total", "paidTotal", "balanceDue"]}
           />
         )}
-        <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} className="px-4" />
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={total}
+          onPageChange={setPage}
+          className="px-4"
+        />
       </Card>
 
       <Dialog open={!!voidConfirmId} onOpenChange={(open) => !open && setVoidConfirmId(null)}>
@@ -315,7 +342,9 @@ export function InvoicesClient() {
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Void invoice</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">This cannot be undone. The invoice will be marked as Void.</p>
+          <p className="text-sm text-muted-foreground">
+            This cannot be undone. The invoice will be marked as Void.
+          </p>
           <DialogFooter className="gap-2 pt-3 border-t border-border/60">
             <Button variant="ghost" size="sm" onClick={() => setVoidConfirmId(null)}>
               Cancel
@@ -328,7 +357,10 @@ export function InvoicesClient() {
                 if (!voidConfirmId || !supabase) return;
                 setBusyId(voidConfirmId);
                 setError(null);
-                const { error: updateError } = await supabase.from("invoices").update({ status: "Void" }).eq("id", voidConfirmId);
+                const { error: updateError } = await supabase
+                  .from("invoices")
+                  .update({ status: "Void" })
+                  .eq("id", voidConfirmId);
                 if (updateError) setError(updateError.message);
                 await refresh();
                 setBusyId(null);
@@ -340,8 +372,6 @@ export function InvoicesClient() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
     </div>
   );
 }
-

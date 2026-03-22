@@ -51,11 +51,7 @@ export default async function BillsPage({ searchParams }: Props) {
       }
     >
       <div className="mx-auto w-full max-w-[1200px]">
-        <BillsListClient
-          bills={bills}
-          summary={summary}
-          projects={projectOptions}
-        />
+        <BillsListClient bills={bills} summary={summary} projects={projectOptions} />
       </div>
     </PageLayout>
   );

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { mergeCompanyProfileInput, parseCompanyProfileSaveBody, type CompanyProfile } from "@/lib/company-profile";
+import {
+  mergeCompanyProfileInput,
+  parseCompanyProfileSaveBody,
+  type CompanyProfile,
+} from "@/lib/company-profile";
 
 const row = (over: Partial<CompanyProfile>): CompanyProfile => ({
   id: "a",

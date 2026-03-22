@@ -7,11 +7,7 @@ import { DocumentCompanyHeader } from "@/components/documents/document-company-h
 /** Company block must reflect latest `company_profile` after Settings saves (no stale RSC cache). */
 export const dynamic = "force-dynamic";
 
-export default async function InvoicePrintPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function InvoicePrintPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const invoice = await getInvoiceById(id);
   if (!invoice) notFound();
@@ -31,7 +27,9 @@ export default async function InvoicePrintPage({
       />
 
       <section className="mb-6">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">Bill to</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">
+          Bill to
+        </h2>
         <p className="font-medium">{invoice.clientName}</p>
         <p className="text-sm text-zinc-600">{project?.name ?? invoice.projectId}</p>
       </section>
@@ -60,7 +58,9 @@ export default async function InvoicePrintPage({
               <td className="py-2">{line.description}</td>
               <td className="text-right py-2 tabular-nums">{line.qty}</td>
               <td className="text-right py-2 tabular-nums">${line.unitPrice.toLocaleString()}</td>
-              <td className="text-right py-2 tabular-nums font-medium">${line.amount.toLocaleString()}</td>
+              <td className="text-right py-2 tabular-nums font-medium">
+                ${line.amount.toLocaleString()}
+              </td>
             </tr>
           ))}
         </tbody>

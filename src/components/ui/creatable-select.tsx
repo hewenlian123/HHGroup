@@ -27,12 +27,8 @@ export function CreatableSelect({
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   const q = query.trim().toLowerCase();
-  const filtered =
-    q === ""
-      ? options
-      : options.filter((opt) => opt.toLowerCase().includes(q));
-  const hasExactMatch =
-    q !== "" && options.some((opt) => opt.toLowerCase() === q);
+  const filtered = q === "" ? options : options.filter((opt) => opt.toLowerCase().includes(q));
+  const hasExactMatch = q !== "" && options.some((opt) => opt.toLowerCase() === q);
   const showAddOption = q !== "" && !hasExactMatch;
 
   React.useEffect(() => {

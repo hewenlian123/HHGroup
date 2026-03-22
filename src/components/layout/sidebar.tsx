@@ -178,7 +178,10 @@ export function Sidebar({
     sectionsInitDone.current = true;
     const isMobileOrTablet = typeof window !== "undefined" && window.innerWidth < 1024;
     if (isMobileOrTablet) {
-      const allClosed = SECTION_KEYS.reduce((acc, k) => ({ ...acc, [k]: false }), {} as Record<string, boolean>);
+      const allClosed = SECTION_KEYS.reduce(
+        (acc, k) => ({ ...acc, [k]: false }),
+        {} as Record<string, boolean>
+      );
       setOpenSections(allClosed);
       return;
     }
@@ -194,7 +197,10 @@ export function Sidebar({
     } catch {
       // ignore
     }
-    const allOpen = SECTION_KEYS.reduce((acc, k) => ({ ...acc, [k]: true }), {} as Record<string, boolean>);
+    const allOpen = SECTION_KEYS.reduce(
+      (acc, k) => ({ ...acc, [k]: true }),
+      {} as Record<string, boolean>
+    );
     setOpenSections(allOpen);
   }, []);
 
@@ -220,7 +226,9 @@ export function Sidebar({
   const navRowClass = (active: boolean) =>
     cn(
       "group relative flex items-center rounded-lg transition-all duration-150",
-      collapsed ? "min-h-[44px] justify-center px-2 py-2.5 sm:min-h-0" : "min-h-[44px] gap-3 px-4 py-2.5 text-sm sm:min-h-0",
+      collapsed
+        ? "min-h-[44px] justify-center px-2 py-2.5 sm:min-h-0"
+        : "min-h-[44px] gap-3 px-4 py-2.5 text-sm sm:min-h-0",
       active
         ? "bg-white font-semibold text-[#2D2D2D] shadow-sm dark:bg-card dark:text-foreground"
         : "font-medium text-[#2D2D2D] hover:bg-white hover:shadow-sm dark:text-foreground/90 dark:hover:bg-muted"
@@ -258,7 +266,9 @@ export function Sidebar({
             <p className="truncate text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400">
               HH Unified
             </p>
-            <p className="truncate text-sm font-semibold text-[#2D2D2D] dark:text-foreground">{orgName}</p>
+            <p className="truncate text-sm font-semibold text-[#2D2D2D] dark:text-foreground">
+              {orgName}
+            </p>
           </div>
         )}
       </div>
@@ -284,7 +294,10 @@ export function Sidebar({
             const isOpen = openSections[section.key] ?? false;
             if (collapsed) {
               return (
-                <div key={section.key} className={cn("flex flex-col gap-1", sectionIndex > 0 && "mt-6")}>
+                <div
+                  key={section.key}
+                  className={cn("flex flex-col gap-1", sectionIndex > 0 && "mt-6")}
+                >
                   {section.items.map((item) => {
                     const active = isActive(item.href);
                     const Icon = item.icon;
@@ -313,9 +326,17 @@ export function Sidebar({
                   aria-expanded={isOpen}
                 >
                   {isOpen ? (
-                    <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden strokeWidth={1.75} />
+                    <ChevronDown
+                      className="h-3.5 w-3.5 shrink-0 opacity-70"
+                      aria-hidden
+                      strokeWidth={1.75}
+                    />
                   ) : (
-                    <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden strokeWidth={1.75} />
+                    <ChevronRight
+                      className="h-3.5 w-3.5 shrink-0 opacity-70"
+                      aria-hidden
+                      strokeWidth={1.75}
+                    />
                   )}
                   <span className="truncate">{section.label}</span>
                 </button>
@@ -337,7 +358,9 @@ export function Sidebar({
                             aria-label={collapsed ? item.label : undefined}
                             className={navRowClass(active)}
                           >
-                            {Icon ? <Icon className={navIconClass(active)} strokeWidth={1.75} /> : null}
+                            {Icon ? (
+                              <Icon className={navIconClass(active)} strokeWidth={1.75} />
+                            ) : null}
                             {!collapsed && <span className="truncate">{item.label}</span>}
                           </Link>
                         );
@@ -359,7 +382,10 @@ export function Sidebar({
                 title="System Health"
               >
                 <AlertTriangle
-                  className={navIconClass(isActive("/system-health"), "text-amber-500 group-hover:text-amber-600")}
+                  className={navIconClass(
+                    isActive("/system-health"),
+                    "text-amber-500 group-hover:text-amber-600"
+                  )}
                   strokeWidth={1.75}
                   aria-hidden
                 />
@@ -396,11 +422,17 @@ export function Sidebar({
         <div className="border-t border-[#EBEBE9] dark:border-border px-4 py-3">
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#EBEBE9] bg-white dark:border-border dark:bg-card">
-              <span className="text-[10px] font-semibold text-gray-500 dark:text-muted-foreground">U</span>
+              <span className="text-[10px] font-semibold text-gray-500 dark:text-muted-foreground">
+                U
+              </span>
             </div>
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-[#2D2D2D] dark:text-foreground">User</p>
-              <p className="text-[10px] uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Admin</p>
+              <p className="truncate text-sm font-medium text-[#2D2D2D] dark:text-foreground">
+                User
+              </p>
+              <p className="text-[10px] uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+                Admin
+              </p>
             </div>
           </div>
         </div>

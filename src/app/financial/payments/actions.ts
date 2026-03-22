@@ -33,9 +33,15 @@ export async function deletePaymentReceivedAction(
       try {
         const paidAt = typeof pay.payment_date === "string" ? pay.payment_date.slice(0, 10) : null;
         const amount = Number((pay as { amount?: number }).amount ?? 0);
-        let q = c.from("invoice_payments").delete().eq("invoice_id", pay.invoice_id).eq("amount", amount);
+        let q = c
+          .from("invoice_payments")
+          .delete()
+          .eq("invoice_id", pay.invoice_id)
+          .eq("amount", amount);
         if (paidAt) q = q.eq("paid_at", paidAt);
-        const memo = (pay as { notes?: string }).notes ?? (pay as { deposit_account?: string }).deposit_account;
+        const memo =
+          (pay as { notes?: string }).notes ??
+          (pay as { deposit_account?: string }).deposit_account;
         if (typeof memo === "string" && memo.trim()) q = q.eq("memo", memo.trim());
         await q;
       } catch {
@@ -54,4 +60,3 @@ export async function deletePaymentReceivedAction(
     return { ok: false, error: e instanceof Error ? e.message : "Failed to delete payment." };
   }
 }
-

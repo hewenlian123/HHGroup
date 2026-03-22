@@ -13,7 +13,8 @@ export function EstimateSummarySidebar({ summary }: { summary: EstimateSummaryRe
   }
   const { subtotal, grandTotal, tax, discount, markup } = summary;
   const adjustments = grandTotal - subtotal;
-  const adjustmentsLabel = adjustments < 0 ? `-$${fmt(Math.abs(adjustments))}` : `$${fmt(adjustments)}`;
+  const adjustmentsLabel =
+    adjustments < 0 ? `-$${fmt(Math.abs(adjustments))}` : `$${fmt(adjustments)}`;
 
   return (
     <div className="border border-zinc-200 dark:border-border rounded-lg overflow-hidden">

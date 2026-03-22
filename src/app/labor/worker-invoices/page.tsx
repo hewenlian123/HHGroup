@@ -32,7 +32,10 @@ export default function WorkerInvoicesPage() {
   const [query, setQuery] = React.useState("");
   const [page, setPage] = React.useState(1);
   const pageSize = 10;
-  const [sort, setSort] = React.useState<{ key: "createdAt" | "amount" | "status"; dir: "asc" | "desc" }>({
+  const [sort, setSort] = React.useState<{
+    key: "createdAt" | "amount" | "status";
+    dir: "asc" | "desc";
+  }>({
     key: "createdAt",
     dir: "desc",
   });
@@ -47,11 +50,7 @@ export default function WorkerInvoicesPage() {
   const load = React.useCallback(async () => {
     setLoading(true);
     try {
-      const [w, p, list] = await Promise.all([
-        getWorkers(),
-        getProjects(),
-        getWorkerInvoices(),
-      ]);
+      const [w, p, list] = await Promise.all([getWorkers(), getProjects(), getWorkerInvoices()]);
       setWorkers(w);
       setProjects(p);
       setRows(list);
@@ -81,11 +80,13 @@ export default function WorkerInvoicesPage() {
     const base = q
       ? rows.filter((r) => {
           const worker = workerById.get(r.workerId) ?? r.workerId;
-          const project = r.projectId ? projectById.get(r.projectId) ?? r.projectId : "";
+          const project = r.projectId ? (projectById.get(r.projectId) ?? r.projectId) : "";
           return (
             worker.toLowerCase().includes(q) ||
             project.toLowerCase().includes(q) ||
-            String(r.amount ?? "").toLowerCase().includes(q) ||
+            String(r.amount ?? "")
+              .toLowerCase()
+              .includes(q) ||
             (r.invoiceFile ?? "").toLowerCase().includes(q) ||
             (r.status ?? "").toLowerCase().includes(q)
           );
@@ -95,7 +96,8 @@ export default function WorkerInvoicesPage() {
     const dir = sort.dir === "asc" ? 1 : -1;
     const sorted = [...base].sort((a, b) => {
       if (sort.key === "amount") return ((a.amount ?? 0) - (b.amount ?? 0)) * dir;
-      if (sort.key === "status") return (String(a.status).localeCompare(String(b.status)) || 0) * dir;
+      if (sort.key === "status")
+        return (String(a.status).localeCompare(String(b.status)) || 0) * dir;
       return (String(a.createdAt).localeCompare(String(b.createdAt)) || 0) * dir;
     });
     return sorted;
@@ -194,7 +196,9 @@ export default function WorkerInvoicesPage() {
   };
 
   const toggleSort = (key: "createdAt" | "amount" | "status") => {
-    setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
+    setSort((s) =>
+      s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }
+    );
   };
 
   return (
@@ -204,10 +208,20 @@ export default function WorkerInvoicesPage() {
         subtitle="Track invoices from 1099 workers or small subcontractors."
         actions={
           <>
-            <Link href="/labor" className="text-sm text-muted-foreground hover:text-foreground mr-2">
+            <Link
+              href="/labor"
+              className="text-sm text-muted-foreground hover:text-foreground mr-2"
+            >
               Labor
             </Link>
-            <Button size="sm" className="rounded-md" onClick={() => { resetForm(); setShowForm(true); }}>
+            <Button
+              size="sm"
+              className="rounded-md"
+              onClick={() => {
+                resetForm();
+                setShowForm(true);
+              }}
+            >
               + New Invoice
             </Button>
           </>
@@ -230,7 +244,9 @@ export default function WorkerInvoicesPage() {
           </h2>
           <form onSubmit={handleSubmit} className="flex flex-wrap gap-3 items-end">
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">Worker</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">
+                Worker
+              </label>
               <select
                 value={form.workerId}
                 onChange={(e) => setForm((f) => ({ ...f, workerId: e.target.value }))}
@@ -239,12 +255,16 @@ export default function WorkerInvoicesPage() {
               >
                 <option value="">Select worker</option>
                 {workers.map((w) => (
-                  <option key={w.id} value={w.id}>{w.name}</option>
+                  <option key={w.id} value={w.id}>
+                    {w.name}
+                  </option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">Project</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">
+                Project
+              </label>
               <select
                 value={form.projectId}
                 onChange={(e) => setForm((f) => ({ ...f, projectId: e.target.value }))}
@@ -252,12 +272,16 @@ export default function WorkerInvoicesPage() {
               >
                 <option value="">—</option>
                 {projects.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">Amount</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">
+                Amount
+              </label>
               <Input
                 type="number"
                 min="0"
@@ -268,10 +292,14 @@ export default function WorkerInvoicesPage() {
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">Status</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">
+                Status
+              </label>
               <select
                 value={form.status}
-                onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as WorkerInvoiceStatus }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, status: e.target.value as WorkerInvoiceStatus }))
+                }
                 className="h-9 rounded-md border border-input bg-transparent px-3 text-sm min-w-[100px]"
               >
                 <option value="unpaid">Unpaid</option>
@@ -279,7 +307,9 @@ export default function WorkerInvoicesPage() {
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">Invoice file (URL)</label>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">
+                Invoice file (URL)
+              </label>
               <Input
                 type="text"
                 value={form.invoiceFile}
@@ -288,7 +318,9 @@ export default function WorkerInvoicesPage() {
                 className="h-9 min-w-[160px] rounded-md"
               />
             </div>
-            <Button type="submit" size="sm" className="h-9">Save</Button>
+            <Button type="submit" size="sm" className="h-9">
+              Save
+            </Button>
             <Button type="button" variant="outline" size="sm" className="h-9" onClick={resetForm}>
               Cancel
             </Button>
@@ -300,9 +332,15 @@ export default function WorkerInvoicesPage() {
         <table className="w-full min-w-[560px] text-sm border-collapse md:min-w-0">
           <thead>
             <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</th>
-              <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Worker</th>
-              <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Project</th>
+              <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Date
+              </th>
+              <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Worker
+              </th>
+              <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Project
+              </th>
               <th
                 className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums cursor-pointer select-none"
                 onClick={() => toggleSort("amount")}
@@ -315,26 +353,38 @@ export default function WorkerInvoicesPage() {
               >
                 Status
               </th>
-              <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">Invoice file</th>
+              <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Invoice file
+              </th>
               <th className="w-28" />
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr className="border-b border-border/40">
-                <td colSpan={7} className="py-6 px-4 text-center text-muted-foreground text-xs">Loading…</td>
+                <td colSpan={7} className="py-6 px-4 text-center text-muted-foreground text-xs">
+                  Loading…
+                </td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr className="border-b border-border/40">
-                <td colSpan={7} className="py-6 px-4 text-center text-muted-foreground text-xs">No worker invoices yet.</td>
+                <td colSpan={7} className="py-6 px-4 text-center text-muted-foreground text-xs">
+                  No worker invoices yet.
+                </td>
               </tr>
             ) : (
               paged.map((r) => (
                 <tr key={r.id} className="border-b border-border/40 hover:bg-muted/10">
-                  <td className="py-2 px-4 tabular-nums text-muted-foreground">{r.createdAt.slice(0, 10)}</td>
+                  <td className="py-2 px-4 tabular-nums text-muted-foreground">
+                    {r.createdAt.slice(0, 10)}
+                  </td>
                   <td className="py-2 px-4">{workerById.get(r.workerId) ?? r.workerId}</td>
-                  <td className="py-2 px-4 text-muted-foreground">{r.projectId ? projectById.get(r.projectId) ?? r.projectId : "—"}</td>
-                  <td className="py-2 px-4 text-right tabular-nums font-medium">${fmtUsd(r.amount)}</td>
+                  <td className="py-2 px-4 text-muted-foreground">
+                    {r.projectId ? (projectById.get(r.projectId) ?? r.projectId) : "—"}
+                  </td>
+                  <td className="py-2 px-4 text-right tabular-nums font-medium">
+                    ${fmtUsd(r.amount)}
+                  </td>
                   <td className="py-2 px-4">
                     <Button
                       variant="ghost"
@@ -347,7 +397,12 @@ export default function WorkerInvoicesPage() {
                   </td>
                   <td className="py-2 px-4">
                     {r.invoiceFile ? (
-                      <a href={r.invoiceFile} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-xs">
+                      <a
+                        href={r.invoiceFile}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline text-xs"
+                      >
                         View
                       </a>
                     ) : (
@@ -356,8 +411,22 @@ export default function WorkerInvoicesPage() {
                   </td>
                   <td className="py-2 px-4">
                     <div className="flex gap-1">
-                      <Button size="sm" variant="ghost" className="h-8" onClick={() => handleEdit(r)}>Edit</Button>
-                      <Button size="sm" variant="ghost" className="h-8 text-red-600" onClick={() => handleDelete(r.id)}>Delete</Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8"
+                        onClick={() => handleEdit(r)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 text-red-600"
+                        onClick={() => handleDelete(r.id)}
+                      >
+                        Delete
+                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -369,13 +438,28 @@ export default function WorkerInvoicesPage() {
 
       <div className="flex items-center justify-between pt-3 text-sm text-muted-foreground">
         <span className="tabular-nums">
-          {filtered.length === 0 ? "0" : (Math.min(filtered.length, (page - 1) * pageSize + 1)).toString()}–{Math.min(filtered.length, page * pageSize)} of {filtered.length}
+          {filtered.length === 0
+            ? "0"
+            : Math.min(filtered.length, (page - 1) * pageSize + 1).toString()}
+          –{Math.min(filtered.length, page * pageSize)} of {filtered.length}
         </span>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" className="h-8" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
             Prev
           </Button>
-          <Button size="sm" variant="outline" className="h-8" disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8"
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          >
             Next
           </Button>
         </div>

@@ -34,11 +34,7 @@ type DataIntegrityResult = {
 
 function StatusDot({ ok }: { ok: boolean }) {
   return (
-    <span
-      className={`inline-block h-2 w-2 rounded-full ${
-        ok ? "bg-emerald-500" : "bg-red-500"
-      }`}
-    />
+    <span className={`inline-block h-2 w-2 rounded-full ${ok ? "bg-emerald-500" : "bg-red-500"}`} />
   );
 }
 
@@ -46,9 +42,7 @@ function StatusLabel({ ok }: { ok: boolean }) {
   return (
     <span
       className={`flex items-center gap-2 ${
-        ok
-          ? "text-emerald-600 dark:text-emerald-400"
-          : "text-red-600 dark:text-red-400"
+        ok ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
       }`}
     >
       <StatusDot ok={ok} />
@@ -100,22 +94,25 @@ export default function SystemHealthPage() {
     }
   }, []);
 
-  const runCleanup = React.useCallback(async (category: CleanupCategory) => {
-    setCleanupBusy(category);
-    try {
-      const res = await fetch("/api/system/integrity/cleanup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ category }),
-      });
-      if (res.ok) {
-        await fetchIntegrity();
-        await fetchGuardian();
+  const runCleanup = React.useCallback(
+    async (category: CleanupCategory) => {
+      setCleanupBusy(category);
+      try {
+        const res = await fetch("/api/system/integrity/cleanup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ category }),
+        });
+        if (res.ok) {
+          await fetchIntegrity();
+          await fetchGuardian();
+        }
+      } finally {
+        setCleanupBusy(null);
       }
-    } finally {
-      setCleanupBusy(null);
-    }
-  }, [fetchIntegrity, fetchGuardian]);
+    },
+    [fetchIntegrity, fetchGuardian]
+  );
 
   // Initial load
   React.useEffect(() => {
@@ -182,13 +179,16 @@ export default function SystemHealthPage() {
       {!loading && result && (
         <div className="flex flex-wrap items-center gap-4 text-sm">
           <span className="flex items-center gap-2 font-medium">
-            Overall:{" "}
-            <StatusLabel ok={result.ok} />
+            Overall: <StatusLabel ok={result.ok} />
           </span>
           {lastRefreshed && (
             <span className="text-xs text-muted-foreground">
               Last checked{" "}
-              {lastRefreshed.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+              {lastRefreshed.toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+              })}
               {" · "}auto-refreshes every 30 s
             </span>
           )}
@@ -216,7 +216,8 @@ export default function SystemHealthPage() {
                   <td colSpan={3} className="py-6 text-center text-muted-foreground">
                     <span className="block">Module status could not be loaded.</span>
                     <span className="block mt-1 text-xs">
-                      Ensure <code className="rounded bg-muted px-1">/api/system/guardian</code> is available, then{" "}
+                      Ensure <code className="rounded bg-muted px-1">/api/system/guardian</code> is
+                      available, then{" "}
                       <Button
                         type="button"
                         size="sm"
@@ -273,7 +274,9 @@ export default function SystemHealthPage() {
                   <td className="py-2.5 text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
                     {(integrity?.orphanedTasks.count ?? 0) > 0 ? (
                       <>
-                        <span>{(integrity?.orphanedTasks.count ?? 0)} task(s) with missing project</span>
+                        <span>
+                          {integrity?.orphanedTasks.count ?? 0} task(s) with missing project
+                        </span>
                         <Button
                           size="sm"
                           variant="outline"
@@ -297,7 +300,7 @@ export default function SystemHealthPage() {
                   <td className="py-2.5 text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
                     {(integrity?.ghostTasks.count ?? 0) > 0 ? (
                       <>
-                        <span>{(integrity?.ghostTasks.count ?? 0)} task(s) with no title</span>
+                        <span>{integrity?.ghostTasks.count ?? 0} task(s) with no title</span>
                         <Button
                           size="sm"
                           variant="outline"
@@ -321,7 +324,9 @@ export default function SystemHealthPage() {
                   <td className="py-2.5 text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
                     {(integrity?.duplicateTasks.count ?? 0) > 0 ? (
                       <>
-                        <span>{(integrity?.duplicateTasks.count ?? 0)} duplicate(s) in same project</span>
+                        <span>
+                          {integrity?.duplicateTasks.count ?? 0} duplicate(s) in same project
+                        </span>
                         <Button
                           size="sm"
                           variant="outline"
@@ -353,17 +358,20 @@ export default function SystemHealthPage() {
                   <td className="py-2.5 pr-6">
                     <StatusLabel
                       ok={
-                        ((integrity?.staleTestData.tasks.count ?? 0) + (integrity?.staleTestData.projects.count ?? 0)) ===
+                        (integrity?.staleTestData.tasks.count ?? 0) +
+                          (integrity?.staleTestData.projects.count ?? 0) ===
                         0
                       }
                     />
                   </td>
                   <td className="py-2.5 text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
-                    {(integrity?.staleTestData.tasks.count ?? 0) + (integrity?.staleTestData.projects.count ?? 0) > 0 ? (
+                    {(integrity?.staleTestData.tasks.count ?? 0) +
+                      (integrity?.staleTestData.projects.count ?? 0) >
+                    0 ? (
                       <>
                         <span>
-                          {(integrity?.staleTestData.tasks.count ?? 0)} task(s),{" "}
-                          {(integrity?.staleTestData.projects.count ?? 0)} project(s)
+                          {integrity?.staleTestData.tasks.count ?? 0} task(s),{" "}
+                          {integrity?.staleTestData.projects.count ?? 0} project(s)
                         </span>
                         <Button
                           size="sm"

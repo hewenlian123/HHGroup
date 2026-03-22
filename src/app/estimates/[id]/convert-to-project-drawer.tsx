@@ -119,32 +119,17 @@ export function ConvertToProjectDrawer({
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
             <Label htmlFor="convert-startDate">Start date</Label>
-            <Input
-              id="convert-startDate"
-              name="startDate"
-              type="date"
-              className="h-9"
-            />
+            <Input id="convert-startDate" name="startDate" type="date" className="h-9" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="convert-endDate">End date</Label>
-            <Input
-              id="convert-endDate"
-              name="endDate"
-              type="date"
-              className="h-9"
-            />
+            <Input id="convert-endDate" name="endDate" type="date" className="h-9" />
           </div>
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="convert-notes">Notes</Label>
-          <Input
-            id="convert-notes"
-            name="notes"
-            placeholder="Notes"
-            className="h-9"
-          />
+          <Input id="convert-notes" name="notes" placeholder="Notes" className="h-9" />
         </div>
 
         {error && (

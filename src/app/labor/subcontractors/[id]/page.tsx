@@ -54,7 +54,10 @@ type ProjectLink = {
 };
 
 type ProjectLinkRaw = Omit<ProjectLink, "projects"> & {
-  projects?: Array<{ id: string; name: string | null }> | { id: string; name: string | null } | null;
+  projects?:
+    | Array<{ id: string; name: string | null }>
+    | { id: string; name: string | null }
+    | null;
 };
 
 const toNullable = (value: string): string | null => {
@@ -64,7 +67,7 @@ const toNullable = (value: string): string | null => {
 
 const one = <T,>(value: T | T[] | null | undefined): T | null => {
   if (!value) return null;
-  return Array.isArray(value) ? value[0] ?? null : value;
+  return Array.isArray(value) ? (value[0] ?? null) : value;
 };
 
 export default function SubcontractorDetailPage() {
@@ -119,7 +122,9 @@ export default function SubcontractorDetailPage() {
           .order("created_at", { ascending: false }),
         supabase
           .from("project_subcontractors")
-          .select("id,project_id,subcontractor_id,role,agreed_rate_type,agreed_rate,projects(id,name)")
+          .select(
+            "id,project_id,subcontractor_id,role,agreed_rate_type,agreed_rate,projects(id,name)"
+          )
           .eq("subcontractor_id", id)
           .order("created_at", { ascending: false }),
         supabase.from("projects").select("id,name").order("created_at", { ascending: false }),
@@ -211,7 +216,9 @@ export default function SubcontractorDetailPage() {
         agreed_rate_type: toNullable(linkRateType),
         agreed_rate: linkRate.trim() ? Number(linkRate) : null,
       };
-      const { error } = await supabase.from("project_subcontractors").upsert([payload], { onConflict: "project_id,subcontractor_id" });
+      const { error } = await supabase
+        .from("project_subcontractors")
+        .upsert([payload], { onConflict: "project_id,subcontractor_id" });
       if (error) throw error;
       setLinkProjectId("");
       setLinkRole("");
@@ -251,10 +258,12 @@ export default function SubcontractorDetailPage() {
       try {
         const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
         const path = `attachments/subcontractors/${id}/${Date.now()}-${safeName}`;
-        const { error: uploadError } = await supabase.storage.from("attachments").upload(path, file, {
-          upsert: false,
-          contentType: file.type || "application/octet-stream",
-        });
+        const { error: uploadError } = await supabase.storage
+          .from("attachments")
+          .upload(path, file, {
+            upsert: false,
+            contentType: file.type || "application/octet-stream",
+          });
         if (uploadError) throw uploadError;
         const { error: rowError } = await supabase.from("attachments").insert([
           {
@@ -281,7 +290,9 @@ export default function SubcontractorDetailPage() {
   const handleOpenAttachment = React.useCallback(
     async (filePath: string) => {
       if (!supabase) return;
-      const { data, error } = await supabase.storage.from("attachments").createSignedUrl(filePath, 60);
+      const { data, error } = await supabase.storage
+        .from("attachments")
+        .createSignedUrl(filePath, 60);
       if (error || !data?.signedUrl) {
         setMessage(error?.message || "Failed to open file.");
         return;
@@ -297,9 +308,14 @@ export default function SubcontractorDetailPage() {
       const prevAttachments = attachments;
       setAttachments((prev) => prev.filter((a) => a.id !== attachment.id));
       try {
-        const { error: storageError } = await supabase.storage.from("attachments").remove([attachment.file_path]);
+        const { error: storageError } = await supabase.storage
+          .from("attachments")
+          .remove([attachment.file_path]);
         if (storageError) throw storageError;
-        const { error: dbError } = await supabase.from("attachments").delete().eq("id", attachment.id);
+        const { error: dbError } = await supabase
+          .from("attachments")
+          .delete()
+          .eq("id", attachment.id);
         if (dbError) throw dbError;
       } catch (error: unknown) {
         const msg = error instanceof Error ? error.message : String(error);
@@ -311,13 +327,20 @@ export default function SubcontractorDetailPage() {
   );
 
   if (loading) {
-    return <div className="page-container page-stack py-6 text-sm text-muted-foreground">Loading subcontractor...</div>;
+    return (
+      <div className="page-container page-stack py-6 text-sm text-muted-foreground">
+        Loading subcontractor...
+      </div>
+    );
   }
 
   if (notFound || !row) {
     return (
       <div className="page-container page-stack py-6">
-        <PageHeader title="Subcontractor not found" subtitle="The selected subcontractor does not exist." />
+        <PageHeader
+          title="Subcontractor not found"
+          subtitle="The selected subcontractor does not exist."
+        />
         <Button asChild variant="outline" className="w-fit">
           <Link href="/labor/subcontractors">Back to Subcontractors</Link>
         </Button>
@@ -325,7 +348,9 @@ export default function SubcontractorDetailPage() {
     );
   }
 
-  const insuranceExpired = row.insurance_expiration ? new Date(row.insurance_expiration).getTime() < Date.now() : false;
+  const insuranceExpired = row.insurance_expiration
+    ? new Date(row.insurance_expiration).getTime() < Date.now()
+    : false;
 
   return (
     <div className="page-container page-stack py-6">
@@ -337,7 +362,12 @@ export default function SubcontractorDetailPage() {
             <Button asChild variant="outline" size="sm" className="rounded-sm">
               <Link href="/labor/subcontractors">Back</Link>
             </Button>
-            <Button size="sm" className="rounded-sm" onClick={() => void handleSave()} disabled={saving}>
+            <Button
+              size="sm"
+              className="rounded-sm"
+              onClick={() => void handleSave()}
+              disabled={saving}
+            >
               {saving ? "Saving..." : "Save Changes"}
             </Button>
           </div>
@@ -351,13 +381,25 @@ export default function SubcontractorDetailPage() {
       ) : null}
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant={tab === "profile" ? "default" : "outline"} size="sm" onClick={() => setTab("profile")}>
+        <Button
+          variant={tab === "profile" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setTab("profile")}
+        >
           Profile
         </Button>
-        <Button variant={tab === "docs" ? "default" : "outline"} size="sm" onClick={() => setTab("docs")}>
+        <Button
+          variant={tab === "docs" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setTab("docs")}
+        >
           Docs / Attachments
         </Button>
-        <Button variant={tab === "projects" ? "default" : "outline"} size="sm" onClick={() => setTab("projects")}>
+        <Button
+          variant={tab === "projects" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setTab("projects")}
+        >
           Linked Projects
         </Button>
       </div>
@@ -367,37 +409,72 @@ export default function SubcontractorDetailPage() {
           <div className="mb-3 flex items-center gap-2">
             <StatusBadge status={row.status} />
             <span className="text-xs text-muted-foreground">
-              W9: {row.w9_on_file ? "On file" : "Missing"} · Insurance: {row.insurance_expiration ?? "N/A"}
+              W9: {row.w9_on_file ? "On file" : "Missing"} · Insurance:{" "}
+              {row.insurance_expiration ?? "N/A"}
               {insuranceExpired ? " (Expired)" : ""}
             </span>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">Display Name</p>
-              <Input value={row.display_name} onChange={(event) => setRow((prev) => (prev ? { ...prev, display_name: event.target.value } : prev))} />
+              <Input
+                value={row.display_name}
+                onChange={(event) =>
+                  setRow((prev) => (prev ? { ...prev, display_name: event.target.value } : prev))
+                }
+              />
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">Legal Name</p>
-              <Input value={row.legal_name ?? ""} onChange={(event) => setRow((prev) => (prev ? { ...prev, legal_name: event.target.value } : prev))} />
+              <Input
+                value={row.legal_name ?? ""}
+                onChange={(event) =>
+                  setRow((prev) => (prev ? { ...prev, legal_name: event.target.value } : prev))
+                }
+              />
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">Contact Name</p>
-              <Input value={row.contact_name ?? ""} onChange={(event) => setRow((prev) => (prev ? { ...prev, contact_name: event.target.value } : prev))} />
+              <Input
+                value={row.contact_name ?? ""}
+                onChange={(event) =>
+                  setRow((prev) => (prev ? { ...prev, contact_name: event.target.value } : prev))
+                }
+              />
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">Phone</p>
-              <Input value={row.phone ?? ""} onChange={(event) => setRow((prev) => (prev ? { ...prev, phone: event.target.value } : prev))} />
+              <Input
+                value={row.phone ?? ""}
+                onChange={(event) =>
+                  setRow((prev) => (prev ? { ...prev, phone: event.target.value } : prev))
+                }
+              />
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">Email</p>
-              <Input value={row.email ?? ""} onChange={(event) => setRow((prev) => (prev ? { ...prev, email: event.target.value } : prev))} />
+              <Input
+                value={row.email ?? ""}
+                onChange={(event) =>
+                  setRow((prev) => (prev ? { ...prev, email: event.target.value } : prev))
+                }
+              />
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Status</p>
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                Status
+              </p>
               <Select
                 value={row.status}
                 onChange={(event) =>
-                  setRow((prev) => (prev ? { ...prev, status: event.target.value === "inactive" ? "inactive" : "active" } : prev))
+                  setRow((prev) =>
+                    prev
+                      ? {
+                          ...prev,
+                          status: event.target.value === "inactive" ? "inactive" : "active",
+                        }
+                      : prev
+                  )
                 }
               >
                 <option value="active">active</option>
@@ -410,7 +487,9 @@ export default function SubcontractorDetailPage() {
                 <input
                   type="checkbox"
                   checked={row.w9_on_file}
-                  onChange={(event) => setRow((prev) => (prev ? { ...prev, w9_on_file: event.target.checked } : prev))}
+                  onChange={(event) =>
+                    setRow((prev) => (prev ? { ...prev, w9_on_file: event.target.checked } : prev))
+                  }
                 />
                 Yes
               </label>
@@ -420,40 +499,84 @@ export default function SubcontractorDetailPage() {
               <Input
                 type="date"
                 value={row.insurance_expiration ?? ""}
-                onChange={(event) => setRow((prev) => (prev ? { ...prev, insurance_expiration: event.target.value || null } : prev))}
+                onChange={(event) =>
+                  setRow((prev) =>
+                    prev ? { ...prev, insurance_expiration: event.target.value || null } : prev
+                  )
+                }
               />
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">License Number</p>
-              <Input value={row.license_number ?? ""} onChange={(event) => setRow((prev) => (prev ? { ...prev, license_number: event.target.value } : prev))} />
+              <Input
+                value={row.license_number ?? ""}
+                onChange={(event) =>
+                  setRow((prev) => (prev ? { ...prev, license_number: event.target.value } : prev))
+                }
+              />
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">Tax ID Last 4</p>
-              <Input value={row.tax_id_last4 ?? ""} onChange={(event) => setRow((prev) => (prev ? { ...prev, tax_id_last4: event.target.value } : prev))} />
+              <Input
+                value={row.tax_id_last4 ?? ""}
+                onChange={(event) =>
+                  setRow((prev) => (prev ? { ...prev, tax_id_last4: event.target.value } : prev))
+                }
+              />
             </div>
             <div className="space-y-1 md:col-span-2">
               <p className="text-xs text-muted-foreground">Address Line 1</p>
-              <Input value={row.address1 ?? ""} onChange={(event) => setRow((prev) => (prev ? { ...prev, address1: event.target.value } : prev))} />
+              <Input
+                value={row.address1 ?? ""}
+                onChange={(event) =>
+                  setRow((prev) => (prev ? { ...prev, address1: event.target.value } : prev))
+                }
+              />
             </div>
             <div className="space-y-1 md:col-span-2">
               <p className="text-xs text-muted-foreground">Address Line 2</p>
-              <Input value={row.address2 ?? ""} onChange={(event) => setRow((prev) => (prev ? { ...prev, address2: event.target.value } : prev))} />
+              <Input
+                value={row.address2 ?? ""}
+                onChange={(event) =>
+                  setRow((prev) => (prev ? { ...prev, address2: event.target.value } : prev))
+                }
+              />
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">City</p>
-              <Input value={row.city ?? ""} onChange={(event) => setRow((prev) => (prev ? { ...prev, city: event.target.value } : prev))} />
+              <Input
+                value={row.city ?? ""}
+                onChange={(event) =>
+                  setRow((prev) => (prev ? { ...prev, city: event.target.value } : prev))
+                }
+              />
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">State</p>
-              <Input value={row.state ?? ""} onChange={(event) => setRow((prev) => (prev ? { ...prev, state: event.target.value } : prev))} />
+              <Input
+                value={row.state ?? ""}
+                onChange={(event) =>
+                  setRow((prev) => (prev ? { ...prev, state: event.target.value } : prev))
+                }
+              />
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">ZIP</p>
-              <Input value={row.zip ?? ""} onChange={(event) => setRow((prev) => (prev ? { ...prev, zip: event.target.value } : prev))} />
+              <Input
+                value={row.zip ?? ""}
+                onChange={(event) =>
+                  setRow((prev) => (prev ? { ...prev, zip: event.target.value } : prev))
+                }
+              />
             </div>
             <div className="space-y-1 md:col-span-2">
               <p className="text-xs text-muted-foreground">Notes</p>
-              <Input value={row.notes ?? ""} onChange={(event) => setRow((prev) => (prev ? { ...prev, notes: event.target.value } : prev))} />
+              <Input
+                value={row.notes ?? ""}
+                onChange={(event) =>
+                  setRow((prev) => (prev ? { ...prev, notes: event.target.value } : prev))
+                }
+              />
             </div>
           </div>
         </section>
@@ -472,17 +595,29 @@ export default function SubcontractorDetailPage() {
               disabled={uploading}
               className="max-w-[360px]"
             />
-            <span className="text-xs text-muted-foreground">{uploading ? "Uploading..." : "Upload W9 / COI / contract PDF."}</span>
+            <span className="text-xs text-muted-foreground">
+              {uploading ? "Uploading..." : "Upload W9 / COI / contract PDF."}
+            </span>
           </div>
           <div className="overflow-x-auto rounded-sm border border-[#EBEBE9] dark:border-border">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
-                  <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">File</th>
-                  <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">Type</th>
-                  <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">Size</th>
-                  <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">Created</th>
-                  <th className="px-4 py-3 text-right text-xs uppercase tracking-wider text-muted-foreground">Actions</th>
+                  <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">
+                    File
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">
+                    Type
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">
+                    Size
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">
+                    Created
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs uppercase tracking-wider text-muted-foreground">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -493,14 +628,28 @@ export default function SubcontractorDetailPage() {
                   >
                     <td className="px-4 py-3 text-foreground">{item.file_name}</td>
                     <td className="px-4 py-3 text-muted-foreground">{item.mime_type || "—"}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{item.size_bytes != null ? `${Math.round(item.size_bytes / 1024)} KB` : "—"}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{new Date(item.created_at).toLocaleDateString()}</td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {item.size_bytes != null ? `${Math.round(item.size_bytes / 1024)} KB` : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {new Date(item.created_at).toLocaleDateString()}
+                    </td>
                     <td className="px-4 py-3 text-right">
                       <div className="inline-flex items-center gap-2">
-                        <Button size="sm" variant="outline" className="rounded-sm" onClick={() => void handleOpenAttachment(item.file_path)}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="rounded-sm"
+                          onClick={() => void handleOpenAttachment(item.file_path)}
+                        >
                           Open
                         </Button>
-                        <Button size="sm" variant="outline" className="rounded-sm" onClick={() => void handleDeleteAttachment(item)}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="rounded-sm"
+                          onClick={() => void handleDeleteAttachment(item)}
+                        >
                           Delete
                         </Button>
                       </div>
@@ -523,7 +672,10 @@ export default function SubcontractorDetailPage() {
       {tab === "projects" ? (
         <section className="pb-2">
           <div className="mb-4 grid gap-2 md:grid-cols-4">
-            <Select value={linkProjectId} onChange={(event) => setLinkProjectId(event.target.value)}>
+            <Select
+              value={linkProjectId}
+              onChange={(event) => setLinkProjectId(event.target.value)}
+            >
               <option value="">Select project</option>
               {projectOptions.map((project) => (
                 <option key={project.id} value={project.id}>
@@ -554,7 +706,12 @@ export default function SubcontractorDetailPage() {
             />
           </div>
           <div className="mb-4">
-            <Button size="sm" className="rounded-sm" onClick={() => void handleLinkProject()} disabled={linking || !linkProjectId}>
+            <Button
+              size="sm"
+              className="rounded-sm"
+              onClick={() => void handleLinkProject()}
+              disabled={linking || !linkProjectId}
+            >
               {linking ? "Linking..." : "Link to Project"}
             </Button>
           </div>
@@ -563,11 +720,21 @@ export default function SubcontractorDetailPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
-                  <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">Project</th>
-                  <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">Role</th>
-                  <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">Rate type</th>
-                  <th className="px-4 py-3 text-right text-xs uppercase tracking-wider text-muted-foreground">Rate</th>
-                  <th className="px-4 py-3 text-right text-xs uppercase tracking-wider text-muted-foreground">Actions</th>
+                  <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">
+                    Project
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">
+                    Role
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">
+                    Rate type
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs uppercase tracking-wider text-muted-foreground">
+                    Rate
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs uppercase tracking-wider text-muted-foreground">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -576,14 +743,25 @@ export default function SubcontractorDetailPage() {
                     key={link.id}
                     className="border-b border-[#EBEBE9]/80 transition-colors hover:bg-[#F7F7F5] dark:border-border/40 dark:hover:bg-muted/20"
                   >
-                    <td className="px-4 py-3 text-foreground">{link.projects?.name || link.project_id}</td>
+                    <td className="px-4 py-3 text-foreground">
+                      {link.projects?.name || link.project_id}
+                    </td>
                     <td className="px-4 py-3 text-muted-foreground">{link.role || "—"}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{link.agreed_rate_type || "—"}</td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {link.agreed_rate_type || "—"}
+                    </td>
                     <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
-                      {link.agreed_rate != null ? `$${Number(link.agreed_rate).toLocaleString()}` : "—"}
+                      {link.agreed_rate != null
+                        ? `$${Number(link.agreed_rate).toLocaleString()}`
+                        : "—"}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <Button size="sm" variant="outline" className="rounded-sm" onClick={() => void handleUnlink(link.id)}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="rounded-sm"
+                        onClick={() => void handleUnlink(link.id)}
+                      >
                         Unlink
                       </Button>
                     </td>

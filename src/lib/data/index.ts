@@ -36,7 +36,15 @@ import * as apBillsDb from "../ap-bills-db";
 import { getCanonicalProjectProfit, getCanonicalProjectProfitBatch } from "../profit-engine";
 import type { EstimateListItem, EstimateItemRow } from "../estimates-db";
 import type { Commitment } from "../commitments-db";
-import type { LaborInvoice, LaborPayment, LaborEntry, LaborShiftEntry, LaborInvoiceSplit, LaborInvoiceChecklist, Attachment } from "../labor-db";
+import type {
+  LaborInvoice,
+  LaborPayment,
+  LaborEntry,
+  LaborShiftEntry,
+  LaborInvoiceSplit,
+  LaborInvoiceChecklist,
+  Attachment,
+} from "../labor-db";
 import type { Expense, ExpenseLine } from "../expenses-db";
 import type { BankTransaction } from "../bank-transactions-db";
 import type { Invoice, InvoicePayment, InvoiceStatus, InvoiceLineItem } from "../invoices-db";
@@ -54,42 +62,146 @@ export type RecentTransaction = {
   date: string;
   projectName: string;
 };
-export type ProjectLaborRow = { id: string; projectId: string; worker: string; hours: number; rate: number; totalPaid: number; advance: number; remaining: number; status: "paid" | "pending" };
-export type ProjectTransactionRow = { id: string; projectId: string; date: string; type: "expense" | "income"; name: string; amount: number; note: string };
-export type { ChangeOrder, ChangeOrderItem, ChangeOrderStatus, ChangeOrderAttachment, CreateChangeOrderInput, UpdateChangeOrderPatch } from "../change-orders-db";
-export type ProjectBudgetItem = { id: string; projectId: string; changeOrderId: string; costCode: string; description: string; qty: number; unit: string; unitPrice: number; total: number };
+export type ProjectLaborRow = {
+  id: string;
+  projectId: string;
+  worker: string;
+  hours: number;
+  rate: number;
+  totalPaid: number;
+  advance: number;
+  remaining: number;
+  status: "paid" | "pending";
+};
+export type ProjectTransactionRow = {
+  id: string;
+  projectId: string;
+  date: string;
+  type: "expense" | "income";
+  name: string;
+  amount: number;
+  note: string;
+};
+export type {
+  ChangeOrder,
+  ChangeOrderItem,
+  ChangeOrderStatus,
+  ChangeOrderAttachment,
+  CreateChangeOrderInput,
+  UpdateChangeOrderPatch,
+} from "../change-orders-db";
+export type ProjectBudgetItem = {
+  id: string;
+  projectId: string;
+  changeOrderId: string;
+  costCode: string;
+  description: string;
+  qty: number;
+  unit: string;
+  unitPrice: number;
+  total: number;
+};
 export type { Expense, ExpenseAttachment, ExpenseLine } from "../expenses-db";
 export type { Account, AccountType } from "../accounts-db";
 export type ExpenseRecord = import("../expenses-db").Expense;
 export type { BankTransaction } from "../bank-transactions-db";
 export type { Commitment, CommitmentType, CommitmentStatus } from "../commitments-db";
-export type { Worker, LaborWorker, LaborEntry, LaborShiftEntry, LaborInvoice, LaborInvoiceSplit, LaborInvoiceChecklist, Attachment, LaborPayment } from "../labor-db";
+export type {
+  Worker,
+  LaborWorker,
+  LaborEntry,
+  LaborShiftEntry,
+  LaborInvoice,
+  LaborInvoiceSplit,
+  LaborInvoiceChecklist,
+  Attachment,
+  LaborPayment,
+} from "../labor-db";
 export { calculateLaborPay } from "../labor-db";
 export type { Invoice, InvoicePayment, InvoiceStatus, InvoiceLineItem } from "../invoices-db";
 export type { InvoiceWithDerived, OverdueInvoiceRow, InvoiceComputedStatus } from "../invoices-db";
-export type { SubcontractorRow, SubcontractorDraft, SubcontractorWithInsuranceAlert } from "../subcontractors-db";
-export type { SubcontractRow, SubcontractWithSubcontractor, SubcontractDraft } from "../subcontracts-db";
+export type {
+  SubcontractorRow,
+  SubcontractorDraft,
+  SubcontractorWithInsuranceAlert,
+} from "../subcontractors-db";
+export type {
+  SubcontractRow,
+  SubcontractWithSubcontractor,
+  SubcontractDraft,
+} from "../subcontracts-db";
 export type { SubcontractBillRow, SubcontractBillDraft } from "../subcontract-bills-db";
-export type { DocumentRow, DocumentWithProject, DocumentFilters, DocumentDraft, DocumentFileType } from "../documents-db";
-export type { ProjectTask, ProjectTaskWithWorker, ProjectTaskDraft, ProjectTaskStatus, ProjectTaskPriority } from "../project-tasks-db";
+export type {
+  DocumentRow,
+  DocumentWithProject,
+  DocumentFilters,
+  DocumentDraft,
+  DocumentFileType,
+} from "../documents-db";
+export type {
+  ProjectTask,
+  ProjectTaskWithWorker,
+  ProjectTaskDraft,
+  ProjectTaskStatus,
+  ProjectTaskPriority,
+} from "../project-tasks-db";
 export type { ProjectScheduleItem, ProjectScheduleItemDraft } from "../project-schedule-db";
 export type { ActivityLog } from "../activity-logs-db";
 export type { PunchListItem, PunchListItemWithJoins, PunchListDraft } from "../punch-list-db";
 export type { SitePhoto, SitePhotoWithProject, SitePhotoDraft } from "../site-photos-db";
-export type { InspectionLogEntry, InspectionLogEntryWithProject, InspectionLogDraft, InspectionLogStatus } from "../inspection-log-db";
+export type {
+  InspectionLogEntry,
+  InspectionLogEntryWithProject,
+  InspectionLogDraft,
+  InspectionLogStatus,
+} from "../inspection-log-db";
 export type { MaterialCatalogRow, MaterialCatalogDraft } from "../material-catalog-db";
-export type { ProjectMaterialSelection, ProjectMaterialSelectionWithMaterial, ProjectMaterialSelectionDraft, MaterialSelectionStatus } from "../material-selections-db";
+export type {
+  ProjectMaterialSelection,
+  ProjectMaterialSelectionWithMaterial,
+  ProjectMaterialSelectionDraft,
+  MaterialSelectionStatus,
+} from "../material-selections-db";
 export type {
   CloseoutPunch,
   CloseoutWarranty,
   CloseoutCompletion,
   PunchListItem as CloseoutPunchListItem,
 } from "../project-closeout-db";
-export type { ProjectCommission, CommissionPaymentRecord, CommissionWithPaid, CommissionStatus, CalculationMode, CommissionRole } from "../commission-db";
-export { getCommissionsByProject, getAllCommissionsWithPayments, getCommissionSummary, createCommission, updateCommission, deleteCommission, getCommissionById, getPaymentRecordsByCommissionId, createPaymentRecord } from "../commission-db";
-export type { ApBillRow, ApBillWithProject, ApBillPaymentRow, ApBillsFilters, ApBillType, ApBillStatus } from "../ap-bills-db";
+export type {
+  ProjectCommission,
+  CommissionPaymentRecord,
+  CommissionWithPaid,
+  CommissionStatus,
+  CalculationMode,
+  CommissionRole,
+} from "../commission-db";
+export {
+  getCommissionsByProject,
+  getAllCommissionsWithPayments,
+  getCommissionSummary,
+  createCommission,
+  updateCommission,
+  deleteCommission,
+  getCommissionById,
+  getPaymentRecordsByCommissionId,
+  createPaymentRecord,
+} from "../commission-db";
+export type {
+  ApBillRow,
+  ApBillWithProject,
+  ApBillPaymentRow,
+  ApBillsFilters,
+  ApBillType,
+  ApBillStatus,
+} from "../ap-bills-db";
 export { AP_BILL_TYPES, AP_BILL_STATUSES } from "../ap-bills-db";
-export type { DailyWorkEntry, DailyWorkEntryDraft, DayType, PayrollSummaryRow } from "../daily-work-db";
+export type {
+  DailyWorkEntry,
+  DailyWorkEntryDraft,
+  DayType,
+  PayrollSummaryRow,
+} from "../daily-work-db";
 export { dayPayForEntry, totalPayForEntry } from "../daily-work-db";
 export type {
   WorkerReimbursement,
@@ -183,11 +295,17 @@ export async function getProjectBudgetItems(projectId: string): Promise<ProjectB
   }));
 }
 
-export async function createChangeOrder(projectId: string, input?: import("../change-orders-db").CreateChangeOrderInput) {
+export async function createChangeOrder(
+  projectId: string,
+  input?: import("../change-orders-db").CreateChangeOrderInput
+) {
   return coDb.createChangeOrder(projectId, input);
 }
 
-export async function updateChangeOrder(changeOrderId: string, patch: import("../change-orders-db").UpdateChangeOrderPatch) {
+export async function updateChangeOrder(
+  changeOrderId: string,
+  patch: import("../change-orders-db").UpdateChangeOrderPatch
+) {
   return coDb.updateChangeOrder(changeOrderId, patch);
 }
 
@@ -237,17 +355,27 @@ export async function getCommitments(projectId: string): Promise<Commitment[]> {
   return commitmentsDb.getCommitments(projectId);
 }
 
-export async function getCommittedCostByCategory(projectId: string): Promise<{ materials: number; labor: number; vendor: number; other: number }> {
+export async function getCommittedCostByCategory(
+  projectId: string
+): Promise<{ materials: number; labor: number; vendor: number; other: number }> {
   return commitmentsDb.getCommittedCostByCategory(projectId);
 }
 
-export async function createCommitment(payload: Omit<Commitment, "id" | "attachments"> & { attachments?: import("../commitments-db").ExpenseAttachment[] }): Promise<Commitment> {
+export async function createCommitment(
+  payload: Omit<Commitment, "id" | "attachments"> & {
+    attachments?: import("../commitments-db").ExpenseAttachment[];
+  }
+): Promise<Commitment> {
   return commitmentsDb.createCommitment(payload);
 }
 
 export async function updateCommitment(
   id: string,
-  patch: Partial<Omit<Commitment, "id" | "projectId"> & { attachments: import("../commitments-db").ExpenseAttachment[] }>
+  patch: Partial<
+    Omit<Commitment, "id" | "projectId"> & {
+      attachments: import("../commitments-db").ExpenseAttachment[];
+    }
+  >
 ): Promise<boolean> {
   return commitmentsDb.updateCommitment(id, patch);
 }
@@ -278,7 +406,14 @@ export async function createWorker(input: {
 
 export async function updateWorker(
   id: string,
-  patch: Partial<{ name: string; phone?: string; trade?: string; status: "active" | "inactive"; halfDayRate: number; notes?: string }>
+  patch: Partial<{
+    name: string;
+    phone?: string;
+    trade?: string;
+    status: "active" | "inactive";
+    halfDayRate: number;
+    notes?: string;
+  }>
 ): Promise<import("../labor-db").Worker | null> {
   return laborDb.updateWorker(id, patch);
 }
@@ -287,7 +422,9 @@ export async function getWorkerById(id: string): Promise<import("../labor-db").W
   return laborDb.getWorkerById(id);
 }
 
-export async function getWorkerUsage(id: string): Promise<{ used: boolean; reason?: "entries" | "invoices" }> {
+export async function getWorkerUsage(
+  id: string
+): Promise<{ used: boolean; reason?: "entries" | "invoices" }> {
   return laborDb.getWorkerUsage(id);
 }
 
@@ -318,7 +455,12 @@ export async function getLaborInvoicesByWorker(workerId: string): Promise<LaborI
   return laborDb.getLaborInvoicesByWorker(workerId);
 }
 
-export async function createLaborInvoice(input: { workerId: string; invoiceDate?: string; amount?: number; memo?: string }): Promise<LaborInvoice> {
+export async function createLaborInvoice(input: {
+  workerId: string;
+  invoiceDate?: string;
+  amount?: number;
+  memo?: string;
+}): Promise<LaborInvoice> {
   return laborDb.createLaborInvoice(input);
 }
 
@@ -342,12 +484,18 @@ export async function deleteLaborInvoice(id: string): Promise<void> {
   return laborDb.deleteLaborInvoice(id);
 }
 
-export async function addLaborInvoiceAttachment(id: string, attachment: Attachment): Promise<LaborInvoice | null> {
+export async function addLaborInvoiceAttachment(
+  id: string,
+  attachment: Attachment
+): Promise<LaborInvoice | null> {
   void attachment; // reserved for future persistence
   return laborDb.getLaborInvoiceById(id);
 }
 
-export async function deleteLaborInvoiceAttachment(id: string, attachmentId: string): Promise<LaborInvoice | null> {
+export async function deleteLaborInvoiceAttachment(
+  id: string,
+  attachmentId: string
+): Promise<LaborInvoice | null> {
   void attachmentId; // reserved for future persistence
   return laborDb.getLaborInvoiceById(id);
 }
@@ -378,7 +526,10 @@ export async function getConfirmedLaborDailyTotalByWorker(
   endDate: string,
   projectId?: string
 ): Promise<number> {
-  const [worker, entries] = await Promise.all([laborDb.getWorkerById(workerId), laborDb.getLaborEntries()]);
+  const [worker, entries] = await Promise.all([
+    laborDb.getWorkerById(workerId),
+    laborDb.getLaborEntries(),
+  ]);
   const halfDayRate = worker?.halfDayRate ?? 0;
   const hourlyRate = halfDayRate / 4;
   let total = 0;
@@ -405,7 +556,9 @@ export async function getConfirmedLaborInvoiceTotalByWorker(
     if (inv.workerId !== workerId) continue;
     if (!inDateRange(inv.invoiceDate, startDate, endDate)) continue;
     if (projectId) {
-      total += inv.projectSplits.filter((s) => s.projectId === projectId).reduce((sum, s) => sum + s.amount, 0);
+      total += inv.projectSplits
+        .filter((s) => s.projectId === projectId)
+        .reduce((sum, s) => sum + s.amount, 0);
     } else {
       total += inv.amount;
     }
@@ -413,7 +566,11 @@ export async function getConfirmedLaborInvoiceTotalByWorker(
   return total;
 }
 
-export async function getLaborPayments(workerId?: string, startDate?: string, endDate?: string): Promise<LaborPayment[]> {
+export async function getLaborPayments(
+  workerId?: string,
+  startDate?: string,
+  endDate?: string
+): Promise<LaborPayment[]> {
   return laborDb.getLaborPayments({ workerId, startDate, endDate });
 }
 
@@ -421,7 +578,9 @@ export async function getLaborPaymentsByWorker(workerId: string): Promise<LaborP
   return laborDb.getLaborPayments({ workerId });
 }
 
-export async function createLaborPayment(payload: Omit<LaborPayment, "id" | "createdAt">): Promise<LaborPayment> {
+export async function createLaborPayment(
+  payload: Omit<LaborPayment, "id" | "createdAt">
+): Promise<LaborPayment> {
   return laborDb.createLaborPayment({
     workerId: payload.workerId,
     paymentDate: payload.paymentDate,
@@ -436,17 +595,27 @@ export async function deleteLaborPayment(id: string): Promise<boolean> {
   return laborDb.deleteLaborPayment(id);
 }
 
-async function getPaymentsTotalForRange(workerId: string, startDate: string, endDate: string): Promise<number> {
+async function getPaymentsTotalForRange(
+  workerId: string,
+  startDate: string,
+  endDate: string
+): Promise<number> {
   const payments = await laborDb.getLaborPayments({ workerId, startDate, endDate });
   return payments
     .filter((p) => {
-      if (p.appliedRange) return p.appliedRange.startDate === startDate && p.appliedRange.endDate === endDate;
+      if (p.appliedRange)
+        return p.appliedRange.startDate === startDate && p.appliedRange.endDate === endDate;
       return inDateRange(p.paymentDate, startDate, endDate);
     })
     .reduce((sum, p) => sum + Math.max(0, p.amount), 0);
 }
 
-export async function getWorkerPaySummary(workerId: string, startDate: string, endDate: string, projectId?: string) {
+export async function getWorkerPaySummary(
+  workerId: string,
+  startDate: string,
+  endDate: string,
+  projectId?: string
+) {
   const [confirmedDailyTotal, confirmedInvoiceTotal, paidTotal] = await Promise.all([
     getConfirmedLaborDailyTotalByWorker(workerId, startDate, endDate, projectId),
     getConfirmedLaborInvoiceTotalByWorker(workerId, startDate, endDate, projectId),
@@ -472,7 +641,11 @@ export async function getWorkerEarningsAllocations(
   endDate: string,
   projectId?: string
 ): Promise<WorkerEarningAllocationRow[]> {
-  const [projects, worker, entries] = await Promise.all([getProjects(), laborDb.getWorkerById(workerId), laborDb.getLaborEntries()]);
+  const [projects, worker, entries] = await Promise.all([
+    getProjects(),
+    laborDb.getWorkerById(workerId),
+    laborDb.getLaborEntries(),
+  ]);
   const projectMap = new Map(projects.map((p) => [p.id, p]));
   const getName = (id: string) => projectMap.get(id)?.name ?? id;
   const hourlyRate = (worker?.halfDayRate ?? 0) / 4;
@@ -484,17 +657,34 @@ export async function getWorkerEarningsAllocations(
     const hours = Number(row.hours) || 0;
     if (hours <= 0 || !row.projectId) continue;
     const amount = hours * hourlyRate;
-    out.push({ date: row.date, projectId: row.projectId, projectName: getName(row.projectId), shift: "OT", amount, notes: row.notes || null });
+    out.push({
+      date: row.date,
+      projectId: row.projectId,
+      projectName: getName(row.projectId),
+      shift: "OT",
+      amount,
+      notes: row.notes || null,
+    });
   }
-  return out.sort((a, b) => (a.date === b.date ? a.shift.localeCompare(b.shift) : a.date.localeCompare(b.date)));
+  return out.sort((a, b) =>
+    a.date === b.date ? a.shift.localeCompare(b.shift) : a.date.localeCompare(b.date)
+  );
 }
 
-export async function getWorkerLaborPayments(workerId: string, startDate: string, endDate: string): Promise<LaborPayment[]> {
+export async function getWorkerLaborPayments(
+  workerId: string,
+  startDate: string,
+  endDate: string
+): Promise<LaborPayment[]> {
   const payments = await laborDb.getLaborPayments({ workerId, startDate, endDate });
   return payments.filter((p) => inDateRange(p.paymentDate, startDate, endDate));
 }
 
-export async function getWorkerLaborInvoices(workerId: string, startDate: string, endDate: string): Promise<LaborInvoice[]> {
+export async function getWorkerLaborInvoices(
+  workerId: string,
+  startDate: string,
+  endDate: string
+): Promise<LaborInvoice[]> {
   const invs = await laborDb.getLaborInvoicesByWorker(workerId);
   return invs.filter((inv) => inDateRange(inv.invoiceDate, startDate, endDate));
 }
@@ -506,7 +696,8 @@ export async function getLaborPayRunRows(startDate: string, endDate: string, pro
     const summary = await getWorkerPaySummary(worker.id, startDate, endDate, projectId);
     const payments = await laborDb.getLaborPaymentsByWorker(worker.id);
     const filtered = payments.filter((p) => {
-      if (p.appliedRange) return p.appliedRange.startDate === startDate && p.appliedRange.endDate === endDate;
+      if (p.appliedRange)
+        return p.appliedRange.startDate === startDate && p.appliedRange.endDate === endDate;
       return inDateRange(p.paymentDate, startDate, endDate);
     });
     result.push({
@@ -538,7 +729,9 @@ export async function getLaborEntries(status?: "draft" | "confirmed"): Promise<L
   return laborDb.getLaborEntries(status);
 }
 
-export async function upsertLaborEntry(entry: Omit<LaborEntry, "id"> & { id?: string }): Promise<LaborEntry> {
+export async function upsertLaborEntry(
+  entry: Omit<LaborEntry, "id"> & { id?: string }
+): Promise<LaborEntry> {
   return laborDb.upsertLaborEntry(entry);
 }
 
@@ -553,7 +746,10 @@ export async function updateLaborEntry(
   return laborDb.updateLaborEntry(entryId, updates);
 }
 
-export async function getLaborEntriesByProjectAndDate(projectId: string, workDate: string): Promise<LaborEntry[]> {
+export async function getLaborEntriesByProjectAndDate(
+  projectId: string,
+  workDate: string
+): Promise<LaborEntry[]> {
   return laborDb.getLaborEntriesByProjectAndDate(projectId, workDate);
 }
 
@@ -585,7 +781,10 @@ export async function getLaborShiftEntries(date?: string): Promise<LaborShiftEnt
   return laborDb.getLaborEntries();
 }
 
-export async function upsertLaborShiftEntry(workerId: string, patch: Omit<LaborShiftEntry, "id" | "workerId">): Promise<LaborShiftEntry> {
+export async function upsertLaborShiftEntry(
+  workerId: string,
+  patch: Omit<LaborShiftEntry, "id" | "workerId">
+): Promise<LaborShiftEntry> {
   const entries = await laborDb.getLaborEntriesByDate(patch.date);
   const existing = entries.find((r) => r.workerId === workerId);
   return laborDb.upsertLaborEntry({
@@ -607,15 +806,33 @@ export async function deleteLaborShiftEntry(workerId: string, date: string): Pro
   return true;
 }
 
-export async function getLaborAllocatedByProject(projectId: string, date?: string): Promise<number> {
+export async function getLaborAllocatedByProject(
+  projectId: string,
+  date?: string
+): Promise<number> {
   return laborDb.getLaborAllocatedByProject(projectId, date);
 }
 
-export type { DailyLaborEntryRow, DailyLaborEntryDraft, DailyLaborEntryOldForReallocate, LaborEntryWithJoins, LaborEntriesFilters, LaborEntryStatus, ProjectLaborBreakdownRow, MonthlyPayrollRow, WorkerPayableSummary, LaborPaymentInsert, LaborPaymentRow, LaborPaymentInRangeRow } from "../daily-labor-db";
+export type {
+  DailyLaborEntryRow,
+  DailyLaborEntryDraft,
+  DailyLaborEntryOldForReallocate,
+  LaborEntryWithJoins,
+  LaborEntriesFilters,
+  LaborEntryStatus,
+  ProjectLaborBreakdownRow,
+  MonthlyPayrollRow,
+  WorkerPayableSummary,
+  LaborPaymentInsert,
+  LaborPaymentRow,
+  LaborPaymentInRangeRow,
+} from "../daily-labor-db";
 export async function getDailyLaborEntriesByDate(workDate: string) {
   return dailyLaborDb.getDailyLaborEntriesByDate(workDate);
 }
-export async function getLaborEntriesWithJoins(filters: import("../daily-labor-db").LaborEntriesFilters = {}) {
+export async function getLaborEntriesWithJoins(
+  filters: import("../daily-labor-db").LaborEntriesFilters = {}
+) {
   return dailyLaborDb.getLaborEntriesWithJoins(filters);
 }
 export async function getLaborWorkersList() {
@@ -636,7 +853,10 @@ export async function getWorkerPayableSummary(workerId: string) {
 export async function insertLaborPayment(payload: import("../daily-labor-db").LaborPaymentInsert) {
   return dailyLaborDb.insertLaborPayment(payload);
 }
-export async function insertDailyLaborEntries(workDate: string, rows: import("../daily-labor-db").DailyLaborEntryDraft[]) {
+export async function insertDailyLaborEntries(
+  workDate: string,
+  rows: import("../daily-labor-db").DailyLaborEntryDraft[]
+) {
   return dailyLaborDb.insertDailyLaborEntries(workDate, rows);
 }
 export async function updateDailyLaborEntry(
@@ -661,7 +881,9 @@ export async function lockLaborEntries(entryIds: string[], lockedBy?: string | n
 export async function getDocuments(filters: import("../documents-db").DocumentFilters = {}) {
   return documentsDb.getDocuments(filters);
 }
-export async function getDocumentsPaged(input: Parameters<typeof documentsDb.getDocumentsPaged>[0]) {
+export async function getDocumentsPaged(
+  input: Parameters<typeof documentsDb.getDocumentsPaged>[0]
+) {
   return documentsDb.getDocumentsPaged(input);
 }
 export async function getDocumentsByProject(projectId: string) {
@@ -692,7 +914,10 @@ export async function getProjectTaskById(taskId: string) {
 export async function createProjectTask(draft: import("../project-tasks-db").ProjectTaskDraft) {
   return projectTasksDb.createProjectTask(draft);
 }
-export async function updateProjectTask(taskId: string, patch: Parameters<typeof projectTasksDb.updateProjectTask>[1]) {
+export async function updateProjectTask(
+  taskId: string,
+  patch: Parameters<typeof projectTasksDb.updateProjectTask>[1]
+) {
   return projectTasksDb.updateProjectTask(taskId, patch);
 }
 export async function deleteProjectTask(taskId: string) {
@@ -710,10 +935,15 @@ export async function getAllScheduleWithProject() {
 export async function getProjectSchedule(projectId: string) {
   return projectScheduleDb.getProjectSchedule(projectId);
 }
-export async function createProjectScheduleItem(draft: import("../project-schedule-db").ProjectScheduleItemDraft) {
+export async function createProjectScheduleItem(
+  draft: import("../project-schedule-db").ProjectScheduleItemDraft
+) {
   return projectScheduleDb.createProjectScheduleItem(draft);
 }
-export async function updateProjectScheduleItem(id: string, patch: Parameters<typeof projectScheduleDb.updateProjectScheduleItem>[1]) {
+export async function updateProjectScheduleItem(
+  id: string,
+  patch: Parameters<typeof projectScheduleDb.updateProjectScheduleItem>[1]
+) {
   return projectScheduleDb.updateProjectScheduleItem(id, patch);
 }
 export async function deleteProjectScheduleItem(id: string) {
@@ -737,7 +967,10 @@ export async function getPunchListSummary() {
 export async function createPunchListItem(draft: import("../punch-list-db").PunchListDraft) {
   return punchListDb.createPunchListItem(draft);
 }
-export async function updatePunchListItem(id: string, patch: Parameters<typeof punchListDb.updatePunchListItem>[1]) {
+export async function updatePunchListItem(
+  id: string,
+  patch: Parameters<typeof punchListDb.updatePunchListItem>[1]
+) {
   return punchListDb.updatePunchListItem(id, patch);
 }
 export async function deletePunchListItem(id: string) {
@@ -752,7 +985,10 @@ export async function getSitePhotoById(id: string) {
 export async function createSitePhoto(draft: import("../site-photos-db").SitePhotoDraft) {
   return sitePhotosDb.createSitePhoto(draft);
 }
-export async function updateSitePhoto(id: string, patch: Parameters<typeof sitePhotosDb.updateSitePhoto>[1]) {
+export async function updateSitePhoto(
+  id: string,
+  patch: Parameters<typeof sitePhotosDb.updateSitePhoto>[1]
+) {
   return sitePhotosDb.updateSitePhoto(id, patch);
 }
 export async function deleteSitePhoto(id: string) {
@@ -764,10 +1000,15 @@ export async function getInspectionLogs() {
 export async function getInspectionLogById(id: string) {
   return inspectionLogDb.getInspectionLogById(id);
 }
-export async function createInspectionLog(draft: import("../inspection-log-db").InspectionLogDraft) {
+export async function createInspectionLog(
+  draft: import("../inspection-log-db").InspectionLogDraft
+) {
   return inspectionLogDb.createInspectionLog(draft);
 }
-export async function updateInspectionLog(id: string, patch: Parameters<typeof inspectionLogDb.updateInspectionLog>[1]) {
+export async function updateInspectionLog(
+  id: string,
+  patch: Parameters<typeof inspectionLogDb.updateInspectionLog>[1]
+) {
   return inspectionLogDb.updateInspectionLog(id, patch);
 }
 export async function deleteInspectionLog(id: string) {
@@ -779,16 +1020,24 @@ export async function getMaterialCatalog() {
 export async function createMaterial(draft: import("../material-catalog-db").MaterialCatalogDraft) {
   return materialCatalogDb.createMaterial(draft);
 }
-export async function updateMaterial(id: string, patch: Parameters<typeof materialCatalogDb.updateMaterial>[1]) {
+export async function updateMaterial(
+  id: string,
+  patch: Parameters<typeof materialCatalogDb.updateMaterial>[1]
+) {
   return materialCatalogDb.updateMaterial(id, patch);
 }
 export async function getSelectionsByProject(projectId: string) {
   return materialSelectionsDb.getSelectionsByProject(projectId);
 }
-export async function createMaterialSelection(draft: import("../material-selections-db").ProjectMaterialSelectionDraft) {
+export async function createMaterialSelection(
+  draft: import("../material-selections-db").ProjectMaterialSelectionDraft
+) {
   return materialSelectionsDb.createSelection(draft);
 }
-export async function updateMaterialSelection(id: string, patch: Parameters<typeof materialSelectionsDb.updateSelection>[1]) {
+export async function updateMaterialSelection(
+  id: string,
+  patch: Parameters<typeof materialSelectionsDb.updateSelection>[1]
+) {
   return materialSelectionsDb.updateSelection(id, patch);
 }
 export async function deleteMaterialSelection(id: string) {
@@ -797,19 +1046,28 @@ export async function deleteMaterialSelection(id: string) {
 export async function getCloseoutPunch(projectId: string) {
   return projectCloseoutDb.getCloseoutPunch(projectId);
 }
-export async function upsertCloseoutPunch(projectId: string, data: Parameters<typeof projectCloseoutDb.upsertCloseoutPunch>[1]) {
+export async function upsertCloseoutPunch(
+  projectId: string,
+  data: Parameters<typeof projectCloseoutDb.upsertCloseoutPunch>[1]
+) {
   return projectCloseoutDb.upsertCloseoutPunch(projectId, data);
 }
 export async function getCloseoutWarranty(projectId: string) {
   return projectCloseoutDb.getCloseoutWarranty(projectId);
 }
-export async function upsertCloseoutWarranty(projectId: string, data: Parameters<typeof projectCloseoutDb.upsertCloseoutWarranty>[1]) {
+export async function upsertCloseoutWarranty(
+  projectId: string,
+  data: Parameters<typeof projectCloseoutDb.upsertCloseoutWarranty>[1]
+) {
   return projectCloseoutDb.upsertCloseoutWarranty(projectId, data);
 }
 export async function getCloseoutCompletion(projectId: string) {
   return projectCloseoutDb.getCloseoutCompletion(projectId);
 }
-export async function upsertCloseoutCompletion(projectId: string, data: Parameters<typeof projectCloseoutDb.upsertCloseoutCompletion>[1]) {
+export async function upsertCloseoutCompletion(
+  projectId: string,
+  data: Parameters<typeof projectCloseoutDb.upsertCloseoutCompletion>[1]
+) {
   return projectCloseoutDb.upsertCloseoutCompletion(projectId, data);
 }
 export async function getApBills(filters: import("../ap-bills-db").ApBillsFilters = {}) {
@@ -824,10 +1082,16 @@ export async function getApBillPayments(billId: string) {
 export async function createApBill(draft: Parameters<typeof apBillsDb.createApBill>[0]) {
   return apBillsDb.createApBill(draft);
 }
-export async function updateApBill(id: string, patch: Parameters<typeof apBillsDb.updateApBill>[1]) {
+export async function updateApBill(
+  id: string,
+  patch: Parameters<typeof apBillsDb.updateApBill>[1]
+) {
   return apBillsDb.updateApBill(id, patch);
 }
-export async function addApBillPayment(billId: string, payment: Parameters<typeof apBillsDb.addApBillPayment>[1]) {
+export async function addApBillPayment(
+  billId: string,
+  payment: Parameters<typeof apBillsDb.addApBillPayment>[1]
+) {
   return apBillsDb.addApBillPayment(billId, payment);
 }
 export async function setApBillPending(id: string) {
@@ -902,10 +1166,16 @@ export async function getDailyWorkEntriesByDateAndProject(date: string, projectI
 export async function getDailyWorkEntriesInRange(fromDate: string, toDate: string) {
   return dailyWorkDb.getDailyWorkEntriesInRange(fromDate, toDate);
 }
-export async function insertDailyWorkEntry(workDate: string, draft: import("../daily-work-db").DailyWorkEntryDraft) {
+export async function insertDailyWorkEntry(
+  workDate: string,
+  draft: import("../daily-work-db").DailyWorkEntryDraft
+) {
   return dailyWorkDb.insertDailyWorkEntry(workDate, draft);
 }
-export async function updateDailyWorkEntry(id: string, draft: Partial<import("../daily-work-db").DailyWorkEntryDraft>) {
+export async function updateDailyWorkEntry(
+  id: string,
+  draft: Partial<import("../daily-work-db").DailyWorkEntryDraft>
+) {
   return dailyWorkDb.updateDailyWorkEntry(id, draft);
 }
 export async function deleteDailyWorkEntry(id: string) {
@@ -914,7 +1184,11 @@ export async function deleteDailyWorkEntry(id: string) {
 export async function getPayrollSummary(fromDate: string, toDate: string) {
   return dailyWorkDb.getPayrollSummary(fromDate, toDate);
 }
-export async function getDailyWorkEntriesForWorker(workerId: string, fromDate: string, toDate: string) {
+export async function getDailyWorkEntriesForWorker(
+  workerId: string,
+  fromDate: string,
+  toDate: string
+) {
   return dailyWorkDb.getDailyWorkEntriesForWorker(workerId, fromDate, toDate);
 }
 
@@ -925,10 +1199,15 @@ export async function getWorkerReimbursements() {
 export async function getWorkerReimbursementsByWorkerId(workerId: string) {
   return workerReimbursementsDb.getWorkerReimbursementsByWorkerId(workerId);
 }
-export async function insertWorkerReimbursement(draft: import("../worker-reimbursements-db").WorkerReimbursementDraft) {
+export async function insertWorkerReimbursement(
+  draft: import("../worker-reimbursements-db").WorkerReimbursementDraft
+) {
   return workerReimbursementsDb.insertWorkerReimbursement(draft);
 }
-export async function updateWorkerReimbursement(id: string, draft: Partial<import("../worker-reimbursements-db").WorkerReimbursementDraft>) {
+export async function updateWorkerReimbursement(
+  id: string,
+  draft: Partial<import("../worker-reimbursements-db").WorkerReimbursementDraft>
+) {
   return workerReimbursementsDb.updateWorkerReimbursement(id, draft);
 }
 export async function approveWorkerReimbursement(id: string) {
@@ -957,10 +1236,15 @@ export async function getWorkerInvoices() {
 export async function getWorkerInvoiceById(id: string) {
   return workerInvoicesDb.getWorkerInvoiceById(id);
 }
-export async function insertWorkerInvoice(draft: import("../worker-invoices-db").WorkerInvoiceDraft) {
+export async function insertWorkerInvoice(
+  draft: import("../worker-invoices-db").WorkerInvoiceDraft
+) {
   return workerInvoicesDb.insertWorkerInvoice(draft);
 }
-export async function updateWorkerInvoice(id: string, draft: Partial<import("../worker-invoices-db").WorkerInvoiceDraft>) {
+export async function updateWorkerInvoice(
+  id: string,
+  draft: Partial<import("../worker-invoices-db").WorkerInvoiceDraft>
+) {
   return workerInvoicesDb.updateWorkerInvoice(id, draft);
 }
 export async function deleteWorkerInvoice(id: string) {
@@ -971,7 +1255,9 @@ export async function markWorkerInvoicesPaid(workerId: string, projectId?: strin
 }
 
 // Worker payments
-export async function createWorkerPayment(input: import("../worker-payments-db").CreateWorkerPaymentInput) {
+export async function createWorkerPayment(
+  input: import("../worker-payments-db").CreateWorkerPaymentInput
+) {
   if (typeof window !== "undefined") {
     const res = await fetch(`/api/labor/workers/${encodeURIComponent(input.workerId)}/pay`, {
       method: "POST",
@@ -984,14 +1270,22 @@ export async function createWorkerPayment(input: import("../worker-payments-db")
         project_id: input.projectId ?? null,
       }),
     });
-    const body = (await res.json().catch(() => ({}))) as { message?: string; payment?: import("../worker-payments-db").WorkerPayment };
-    if (!res.ok) throw new Error(typeof body.message === "string" ? body.message : "Failed to record payment.");
+    const body = (await res.json().catch(() => ({}))) as {
+      message?: string;
+      payment?: import("../worker-payments-db").WorkerPayment;
+    };
+    if (!res.ok)
+      throw new Error(
+        typeof body.message === "string" ? body.message : "Failed to record payment."
+      );
     if (!body.payment) throw new Error("Invalid payment response.");
     return body.payment;
   }
   return workerPaymentsDb.createWorkerPayment(input);
 }
-export async function getWorkerPayments(filters?: Parameters<typeof workerPaymentsDb.getWorkerPayments>[0]) {
+export async function getWorkerPayments(
+  filters?: Parameters<typeof workerPaymentsDb.getWorkerPayments>[0]
+) {
   return workerPaymentsDb.getWorkerPayments(filters);
 }
 export async function getWorkerPaymentById(id: string) {
@@ -999,7 +1293,9 @@ export async function getWorkerPaymentById(id: string) {
 }
 /** Deletes payout and reverses linked labor + reimbursements (see API). */
 export async function deleteWorkerPayment(id: string): Promise<void> {
-  const res = await fetch(`/api/labor/worker-payments/${encodeURIComponent(id)}`, { method: "DELETE" });
+  const res = await fetch(`/api/labor/worker-payments/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
   const body = (await res.json().catch(() => ({}))) as { message?: string };
   if (!res.ok) {
     throw new Error(body.message ?? "Failed to delete worker payment.");
@@ -1008,13 +1304,13 @@ export async function deleteWorkerPayment(id: string): Promise<void> {
 
 // Worker advances
 export async function createWorkerAdvance(
-  input: Parameters<typeof workerAdvancesDb.createWorkerAdvance>[0],
+  input: Parameters<typeof workerAdvancesDb.createWorkerAdvance>[0]
 ) {
   return workerAdvancesDb.createWorkerAdvance(input);
 }
 
 export async function getWorkerAdvances(
-  filters?: Parameters<typeof workerAdvancesDb.getWorkerAdvances>[0],
+  filters?: Parameters<typeof workerAdvancesDb.getWorkerAdvances>[0]
 ) {
   return workerAdvancesDb.getWorkerAdvances(filters);
 }
@@ -1025,7 +1321,7 @@ export async function getWorkerAdvanceById(id: string) {
 
 export async function updateWorkerAdvance(
   id: string,
-  patch: Parameters<typeof workerAdvancesDb.updateWorkerAdvance>[1],
+  patch: Parameters<typeof workerAdvancesDb.updateWorkerAdvance>[1]
 ) {
   return workerAdvancesDb.updateWorkerAdvance(id, patch);
 }
@@ -1048,7 +1344,9 @@ export async function getDashboardStats() {
   const activeProjects = projects.filter((p) => p.status === "active").length;
   const totalBudget = projects.reduce((s, p) => s + p.budget, 0);
   // Use batch function: 5 queries total regardless of project count (vs 5×N previously).
-  const profitMap = await getCanonicalProjectProfitBatch(projects.map((p) => p.id)).catch(() => new Map());
+  const profitMap = await getCanonicalProjectProfitBatch(projects.map((p) => p.id)).catch(
+    () => new Map()
+  );
   const totalSpent = projects.reduce((s, p) => s + (profitMap.get(p.id)?.actualCost ?? 0), 0);
   const totalProfit = projects.reduce((s, p) => s + (profitMap.get(p.id)?.profit ?? 0), 0);
   return { totalProjects, activeProjects, totalBudget, totalSpent, totalProfit };
@@ -1062,7 +1360,13 @@ export async function getRecentTransactions(limit = 20): Promise<RecentTransacti
     expensesDb.getExpensesRecent(cap).catch(() => []),
     dailyLaborDb.getLaborEntriesRecent(cap).catch(() => []),
   ]);
-  type Row = { id: string; created_at: string; amount: number; description: string; projectName: string | null };
+  type Row = {
+    id: string;
+    created_at: string;
+    amount: number;
+    description: string;
+    projectName: string | null;
+  };
   const invoiceRows: Row[] = invoices.map((r) => ({
     id: r.id,
     created_at: r.created_at,
@@ -1091,10 +1395,25 @@ export async function getRecentTransactions(limit = 20): Promise<RecentTransacti
     description: r.notes?.slice(0, 50) || `Labor · ${r.work_date}`,
     projectName: r.project_name,
   }));
-  const withType: Array<{ id: string; type: RecentTransaction["type"]; created_at: string; amount: number; description: string; projectName: string }> = [
-    ...invoiceRows.map((r) => ({ ...r, type: "invoice" as const, projectName: r.projectName ?? "" })),
+  const withType: Array<{
+    id: string;
+    type: RecentTransaction["type"];
+    created_at: string;
+    amount: number;
+    description: string;
+    projectName: string;
+  }> = [
+    ...invoiceRows.map((r) => ({
+      ...r,
+      type: "invoice" as const,
+      projectName: r.projectName ?? "",
+    })),
     ...billRows.map((r) => ({ ...r, type: "bill" as const, projectName: r.projectName ?? "" })),
-    ...expenseRows.map((r) => ({ ...r, type: "expense" as const, projectName: r.projectName ?? "" })),
+    ...expenseRows.map((r) => ({
+      ...r,
+      type: "expense" as const,
+      projectName: r.projectName ?? "",
+    })),
     ...laborRows.map((r) => ({ ...r, type: "labor" as const, projectName: r.projectName ?? "" })),
   ];
   const sorted = withType.sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
@@ -1172,19 +1491,27 @@ export async function isVendorDisabled(name: string): Promise<boolean> {
   return refDataDb.isVendorDisabled(name);
 }
 
-export async function getSubcontractors(): Promise<import("../subcontractors-db").SubcontractorRow[]> {
+export async function getSubcontractors(): Promise<
+  import("../subcontractors-db").SubcontractorRow[]
+> {
   return subcontractorsDb.getSubcontractors();
 }
 
-export async function getSubcontractorsWithInsuranceAlerts(): Promise<import("../subcontractors-db").SubcontractorWithInsuranceAlert[]> {
+export async function getSubcontractorsWithInsuranceAlerts(): Promise<
+  import("../subcontractors-db").SubcontractorWithInsuranceAlert[]
+> {
   return subcontractorsDb.getSubcontractorsWithInsuranceAlerts();
 }
 
-export async function getSubcontractorById(id: string): Promise<import("../subcontractors-db").SubcontractorRow | null> {
+export async function getSubcontractorById(
+  id: string
+): Promise<import("../subcontractors-db").SubcontractorRow | null> {
   return subcontractorsDb.getSubcontractorById(id);
 }
 
-export async function insertSubcontractor(draft: import("../subcontractors-db").SubcontractorDraft): Promise<void> {
+export async function insertSubcontractor(
+  draft: import("../subcontractors-db").SubcontractorDraft
+): Promise<void> {
   return subcontractorsDb.insertSubcontractor(draft);
 }
 
@@ -1199,41 +1526,64 @@ export async function deleteSubcontractor(id: string): Promise<void> {
   return subcontractorsDb.deleteSubcontractor(id);
 }
 
-export async function getSubcontractsByProject(projectId: string): Promise<import("../subcontracts-db").SubcontractWithSubcontractor[]> {
+export async function getSubcontractsByProject(
+  projectId: string
+): Promise<import("../subcontracts-db").SubcontractWithSubcontractor[]> {
   return subcontractsDb.getSubcontractsByProject(projectId);
 }
 
-export async function getSubcontractsSummaryAll(): Promise<{ id: string; subcontractor_id: string; contract_amount: number }[]> {
+export async function getSubcontractsSummaryAll(): Promise<
+  { id: string; subcontractor_id: string; contract_amount: number }[]
+> {
   return subcontractsDb.getSubcontractsSummaryAll();
 }
 
 export async function getSubcontractsWithDetailsAll(): Promise<
-  { id: string; subcontractor_id: string; project_id: string; subcontractor_name: string; project_name: string }[]
+  {
+    id: string;
+    subcontractor_id: string;
+    project_id: string;
+    subcontractor_name: string;
+    project_name: string;
+  }[]
 > {
   return subcontractsDb.getSubcontractsWithDetailsAll();
 }
 
-export async function insertSubcontract(draft: import("../subcontracts-db").SubcontractDraft): Promise<void> {
+export async function insertSubcontract(
+  draft: import("../subcontracts-db").SubcontractDraft
+): Promise<void> {
   return subcontractsDb.insertSubcontract(draft);
 }
 
-export async function getSubcontractById(subcontractId: string): Promise<import("../subcontracts-db").SubcontractWithSubcontractor | null> {
+export async function getSubcontractById(
+  subcontractId: string
+): Promise<import("../subcontracts-db").SubcontractWithSubcontractor | null> {
   return subcontractsDb.getSubcontractById(subcontractId);
 }
 
-export async function updateSubcontractStatus(subcontractId: string, status: import("../subcontracts-db").SubcontractRow["status"]): Promise<void> {
+export async function updateSubcontractStatus(
+  subcontractId: string,
+  status: import("../subcontracts-db").SubcontractRow["status"]
+): Promise<void> {
   return subcontractsDb.updateSubcontractStatus(subcontractId, status);
 }
 
-export async function getSubcontractsBySubcontractor(subcontractorId: string): Promise<import("../subcontracts-db").SubcontractWithProject[]> {
+export async function getSubcontractsBySubcontractor(
+  subcontractorId: string
+): Promise<import("../subcontracts-db").SubcontractWithProject[]> {
   return subcontractsDb.getSubcontractsBySubcontractor(subcontractorId);
 }
 
-export async function getBillsBySubcontract(subcontractId: string): Promise<import("../subcontract-bills-db").SubcontractBillRow[]> {
+export async function getBillsBySubcontract(
+  subcontractId: string
+): Promise<import("../subcontract-bills-db").SubcontractBillRow[]> {
   return subcontractBillsDb.getBillsBySubcontract(subcontractId);
 }
 
-export async function insertSubcontractBill(draft: import("../subcontract-bills-db").SubcontractBillDraft): Promise<void> {
+export async function insertSubcontractBill(
+  draft: import("../subcontract-bills-db").SubcontractBillDraft
+): Promise<void> {
   return subcontractBillsDb.insertSubcontractBill(draft);
 }
 
@@ -1256,7 +1606,9 @@ export async function deleteSubcontractBillDraft(billId: string): Promise<void> 
   return subcontractBillsDb.deleteSubcontractBillDraft(billId);
 }
 
-export async function getBillsSummaryAll(): Promise<{ subcontract_id: string; amount: number; status: string }[]> {
+export async function getBillsSummaryAll(): Promise<
+  { subcontract_id: string; amount: number; status: string }[]
+> {
   return subcontractBillsDb.getBillsSummaryAll();
 }
 
@@ -1264,27 +1616,39 @@ export async function getBillsAll(): Promise<{ id: string; amount: number; statu
   return subcontractBillsDb.getBillsAll();
 }
 
-export async function getApprovedSubcontractBillsTotalByProject(projectId: string): Promise<number> {
+export async function getApprovedSubcontractBillsTotalByProject(
+  projectId: string
+): Promise<number> {
   return subcontractBillsDb.getApprovedSubcontractBillsTotalByProject(projectId);
 }
 
-export async function getBillsBySubcontractIds(subcontractIds: string[]): Promise<import("../subcontract-bills-db").SubcontractBillRow[]> {
+export async function getBillsBySubcontractIds(
+  subcontractIds: string[]
+): Promise<import("../subcontract-bills-db").SubcontractBillRow[]> {
   return subcontractBillsDb.getBillsBySubcontractIds(subcontractIds);
 }
 
-export async function getPaymentsSummaryAll(): Promise<{ subcontract_id: string; amount: number }[]> {
+export async function getPaymentsSummaryAll(): Promise<
+  { subcontract_id: string; amount: number }[]
+> {
   return subcontractPaymentsDb.getPaymentsSummaryAll();
 }
 
-export async function getSubcontractPaymentsAll(): Promise<{ bill_id: string | null; amount: number }[]> {
+export async function getSubcontractPaymentsAll(): Promise<
+  { bill_id: string | null; amount: number }[]
+> {
   return subcontractPaymentsDb.getPaymentsAll();
 }
 
-export async function getPaymentsBySubcontractIds(subcontractIds: string[]): Promise<import("../subcontract-payments-db").SubcontractPaymentRow[]> {
+export async function getPaymentsBySubcontractIds(
+  subcontractIds: string[]
+): Promise<import("../subcontract-payments-db").SubcontractPaymentRow[]> {
   return subcontractPaymentsDb.getPaymentsBySubcontractIds(subcontractIds);
 }
 
-export async function recordSubcontractPayment(input: Parameters<typeof subcontractPaymentsDb.recordSubcontractPayment>[0]): Promise<void> {
+export async function recordSubcontractPayment(
+  input: Parameters<typeof subcontractPaymentsDb.recordSubcontractPayment>[0]
+): Promise<void> {
   return subcontractPaymentsDb.recordSubcontractPayment(input);
 }
 
@@ -1336,11 +1700,16 @@ export async function getAccounts(): Promise<import("../accounts-db").Account[]>
   return accountsDb.getAccounts();
 }
 
-export async function createAccount(input: Parameters<typeof accountsDb.createAccount>[0]): Promise<import("../accounts-db").Account> {
+export async function createAccount(
+  input: Parameters<typeof accountsDb.createAccount>[0]
+): Promise<import("../accounts-db").Account> {
   return accountsDb.createAccount(input);
 }
 
-export async function updateAccount(id: string, patch: Parameters<typeof accountsDb.updateAccount>[1]): Promise<import("../accounts-db").Account | null> {
+export async function updateAccount(
+  id: string,
+  patch: Parameters<typeof accountsDb.updateAccount>[1]
+): Promise<import("../accounts-db").Account | null> {
   return accountsDb.updateAccount(id, patch);
 }
 
@@ -1352,7 +1721,12 @@ export function getExpenseTotal(expense: Expense): number {
   return expensesDb.getExpenseTotal(expense);
 }
 
-export async function createExpense(payload: Partial<Omit<Expense, "id" | "attachments" | "lines">> & { attachments?: import("../expenses-db").ExpenseAttachment[]; lines?: Array<Omit<ExpenseLine, "id">> }): Promise<Expense> {
+export async function createExpense(
+  payload: Partial<Omit<Expense, "id" | "attachments" | "lines">> & {
+    attachments?: import("../expenses-db").ExpenseAttachment[];
+    lines?: Array<Omit<ExpenseLine, "id">>;
+  }
+): Promise<Expense> {
   const lines = payload.lines?.length
     ? payload.lines.map((l) => ({
         projectId: l.projectId ?? null,
@@ -1390,7 +1764,10 @@ export async function createQuickExpense(payload: {
   return expensesDb.createQuickExpense(payload);
 }
 
-export async function updateExpense(expenseId: string, patch: Partial<Omit<Expense, "id" | "lines" | "attachments">>): Promise<Expense | null> {
+export async function updateExpense(
+  expenseId: string,
+  patch: Partial<Omit<Expense, "id" | "lines" | "attachments">>
+): Promise<Expense | null> {
   let resolvedPatch = { ...patch };
   if (patch.accountId !== undefined) {
     const accounts = await accountsDb.getAccounts();
@@ -1408,7 +1785,10 @@ export async function updateExpense(expenseId: string, patch: Partial<Omit<Expen
   });
 }
 
-export async function updateExpenseReceiptUrl(expenseId: string, receiptUrl: string): Promise<Expense | null> {
+export async function updateExpenseReceiptUrl(
+  expenseId: string,
+  receiptUrl: string
+): Promise<Expense | null> {
   return expensesDb.updateExpenseReceiptUrl(expenseId, receiptUrl);
 }
 
@@ -1438,7 +1818,10 @@ export async function markWorkerExpensesReimbursed(workerId: string): Promise<nu
   return expensesDb.markWorkerExpensesReimbursed(workerId);
 }
 
-export async function addExpenseLine(expenseId: string, line: Partial<Omit<import("../expenses-db").ExpenseLine, "id">>): Promise<Expense | null> {
+export async function addExpenseLine(
+  expenseId: string,
+  line: Partial<Omit<import("../expenses-db").ExpenseLine, "id">>
+): Promise<Expense | null> {
   return expensesDb.addExpenseLine(expenseId, {
     projectId: line.projectId ?? null,
     category: line.category ?? "Other",
@@ -1448,11 +1831,18 @@ export async function addExpenseLine(expenseId: string, line: Partial<Omit<impor
   });
 }
 
-export async function updateExpenseLine(expenseId: string, lineId: string, patch: Partial<import("../expenses-db").ExpenseLine>): Promise<Expense | null> {
+export async function updateExpenseLine(
+  expenseId: string,
+  lineId: string,
+  patch: Partial<import("../expenses-db").ExpenseLine>
+): Promise<Expense | null> {
   return expensesDb.updateExpenseLine(expenseId, lineId, patch);
 }
 
-export async function deleteExpenseLine(expenseId: string, lineId: string): Promise<Expense | null> {
+export async function deleteExpenseLine(
+  expenseId: string,
+  lineId: string
+): Promise<Expense | null> {
   return expensesDb.deleteExpenseLine(expenseId, lineId);
 }
 
@@ -1460,11 +1850,17 @@ export async function deleteExpense(expenseId: string): Promise<boolean> {
   return expensesDb.deleteExpense(expenseId);
 }
 
-export async function addExpenseAttachment(expenseId: string, attachment: import("../expenses-db").ExpenseAttachment): Promise<Expense | null> {
+export async function addExpenseAttachment(
+  expenseId: string,
+  attachment: import("../expenses-db").ExpenseAttachment
+): Promise<Expense | null> {
   return expensesDb.addExpenseAttachment(expenseId, attachment);
 }
 
-export async function deleteExpenseAttachment(expenseId: string, attachmentId: string): Promise<Expense | null> {
+export async function deleteExpenseAttachment(
+  expenseId: string,
+  attachmentId: string
+): Promise<Expense | null> {
   return expensesDb.deleteExpenseAttachment(expenseId, attachmentId);
 }
 
@@ -1476,11 +1872,30 @@ export async function getTotalExpenses(): Promise<number> {
   return expensesDb.getTotalExpenses();
 }
 
-export async function getExpenseLinesByProject(projectId: string, limit = 5): Promise<Array<{ expenseId: string; date: string; vendorName: string; line: import("../expenses-db").ExpenseLine }>> {
+export async function getExpenseLinesByProject(
+  projectId: string,
+  limit = 5
+): Promise<
+  Array<{
+    expenseId: string;
+    date: string;
+    vendorName: string;
+    line: import("../expenses-db").ExpenseLine;
+  }>
+> {
   return expensesDb.getExpenseLinesByProject(projectId, limit);
 }
 
-export async function getProjectExpenseLines(projectId: string): Promise<Array<{ expenseId: string; date: string; vendorName: string; line: import("../expenses-db").ExpenseLine }>> {
+export async function getProjectExpenseLines(
+  projectId: string
+): Promise<
+  Array<{
+    expenseId: string;
+    date: string;
+    vendorName: string;
+    line: import("../expenses-db").ExpenseLine;
+  }>
+> {
   return expensesDb.getProjectExpenseLines(projectId);
 }
 
@@ -1494,7 +1909,9 @@ function categoryToDrilldownBucket(category: string): "Materials" | "Labor" | "V
 }
 
 /** Category spend by project (Materials/Labor/Vendor/Other). */
-export async function getCategorySpendByProject(projectId: string): Promise<{ materials: number; labor: number; vendor: number; other: number }> {
+export async function getCategorySpendByProject(
+  projectId: string
+): Promise<{ materials: number; labor: number; vendor: number; other: number }> {
   const out = { materials: 0, labor: 0, vendor: 0, other: 0 };
   const keyMap: Record<"Materials" | "Labor" | "Vendor" | "Other", keyof typeof out> = {
     Materials: "materials",
@@ -1528,7 +1945,12 @@ export async function getVendorSpendByProject(projectId: string): Promise<Vendor
     if (date > byVendor[v].lastDate) byVendor[v].lastDate = date;
   }
   return Object.entries(byVendor)
-    .map(([vendorName, d]) => ({ vendorName, total: d.total, txCount: d.count, lastDate: d.lastDate }))
+    .map(([vendorName, d]) => ({
+      vendorName,
+      total: d.total,
+      txCount: d.count,
+      lastDate: d.lastDate,
+    }))
     .sort((a, b) => b.total - a.total);
 }
 
@@ -1560,16 +1982,28 @@ export async function getProjectCashFlowData(projectId: string): Promise<Project
     const amt = line.amount ?? 0;
     expenseByDate[date] = (expenseByDate[date] ?? 0) + amt;
   }
-  const dates = Array.from(new Set([...Object.keys(incomeByDate), ...Object.keys(expenseByDate)])).sort();
+  const dates = Array.from(
+    new Set([...Object.keys(incomeByDate), ...Object.keys(expenseByDate)])
+  ).sort();
   let cumIncome = 0;
   let cumExpense = 0;
   const points: ProjectCashFlowPoint[] = [];
   for (const date of dates) {
     cumIncome += incomeByDate[date] ?? 0;
     cumExpense += expenseByDate[date] ?? 0;
-    points.push({ date, cumulativeIncome: cumIncome, cumulativeExpense: cumExpense, netCash: cumIncome - cumExpense });
+    points.push({
+      date,
+      cumulativeIncome: cumIncome,
+      cumulativeExpense: cumExpense,
+      netCash: cumIncome - cumExpense,
+    });
   }
-  return { points, totalIncome: cumIncome, totalExpense: cumExpense, netPosition: cumIncome - cumExpense };
+  return {
+    points,
+    totalIncome: cumIncome,
+    totalExpense: cumExpense,
+    netPosition: cumIncome - cumExpense,
+  };
 }
 
 export async function getBankTransactions(): Promise<BankTransaction[]> {
@@ -1586,11 +2020,21 @@ export interface CashOverview {
 }
 
 export async function getCashOverview(): Promise<CashOverview> {
-  const [txs, systemExpenses] = await Promise.all([bankTxDb.getBankTransactions(), expensesDb.getTotalExpenses()]);
+  const [txs, systemExpenses] = await Promise.all([
+    bankTxDb.getBankTransactions(),
+    expensesDb.getTotalExpenses(),
+  ]);
   const bankBalance = txs.reduce((s, t) => s + t.amount, 0);
-  const reconciledBankTotal = txs.filter((t) => t.status === "reconciled").reduce((s, t) => s + t.amount, 0);
-  const unreconciledBankTotal = txs.filter((t) => t.status === "unmatched").reduce((s, t) => s + t.amount, 0);
-  const recentUnreconciled = txs.filter((t) => t.status === "unmatched").sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5);
+  const reconciledBankTotal = txs
+    .filter((t) => t.status === "reconciled")
+    .reduce((s, t) => s + t.amount, 0);
+  const unreconciledBankTotal = txs
+    .filter((t) => t.status === "unmatched")
+    .reduce((s, t) => s + t.amount, 0);
+  const recentUnreconciled = txs
+    .filter((t) => t.status === "unmatched")
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, 5);
   return {
     bankBalance,
     systemExpenses,
@@ -1619,11 +2063,17 @@ export async function getInvoicePayments(): Promise<InvoicePayment[]> {
   return invoicesDb.getInvoicePayments();
 }
 
-export async function getInvoicesWithDerived(filters?: { status?: InvoiceStatus | "Overdue"; projectId?: string; search?: string }): Promise<InvoiceWithDerived[]> {
+export async function getInvoicesWithDerived(filters?: {
+  status?: InvoiceStatus | "Overdue";
+  projectId?: string;
+  search?: string;
+}): Promise<InvoiceWithDerived[]> {
   return invoicesDb.getInvoicesWithDerived(filters);
 }
 
-export async function getInvoicesWithDerivedPaged(input?: Parameters<typeof invoicesDb.getInvoicesWithDerivedPaged>[0]) {
+export async function getInvoicesWithDerivedPaged(
+  input?: Parameters<typeof invoicesDb.getInvoicesWithDerivedPaged>[0]
+) {
   return invoicesDb.getInvoicesWithDerivedPaged(input);
 }
 
@@ -1642,7 +2092,10 @@ export async function getPaymentsByInvoiceId(invoiceId: string): Promise<Invoice
   return invoicesDb.getPaymentsByInvoiceId(invoiceId);
 }
 
-export async function recordInvoicePayment(invoiceId: string, payload: { date: string; amount: number; method: string; memo?: string }): Promise<InvoicePayment | null> {
+export async function recordInvoicePayment(
+  invoiceId: string,
+  payload: { date: string; amount: number; method: string; memo?: string }
+): Promise<InvoicePayment | null> {
   return invoicesDb.recordInvoicePayment(invoiceId, payload);
 }
 
@@ -1675,7 +2128,13 @@ export async function createInvoice(payload: {
 
 export async function updateInvoice(
   invoiceId: string,
-  payload: Partial<{ issueDate: string; dueDate: string; lineItems: InvoiceLineItem[]; taxPct: number; notes: string }>
+  payload: Partial<{
+    issueDate: string;
+    dueDate: string;
+    lineItems: InvoiceLineItem[];
+    taxPct: number;
+    notes: string;
+  }>
 ): Promise<boolean> {
   return invoicesDb.updateInvoice(invoiceId, payload);
 }
@@ -1684,7 +2143,12 @@ export async function markInvoiceSent(invoiceId: string): Promise<boolean> {
   return invoicesDb.markInvoiceSent(invoiceId);
 }
 
-export type { PaymentReceivedRow, PaymentReceivedWithMeta, CreatePaymentReceivedPayload, PaymentMethod } from "../payments-received-db";
+export type {
+  PaymentReceivedRow,
+  PaymentReceivedWithMeta,
+  CreatePaymentReceivedPayload,
+  PaymentMethod,
+} from "../payments-received-db";
 export { PAYMENT_METHODS } from "../payments-received-db";
 export async function getPaymentsReceived() {
   return paymentsReceivedDb.getPaymentsReceived();
@@ -1695,7 +2159,9 @@ export async function getPaymentsReceivedByInvoiceId(invoiceId: string) {
 export async function getSumPaymentsReceivedByInvoiceId(invoiceId: string) {
   return paymentsReceivedDb.getSumPaymentsReceivedByInvoiceId(invoiceId);
 }
-export async function createPaymentReceived(payload: import("../payments-received-db").CreatePaymentReceivedPayload) {
+export async function createPaymentReceived(
+  payload: import("../payments-received-db").CreatePaymentReceivedPayload
+) {
   return paymentsReceivedDb.createPaymentReceived(payload);
 }
 
@@ -1774,20 +2240,30 @@ export async function getARSummary(): Promise<ARSummary> {
   let paidThisMonth = 0;
   for (const inv of withDerived) {
     if (inv.computedStatus === "Void") continue;
-    if (inv.computedStatus === "Unpaid" || inv.computedStatus === "Partial" || inv.computedStatus === "Overdue") {
+    if (
+      inv.computedStatus === "Unpaid" ||
+      inv.computedStatus === "Partial" ||
+      inv.computedStatus === "Overdue"
+    ) {
       totalAR += inv.balanceDue;
       if (inv.dueDate < today) overdueAR += inv.balanceDue;
     }
   }
   for (const p of payments) {
-    if (p.status !== "Voided" && p.date >= startOfMonth && p.date <= today) paidThisMonth += p.amount;
+    if (p.status !== "Voided" && p.date >= startOfMonth && p.date <= today)
+      paidThisMonth += p.amount;
   }
   return { totalAR, overdueAR, paidThisMonth };
 }
 
 export async function getOutstandingInvoices(): Promise<InvoiceWithDerived[]> {
   const list = await getInvoicesWithDerived();
-  return list.filter((i) => i.computedStatus === "Unpaid" || i.computedStatus === "Partial" || i.computedStatus === "Overdue");
+  return list.filter(
+    (i) =>
+      i.computedStatus === "Unpaid" ||
+      i.computedStatus === "Partial" ||
+      i.computedStatus === "Overdue"
+  );
 }
 
 export async function getProjectBillingSummary(projectId: string): Promise<{
@@ -1796,7 +2272,9 @@ export async function getProjectBillingSummary(projectId: string): Promise<{
   arBalance: number;
   lastPaymentDate: string | null;
 }> {
-  const projectInvoices = (await getInvoicesWithDerived({ projectId })).filter((i) => i.computedStatus !== "Void");
+  const projectInvoices = (await getInvoicesWithDerived({ projectId })).filter(
+    (i) => i.computedStatus !== "Void"
+  );
   let invoicedTotal = 0;
   let paidTotal = 0;
   let arBalance = 0;
@@ -1805,7 +2283,7 @@ export async function getProjectBillingSummary(projectId: string): Promise<{
     invoicedTotal += inv.total;
     paidTotal += inv.paidTotal;
     arBalance += inv.balanceDue;
-  const payments = await getPaymentsByInvoiceId(inv.id);
+    const payments = await getPaymentsByInvoiceId(inv.id);
     for (const p of payments) {
       if (!lastPaymentDate || p.date > lastPaymentDate) lastPaymentDate = p.date;
     }
@@ -1824,7 +2302,9 @@ export interface ProjectFinancialSummary {
 }
 
 /** Project financial summary: budget from project; spent = canonical actualCost (labor+expense+subcontract); revenue/collected from invoices. Display "spent" uses canonical only; project.spent is legacy and not used here. */
-export async function getProjectFinancialSummary(projectId: string): Promise<ProjectFinancialSummary | null> {
+export async function getProjectFinancialSummary(
+  projectId: string
+): Promise<ProjectFinancialSummary | null> {
   const project = await projectsDb.getProjectById(projectId);
   if (!project) return null;
   const [canonical, invoiceData] = await Promise.all([
@@ -1849,8 +2329,18 @@ export async function getProjectFinancialSummary(projectId: string): Promise<Pro
 }
 
 /** Forecast margin % and whether any cost code is >10% over budget. Used for project list risk. No mock. */
-export async function getProjectForecastRisk(projectId: string): Promise<{ forecastMarginPct: number; anyCostCodeVarianceOver10Pct: boolean }> {
-  const [summary, laborEntries, subcontractTotal, expenseTotal, subcontracts, budgetItems, expenseLines] = await Promise.all([
+export async function getProjectForecastRisk(
+  projectId: string
+): Promise<{ forecastMarginPct: number; anyCostCodeVarianceOver10Pct: boolean }> {
+  const [
+    summary,
+    laborEntries,
+    subcontractTotal,
+    expenseTotal,
+    subcontracts,
+    budgetItems,
+    expenseLines,
+  ] = await Promise.all([
     getProjectFinancialSummary(projectId),
     dailyLaborDb.getLaborEntriesWithJoins({ project_id: projectId }),
     subcontractBillsDb.getApprovedSubcontractBillsTotalByProject(projectId),
@@ -1860,9 +2350,15 @@ export async function getProjectForecastRisk(projectId: string): Promise<{ forec
     expensesDb.getProjectExpenseLines(projectId),
   ]);
   const revenue = summary?.revenue ?? 0;
-  const laborActual = (laborEntries ?? []).reduce((s: number, e) => s + (Number(e.cost_amount) || 0), 0);
+  const laborActual = (laborEntries ?? []).reduce(
+    (s: number, e) => s + (Number(e.cost_amount) || 0),
+    0
+  );
   const totalCost = laborActual + subcontractTotal + expenseTotal;
-  const totalSubcontractContractAmount = (subcontracts ?? []).reduce((s: number, c: { contract_amount: number }) => s + c.contract_amount, 0);
+  const totalSubcontractContractAmount = (subcontracts ?? []).reduce(
+    (s: number, c: { contract_amount: number }) => s + c.contract_amount,
+    0
+  );
   const remainingCommitment = totalSubcontractContractAmount - subcontractTotal;
   const forecastFinalCost = totalCost + remainingCommitment;
   const forecastMarginPct = revenue > 0 ? ((revenue - forecastFinalCost) / revenue) * 100 : 0;
@@ -1870,7 +2366,10 @@ export async function getProjectForecastRisk(projectId: string): Promise<{ forec
   let anyCostCodeVarianceOver10Pct = false;
   if ((budgetItems ?? []).length > 0 && subcontracts) {
     const subcontractIds = subcontracts.map((s: { id: string }) => s.id);
-    const bills = subcontractIds.length > 0 ? await subcontractBillsDb.getBillsBySubcontractIds(subcontractIds) : [];
+    const bills =
+      subcontractIds.length > 0
+        ? await subcontractBillsDb.getBillsBySubcontractIds(subcontractIds)
+        : [];
     const budgetByCostCode = new Map<string, number>();
     for (const item of budgetItems) {
       const code = item.cost_code ?? "";
@@ -1881,7 +2380,9 @@ export async function getProjectForecastRisk(projectId: string): Promise<{ forec
       const code = e.cost_code ?? "";
       laborByCostCode.set(code, (laborByCostCode.get(code) ?? 0) + (Number(e.cost_amount) || 0));
     }
-    const subcontractIdToCostCode = new Map(subcontracts.map((s: { id: string; cost_code: string | null }) => [s.id, s.cost_code ?? ""]));
+    const subcontractIdToCostCode = new Map(
+      subcontracts.map((s: { id: string; cost_code: string | null }) => [s.id, s.cost_code ?? ""])
+    );
     const approvedBillsByCostCode = new Map<string, number>();
     for (const b of bills) {
       if (b.status !== "Approved" && b.status !== "Paid") continue;
@@ -1896,9 +2397,15 @@ export async function getProjectForecastRisk(projectId: string): Promise<{ forec
     const contractAmountByCostCode = new Map<string, number>();
     for (const s of subcontracts) {
       const code = (s as { cost_code: string | null }).cost_code ?? "";
-      contractAmountByCostCode.set(code, (contractAmountByCostCode.get(code) ?? 0) + (s as { contract_amount: number }).contract_amount);
+      contractAmountByCostCode.set(
+        code,
+        (contractAmountByCostCode.get(code) ?? 0) +
+          (s as { contract_amount: number }).contract_amount
+      );
     }
-    const costCodes = Array.from(new Set(budgetItems.map((b: { cost_code?: string }) => b.cost_code ?? "")));
+    const costCodes = Array.from(
+      new Set(budgetItems.map((b: { cost_code?: string }) => b.cost_code ?? ""))
+    );
     for (const code of costCodes) {
       const budget = budgetByCostCode.get(code) ?? 0;
       const labor = laborByCostCode.get(code) ?? 0;
@@ -1934,7 +2441,15 @@ export async function getProjectForecastSummary(
   projectId: string,
   options?: { includeCostCodeVariances?: boolean }
 ): Promise<ProjectForecastSummary & { costCodeVariances?: ProjectCostCodeVariance[] }> {
-  const [summary, laborEntries, subcontractTotal, expenseTotal, subcontracts, budgetItems, expenseLines] = await Promise.all([
+  const [
+    summary,
+    laborEntries,
+    subcontractTotal,
+    expenseTotal,
+    subcontracts,
+    budgetItems,
+    expenseLines,
+  ] = await Promise.all([
     getProjectFinancialSummary(projectId),
     dailyLaborDb.getLaborEntriesWithJoins({ project_id: projectId }),
     subcontractBillsDb.getApprovedSubcontractBillsTotalByProject(projectId),
@@ -1944,9 +2459,15 @@ export async function getProjectForecastSummary(
     expensesDb.getProjectExpenseLines(projectId),
   ]);
   const revenue = summary?.revenue ?? 0;
-  const laborActual = (laborEntries ?? []).reduce((s: number, e) => s + (Number(e.cost_amount) || 0), 0);
+  const laborActual = (laborEntries ?? []).reduce(
+    (s: number, e) => s + (Number(e.cost_amount) || 0),
+    0
+  );
   const actualCost = laborActual + subcontractTotal + expenseTotal;
-  const totalSubcontractContractAmount = (subcontracts ?? []).reduce((s: number, c: { contract_amount: number }) => s + c.contract_amount, 0);
+  const totalSubcontractContractAmount = (subcontracts ?? []).reduce(
+    (s: number, c: { contract_amount: number }) => s + c.contract_amount,
+    0
+  );
   const remainingCommitment = totalSubcontractContractAmount - subcontractTotal;
   const forecastFinalCost = actualCost + remainingCommitment;
   const forecastProfit = revenue - forecastFinalCost;
@@ -1963,7 +2484,10 @@ export async function getProjectForecastSummary(
 
   if (options?.includeCostCodeVariances && (budgetItems ?? []).length > 0 && subcontracts) {
     const subcontractIds = subcontracts.map((s: { id: string }) => s.id);
-    const bills = subcontractIds.length > 0 ? await subcontractBillsDb.getBillsBySubcontractIds(subcontractIds) : [];
+    const bills =
+      subcontractIds.length > 0
+        ? await subcontractBillsDb.getBillsBySubcontractIds(subcontractIds)
+        : [];
     const budgetByCostCode = new Map<string, number>();
     for (const item of budgetItems) {
       const code = item.cost_code ?? "";
@@ -1974,7 +2498,9 @@ export async function getProjectForecastSummary(
       const code = e.cost_code ?? "";
       laborByCostCode.set(code, (laborByCostCode.get(code) ?? 0) + (Number(e.cost_amount) || 0));
     }
-    const subcontractIdToCostCode = new Map(subcontracts.map((s: { id: string; cost_code: string | null }) => [s.id, s.cost_code ?? ""]));
+    const subcontractIdToCostCode = new Map(
+      subcontracts.map((s: { id: string; cost_code: string | null }) => [s.id, s.cost_code ?? ""])
+    );
     const approvedBillsByCostCode = new Map<string, number>();
     for (const b of bills) {
       if (b.status !== "Approved" && b.status !== "Paid") continue;
@@ -1989,9 +2515,15 @@ export async function getProjectForecastSummary(
     const contractAmountByCostCode = new Map<string, number>();
     for (const s of subcontracts) {
       const code = (s as { cost_code: string | null }).cost_code ?? "";
-      contractAmountByCostCode.set(code, (contractAmountByCostCode.get(code) ?? 0) + (s as { contract_amount: number }).contract_amount);
+      contractAmountByCostCode.set(
+        code,
+        (contractAmountByCostCode.get(code) ?? 0) +
+          (s as { contract_amount: number }).contract_amount
+      );
     }
-    const costCodes = Array.from(new Set(budgetItems.map((b: { cost_code?: string }) => b.cost_code ?? "")));
+    const costCodes = Array.from(
+      new Set(budgetItems.map((b: { cost_code?: string }) => b.cost_code ?? ""))
+    );
     result.costCodeVariances = costCodes.map((code) => {
       const budget = budgetByCostCode.get(code) ?? 0;
       const labor = laborByCostCode.get(code) ?? 0;
@@ -2025,7 +2557,9 @@ export async function getCompanyFinancialDashboard(): Promise<CompanyFinancialDa
     invoicesDb.getCompanyRevenueAndCollected(),
   ]);
   const budget = projects.reduce((s, p) => s + (Number(p.budget) || 0), 0);
-  const profitMap = await getCanonicalProjectProfitBatch(projects.map((p) => p.id)).catch(() => new Map());
+  const profitMap = await getCanonicalProjectProfitBatch(projects.map((p) => p.id)).catch(
+    () => new Map()
+  );
   const spent = projects.reduce((s, p) => s + (profitMap.get(p.id)?.actualCost ?? 0), 0);
   const { revenue, collected } = revenueData;
   const profit = revenue - spent;
@@ -2053,7 +2587,10 @@ function parseCsvRow(line: string): string[] {
 }
 
 export async function importBankTransactionsFromCsv(csvText: string): Promise<BankTransaction[]> {
-  const lines = csvText.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+  const lines = csvText
+    .split(/\r?\n/)
+    .map((s) => s.trim())
+    .filter(Boolean);
   if (lines.length < 2) return [];
   const headerRow = parseCsvRow(lines[0]);
   const colMap = new Map<string, number>();
@@ -2079,9 +2616,11 @@ export async function importBankTransactionsFromCsv(csvText: string): Promise<Ba
   const created: BankTransaction[] = [];
   for (let i = 1; i < lines.length; i++) {
     const cols = parseCsvRow(lines[i]);
-    const rawDate = dateIdx >= 0 && cols[dateIdx] != null ? cols[dateIdx].replace(/^"|"$/g, "").trim() : now;
+    const rawDate =
+      dateIdx >= 0 && cols[dateIdx] != null ? cols[dateIdx].replace(/^"|"$/g, "").trim() : now;
     const date = rawDate.length >= 10 ? rawDate.slice(0, 10) : now;
-    const description = descIdx >= 0 && cols[descIdx] != null ? cols[descIdx].replace(/^"|"$/g, "").trim() : "";
+    const description =
+      descIdx >= 0 && cols[descIdx] != null ? cols[descIdx].replace(/^"|"$/g, "").trim() : "";
     let amount = 0;
     if (debitIdx >= 0 && cols[debitIdx] != null && String(cols[debitIdx]).trim() !== "") {
       const val = parseFloat(String(cols[debitIdx]).replace(/[,"\s]/g, "")) || 0;
@@ -2092,7 +2631,12 @@ export async function importBankTransactionsFromCsv(csvText: string): Promise<Ba
     } else if (amountIdx >= 0 && cols[amountIdx] != null) {
       amount = parseFloat(String(cols[amountIdx]).replace(/[,"\s]/g, "")) || 0;
     }
-    const tx = await bankTxDb.createBankTransaction({ date, description, amount, status: "unmatched" });
+    const tx = await bankTxDb.createBankTransaction({
+      date,
+      description,
+      amount,
+      status: "unmatched",
+    });
     created.push(tx);
   }
   return created;
@@ -2108,10 +2652,17 @@ export interface ReconcileParams {
   paymentMethod?: string;
   memo?: string;
   /** Split lines for Expense. When provided, creates expense with these lines; amounts must sum to |bankTx.amount|. */
-  lines?: Array<{ projectId: string | null; category: string; memo?: string | null; amount: number }>;
+  lines?: Array<{
+    projectId: string | null;
+    category: string;
+    memo?: string | null;
+    amount: number;
+  }>;
 }
 
-export async function reconcileBankTransaction(params: ReconcileParams): Promise<BankTransaction | null> {
+export async function reconcileBankTransaction(
+  params: ReconcileParams
+): Promise<BankTransaction | null> {
   const tx = await bankTxDb.getBankTransactionById(params.bankTxId);
   if (!tx) return null;
   const now = new Date().toISOString().slice(0, 10);
@@ -2152,7 +2703,10 @@ export async function reconcileBankTransaction(params: ReconcileParams): Promise
 }
 
 /** Link an existing expense to this bank transaction (1:1). Fails if either is already linked elsewhere. */
-export async function linkBankTransactionToExpense(bankTxId: string, expenseId: string): Promise<boolean> {
+export async function linkBankTransactionToExpense(
+  bankTxId: string,
+  expenseId: string
+): Promise<boolean> {
   return bankTxDb.linkBankTransactionToExpense(bankTxId, expenseId);
 }
 
@@ -2171,7 +2725,9 @@ export interface ExpenseSuggestion {
 }
 
 /** Up to 8 suggested expenses for linking: unlinked only, sorted by match score. */
-export async function getSuggestedExpensesForBankTx(bankTx: BankTransaction): Promise<ExpenseSuggestion[]> {
+export async function getSuggestedExpensesForBankTx(
+  bankTx: BankTransaction
+): Promise<ExpenseSuggestion[]> {
   const [projects, unlinked] = await Promise.all([getProjects(), expensesDb.getUnlinkedExpenses()]);
   const projectMap = new Map(projects.map((p) => [p.id, p.name]));
   const targetAmount = Math.abs(bankTx.amount);
@@ -2205,7 +2761,20 @@ export function getProjectTransactions(projectId: string): ProjectTransactionRow
   return [];
 }
 
-export async function getProjectEstimate(projectId: string): Promise<{ projectId: string; revenue: number; cost: number; materialsCost: number; laborCost: number; vendorCost: number; otherCost: number } | undefined> {
+export async function getProjectEstimate(
+  projectId: string
+): Promise<
+  | {
+      projectId: string;
+      revenue: number;
+      cost: number;
+      materialsCost: number;
+      laborCost: number;
+      vendorCost: number;
+      otherCost: number;
+    }
+  | undefined
+> {
   const project = await getProjectById(projectId);
   if (!project || !project.sourceEstimateId) return undefined;
   const b = project.snapshotBudgetBreakdown;
@@ -2239,7 +2808,18 @@ export type {
 } from "../estimates-db";
 export { groupEstimateItemsByCategoryId } from "../estimates-db";
 
-export function getEstimateSnapshots(estimateId: string): Promise<{ snapshotId: string; estimateId: string; version: number; createdAt: string; statusAtSnapshot: string; frozenPayload: unknown }[]> {
+export function getEstimateSnapshots(
+  estimateId: string
+): Promise<
+  {
+    snapshotId: string;
+    estimateId: string;
+    version: number;
+    createdAt: string;
+    statusAtSnapshot: string;
+    frozenPayload: unknown;
+  }[]
+> {
   return estDb.listEstimateSnapshots(estimateId).then((rows) =>
     rows.map((s) => ({
       snapshotId: s.snapshotId,
@@ -2252,7 +2832,10 @@ export function getEstimateSnapshots(estimateId: string): Promise<{ snapshotId: 
   );
 }
 
-export async function getEstimateSnapshot(estimateId: string, version: number): Promise<estDb.EstimateSnapshotRecord | null> {
+export async function getEstimateSnapshot(
+  estimateId: string,
+  version: number
+): Promise<estDb.EstimateSnapshotRecord | null> {
   return estDb.getEstimateSnapshotByVersion(estimateId, version);
 }
 
@@ -2264,7 +2847,9 @@ export function createNewVersionFromSnapshot(estimateId: string): Promise<boolea
   return estDb.createNewVersionFromSnapshot(estimateId);
 }
 
-export async function convertEstimateSnapshotToProject(estimateId: string): Promise<ProjectFromEstimate | null> {
+export async function convertEstimateSnapshotToProject(
+  estimateId: string
+): Promise<ProjectFromEstimate | null> {
   const existing = await getProjectFromEstimate(estimateId);
   if (existing) return { ...existing };
 
@@ -2349,7 +2934,11 @@ export async function convertEstimateToProjectWithSetup(
   if (!locked) return null;
 
   const s = estDb.computeSummary(items, meta, estimateCodeToType);
-  const name = payload.projectName?.trim() || meta.project.name?.trim() || estimate.project?.trim() || `Project ${estimate.number}`;
+  const name =
+    payload.projectName?.trim() ||
+    meta.project.name?.trim() ||
+    estimate.project?.trim() ||
+    `Project ${estimate.number}`;
 
   // Canonical contract value: store in projects.budget so profit-engine and dashboard use it as revenue base.
   const project = await projectsDb.createProject({
@@ -2390,15 +2979,23 @@ export async function convertEstimateToProjectWithSetup(
   };
 }
 
-export function setEstimateStatus(estimateId: string, nextStatus: "Sent" | "Approved" | "Rejected" | "Converted"): Promise<boolean> {
+export function setEstimateStatus(
+  estimateId: string,
+  nextStatus: "Sent" | "Approved" | "Rejected" | "Converted"
+): Promise<boolean> {
   return estDb.setEstimateStatus(estimateId, nextStatus);
 }
 
-export function updateEstimateStatus(estimateId: string, newStatus: estDb.EstimateStatus): Promise<boolean> {
+export function updateEstimateStatus(
+  estimateId: string,
+  newStatus: estDb.EstimateStatus
+): Promise<boolean> {
   return estDb.updateEstimateStatus(estimateId, newStatus);
 }
 
-export async function getProjectFromEstimate(estimateId: string): Promise<ProjectFromEstimate | null> {
+export async function getProjectFromEstimate(
+  estimateId: string
+): Promise<ProjectFromEstimate | null> {
   const project = await projectsDb.getProjectBySourceEstimateId(estimateId);
   if (!project || !project.sourceEstimateId) return null;
   const b = project.snapshotBudgetBreakdown;
@@ -2452,7 +3049,9 @@ export function getEstimateMeta(estimateId: string): Promise<estDb.EstimateMetaR
   return estDb.getEstimateMeta(estimateId);
 }
 
-export function getEstimateCategories(estimateId: string): Promise<{ costCode: string; displayName: string }[]> {
+export function getEstimateCategories(
+  estimateId: string
+): Promise<{ costCode: string; displayName: string }[]> {
   return estDb.getEstimateCategories(estimateId);
 }
 
@@ -2462,7 +3061,14 @@ export function getPaymentSchedule(estimateId: string): Promise<estDb.PaymentSch
 
 export function addPaymentMilestone(
   estimateId: string,
-  item: { title: string; amountType: "percent" | "fixed"; value: number; dueRule: string; dueDate?: string | null; notes?: string | null }
+  item: {
+    title: string;
+    amountType: "percent" | "fixed";
+    value: number;
+    dueRule: string;
+    dueDate?: string | null;
+    notes?: string | null;
+  }
 ) {
   return estDb.addPaymentMilestone(estimateId, item);
 }
@@ -2470,7 +3076,14 @@ export function addPaymentMilestone(
 export function updatePaymentMilestone(
   estimateId: string,
   itemId: string,
-  payload: { title?: string; amountType?: "percent" | "fixed"; value?: number; dueRule?: string; dueDate?: string | null; notes?: string | null }
+  payload: {
+    title?: string;
+    amountType?: "percent" | "fixed";
+    value?: number;
+    dueRule?: string;
+    dueDate?: string | null;
+    notes?: string | null;
+  }
 ): Promise<boolean> {
   return estDb.updatePaymentMilestone(estimateId, itemId, payload);
 }
@@ -2483,11 +3096,17 @@ export function markPaymentMilestonePaid(estimateId: string, itemId: string): Pr
   return estDb.markPaymentMilestonePaid(estimateId, itemId);
 }
 
-export function reorderPaymentSchedule(estimateId: string, orderedItemIds: string[]): Promise<boolean> {
+export function reorderPaymentSchedule(
+  estimateId: string,
+  orderedItemIds: string[]
+): Promise<boolean> {
   return estDb.reorderPaymentSchedule(estimateId, orderedItemIds);
 }
 
-export function paymentMilestoneAmount(item: estDb.PaymentScheduleItem, estimateTotal: number): number {
+export function paymentMilestoneAmount(
+  item: estDb.PaymentScheduleItem,
+  estimateTotal: number
+): number {
   return estDb.paymentMilestoneAmount(item, estimateTotal);
 }
 
@@ -2497,12 +3116,21 @@ export function listPaymentTemplates(): Promise<estDb.PaymentScheduleTemplate[]>
 
 export function createPaymentTemplate(
   name: string,
-  items: Array<{ title: string; amountType: "percent" | "fixed"; value: number; dueRule: string; notes?: string | null }>
+  items: Array<{
+    title: string;
+    amountType: "percent" | "fixed";
+    value: number;
+    dueRule: string;
+    notes?: string | null;
+  }>
 ): Promise<estDb.PaymentScheduleTemplate | null> {
   return estDb.createPaymentTemplate(name, items);
 }
 
-export function applyPaymentTemplateToEstimate(estimateId: string, templateId: string): Promise<boolean> {
+export function applyPaymentTemplateToEstimate(
+  estimateId: string,
+  templateId: string
+): Promise<boolean> {
   return estDb.applyPaymentTemplateToEstimate(estimateId, templateId);
 }
 
@@ -2530,7 +3158,14 @@ export function updateEstimateMeta(
 
 export function addLineItem(
   estimateId: string,
-  item: { costCode: string; desc: string; qty: number; unit: string; unitCost: number; markupPct: number }
+  item: {
+    costCode: string;
+    desc: string;
+    qty: number;
+    unit: string;
+    unitCost: number;
+    markupPct: number;
+  }
 ) {
   return estDb.addLineItem(estimateId, item);
 }
@@ -2539,11 +3174,19 @@ export function createCustomEstimateCategory(estimateId: string, displayName: st
   return estDb.createCustomEstimateCategory(estimateId, displayName);
 }
 
-export function createEstimateCategoryWithExplicitCode(estimateId: string, costCode: string, displayName: string) {
+export function createEstimateCategoryWithExplicitCode(
+  estimateId: string,
+  costCode: string,
+  displayName: string
+) {
   return estDb.createEstimateCategoryWithExplicitCode(estimateId, costCode, displayName);
 }
 
-export function updateEstimateCategoryDisplayName(estimateId: string, costCode: string, displayName: string) {
+export function updateEstimateCategoryDisplayName(
+  estimateId: string,
+  costCode: string,
+  displayName: string
+) {
   return estDb.updateEstimateCategoryDisplayName(estimateId, costCode, displayName);
 }
 
@@ -2568,7 +3211,10 @@ export function deleteLineItem(estimateId: string, itemId: string): Promise<bool
   return estDb.deleteLineItem(estimateId, itemId);
 }
 
-export function duplicateLineItem(estimateId: string, itemId: string): Promise<EstimateItemRow | null> {
+export function duplicateLineItem(
+  estimateId: string,
+  itemId: string
+): Promise<EstimateItemRow | null> {
   return estDb.duplicateLineItem(estimateId, itemId);
 }
 
@@ -2613,8 +3259,21 @@ export function createEstimateWithItems(payload: {
   overheadPct?: number;
   profitPct?: number;
   costCategoryNames?: Record<string, string>;
-  items: Array<{ costCode: string; desc: string; qty: number; unit: string; unitCost: number; markupPct: number }>;
-  paymentSchedule?: Array<{ title: string; amountType: "percent" | "fixed"; value: number; dueRule: string; notes?: string | null }>;
+  items: Array<{
+    costCode: string;
+    desc: string;
+    qty: number;
+    unit: string;
+    unitCost: number;
+    markupPct: number;
+  }>;
+  paymentSchedule?: Array<{
+    title: string;
+    amountType: "percent" | "fixed";
+    value: number;
+    dueRule: string;
+    notes?: string | null;
+  }>;
 }): Promise<string> {
   return estDb.createEstimateWithItems({
     ...payload,
@@ -2642,7 +3301,9 @@ export interface EstimateSummaryResult {
   profit: number;
 }
 
-export async function getEstimateSummary(estimateId: string): Promise<EstimateSummaryResult | null> {
+export async function getEstimateSummary(
+  estimateId: string
+): Promise<EstimateSummaryResult | null> {
   const meta = await estDb.getEstimateMeta(estimateId);
   if (!meta) return null;
   const items = await estDb.getEstimateItems(estimateId);
@@ -2670,8 +3331,18 @@ export function getEstimateSummaryFromPayload(payload: {
   items: Array<{ qty: number; unitCost: number; markupPct: number }>;
   overheadPct: number;
   profitPct: number;
-}): { subtotal: number; overheadPct: number; profitPct: number; overhead: number; profit: number; grandTotal: number } {
-  const subtotal = payload.items.reduce((s, row) => s + row.qty * row.unitCost * (1 + row.markupPct), 0);
+}): {
+  subtotal: number;
+  overheadPct: number;
+  profitPct: number;
+  overhead: number;
+  profit: number;
+  grandTotal: number;
+} {
+  const subtotal = payload.items.reduce(
+    (s, row) => s + row.qty * row.unitCost * (1 + row.markupPct),
+    0
+  );
   const overhead = subtotal * payload.overheadPct;
   const profit = subtotal * payload.profitPct;
   return {
@@ -2704,7 +3375,9 @@ export interface ProjectDetailFinancial {
   otherCost: number;
 }
 
-export async function getProjectDetailFinancial(projectId: string): Promise<ProjectDetailFinancial | null> {
+export async function getProjectDetailFinancial(
+  projectId: string
+): Promise<ProjectDetailFinancial | null> {
   const project = await getProjectById(projectId);
   if (!project) return null;
 
@@ -2793,9 +3466,17 @@ export async function getProjectRiskOverview(): Promise<ProjectRiskOverview> {
           expenseTotal: canonical.actualCost,
           profit: canonical.profit,
           marginPct: canonical.revenue > 0 ? canonical.margin * 100 : 0,
-          budgetUsagePct: canonical.budget > 0 ? (canonical.actualCost / canonical.budget) * 100 : 0,
+          budgetUsagePct:
+            canonical.budget > 0 ? (canonical.actualCost / canonical.budget) * 100 : 0,
           remainingBudget: canonical.budget - canonical.actualCost,
-          riskStatus: canonical.profit < 0 ? "Loss" : canonical.budget > 0 && canonical.actualCost / canonical.budget >= 1 ? "Over budget" : canonical.budget > 0 && canonical.actualCost / canonical.budget >= 0.8 ? "At risk" : "On track",
+          riskStatus:
+            canonical.profit < 0
+              ? "Loss"
+              : canonical.budget > 0 && canonical.actualCost / canonical.budget >= 1
+                ? "Over budget"
+                : canonical.budget > 0 && canonical.actualCost / canonical.budget >= 0.8
+                  ? "At risk"
+                  : "On track",
           materialCost: 0,
           laborCost: -canonical.laborCost,
           vendorCost: -canonical.subcontractCost,
@@ -2805,18 +3486,16 @@ export async function getProjectRiskOverview(): Promise<ProjectRiskOverview> {
     const breakdown = source?.snapshotBudgetBreakdown;
     const snapshotBudgetCost =
       source?.snapshotBudgetCost ??
-      (breakdown ? breakdown.materials + breakdown.labor + breakdown.vendor + breakdown.other : undefined);
+      (breakdown
+        ? breakdown.materials + breakdown.labor + breakdown.vendor + breakdown.other
+        : undefined);
     const snapshotLaborBudget = source?.snapshotBudgetBreakdown?.labor;
     const actualCost = financial?.totalSpent ?? 0;
     const laborCostAbs = Math.abs(financial?.laborCost ?? 0);
-    const budgetVar =
-      snapshotBudgetCost != null ? actualCost - snapshotBudgetCost : null;
-    const laborVar =
-      snapshotLaborBudget != null ? laborCostAbs - snapshotLaborBudget : null;
+    const budgetVar = snapshotBudgetCost != null ? actualCost - snapshotBudgetCost : null;
+    const laborVar = snapshotLaborBudget != null ? laborCostAbs - snapshotLaborBudget : null;
     const budgetUsagePct =
-      snapshotBudgetCost != null && snapshotBudgetCost > 0
-        ? actualCost / snapshotBudgetCost
-        : null;
+      snapshotBudgetCost != null && snapshotBudgetCost > 0 ? actualCost / snapshotBudgetCost : null;
     const laborUsagePct =
       snapshotLaborBudget != null && snapshotLaborBudget > 0
         ? laborCostAbs / snapshotLaborBudget
@@ -2825,10 +3504,8 @@ export async function getProjectRiskOverview(): Promise<ProjectRiskOverview> {
     const cashOut = financial?.expenseTotal ?? 0;
     const netCash = cashIn - cashOut;
     const monthlyBurn = cashOut / 3;
-    const monthsRemaining =
-      monthlyBurn > 0 ? netCash / monthlyBurn : null;
-    const runwayWeeks =
-      monthsRemaining != null ? monthsRemaining * (52 / 12) : null;
+    const monthsRemaining = monthlyBurn > 0 ? netCash / monthlyBurn : null;
+    const runwayWeeks = monthsRemaining != null ? monthsRemaining * (52 / 12) : null;
 
     const triggers: string[] = [];
     if (budgetVar != null && budgetVar > 0) {

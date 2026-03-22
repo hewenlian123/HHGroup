@@ -33,10 +33,7 @@ export function VirtualScrollList({ count, estimateSize, className, children }: 
       className={cn("overflow-auto overscroll-contain", className)}
       style={{ contain: "strict" }}
     >
-      <div
-        className="relative w-full"
-        style={{ height: virtualizer.getTotalSize() }}
-      >
+      <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
         {items.map((vi) => (
           <div
             key={vi.key}

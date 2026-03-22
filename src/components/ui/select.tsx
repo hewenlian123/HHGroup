@@ -6,13 +6,15 @@ import { nativeSelectClassName } from "@/lib/native-field-classes";
 
 export interface SelectProps extends React.ComponentPropsWithoutRef<"select"> {}
 
-const Select = React.forwardRef<HTMLSelectElement, SelectProps>(({ className, children, ...props }, ref) => {
-  return (
-    <select ref={ref} className={nativeSelectClassName(className)} {...props}>
-      {children}
-    </select>
-  );
-});
+const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
+  ({ className, children, ...props }, ref) => {
+    return (
+      <select ref={ref} className={nativeSelectClassName(className)} {...props}>
+        {children}
+      </select>
+    );
+  }
+);
 Select.displayName = "Select";
 
 export { Select };

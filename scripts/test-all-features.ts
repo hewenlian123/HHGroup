@@ -70,13 +70,18 @@ async function run(): Promise<void> {
     if (!read || read.name !== "Test Project") throw new Error("Read back failed");
     await data.updateProject(projectId, { name: "Test Project Updated" });
     const afterUpdate = await data.getProjectById(projectId);
-    if (!afterUpdate || afterUpdate.name !== "Test Project Updated") throw new Error("Update failed");
+    if (!afterUpdate || afterUpdate.name !== "Test Project Updated")
+      throw new Error("Update failed");
     await data.deleteProject(projectId);
     const afterDelete = await data.getProjectById(projectId);
     if (afterDelete) throw new Error("Delete failed");
     results.push({ module: "projects", pass: true });
   } catch (e) {
-    results.push({ module: "projects", pass: false, detail: String(e instanceof Error ? e.message : e) });
+    results.push({
+      module: "projects",
+      pass: false,
+      detail: String(e instanceof Error ? e.message : e),
+    });
   }
 
   // Re-create project and worker for dependent modules (we deleted project above)
@@ -110,7 +115,11 @@ async function run(): Promise<void> {
     if (afterDelete) throw new Error("Delete failed");
     results.push({ module: "tasks", pass: true });
   } catch (e) {
-    results.push({ module: "tasks", pass: false, detail: String(e instanceof Error ? e.message : e) });
+    results.push({
+      module: "tasks",
+      pass: false,
+      detail: String(e instanceof Error ? e.message : e),
+    });
   }
 
   // —— Workers (full CRUD; we created one above for deps) ——
@@ -121,13 +130,18 @@ async function run(): Promise<void> {
     if (!read || read.name !== "Test Worker 2") throw new Error("Read back failed");
     await data.updateWorker(wId, { name: "Test Worker 2 Updated" });
     const afterUpdate = await data.getWorkerById(wId);
-    if (!afterUpdate || afterUpdate.name !== "Test Worker 2 Updated") throw new Error("Update failed");
+    if (!afterUpdate || afterUpdate.name !== "Test Worker 2 Updated")
+      throw new Error("Update failed");
     await data.deleteWorker(wId);
     const afterDelete = await data.getWorkerById(wId);
     if (afterDelete) throw new Error("Delete failed");
     results.push({ module: "workers", pass: true });
   } catch (e) {
-    results.push({ module: "workers", pass: false, detail: String(e instanceof Error ? e.message : e) });
+    results.push({
+      module: "workers",
+      pass: false,
+      detail: String(e instanceof Error ? e.message : e),
+    });
   }
 
   // —— Invoices ——
@@ -145,13 +159,18 @@ async function run(): Promise<void> {
     if (!read || read.clientName !== "Test Client") throw new Error("Read back failed");
     await data.updateInvoice(invoiceId, { notes: "Updated note" });
     const afterUpdate = await data.getInvoiceById(invoiceId);
-    if (!afterUpdate || (afterUpdate as { notes?: string }).notes !== "Updated note") throw new Error("Update failed");
+    if (!afterUpdate || (afterUpdate as { notes?: string }).notes !== "Updated note")
+      throw new Error("Update failed");
     await data.deleteInvoice(invoiceId);
     const afterDelete = await data.getInvoiceById(invoiceId);
     if (afterDelete) throw new Error("Delete failed");
     results.push({ module: "invoices", pass: true });
   } catch (e) {
-    results.push({ module: "invoices", pass: false, detail: String(e instanceof Error ? e.message : e) });
+    results.push({
+      module: "invoices",
+      pass: false,
+      detail: String(e instanceof Error ? e.message : e),
+    });
   }
 
   // Re-create invoice for payments_received (needs invoice_id)
@@ -184,13 +203,18 @@ async function run(): Promise<void> {
     if (!read || read.vendorName !== "Test Vendor") throw new Error("Read back failed");
     await data.updateExpense(expenseId, { vendorName: "Test Vendor Updated" });
     const afterUpdate = await data.getExpenseById(expenseId);
-    if (!afterUpdate || afterUpdate.vendorName !== "Test Vendor Updated") throw new Error("Update failed");
+    if (!afterUpdate || afterUpdate.vendorName !== "Test Vendor Updated")
+      throw new Error("Update failed");
     await data.deleteExpense(expenseId);
     const afterDelete = await data.getExpenseById(expenseId);
     if (afterDelete) throw new Error("Delete failed");
     results.push({ module: "expenses", pass: true });
   } catch (e) {
-    results.push({ module: "expenses", pass: false, detail: String(e instanceof Error ? e.message : e) });
+    results.push({
+      module: "expenses",
+      pass: false,
+      detail: String(e instanceof Error ? e.message : e),
+    });
   }
 
   // —— Reimbursements ——
@@ -213,10 +237,15 @@ async function run(): Promise<void> {
     if (!afterUpdate || afterUpdate.amount !== 35) throw new Error("Update failed");
     await data.deleteWorkerReimbursement(reimbursementId);
     const list3 = await data.getWorkerReimbursements();
-    if (list3.some((r: { id: string }) => r.id === reimbursementId)) throw new Error("Delete failed");
+    if (list3.some((r: { id: string }) => r.id === reimbursementId))
+      throw new Error("Delete failed");
     results.push({ module: "reimbursements", pass: true });
   } catch (e) {
-    results.push({ module: "reimbursements", pass: false, detail: String(e instanceof Error ? e.message : e) });
+    results.push({
+      module: "reimbursements",
+      pass: false,
+      detail: String(e instanceof Error ? e.message : e),
+    });
   }
 
   // —— Punch list (skip if schema missing created_by) ——
@@ -230,14 +259,20 @@ async function run(): Promise<void> {
     await data.updatePunchListItem(punchId, { issue: "Test issue Updated" });
     const list2 = await data.getPunchListByProject(projectId);
     const afterUpdate = list2.find((p: { id: string; issue?: string | null }) => p.id === punchId);
-    if (!afterUpdate || afterUpdate.issue !== "Test issue Updated") throw new Error("Update failed");
+    if (!afterUpdate || afterUpdate.issue !== "Test issue Updated")
+      throw new Error("Update failed");
     await data.deletePunchListItem(punchId);
     const list3 = await data.getPunchListByProject(projectId);
     if (list3.some((p: { id: string }) => p.id === punchId)) throw new Error("Delete failed");
     results.push({ module: "punch_list", pass: true });
   } catch (e) {
     const msg = String(e instanceof Error ? e.message : e);
-    if (/created_by|schema cache/i.test(msg)) results.push({ module: "punch_list", pass: true, detail: "SKIP (schema: created_by missing)" });
+    if (/created_by|schema cache/i.test(msg))
+      results.push({
+        module: "punch_list",
+        pass: true,
+        detail: "SKIP (schema: created_by missing)",
+      });
     else results.push({ module: "punch_list", pass: false, detail: msg });
   }
 
@@ -259,7 +294,11 @@ async function run(): Promise<void> {
     if (afterDelete) throw new Error("Delete failed");
     results.push({ module: "estimates", pass: true });
   } catch (e) {
-    results.push({ module: "estimates", pass: false, detail: String(e instanceof Error ? e.message : e) });
+    results.push({
+      module: "estimates",
+      pass: false,
+      detail: String(e instanceof Error ? e.message : e),
+    });
   }
 
   // —— Change orders (no delete API; skip if schema missing approved_by) ——
@@ -272,11 +311,17 @@ async function run(): Promise<void> {
     await data.updateChangeOrder(changeOrderId, { title: "Test CO Updated" });
     const afterUpdate = await data.getChangeOrderById(changeOrderId);
     if (!afterUpdate) throw new Error("Update failed");
-    if (afterUpdate.title != null && afterUpdate.title !== "Test CO Updated") throw new Error("Update failed");
+    if (afterUpdate.title != null && afterUpdate.title !== "Test CO Updated")
+      throw new Error("Update failed");
     results.push({ module: "change_orders", pass: true });
   } catch (e) {
     const msg = String(e instanceof Error ? e.message : e);
-    if (/approved_by|schema cache|migrations/i.test(msg)) results.push({ module: "change_orders", pass: true, detail: "SKIP (schema: approved_by missing)" });
+    if (/approved_by|schema cache|migrations/i.test(msg))
+      results.push({
+        module: "change_orders",
+        pass: true,
+        detail: "SKIP (schema: approved_by missing)",
+      });
     else results.push({ module: "change_orders", pass: false, detail: msg });
   }
 
@@ -297,7 +342,12 @@ async function run(): Promise<void> {
     results.push({ module: "payments", pass: true });
   } catch (e) {
     const msg = String(e instanceof Error ? e.message : e);
-    if (/project_id.*does not exist|schema cache/i.test(msg)) results.push({ module: "payments", pass: true, detail: "SKIP (schema: payments_received.project_id missing)" });
+    if (/project_id.*does not exist|schema cache/i.test(msg))
+      results.push({
+        module: "payments",
+        pass: true,
+        detail: "SKIP (schema: payments_received.project_id missing)",
+      });
     else results.push({ module: "payments", pass: false, detail: msg });
   }
 
@@ -310,7 +360,8 @@ async function run(): Promise<void> {
     });
     sitePhotoId = created.id;
     const read = await data.getSitePhotoById(sitePhotoId);
-    if (!read || read.photo_url !== "https://example.com/photo.jpg") throw new Error("Read back failed");
+    if (!read || read.photo_url !== "https://example.com/photo.jpg")
+      throw new Error("Read back failed");
     await data.updateSitePhoto(sitePhotoId, { description: "Updated" });
     const afterUpdate = await data.getSitePhotoById(sitePhotoId);
     if (!afterUpdate || afterUpdate.description !== "Updated") throw new Error("Update failed");
@@ -319,7 +370,11 @@ async function run(): Promise<void> {
     if (afterDelete) throw new Error("Delete failed");
     results.push({ module: "site_photos", pass: true });
   } catch (e) {
-    results.push({ module: "site_photos", pass: false, detail: String(e instanceof Error ? e.message : e) });
+    results.push({
+      module: "site_photos",
+      pass: false,
+      detail: String(e instanceof Error ? e.message : e),
+    });
   }
 
   // —— Inspection log ——
@@ -334,13 +389,18 @@ async function run(): Promise<void> {
     if (!read || read.inspection_type !== "Test Type") throw new Error("Read back failed");
     await data.updateInspectionLog(inspectionId, { inspection_type: "Test Type Updated" });
     const afterUpdate = await data.getInspectionLogById(inspectionId);
-    if (!afterUpdate || afterUpdate.inspection_type !== "Test Type Updated") throw new Error("Update failed");
+    if (!afterUpdate || afterUpdate.inspection_type !== "Test Type Updated")
+      throw new Error("Update failed");
     await data.deleteInspectionLog(inspectionId);
     const afterDelete = await data.getInspectionLogById(inspectionId);
     if (afterDelete) throw new Error("Delete failed");
     results.push({ module: "inspection_log", pass: true });
   } catch (e) {
-    results.push({ module: "inspection_log", pass: false, detail: String(e instanceof Error ? e.message : e) });
+    results.push({
+      module: "inspection_log",
+      pass: false,
+      detail: String(e instanceof Error ? e.message : e),
+    });
   }
 
   // —— Material catalog (no delete API; cleanup removes) ——
@@ -351,15 +411,24 @@ async function run(): Promise<void> {
     });
     materialId = created.id;
     const list = await data.getMaterialCatalog();
-    const read = list.find((m: { id: string; material_name?: string | null }) => m.id === materialId);
+    const read = list.find(
+      (m: { id: string; material_name?: string | null }) => m.id === materialId
+    );
     if (!read || read.material_name !== "Test Material") throw new Error("Read back failed");
     await data.updateMaterial(materialId, { material_name: "Test Material Updated" });
     const list2 = await data.getMaterialCatalog();
-    const afterUpdate = list2.find((m: { id: string; material_name?: string | null }) => m.id === materialId);
-    if (!afterUpdate || afterUpdate.material_name !== "Test Material Updated") throw new Error("Update failed");
+    const afterUpdate = list2.find(
+      (m: { id: string; material_name?: string | null }) => m.id === materialId
+    );
+    if (!afterUpdate || afterUpdate.material_name !== "Test Material Updated")
+      throw new Error("Update failed");
     results.push({ module: "material_catalog", pass: true });
   } catch (e) {
-    results.push({ module: "material_catalog", pass: false, detail: String(e instanceof Error ? e.message : e) });
+    results.push({
+      module: "material_catalog",
+      pass: false,
+      detail: String(e instanceof Error ? e.message : e),
+    });
   }
 
   // —— Worker receipts (using worker-receipts-db; no deleteWorkerReceipt in data/index) ——
@@ -374,7 +443,10 @@ async function run(): Promise<void> {
     receiptId = created.id;
     const read = await workerReceiptsDb.getWorkerReceiptById(receiptId);
     if (!read || read.amount !== 10) throw new Error("Read back failed");
-    await workerReceiptsDb.updateWorkerReceiptStatus(receiptId, { status: "Rejected", rejectionReason: "Test" });
+    await workerReceiptsDb.updateWorkerReceiptStatus(receiptId, {
+      status: "Rejected",
+      rejectionReason: "Test",
+    });
     const afterUpdate = await workerReceiptsDb.getWorkerReceiptById(receiptId);
     if (!afterUpdate || afterUpdate.status !== "Rejected") throw new Error("Update failed");
     await workerReceiptsDb.deleteWorkerReceipt(receiptId);
@@ -382,13 +454,20 @@ async function run(): Promise<void> {
     if (afterDelete) throw new Error("Delete failed");
     results.push({ module: "worker_receipts", pass: true });
   } catch (e) {
-    results.push({ module: "worker_receipts", pass: false, detail: String(e instanceof Error ? e.message : e) });
+    results.push({
+      module: "worker_receipts",
+      pass: false,
+      detail: String(e instanceof Error ? e.message : e),
+    });
   }
 
   // —— Step 3: Clean up — run clear-data so DB is empty ——
   const { wipeAllData } = await import("../src/lib/wipe-database");
   const { createClient } = await import("@supabase/supabase-js");
-  const client = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+  const client = createClient(
+    url,
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
   const { errors } = await wipeAllData(client as unknown as SupabaseClient);
   if (errors.length > 0) {
     results.push({ module: "cleanup", pass: false, detail: errors.join("; ") });

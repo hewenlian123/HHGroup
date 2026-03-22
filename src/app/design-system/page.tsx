@@ -77,7 +77,9 @@ export default function DesignSystemShowcasePage() {
       <Card>
         <CardHeader>
           <CardTitle>Table</CardTitle>
-          <CardDescription>Enterprise table — sticky header, row hover, subtle borders</CardDescription>
+          <CardDescription>
+            Enterprise table — sticky header, row hover, subtle borders
+          </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
@@ -91,17 +93,23 @@ export default function DesignSystemShowcasePage() {
             <TableBody>
               <TableRow>
                 <TableCell className="font-medium">Project Alpha</TableCell>
-                <TableCell><Badge variant="default">Active</Badge></TableCell>
+                <TableCell>
+                  <Badge variant="default">Active</Badge>
+                </TableCell>
                 <TableCell className="text-right tabular-nums">$12,500</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="font-medium">Project Beta</TableCell>
-                <TableCell><Badge variant="secondary">Draft</Badge></TableCell>
+                <TableCell>
+                  <Badge variant="secondary">Draft</Badge>
+                </TableCell>
                 <TableCell className="text-right tabular-nums">$8,200</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell className="font-medium">Project Gamma</TableCell>
-                <TableCell><Badge variant="outline">Pending</Badge></TableCell>
+                <TableCell>
+                  <Badge variant="outline">Pending</Badge>
+                </TableCell>
                 <TableCell className="text-right tabular-nums">$0</TableCell>
               </TableRow>
             </TableBody>
@@ -130,7 +138,9 @@ export default function DesignSystemShowcasePage() {
                 Content area. Forms and actions go in the footer.
               </div>
               <DialogFooter>
-                <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+                <Button variant="ghost" onClick={() => setOpen(false)}>
+                  Cancel
+                </Button>
                 <Button onClick={() => setOpen(false)}>Confirm</Button>
               </DialogFooter>
             </DialogContent>
@@ -139,7 +149,9 @@ export default function DesignSystemShowcasePage() {
       </Card>
 
       <p className="text-xs text-[var(--text-muted)]">
-        App shell: sidebar (left), topbar (page title + search + user menu), main content area. Navigate via sidebar to see the new layout on any page. Business pages are unchanged; only the shell and these core components use the new design system.
+        App shell: sidebar (left), topbar (page title + search + user menu), main content area.
+        Navigate via sidebar to see the new layout on any page. Business pages are unchanged; only
+        the shell and these core components use the new design system.
       </p>
     </div>
   );

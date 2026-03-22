@@ -58,7 +58,11 @@ export function laborPayrollDisplayStatus(
     return hasWorkerPaymentLink(workerPaymentId) ? "paid" : "unpaid";
   }
   if (hasWorkerPaymentLink(workerPaymentId)) return "paid";
-  return String(status ?? "").trim().toLowerCase() === "paid" ? "paid" : "unpaid";
+  return String(status ?? "")
+    .trim()
+    .toLowerCase() === "paid"
+    ? "paid"
+    : "unpaid";
 }
 
 /**

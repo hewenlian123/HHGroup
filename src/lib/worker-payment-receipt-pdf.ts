@@ -23,7 +23,7 @@ export function workerPaymentReceiptPdfFilename(receiptNo: string): string {
  */
 export async function downloadWorkerPaymentReceiptPdf(
   element: HTMLElement,
-  receiptNo: string,
+  receiptNo: string
 ): Promise<void> {
   const html2pdf = (await import("html2pdf.js")).default;
   const filename = workerPaymentReceiptPdfFilename(receiptNo);

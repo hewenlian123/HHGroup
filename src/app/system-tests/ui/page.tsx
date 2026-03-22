@@ -33,9 +33,7 @@ function StatusDot({ ok, running }: { ok: boolean | null; running: boolean }) {
     return <span className="inline-block h-2 w-2 rounded-full bg-amber-400 animate-pulse" />;
   if (ok === null) return <span className="inline-block h-2 w-2 rounded-full bg-border" />;
   return (
-    <span
-      className={`inline-block h-2 w-2 rounded-full ${ok ? "bg-emerald-500" : "bg-red-500"}`}
-    />
+    <span className={`inline-block h-2 w-2 rounded-full ${ok ? "bg-emerald-500" : "bg-red-500"}`} />
   );
 }
 
@@ -126,9 +124,7 @@ export default function UiTestsPage() {
       )}
 
       {/* Generic error */}
-      {error && !unavailable && (
-        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-      )}
+      {error && !unavailable && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       {/* Results table */}
       <div className="table-responsive">
@@ -199,10 +195,9 @@ export default function UiTestsPage() {
       {/* How it works note */}
       <div className="border-t border-border/60 pt-4">
         <p className="text-xs text-muted-foreground">
-          Tests run via{" "}
-          <code className="rounded bg-muted px-1 py-0.5">npm run ui:test</code> which launches
-          a headless Chromium browser and navigates each page, checking that key UI elements
-          render correctly. No test data is created or modified.
+          Tests run via <code className="rounded bg-muted px-1 py-0.5">npm run ui:test</code> which
+          launches a headless Chromium browser and navigates each page, checking that key UI
+          elements render correctly. No test data is created or modified.
         </p>
       </div>
     </div>

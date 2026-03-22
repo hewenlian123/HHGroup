@@ -11,10 +11,7 @@ export const dynamic = "force-dynamic";
  * Total Payments = SUM(worker_payments.total_amount).
  * Balance = Labor + Reimbursements + Invoices - Payments.
  */
-export async function GET(
-  _req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: workerId } = await params;
   if (!workerId) {
     return NextResponse.json({ message: "Worker id required" }, { status: 400 });
@@ -36,11 +33,11 @@ export async function GET(
     if (laborRes.error && /column.*cost_amount|schema cache/i.test(laborRes.error.message ?? "")) {
       laborRes = await query("labor_entries", "amount");
     }
-    const laborRows = (laborRes.data ?? []) as { cost_amount?: number | null; amount?: number | null }[];
-    const totalLabor = laborRows.reduce(
-      (s, r) => s + (Number(r.cost_amount ?? r.amount) || 0),
-      0
-    );
+    const laborRows = (laborRes.data ?? []) as {
+      cost_amount?: number | null;
+      amount?: number | null;
+    }[];
+    const totalLabor = laborRows.reduce((s, r) => s + (Number(r.cost_amount ?? r.amount) || 0), 0);
 
     const reimbRes = await query("worker_reimbursements", "amount");
     const reimbRows = (reimbRes.data ?? []) as { amount?: number | null }[];
@@ -51,10 +48,16 @@ export async function GET(
     const totalWorkerInvoices = invoiceRows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
 
     let paymentsRes: RawResult = await query("worker_payments", "worker_id, total_amount");
-    if (paymentsRes.error && /column.*total_amount|schema cache/i.test(paymentsRes.error.message ?? "")) {
+    if (
+      paymentsRes.error &&
+      /column.*total_amount|schema cache/i.test(paymentsRes.error.message ?? "")
+    ) {
       paymentsRes = await query("worker_payments", "worker_id, amount");
     }
-    const paymentRows = (paymentsRes.data ?? []) as { amount?: number | null; total_amount?: number | null }[];
+    const paymentRows = (paymentsRes.data ?? []) as {
+      amount?: number | null;
+      total_amount?: number | null;
+    }[];
     const totalPayments = paymentRows.reduce(
       (s, r) => s + (Number(r.total_amount ?? r.amount) || 0),
       0

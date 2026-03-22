@@ -21,12 +21,26 @@ import {
   getCloseoutCompletion,
 } from "@/lib/data";
 import { getCanonicalProjectProfit } from "@/lib/profit-engine";
-import {
-  ProjectDetailTabsClient,
-} from "./project-detail-tabs-client";
+import { ProjectDetailTabsClient } from "./project-detail-tabs-client";
 import type { RecentExpenseLineRow } from "./recent-expense-lines";
 
-type TabKey = "overview" | "tasks" | "schedule" | "financial" | "budget" | "expenses" | "labor" | "subcontracts" | "bills" | "documents" | "activity" | "change-orders" | "materials" | "closeout" | "commission" | "punch-list";
+type TabKey =
+  | "overview"
+  | "tasks"
+  | "schedule"
+  | "financial"
+  | "budget"
+  | "expenses"
+  | "labor"
+  | "subcontracts"
+  | "bills"
+  | "documents"
+  | "activity"
+  | "change-orders"
+  | "materials"
+  | "closeout"
+  | "commission"
+  | "punch-list";
 
 export default async function ProjectDetailPage({
   params,
@@ -38,7 +52,24 @@ export default async function ProjectDetailPage({
   const { id } = await params;
   const sp = (await searchParams) ?? {};
   const tabParam = (sp.tab ?? "overview").toString().toLowerCase();
-  const validTabs: TabKey[] = ["overview", "tasks", "schedule", "financial", "budget", "expenses", "labor", "subcontracts", "bills", "documents", "activity", "change-orders", "materials", "closeout", "commission", "punch-list"];
+  const validTabs: TabKey[] = [
+    "overview",
+    "tasks",
+    "schedule",
+    "financial",
+    "budget",
+    "expenses",
+    "labor",
+    "subcontracts",
+    "bills",
+    "documents",
+    "activity",
+    "change-orders",
+    "materials",
+    "closeout",
+    "commission",
+    "punch-list",
+  ];
   const tab: TabKey = validTabs.includes(tabParam as TabKey) ? (tabParam as TabKey) : "overview";
 
   const project = await getProjectById(id);
@@ -74,8 +105,23 @@ export default async function ProjectDetailPage({
     closeoutWarranty,
     closeoutCompletion,
   ] = await Promise.all([
-    safe(() => getCanonicalProjectProfit(id), { revenue: 0, actualCost: 0, profit: 0, margin: 0, budget: 0, approvedChangeOrders: 0, laborCost: 0, expenseCost: 0, subcontractCost: 0 }),
-    safe(() => getProjectBillingSummary(id), { paidTotal: 0, invoicedTotal: 0, arBalance: 0, lastPaymentDate: null }),
+    safe(() => getCanonicalProjectProfit(id), {
+      revenue: 0,
+      actualCost: 0,
+      profit: 0,
+      margin: 0,
+      budget: 0,
+      approvedChangeOrders: 0,
+      laborCost: 0,
+      expenseCost: 0,
+      subcontractCost: 0,
+    }),
+    safe(() => getProjectBillingSummary(id), {
+      paidTotal: 0,
+      invoicedTotal: 0,
+      arBalance: 0,
+      lastPaymentDate: null,
+    }),
     safe(() => getProjectTasks(id), []),
     safe(() => getWorkers(), []),
     safe(() => getExpenseLinesByProject(id, 10), []),
@@ -96,15 +142,17 @@ export default async function ProjectDetailPage({
   ]);
 
   // Map expense lines to Overview recent-expense-lines shape
-  const recentExpenseLines: RecentExpenseLineRow[] = (expenseLinesRaw ?? []).map(({ expenseId, date, vendorName, line }) => ({
-    id: line.id,
-    expenseId,
-    date,
-    vendorName,
-    category: line.category ?? "Other",
-    memo: line.memo ?? null,
-    amount: line.amount ?? 0,
-  }));
+  const recentExpenseLines: RecentExpenseLineRow[] = (expenseLinesRaw ?? []).map(
+    ({ expenseId, date, vendorName, line }) => ({
+      id: line.id,
+      expenseId,
+      date,
+      vendorName,
+      category: line.category ?? "Other",
+      memo: line.memo ?? null,
+      amount: line.amount ?? 0,
+    })
+  );
 
   const financialSummary = {
     budget: project.budget ?? 0,

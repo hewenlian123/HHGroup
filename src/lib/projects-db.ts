@@ -27,7 +27,12 @@ export type ProjectRow = {
   source_estimate_id: string | null;
   snapshot_revenue: number | null;
   snapshot_budget_cost: number | null;
-  snapshot_breakdown: { materials?: number; labor?: number; vendor?: number; other?: number } | null;
+  snapshot_breakdown: {
+    materials?: number;
+    labor?: number;
+    vendor?: number;
+    other?: number;
+  } | null;
 };
 
 export type Project = {
@@ -50,7 +55,12 @@ export type Project = {
   sourceEstimateId?: string | null;
   snapshotRevenue?: number | null;
   snapshotBudgetCost?: number | null;
-  snapshotBudgetBreakdown?: { materials: number; labor: number; vendor: number; other: number } | null;
+  snapshotBudgetBreakdown?: {
+    materials: number;
+    labor: number;
+    vendor: number;
+    other: number;
+  } | null;
 };
 
 function client() {
@@ -115,10 +125,16 @@ async function parseForeignKeyError(
   let count = 0;
   try {
     if (table === "labor_entries") {
-      const { data } = await c.from("labor_entries").select("id").or(`project_am_id.eq.${projectId},project_pm_id.eq.${projectId}`);
+      const { data } = await c
+        .from("labor_entries")
+        .select("id")
+        .or(`project_am_id.eq.${projectId},project_pm_id.eq.${projectId}`);
       count = (data ?? []).length;
     } else {
-      const { count: n } = await c.from(table).select("id", { count: "exact", head: true }).eq("project_id", projectId);
+      const { count: n } = await c
+        .from(table)
+        .select("id", { count: "exact", head: true })
+        .eq("project_id", projectId);
       count = n ?? 0;
     }
   } catch {
@@ -132,7 +148,11 @@ const HINT =
   "Run supabase/migrations/20260228000301_projects.sql in Supabase Dashboard → SQL Editor.";
 
 function toProject(r: ProjectRow): Project {
-  const status = (r.status === "active" || r.status === "pending" || r.status === "completed" ? r.status : "pending") as ProjectStatus;
+  const status = (
+    r.status === "active" || r.status === "pending" || r.status === "completed"
+      ? r.status
+      : "pending"
+  ) as ProjectStatus;
   const clientVal = r.client ?? (r as { client_name?: string | null }).client_name ?? null;
   return {
     id: r.id,
@@ -146,21 +166,33 @@ function toProject(r: ProjectRow): Project {
     ...(clientVal != null && clientVal !== "" ? { client: clientVal } : {}),
     ...(r.customer_id != null && r.customer_id !== "" ? { customerId: r.customer_id } : {}),
     ...(r.address != null && r.address !== "" ? { address: r.address } : {}),
-    ...(r.project_manager != null && r.project_manager !== "" ? { projectManager: r.project_manager } : {}),
+    ...(r.project_manager != null && r.project_manager !== ""
+      ? { projectManager: r.project_manager }
+      : {}),
     ...(r.start_date != null ? { startDate: String(r.start_date).slice(0, 10) } : {}),
     ...(r.end_date != null ? { endDate: String(r.end_date).slice(0, 10) } : {}),
     ...(r.notes != null && r.notes !== "" ? { notes: r.notes } : {}),
     ...(r.estimate_ref != null && r.estimate_ref !== "" ? { estimateRef: r.estimate_ref } : {}),
     ...(r.source_estimate_id != null ? { sourceEstimateId: r.source_estimate_id } : {}),
     ...(r.snapshot_revenue != null ? { snapshotRevenue: Number(r.snapshot_revenue) } : {}),
-    ...(r.snapshot_budget_cost != null ? { snapshotBudgetCost: Number(r.snapshot_budget_cost) } : {}),
+    ...(r.snapshot_budget_cost != null
+      ? { snapshotBudgetCost: Number(r.snapshot_budget_cost) }
+      : {}),
     ...(r.snapshot_breakdown != null && typeof r.snapshot_breakdown === "object"
-      ? { snapshotBudgetBreakdown: r.snapshot_breakdown as { materials: number; labor: number; vendor: number; other: number } }
+      ? {
+          snapshotBudgetBreakdown: r.snapshot_breakdown as {
+            materials: number;
+            labor: number;
+            vendor: number;
+            other: number;
+          },
+        }
       : {}),
   };
 }
 
-const COLS = "id,name,status,budget,spent,created_at,updated_at,client,client_name,customer_id,address,project_manager,start_date,end_date,notes,estimate_ref,source_estimate_id,snapshot_revenue,snapshot_budget_cost,snapshot_breakdown";
+const COLS =
+  "id,name,status,budget,spent,created_at,updated_at,client,client_name,customer_id,address,project_manager,start_date,end_date,notes,estimate_ref,source_estimate_id,snapshot_revenue,snapshot_budget_cost,snapshot_breakdown";
 
 export async function getProjects(): Promise<Project[]> {
   const c = client();
@@ -179,7 +211,9 @@ export async function getProjects(): Promise<Project[]> {
  * Dashboard-optimized project list: only selects fields needed for summary + health table.
  * Avoids pulling large optional columns (notes, snapshots, etc).
  */
-export async function getProjectsDashboard(limit = 200): Promise<Array<Pick<Project, "id" | "name" | "status" | "budget" | "updated">>> {
+export async function getProjectsDashboard(
+  limit = 200
+): Promise<Array<Pick<Project, "id" | "name" | "status" | "budget" | "updated">>> {
   const c = client();
   const cap = Math.max(1, Math.min(limit, 1000));
   const { data: rows, error } = await c
@@ -193,8 +227,19 @@ export async function getProjectsDashboard(limit = 200): Promise<Array<Pick<Proj
   }
 
   return (rows ?? []).map((r) => {
-    const row = r as { id: string; name: string | null; status: string | null; budget: number | null; updated_at: string | null; created_at: string | null };
-    const status = (row.status === "active" || row.status === "pending" || row.status === "completed" ? row.status : "pending") as ProjectStatus;
+    const row = r as {
+      id: string;
+      name: string | null;
+      status: string | null;
+      budget: number | null;
+      updated_at: string | null;
+      created_at: string | null;
+    };
+    const status = (
+      row.status === "active" || row.status === "pending" || row.status === "completed"
+        ? row.status
+        : "pending"
+    ) as ProjectStatus;
     return {
       id: row.id,
       name: row.name ?? "",
@@ -207,11 +252,7 @@ export async function getProjectsDashboard(limit = 200): Promise<Array<Pick<Proj
 
 export async function getProjectById(id: string): Promise<Project | null> {
   const c = client();
-  const { data: r, error } = await c
-    .from("projects")
-    .select(COLS)
-    .eq("id", id)
-    .maybeSingle();
+  const { data: r, error } = await c.from("projects").select(COLS).eq("id", id).maybeSingle();
   if (error) {
     if (isMissingTable(error)) throw new Error(`Projects table not found. ${HINT}`);
     throw new Error(error.message ? `${error.message} ${HINT}` : HINT);
@@ -262,14 +303,24 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
     status,
     budget,
     spent: 0,
-    ...(input.client != null && input.client !== "" ? { client: input.client.trim(), client_name: input.client.trim() } : {}),
+    ...(input.client != null && input.client !== ""
+      ? { client: input.client.trim(), client_name: input.client.trim() }
+      : {}),
     ...(input.address != null && input.address !== "" ? { address: input.address.trim() } : {}),
-    ...(input.projectManager != null && input.projectManager !== "" ? { project_manager: input.projectManager.trim() } : {}),
-    ...(input.startDate != null && input.startDate !== "" ? { start_date: input.startDate.trim() } : {}),
+    ...(input.projectManager != null && input.projectManager !== ""
+      ? { project_manager: input.projectManager.trim() }
+      : {}),
+    ...(input.startDate != null && input.startDate !== ""
+      ? { start_date: input.startDate.trim() }
+      : {}),
     ...(input.endDate != null && input.endDate !== "" ? { end_date: input.endDate.trim() } : {}),
     ...(input.notes != null && input.notes !== "" ? { notes: input.notes.trim() } : {}),
-    ...(input.estimateRef != null && input.estimateRef !== "" ? { estimate_ref: input.estimateRef.trim() } : {}),
-    ...(input.sourceEstimateId != null && input.sourceEstimateId !== "" ? { source_estimate_id: input.sourceEstimateId } : {}),
+    ...(input.estimateRef != null && input.estimateRef !== ""
+      ? { estimate_ref: input.estimateRef.trim() }
+      : {}),
+    ...(input.sourceEstimateId != null && input.sourceEstimateId !== ""
+      ? { source_estimate_id: input.sourceEstimateId }
+      : {}),
     ...(input.snapshotRevenue != null ? { snapshot_revenue: input.snapshotRevenue } : {}),
     ...(input.snapshotBudgetCost != null ? { snapshot_budget_cost: input.snapshotBudgetCost } : {}),
     ...(input.snapshotBreakdown != null ? { snapshot_breakdown: input.snapshotBreakdown } : {}),
@@ -277,7 +328,9 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
   const { data: inserted, error } = await c.from("projects").insert(row).select(COLS).single();
   if (error) {
     const raw = error.message ? ` (${error.message})` : "";
-    throw new Error(isMissingTable(error) ? `Projects table missing. ${HINT}${raw}` : error.message);
+    throw new Error(
+      isMissingTable(error) ? `Projects table missing. ${HINT}${raw}` : error.message
+    );
   }
   if (!inserted) throw new Error("Failed to create project: no id returned.");
   return toProject(inserted as ProjectRow);
@@ -302,7 +355,10 @@ export type UpdateProjectPatch = Partial<{
   snapshotBreakdown: { materials: number; labor: number; vendor: number; other: number } | null;
 }>;
 
-export async function updateProject(id: string, patch: UpdateProjectPatch): Promise<Project | null> {
+export async function updateProject(
+  id: string,
+  patch: UpdateProjectPatch
+): Promise<Project | null> {
   const c = client();
   const row: Record<string, unknown> = {};
   if (patch.name !== undefined) row.name = patch.name.trim();
@@ -421,11 +477,7 @@ export async function getProjectUsageCounts(projectId: string): Promise<ProjectU
   const c = client();
   const pid = projectId;
 
-  const safeCount = async (
-    table: string,
-    column: string,
-    value: string
-  ): Promise<number> => {
+  const safeCount = async (table: string, column: string, value: string): Promise<number> => {
     const { count, error } = await c
       .from(table)
       .select(column, { count: "exact", head: true })

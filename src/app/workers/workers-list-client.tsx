@@ -7,7 +7,13 @@ import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { runOptimisticPersist } from "@/lib/optimistic-save";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useToast } from "@/components/toast/toast-provider";
 import type { WorkerRow, WorkerStatus } from "@/lib/workers-db";
 import { updateWorkerAction, deleteWorkerAction } from "./actions";
@@ -122,7 +128,9 @@ export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
       apply: () => setItems((prev) => prev.filter((w) => w.id !== row.id)),
       rollback: (s) => setItems([...s.list].sort((a, b) => a.name.localeCompare(b.name))),
       persist: () =>
-        deleteWorkerAction(row.id).then((res) => (res.ok ? undefined : { error: res.error ?? "Failed to delete worker." })),
+        deleteWorkerAction(row.id).then((res) =>
+          res.ok ? undefined : { error: res.error ?? "Failed to delete worker." }
+        ),
       onError: (msg) => toast({ title: "Delete failed", description: msg, variant: "error" }),
       onSuccess: () => toast({ title: "Deleted", variant: "success" }),
     });
@@ -157,10 +165,22 @@ export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
         {items.map((r) => (
           <div key={r.id} className="group rounded-sm border border-border/60 bg-background p-4">
             <p className="font-medium text-foreground">{r.name}</p>
-            <p className="text-sm text-muted-foreground">{r.trade ?? "—"} · {r.phone ?? "—"}</p>
+            <p className="text-sm text-muted-foreground">
+              {r.trade ?? "—"} · {r.phone ?? "—"}
+            </p>
             <div className="mt-2 flex items-center justify-between gap-2 text-sm">
-              <span className="tabular-nums text-muted-foreground">Daily {fmtRate(r.daily_rate)}</span>
-              <span className={r.status === "Active" ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>{r.status}</span>
+              <span className="tabular-nums text-muted-foreground">
+                Daily {fmtRate(r.daily_rate)}
+              </span>
+              <span
+                className={
+                  r.status === "Active"
+                    ? "text-green-600 dark:text-green-400"
+                    : "text-muted-foreground"
+                }
+              >
+                {r.status}
+              </span>
             </div>
             <div className="mt-3 flex justify-end">
               <RowActionsMenu
@@ -169,7 +189,12 @@ export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
                 actions={[
                   { label: "View", onClick: () => router.push(`/workers/${r.id}`), disabled: busy },
                   { label: "Edit", onClick: () => setEditFor(r), disabled: busy },
-                  { label: "Delete", onClick: () => onDelete(r), destructive: true, disabled: busy },
+                  {
+                    label: "Delete",
+                    onClick: () => onDelete(r),
+                    destructive: true,
+                    disabled: busy,
+                  },
                 ]}
               />
             </div>
@@ -180,12 +205,24 @@ export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
         <table className="w-full min-w-[640px] border-separate border-spacing-y-1.5 border-spacing-x-0 text-sm md:min-w-0">
           <thead>
             <tr className="border-b border-border/60">
-              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Name</th>
-              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Trade</th>
-              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Phone</th>
-              <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider tabular-nums text-muted-foreground">Daily Rate</th>
-              <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider tabular-nums text-muted-foreground">Default OT Rate</th>
-              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Status</th>
+              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Name
+              </th>
+              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Trade
+              </th>
+              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Phone
+              </th>
+              <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider tabular-nums text-muted-foreground">
+                Daily Rate
+              </th>
+              <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider tabular-nums text-muted-foreground">
+                Default OT Rate
+              </th>
+              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Status
+              </th>
               <th className="w-10 px-1 text-right" aria-label="Actions" />
             </tr>
           </thead>
@@ -205,24 +242,63 @@ export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
                   }
                 }}
               >
-                <td className={cn("first:rounded-l-xl px-3 py-1.5 font-medium", listTablePrimaryCellClassName)}>{r.name}</td>
+                <td
+                  className={cn(
+                    "first:rounded-l-xl px-3 py-1.5 font-medium",
+                    listTablePrimaryCellClassName
+                  )}
+                >
+                  {r.name}
+                </td>
                 <td className="px-3 py-1.5 text-muted-foreground">{r.trade ?? "—"}</td>
                 <td className="px-3 py-1.5 text-muted-foreground">{r.phone ?? "—"}</td>
-                <td className={cn("px-3 py-1.5 text-right tabular-nums", listTableAmountCellClassName)}>{fmtRate(r.daily_rate)}</td>
-                <td className={cn("px-3 py-1.5 text-right tabular-nums", listTableAmountCellClassName)}>{fmtRate(r.default_ot_rate)}</td>
+                <td
+                  className={cn(
+                    "px-3 py-1.5 text-right tabular-nums",
+                    listTableAmountCellClassName
+                  )}
+                >
+                  {fmtRate(r.daily_rate)}
+                </td>
+                <td
+                  className={cn(
+                    "px-3 py-1.5 text-right tabular-nums",
+                    listTableAmountCellClassName
+                  )}
+                >
+                  {fmtRate(r.default_ot_rate)}
+                </td>
                 <td className="px-3 py-1.5">
-                  <span className={r.status === "Active" ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>
+                  <span
+                    className={
+                      r.status === "Active"
+                        ? "text-green-600 dark:text-green-400"
+                        : "text-muted-foreground"
+                    }
+                  >
                     {r.status}
                   </span>
                 </td>
-                <td className="last:rounded-r-xl px-1 py-1.5 text-right" onClick={(e) => e.stopPropagation()}>
+                <td
+                  className="last:rounded-r-xl px-1 py-1.5 text-right"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <RowActionsMenu
                     appearance="list"
                     ariaLabel={`Actions for ${r.name}`}
                     actions={[
-                      { label: "View", onClick: () => router.push(`/workers/${r.id}`), disabled: busy },
+                      {
+                        label: "View",
+                        onClick: () => router.push(`/workers/${r.id}`),
+                        disabled: busy,
+                      },
                       { label: "Edit", onClick: () => setEditFor(r), disabled: busy },
-                      { label: "Delete", onClick: () => onDelete(r), destructive: true, disabled: busy },
+                      {
+                        label: "Delete",
+                        onClick: () => onDelete(r),
+                        destructive: true,
+                        disabled: busy,
+                      },
                     ]}
                   />
                 </td>
@@ -242,16 +318,29 @@ export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
           <div className="grid gap-3 py-2">
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">Name (required)</label>
-              <Input value={name} onChange={(e) => setName(e.target.value)} className="h-9 text-sm" required />
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="h-9 text-sm"
+                required
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">Phone</label>
-                <Input value={phone} onChange={(e) => setPhone(e.target.value)} className="h-9 text-sm" />
+                <Input
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="h-9 text-sm"
+                />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">Trade</label>
-                <Input value={trade} onChange={(e) => setTrade(e.target.value)} className="h-9 text-sm" />
+                <Input
+                  value={trade}
+                  onChange={(e) => setTrade(e.target.value)}
+                  className="h-9 text-sm"
+                />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -293,14 +382,30 @@ export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
             </div>
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">Notes</label>
-              <Input value={notes} onChange={(e) => setNotes(e.target.value)} className="h-9 text-sm" />
+              <Input
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="h-9 text-sm"
+              />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" size="sm" className="h-8" onClick={() => setEditFor(null)} disabled={busy}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8"
+              onClick={() => setEditFor(null)}
+              disabled={busy}
+            >
               Cancel
             </Button>
-            <Button size="sm" className="h-8" onClick={onSaveEdit} disabled={busy || !name.trim()} aria-busy={busy}>
+            <Button
+              size="sm"
+              className="h-8"
+              onClick={onSaveEdit}
+              disabled={busy || !name.trim()}
+              aria-busy={busy}
+            >
               {busy ? (
                 <>
                   <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />

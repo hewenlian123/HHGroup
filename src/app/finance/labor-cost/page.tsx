@@ -6,7 +6,12 @@ import { Clock, ArrowRight } from "lucide-react";
 export const dynamic = "force-dynamic";
 
 function fmtUsd(n: number): string {
-  return n.toLocaleString("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return n.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 const navItems = [
@@ -35,7 +40,11 @@ export default async function FinanceLaborCostPage() {
           <Link
             key={item.href}
             href={item.href}
-            className={item.href === "/finance/labor-cost" ? "font-medium text-foreground" : "text-muted-foreground hover:text-foreground"}
+            className={
+              item.href === "/finance/labor-cost"
+                ? "font-medium text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }
           >
             {item.label}
           </Link>
@@ -45,11 +54,17 @@ export default async function FinanceLaborCostPage() {
 
       <div className="flex flex-col gap-1 border-b border-border/60 pb-4">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Total labor cost</span>
+          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Total labor cost
+          </span>
           <Clock className="h-4 w-4 text-muted-foreground" />
         </div>
-        <p className="text-xl font-semibold tabular-nums text-foreground">{fmtUsd(totalLaborCost)}</p>
-        <p className="text-xs text-muted-foreground mt-1">Sum of labor_entries.cost_amount (Approved & Locked).</p>
+        <p className="text-xl font-semibold tabular-nums text-foreground">
+          {fmtUsd(totalLaborCost)}
+        </p>
+        <p className="text-xs text-muted-foreground mt-1">
+          Sum of labor_entries.cost_amount (Approved & Locked).
+        </p>
       </div>
 
       <div className="mt-4">

@@ -26,8 +26,8 @@ export type WorkerBalanceRow = {
  * (When `worker_payment_id` exists, payout state follows the FK, not `status`.)
  * Reimbursements = SUM(worker_reimbursements.amount WHERE status != 'paid')
  * Payments = SUM(worker_payments.total_amount)
-   * Advances = SUM(worker_advances.amount WHERE status IN ('pending','deducted'))
-   * Balance = Labor Owed + Reimbursements - Payments - Advances
+ * Advances = SUM(worker_advances.amount WHERE status IN ('pending','deducted'))
+ * Balance = Labor Owed + Reimbursements - Payments - Advances
  * One row per worker.
  */
 export async function GET() {
@@ -50,11 +50,13 @@ export async function GET() {
     if (dbUrl) {
       const sql = postgres(dbUrl, { max: 1, connect_timeout: 10 });
       try {
-        const rows = await sql<{
-          worker_id: string;
-          name: string | null;
-          labor_owed: string | number | null;
-        }[]>`
+        const rows = await sql<
+          {
+            worker_id: string;
+            name: string | null;
+            labor_owed: string | number | null;
+          }[]
+        >`
           select
             lw.id as worker_id,
             lw.name,
@@ -83,19 +85,28 @@ export async function GET() {
         worker_payment_id?: string | null;
       }[] = [];
       let laborSettlementMode: "payment_link" | "status_fallback" = "payment_link";
-      const laborRes = await c.from("labor_entries").select("worker_id, cost_amount, status, worker_payment_id");
+      const laborRes = await c
+        .from("labor_entries")
+        .select("worker_id, cost_amount, status, worker_payment_id");
       if (laborRes.error && /column.*status|schema cache/i.test(laborRes.error.message ?? "")) {
-        const fallback = await c.from("labor_entries").select("worker_id, cost_amount, worker_payment_id");
-        laborRows = ((fallback.data ?? []) as {
-          worker_id: string;
-          cost_amount?: number | null;
-          worker_payment_id?: string | null;
-        }[]).map((r) => ({
+        const fallback = await c
+          .from("labor_entries")
+          .select("worker_id, cost_amount, worker_payment_id");
+        laborRows = (
+          (fallback.data ?? []) as {
+            worker_id: string;
+            cost_amount?: number | null;
+            worker_payment_id?: string | null;
+          }[]
+        ).map((r) => ({
           ...r,
           status: null,
         }));
         laborSettlementMode = "payment_link";
-      } else if (laborRes.error && /column.*worker_payment_id|schema cache/i.test(laborRes.error.message ?? "")) {
+      } else if (
+        laborRes.error &&
+        /column.*worker_payment_id|schema cache/i.test(laborRes.error.message ?? "")
+      ) {
         const fallback = await c.from("labor_entries").select("worker_id, cost_amount, status");
         laborRows = (fallback.data ?? []) as {
           worker_id: string;
@@ -118,7 +129,8 @@ export async function GET() {
       for (const r of laborRows) {
         const wid = r.worker_id;
         if (!wid) continue;
-        if (!isLaborUnpaidForWorkerPayroll(r.status, r.worker_payment_id, laborSettlementMode)) continue;
+        if (!isLaborUnpaidForWorkerPayroll(r.status, r.worker_payment_id, laborSettlementMode))
+          continue;
         const amt = Number(r.cost_amount) || 0;
         laborOwedByWorker.set(wid, (laborOwedByWorker.get(wid) ?? 0) + amt);
       }
@@ -127,17 +139,26 @@ export async function GET() {
     const reimbRes = await c.from("worker_reimbursements").select("worker_id, amount, status");
     let paymentRows: { worker_id: string; amount?: number | null }[] = [];
     const paymentsRes = await c.from("worker_payments").select("worker_id, total_amount");
-    if (paymentsRes.error && /column.*total_amount|schema cache/i.test(paymentsRes.error.message ?? "")) {
+    if (
+      paymentsRes.error &&
+      /column.*total_amount|schema cache/i.test(paymentsRes.error.message ?? "")
+    ) {
       const payFallback = await c.from("worker_payments").select("worker_id, amount");
       paymentRows = (payFallback.data ?? []) as { worker_id: string; amount?: number | null }[];
     } else {
-      paymentRows = ((paymentsRes.data ?? []) as { worker_id: string; total_amount?: number | null }[]).map((r) => ({
+      paymentRows = (
+        (paymentsRes.data ?? []) as { worker_id: string; total_amount?: number | null }[]
+      ).map((r) => ({
         worker_id: r.worker_id,
         amount: r.total_amount ?? null,
       }));
     }
 
-    const reimbRows = (reimbRes.data ?? []) as { worker_id: string; amount?: number | null; status?: string | null }[];
+    const reimbRows = (reimbRes.data ?? []) as {
+      worker_id: string;
+      amount?: number | null;
+      status?: string | null;
+    }[];
 
     const reimbByWorker = new Map<string, number>();
     for (const r of reimbRows) {
@@ -157,9 +178,7 @@ export async function GET() {
       paymentsByWorker.set(wid, (paymentsByWorker.get(wid) ?? 0) + amt);
     }
 
-    const advancesRes = await c
-      .from("worker_advances")
-      .select("worker_id, amount, status");
+    const advancesRes = await c.from("worker_advances").select("worker_id, amount, status");
     const advancesRows = (advancesRes.data ?? []) as {
       worker_id: string;
       amount?: number | null;

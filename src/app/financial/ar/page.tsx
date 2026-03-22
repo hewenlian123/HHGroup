@@ -63,14 +63,18 @@ export default async function ARPage() {
           {kpis.map(({ label, value, icon: Icon }) => (
             <div key={label}>
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">{label}</span>
+                <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                  {label}
+                </span>
                 <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               </div>
               <p
                 className={cn(
                   "mt-1 text-xl font-semibold tabular-nums",
                   label === "Overdue AR" && value > 0 && "text-amber-600 dark:text-amber-400",
-                  label === "Paid This Month" && value > 0 && "text-emerald-600 dark:text-emerald-400"
+                  label === "Paid This Month" &&
+                    value > 0 &&
+                    "text-emerald-600 dark:text-emerald-400"
                 )}
               >
                 ${value.toLocaleString()}
@@ -100,21 +104,33 @@ export default async function ARPage() {
                   <Table>
                     <TableHeader>
                       <TableRow className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border dark:bg-muted/20">
-                        <TableHead className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Invoice #</TableHead>
-                        <TableHead className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Project</TableHead>
-                        <TableHead className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Client</TableHead>
+                        <TableHead className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                          Invoice #
+                        </TableHead>
+                        <TableHead className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                          Project
+                        </TableHead>
+                        <TableHead className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                          Client
+                        </TableHead>
                         <TableHead className="text-right text-xs font-medium uppercase tracking-wider text-muted-foreground tabular-nums">
                           Invoice Total
                         </TableHead>
                         <TableHead className="text-right text-xs font-medium uppercase tracking-wider text-muted-foreground tabular-nums">
                           Paid
                         </TableHead>
-                        <TableHead className="text-xs font-medium uppercase tracking-wider text-muted-foreground tabular-nums">Due</TableHead>
+                        <TableHead className="text-xs font-medium uppercase tracking-wider text-muted-foreground tabular-nums">
+                          Due
+                        </TableHead>
                         <TableHead className="text-right text-xs font-medium uppercase tracking-wider text-muted-foreground tabular-nums">
                           Balance
                         </TableHead>
-                        <TableHead className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Status</TableHead>
-                        <TableHead className="text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Actions</TableHead>
+                        <TableHead className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                          Status
+                        </TableHead>
+                        <TableHead className="text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                          Actions
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -124,7 +140,10 @@ export default async function ARPage() {
                           className="border-b border-[#EBEBE9]/80 transition-colors hover:bg-[#F7F7F5] dark:border-border/40 dark:hover:bg-muted/20"
                         >
                           <TableCell className="font-medium">
-                            <Link href={`/financial/invoices/${inv.id}`} className="text-primary hover:underline">
+                            <Link
+                              href={`/financial/invoices/${inv.id}`}
+                              className="text-primary hover:underline"
+                            >
                               {inv.invoiceNo}
                             </Link>
                           </TableCell>
@@ -132,13 +151,21 @@ export default async function ARPage() {
                             {projectNameById.get(inv.projectId) ?? inv.projectId}
                           </TableCell>
                           <TableCell className="text-foreground">{inv.clientName}</TableCell>
-                          <TableCell className="text-right tabular-nums">${inv.total.toLocaleString()}</TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            ${inv.total.toLocaleString()}
+                          </TableCell>
                           <TableCell className="text-right tabular-nums text-emerald-600/90 dark:text-emerald-400/90">
                             ${inv.paidTotal.toLocaleString()}
                           </TableCell>
-                          <TableCell className="tabular-nums text-muted-foreground">{inv.dueDate}</TableCell>
-                          <TableCell className="text-right font-medium tabular-nums">${inv.balanceDue.toLocaleString()}</TableCell>
-                          <TableCell className="text-muted-foreground">{inv.computedStatus}</TableCell>
+                          <TableCell className="tabular-nums text-muted-foreground">
+                            {inv.dueDate}
+                          </TableCell>
+                          <TableCell className="text-right font-medium tabular-nums">
+                            ${inv.balanceDue.toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {inv.computedStatus}
+                          </TableCell>
                           <TableCell className="text-right">
                             <Button asChild variant="outline" size="sm" className="h-8 rounded-sm">
                               <Link href={`/financial/invoices/${inv.id}?recordPayment=1`}>

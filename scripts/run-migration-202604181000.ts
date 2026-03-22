@@ -16,7 +16,7 @@ async function main() {
     "..",
     "supabase",
     "migrations",
-    "202604181000_worker_advances.sql",
+    "202604181000_worker_advances.sql"
   );
 
   const text = fs.readFileSync(migrationPath, "utf8");
@@ -31,4 +31,3 @@ main().catch((err) => {
   console.error("Migration failed:", err);
   process.exit(1);
 });
-

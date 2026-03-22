@@ -118,82 +118,142 @@ export function CommissionsClient({
       <Card className="overflow-hidden p-0">
         <div className="grid divide-y divide-[#EBEBE9] sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4 lg:divide-x dark:divide-border/60">
           <div className="p-4">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Total Commission</p>
-            <p className="text-base font-semibold mt-1 tabular-nums text-[#2D2D2D] dark:text-foreground">${fmtUsd(summary.totalCommission)}</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Total Commission
+            </p>
+            <p className="text-base font-semibold mt-1 tabular-nums text-[#2D2D2D] dark:text-foreground">
+              ${fmtUsd(summary.totalCommission)}
+            </p>
           </div>
           <div className="p-4">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Paid Commission</p>
-            <p className="text-base font-semibold mt-1 tabular-nums text-[#2D2D2D] dark:text-foreground">${fmtUsd(summary.paidCommission)}</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Paid Commission
+            </p>
+            <p className="text-base font-semibold mt-1 tabular-nums text-[#2D2D2D] dark:text-foreground">
+              ${fmtUsd(summary.paidCommission)}
+            </p>
           </div>
           <div className="p-4">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Outstanding</p>
-            <p className="text-base font-semibold mt-1 tabular-nums text-[#2D2D2D] dark:text-foreground">${fmtUsd(summary.outstandingCommission)}</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Outstanding
+            </p>
+            <p className="text-base font-semibold mt-1 tabular-nums text-[#2D2D2D] dark:text-foreground">
+              ${fmtUsd(summary.outstandingCommission)}
+            </p>
           </div>
           <div className="p-4">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">This Month Paid</p>
-            <p className="text-base font-semibold mt-1 tabular-nums text-[#2D2D2D] dark:text-foreground">${fmtUsd(summary.thisMonthPaid)}</p>
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              This Month Paid
+            </p>
+            <p className="text-base font-semibold mt-1 tabular-nums text-[#2D2D2D] dark:text-foreground">
+              ${fmtUsd(summary.thisMonthPaid)}
+            </p>
           </div>
         </div>
       </Card>
 
       <Card className="mt-4 overflow-hidden p-0">
         <div className="overflow-x-auto">
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
-              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Project</th>
-              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Person</th>
-              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Role</th>
-              <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground tabular-nums">Commission Amount</th>
-              <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground tabular-nums">Paid Amount</th>
-              <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground tabular-nums">Outstanding</th>
-              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">Status</th>
-              <th className="w-24" />
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="py-6 text-center text-muted-foreground text-sm">
-                  No commissions.
-                </td>
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
+                <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Project
+                </th>
+                <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Person
+                </th>
+                <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Role
+                </th>
+                <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground tabular-nums">
+                  Commission Amount
+                </th>
+                <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground tabular-nums">
+                  Paid Amount
+                </th>
+                <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground tabular-nums">
+                  Outstanding
+                </th>
+                <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Status
+                </th>
+                <th className="w-24" />
               </tr>
-            ) : (
-              rows.map((r) => (
-                <tr
-                  key={r.id}
-                  className={cn(listTableRowClassName, "border-b border-[#EBEBE9]/80 last:border-b-0 dark:border-border/40")}
-                  onClick={() => router.push(`/projects/${r.project_id}`)}
-                >
-                  <td className="py-2 px-3">
-                    <span className={cn("font-medium text-foreground", listTablePrimaryCellClassName, "hover:underline")}>
-                      {r.project_name || "—"}
-                    </span>
-                  </td>
-                  <td className="py-2 px-3 text-muted-foreground">{r.person_name || "—"}</td>
-                  <td className="py-2 px-3 text-muted-foreground">{r.role}</td>
-                  <td className={cn("py-2 px-3 text-right tabular-nums", listTableAmountCellClassName)}>${fmtUsd(r.commission_amount)}</td>
-                  <td className={cn("py-2 px-3 text-right tabular-nums text-muted-foreground", listTableAmountCellClassName)}>${fmtUsd(r.paid_amount)}</td>
-                  <td className={cn("py-2 px-3 text-right tabular-nums font-medium", listTableAmountCellClassName)}>${fmtUsd(r.outstanding_amount)}</td>
-                  <td className="py-2 px-3 text-muted-foreground">{r.status}</td>
-                  <td className="py-2 px-3" onClick={(e) => e.stopPropagation()}>
-                    {r.outstanding_amount > 0 && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="h-7 text-xs"
-                        onClick={() => openPaymentModal(r)}
-                      >
-                        Record Payment
-                      </Button>
-                    )}
+            </thead>
+            <tbody>
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-6 text-center text-muted-foreground text-sm">
+                    No commissions.
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                rows.map((r) => (
+                  <tr
+                    key={r.id}
+                    className={cn(
+                      listTableRowClassName,
+                      "border-b border-[#EBEBE9]/80 last:border-b-0 dark:border-border/40"
+                    )}
+                    onClick={() => router.push(`/projects/${r.project_id}`)}
+                  >
+                    <td className="py-2 px-3">
+                      <span
+                        className={cn(
+                          "font-medium text-foreground",
+                          listTablePrimaryCellClassName,
+                          "hover:underline"
+                        )}
+                      >
+                        {r.project_name || "—"}
+                      </span>
+                    </td>
+                    <td className="py-2 px-3 text-muted-foreground">{r.person_name || "—"}</td>
+                    <td className="py-2 px-3 text-muted-foreground">{r.role}</td>
+                    <td
+                      className={cn(
+                        "py-2 px-3 text-right tabular-nums",
+                        listTableAmountCellClassName
+                      )}
+                    >
+                      ${fmtUsd(r.commission_amount)}
+                    </td>
+                    <td
+                      className={cn(
+                        "py-2 px-3 text-right tabular-nums text-muted-foreground",
+                        listTableAmountCellClassName
+                      )}
+                    >
+                      ${fmtUsd(r.paid_amount)}
+                    </td>
+                    <td
+                      className={cn(
+                        "py-2 px-3 text-right tabular-nums font-medium",
+                        listTableAmountCellClassName
+                      )}
+                    >
+                      ${fmtUsd(r.outstanding_amount)}
+                    </td>
+                    <td className="py-2 px-3 text-muted-foreground">{r.status}</td>
+                    <td className="py-2 px-3" onClick={(e) => e.stopPropagation()}>
+                      {r.outstanding_amount > 0 && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs"
+                          onClick={() => openPaymentModal(r)}
+                        >
+                          Record Payment
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </Card>
 
@@ -204,7 +264,8 @@ export function CommissionsClient({
           </DialogHeader>
           {selectedCommission && (
             <p className="text-sm text-muted-foreground">
-              {selectedCommission.person_name} · {selectedCommission.project_name} · Outstanding: ${fmtUsd(selectedCommission.outstanding_amount)}
+              {selectedCommission.person_name} · {selectedCommission.project_name} · Outstanding: $
+              {fmtUsd(selectedCommission.outstanding_amount)}
             </p>
           )}
           <form id="payment-form" onSubmit={handleRecordPayment} className="flex flex-col gap-3">
@@ -221,7 +282,9 @@ export function CommissionsClient({
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground block mb-1">Payment Date</label>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">
+                Payment Date
+              </label>
               <Input
                 type="date"
                 value={paymentForm.payment_date}
@@ -231,19 +294,25 @@ export function CommissionsClient({
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground block mb-1">Payment Method</label>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">
+                Payment Method
+              </label>
               <Select
                 value={paymentForm.payment_method}
                 onChange={(e) => setPaymentForm((p) => ({ ...p, payment_method: e.target.value }))}
                 className="h-9 w-full"
               >
                 {PAYMENT_METHODS.map((m) => (
-                  <option key={m} value={m}>{m}</option>
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
                 ))}
               </Select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground block mb-1">Reference No</label>
+              <label className="text-xs font-medium text-muted-foreground block mb-1">
+                Reference No
+              </label>
               <Input
                 value={paymentForm.reference_no}
                 onChange={(e) => setPaymentForm((p) => ({ ...p, reference_no: e.target.value }))}
@@ -263,7 +332,12 @@ export function CommissionsClient({
             {error && <p className="text-sm text-destructive">{error}</p>}
           </form>
           <DialogFooter className="border-t border-border/60 pt-3">
-            <Button type="button" variant="outline" size="sm" onClick={() => setPaymentModalOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setPaymentModalOpen(false)}
+            >
               Cancel
             </Button>
             <Button type="submit" form="payment-form" size="sm" disabled={submitting}>

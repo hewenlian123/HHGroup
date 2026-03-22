@@ -29,7 +29,9 @@ export async function updateWorkerAction(
   }
 }
 
-export async function deleteWorkerAction(id: string): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function deleteWorkerAction(
+  id: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
     await workersDb.deleteWorker(id);
     revalidatePath("/workers");

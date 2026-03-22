@@ -1,7 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { LaborEntryWithJoins } from "@/lib/daily-labor-db";
@@ -133,24 +139,50 @@ export function EditEntryModal(props: {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <label className="text-xs font-medium text-muted-foreground">Cost Amount</label>
-              <Input value={costAmount} onChange={(e) => setCostAmount(e.target.value)} className="h-9 tabular-nums" inputMode="decimal" />
+              <Input
+                value={costAmount}
+                onChange={(e) => setCostAmount(e.target.value)}
+                className="h-9 tabular-nums"
+                inputMode="decimal"
+              />
             </div>
             <div className="space-y-2">
               <label className="text-xs font-medium text-muted-foreground">Hours</label>
-              <Input value={hours} onChange={(e) => setHours(e.target.value)} className="h-9 tabular-nums" inputMode="decimal" />
+              <Input
+                value={hours}
+                onChange={(e) => setHours(e.target.value)}
+                className="h-9 tabular-nums"
+                inputMode="decimal"
+              />
             </div>
           </div>
           <div className="space-y-2">
             <label className="text-xs font-medium text-muted-foreground">Notes (optional)</label>
-            <Input value={notes} onChange={(e) => setNotes(e.target.value)} className="h-9" placeholder="Optional" />
+            <Input
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="h-9"
+              placeholder="Optional"
+            />
           </div>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
         </div>
         <DialogFooter className="px-6 pb-6 max-sm:px-4 max-sm:pb-4 border-t border-border/60 pt-4">
-          <Button variant="outline" size="sm" className="rounded-sm" onClick={() => onOpenChange(false)} disabled={busy}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-sm"
+            onClick={() => onOpenChange(false)}
+            disabled={busy}
+          >
             Cancel
           </Button>
-          <Button size="sm" className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90" onClick={handleSave} disabled={busy}>
+          <Button
+            size="sm"
+            className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90"
+            onClick={handleSave}
+            disabled={busy}
+          >
             {busy ? "Saving…" : "Save Changes"}
           </Button>
         </DialogFooter>
@@ -158,4 +190,3 @@ export function EditEntryModal(props: {
     </Dialog>
   );
 }
-

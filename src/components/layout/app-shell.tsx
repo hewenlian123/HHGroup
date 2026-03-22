@@ -45,7 +45,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     const printReceiptBg = pathname?.startsWith("/receipt/print/");
     return (
       <ToastProvider>
-        <div className={printReceiptBg ? "min-h-screen bg-[#f5f5f5]" : "min-h-screen bg-[#F2F2F4]"}>{children}</div>
+        <div className={printReceiptBg ? "min-h-screen bg-[#f5f5f5]" : "min-h-screen bg-[#F2F2F4]"}>
+          {children}
+        </div>
       </ToastProvider>
     );
   }
@@ -54,37 +56,43 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <ToastProvider>
       <SystemHealthProvider>
         <LaborAddEntryProvider>
-        <SystemHealthPoller />
-        <div className="app-shell flex h-screen overflow-hidden bg-warm-grey">
-          {/* Tablet/Desktop (640px+): sidebar fixed left, collapsible. */}
-          <Sidebar
-            className="hidden sm:flex shrink-0 transition-[width] duration-200"
-            collapsed={collapsed}
-            onToggleCollapsed={() => setCollapsed((v) => !v)}
-          />
-          {/* Mobile (<640px): slide-out drawer (hamburger menu). */}
-          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-            <SheetContent
-              side="left"
-              className="w-[240px] max-w-[85vw] p-0 transition-transform duration-200 data-[state=open]:slide-in-from-left data-[state=closed]:slide-out-to-left"
-            >
-              <Sidebar className="h-full w-full border-none" onNavigate={() => setMobileOpen(false)} />
-            </SheetContent>
-          </Sheet>
-          <div
-            data-app-main-column
-            className="flex min-w-0 flex-1 flex-col overflow-hidden"
-          >
-            <Topbar
-              onOpenSidebar={() => setMobileOpen(true)}
-              onToggleSidebar={() => setCollapsed((c) => !c)}
+          <SystemHealthPoller />
+          <div className="app-shell flex h-screen overflow-hidden bg-warm-grey">
+            {/* Tablet/Desktop (640px+): sidebar fixed left, collapsible. */}
+            <Sidebar
+              className="hidden sm:flex shrink-0 transition-[width] duration-200"
+              collapsed={collapsed}
+              onToggleCollapsed={() => setCollapsed((v) => !v)}
             />
-            <main className={cn("flex-1 overflow-y-auto overflow-x-hidden bg-warm-grey pb-14 sm:pb-0")}>{children}</main>
-            <BottomNav className="fixed bottom-0 left-0 right-0 z-30 sm:hidden" />
-            <FloatingActionButton />
+            {/* Mobile (<640px): slide-out drawer (hamburger menu). */}
+            <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+              <SheetContent
+                side="left"
+                className="w-[240px] max-w-[85vw] p-0 transition-transform duration-200 data-[state=open]:slide-in-from-left data-[state=closed]:slide-out-to-left"
+              >
+                <Sidebar
+                  className="h-full w-full border-none"
+                  onNavigate={() => setMobileOpen(false)}
+                />
+              </SheetContent>
+            </Sheet>
+            <div data-app-main-column className="flex min-w-0 flex-1 flex-col overflow-hidden">
+              <Topbar
+                onOpenSidebar={() => setMobileOpen(true)}
+                onToggleSidebar={() => setCollapsed((c) => !c)}
+              />
+              <main
+                className={cn(
+                  "flex-1 overflow-y-auto overflow-x-hidden bg-warm-grey pb-14 sm:pb-0"
+                )}
+              >
+                {children}
+              </main>
+              <BottomNav className="fixed bottom-0 left-0 right-0 z-30 sm:hidden" />
+              <FloatingActionButton />
+            </div>
           </div>
-        </div>
-        <PWAInstallPrompt />
+          <PWAInstallPrompt />
         </LaborAddEntryProvider>
       </SystemHealthProvider>
     </ToastProvider>

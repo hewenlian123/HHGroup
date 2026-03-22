@@ -31,7 +31,13 @@ type LineForm = {
 };
 
 function newLine(): LineForm {
-  return { id: `l-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, projectId: null, category: "Other", memo: "", amount: "" };
+  return {
+    id: `l-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    projectId: null,
+    category: "Other",
+    memo: "",
+    amount: "",
+  };
 }
 
 function safeAmount(s: string): number {
@@ -66,7 +72,9 @@ export default function NewExpensePage() {
   const [lines, setLines] = React.useState<LineForm[]>([newLine()]);
   const [receiptFile, setReceiptFile] = React.useState<File | null>(null);
 
-  const [accounts, setAccounts] = React.useState<Array<{ id: string; name: string; type: string; lastFour: string | null }>>([]);
+  const [accounts, setAccounts] = React.useState<
+    Array<{ id: string; name: string; type: string; lastFour: string | null }>
+  >([]);
 
   const supabase = React.useMemo(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -116,11 +124,19 @@ export default function NewExpensePage() {
     }
     const amount = parseCurrency(amountInput);
     if (!(amount > 0)) {
-      toast({ title: "Missing amount", description: "Amount must be greater than 0.", variant: "error" });
+      toast({
+        title: "Missing amount",
+        description: "Amount must be greater than 0.",
+        variant: "error",
+      });
       return false;
     }
     if (!(total > 0)) {
-      toast({ title: "Missing split lines", description: "At least one split line amount is required.", variant: "error" });
+      toast({
+        title: "Missing split lines",
+        description: "At least one split line amount is required.",
+        variant: "error",
+      });
       return false;
     }
     if (Math.round(amount * 100) !== Math.round(total * 100)) {
@@ -158,10 +174,12 @@ export default function NewExpensePage() {
       });
       if (receiptFile && supabase) {
         const path = `receipts/${created.id}/${receiptFile.name}`;
-        const { error: uploadError } = await supabase.storage.from("receipts").upload(path, receiptFile, {
-          contentType: receiptFile.type || "application/octet-stream",
-          upsert: true,
-        });
+        const { error: uploadError } = await supabase.storage
+          .from("receipts")
+          .upload(path, receiptFile, {
+            contentType: receiptFile.type || "application/octet-stream",
+            upsert: true,
+          });
         if (uploadError) throw new Error(uploadError.message);
         const { data: urlData } = supabase.storage.from("receipts").getPublicUrl(path);
         await updateExpenseReceiptUrl(created.id, urlData.publicUrl);
@@ -193,7 +211,9 @@ export default function NewExpensePage() {
             <h2 className="text-sm font-medium text-foreground">Expense details</h2>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Vendor</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Vendor
+                </label>
                 <CreatableSelect
                   label=""
                   value={vendorName}
@@ -210,7 +230,9 @@ export default function NewExpensePage() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Amount</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Amount
+                </label>
                 <div className="flex items-center gap-2 rounded-md border border-input px-3 py-1.5">
                   <span className="text-sm font-medium text-muted-foreground">$</span>
                   <input
@@ -224,11 +246,21 @@ export default function NewExpensePage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</label>
-                <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-9" required />
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Date
+                </label>
+                <Input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="h-9"
+                  required
+                />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Payment source</label>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Payment source
+                </label>
                 <select
                   value={accountId}
                   onChange={(e) => setAccountId(e.target.value)}
@@ -243,13 +275,27 @@ export default function NewExpensePage() {
                 </select>
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Reference #</label>
-                <Input value={referenceNo} onChange={(e) => setReferenceNo(e.target.value)} className="h-9" placeholder="Optional" />
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Reference #
+                </label>
+                <Input
+                  value={referenceNo}
+                  onChange={(e) => setReferenceNo(e.target.value)}
+                  className="h-9"
+                  placeholder="Optional"
+                />
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Notes</label>
-              <Input value={notes} onChange={(e) => setNotes(e.target.value)} className="h-9" placeholder="Optional" />
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Notes
+              </label>
+              <Input
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="h-9"
+                placeholder="Optional"
+              />
             </div>
           </section>
 
@@ -277,9 +323,13 @@ export default function NewExpensePage() {
                 if (file) setReceiptFile(file);
               }}
             >
-              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Drag receipt here</span>
+              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Drag receipt here
+              </span>
               <span className="mt-1 text-sm text-foreground">or click to upload</span>
-              <span className="mt-1 text-xs text-muted-foreground">Supported formats: JPG, PNG, PDF</span>
+              <span className="mt-1 text-xs text-muted-foreground">
+                Supported formats: JPG, PNG, PDF
+              </span>
               {receiptFile ? (
                 <span className="mt-2 text-xs text-foreground">Selected: {receiptFile.name}</span>
               ) : null}
@@ -305,7 +355,11 @@ export default function NewExpensePage() {
                 <div key={l.id} className="grid gap-3 md:grid-cols-[1fr_160px_160px_140px_36px]">
                   <Input
                     value={l.memo}
-                    onChange={(e) => setLines((prev) => prev.map((x) => (x.id === l.id ? { ...x, memo: e.target.value } : x)))}
+                    onChange={(e) =>
+                      setLines((prev) =>
+                        prev.map((x) => (x.id === l.id ? { ...x, memo: e.target.value } : x))
+                      )
+                    }
                     className="h-9"
                     placeholder="Memo / description"
                   />
@@ -313,7 +367,9 @@ export default function NewExpensePage() {
                     value={l.projectId ?? ""}
                     onChange={(e) => {
                       const v = e.target.value || null;
-                      setLines((prev) => prev.map((x) => (x.id === l.id ? { ...x, projectId: v } : x)));
+                      setLines((prev) =>
+                        prev.map((x) => (x.id === l.id ? { ...x, projectId: v } : x))
+                      );
                     }}
                     className="h-9 rounded border border-input bg-transparent px-2 text-xs"
                     disabled={loading}
@@ -327,7 +383,11 @@ export default function NewExpensePage() {
                   </select>
                   <select
                     value={l.category}
-                    onChange={(e) => setLines((prev) => prev.map((x) => (x.id === l.id ? { ...x, category: e.target.value } : x)))}
+                    onChange={(e) =>
+                      setLines((prev) =>
+                        prev.map((x) => (x.id === l.id ? { ...x, category: e.target.value } : x))
+                      )
+                    }
                     className="h-9 rounded border border-input bg-transparent px-2 text-xs"
                     disabled={loading}
                   >
@@ -342,7 +402,11 @@ export default function NewExpensePage() {
                     min="0"
                     step="0.01"
                     value={l.amount}
-                    onChange={(e) => setLines((prev) => prev.map((x) => (x.id === l.id ? { ...x, amount: e.target.value } : x)))}
+                    onChange={(e) =>
+                      setLines((prev) =>
+                        prev.map((x) => (x.id === l.id ? { ...x, amount: e.target.value } : x))
+                      )
+                    }
                     className="h-9 tabular-nums"
                     placeholder="0.00"
                     required={idx === 0}
@@ -352,7 +416,11 @@ export default function NewExpensePage() {
                     variant="ghost"
                     size="icon"
                     className="h-9 w-9 text-destructive"
-                    onClick={() => setLines((prev) => (prev.length <= 1 ? prev : prev.filter((x) => x.id !== l.id)))}
+                    onClick={() =>
+                      setLines((prev) =>
+                        prev.length <= 1 ? prev : prev.filter((x) => x.id !== l.id)
+                      )
+                    }
                     aria-label="Remove"
                     disabled={lines.length <= 1}
                   >
@@ -387,4 +455,3 @@ export default function NewExpensePage() {
     </div>
   );
 }
-

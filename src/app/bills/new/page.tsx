@@ -11,10 +11,7 @@ export default async function NewBillPage() {
   return (
     <PageLayout
       header={
-        <PageHeader
-          title="New bill"
-          description="Create a vendor, labor, or other payable bill."
-        />
+        <PageHeader title="New bill" description="Create a vendor, labor, or other payable bill." />
       }
     >
       <NewBillClient projects={projectOptions} />

@@ -39,7 +39,11 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
       .maybeSingle();
 
     if (selFull.error && /labor_entry_ids|schema cache/i.test(selFull.error.message ?? "")) {
-      const selBase = await admin.from("worker_payments").select("id, worker_id").eq("id", paymentId).maybeSingle();
+      const selBase = await admin
+        .from("worker_payments")
+        .select("id, worker_id")
+        .eq("id", paymentId)
+        .maybeSingle();
       if (selBase.error) throw new Error(selBase.error.message ?? "Failed to load payment.");
       paymentRow = selBase.data as { id: string; worker_id: string };
     } else if (selFull.error) {
@@ -61,9 +65,18 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
       paid_at: null,
       payment_id: null,
     };
-    let reimbUp = await admin.from("worker_reimbursements").update(reimbPatch).eq("payment_id", paymentId);
-    if (reimbUp.error && /column|schema cache|payment_id|paid_at/i.test(reimbUp.error.message ?? "")) {
-      reimbUp = await admin.from("worker_reimbursements").update({ status: "pending" }).eq("payment_id", paymentId);
+    let reimbUp = await admin
+      .from("worker_reimbursements")
+      .update(reimbPatch)
+      .eq("payment_id", paymentId);
+    if (
+      reimbUp.error &&
+      /column|schema cache|payment_id|paid_at/i.test(reimbUp.error.message ?? "")
+    ) {
+      reimbUp = await admin
+        .from("worker_reimbursements")
+        .update({ status: "pending" })
+        .eq("payment_id", paymentId);
     }
     if (reimbUp.error && !/column|schema cache|payment_id/i.test(reimbUp.error.message ?? "")) {
       console.warn("[delete worker payment] reimbursements:", reimbUp.error.message);
@@ -89,7 +102,10 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
       throw new Error(uPaid.error.message ?? "Failed to unlink paid labor entries.");
     }
 
-    const uRest = await admin.from("labor_entries").update({ worker_payment_id: null }).eq("worker_payment_id", paymentId);
+    const uRest = await admin
+      .from("labor_entries")
+      .update({ worker_payment_id: null })
+      .eq("worker_payment_id", paymentId);
     if (uRest.error && /column|schema cache|worker_payment_id/i.test(uRest.error.message ?? "")) {
       /* worker_payment_id column missing — rely on legacy status + labor_entry_ids above */
     } else if (uRest.error) {
@@ -113,7 +129,10 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     const { error: delErr } = await admin.from("worker_payments").delete().eq("id", paymentId);
     if (delErr) {
       if (/relation.*does not exist|schema cache|pgrst205/i.test(delErr.message ?? "")) {
-        return NextResponse.json({ message: "worker_payments table not available." }, { status: 503 });
+        return NextResponse.json(
+          { message: "worker_payments table not available." },
+          { status: 503 }
+        );
       }
       throw new Error(delErr.message ?? "Failed to delete payment.");
     }

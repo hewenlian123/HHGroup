@@ -39,13 +39,22 @@ export function WorkerPaymentReceiptPreviewModal({ paymentId, open, onOpenChange
 
     void (async () => {
       try {
-        const res = await fetch(`/api/labor/worker-payments/${encodeURIComponent(paymentId)}/receipt-preview`, {
-          cache: "no-store",
-        });
-        const json = (await res.json().catch(() => null)) as { error?: string } | WorkerPaymentReceiptPreviewDto;
+        const res = await fetch(
+          `/api/labor/worker-payments/${encodeURIComponent(paymentId)}/receipt-preview`,
+          {
+            cache: "no-store",
+          }
+        );
+        const json = (await res.json().catch(() => null)) as
+          | { error?: string }
+          | WorkerPaymentReceiptPreviewDto;
         if (cancelled) return;
         if (!res.ok) {
-          setError(typeof json === "object" && json && "error" in json && json.error ? String(json.error) : "Failed to load.");
+          setError(
+            typeof json === "object" && json && "error" in json && json.error
+              ? String(json.error)
+              : "Failed to load."
+          );
           setData(null);
           return;
         }
@@ -71,8 +80,7 @@ export function WorkerPaymentReceiptPreviewModal({ paymentId, open, onOpenChange
   const handleDownloadPdf = React.useCallback(async () => {
     if (!data?.receiptNo) return;
     const root = receiptExportRef.current;
-    const el =
-      (root?.querySelector(".receipt-container") as HTMLElement | null) ?? root;
+    const el = (root?.querySelector(".receipt-container") as HTMLElement | null) ?? root;
     if (!el) return;
     setPdfBusy(true);
     try {
@@ -87,7 +95,10 @@ export function WorkerPaymentReceiptPreviewModal({ paymentId, open, onOpenChange
   const handlePrint = React.useCallback(() => {
     const root = document.documentElement;
     root.classList.add("print-worker-receipt-preview");
-    const t = window.setTimeout(() => root.classList.remove("print-worker-receipt-preview"), 10_000);
+    const t = window.setTimeout(
+      () => root.classList.remove("print-worker-receipt-preview"),
+      10_000
+    );
     const cleanup = () => {
       window.clearTimeout(t);
       root.classList.remove("print-worker-receipt-preview");
@@ -114,12 +125,21 @@ export function WorkerPaymentReceiptPreviewModal({ paymentId, open, onOpenChange
           )}
         >
           <DialogPrimitive.Description className="sr-only">
-            Worker payment receipt preview. Print from here or download PDF without leaving this page.
+            Worker payment receipt preview. Print from here or download PDF without leaving this
+            page.
           </DialogPrimitive.Description>
           <div className="modal-header flex shrink-0 items-center justify-between gap-3 border-b border-border/60 px-4 py-3">
-            <DialogPrimitive.Title className="text-sm font-semibold text-foreground">Receipt preview</DialogPrimitive.Title>
+            <DialogPrimitive.Title className="text-sm font-semibold text-foreground">
+              Receipt preview
+            </DialogPrimitive.Title>
             <div className="flex flex-wrap items-center justify-end gap-1">
-              <Button type="button" size="sm" variant="outline" className="h-8 gap-1" onClick={handlePrint}>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8 gap-1"
+                onClick={handlePrint}
+              >
                 <Printer className="h-3.5 w-3.5" />
                 Print
               </Button>
@@ -135,7 +155,13 @@ export function WorkerPaymentReceiptPreviewModal({ paymentId, open, onOpenChange
                 {pdfBusy ? "Generating…" : "Download PDF"}
               </Button>
               <DialogPrimitive.Close asChild>
-                <Button type="button" size="sm" variant="ghost" className="h-8 w-8 shrink-0 p-0" aria-label="Close">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 w-8 shrink-0 p-0"
+                  aria-label="Close"
+                >
                   <X className="h-4 w-4" />
                 </Button>
               </DialogPrimitive.Close>

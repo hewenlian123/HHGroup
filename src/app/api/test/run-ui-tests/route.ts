@@ -39,7 +39,10 @@ const TEST_NAMES: UiTestRow["name"][] = [
 
 /** Extract the last JSON object line from stdout (npm prints noise before the script output). */
 function parseScriptOutput(stdout: string): ScriptResult {
-  const lines = stdout.split("\n").map((l) => l.trim()).filter(Boolean);
+  const lines = stdout
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
   for (let i = lines.length - 1; i >= 0; i--) {
     if (lines[i].startsWith("{")) {
       try {
@@ -91,8 +94,7 @@ export async function POST(req: Request): Promise<NextResponse> {
 
         if (parsed) {
           const tests = normaliseTests(parsed);
-          const scriptError =
-            parsed.tests.length === 0 && parsed.error ? parsed.error : undefined;
+          const scriptError = parsed.tests.length === 0 && parsed.error ? parsed.error : undefined;
           resolve(
             NextResponse.json(
               {

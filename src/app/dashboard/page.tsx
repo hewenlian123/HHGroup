@@ -66,7 +66,9 @@ export default async function DashboardPage({
     // labor_entries, expenses, or invoices may not exist yet.
   }
 
-  const riskByProjectId = new Map(riskOverview.projects.map((r) => [r.projectId, r.riskLevel] as const));
+  const riskByProjectId = new Map(
+    riskOverview.projects.map((r) => [r.projectId, r.riskLevel] as const)
+  );
 
   const approvedBySubcontractId = new Map<string, number>();
   for (const r of billsSummary) {
@@ -117,10 +119,31 @@ export default async function DashboardPage({
     value && value.length >= 6 ? `...${value.slice(-6)}` : value ? `...${value}` : "MISSING";
 
   const kpis = [
-    { key: "total-projects", label: "Total Projects", value: String(stats.totalProjects), icon: FolderKanban },
-    { key: "active-projects", label: "Active Projects", value: String(stats.activeProjects), icon: Wallet },
-    { key: "total-budget", label: "Total Budget", value: `$${stats.totalBudget.toLocaleString()}`, icon: DollarSign },
-    { key: "total-profit", label: "Total Profit", value: `$${stats.totalProfit.toLocaleString()}`, icon: TrendingUp, emphasis: true },
+    {
+      key: "total-projects",
+      label: "Total Projects",
+      value: String(stats.totalProjects),
+      icon: FolderKanban,
+    },
+    {
+      key: "active-projects",
+      label: "Active Projects",
+      value: String(stats.activeProjects),
+      icon: Wallet,
+    },
+    {
+      key: "total-budget",
+      label: "Total Budget",
+      value: `$${stats.totalBudget.toLocaleString()}`,
+      icon: DollarSign,
+    },
+    {
+      key: "total-profit",
+      label: "Total Profit",
+      value: `$${stats.totalProfit.toLocaleString()}`,
+      icon: TrendingUp,
+      emphasis: true,
+    },
   ];
 
   const highRiskProjects = riskOverview.projects.filter((p) => p.riskLevel === "HIGH").slice(0, 3);
@@ -167,7 +190,8 @@ export default async function DashboardPage({
 
   const recentActivity = transactions.slice(0, 8);
 
-  const budgetUsagePct = stats.totalBudget > 0 ? Math.min(100, (stats.totalSpent / stats.totalBudget) * 100) : 0;
+  const budgetUsagePct =
+    stats.totalBudget > 0 ? Math.min(100, (stats.totalSpent / stats.totalBudget) * 100) : 0;
   const profitPositive = stats.totalProfit >= 0;
 
   return DashboardView({

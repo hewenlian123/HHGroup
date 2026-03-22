@@ -17,7 +17,12 @@ function log(test: string, step: string) {
 function toErrorString(e: unknown): string {
   if (e instanceof Error) return e.message;
   if (typeof e === "string") return e;
-  if (e != null && typeof e === "object" && "message" in e && typeof (e as { message: unknown }).message === "string")
+  if (
+    e != null &&
+    typeof e === "object" &&
+    "message" in e &&
+    typeof (e as { message: unknown }).message === "string"
+  )
     return (e as { message: string }).message;
   return JSON.stringify(e);
 }
@@ -70,7 +75,11 @@ export async function POST(req: Request) {
   const c = getServerSupabaseAdmin() ?? getServerSupabase();
   if (!c) {
     return NextResponse.json(
-      { ok: false, message: "Supabase not configured. Set SUPABASE_SERVICE_ROLE_KEY or anon key.", tests: [] },
+      {
+        ok: false,
+        message: "Supabase not configured. Set SUPABASE_SERVICE_ROLE_KEY or anon key.",
+        tests: [],
+      },
       { status: 500 }
     );
   }
@@ -103,7 +112,10 @@ export async function POST(req: Request) {
   for (const table of REQUIRED_TABLES) {
     const { error } = await c.from(table).select("id").limit(1).maybeSingle();
     const msg = (error as { message?: string } | null)?.message ?? "";
-    if (error && /relation.*does not exist|table.*does not exist|could not find.*schema cache/i.test(msg)) {
+    if (
+      error &&
+      /relation.*does not exist|table.*does not exist|could not find.*schema cache/i.test(msg)
+    ) {
       missingTables.push(table);
     }
   }
@@ -111,7 +123,9 @@ export async function POST(req: Request) {
     tests.push({
       name: "required_tables",
       ok: false,
-      steps: [`Missing tables: ${missingTables.join(", ")}. Run migrations or reload Supabase schema cache.`],
+      steps: [
+        `Missing tables: ${missingTables.join(", ")}. Run migrations or reload Supabase schema cache.`,
+      ],
     });
     log("required_tables", `missing: ${missingTables.join(", ")}`);
     return NextResponse.json({
@@ -123,7 +137,11 @@ export async function POST(req: Request) {
 
   /** Safe delete — Supabase builder is PromiseLike but not a full Promise, so no .catch() */
   async function safeDelete(table: string, id: string) {
-    try { await c!.from(table).delete().eq("id", id); } catch { /* ignore */ }
+    try {
+      await c!.from(table).delete().eq("id", id);
+    } catch {
+      /* ignore */
+    }
   }
 
   /** Delete a worker_reimbursement by id using admin client; if 0 rows deleted, try direct SQL so the row is actually removed. */
@@ -171,7 +189,10 @@ export async function POST(req: Request) {
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error((data as { message?: string }).message ?? `${method} ${path} → ${res.status}`);
+    if (!res.ok)
+      throw new Error(
+        (data as { message?: string }).message ?? `${method} ${path} → ${res.status}`
+      );
     return data as Record<string, unknown>;
   }
 
@@ -207,7 +228,8 @@ export async function POST(req: Request) {
         .select("id, role")
         .eq("id", workerId)
         .maybeSingle();
-      if (fetchErr || !fetched) throw new Error(`Fetch failed: ${fetchErr?.message ?? "not found"}`);
+      if (fetchErr || !fetched)
+        throw new Error(`Fetch failed: ${fetchErr?.message ?? "not found"}`);
       if ((fetched as { role?: string }).role !== "Test Updated")
         throw new Error("Update not reflected on fetch");
       steps.push("worker fetched and verified");
@@ -261,7 +283,8 @@ export async function POST(req: Request) {
         .select("id, status")
         .eq("id", projectId)
         .maybeSingle();
-      if (fetchErr || !fetched) throw new Error(`Fetch failed: ${fetchErr?.message ?? "not found"}`);
+      if (fetchErr || !fetched)
+        throw new Error(`Fetch failed: ${fetchErr?.message ?? "not found"}`);
       if ((fetched as { status?: string }).status !== "completed")
         throw new Error("Update not reflected on fetch");
       steps.push("project fetched and verified");
@@ -306,7 +329,8 @@ export async function POST(req: Request) {
         .select("id, name")
         .eq("id", customerId)
         .maybeSingle();
-      if (fetchErr || !fetched) throw new Error(`Fetch failed: ${fetchErr?.message ?? "not found"}`);
+      if (fetchErr || !fetched)
+        throw new Error(`Fetch failed: ${fetchErr?.message ?? "not found"}`);
       steps.push("customer fetched");
 
       // Update
@@ -323,7 +347,8 @@ export async function POST(req: Request) {
         .select("id, name")
         .eq("id", customerId)
         .maybeSingle();
-      if (verifyErr || !updated) throw new Error(`Verify failed: ${verifyErr?.message ?? "not found"}`);
+      if (verifyErr || !updated)
+        throw new Error(`Verify failed: ${verifyErr?.message ?? "not found"}`);
       if ((updated as { name?: string }).name !== "Workflow Test Customer Updated") {
         throw new Error("Update not reflected on fetch");
       }
@@ -460,7 +485,8 @@ export async function POST(req: Request) {
         .insert({ name: "Workflow Test Receipt", status: "active" })
         .select("id")
         .single();
-      if (workerErr || !workflowWorker) throw new Error(`Worker create failed: ${workerErr?.message}`);
+      if (workerErr || !workflowWorker)
+        throw new Error(`Worker create failed: ${workerErr?.message}`);
       workflowWorkerId = (workflowWorker as { id: string }).id;
       testCreatedWorkerIds.add(workflowWorkerId);
       steps.push("worker created for receipt");
@@ -492,7 +518,8 @@ export async function POST(req: Request) {
 
       // 3. Verify reimbursement was created
       const reimb = approveData.reimbursementCreated as { id?: string } | boolean | null;
-      if (!reimb) throw new Error("Approve API did not create a reimbursement (reimbursementCreated=false)");
+      if (!reimb)
+        throw new Error("Approve API did not create a reimbursement (reimbursementCreated=false)");
       reimbId = typeof reimb === "object" && reimb !== null ? (reimb.id ?? null) : null;
       if (!reimbId) {
         // reimbursementCreated may just be `true` without the id; look it up
@@ -714,7 +741,8 @@ export async function POST(req: Request) {
         .select("id, vendor_name")
         .eq("id", expenseId)
         .maybeSingle();
-      if (fetchErr || !fetched) throw new Error(`Fetch failed: ${fetchErr?.message ?? "not found"}`);
+      if (fetchErr || !fetched)
+        throw new Error(`Fetch failed: ${fetchErr?.message ?? "not found"}`);
       if ((fetched as { vendor_name?: string }).vendor_name !== "Workflow Test Vendor Updated")
         throw new Error("Update not reflected on fetch");
       steps.push("expense fetched and verified");
@@ -965,11 +993,19 @@ export async function POST(req: Request) {
         })
         .select("id, number, status")
         .single();
-      if (createErr || !created) throw new Error(createErr ? tableMissingMessage("estimates", createErr) : "Create failed");
+      if (createErr || !created)
+        throw new Error(createErr ? tableMissingMessage("estimates", createErr) : "Create failed");
       estimateId = (created as { id: string }).id;
       steps.push("estimate created");
-      const { data: fetched, error: fetchErr } = await c.from("estimates").select("id, status").eq("id", estimateId).maybeSingle();
-      if (fetchErr || !fetched) throw new Error(`Read failed: ${(fetchErr as { message?: string })?.message ?? "not found"}`);
+      const { data: fetched, error: fetchErr } = await c
+        .from("estimates")
+        .select("id, status")
+        .eq("id", estimateId)
+        .maybeSingle();
+      if (fetchErr || !fetched)
+        throw new Error(
+          `Read failed: ${(fetchErr as { message?: string })?.message ?? "not found"}`
+        );
       steps.push("estimate read ok");
       await c.from("estimates").delete().eq("id", estimateId);
       estimateId = null;
@@ -990,18 +1026,32 @@ export async function POST(req: Request) {
     let projectId: string | null = null;
     let changeOrderId: string | null = null;
     try {
-      const { data: proj, error: projErr } = await c.from("projects").insert({ name: "Workflow Test CO Project", status: "active" }).select("id").single();
-      if (projErr || !proj) throw new Error(projErr ? tableMissingMessage("projects", projErr) : "Project create failed");
+      const { data: proj, error: projErr } = await c
+        .from("projects")
+        .insert({ name: "Workflow Test CO Project", status: "active" })
+        .select("id")
+        .single();
+      if (projErr || !proj)
+        throw new Error(
+          projErr ? tableMissingMessage("projects", projErr) : "Project create failed"
+        );
       projectId = (proj as { id: string }).id;
       const { data: created, error: createErr } = await c
         .from("project_change_orders")
         .insert({ project_id: projectId, number: "WFTEST-CO-1", status: "Draft", total: 0 })
         .select("id, number, status")
         .single();
-      if (createErr || !created) throw new Error(createErr ? tableMissingMessage("project_change_orders", createErr) : "Create failed");
+      if (createErr || !created)
+        throw new Error(
+          createErr ? tableMissingMessage("project_change_orders", createErr) : "Create failed"
+        );
       changeOrderId = (created as { id: string }).id;
       steps.push("change order created");
-      const { error: fetchErr } = await c.from("project_change_orders").select("id").eq("id", changeOrderId).maybeSingle();
+      const { error: fetchErr } = await c
+        .from("project_change_orders")
+        .select("id")
+        .eq("id", changeOrderId)
+        .maybeSingle();
       if (fetchErr) throw new Error(`Read failed: ${(fetchErr as { message?: string })?.message}`);
       steps.push("change order read ok");
       await c.from("project_change_orders").delete().eq("id", changeOrderId);
@@ -1026,25 +1076,48 @@ export async function POST(req: Request) {
     let projectId: string | null = null;
     let taskId: string | null = null;
     try {
-      const { data: proj, error: projErr } = await c.from("projects").insert({ name: "Workflow Test Tasks Project", status: "active" }).select("id").single();
-      if (projErr || !proj) throw new Error(projErr ? tableMissingMessage("projects", projErr) : "Project create failed");
+      const { data: proj, error: projErr } = await c
+        .from("projects")
+        .insert({ name: "Workflow Test Tasks Project", status: "active" })
+        .select("id")
+        .single();
+      if (projErr || !proj)
+        throw new Error(
+          projErr ? tableMissingMessage("projects", projErr) : "Project create failed"
+        );
       projectId = (proj as { id: string }).id;
       const { data: created, error: createErr } = await c
         .from("project_tasks")
-        .insert({ project_id: projectId, title: "Workflow Test Task", status: "todo", is_test: true })
+        .insert({
+          project_id: projectId,
+          title: "Workflow Test Task",
+          status: "todo",
+          is_test: true,
+        })
         .select("id, title, status")
         .single();
-      if (createErr || !created) throw new Error(createErr ? tableMissingMessage("project_tasks", createErr) : "Create failed");
+      if (createErr || !created)
+        throw new Error(
+          createErr ? tableMissingMessage("project_tasks", createErr) : "Create failed"
+        );
       taskId = (created as { id: string }).id;
       steps.push("task created");
-      const { error: fetchErr } = await c.from("project_tasks").select("id").eq("id", taskId).maybeSingle();
+      const { error: fetchErr } = await c
+        .from("project_tasks")
+        .select("id")
+        .eq("id", taskId)
+        .maybeSingle();
       if (fetchErr) throw new Error(`Read failed: ${(fetchErr as { message?: string })?.message}`);
       steps.push("task read ok");
       const deletedTaskId = taskId;
       await c.from("project_tasks").delete().eq("id", deletedTaskId);
       taskId = null;
       steps.push("task deleted (test cleanup)");
-      const { data: afterRow } = await c.from("project_tasks").select("id").eq("id", deletedTaskId).maybeSingle();
+      const { data: afterRow } = await c
+        .from("project_tasks")
+        .select("id")
+        .eq("id", deletedTaskId)
+        .maybeSingle();
       if (afterRow) throw new Error("Task still exists after delete");
       steps.push("task removed from DB");
       await c.from("projects").delete().eq("id", projectId);
@@ -1067,18 +1140,30 @@ export async function POST(req: Request) {
     let projectId: string | null = null;
     let punchId: string | null = null;
     try {
-      const { data: proj, error: projErr } = await c.from("projects").insert({ name: "Workflow Test Punch Project", status: "active" }).select("id").single();
-      if (projErr || !proj) throw new Error(projErr ? tableMissingMessage("projects", projErr) : "Project create failed");
+      const { data: proj, error: projErr } = await c
+        .from("projects")
+        .insert({ name: "Workflow Test Punch Project", status: "active" })
+        .select("id")
+        .single();
+      if (projErr || !proj)
+        throw new Error(
+          projErr ? tableMissingMessage("projects", projErr) : "Project create failed"
+        );
       projectId = (proj as { id: string }).id;
       const { data: created, error: createErr } = await c
         .from("punch_list")
         .insert({ project_id: projectId, issue: "Workflow Test Issue", status: "open" })
         .select("id, issue, status")
         .single();
-      if (createErr || !created) throw new Error(createErr ? tableMissingMessage("punch_list", createErr) : "Create failed");
+      if (createErr || !created)
+        throw new Error(createErr ? tableMissingMessage("punch_list", createErr) : "Create failed");
       punchId = (created as { id: string }).id;
       steps.push("punch list item created");
-      const { error: fetchErr } = await c.from("punch_list").select("id").eq("id", punchId).maybeSingle();
+      const { error: fetchErr } = await c
+        .from("punch_list")
+        .select("id")
+        .eq("id", punchId)
+        .maybeSingle();
       if (fetchErr) throw new Error(`Read failed: ${(fetchErr as { message?: string })?.message}`);
       steps.push("punch list read ok");
       await c.from("punch_list").delete().eq("id", punchId);
@@ -1103,18 +1188,32 @@ export async function POST(req: Request) {
     let projectId: string | null = null;
     let scheduleId: string | null = null;
     try {
-      const { data: proj, error: projErr } = await c.from("projects").insert({ name: "Workflow Test Schedule Project", status: "active" }).select("id").single();
-      if (projErr || !proj) throw new Error(projErr ? tableMissingMessage("projects", projErr) : "Project create failed");
+      const { data: proj, error: projErr } = await c
+        .from("projects")
+        .insert({ name: "Workflow Test Schedule Project", status: "active" })
+        .select("id")
+        .single();
+      if (projErr || !proj)
+        throw new Error(
+          projErr ? tableMissingMessage("projects", projErr) : "Project create failed"
+        );
       projectId = (proj as { id: string }).id;
       const { data: created, error: createErr } = await c
         .from("project_schedule")
         .insert({ project_id: projectId, title: "Workflow Test Schedule", status: "scheduled" })
         .select("id, title, status")
         .single();
-      if (createErr || !created) throw new Error(createErr ? tableMissingMessage("project_schedule", createErr) : "Create failed");
+      if (createErr || !created)
+        throw new Error(
+          createErr ? tableMissingMessage("project_schedule", createErr) : "Create failed"
+        );
       scheduleId = (created as { id: string }).id;
       steps.push("schedule item created");
-      const { error: fetchErr } = await c.from("project_schedule").select("id").eq("id", scheduleId).maybeSingle();
+      const { error: fetchErr } = await c
+        .from("project_schedule")
+        .select("id")
+        .eq("id", scheduleId)
+        .maybeSingle();
       if (fetchErr) throw new Error(`Read failed: ${(fetchErr as { message?: string })?.message}`);
       steps.push("schedule read ok");
       await c.from("project_schedule").delete().eq("id", scheduleId);
@@ -1139,18 +1238,32 @@ export async function POST(req: Request) {
     let projectId: string | null = null;
     let photoId: string | null = null;
     try {
-      const { data: proj, error: projErr } = await c.from("projects").insert({ name: "Workflow Test Photos Project", status: "active" }).select("id").single();
-      if (projErr || !proj) throw new Error(projErr ? tableMissingMessage("projects", projErr) : "Project create failed");
+      const { data: proj, error: projErr } = await c
+        .from("projects")
+        .insert({ name: "Workflow Test Photos Project", status: "active" })
+        .select("id")
+        .single();
+      if (projErr || !proj)
+        throw new Error(
+          projErr ? tableMissingMessage("projects", projErr) : "Project create failed"
+        );
       projectId = (proj as { id: string }).id;
       const { data: created, error: createErr } = await c
         .from("site_photos")
         .insert({ project_id: projectId, photo_url: "https://example.com/wftest-placeholder.jpg" })
         .select("id, photo_url")
         .single();
-      if (createErr || !created) throw new Error(createErr ? tableMissingMessage("site_photos", createErr) : "Create failed");
+      if (createErr || !created)
+        throw new Error(
+          createErr ? tableMissingMessage("site_photos", createErr) : "Create failed"
+        );
       photoId = (created as { id: string }).id;
       steps.push("site photo created");
-      const { error: fetchErr } = await c.from("site_photos").select("id").eq("id", photoId).maybeSingle();
+      const { error: fetchErr } = await c
+        .from("site_photos")
+        .select("id")
+        .eq("id", photoId)
+        .maybeSingle();
       if (fetchErr) throw new Error(`Read failed: ${(fetchErr as { message?: string })?.message}`);
       steps.push("site photo read ok");
       await c.from("site_photos").delete().eq("id", photoId);
@@ -1175,18 +1288,32 @@ export async function POST(req: Request) {
     let projectId: string | null = null;
     let inspectionId: string | null = null;
     try {
-      const { data: proj, error: projErr } = await c.from("projects").insert({ name: "Workflow Test Inspection Project", status: "active" }).select("id").single();
-      if (projErr || !proj) throw new Error(projErr ? tableMissingMessage("projects", projErr) : "Project create failed");
+      const { data: proj, error: projErr } = await c
+        .from("projects")
+        .insert({ name: "Workflow Test Inspection Project", status: "active" })
+        .select("id")
+        .single();
+      if (projErr || !proj)
+        throw new Error(
+          projErr ? tableMissingMessage("projects", projErr) : "Project create failed"
+        );
       projectId = (proj as { id: string }).id;
       const { data: created, error: createErr } = await c
         .from("inspection_log")
         .insert({ project_id: projectId, inspection_type: "Workflow Test", status: "pending" })
         .select("id, inspection_type, status")
         .single();
-      if (createErr || !created) throw new Error(createErr ? tableMissingMessage("inspection_log", createErr) : "Create failed");
+      if (createErr || !created)
+        throw new Error(
+          createErr ? tableMissingMessage("inspection_log", createErr) : "Create failed"
+        );
       inspectionId = (created as { id: string }).id;
       steps.push("inspection log entry created");
-      const { error: fetchErr } = await c.from("inspection_log").select("id").eq("id", inspectionId).maybeSingle();
+      const { error: fetchErr } = await c
+        .from("inspection_log")
+        .select("id")
+        .eq("id", inspectionId)
+        .maybeSingle();
       if (fetchErr) throw new Error(`Read failed: ${(fetchErr as { message?: string })?.message}`);
       steps.push("inspection log read ok");
       await c.from("inspection_log").delete().eq("id", inspectionId);
@@ -1215,10 +1342,17 @@ export async function POST(req: Request) {
         .insert({ category: "Workflow Test", material_name: "Workflow Test Material" })
         .select("id, category, material_name")
         .single();
-      if (createErr || !created) throw new Error(createErr ? tableMissingMessage("material_catalog", createErr) : "Create failed");
+      if (createErr || !created)
+        throw new Error(
+          createErr ? tableMissingMessage("material_catalog", createErr) : "Create failed"
+        );
       catalogId = (created as { id: string }).id;
       steps.push("material catalog item created");
-      const { error: fetchErr } = await c.from("material_catalog").select("id").eq("id", catalogId).maybeSingle();
+      const { error: fetchErr } = await c
+        .from("material_catalog")
+        .select("id")
+        .eq("id", catalogId)
+        .maybeSingle();
       if (fetchErr) throw new Error(`Read failed: ${(fetchErr as { message?: string })?.message}`);
       steps.push("material catalog read ok");
       await c.from("material_catalog").delete().eq("id", catalogId);
@@ -1253,21 +1387,35 @@ export async function POST(req: Request) {
     } else {
       if (testCreatedWorkerIds.size > 0) {
         const workerIds = Array.from(testCreatedWorkerIds);
-        const { error: e1 } = await c.from("worker_reimbursements").delete().in("worker_id", workerIds);
+        const { error: e1 } = await c
+          .from("worker_reimbursements")
+          .delete()
+          .in("worker_id", workerIds);
         if (e1) log("cleanup", `final worker_reimbursements by worker_id failed: ${e1.message}`);
       }
       if (testCreatedProjectIds.size > 0) {
         const projectIds = Array.from(testCreatedProjectIds);
-        const { error: e2 } = await c.from("worker_reimbursements").delete().in("project_id", projectIds);
+        const { error: e2 } = await c
+          .from("worker_reimbursements")
+          .delete()
+          .in("project_id", projectIds);
         if (e2) log("cleanup", `final worker_reimbursements by project_id failed: ${e2.message}`);
       }
     }
     // Orphaned test rows (e.g. worker already deleted): delete by exact test descriptions
-    const { error: e3 } = await c.from("worker_reimbursements").delete().eq("description", "Workflow Test reimbursement");
+    const { error: e3 } = await c
+      .from("worker_reimbursements")
+      .delete()
+      .eq("description", "Workflow Test reimbursement");
     if (e3) log("cleanup", `final worker_reimbursements by description failed: ${e3.message}`);
     // receipt_actions_workflow approve creates reimbursement with description "Other" and amount 75
-    const { error: e4 } = await c.from("worker_reimbursements").delete().eq("description", "Other").eq("amount", 75);
-    if (e4) log("cleanup", `final worker_reimbursements by description Other failed: ${e4.message}`);
+    const { error: e4 } = await c
+      .from("worker_reimbursements")
+      .delete()
+      .eq("description", "Other")
+      .eq("amount", 75);
+    if (e4)
+      log("cleanup", `final worker_reimbursements by description Other failed: ${e4.message}`);
   } catch (e) {
     log("cleanup", `final worker_reimbursements cleanup failed: ${toErrorString(e)}`);
   }

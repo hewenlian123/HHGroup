@@ -6,13 +6,13 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { FilterBar } from "@/components/filter-bar";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { clearLaborEntry, getProjects, getLaborEntriesWithJoins, getLaborWorkersList } from "@/lib/data";
+  clearLaborEntry,
+  getProjects,
+  getLaborEntriesWithJoins,
+  getLaborWorkersList,
+} from "@/lib/data";
 import type { LaborEntryWithJoins } from "@/lib/daily-labor-db";
 import { cn } from "@/lib/utils";
 import { useRegisterLaborOpenDailyEntry } from "@/contexts/labor-add-entry-context";
@@ -305,14 +305,13 @@ export default function LaborPageClient() {
 
   return (
     <div className="page-container page-stack py-6">
-      <PageHeader
-        title="Labor"
-        subtitle="Daily labor entries by worker and project."
-      />
+      <PageHeader title="Labor" subtitle="Daily labor entries by worker and project." />
       <FilterBar className="!flex-col !items-stretch gap-4 border-0 bg-transparent p-0 shadow-none dark:bg-transparent">
         <div className="flex w-full flex-wrap items-end gap-4">
           <div className="flex min-w-[140px] flex-1 flex-col gap-1 sm:min-w-[160px] sm:flex-initial">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Month</label>
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Month
+            </label>
             <Select
               value={selectedMonth}
               onChange={(e) => {
@@ -330,7 +329,9 @@ export default function LaborPageClient() {
             </Select>
           </div>
           <div className="flex min-w-[140px] flex-1 flex-col gap-1 sm:min-w-[180px] sm:flex-initial">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Project</label>
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Project
+            </label>
             <Select
               value={projectFilter}
               onChange={(e) => {
@@ -348,7 +349,9 @@ export default function LaborPageClient() {
             </Select>
           </div>
           <div className="flex min-w-[140px] flex-1 flex-col gap-1 sm:min-w-[180px] sm:flex-initial">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">Worker</label>
+            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              Worker
+            </label>
             <Select
               value={workerFilter}
               onChange={(e) => {
@@ -404,12 +407,8 @@ export default function LaborPageClient() {
         </div>
       </FilterBar>
 
-      {error ? (
-        <p className="py-3 text-sm text-red-600">{error}</p>
-      ) : null}
-      {message ? (
-        <p className="py-3 text-sm text-muted-foreground">{message}</p>
-      ) : null}
+      {error ? <p className="py-3 text-sm text-red-600">{error}</p> : null}
+      {message ? <p className="py-3 text-sm text-muted-foreground">{message}</p> : null}
 
       {/* Monthly Summary */}
       <section className="border-b border-border/60 pb-4">
@@ -419,18 +418,32 @@ export default function LaborPageClient() {
         <div className="overflow-hidden rounded-lg border border-[#EBEBE9] bg-white shadow-sm dark:border-border dark:bg-card dark:shadow-none">
           <div className="grid grid-cols-1 sm:grid-cols-3">
             <div className="border-b border-[#EBEBE9] px-3 py-2.5 sm:border-b-0 sm:border-r sm:border-[#EBEBE9] dark:border-border">
-              <p className="text-[11px] text-muted-foreground/70 uppercase tracking-widest">Total Labor Cost</p>
+              <p className="text-[11px] text-muted-foreground/70 uppercase tracking-widest">
+                Total Labor Cost
+              </p>
               <p className="mt-1 text-2xl font-semibold tabular-nums">
-                ${summary.totalLaborCost.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                $
+                {summary.totalLaborCost.toLocaleString("en-US", {
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                })}
               </p>
             </div>
             <div className="border-b border-[#EBEBE9] px-3 py-2.5 sm:border-b-0 sm:border-r sm:border-[#EBEBE9] dark:border-border">
-              <p className="text-[11px] text-muted-foreground/70 uppercase tracking-widest">Work Days</p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums">{summary.totalWorkDays.toLocaleString("en-US")}</p>
+              <p className="text-[11px] text-muted-foreground/70 uppercase tracking-widest">
+                Work Days
+              </p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums">
+                {summary.totalWorkDays.toLocaleString("en-US")}
+              </p>
             </div>
             <div className="px-3 py-2.5">
-              <p className="text-[11px] text-muted-foreground/70 uppercase tracking-widest">Entries</p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums">{summary.totalEntries.toLocaleString("en-US")}</p>
+              <p className="text-[11px] text-muted-foreground/70 uppercase tracking-widest">
+                Entries
+              </p>
+              <p className="mt-1 text-2xl font-semibold tabular-nums">
+                {summary.totalEntries.toLocaleString("en-US")}
+              </p>
             </div>
           </div>
         </div>
@@ -449,7 +462,11 @@ export default function LaborPageClient() {
                 >
                   <span className="text-sm font-medium text-foreground truncate">{name}</span>
                   <span className="text-sm tabular-nums font-medium text-foreground shrink-0">
-                    ${total.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    $
+                    {total.toLocaleString("en-US", {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0,
+                    })}
                   </span>
                 </div>
               ))}
@@ -475,60 +492,72 @@ export default function LaborPageClient() {
               {datesInMonth
                 .filter((d) => (entriesByDate.get(d) ?? []).length > 0)
                 .map((date) => {
-                const entries = entriesByDate.get(date) ?? [];
-                const totalPay = entries.reduce((s, e) => s + (e.cost_amount ?? 0), 0);
-                const isHighCost = totalPay > HIGH_COST_THRESHOLD;
-                const isExpanded = expandedDate === date;
-                return (
-                  <div key={date}>
-                    <button
-                      type="button"
-                      onClick={() => setExpandedDate((prev) => (prev === date ? null : date))}
-                      className={cn(
-                        "flex w-full items-center justify-between gap-3 rounded-none px-3 py-2 text-left transition-colors bg-[#fafafa] hover:bg-[#f6f6f6]",
-                        isExpanded && "bg-[#f6f6f6]"
-                      )}
-                    >
-                      <div className="flex items-baseline gap-3 min-w-0">
-                        <span className="text-[15px] font-semibold text-foreground shrink-0">
-                          {formatShortDate(date)}
-                        </span>
-                        <span className="text-xs text-muted-foreground/80 truncate">
-                          {entries.length} entries
-                        </span>
+                  const entries = entriesByDate.get(date) ?? [];
+                  const totalPay = entries.reduce((s, e) => s + (e.cost_amount ?? 0), 0);
+                  const isHighCost = totalPay > HIGH_COST_THRESHOLD;
+                  const isExpanded = expandedDate === date;
+                  return (
+                    <div key={date}>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedDate((prev) => (prev === date ? null : date))}
+                        className={cn(
+                          "flex w-full items-center justify-between gap-3 rounded-none px-3 py-2 text-left transition-colors bg-[#fafafa] hover:bg-[#f6f6f6]",
+                          isExpanded && "bg-[#f6f6f6]"
+                        )}
+                      >
+                        <div className="flex items-baseline gap-3 min-w-0">
+                          <span className="text-[15px] font-semibold text-foreground shrink-0">
+                            {formatShortDate(date)}
+                          </span>
+                          <span className="text-xs text-muted-foreground/80 truncate">
+                            {entries.length} entries
+                          </span>
+                          <span
+                            className={cn(
+                              "ml-auto text-sm font-semibold tabular-nums shrink-0",
+                              isHighCost ? "text-amber-700" : "text-emerald-700"
+                            )}
+                          >
+                            $
+                            {totalPay.toLocaleString("en-US", {
+                              minimumFractionDigits: 0,
+                              maximumFractionDigits: 0,
+                            })}
+                          </span>
+                        </div>
                         <span
                           className={cn(
-                            "ml-auto text-sm font-semibold tabular-nums shrink-0",
-                            isHighCost ? "text-amber-700" : "text-emerald-700"
+                            "shrink-0 text-muted-foreground transition-transform duration-200 text-xs",
+                            isExpanded && "rotate-90"
                           )}
+                          aria-hidden
                         >
-                          ${totalPay.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                          ▶
                         </span>
-                      </div>
-                      <span
+                      </button>
+                      <div
                         className={cn(
-                          "shrink-0 text-muted-foreground transition-transform duration-200 text-xs",
-                          isExpanded && "rotate-90"
+                          "overflow-hidden transition-[max-height] duration-200 ease-out",
+                          isExpanded ? "max-h-[2000px]" : "max-h-0"
                         )}
-                        aria-hidden
                       >
-                        ▶
-                      </span>
-                    </button>
-                    <div
-                      className={cn(
-                        "overflow-hidden transition-[max-height] duration-200 ease-out",
-                        isExpanded ? "max-h-[2000px]" : "max-h-0"
-                      )}
-                    >
-                      <div className="border-t border-border/60 bg-background">
-                        <table className="w-full text-sm border-collapse">
+                        <div className="border-t border-border/60 bg-background">
+                          <table className="w-full text-sm border-collapse">
                             <thead>
                               <tr className="border-b border-border/60">
-                                <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">Worker</th>
-                                <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">Project</th>
-                                <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">Session</th>
-                                <th className="text-right py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70 tabular-nums">Total Pay</th>
+                                <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
+                                  Worker
+                                </th>
+                                <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
+                                  Project
+                                </th>
+                                <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
+                                  Session
+                                </th>
+                                <th className="text-right py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70 tabular-nums">
+                                  Total Pay
+                                </th>
                                 <th className="w-[84px] py-2 px-3" />
                               </tr>
                             </thead>
@@ -537,11 +566,23 @@ export default function LaborPageClient() {
                                 const pay = e.cost_amount != null ? Number(e.cost_amount) : 0;
                                 const session = sessionFromFlags(e);
                                 return (
-                                  <tr key={e.id} className="group border-b border-border/30 last:border-b-0 hover:bg-[#fafafa]">
-                                    <td className="py-2 px-3 font-semibold text-foreground">{e.worker_name ?? "—"}</td>
-                                    <td className="py-2 px-3 text-muted-foreground/80">{e.project_name ?? "—"}</td>
+                                  <tr
+                                    key={e.id}
+                                    className="group border-b border-border/30 last:border-b-0 hover:bg-[#fafafa]"
+                                  >
+                                    <td className="py-2 px-3 font-semibold text-foreground">
+                                      {e.worker_name ?? "—"}
+                                    </td>
+                                    <td className="py-2 px-3 text-muted-foreground/80">
+                                      {e.project_name ?? "—"}
+                                    </td>
                                     <td className="py-2 px-3">
-                                      <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", sessionBadgeClass(session))}>
+                                      <span
+                                        className={cn(
+                                          "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+                                          sessionBadgeClass(session)
+                                        )}
+                                      >
                                         {sessionLabel(session)}
                                       </span>
                                     </td>
@@ -573,11 +614,11 @@ export default function LaborPageClient() {
                               })}
                             </tbody>
                           </table>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
             </div>
           )}
         </section>
@@ -602,65 +643,69 @@ export default function LaborPageClient() {
                     {wd}
                   </div>
                 ))}
-                {getCalendarGrid(selectedMonth).flat().map((day, idx) => (
-                  <div
-                    key={idx}
-                    className={cn(
-                      "min-h-[4rem] border-b border-r border-border/60 p-1 last:border-r-0 flex flex-col",
-                      day === null && "border-border/30"
-                    )}
-                  >
-                    {day === null ? (
-                      <span className="invisible">0</span>
-                    ) : (() => {
-                      const dateStr = `${selectedMonth}-${String(day).padStart(2, "0")}`;
-                      const entries = entriesByDate.get(dateStr) ?? [];
-                      const hasEntries = entries.length > 0;
-                      const workerCount = entries.length;
-                      const totalPay = entries.reduce((s, e) => s + (e.cost_amount ?? 0), 0);
-                      const isHighCost = totalPay > HIGH_COST_THRESHOLD;
-                      return (
-                        <button
-                          type="button"
-                          onClick={() => setSelectedDayForDetail(dateStr)}
-                          className={cn(
-                            "w-full h-full min-h-[4rem] rounded-sm flex flex-col items-center justify-center gap-0.5 text-left py-1.5 px-1 transition-colors",
-                            hasEntries
-                              ? isHighCost
-                                ? "bg-amber-50 dark:bg-amber-950/30 text-foreground hover:bg-amber-100 dark:hover:bg-amber-950/50"
-                                : "bg-background text-foreground hover:bg-muted/30"
-                              : "bg-muted/40 text-muted-foreground hover:bg-muted/60"
-                          )}
-                        >
-                          <span className="font-medium tabular-nums">{day}</span>
-                          {hasEntries ? (
-                            <>
-                              <span className="text-xs tabular-nums">
-                                {workerCount} worker{workerCount !== 1 ? "s" : ""}
-                              </span>
-                              <span className="text-xs font-medium tabular-nums">
-                                ${totalPay.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                              </span>
-                            </>
-                          ) : (
-                            <span className="text-xs">No entries</span>
-                          )}
-                        </button>
-                      );
-                    })()}
-                  </div>
-                ))}
+                {getCalendarGrid(selectedMonth)
+                  .flat()
+                  .map((day, idx) => (
+                    <div
+                      key={idx}
+                      className={cn(
+                        "min-h-[4rem] border-b border-r border-border/60 p-1 last:border-r-0 flex flex-col",
+                        day === null && "border-border/30"
+                      )}
+                    >
+                      {day === null ? (
+                        <span className="invisible">0</span>
+                      ) : (
+                        (() => {
+                          const dateStr = `${selectedMonth}-${String(day).padStart(2, "0")}`;
+                          const entries = entriesByDate.get(dateStr) ?? [];
+                          const hasEntries = entries.length > 0;
+                          const workerCount = entries.length;
+                          const totalPay = entries.reduce((s, e) => s + (e.cost_amount ?? 0), 0);
+                          const isHighCost = totalPay > HIGH_COST_THRESHOLD;
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedDayForDetail(dateStr)}
+                              className={cn(
+                                "w-full h-full min-h-[4rem] rounded-sm flex flex-col items-center justify-center gap-0.5 text-left py-1.5 px-1 transition-colors",
+                                hasEntries
+                                  ? isHighCost
+                                    ? "bg-amber-50 dark:bg-amber-950/30 text-foreground hover:bg-amber-100 dark:hover:bg-amber-950/50"
+                                    : "bg-background text-foreground hover:bg-muted/30"
+                                  : "bg-muted/40 text-muted-foreground hover:bg-muted/60"
+                              )}
+                            >
+                              <span className="font-medium tabular-nums">{day}</span>
+                              {hasEntries ? (
+                                <>
+                                  <span className="text-xs tabular-nums">
+                                    {workerCount} worker{workerCount !== 1 ? "s" : ""}
+                                  </span>
+                                  <span className="text-xs font-medium tabular-nums">
+                                    $
+                                    {totalPay.toLocaleString("en-US", {
+                                      minimumFractionDigits: 0,
+                                      maximumFractionDigits: 0,
+                                    })}
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-xs">No entries</span>
+                              )}
+                            </button>
+                          );
+                        })()
+                      )}
+                    </div>
+                  ))}
               </div>
             </div>
           )}
         </section>
       )}
 
-      <QuickTimesheetModal
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        onSuccess={handleSaved}
-      />
+      <QuickTimesheetModal open={modalOpen} onOpenChange={setModalOpen} onSuccess={handleSaved} />
 
       <EditEntryModal
         open={editOpen}
@@ -674,7 +719,10 @@ export default function LaborPageClient() {
       />
 
       {/* Day detail (Calendar View) */}
-      <Dialog open={!!selectedDayForDetail} onOpenChange={(open) => !open && setSelectedDayForDetail(null)}>
+      <Dialog
+        open={!!selectedDayForDetail}
+        onOpenChange={(open) => !open && setSelectedDayForDetail(null)}
+      >
         <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col border-border/60 rounded-sm">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">
@@ -682,76 +730,98 @@ export default function LaborPageClient() {
             </DialogTitle>
           </DialogHeader>
           <div className="overflow-auto min-h-0 -mx-6 px-6">
-            {selectedDayForDetail && (() => {
-              const dayEntries = entriesByDate.get(selectedDayForDetail) ?? [];
-              if (dayEntries.length === 0) {
+            {selectedDayForDetail &&
+              (() => {
+                const dayEntries = entriesByDate.get(selectedDayForDetail) ?? [];
+                if (dayEntries.length === 0) {
+                  return (
+                    <p className="py-4 text-sm text-muted-foreground">No entries for this day.</p>
+                  );
+                }
                 return (
-                  <p className="py-4 text-sm text-muted-foreground">
-                    No entries for this day.
-                  </p>
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="border-b border-border/60">
+                        <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
+                          Worker
+                        </th>
+                        <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
+                          Project
+                        </th>
+                        <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
+                          Session
+                        </th>
+                        <th className="text-right py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70 tabular-nums">
+                          OT
+                        </th>
+                        <th className="text-right py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70 tabular-nums">
+                          Total Pay
+                        </th>
+                        <th className="w-[84px] py-2 px-3" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dayEntries.map((e) => {
+                        const { otHours } = parseDayTypeAndOt(e.notes);
+                        const pay = e.cost_amount != null ? Number(e.cost_amount) : 0;
+                        const session = sessionFromFlags(e);
+                        return (
+                          <tr
+                            key={e.id}
+                            className="group border-b border-border/60 last:border-b-0 hover:bg-[#fafafa]"
+                          >
+                            <td className="py-2 px-3 font-semibold text-foreground">
+                              {e.worker_name ?? "—"}
+                            </td>
+                            <td className="py-2 px-3 text-muted-foreground/80">
+                              {e.project_name ?? "—"}
+                            </td>
+                            <td className="py-2 px-3">
+                              <span
+                                className={cn(
+                                  "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+                                  sessionBadgeClass(session)
+                                )}
+                              >
+                                {sessionLabel(session)}
+                              </span>
+                            </td>
+                            <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">
+                              {otHours}
+                            </td>
+                            <td className="py-2 px-3 text-right tabular-nums font-semibold">
+                              {pay > 0 ? `$${pay.toFixed(2)}` : "—"}
+                            </td>
+                            <td className="py-2 px-3 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  type="button"
+                                  className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50/60"
+                                  onClick={() => openEdit(e)}
+                                  aria-label="Edit"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-red-600 hover:text-red-700 hover:bg-red-50/60"
+                                  onClick={() => void handleDelete(e)}
+                                  aria-label="Delete"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 );
-              }
-              return (
-                <table className="w-full text-sm border-collapse">
-                  <thead>
-                    <tr className="border-b border-border/60">
-                      <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">Worker</th>
-                      <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">Project</th>
-                      <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">Session</th>
-                      <th className="text-right py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70 tabular-nums">OT</th>
-                      <th className="text-right py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70 tabular-nums">Total Pay</th>
-                      <th className="w-[84px] py-2 px-3" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dayEntries.map((e) => {
-                      const { otHours } = parseDayTypeAndOt(e.notes);
-                      const pay = e.cost_amount != null ? Number(e.cost_amount) : 0;
-                      const session = sessionFromFlags(e);
-                      return (
-                        <tr key={e.id} className="group border-b border-border/60 last:border-b-0 hover:bg-[#fafafa]">
-                          <td className="py-2 px-3 font-semibold text-foreground">{e.worker_name ?? "—"}</td>
-                          <td className="py-2 px-3 text-muted-foreground/80">{e.project_name ?? "—"}</td>
-                          <td className="py-2 px-3">
-                            <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", sessionBadgeClass(session))}>
-                              {sessionLabel(session)}
-                            </span>
-                          </td>
-                          <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">{otHours}</td>
-                          <td className="py-2 px-3 text-right tabular-nums font-semibold">
-                            {pay > 0 ? `$${pay.toFixed(2)}` : "—"}
-                          </td>
-                          <td className="py-2 px-3 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <button
-                                type="button"
-                                className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50/60"
-                                onClick={() => openEdit(e)}
-                                aria-label="Edit"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </button>
-                              <button
-                                type="button"
-                                className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-red-600 hover:text-red-700 hover:bg-red-50/60"
-                                onClick={() => void handleDelete(e)}
-                                aria-label="Delete"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              );
-            })()}
+              })()}
           </div>
         </DialogContent>
       </Dialog>
     </div>
   );
 }
-

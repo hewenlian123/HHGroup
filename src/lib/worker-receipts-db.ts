@@ -145,7 +145,11 @@ export async function insertWorkerReceiptWithClient(
   if (error) throw new Error(error.message ?? "Failed to create receipt upload.");
   const receipt = fromRow(data as Record<string, unknown>);
   if (typeof console !== "undefined" && console.log) {
-    console.log("[workflow test] receipt created", { id: receipt.id, workerId: draft.workerId, amount: draft.amount });
+    console.log("[workflow test] receipt created", {
+      id: receipt.id,
+      workerId: draft.workerId,
+      amount: draft.amount,
+    });
   }
   return receipt;
 }
@@ -163,10 +167,15 @@ export async function insertWorkerReceipt(draft: WorkerReceiptDraft): Promise<Wo
 
 export async function updateWorkerReceiptStatus(
   id: string,
-  patch: { status: WorkerReceiptStatus; rejectionReason?: string | null; reimbursementId?: string | null }
+  patch: {
+    status: WorkerReceiptStatus;
+    rejectionReason?: string | null;
+    reimbursementId?: string | null;
+  }
 ): Promise<WorkerReceipt> {
   const payload: Record<string, unknown> = { status: patch.status };
-  if (patch.rejectionReason !== undefined) payload.rejection_reason = patch.rejectionReason?.trim() || null;
+  if (patch.rejectionReason !== undefined)
+    payload.rejection_reason = patch.rejectionReason?.trim() || null;
   if (patch.reimbursementId !== undefined) payload.reimbursement_id = patch.reimbursementId;
   const { data, error } = await client()
     .from("worker_receipts")
@@ -187,15 +196,8 @@ export async function deleteWorkerReceipt(id: string): Promise<void> {
  * Delete a worker receipt using the given Supabase client (e.g. server client).
  * Verifies that exactly one row was deleted.
  */
-export async function deleteWorkerReceiptWithClient(
-  c: SupabaseClient,
-  id: string
-): Promise<void> {
-  const { data, error } = await c
-    .from("worker_receipts")
-    .delete()
-    .eq("id", id)
-    .select("id");
+export async function deleteWorkerReceiptWithClient(c: SupabaseClient, id: string): Promise<void> {
+  const { data, error } = await c.from("worker_receipts").delete().eq("id", id).select("id");
   if (error) throw new Error(error.message ?? "Failed to delete receipt.");
   if (!data?.length) throw new Error("Receipt not found or already deleted.");
 }
@@ -242,7 +244,10 @@ export async function approveWorkerReceipt(receiptId: string): Promise<ApproveRe
   }
 
   const workerId = await resolveWorkerId(receipt);
-  const description = [receipt.vendor, receipt.expenseType].filter(Boolean).join(" · ") || receipt.description || null;
+  const description =
+    [receipt.vendor, receipt.expenseType].filter(Boolean).join(" · ") ||
+    receipt.description ||
+    null;
   const projectId = await resolveProjectId(receipt.projectId);
 
   const reimbursement = await workerReimbursementsDb.insertWorkerReimbursement({
@@ -324,7 +329,11 @@ export async function approveWorkerReceiptWithClient(
     // Resolve project_id (only if it exists)
     let projectId: string | null = approvedReceipt.projectId;
     if (projectId) {
-      const { data: proj, error: pErr } = await c.from("projects").select("id").eq("id", projectId).maybeSingle();
+      const { data: proj, error: pErr } = await c
+        .from("projects")
+        .select("id")
+        .eq("id", projectId)
+        .maybeSingle();
       if (pErr) throw new Error(pErr.message ?? "Failed to validate project.");
       if (!proj) projectId = null;
     }
@@ -345,7 +354,9 @@ export async function approveWorkerReceiptWithClient(
         receipt_url: approvedReceipt.receiptUrl ?? null,
         status: "pending",
       })
-      .select("id, worker_id, project_id, vendor, amount, description, receipt_url, status, created_at")
+      .select(
+        "id, worker_id, project_id, vendor, amount, description, receipt_url, status, created_at"
+      )
       .single();
     if (rErr) throw new Error(rErr.message ?? "Failed to create reimbursement.");
 
@@ -357,8 +368,10 @@ export async function approveWorkerReceiptWithClient(
       projectName: null,
       vendor: (reimbRow as any).vendor != null ? String((reimbRow as any).vendor) : null,
       amount: Number((reimbRow as any).amount) || 0,
-      description: (reimbRow as any).description != null ? String((reimbRow as any).description) : null,
-      receiptUrl: (reimbRow as any).receipt_url != null ? String((reimbRow as any).receipt_url) : null,
+      description:
+        (reimbRow as any).description != null ? String((reimbRow as any).description) : null,
+      receiptUrl:
+        (reimbRow as any).receipt_url != null ? String((reimbRow as any).receipt_url) : null,
       status: "pending",
       createdAt: String((reimbRow as any).created_at ?? ""),
       paidAt: null,
@@ -393,7 +406,10 @@ export async function approveWorkerReceiptWithClient(
 /**
  * Reject: set status Rejected and optional reason.
  */
-export async function rejectWorkerReceipt(receiptId: string, reason?: string | null): Promise<WorkerReceipt> {
+export async function rejectWorkerReceipt(
+  receiptId: string,
+  reason?: string | null
+): Promise<WorkerReceipt> {
   const receipt = await getWorkerReceiptById(receiptId);
   if (!receipt) throw new Error("Receipt not found.");
   return updateWorkerReceiptStatus(receiptId, {

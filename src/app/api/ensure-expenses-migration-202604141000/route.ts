@@ -34,11 +34,16 @@ export async function GET() {
       ok: true,
       hasColumns,
       columns: cols.map((r) => r.column_name),
-      message: hasColumns ? "expenses 表已包含 source、source_id 字段" : "expenses 表缺少 source 或 source_id 字段",
+      message: hasColumns
+        ? "expenses 表已包含 source、source_id 字段"
+        : "expenses 表缺少 source 或 source_id 字段",
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ ok: false, hasColumns: false, message: `查询失败: ${msg}` }, { status: 200 });
+    return NextResponse.json(
+      { ok: false, hasColumns: false, message: `查询失败: ${msg}` },
+      { status: 200 }
+    );
   }
 }
 
@@ -66,14 +71,18 @@ export async function POST() {
         message: "迁移已存在，无需执行。",
       });
     }
-    const migrationPath = join(process.cwd(), "supabase/migrations/202604141000_expenses_source_source_id_paid.sql");
+    const migrationPath = join(
+      process.cwd(),
+      "supabase/migrations/202604141000_expenses_source_source_id_paid.sql"
+    );
     const migrationSql = readFileSync(migrationPath, "utf8");
     await sql.unsafe(migrationSql);
     await sql.end();
     return NextResponse.json({
       ok: true,
       alreadyApplied: false,
-      message: "已执行迁移 202604141000，expenses 表已添加 source、source_id 及 paid 状态。请到 Supabase 控制台 Reload schema cache。",
+      message:
+        "已执行迁移 202604141000，expenses 表已添加 source、source_id 及 paid 状态。请到 Supabase 控制台 Reload schema cache。",
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

@@ -10,7 +10,9 @@ vi.mock("@/lib/worker-payments-db", () => ({
 }));
 
 vi.mock("@/lib/worker-payment-implicit-settlement", () => ({
-  computeImplicitSettlement: vi.fn().mockResolvedValue({ laborIds: [], reimbIds: [], expectedTotal: 50 }),
+  computeImplicitSettlement: vi
+    .fn()
+    .mockResolvedValue({ laborIds: [], reimbIds: [], expectedTotal: 50 }),
 }));
 
 vi.mock("@/lib/supabase-server", () => ({
@@ -27,7 +29,8 @@ vi.mock("@/lib/supabase-server", () => ({
         select: () => ({
           eq: () => ({
             in: () => emptyList,
-            then: (resolveFn: (v: { data: unknown[]; error: null }) => void) => emptyList.then(resolveFn),
+            then: (resolveFn: (v: { data: unknown[]; error: null }) => void) =>
+              emptyList.then(resolveFn),
           }),
         }),
         update: () => ({
@@ -50,7 +53,10 @@ describe("POST /api/labor/workers/[id]/pay", () => {
   it("returns 400 when worker id is missing", async () => {
     const { POST } = await import("@/app/api/labor/workers/[id]/pay/route");
     const res = await POST(
-      new Request("http://x", { method: "POST", body: JSON.stringify({ amount: 10, payment_method: "cash" }) }),
+      new Request("http://x", {
+        method: "POST",
+        body: JSON.stringify({ amount: 10, payment_method: "cash" }),
+      }),
       { params: Promise.resolve({ id: "" }) }
     );
     expect(res.status).toBe(400);

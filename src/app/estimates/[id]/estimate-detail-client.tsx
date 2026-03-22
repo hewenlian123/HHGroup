@@ -4,7 +4,14 @@ import { syncRouterAndClients } from "@/lib/sync-router-client";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import type { CostCode, EstimateItemRow, EstimateMetaRecord, EstimateSummaryResult, PaymentScheduleItem, PaymentScheduleTemplate } from "@/lib/data";
+import type {
+  CostCode,
+  EstimateItemRow,
+  EstimateMetaRecord,
+  EstimateSummaryResult,
+  PaymentScheduleItem,
+  PaymentScheduleTemplate,
+} from "@/lib/data";
 import { useToast } from "@/components/toast/toast-provider";
 import {
   approveEstimateInlineAction,
@@ -86,7 +93,11 @@ export function EstimateDetailClient({
           void syncRouterAndClients(router);
           setEditing(false);
         } else {
-          toast({ title: "Save failed", description: res.error ?? "Please try again.", variant: "error" });
+          toast({
+            title: "Save failed",
+            description: res.error ?? "Please try again.",
+            variant: "error",
+          });
         }
       });
     };
@@ -100,11 +111,19 @@ export function EstimateDetailClient({
     requestAnimationFrame(() => {
       const f = document.getElementById("estimate-meta-form") as HTMLFormElement | null;
       if (f) run(f);
-      else toast({ title: "Nothing to save", description: "Estimate form not found.", variant: "error" });
+      else
+        toast({
+          title: "Nothing to save",
+          description: "Estimate form not found.",
+          variant: "error",
+        });
     });
   };
 
-  const runStatusChange = (next: EstimateStatus, runner: () => Promise<{ ok: boolean; error?: string }>) => {
+  const runStatusChange = (
+    next: EstimateStatus,
+    runner: () => Promise<{ ok: boolean; error?: string }>
+  ) => {
     const prev = status;
     setStatus(next);
     startTransition(async () => {
@@ -114,7 +133,11 @@ export function EstimateDetailClient({
         if (next !== prev) setEditing(false);
       } else {
         setStatus(prev);
-        toast({ title: "Update failed", description: res.error ?? "Could not update status.", variant: "error" });
+        toast({
+          title: "Update failed",
+          description: res.error ?? "Could not update status.",
+          variant: "error",
+        });
       }
     });
   };
@@ -139,7 +162,9 @@ export function EstimateDetailClient({
         onEdit={() => setEditing(true)}
         onSave={onSave}
         onCancel={onCancelEditing}
-        onMarkDraft={() => runStatusChange("Draft", () => changeEstimateStatusInlineAction(estimateId, "Draft"))}
+        onMarkDraft={() =>
+          runStatusChange("Draft", () => changeEstimateStatusInlineAction(estimateId, "Draft"))
+        }
         onSend={() => runStatusChange("Sent", () => sendEstimateInlineAction(estimateId))}
         onApprove={() => runStatusChange("Approved", () => approveEstimateInlineAction(estimateId))}
         onReject={() => runStatusChange("Rejected", () => rejectEstimateInlineAction(estimateId))}
@@ -175,4 +200,3 @@ export function EstimateDetailClient({
     </>
   );
 }
-

@@ -14,16 +14,22 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => ({}));
     const ids = body?.reimbursementIds;
     if (!Array.isArray(ids) || ids.length === 0) {
-      return NextResponse.json({ message: "Provide at least one reimbursement id." }, { status: 400 });
+      return NextResponse.json(
+        { message: "Provide at least one reimbursement id." },
+        { status: 400 }
+      );
     }
     const reimbursementIds = ids.filter((id): id is string => typeof id === "string");
     if (reimbursementIds.length === 0) {
       return NextResponse.json({ message: "Invalid reimbursement ids." }, { status: 400 });
     }
-    const { payment, updatedCount, reimbursements } = await recordBatchReimbursementPayment(reimbursementIds, {
-      paymentMethod: body?.paymentMethod ?? null,
-      note: body?.note ?? null,
-    });
+    const { payment, updatedCount, reimbursements } = await recordBatchReimbursementPayment(
+      reimbursementIds,
+      {
+        paymentMethod: body?.paymentMethod ?? null,
+        note: body?.note ?? null,
+      }
+    );
     const opts = { paymentMethod: body?.paymentMethod ?? null, note: body?.note ?? null };
     for (const r of reimbursements) {
       try {
