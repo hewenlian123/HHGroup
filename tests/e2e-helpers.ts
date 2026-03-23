@@ -179,3 +179,16 @@ export async function expectVisibleOrSkip(
     test.skip(true, skipReason);
   }
 }
+
+/**
+ * Server-side DB cleanup (Node). Pass a Supabase client with delete permission (service role or policies).
+ * Patterns: PW / Playwright / Workflow Test / Body balance / `[E2E]` (except preserved seed UUIDs — see `e2e-cleanup-db.ts`).
+ */
+export {
+  cleanupTestData,
+  E2E_PRESERVED_CUSTOMER_ID,
+  E2E_PRESERVED_PROJECT_ID,
+  E2E_PRESERVED_WORKER_ID,
+  E2E_TEST_SUBSTRINGS,
+  type CleanupTestDataResult,
+} from "./e2e-cleanup-db";

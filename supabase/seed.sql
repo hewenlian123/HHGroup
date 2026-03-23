@@ -1,6 +1,8 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 -- E2E / staging SEED DATA — DO NOT RUN ON PRODUCTION
 -- Path: `supabase/seed.sql` (local: `supabase db reset --local`; remote: `npm run db:seed:remote`).
+-- All human-visible seed labels use an `[E2E]` prefix so they are easy to identify (and are not removed by
+-- Playwright global-teardown, which only deletes rows matching PW / Playwright / Workflow Test / etc.).
 -- ═══════════════════════════════════════════════════════════════════════════
 --
 -- 1) Verify columns in **your** database (Supabase SQL Editor):
@@ -146,7 +148,7 @@ BEGIN
       v_vals := quote_literal('[E2E] Test Subcontractor');
       IF pg_temp.hh_e2e_col('subcontractors', 'legal_name') THEN
         v_cols := v_cols || ', ' || quote_ident('legal_name');
-        v_vals := v_vals || ', ' || quote_literal('E2E Test Sub LLC');
+        v_vals := v_vals || ', ' || quote_literal('[E2E] Test Sub LLC');
       END IF;
       IF pg_temp.hh_e2e_col('subcontractors', 'contact_name') THEN
         v_cols := v_cols || ', ' || quote_ident('contact_name');
@@ -166,7 +168,7 @@ BEGIN
       END IF;
       IF pg_temp.hh_e2e_col('subcontractors', 'notes') THEN
         v_cols := v_cols || ', ' || quote_ident('notes');
-        v_vals := v_vals || ', ' || quote_literal('E2E_SEED');
+        v_vals := v_vals || ', ' || quote_literal('[E2E] SEED');
       END IF;
       EXECUTE format('INSERT INTO public.subcontractors (%s) VALUES (%s)', v_cols, v_vals);
     ELSIF pg_temp.hh_e2e_col('subcontractors', 'name') THEN
@@ -206,7 +208,7 @@ BEGIN
       v_sep := ', ';
     END IF;
     v_cols := v_cols || v_sep || quote_ident('name');
-    v_vals := v_vals || v_sep || quote_literal('E2E Seed Worker');
+    v_vals := v_vals || v_sep || quote_literal('[E2E] Seed Worker');
     v_sep := ', ';
     IF pg_temp.hh_e2e_col('workers', 'role') THEN
       v_cols := v_cols || v_sep || quote_ident('role');
@@ -238,7 +240,7 @@ BEGIN
     END IF;
     IF pg_temp.hh_e2e_col('workers', 'notes') THEN
       v_cols := v_cols || v_sep || quote_ident('notes');
-      v_vals := v_vals || v_sep || quote_literal('E2E_SEED');
+      v_vals := v_vals || v_sep || quote_literal('[E2E] SEED');
     END IF;
     EXECUTE format('INSERT INTO public.workers (%s) VALUES (%s)', v_cols, v_vals);
   END IF;
@@ -249,7 +251,7 @@ BEGIN
     EXECUTE format(
       'INSERT INTO public.labor_workers (id, name) VALUES (%L::uuid, %L) ON CONFLICT (id) DO UPDATE SET name = excluded.name',
       v_worker,
-      'E2E Seed Worker'
+      '[E2E] Seed Worker'
     );
   END IF;
 
@@ -264,7 +266,7 @@ BEGIN
       v_sep := ', ';
     END IF;
     v_cols := v_cols || v_sep || quote_ident('name');
-    v_vals := v_vals || v_sep || quote_literal('E2E Seed — HH Unified');
+    v_vals := v_vals || v_sep || quote_literal('[E2E] Seed — HH Unified');
     v_sep := ', ';
     IF pg_temp.hh_e2e_col('projects', 'status') THEN
       v_cols := v_cols || v_sep || quote_ident('status');
@@ -283,11 +285,11 @@ BEGIN
     END IF;
     IF pg_temp.hh_e2e_col('projects', 'client') THEN
       v_cols := v_cols || v_sep || quote_ident('client');
-      v_vals := v_vals || v_sep || quote_literal('E2E Client');
+      v_vals := v_vals || v_sep || quote_literal('[E2E] Client');
       v_sep := ', ';
     ELSIF pg_temp.hh_e2e_col('projects', 'client_name') THEN
       v_cols := v_cols || v_sep || quote_ident('client_name');
-      v_vals := v_vals || v_sep || quote_literal('E2E Client');
+      v_vals := v_vals || v_sep || quote_literal('[E2E] Client');
       v_sep := ', ';
     END IF;
     IF pg_temp.hh_e2e_col('projects', 'address') THEN
@@ -297,7 +299,7 @@ BEGIN
     END IF;
     IF pg_temp.hh_e2e_col('projects', 'notes') THEN
       v_cols := v_cols || v_sep || quote_ident('notes');
-      v_vals := v_vals || v_sep || quote_literal('E2E_SEED — safe to delete; recreated by supabase/seed.sql');
+      v_vals := v_vals || v_sep || quote_literal('[E2E] SEED — safe to delete; recreated by supabase/seed.sql');
     END IF;
     EXECUTE format('INSERT INTO public.projects (%s) VALUES (%s)', v_cols, v_vals);
   END IF;
@@ -348,7 +350,7 @@ BEGIN
         (%L::uuid, %L, %L, %L, %L, true)$t$,
         v_project,
         '[E2E] Task — setup',
-        'Seeded for Playwright / manual QA',
+        '[E2E] Seeded for manual QA',
         'todo',
         'medium',
         v_project,
@@ -378,7 +380,7 @@ BEGIN
         (%L::uuid, %L, %L, %L, %L)$t$,
         v_project,
         '[E2E] Task — setup',
-        'Seeded for Playwright / manual QA',
+        '[E2E] Seeded for manual QA',
         'todo',
         'medium',
         v_project,
@@ -448,7 +450,7 @@ BEGIN
     END IF;
     IF pg_temp.hh_e2e_col('documents', 'notes') THEN
       v_cols := v_cols || ', ' || quote_ident('notes');
-      v_vals := v_vals || ', ' || quote_literal('E2E_SEED');
+      v_vals := v_vals || ', ' || quote_literal('[E2E] SEED');
     END IF;
     EXECUTE format('INSERT INTO public.documents (%s) VALUES (%s)', v_cols, v_vals);
   END IF;
@@ -515,11 +517,11 @@ BEGIN
         v_vals := v_vals || ', 8';
         IF pg_temp.hh_e2e_col('labor_entries', 'cost_code') THEN
           v_cols := v_cols || ', ' || quote_ident('cost_code');
-          v_vals := v_vals || ', ' || quote_literal('E2E');
+          v_vals := v_vals || ', ' || quote_literal('[E2E]');
         END IF;
         IF pg_temp.hh_e2e_col('labor_entries', 'notes') THEN
           v_cols := v_cols || ', ' || quote_ident('notes');
-          v_vals := v_vals || ', ' || quote_literal('E2E_SEED');
+          v_vals := v_vals || ', ' || quote_literal('[E2E] SEED');
         END IF;
         v_cols := v_cols || ', ' || quote_ident('cost_amount');
         v_vals := v_vals || ', 200';
@@ -543,11 +545,11 @@ BEGIN
         v_vals := v_vals || ', ' || format('%L::date', CURRENT_DATE - 1);
         IF pg_temp.hh_e2e_col('labor_entries', 'cost_code') THEN
           v_cols := v_cols || ', ' || quote_ident('cost_code');
-          v_vals := v_vals || ', ' || quote_literal('E2E');
+          v_vals := v_vals || ', ' || quote_literal('[E2E]');
         END IF;
         IF pg_temp.hh_e2e_col('labor_entries', 'notes') THEN
           v_cols := v_cols || ', ' || quote_ident('notes');
-          v_vals := v_vals || ', ' || quote_literal('E2E_SEED');
+          v_vals := v_vals || ', ' || quote_literal('[E2E] SEED');
         END IF;
         v_cols := v_cols || ', ' || quote_ident('cost_amount');
         v_vals := v_vals || ', 200';
