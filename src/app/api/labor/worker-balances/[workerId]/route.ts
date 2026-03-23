@@ -33,6 +33,8 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
     return NextResponse.json({ ok: false, message: "Supabase not configured." }, { status: 500 });
   }
 
+  const BAL_EPS = 0.005;
+
   try {
     let row = await fetchWorkerBalanceRowForDelete(c, id);
     if (!row) {
@@ -40,7 +42,72 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
       if (!lw?.id) {
         return NextResponse.json({ ok: false, message: "Worker not found." }, { status: 404 });
       }
-      row = await fetchWorkerBalanceRowForDelete(c, String(lw.id));
+      // Fallback: compute deletable from worker-specific aggregates directly.
+      // This avoids false "not found" when list aggregation diverges from delete-time lookup.
+      const workerId = String(lw.id);
+      const [laborRes, payRes, reimbRes, advRes] = await Promise.all([
+        c
+          .from("labor_entries")
+          .select("worker_payment_id, cost_amount, total")
+          .eq("worker_id", workerId),
+        c.from("worker_payments").select("id, total_amount, amount").eq("worker_id", workerId),
+        c.from("worker_reimbursements").select("amount, status").eq("worker_id", workerId),
+        c.from("worker_advances").select("amount, status").eq("worker_id", workerId),
+      ]);
+
+      const laborRows = (laborRes.data ?? []) as Array<{
+        worker_payment_id?: string | null;
+        cost_amount?: number | null;
+        total?: number | null;
+      }>;
+      const payRows = (payRes.data ?? []) as Array<{
+        total_amount?: number | null;
+        amount?: number | null;
+      }>;
+      const reimbRows = (reimbRes.data ?? []) as Array<{
+        amount?: number | null;
+        status?: string | null;
+      }>;
+      const advRows = (advRes.data ?? []) as Array<{
+        amount?: number | null;
+        status?: string | null;
+      }>;
+
+      const laborOwed = laborRows.reduce((s, r) => {
+        const linked = String(r.worker_payment_id ?? "").trim().length > 0;
+        if (linked) return s;
+        return s + (Number(r.cost_amount ?? r.total) || 0);
+      }, 0);
+      const reimbursements = reimbRows.reduce((s, r) => {
+        if (String(r.status ?? "").toLowerCase() === "paid") return s;
+        return s + (Number(r.amount) || 0);
+      }, 0);
+      const payments = payRows.reduce((s, r) => s + (Number(r.total_amount ?? r.amount) || 0), 0);
+      const advances = advRows.reduce((s, r) => {
+        const st = String(r.status ?? "").toLowerCase();
+        if (st !== "pending" && st !== "deducted") return s;
+        return s + (Number(r.amount) || 0);
+      }, 0);
+      const balance = laborOwed + reimbursements - payments - advances;
+      const deletable =
+        laborRows.length === 0 &&
+        payRows.length === 0 &&
+        Math.abs(laborOwed) < BAL_EPS &&
+        Math.abs(reimbursements) < BAL_EPS &&
+        Math.abs(payments) < BAL_EPS &&
+        Math.abs(advances) < BAL_EPS &&
+        Math.abs(balance) < BAL_EPS;
+
+      row = {
+        workerId,
+        workerName: String(lw.name ?? "").trim() || "—",
+        laborOwed,
+        reimbursements,
+        payments,
+        advances,
+        balance,
+        deletable,
+      };
     }
     if (!row) {
       return NextResponse.json({ ok: false, message: "Worker not found." }, { status: 404 });
