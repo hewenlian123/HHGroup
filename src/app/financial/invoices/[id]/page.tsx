@@ -29,7 +29,6 @@ import {
   getDepositsByInvoiceId,
   getPaymentMethods,
   markInvoiceSent,
-  voidInvoice,
   revertInvoiceToDraft,
   recordInvoicePayment,
   deleteInvoicePayment,
@@ -51,6 +50,9 @@ import { cn } from "@/lib/utils";
 import { deleteInvoiceAction } from "../actions";
 import { ReceivePaymentModal } from "@/app/financial/payments/receive-payment-modal";
 import { InvoiceStatusBadge } from "@/components/invoice-status-badge";
+import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
+import { useToast } from "@/components/toast/toast-provider";
+import { voidInvoiceFromClient } from "@/lib/invoice-void-client";
 
 export default function InvoiceDetailPage() {
   const params = useParams();
@@ -131,6 +133,10 @@ export default function InvoiceDetailPage() {
     [refresh]
   );
 
+  useBreadcrumbEntityLabel(invoice?.invoiceNo);
+
+  const { toast } = useToast();
+
   const handleMarkSent = async () => {
     if (!id) return;
     await markInvoiceSent(id);
@@ -140,9 +146,27 @@ export default function InvoiceDetailPage() {
   const handleVoid = async () => {
     if (!id) return;
     setActionBusy(true);
-    await voidInvoice(id);
-    await refresh();
-    setActionBusy(false);
+    try {
+      const result = await voidInvoiceFromClient(id);
+      if (!result.ok) {
+        toast({
+          title: "Could not void invoice",
+          description: result.message,
+          variant: "error",
+        });
+        return;
+      }
+      toast({ title: "Invoice voided", variant: "success" });
+      await refresh();
+    } catch (e) {
+      toast({
+        title: "Could not void invoice",
+        description: e instanceof Error ? e.message : "Network error",
+        variant: "error",
+      });
+    } finally {
+      setActionBusy(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -254,12 +278,13 @@ export default function InvoiceDetailPage() {
                   onSelect={(e) => {
                     e.preventDefault();
                     if (
-                      window.confirm(
+                      !window.confirm(
                         "Void this invoice? Total and balance will be set to zero. This cannot be undone."
                       )
                     ) {
-                      void handleVoid();
+                      return;
                     }
+                    void handleVoid();
                   }}
                   disabled={actionBusy}
                 >

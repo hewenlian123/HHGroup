@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getInvoiceById, getProjectById } from "@/lib/data";
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 import { DocumentCompanyHeader } from "@/components/documents/document-company-header";
+import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 
 /** Company block must reflect latest `company_profile` after Settings saves (no stale RSC cache). */
 export const dynamic = "force-dynamic";
@@ -18,6 +19,7 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
 
   return (
     <div className="min-h-screen bg-white text-black p-8 mx-auto" style={{ maxWidth: "8.5in" }}>
+      <SetBreadcrumbEntityTitle label={invoice.invoiceNo} />
       <DocumentCompanyHeader
         company={company}
         documentTitle="Invoice"

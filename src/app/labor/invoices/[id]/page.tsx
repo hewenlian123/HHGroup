@@ -22,6 +22,7 @@ import {
   type Attachment,
 } from "@/lib/data";
 import { ArrowLeft, Download, Eye, Plus, Trash2 } from "lucide-react";
+import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
 
 function makeAttachment(file: File): Attachment {
   return {
@@ -74,6 +75,8 @@ export default function LaborInvoiceDetailPage() {
     setWorkers(w);
     setProjects(p);
   }, []);
+
+  useBreadcrumbEntityLabel(invoice?.invoiceNo);
 
   useOnAppSync(
     React.useCallback(() => {

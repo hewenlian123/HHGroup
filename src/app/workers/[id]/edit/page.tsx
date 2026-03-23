@@ -15,6 +15,7 @@ import {
   disableWorker,
   deleteWorker,
 } from "@/lib/data";
+import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
 
 export default function WorkerProfileEditPage() {
   const params = useParams();
@@ -58,6 +59,8 @@ export default function WorkerProfileEditPage() {
     }, [refreshAll]),
     [refreshAll]
   );
+
+  useBreadcrumbEntityLabel(name.trim() ? name : worker?.name);
 
   const handleSave = async () => {
     if (!id) return;

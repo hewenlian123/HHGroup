@@ -177,3 +177,85 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ ok: false, message }, { status: 500 });
   }
 }
+
+type PatchBody = { action?: string };
+
+/**
+ * Void invoice (server-side). Allows transition from any non-Void stored status
+ * (Draft, Sent, Partially Paid, Paid — including rows whose computed UI status is Unpaid / Overdue / Partial).
+ */
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  if (!id) return NextResponse.json({ ok: false, message: "Missing invoice id." }, { status: 400 });
+
+  let body: PatchBody;
+  try {
+    body = (await req.json()) as PatchBody;
+  } catch {
+    return NextResponse.json({ ok: false, message: "Invalid JSON body." }, { status: 400 });
+  }
+  if (body.action !== "void") {
+    return NextResponse.json({ ok: false, message: "Unsupported action." }, { status: 400 });
+  }
+
+  try {
+    const admin = getServerSupabaseAdmin();
+    const server = getServerSupabase();
+    const supabase = admin ?? server ?? (await createServerSupabaseClient());
+    if (!supabase) {
+      return NextResponse.json(
+        { ok: false, message: "Supabase is not configured." },
+        { status: 500 }
+      );
+    }
+    if (!admin && !server) {
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+      if (authError || !user) {
+        return NextResponse.json({ ok: false, message: "You must be signed in." }, { status: 401 });
+      }
+    }
+
+    const invRes = await supabase.from("invoices").select("id, status").eq("id", id).maybeSingle();
+    if (invRes.error) {
+      return NextResponse.json(
+        { ok: false, message: invRes.error.message ?? "Failed to load invoice." },
+        { status: 500 }
+      );
+    }
+    if (!invRes.data) {
+      return NextResponse.json({ ok: false, message: "Invoice not found." }, { status: 404 });
+    }
+
+    const status = String((invRes.data as { status?: string }).status ?? "");
+    if (status === "Void") {
+      return NextResponse.json({ ok: true, message: "Already void." });
+    }
+
+    const { error: updErr } = await supabase
+      .from("invoices")
+      .update({
+        status: "Void",
+        total: 0,
+        subtotal: 0,
+        tax_amount: 0,
+        paid_total: 0,
+        balance_due: 0,
+      })
+      .eq("id", id);
+
+    if (updErr) {
+      return NextResponse.json(
+        { ok: false, message: updErr.message ?? "Failed to void invoice." },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Failed to void invoice.";
+    return NextResponse.json({ ok: false, message }, { status: 500 });
+  }
+}

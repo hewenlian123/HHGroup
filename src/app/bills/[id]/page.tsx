@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { PageLayout, PageHeader } from "@/components/base";
 import { getApBillById, getApBillPayments } from "@/lib/data";
 import { BillDetailClient } from "./bill-detail-client";
+import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,7 @@ export default async function BillDetailPage({ params, searchParams }: Props) {
         />
       }
     >
+      <SetBreadcrumbEntityTitle label={bill.bill_no?.trim() || bill.vendor_name?.trim() || null} />
       <BillDetailClient bill={bill} payments={payments} addPaymentOpen={sp.addPayment === "1"} />
     </PageLayout>
   );

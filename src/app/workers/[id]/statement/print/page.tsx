@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getWorkerById, getWorkerEarningsAllocations, getWorkerLaborPayments } from "@/lib/data";
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 import { DocumentCompanyHeader } from "@/components/documents/document-company-header";
+import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 
 export default async function WorkerStatementPrintPage({
   params,
@@ -27,6 +28,7 @@ export default async function WorkerStatementPrintPage({
 
   return (
     <div className="min-h-screen bg-white text-black p-8 mx-auto" style={{ maxWidth: "8.5in" }}>
+      <SetBreadcrumbEntityTitle label={worker.name} />
       <DocumentCompanyHeader
         company={company}
         documentTitle="Worker Statement"

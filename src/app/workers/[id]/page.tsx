@@ -18,6 +18,7 @@ import type { LaborEntryWithJoins } from "@/lib/daily-labor-db";
 import { formatLaborEntrySessionLabel } from "@/lib/daily-labor-db";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
 
 function fmtUsd(n: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -206,6 +207,8 @@ export default function WorkerDashboardPage() {
     }, [refreshAll]),
     [refreshAll]
   );
+
+  useBreadcrumbEntityLabel(worker?.name);
 
   const monthlyTotals = React.useMemo(() => {
     if (!laborLedgerEntries) return [];

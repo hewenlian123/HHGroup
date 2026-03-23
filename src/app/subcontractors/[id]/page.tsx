@@ -11,6 +11,7 @@ import {
 } from "@/lib/data";
 import { SubcontractorW9 } from "./subcontractor-w9";
 import { SubcontractorDetailClient } from "./subcontractor-detail-client";
+import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 
 function fmtUsd(n: number): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -94,6 +95,7 @@ export default async function SubcontractorDetailPage({ params }: Props) {
         />
       }
     >
+      <SetBreadcrumbEntityTitle label={subcontractor.name} />
       {insuranceAlert ? (
         <div className="py-2 px-3 border-b border-border/60 bg-amber-500/10 dark:bg-amber-500/10">
           <StatusBadge

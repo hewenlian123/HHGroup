@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { PageLayout, PageHeader } from "@/components/base";
 import { getApBillById, getProjects } from "@/lib/data";
 import { EditBillClient } from "./edit-bill-client";
+import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ export default async function EditBillPage({ params }: Props) {
         <PageHeader title={`Edit ${bill.bill_no ?? "bill"}`} description={bill.vendor_name} />
       }
     >
+      <SetBreadcrumbEntityTitle label={bill.bill_no?.trim() || bill.vendor_name?.trim() || null} />
       <EditBillClient bill={bill} projects={projectOptions} />
     </PageLayout>
   );

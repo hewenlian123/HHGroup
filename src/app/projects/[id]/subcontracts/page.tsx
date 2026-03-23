@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
 import { getProjectById, getSubcontractsByProject, getSubcontractors } from "@/lib/data";
 import { AddSubcontractButton } from "./add-subcontract-button";
+import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 
 function fmtUsd(n: number): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -39,6 +40,7 @@ export default async function ProjectSubcontractsPage({ params }: Props) {
         />
       }
     >
+      <SetBreadcrumbEntityTitle label={project.name} />
       <SectionHeader
         label="Subcontracts"
         action={<AddSubcontractButton projectId={id} subcontractors={subcontractorsForDropdown} />}

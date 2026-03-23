@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { getWorkerById, getLaborEntriesWithJoins, getLaborPaymentsByWorkerId } from "@/lib/data";
+import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 
 function fmtUsd(n: number): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -49,6 +50,7 @@ export default async function WorkerStatementPage({ params }: Props) {
         />
       }
     >
+      <SetBreadcrumbEntityTitle label={worker.name} />
       {/* Section 1: Worker header */}
       <div className="flex items-baseline justify-between py-3 border-b border-border/60">
         <h2 className="text-lg font-semibold">{worker.name}</h2>

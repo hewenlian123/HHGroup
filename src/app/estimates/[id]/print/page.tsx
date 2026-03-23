@@ -12,6 +12,7 @@ import { EstimatePrintDocument } from "../../_components/estimate-print-document
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 import { AutoprintTrigger } from "./autoprint-trigger";
 import { PrintActionBar } from "./print-action-bar";
+import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +50,7 @@ export default async function EstimatePrintPage({
       role="document"
       aria-label="Estimate print view"
     >
+      <SetBreadcrumbEntityTitle label={estimate.number} />
       <AutoprintTrigger enabled={autoprint === "1"} />
       <PrintActionBar estimateId={id} />
       <style

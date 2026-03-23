@@ -481,9 +481,17 @@ export async function voidInvoice(invoiceId: string): Promise<boolean> {
   const c = client();
   const inv = await getInvoiceById(invoiceId);
   if (!inv) return false;
+  if (inv.status === "Void") return true;
   const { error } = await c
     .from("invoices")
-    .update({ status: "Void", total: 0, subtotal: 0, tax_amount: 0 })
+    .update({
+      status: "Void",
+      total: 0,
+      subtotal: 0,
+      tax_amount: 0,
+      paid_total: 0,
+      balance_due: 0,
+    })
     .eq("id", invoiceId);
   return !error;
 }

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
+import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { createBrowserClient } from "@/lib/supabase";
@@ -116,6 +117,8 @@ export default function CustomerDetailPage() {
     }, [refresh]),
     [refresh]
   );
+
+  useBreadcrumbEntityLabel(!loading && !notFound && form.name.trim() ? form.name : null);
 
   const handleSave = React.useCallback(() => {
     if (!id || !supabase) {

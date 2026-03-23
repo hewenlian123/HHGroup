@@ -32,6 +32,7 @@ import { ProjectPunchListTab } from "./project-punch-list-tab";
 import { RecentExpenseLines } from "./recent-expense-lines";
 import { archiveProjectAction, deleteProjectAction, updateProjectAction } from "../actions";
 import { EditProjectModal, type ProjectEditSavePatch } from "./edit-project-modal";
+import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
 
 type TabKey =
   | "overview"
@@ -120,6 +121,7 @@ export function ProjectDetailTabsClient({
   const [tab, setTab] = React.useState<TabKey>(initialTab);
   const [editModalOpen, setEditModalOpen] = React.useState(false);
   const [displayProject, setDisplayProject] = React.useState<Project>(() => project);
+  useBreadcrumbEntityLabel(displayProject.name);
   const displayProjectRef = React.useRef(displayProject);
   displayProjectRef.current = displayProject;
 

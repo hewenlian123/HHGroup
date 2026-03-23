@@ -5,6 +5,7 @@ import { getSubcontractById, getBillsBySubcontract } from "@/lib/data";
 import { AddBillButton } from "./add-bill-button";
 import { ApproveBillButton } from "./approve-bill-button";
 import { BillRowActions } from "./bill-row-actions";
+import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 
 function fmtUsd(n: number): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -38,6 +39,7 @@ export default async function SubcontractBillsPage({ params }: Props) {
         />
       }
     >
+      <SetBreadcrumbEntityTitle label={subcontract.subcontractor_name} />
       <SectionHeader
         label="Bills"
         action={<AddBillButton projectId={projectId} subcontractId={subId} />}
