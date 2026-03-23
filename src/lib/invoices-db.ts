@@ -497,16 +497,16 @@ export async function revertInvoiceToDraft(invoiceId: string): Promise<boolean> 
   const inv = await getInvoiceByIdWithDerived(invoiceId);
   if (!inv) return false;
   if (inv.computedStatus !== "Void" && inv.computedStatus !== "Paid") return false;
-  const { error } = await c.from("invoices").update({ status: "draft" }).eq("id", invoiceId);
+  const { error } = await c.from("invoices").update({ status: "Draft" }).eq("id", invoiceId);
   return !error;
 }
 
-/** Permanently delete an invoice. Only allowed when status is Draft. */
+/** Permanently delete an invoice. Only allowed when status is Draft or Void (not Sent / Partially Paid / Paid). */
 export async function deleteInvoice(invoiceId: string): Promise<boolean> {
   const c = client();
   const inv = await getInvoiceById(invoiceId);
   if (!inv) return false;
-  if (inv.status !== "Draft") return false;
+  if (inv.status !== "Draft" && inv.status !== "Void") return false;
   const { error } = await c.from("invoices").delete().eq("id", invoiceId);
   return !error;
 }

@@ -53,6 +53,12 @@ import type { InvoiceWithDerived, OverdueInvoiceRow } from "../invoices-db";
 export { getProjectCostCodeSummary } from "./forecast";
 export type { ProjectCostCodeSummaryItem } from "./forecast";
 
+function nonEmptyString(s: string | null | undefined): string | undefined {
+  if (s == null) return undefined;
+  const t = s.trim();
+  return t !== "" ? t : undefined;
+}
+
 export type Project = projectsDb.Project;
 export type RecentTransaction = {
   id: string;
@@ -2862,10 +2868,12 @@ export async function convertEstimateSnapshotToProject(
   const locked = await estDb.setEstimateStatus(estimateId, "Converted");
   if (!locked) return null;
 
+  const clientFromEstimate = nonEmptyString(meta.client?.name);
   const project = await projectsDb.createProject({
     name: meta.project.name?.trim() || estimate.project?.trim() || `Project ${estimate.number}`,
     budget: s.total,
     status: "active",
+    ...(clientFromEstimate ? { client: clientFromEstimate } : {}),
     sourceEstimateId: estimateId,
     snapshotRevenue: s.total,
     snapshotBudgetCost: s.subtotal,

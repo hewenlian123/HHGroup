@@ -702,7 +702,7 @@ export default function InvoiceDetailPage() {
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Cannot delete invoice</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
-              This invoice cannot be deleted because it has been issued or paid.
+              Only draft or void invoices can be deleted. Issued or paid invoices cannot be removed.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="pt-3 border-t border-border/60">

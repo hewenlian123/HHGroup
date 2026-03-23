@@ -7,6 +7,9 @@ import { getSupabaseClient } from "@/lib/supabase";
 
 export type ProjectStatus = "active" | "pending" | "completed";
 
+/** Nested row from `select('...,customers(name)')` (FK projects.customer_id → customers.id). */
+export type ProjectCustomerJoin = { name: string | null };
+
 export type ProjectRow = {
   id: string;
   name: string | null;
@@ -18,6 +21,8 @@ export type ProjectRow = {
   client: string | null;
   client_name: string | null;
   customer_id: string | null;
+  /** Populated when using COLS_WITH_CUSTOMER embed. */
+  customers?: ProjectCustomerJoin | ProjectCustomerJoin[] | null;
   address: string | null;
   project_manager: string | null;
   start_date: string | null;
@@ -147,13 +152,29 @@ async function parseForeignKeyError(
 const HINT =
   "Run supabase/migrations/20260228000301_projects.sql in Supabase Dashboard → SQL Editor.";
 
+function nonEmptyText(s: string | null | undefined): string | null {
+  if (s == null) return null;
+  const t = String(s).trim();
+  return t !== "" ? t : null;
+}
+
+/** Resolve display name from embedded `customers(name)` (object or one-element array). */
+function clientNameFromCustomerJoin(customers: ProjectRow["customers"]): string | null {
+  if (customers == null) return null;
+  const row = Array.isArray(customers) ? customers[0] : customers;
+  return nonEmptyText(row?.name ?? null);
+}
+
 function toProject(r: ProjectRow): Project {
   const status = (
     r.status === "active" || r.status === "pending" || r.status === "completed"
       ? r.status
       : "pending"
   ) as ProjectStatus;
-  const clientVal = r.client ?? (r as { client_name?: string | null }).client_name ?? null;
+  const clientVal =
+    nonEmptyText(r.client) ??
+    nonEmptyText(r.client_name) ??
+    clientNameFromCustomerJoin(r.customers);
   return {
     id: r.id,
     name: r.name ?? "",
@@ -194,11 +215,14 @@ function toProject(r: ProjectRow): Project {
 const COLS =
   "id,name,status,budget,spent,created_at,updated_at,client,client_name,customer_id,address,project_manager,start_date,end_date,notes,estimate_ref,source_estimate_id,snapshot_revenue,snapshot_budget_cost,snapshot_breakdown";
 
+/** Same as COLS plus linked customer name for list/detail when `client` / `client_name` are empty. */
+const COLS_WITH_CUSTOMER = `${COLS},customers(name)`;
+
 export async function getProjects(): Promise<Project[]> {
   const c = client();
   const { data: rows, error } = await c
     .from("projects")
-    .select(COLS)
+    .select(COLS_WITH_CUSTOMER)
     .order("updated_at", { ascending: false });
   if (error) {
     if (isMissingTable(error)) throw new Error(`Projects table not found. ${HINT}`);
@@ -252,7 +276,11 @@ export async function getProjectsDashboard(
 
 export async function getProjectById(id: string): Promise<Project | null> {
   const c = client();
-  const { data: r, error } = await c.from("projects").select(COLS).eq("id", id).maybeSingle();
+  const { data: r, error } = await c
+    .from("projects")
+    .select(COLS_WITH_CUSTOMER)
+    .eq("id", id)
+    .maybeSingle();
   if (error) {
     if (isMissingTable(error)) throw new Error(`Projects table not found. ${HINT}`);
     throw new Error(error.message ? `${error.message} ${HINT}` : HINT);
@@ -265,7 +293,7 @@ export async function getProjectBySourceEstimateId(estimateId: string): Promise<
   const c = client();
   const { data: r, error } = await c
     .from("projects")
-    .select(COLS)
+    .select(COLS_WITH_CUSTOMER)
     .eq("source_estimate_id", estimateId)
     .maybeSingle();
   if (error) {
@@ -325,7 +353,11 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
     ...(input.snapshotBudgetCost != null ? { snapshot_budget_cost: input.snapshotBudgetCost } : {}),
     ...(input.snapshotBreakdown != null ? { snapshot_breakdown: input.snapshotBreakdown } : {}),
   };
-  const { data: inserted, error } = await c.from("projects").insert(row).select(COLS).single();
+  const { data: inserted, error } = await c
+    .from("projects")
+    .insert(row)
+    .select(COLS_WITH_CUSTOMER)
+    .single();
   if (error) {
     const raw = error.message ? ` (${error.message})` : "";
     throw new Error(
@@ -391,7 +423,7 @@ export async function updateProject(
     .from("projects")
     .update(row)
     .eq("id", id)
-    .select(COLS)
+    .select(COLS_WITH_CUSTOMER)
     .maybeSingle();
   if (error) {
     if (isMissingTable(error)) throw new Error(`Projects table not found. ${HINT}`);
