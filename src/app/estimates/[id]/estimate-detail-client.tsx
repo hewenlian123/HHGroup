@@ -24,6 +24,7 @@ import {
 import { EstimateDetailHeader } from "./estimate-detail-header";
 import { ConvertToProjectDrawer } from "./convert-to-project-drawer";
 import { EstimateEditor } from "../_components/estimate-editor";
+import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
 
 export function EstimateDetailClient({
   estimateId,
@@ -55,6 +56,7 @@ export function EstimateDetailClient({
 }) {
   const { toast } = useToast();
   const router = useRouter();
+  useBreadcrumbEntityLabel(estimateNumber);
   const [status, setStatus] = React.useState<string>(initialStatus);
   const [editing, setEditing] = React.useState(false);
   const [resetNonce, setResetNonce] = React.useState(0);

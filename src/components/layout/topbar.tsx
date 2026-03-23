@@ -17,6 +17,7 @@ import {
 import { createBrowserClient } from "@/lib/supabase";
 import { getCompanyInitials, getCompanyProfile } from "@/lib/company-profile";
 import { useSystemHealth } from "@/contexts/system-health-context";
+import { useBreadcrumbOverrides } from "@/contexts/breadcrumb-override-context";
 import { cn } from "@/lib/utils";
 
 /** Map path segments to breadcrumb display labels (for last segment, or section names). */
@@ -102,11 +103,16 @@ function getBreadcrumbLabel(segment: string, pathSegments: string[], index: numb
   );
 }
 
-function buildBreadcrumbs(pathname: string): string[] {
+function buildBreadcrumbs(pathname: string, overrides: Map<string, string>): string[] {
   const path = pathname.split("?")[0].split("#")[0];
   const parts = path.split("/").filter(Boolean);
   if (parts.length === 0) return ["Dashboard"];
-  return parts.map((p, i) => getBreadcrumbLabel(p, parts, i));
+  return parts.map((p, i) => {
+    const key = `${path}:${i}`;
+    const override = overrides.get(key);
+    if (override) return override;
+    return getBreadcrumbLabel(p, parts, i);
+  });
 }
 
 export function Topbar({
@@ -119,7 +125,11 @@ export function Topbar({
   const [orgName, setOrgName] = React.useState("HH Group");
   const [logoUrl, setLogoUrl] = React.useState<string | null>(null);
   const pathname = usePathname();
-  const breadcrumbs = React.useMemo(() => buildBreadcrumbs(pathname ?? ""), [pathname]);
+  const { overrides: breadcrumbOverrides } = useBreadcrumbOverrides();
+  const breadcrumbs = React.useMemo(
+    () => buildBreadcrumbs(pathname ?? "", breadcrumbOverrides),
+    [pathname, breadcrumbOverrides]
+  );
   const { systemHealth } = useSystemHealth();
 
   React.useEffect(() => {
@@ -195,7 +205,7 @@ export function Topbar({
               </svg>
               <div className="flex min-w-0 items-center gap-1">
                 {breadcrumbs.map((label, i) => (
-                  <React.Fragment key={`${label}-${i}`}>
+                  <React.Fragment key={`${pathname}-${i}-${label}`}>
                     {i > 0 && (
                       <svg
                         className="h-[10px] w-[10px] shrink-0 opacity-30 text-[#9ca3af] dark:text-muted-foreground"

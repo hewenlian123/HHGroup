@@ -10,6 +10,7 @@ import { EstimateReadOnlyContent } from "../estimate-read-only";
 import { Download } from "lucide-react";
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 import { DocumentCompanyHeader } from "@/components/documents/document-company-header";
+import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 
 export default async function EstimateSnapshotPage({
   params,
@@ -46,6 +47,7 @@ export default async function EstimateSnapshotPage({
 
   return (
     <div className="min-h-screen bg-background" data-read-only="true">
+      <SetBreadcrumbEntityTitle label={estimate.number} />
       <style
         dangerouslySetInnerHTML={{
           __html: `

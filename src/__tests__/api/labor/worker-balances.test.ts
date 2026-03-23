@@ -69,6 +69,7 @@ describe("GET /api/labor/worker-balances", () => {
       payments: 50,
       advances: 0,
       balance: 70,
+      deletable: false,
     });
   });
 });

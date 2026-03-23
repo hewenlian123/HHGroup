@@ -5,6 +5,7 @@ import { getProjectById, getWorkerById, getWorkerPaymentById } from "@/lib/data"
 import { getWorkerPaymentReceiptPayload } from "@/lib/worker-payment-receipt-data";
 import { computeWorkerPaymentReceiptNo } from "@/lib/worker-payment-receipt-no";
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
+import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 
 export default async function WorkerPaymentReceiptPage({
   params,
@@ -35,23 +36,26 @@ export default async function WorkerPaymentReceiptPage({
   const bal = receiptData?.balance ?? null;
 
   return (
-    <WorkerPaymentReceiptScreen receiptNo={receiptNo} paymentId={payment.id}>
-      <WorkerPaymentReceiptBody
-        company={company}
-        receiptNo={receiptNo}
-        paymentDate={payment.paymentDate}
-        workerName={worker.name}
-        workerTrade={worker.trade}
-        projectName={projectName}
-        paymentMethod={payment.paymentMethod}
-        amount={payment.amount}
-        notes={payment.notes}
-        laborLines={laborLines}
-        reimbLines={reimbLines}
-        laborSubtotal={laborSubtotal}
-        reimbSubtotal={reimbSubtotal}
-        balance={bal}
-      />
-    </WorkerPaymentReceiptScreen>
+    <>
+      <SetBreadcrumbEntityTitle label={receiptNo} />
+      <WorkerPaymentReceiptScreen receiptNo={receiptNo} paymentId={payment.id}>
+        <WorkerPaymentReceiptBody
+          company={company}
+          receiptNo={receiptNo}
+          paymentDate={payment.paymentDate}
+          workerName={worker.name}
+          workerTrade={worker.trade}
+          projectName={projectName}
+          paymentMethod={payment.paymentMethod}
+          amount={payment.amount}
+          notes={payment.notes}
+          laborLines={laborLines}
+          reimbLines={reimbLines}
+          laborSubtotal={laborSubtotal}
+          reimbSubtotal={reimbSubtotal}
+          balance={bal}
+        />
+      </WorkerPaymentReceiptScreen>
+    </>
   );
 }

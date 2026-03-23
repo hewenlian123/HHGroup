@@ -11,6 +11,7 @@ import {
 import { EstimatePreviewContent } from "./estimate-preview-content";
 import { EstimatePreviewShell } from "./estimate-preview-shell";
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
+import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,7 @@ export default async function EstimatePreviewPage({ params }: { params: Promise<
 
   return (
     <div className="page-container py-6">
+      <SetBreadcrumbEntityTitle label={estimate.number} />
       <EstimatePreviewShell estimateId={id} estimateNumber={estimate.number}>
         <EstimatePreviewContent
           company={company}

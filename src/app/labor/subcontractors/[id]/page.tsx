@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { StatusBadge } from "@/components/status-badge";
+import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
 
 type SubcontractorRow = {
   id: string;
@@ -164,6 +165,8 @@ export default function SubcontractorDetailPage() {
     }, [refresh]),
     [refresh]
   );
+
+  useBreadcrumbEntityLabel(!loading && !notFound && row?.display_name ? row.display_name : null);
 
   const handleSave = React.useCallback(async () => {
     if (!id || !supabase || !row) return;

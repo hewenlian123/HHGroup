@@ -7,6 +7,7 @@ import { computeWorkerPaymentReceiptNo } from "@/lib/worker-payment-receipt-no";
 import { ReceiptPrintAutoprint } from "../receipt-print-autoprint";
 import { ReceiptPrintClientShell } from "../receipt-print-client-shell";
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
+import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 
 export const metadata: Metadata = {
   title: "Worker Payment Receipt",
@@ -47,6 +48,7 @@ export default async function WorkerPaymentReceiptPrintPage({
 
   return (
     <div className="receipt-print-route">
+      <SetBreadcrumbEntityTitle label={receiptNo} />
       <ReceiptPrintAutoprint enabled={autoprint} />
       <ReceiptPrintClientShell receiptNo={receiptNo}>
         <WorkerPaymentReceiptBody

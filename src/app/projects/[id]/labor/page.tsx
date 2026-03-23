@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
 import { getProjectById, getLaborEntriesWithJoins, getWorkers } from "@/lib/data";
+import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 
 function fmtUsd(n: number): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -80,6 +81,7 @@ export default async function ProjectLaborPage({ params }: Props) {
         />
       }
     >
+      <SetBreadcrumbEntityTitle label={project.name} />
       {/* Header: Project name, Total Labor Cost */}
       <div className="flex items-baseline justify-between py-3 border-b border-border/60">
         <h2 className="text-lg font-semibold">{project.name}</h2>

@@ -16,6 +16,7 @@ import {
   getWorkers,
 } from "@/lib/data";
 import { getCanonicalProjectProfit } from "@/lib/profit-engine";
+import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 
 function fmtUsd(n: number): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -188,6 +189,7 @@ export default async function ProjectProfitPage({ params }: Props) {
         />
       }
     >
+      <SetBreadcrumbEntityTitle label={project.name} />
       <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 py-3 border-b border-border/60">
         <span className="text-sm text-muted-foreground">Revenue</span>
         <span className="text-lg font-medium tabular-nums">${fmtUsd(revenue)}</span>

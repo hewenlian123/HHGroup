@@ -12,6 +12,7 @@ import { Pencil } from "lucide-react";
 import { ChangeOrderStatusDropdown } from "./change-order-header-actions";
 import { ChangeOrderLineItemsTable } from "./change-order-line-items-table";
 import { ChangeOrderAttachmentsSection } from "./change-order-attachments-section";
+import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 
 function fmtUsd(n: number): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -35,8 +36,11 @@ export default async function ChangeOrderDetailPage({
   const revenueAmount = co.amount != null ? co.amount : co.total;
   const isLocked = co.status === "Approved";
 
+  const coBreadcrumbLabel = co.title?.trim() || co.number.trim() || null;
+
   return (
     <div className="page-container py-6">
+      <SetBreadcrumbEntityTitle label={coBreadcrumbLabel} />
       <div className="mb-3">
         <Link
           href={`/projects/${projectId}?tab=change-orders`}

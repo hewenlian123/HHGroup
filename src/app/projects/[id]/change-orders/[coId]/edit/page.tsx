@@ -4,6 +4,7 @@ import { getProjectById, getChangeOrderById, getChangeOrderItems } from "@/lib/d
 import { PageLayout, PageHeader } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { ChangeOrderEditClient } from "./change-order-edit-client";
+import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 
 export default async function ChangeOrderEditPage({
   params,
@@ -20,8 +21,11 @@ export default async function ChangeOrderEditPage({
   const subtotal = items.reduce((s, i) => s + i.total, 0);
   const total = co.total;
 
+  const coBreadcrumbLabel = co.title?.trim() || co.number.trim() || null;
+
   return (
     <div className="page-container py-6">
+      <SetBreadcrumbEntityTitle label={coBreadcrumbLabel} />
       <PageLayout
         header={
           <PageHeader title={`${co.number} (edit)`}>

@@ -26,7 +26,6 @@ import {
   getInvoicesWithDerived,
   getProjects,
   duplicateInvoice,
-  voidInvoice,
   type InvoiceWithDerived,
   type InvoiceComputedStatus,
 } from "@/lib/data";
@@ -37,6 +36,8 @@ import { EmptyState } from "@/components/empty-state";
 import { Pagination } from "@/components/ui/pagination";
 import { useSearchParams } from "next/navigation";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
+import { useToast } from "@/components/toast/toast-provider";
+import { voidInvoiceFromClient } from "@/lib/invoice-void-client";
 
 const STATUS_OPTIONS: { value: "" | InvoiceComputedStatus; label: string }[] = [
   { value: "", label: "All" },
@@ -65,6 +66,7 @@ function InvoicesPageInner() {
   const [projectFilter, setProjectFilter] = React.useState("");
   const [voidConfirmId, setVoidConfirmId] = React.useState<string | null>(null);
   const [projects, setProjects] = React.useState<Awaited<ReturnType<typeof getProjects>>>([]);
+  const { toast } = useToast();
 
   React.useEffect(() => {
     let cancelled = false;
@@ -143,7 +145,16 @@ function InvoicesPageInner() {
   );
 
   const handleVoid = async (id: string) => {
-    await voidInvoice(id);
+    const result = await voidInvoiceFromClient(id);
+    if (!result.ok) {
+      toast({
+        title: "Could not void invoice",
+        description: result.message,
+        variant: "error",
+      });
+      return;
+    }
+    toast({ title: "Invoice voided", variant: "success" });
     await refresh();
   };
 

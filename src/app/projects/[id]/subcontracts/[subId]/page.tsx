@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
 import { getProjectById, getSubcontractById } from "@/lib/data";
 import { SubcontractDetailClient } from "./subcontract-detail-client";
+import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 
 type Props = { params: Promise<{ id: string; subId: string }> };
 
@@ -34,6 +35,7 @@ export default async function SubcontractDetailPage({ params }: Props) {
         />
       }
     >
+      <SetBreadcrumbEntityTitle label={subcontract.subcontractor_name} />
       <SectionHeader label="Contract" />
       <Divider />
       <div className="grid grid-cols-1 gap-y-3 py-4 text-sm max-w-2xl">

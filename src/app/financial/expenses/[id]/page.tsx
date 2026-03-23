@@ -34,6 +34,7 @@ import { ArrowLeft, Plus, FileText, Download, Trash2 } from "lucide-react";
 import { createBrowserClient } from "@/lib/supabase";
 import { useToast } from "@/components/toast/toast-provider";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
+import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
 
 function useAsyncDisabled(name: string | null, fn: (n: string) => Promise<boolean>): boolean {
   const [disabled, setDisabled] = React.useState(false);
@@ -157,6 +158,8 @@ export default function ExpenseDetailPage() {
     }, [refresh, reloadLookups]),
     [refresh, reloadLookups]
   );
+
+  useBreadcrumbEntityLabel(vendorName.trim() || expense?.vendorName?.trim() || null);
 
   const byProject = React.useMemo(() => {
     if (!expense) return new Map<string | null, number>();

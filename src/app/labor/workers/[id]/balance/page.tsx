@@ -14,6 +14,7 @@ import {
   laborPaymentStatusUiLabel,
   type LaborPayrollSettlementMode,
 } from "@/lib/labor-balance-shared";
+import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
 
 function fmtUsd(n: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -138,6 +139,8 @@ export default function WorkerBalanceDetailPage() {
     }, [load]),
     [load]
   );
+
+  useBreadcrumbEntityLabel(worker?.name);
 
   const unpaidLabor = React.useMemo(
     () =>
