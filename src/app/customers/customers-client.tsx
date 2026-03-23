@@ -34,12 +34,16 @@ type Draft = {
   name: string;
   email: string;
   phone: string;
+  contact_person: string;
   address: string;
-  city: string;
-  state: string;
-  zip: string;
   notes: string;
 };
+
+function truncateText(s: string | null | undefined, max: number): string {
+  const t = (s ?? "").trim();
+  if (!t) return "—";
+  return t.length <= max ? t : `${t.slice(0, max - 1)}…`;
+}
 
 export function CustomersClient({ initialCustomers }: Props) {
   const router = useRouter();
@@ -72,7 +76,8 @@ export function CustomersClient({ initialCustomers }: Props) {
     const q = search.trim().toLowerCase();
     if (!q) return items;
     return items.filter((c) => {
-      const hay = `${c.name} ${c.email ?? ""} ${c.phone ?? ""} ${c.city ?? ""}`.toLowerCase();
+      const hay =
+        `${c.name} ${c.email ?? ""} ${c.phone ?? ""} ${c.address ?? ""} ${c.contact_person ?? ""}`.toLowerCase();
       return hay.includes(q);
     });
   }, [items, search]);
@@ -82,10 +87,8 @@ export function CustomersClient({ initialCustomers }: Props) {
       name: "",
       email: "",
       phone: "",
+      contact_person: "",
       address: "",
-      city: "",
-      state: "",
-      zip: "",
       notes: "",
     });
     setError(null);
@@ -98,10 +101,8 @@ export function CustomersClient({ initialCustomers }: Props) {
       name: c.name,
       email: c.email ?? "",
       phone: c.phone ?? "",
+      contact_person: c.contact_person ?? "",
       address: c.address ?? "",
-      city: c.city ?? "",
-      state: c.state ?? "",
-      zip: c.zip ?? "",
       notes: c.notes ?? "",
     });
     setError(null);
@@ -120,10 +121,8 @@ export function CustomersClient({ initialCustomers }: Props) {
       name: draft.name.trim(),
       email: draft.email.trim() || null,
       phone: draft.phone.trim() || null,
+      contact_person: draft.contact_person.trim() || null,
       address: draft.address.trim() || null,
-      city: draft.city.trim() || null,
-      state: draft.state.trim() || null,
-      zip: draft.zip.trim() || null,
       notes: draft.notes.trim() || null,
     };
 
@@ -308,7 +307,7 @@ export function CustomersClient({ initialCustomers }: Props) {
                     Phone
                   </th>
                   <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
-                    City
+                    Address
                   </th>
                   <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
                     Created
@@ -334,7 +333,9 @@ export function CustomersClient({ initialCustomers }: Props) {
                     </td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">{c.email ?? "—"}</td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">{c.phone ?? "—"}</td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground">{c.city ?? "—"}</td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground">
+                      {truncateText(c.address, 36)}
+                    </td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">
                       {c.created_at ? new Date(c.created_at).toLocaleDateString() : "—"}
                     </td>
@@ -421,38 +422,22 @@ export function CustomersClient({ initialCustomers }: Props) {
                 </div>
               </div>
               <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground">Contact person</p>
+                <Input
+                  value={draft.contact_person}
+                  onChange={(e) =>
+                    setDraft((d) => (d ? { ...d, contact_person: e.target.value } : d))
+                  }
+                  className="h-9 text-sm"
+                />
+              </div>
+              <div className="space-y-1">
                 <p className="text-xs font-medium text-muted-foreground">Address</p>
                 <Input
                   value={draft.address}
                   onChange={(e) => setDraft((d) => (d ? { ...d, address: e.target.value } : d))}
                   className="h-9 text-sm"
                 />
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground">City</p>
-                  <Input
-                    value={draft.city}
-                    onChange={(e) => setDraft((d) => (d ? { ...d, city: e.target.value } : d))}
-                    className="h-9 text-sm"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground">State</p>
-                  <Input
-                    value={draft.state}
-                    onChange={(e) => setDraft((d) => (d ? { ...d, state: e.target.value } : d))}
-                    className="h-9 text-sm"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground">Zip</p>
-                  <Input
-                    value={draft.zip}
-                    onChange={(e) => setDraft((d) => (d ? { ...d, zip: e.target.value } : d))}
-                    className="h-9 text-sm"
-                  />
-                </div>
               </div>
               <div className="space-y-1">
                 <p className="text-xs font-medium text-muted-foreground">Notes</p>

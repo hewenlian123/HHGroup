@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { CUSTOMERS_DB_COLUMNS } from "@/lib/customers-db";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,7 @@ export async function GET() {
   }
   const { data, error } = await admin
     .from("customers")
-    .select("id,name,email,phone,address,city,state,zip,notes,created_at")
+    .select(CUSTOMERS_DB_COLUMNS)
     .order("name", { ascending: true });
   if (error) {
     return NextResponse.json(
@@ -31,10 +32,9 @@ export async function POST(request: Request) {
     email?: string | null;
     phone?: string | null;
     address?: string | null;
-    city?: string | null;
-    state?: string | null;
-    zip?: string | null;
+    contact_person?: string | null;
     notes?: string | null;
+    status?: "active" | "inactive" | null;
   };
   const name = body.name?.trim();
   if (!name) {
@@ -45,15 +45,14 @@ export async function POST(request: Request) {
     email: body.email?.trim() || null,
     phone: body.phone?.trim() || null,
     address: body.address?.trim() || null,
-    city: body.city?.trim() || null,
-    state: body.state?.trim() || null,
-    zip: body.zip?.trim() || null,
+    contact_person: body.contact_person?.trim() || null,
     notes: body.notes?.trim() || null,
+    ...(body.status === "active" || body.status === "inactive" ? { status: body.status } : {}),
   };
   const { data, error } = await admin
     .from("customers")
     .insert(payload)
-    .select("id,name,email,phone,address,city,state,zip,notes,created_at")
+    .select(CUSTOMERS_DB_COLUMNS)
     .single();
   if (error) {
     return NextResponse.json(
