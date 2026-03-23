@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server";
 import { createPaymentReceived, markInvoiceSent } from "@/lib/data";
+import { createWorkerPaymentWithClient } from "@/lib/worker-payments-db";
 import postgres from "postgres";
 
 export const dynamic = "force-dynamic";
@@ -923,31 +924,29 @@ export async function POST(req: Request) {
       steps.push("labor entry verified");
       log("labor_workflow", "labor entry verified");
 
-      // Create worker payment
-      const { data: payment, error: payErr } = await c
-        .from("worker_payments")
-        .insert({
-          worker_id: workerId,
-          total_amount: 50,
-          payment_method: "Test",
-          note: "full-system-test",
-        })
-        .select("id, total_amount")
-        .single();
-      if (payErr || !payment) throw new Error(`Worker payment create failed: ${payErr?.message}`);
-      paymentId = (payment as { id: string }).id;
+      // Create worker payment (handles legacy column names: amount vs total_amount, note vs notes)
+      const payment = await createWorkerPaymentWithClient(c, {
+        workerId,
+        amount: 50,
+        paymentMethod: "Test",
+        notes: "full-system-test",
+      });
+      paymentId = payment.id;
       steps.push("worker payment created");
       log("labor_workflow", `worker payment id=${paymentId}`);
 
       // Verify payment stored
       const { data: storedPayment } = await c
         .from("worker_payments")
-        .select("id, total_amount")
+        .select("id, total_amount, amount")
         .eq("id", paymentId)
         .maybeSingle();
       if (!storedPayment) throw new Error("Worker payment not found after insert");
-      if (Number((storedPayment as { total_amount?: number }).total_amount) < 1)
-        throw new Error("Worker payment amount incorrect");
+      const payAmt = Number(
+        (storedPayment as { total_amount?: number; amount?: number }).total_amount ??
+          (storedPayment as { amount?: number }).amount
+      );
+      if (payAmt < 1) throw new Error("Worker payment amount incorrect");
       steps.push("worker payment verified");
       log("labor_workflow", "worker payment verified");
 

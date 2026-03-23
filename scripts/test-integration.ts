@@ -171,6 +171,8 @@ async function main() {
 
       await sql`delete from labor_entries where id = ${laborEntryId}::uuid`;
       steps.push("labor entry deleted");
+      await sql`delete from labor_workers where id = ${workerId}::uuid`;
+      steps.push("labor_workers row deleted");
       await sql`delete from workers where id = ${workerId}::uuid`;
       steps.push("worker deleted");
       await sql`delete from projects where id = ${projectId}::uuid`;
@@ -183,7 +185,10 @@ async function main() {
       });
     } catch (e) {
       if (laborEntryId) await sql`delete from labor_entries where id = ${laborEntryId}::uuid`;
-      if (workerId) await sql`delete from workers where id = ${workerId}::uuid`;
+      if (workerId) {
+        await sql`delete from labor_workers where id = ${workerId}::uuid`;
+        await sql`delete from workers where id = ${workerId}::uuid`;
+      }
       if (projectId) await sql`delete from projects where id = ${projectId}::uuid`;
       steps.push(`ERROR: ${toError(e)}`);
       results.push({
