@@ -259,7 +259,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       : [];
     const advancesTotal = advancesRows.reduce((s, r) => {
       const st = String(r.status ?? "").toLowerCase();
-      if (st !== "pending" && st !== "deducted") return s;
+      if (st !== "pending") return s;
       return s + (Number(r.amount) || 0);
     }, 0);
     const balance = laborOwed + reimbUnpaid - totalPayments - advancesTotal;

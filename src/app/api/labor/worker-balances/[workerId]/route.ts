@@ -85,7 +85,7 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
       const payments = payRows.reduce((s, r) => s + (Number(r.total_amount ?? r.amount) || 0), 0);
       const advances = advRows.reduce((s, r) => {
         const st = String(r.status ?? "").toLowerCase();
-        if (st !== "pending" && st !== "deducted") return s;
+        if (st !== "pending") return s;
         return s + (Number(r.amount) || 0);
       }, 0);
       const balance = laborOwed + reimbursements - payments - advances;

@@ -302,6 +302,14 @@ BEGIN
       v_vals := v_vals || v_sep || quote_literal('[E2E] SEED — safe to delete; recreated by supabase/seed.sql');
     END IF;
     EXECUTE format('INSERT INTO public.projects (%s) VALUES (%s)', v_cols, v_vals);
+    -- Link seed project to E2E customer so list/detail resolve Client when only customer_id is set.
+    IF pg_temp.hh_e2e_col('projects', 'customer_id') THEN
+      EXECUTE format(
+        'UPDATE public.projects SET customer_id = %L::uuid WHERE id = %L::uuid',
+        '33333333-3333-3333-3333-333333333333'::uuid,
+        v_project
+      );
+    END IF;
   END IF;
 
   -- ─── project_subcontractors ───

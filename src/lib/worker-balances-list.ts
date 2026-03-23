@@ -207,7 +207,8 @@ export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBala
     const wid = r.worker_id;
     if (!wid) continue;
     const status = (r.status ?? "").toLowerCase();
-    if (status !== "pending" && status !== "deducted") continue;
+    /** Only pending advances reduce net pay; deducted = already recovered from payroll. */
+    if (status !== "pending") continue;
     const amt = Number(r.amount) || 0;
     advancesByWorker.set(wid, (advancesByWorker.get(wid) ?? 0) + amt);
   }

@@ -62,7 +62,7 @@ type Summary = {
   laborOwed: number;
   reimbursements: number;
   payments: number;
-  /** Pending + deducted advances (same as Worker Balances list). */
+  /** Outstanding advances (pending only; deducted already recovered on payroll). */
   advances: number;
   balance: number;
 };
