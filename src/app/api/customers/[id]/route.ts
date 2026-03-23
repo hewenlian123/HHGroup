@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
-import { CUSTOMERS_DB_COLUMNS } from "@/lib/customers-db";
+import { CUSTOMERS_DB_COLUMNS } from "@/lib/customers-columns";
 
 export const dynamic = "force-dynamic";
 
