@@ -1,10 +1,7 @@
 "use server";
 
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
-
-/** Columns on `public.customers` (see migrations/202602280003_create_customers_table.sql). */
-export const CUSTOMERS_DB_COLUMNS =
-  "id,name,email,phone,address,notes,created_at,updated_at,contact_person,status" as const;
+import { CUSTOMERS_DB_COLUMNS } from "@/lib/customers-columns";
 
 export type Customer = {
   id: string;
