@@ -83,6 +83,11 @@ export default function WorkerBalancesPage() {
       );
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.message ?? "Delete failed.");
+      if (typeof data.warning === "string" && data.warning.trim()) {
+        setMessage(data.warning.trim());
+      } else {
+        setMessage(null);
+      }
       setDeleteTarget(null);
       await load();
     } catch (e) {

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
-import { fetchWorkerBalances } from "@/lib/worker-balances-list";
+import { fetchWorkerBalanceRowForDelete } from "@/lib/worker-balances-list";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +17,13 @@ type RouteParams = { params: Promise<{ workerId: string }> };
  */
 export async function DELETE(_req: Request, { params }: RouteParams) {
   const { workerId } = await params;
-  const id = workerId?.trim();
+  let id = workerId?.trim() ?? "";
+  try {
+    id = decodeURIComponent(id);
+  } catch {
+    /* keep raw */
+  }
+  id = id.trim();
   if (!id) {
     return NextResponse.json({ ok: false, message: "Worker id is required." }, { status: 400 });
   }
@@ -28,8 +34,14 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
   }
 
   try {
-    const balances = await fetchWorkerBalances(c);
-    const row = balances.find((b) => b.workerId === id);
+    let row = await fetchWorkerBalanceRowForDelete(c, id);
+    if (!row) {
+      const { data: lw } = await c.from("labor_workers").select("id, name").eq("id", id).maybeSingle();
+      if (!lw?.id) {
+        return NextResponse.json({ ok: false, message: "Worker not found." }, { status: 404 });
+      }
+      row = await fetchWorkerBalanceRowForDelete(c, String(lw.id));
+    }
     if (!row) {
       return NextResponse.json({ ok: false, message: "Worker not found." }, { status: 404 });
     }
@@ -44,7 +56,9 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
       );
     }
 
-    const { error: lwErr } = await c.from("labor_workers").delete().eq("id", id);
+    const deleteId = row.workerId;
+
+    const { error: lwErr } = await c.from("labor_workers").delete().eq("id", deleteId);
     if (lwErr) {
       return NextResponse.json(
         { ok: false, message: lwErr.message ?? "Failed to delete worker." },
@@ -54,13 +68,15 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
       );
     }
 
-    const { error: wErr } = await c.from("workers").delete().eq("id", id);
+    const { error: wErr } = await c.from("workers").delete().eq("id", deleteId);
     if (wErr) {
       return NextResponse.json(
-        { ok: false, message: wErr.message ?? "Failed to delete worker." },
         {
-          status: 500,
-        }
+          ok: true,
+          warning:
+            "Removed from Worker Balances. The People (workers) row may still exist if referenced elsewhere.",
+        },
+        { headers: NO_CACHE_HEADERS }
       );
     }
 

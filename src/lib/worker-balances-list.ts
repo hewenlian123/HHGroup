@@ -16,6 +16,26 @@ export type WorkerBalanceRow = {
 
 const BAL_EPS = 0.005;
 
+/** Normalize UUID / id strings for comparisons (Supabase may return mixed casing). */
+function normalizeWorkerId(id: string): string {
+  return id.trim().toLowerCase();
+}
+
+/**
+ * Find a balance row for delete / detail flows. Uses case-insensitive workerId match
+ * so UI rows always line up with DELETE /api/labor/worker-balances/:id.
+ */
+export async function fetchWorkerBalanceRowForDelete(
+  c: SupabaseClient,
+  workerIdRaw: string
+): Promise<WorkerBalanceRow | null> {
+  const needle = workerIdRaw.trim();
+  if (!needle) return null;
+  const key = normalizeWorkerId(needle);
+  const all = await fetchWorkerBalances(c);
+  return all.find((r) => normalizeWorkerId(r.workerId) === key) ?? null;
+}
+
 /**
  * Worker balances summary (same rules as GET /api/labor/worker-balances).
  * Labor Owed = unpaid payroll per `isLaborUnpaidForWorkerPayroll` / worker_payment_id NULL in SQL path.
@@ -23,7 +43,15 @@ const BAL_EPS = 0.005;
  */
 export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBalanceRow[]> {
   const workersRes = await c.from("labor_workers").select("id, name").order("name");
-  const workers = (workersRes.data ?? []) as { id: string; name: string | null }[];
+  const rawWorkers = (workersRes.data ?? []) as { id: string; name: string | null }[];
+  /** Defensive: same id should not appear twice; dedupe keeps UI/API stable. */
+  const seenIds = new Set<string>();
+  const workers = rawWorkers.filter((w) => {
+    const id = w.id;
+    if (!id || seenIds.has(id)) return false;
+    seenIds.add(id);
+    return true;
+  });
 
   const laborOwedByWorker = new Map<string, number>();
   let laborEntryCountByWorker = new Map<string, number>();
