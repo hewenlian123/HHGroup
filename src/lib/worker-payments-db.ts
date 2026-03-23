@@ -47,6 +47,12 @@ function isMissingTable(err: { message?: string; code?: string } | null): boolea
   );
 }
 
+/** PostgREST / schema-cache: unknown or wrong column name on insert. */
+function isUnknownColumnError(err: { message?: string } | null): boolean {
+  const m = (err?.message ?? "").toLowerCase();
+  return /could not find the .* column|column .* does not exist|schema cache|pgrst204/i.test(m);
+}
+
 const COLS_BASE = "id, worker_id, total_amount, payment_method, note, created_at";
 const COLS = `${COLS_BASE}, labor_entry_ids`;
 
@@ -86,24 +92,33 @@ export async function createWorkerPaymentWithClient(
   const method = input.paymentMethod?.trim();
   if (!method) throw new Error("Payment method is required.");
 
-  const payload = {
-    worker_id: input.workerId,
-    total_amount: amt,
-    payment_method: method,
-    note: input.notes?.trim() || null,
-  };
+  const trimmedNote = input.notes?.trim() || null;
 
-  const { data, error } = await c
-    .from("worker_payments")
-    .insert(payload)
-    .select(COLS_BASE)
-    .single();
-  if (error) {
-    if (isMissingTable(error))
-      throw new Error("未找到 worker_payments 表。请先创建该表后再记录付款。");
-    throw new Error(error.message ?? "Failed to create worker payment.");
+  type Row = Record<string, unknown>;
+  const attempts: Row[] = [];
+  for (const totalField of ["total_amount", "amount"] as const) {
+    const base: Row = { worker_id: input.workerId, payment_method: method, [totalField]: amt };
+    if (trimmedNote) {
+      attempts.push({ ...base, note: trimmedNote });
+      attempts.push({ ...base, notes: trimmedNote });
+    }
+    attempts.push(base);
   }
-  return fromRow(data as Record<string, unknown>);
+
+  let lastError: { message?: string } | null = null;
+  for (const payload of attempts) {
+    const { data, error } = await c.from("worker_payments").insert(payload).select("*").single();
+    if (!error && data) return fromRow(data as Record<string, unknown>);
+    lastError = error;
+    if (error && isMissingTable(error)) {
+      throw new Error("未找到 worker_payments 表。请先创建该表后再记录付款。");
+    }
+    if (error && !isUnknownColumnError(error)) {
+      throw new Error(error.message ?? "Failed to create worker payment.");
+    }
+  }
+
+  throw new Error(lastError?.message ?? "Failed to create worker payment.");
 }
 
 export async function createWorkerPayment(input: CreateWorkerPaymentInput): Promise<WorkerPayment> {

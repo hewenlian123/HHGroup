@@ -234,9 +234,37 @@ async function getExpenseCostForProject(projectId: string): Promise<number> {
   return 0;
 }
 
-/** Fallback when expense_lines.project_id is missing (canonical schema has project_id on lines, not expenses). */
-async function getExpenseCostViaJoin(_projectId: string): Promise<number> {
-  return 0;
+/**
+ * Fallback when `expense_lines.project_id` is missing from the PostgREST schema cache
+ * or the column does not exist: sum line amounts for expenses whose header `project_id` matches.
+ */
+async function getExpenseCostViaJoin(projectId: string): Promise<number> {
+  const c = client();
+  const { data: headers, error: e1 } = await c
+    .from("expenses")
+    .select("id")
+    .eq("project_id", projectId);
+  if (e1) {
+    if (isMissingColumn(e1)) return 0;
+    devLogFail("expenses (join path)", e1);
+    return 0;
+  }
+  const ids = (headers ?? [])
+    .map((h: { id?: string }) => h.id)
+    .filter((id): id is string => typeof id === "string" && id.length > 0);
+  if (ids.length === 0) return 0;
+
+  const { data: lines, error: e2 } = await c
+    .from("expense_lines")
+    .select("amount")
+    .in("expense_id", ids);
+  if (e2) {
+    devLogFail("expense_lines (join path)", e2);
+    return 0;
+  }
+  return (
+    (lines as Array<{ amount?: unknown }> | null)?.reduce((s, row) => s + toNum(row.amount), 0) ?? 0
+  );
 }
 
 export async function getCanonicalProjectProfit(
@@ -459,9 +487,47 @@ async function getExpenseCostBatch(projectIds: string[]): Promise<Map<string, nu
   return map;
 }
 
-/** Batch fallback when expense_lines.project_id is unavailable. */
+/** Batch fallback when expense_lines.project_id is unavailable (see getExpenseCostViaJoin). */
 async function getExpenseCostBatchViaJoin(projectIds: string[]): Promise<Map<string, number>> {
   const map = new Map<string, number>();
   for (const id of projectIds) map.set(id, 0);
+  if (projectIds.length === 0) return map;
+
+  const c = client();
+  const { data: headers, error } = await c
+    .from("expenses")
+    .select("id, project_id")
+    .in("project_id", projectIds);
+  if (error) {
+    if (isMissingColumn(error)) return map;
+    devLogFail("expenses batch (join path)", error);
+    return map;
+  }
+  const byExpense = new Map<string, string>();
+  const expenseIds: string[] = [];
+  for (const h of headers ?? []) {
+    const row = h as { id?: string; project_id?: string | null };
+    const eid = row.id != null ? String(row.id) : "";
+    const pid = row.project_id != null ? String(row.project_id) : "";
+    if (!eid || !pid || !map.has(pid)) continue;
+    byExpense.set(eid, pid);
+    expenseIds.push(eid);
+  }
+  if (expenseIds.length === 0) return map;
+
+  const { data: lines, error: le } = await c
+    .from("expense_lines")
+    .select("expense_id, amount")
+    .in("expense_id", expenseIds);
+  if (le || !lines) {
+    devLogFail("expense_lines batch (join path)", le);
+    return map;
+  }
+  for (const row of lines as Array<{ expense_id?: string; amount?: unknown }>) {
+    const eid = row.expense_id != null ? String(row.expense_id) : "";
+    const pid = byExpense.get(eid);
+    if (!pid) continue;
+    map.set(pid, (map.get(pid) ?? 0) + toNum(row.amount));
+  }
   return map;
 }

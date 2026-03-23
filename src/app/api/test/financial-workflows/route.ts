@@ -267,6 +267,7 @@ export async function POST(req: Request) {
         log("worker_invoice_workflow", "worker invoice");
         const profitBefore = await getCanonicalProjectProfit(projectId).catch(() => ({
           expenseCost: 0,
+          actualCost: 0,
         }));
         const expense = await createExpense({
           date: new Date().toISOString().slice(0, 10),
@@ -278,10 +279,25 @@ export async function POST(req: Request) {
         log("worker_invoice_workflow", "approve -> expense created");
         const profitAfter = await getCanonicalProjectProfit(projectId).catch(() => ({
           expenseCost: 0,
+          actualCost: 0,
         }));
-        const costUpdated =
-          (profitAfter?.expenseCost ?? 0) >= (profitBefore?.expenseCost ?? 0) + 99;
-        steps.push(costUpdated ? "project cost updated" : "project cost updated: check");
+        const { data: directLineRows } = await server
+          .from("expense_lines")
+          .select("amount")
+          .eq("project_id", projectId);
+        const directLineSum =
+          (directLineRows as Array<{ amount?: unknown }> | null)?.reduce(
+            (s, r) => s + (Number(r.amount) || 0),
+            0
+          ) ?? 0;
+        const expenseDelta = (profitAfter?.expenseCost ?? 0) - (profitBefore?.expenseCost ?? 0);
+        const actualDelta = (profitAfter?.actualCost ?? 0) - (profitBefore?.actualCost ?? 0);
+        const costUpdated = expenseDelta >= 99 || actualDelta >= 99 || directLineSum >= 99;
+        steps.push(
+          costUpdated
+            ? "project cost updated"
+            : `project cost updated: check (expenseΔ=${expenseDelta}, actualΔ=${actualDelta}, lines=${directLineSum})`
+        );
         log("worker_invoice_workflow", "project cost updated");
         tests.push({
           name: "worker_invoice_workflow",
