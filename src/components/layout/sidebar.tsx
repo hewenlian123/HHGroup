@@ -85,7 +85,6 @@ const sections: { key: (typeof SECTION_KEYS)[number]; label: string; items: NavI
       { href: "/financial/deposits", label: "Deposits", icon: Banknote },
       { href: "/bills", label: "Bills", icon: Receipt },
       { href: "/financial/expenses", label: "Expenses", icon: ShoppingCart },
-      { href: "/finance/advances", label: "Worker Advances", icon: CircleDollarSign },
       { href: "/financial/accounts", label: "Accounts", icon: Wallet },
     ],
   },

@@ -207,6 +207,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
 
   const handleMarkDeducted = async (row: AdvanceRow) => {
     setBusyId(row.id);
+    setMessage(null);
     try {
       const res = await fetch(`/api/labor/advances/${row.id}`, {
         method: "PATCH",
@@ -226,9 +227,11 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
         projectName: r.projectName,
         amount: r.amount,
         advanceDate: r.advanceDate,
-        status: r.status,
+        status: (r.status as AdvanceRow["status"]) ?? "deducted",
         notes: r.notes,
       });
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Failed to mark as deducted.");
     } finally {
       setBusyId(null);
     }

@@ -397,11 +397,21 @@ export async function updateProject(
   if (patch.status !== undefined) row.status = patch.status;
   if (patch.budget !== undefined) row.budget = Math.max(0, Number(patch.budget));
   if (patch.spent !== undefined) row.spent = Math.max(0, Number(patch.spent));
+  if (patch.customerId !== undefined) {
+    row.customer_id = patch.customerId?.trim() || null;
+  }
   if (patch.client !== undefined) {
     row.client = patch.client.trim();
     row.client_name = patch.client.trim();
+  } else if (patch.customerId !== undefined && patch.customerId?.trim()) {
+    const cid = patch.customerId.trim();
+    const { data: cust } = await c.from("customers").select("name").eq("id", cid).maybeSingle();
+    const nm = nonEmptyText((cust as { name?: string | null } | null)?.name ?? null);
+    if (nm) {
+      row.client = nm;
+      row.client_name = nm;
+    }
   }
-  if (patch.customerId !== undefined) row.customer_id = patch.customerId?.trim() || null;
   if (patch.address !== undefined) row.address = patch.address.trim();
   if (patch.projectManager !== undefined) row.project_manager = patch.projectManager.trim();
   if (patch.startDate !== undefined) row.start_date = patch.startDate;

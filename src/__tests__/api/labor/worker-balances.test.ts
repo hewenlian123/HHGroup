@@ -72,4 +72,64 @@ describe("GET /api/labor/worker-balances", () => {
       deletable: false,
     });
   });
+
+  it("counts only pending advances toward balance (deducted advances ignored)", async () => {
+    const workers = [{ id: "w1", name: "Worker One" }];
+    const labor = [{ worker_id: "w1", cost_amount: 100, status: "pending" }];
+    const reimb = [{ worker_id: "w1", amount: 20, status: "pending" }];
+    const payments = [{ worker_id: "w1", total_amount: 50 }];
+    const advancesDeducted = [
+      { worker_id: "w1", amount: 999, status: "deducted" },
+    ];
+
+    mockSupabaseGetter = () =>
+      ({
+        from: (table: string) => {
+          if (table === "labor_workers") return createChained(workers) as never;
+          if (table === "labor_entries") return createChained(labor) as never;
+          if (table === "worker_reimbursements") return createChained(reimb) as never;
+          if (table === "worker_payments") return createChained(payments) as never;
+          if (table === "worker_advances") return createChained(advancesDeducted) as never;
+          return createChained([]) as never;
+        },
+      }) as never;
+
+    const { GET } = await import("@/app/api/labor/worker-balances/route");
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.balances[0]).toMatchObject({
+      advances: 0,
+      balance: 70,
+    });
+  });
+
+  it("includes pending advances in balance reduction", async () => {
+    const workers = [{ id: "w1", name: "Worker One" }];
+    const labor = [{ worker_id: "w1", cost_amount: 100, status: "pending" }];
+    const reimb = [{ worker_id: "w1", amount: 20, status: "pending" }];
+    const payments = [{ worker_id: "w1", total_amount: 50 }];
+    const advancesPending = [{ worker_id: "w1", amount: 30, status: "pending" }];
+
+    mockSupabaseGetter = () =>
+      ({
+        from: (table: string) => {
+          if (table === "labor_workers") return createChained(workers) as never;
+          if (table === "labor_entries") return createChained(labor) as never;
+          if (table === "worker_reimbursements") return createChained(reimb) as never;
+          if (table === "worker_payments") return createChained(payments) as never;
+          if (table === "worker_advances") return createChained(advancesPending) as never;
+          return createChained([]) as never;
+        },
+      }) as never;
+
+    const { GET } = await import("@/app/api/labor/worker-balances/route");
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.balances[0]).toMatchObject({
+      advances: 30,
+      balance: 40,
+    });
+  });
 });
