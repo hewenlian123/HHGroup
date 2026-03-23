@@ -21,6 +21,7 @@ const ignorePaymentAndDeleteMutations = [
 
 export default defineConfig({
   testDir: "./tests",
+  globalTeardown: "./tests/global-teardown.ts",
   timeout: 30000,
   retries: 1,
   /** CI: build first (`npm run build`), then Playwright starts production server automatically. */

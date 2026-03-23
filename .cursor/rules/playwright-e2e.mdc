@@ -5,6 +5,12 @@ alwaysApply: true
 
 # Playwright E2E 测试规范
 
+## 测试数据清理规范（最重要）
+- **每个**测试文件在创建 DB 行时，应在 `test.afterAll` 中清理**本文件**写入的数据（若无法 UI 删除，则调用 `cleanupTestData` 的窄条件或专用删除逻辑）。
+- 所有测试创建、且写入数据库的字符串必须有可识别前缀：**`PW `**（例如 `PW-V-…`）或 **`[E2E]`**（与 `supabase/seed.sql` 一致）；发票客户名使用列 **`client_name`**（不是 `client`）。
+- 测试通过后**不得**把垃圾行留在库里；`globalTeardown`（`tests/global-teardown.ts` → `cleanupTestData`）是**最后防线**，会按模式清理 `invoices`、`invoice_payments`、`projects`、`customers`、`labor_entries`、`site_photos`、`documents`，并**保留** seed 固定 UUID（`e2e-cleanup-db.ts` 中的 `E2E_PRESERVED_*`）。
+- 禁止依赖「留在库里的测试数据」让后续用例通过。
+
 ## Selector 规范
 - 优先用 getByRole()
 - href 跳转链接允许用 `locator('a[href=...]')`
