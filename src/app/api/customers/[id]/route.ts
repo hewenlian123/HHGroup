@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { CUSTOMERS_DB_COLUMNS } from "@/lib/customers-db";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +12,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   }
   const { data, error } = await admin
     .from("customers")
-    .select("id,name,email,phone,address,city,state,zip,notes,created_at")
+    .select(CUSTOMERS_DB_COLUMNS)
     .eq("id", id)
     .maybeSingle();
   if (error) {
@@ -44,10 +45,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     email?: string | null;
     phone?: string | null;
     address?: string | null;
-    city?: string | null;
-    state?: string | null;
-    zip?: string | null;
+    contact_person?: string | null;
     notes?: string | null;
+    status?: "active" | "inactive" | null;
   };
   const payload: Record<string, string | null> = {};
   if (body.name !== undefined) payload.name = body.name.trim();
@@ -56,16 +56,19 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (body.address !== undefined) {
     payload.address = body.address?.trim() || null;
   }
-  if (body.city !== undefined) payload.city = body.city?.trim() || null;
-  if (body.state !== undefined) payload.state = body.state?.trim() || null;
-  if (body.zip !== undefined) payload.zip = body.zip?.trim() || null;
+  if (body.contact_person !== undefined) {
+    payload.contact_person = body.contact_person?.trim() || null;
+  }
   if (body.notes !== undefined) payload.notes = body.notes?.trim() || null;
+  if (body.status === "active" || body.status === "inactive") {
+    payload.status = body.status;
+  }
 
   const { data, error } = await admin
     .from("customers")
     .update(payload)
     .eq("id", id)
-    .select("id,name,email,phone,address,city,state,zip,notes,created_at")
+    .select(CUSTOMERS_DB_COLUMNS)
     .single();
   if (error) {
     return NextResponse.json(

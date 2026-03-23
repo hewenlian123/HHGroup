@@ -2,17 +2,21 @@
 
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
+/** Columns on `public.customers` (see migrations/202602280003_create_customers_table.sql). */
+export const CUSTOMERS_DB_COLUMNS =
+  "id,name,email,phone,address,notes,created_at,updated_at,contact_person,status" as const;
+
 export type Customer = {
   id: string;
   name: string;
   email?: string | null;
   phone?: string | null;
   address?: string | null;
-  city?: string | null;
-  state?: string | null;
-  zip?: string | null;
   notes?: string | null;
+  contact_person?: string | null;
+  status?: "active" | "inactive" | string | null;
   created_at?: string | null;
+  updated_at?: string | null;
 };
 
 function admin() {
@@ -25,7 +29,7 @@ export async function getAllCustomers(): Promise<Customer[]> {
   const c = admin();
   const { data, error } = await c
     .from("customers")
-    .select("id,name,email,phone,address,city,state,zip,notes,created_at")
+    .select(CUSTOMERS_DB_COLUMNS)
     .order("name", { ascending: true });
   if (error) throw new Error(error.message ?? "Failed to load customers.");
   return (data ?? []) as Customer[];
@@ -37,7 +41,7 @@ export async function getCustomerById(
   const c = admin();
   const { data, error } = await c
     .from("customers")
-    .select("id,name,email,phone,address,city,state,zip,notes,created_at")
+    .select(CUSTOMERS_DB_COLUMNS)
     .eq("id", id)
     .maybeSingle();
   if (error) throw new Error(error.message ?? "Failed to load customer.");
@@ -54,10 +58,9 @@ export type CustomerDraft = {
   email?: string | null;
   phone?: string | null;
   address?: string | null;
-  city?: string | null;
-  state?: string | null;
-  zip?: string | null;
+  contact_person?: string | null;
   notes?: string | null;
+  status?: "active" | "inactive" | null;
 };
 
 export async function createCustomer(draft: CustomerDraft): Promise<Customer> {
@@ -67,15 +70,14 @@ export async function createCustomer(draft: CustomerDraft): Promise<Customer> {
     email: draft.email?.trim() || null,
     phone: draft.phone?.trim() || null,
     address: draft.address?.trim() || null,
-    city: draft.city?.trim() || null,
-    state: draft.state?.trim() || null,
-    zip: draft.zip?.trim() || null,
+    contact_person: draft.contact_person?.trim() || null,
     notes: draft.notes?.trim() || null,
+    ...(draft.status ? { status: draft.status } : {}),
   };
   const { data, error } = await c
     .from("customers")
     .insert(payload)
-    .select("id,name,email,phone,address,city,state,zip,notes,created_at")
+    .select(CUSTOMERS_DB_COLUMNS)
     .single();
   if (error) throw new Error(error.message ?? "Failed to create customer.");
   return data as Customer;
@@ -90,16 +92,19 @@ export async function updateCustomer(id: string, patch: Partial<CustomerDraft>):
   if (patch.address !== undefined) {
     payload.address = patch.address?.trim() || null;
   }
-  if (patch.city !== undefined) payload.city = patch.city?.trim() || null;
-  if (patch.state !== undefined) payload.state = patch.state?.trim() || null;
-  if (patch.zip !== undefined) payload.zip = patch.zip?.trim() || null;
+  if (patch.contact_person !== undefined) {
+    payload.contact_person = patch.contact_person?.trim() || null;
+  }
   if (patch.notes !== undefined) payload.notes = patch.notes?.trim() || null;
+  if (patch.status !== undefined && patch.status != null) {
+    payload.status = patch.status;
+  }
 
   const { data, error } = await c
     .from("customers")
     .update(payload)
     .eq("id", id)
-    .select("id,name,email,phone,address,city,state,zip,notes,created_at")
+    .select(CUSTOMERS_DB_COLUMNS)
     .single();
   if (error) throw new Error(error.message ?? "Failed to update customer.");
   return data as Customer;
