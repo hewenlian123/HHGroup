@@ -41,9 +41,7 @@ export async function mapWorkerAdvanceRowsForApi(
   const workerIds = [...new Set(rows.map((r) => String(r.worker_id ?? "").trim()).filter(Boolean))];
   const projectIds = [
     ...new Set(
-      rows
-        .map((r) => (r.project_id != null ? String(r.project_id).trim() : ""))
-        .filter(Boolean)
+      rows.map((r) => (r.project_id != null ? String(r.project_id).trim() : "")).filter(Boolean)
     ),
   ];
 

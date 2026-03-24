@@ -25,7 +25,9 @@ export async function GET() {
     // Safety filter: only return rows that still exist in labor_workers now.
     // This prevents stale/ghost rows if aggregate helpers diverge in edge cases.
     const { data: workersNow } = await c.from("labor_workers").select("id");
-    const ids = new Set(((workersNow ?? []) as Array<{ id?: string | null }>).map((w) => w.id).filter(Boolean));
+    const ids = new Set(
+      ((workersNow ?? []) as Array<{ id?: string | null }>).map((w) => w.id).filter(Boolean)
+    );
     const filtered = balances.filter((b) => ids.has(b.workerId));
     return NextResponse.json({ balances: filtered }, { headers: NO_CACHE_HEADERS });
   } catch (e) {

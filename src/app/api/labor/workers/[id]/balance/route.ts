@@ -6,6 +6,7 @@ import {
   laborPayrollSettlementModeFromSelectList,
   laborSessionLabel,
   resolveLaborWorkerForBalance,
+  workerIdsForLaborBalanceFinancialQueries,
 } from "@/lib/labor-balance-shared";
 
 export const dynamic = "force-dynamic";
@@ -89,6 +90,30 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   }
 
   try {
+    const financialWorkerIds = await workerIdsForLaborBalanceFinancialQueries(c, workerId);
+
+    const queryFinancialTable = async (
+      client: SupabaseClient,
+      table: "worker_payments" | "worker_reimbursements" | "worker_advances",
+      cols: string,
+      orderCol?: string
+    ): Promise<RawResult> => {
+      const ids = financialWorkerIds.length ? financialWorkerIds : [workerId];
+      const base =
+        ids.length <= 1
+          ? client
+              .from(table)
+              .select(cols)
+              .eq("worker_id", ids[0] ?? workerId)
+          : client.from(table).select(cols).in("worker_id", ids);
+      const q = orderCol ? base.order(orderCol, { ascending: false }) : base;
+      const { data, error } = await q;
+      return {
+        data: (data ?? null) as Record<string, unknown>[] | null,
+        error: error as { message?: string } | null,
+      };
+    };
+
     // labor_entries.worker_id → labor_workers; keep names consistent with Worker Balances list.
     const worker = await resolveLaborWorkerForBalance(c, workerId);
 
@@ -123,11 +148,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       "id, worker_id, total_amount, note, created_at",
       "id, worker_id, total_amount, created_at",
     ]) {
-      paymentsRes = await queryWorker(c, "worker_payments", cols, "created_at");
+      paymentsRes = await queryFinancialTable(c, "worker_payments", cols, "created_at");
       if (!paymentsRes.error || !isMissingColumn(paymentsRes.error)) break;
     }
     if (paymentsRes.error) {
-      paymentsRes = await queryWorker(
+      paymentsRes = await queryFinancialTable(
         c,
         "worker_payments",
         "id, worker_id, amount, created_at",
@@ -135,22 +160,24 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       );
     }
     if (paymentsRes.error) {
-      paymentsRes = await queryWorker(c, "worker_payments", "id, amount, created_at", "created_at");
+      paymentsRes = await queryFinancialTable(
+        c,
+        "worker_payments",
+        "id, amount, created_at",
+        "created_at"
+      );
     }
 
-    const [reimbRes, projectsRes] = await Promise.all([
-      c
-        .from("worker_reimbursements")
-        .select("id, worker_id, project_id, vendor, amount, status, created_at")
-        .eq("worker_id", workerId)
-        .order("created_at", { ascending: false }),
+    const [reimbRes, projectsRes, advancesRes] = await Promise.all([
+      queryFinancialTable(
+        c,
+        "worker_reimbursements",
+        "id, worker_id, project_id, vendor, amount, status, created_at",
+        "created_at"
+      ),
       c.from("projects").select("id, name"),
+      queryFinancialTable(c, "worker_advances", "worker_id, amount, status"),
     ]);
-
-    const advancesRes = await c
-      .from("worker_advances")
-      .select("worker_id, amount, status")
-      .eq("worker_id", workerId);
 
     if (!worker?.id) {
       return NextResponse.json({ message: "Worker not found" }, { status: 404 });
@@ -258,7 +285,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         }[])
       : [];
     const advancesTotal = advancesRows.reduce((s, r) => {
-      const st = String(r.status ?? "").toLowerCase();
+      const st = String(r.status ?? "")
+        .trim()
+        .toLowerCase();
       if (st !== "deducted") return s;
       return s + (Number(r.amount) || 0);
     }, 0);
