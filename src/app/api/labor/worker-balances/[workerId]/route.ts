@@ -11,6 +11,12 @@ const NO_CACHE_HEADERS = {
 
 type RouteParams = { params: Promise<{ workerId: string }> };
 
+function paySelectErrorMissingCol(err: { message?: string } | null): boolean {
+  return /column .* does not exist|could not find the .* column|schema cache/i.test(
+    err?.message ?? ""
+  );
+}
+
 /**
  * DELETE: Remove a worker from Worker Balances only when balance is ~$0 and they have
  * no labor_entries and no worker_payments rows (matches list `deletable` flag).
@@ -49,18 +55,18 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
       // Fallback: compute deletable from worker-specific aggregates directly.
       // This avoids false "not found" when list aggregation diverges from delete-time lookup.
       const workerId = String(lw.id);
-      function paySelectErrorMissingCol(err: { message?: string } | null): boolean {
-        return /column .* does not exist|could not find the .* column|schema cache/i.test(
-          err?.message ?? ""
-        );
-      }
 
-      let payRes = await c
+      type PayRow = { id?: string; total_amount?: number | null; amount?: number | null };
+      let payRows: PayRow[] = [];
+      const payPrimary = await c
         .from("worker_payments")
         .select("id, total_amount")
         .eq("worker_id", workerId);
-      if (payRes.error && paySelectErrorMissingCol(payRes.error)) {
-        payRes = await c.from("worker_payments").select("id, amount").eq("worker_id", workerId);
+      if (!payPrimary.error) {
+        payRows = (payPrimary.data ?? []) as PayRow[];
+      } else if (paySelectErrorMissingCol(payPrimary.error)) {
+        const payFb = await c.from("worker_payments").select("id, amount").eq("worker_id", workerId);
+        if (!payFb.error) payRows = (payFb.data ?? []) as PayRow[];
       }
 
       const [laborRes, reimbRes, advRes] = await Promise.all([
@@ -76,11 +82,6 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
         worker_payment_id?: string | null;
         cost_amount?: number | null;
         total?: number | null;
-      }>;
-      const payRows = (payRes.data ?? []) as Array<{
-        id?: string;
-        total_amount?: number | null;
-        amount?: number | null;
       }>;
       const reimbRows = (reimbRes.data ?? []) as Array<{
         amount?: number | null;
