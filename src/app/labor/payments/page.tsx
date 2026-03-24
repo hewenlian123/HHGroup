@@ -11,7 +11,7 @@ import {
   deleteWorkerPayment,
   getProjects,
   getWorkerPayments,
-  getWorkers,
+  getLaborWorkersList,
   type WorkerPayment,
 } from "@/lib/data";
 import { dispatchClientDataSync } from "@/lib/sync-router-client";
@@ -26,7 +26,7 @@ function fmtUsd(n: number): string {
 }
 
 export default function WorkerPaymentsPage() {
-  const [workers, setWorkers] = React.useState<Awaited<ReturnType<typeof getWorkers>>>([]);
+  const [workers, setWorkers] = React.useState<Awaited<ReturnType<typeof getLaborWorkersList>>>([]);
   const [projects, setProjects] = React.useState<Awaited<ReturnType<typeof getProjects>>>([]);
   const [rows, setRows] = React.useState<WorkerPayment[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -49,7 +49,7 @@ export default function WorkerPaymentsPage() {
     setMessage(null);
     try {
       const [w, p, list] = await Promise.all([
-        getWorkers(),
+        getLaborWorkersList(),
         getProjects(),
         getWorkerPayments({ limit: 500 }),
       ]);
