@@ -62,7 +62,7 @@ type Summary = {
   laborOwed: number;
   reimbursements: number;
   payments: number;
-  /** Outstanding advances (pending only; deducted already recovered on payroll). */
+  /** Advances applied on payroll (status deducted); pending rows do not affect summary until marked deducted. */
   advances: number;
   balance: number;
 };

@@ -38,19 +38,36 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
   try {
     let row = await fetchWorkerBalanceRowForDelete(c, id);
     if (!row) {
-      const { data: lw } = await c.from("labor_workers").select("id, name").eq("id", id).maybeSingle();
+      const { data: lw } = await c
+        .from("labor_workers")
+        .select("id, name")
+        .eq("id", id)
+        .maybeSingle();
       if (!lw?.id) {
         return NextResponse.json({ ok: false, message: "Worker not found." }, { status: 404 });
       }
       // Fallback: compute deletable from worker-specific aggregates directly.
       // This avoids false "not found" when list aggregation diverges from delete-time lookup.
       const workerId = String(lw.id);
-      const [laborRes, payRes, reimbRes, advRes] = await Promise.all([
+      function paySelectErrorMissingCol(err: { message?: string } | null): boolean {
+        return /column .* does not exist|could not find the .* column|schema cache/i.test(
+          err?.message ?? ""
+        );
+      }
+
+      let payRes = await c
+        .from("worker_payments")
+        .select("id, total_amount")
+        .eq("worker_id", workerId);
+      if (payRes.error && paySelectErrorMissingCol(payRes.error)) {
+        payRes = await c.from("worker_payments").select("id, amount").eq("worker_id", workerId);
+      }
+
+      const [laborRes, reimbRes, advRes] = await Promise.all([
         c
           .from("labor_entries")
           .select("worker_payment_id, cost_amount, total")
           .eq("worker_id", workerId),
-        c.from("worker_payments").select("id, total_amount, amount").eq("worker_id", workerId),
         c.from("worker_reimbursements").select("amount, status").eq("worker_id", workerId),
         c.from("worker_advances").select("amount, status").eq("worker_id", workerId),
       ]);
@@ -61,6 +78,7 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
         total?: number | null;
       }>;
       const payRows = (payRes.data ?? []) as Array<{
+        id?: string;
         total_amount?: number | null;
         amount?: number | null;
       }>;
@@ -85,7 +103,7 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
       const payments = payRows.reduce((s, r) => s + (Number(r.total_amount ?? r.amount) || 0), 0);
       const advances = advRows.reduce((s, r) => {
         const st = String(r.status ?? "").toLowerCase();
-        if (st !== "pending") return s;
+        if (st !== "deducted") return s;
         return s + (Number(r.amount) || 0);
       }, 0);
       const balance = laborOwed + reimbursements - payments - advances;

@@ -73,14 +73,12 @@ describe("GET /api/labor/worker-balances", () => {
     });
   });
 
-  it("counts only pending advances toward balance (deducted advances ignored)", async () => {
+  it("counts only deducted advances toward balance and Advances column", async () => {
     const workers = [{ id: "w1", name: "Worker One" }];
     const labor = [{ worker_id: "w1", cost_amount: 100, status: "pending" }];
     const reimb = [{ worker_id: "w1", amount: 20, status: "pending" }];
     const payments = [{ worker_id: "w1", total_amount: 50 }];
-    const advancesDeducted = [
-      { worker_id: "w1", amount: 999, status: "deducted" },
-    ];
+    const advancesDeducted = [{ worker_id: "w1", amount: 999, status: "deducted" }];
 
     mockSupabaseGetter = () =>
       ({
@@ -99,12 +97,12 @@ describe("GET /api/labor/worker-balances", () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.balances[0]).toMatchObject({
-      advances: 0,
-      balance: 70,
+      advances: 999,
+      balance: -929,
     });
   });
 
-  it("includes pending advances in balance reduction", async () => {
+  it("ignores pending advances until marked deducted", async () => {
     const workers = [{ id: "w1", name: "Worker One" }];
     const labor = [{ worker_id: "w1", cost_amount: 100, status: "pending" }];
     const reimb = [{ worker_id: "w1", amount: 20, status: "pending" }];
@@ -128,8 +126,8 @@ describe("GET /api/labor/worker-balances", () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.balances[0]).toMatchObject({
-      advances: 30,
-      balance: 40,
+      advances: 0,
+      balance: 70,
     });
   });
 });

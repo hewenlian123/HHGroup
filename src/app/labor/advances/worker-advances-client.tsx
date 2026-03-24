@@ -222,7 +222,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
       handleSaved({
         id: r.id,
         workerId: r.workerId,
-        workerName: r.workerName,
+        workerName: (r.workerName as string)?.trim() || row.workerName,
         projectId: r.projectId,
         projectName: r.projectName,
         amount: r.amount,

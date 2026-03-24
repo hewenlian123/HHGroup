@@ -3,7 +3,95 @@
  * Table: worker_advances.
  */
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
+
+/** API row shape for labor/advances pages (names joined in app — avoids brittle PostgREST embeds). */
+export type WorkerAdvanceApiRow = {
+  id: string;
+  workerId: string;
+  workerName: string;
+  projectId: string | null;
+  projectName: string | null;
+  amount: number;
+  advanceDate: string;
+  status: string;
+  notes: string | null;
+  createdAt: string;
+};
+
+export type WorkerAdvanceSelectRow = {
+  id: string;
+  worker_id: string;
+  project_id: string | null;
+  amount: unknown;
+  advance_date: unknown;
+  status: unknown;
+  notes: unknown;
+  created_at: unknown;
+};
+
+/**
+ * Attach worker / project names for API responses. Prefer labor_workers (Worker Balances source), then workers.
+ */
+export async function mapWorkerAdvanceRowsForApi(
+  admin: SupabaseClient,
+  rows: WorkerAdvanceSelectRow[]
+): Promise<WorkerAdvanceApiRow[]> {
+  const workerIds = [...new Set(rows.map((r) => String(r.worker_id ?? "").trim()).filter(Boolean))];
+  const projectIds = [
+    ...new Set(
+      rows
+        .map((r) => (r.project_id != null ? String(r.project_id).trim() : ""))
+        .filter(Boolean)
+    ),
+  ];
+
+  const [lwRes, wRes, pRes] = await Promise.all([
+    workerIds.length
+      ? admin.from("labor_workers").select("id, name").in("id", workerIds)
+      : Promise.resolve({ data: [] as { id: string; name: string | null }[] }),
+    workerIds.length
+      ? admin.from("workers").select("id, name").in("id", workerIds)
+      : Promise.resolve({ data: [] as { id: string; name: string | null }[] }),
+    projectIds.length
+      ? admin.from("projects").select("id, name").in("id", projectIds)
+      : Promise.resolve({ data: [] as { id: string; name: string | null }[] }),
+  ]);
+
+  const nameByWorker = new Map<string, string>();
+  for (const r of lwRes.data ?? []) {
+    if (r?.id) nameByWorker.set(String(r.id), String(r.name ?? "").trim());
+  }
+  for (const r of wRes.data ?? []) {
+    if (!r?.id) continue;
+    const id = String(r.id);
+    if (nameByWorker.has(id)) continue;
+    nameByWorker.set(id, String(r.name ?? "").trim());
+  }
+
+  const nameByProject = new Map<string, string | null>();
+  for (const r of pRes.data ?? []) {
+    if (r?.id) nameByProject.set(String(r.id), r.name ?? null);
+  }
+
+  return rows.map((r) => {
+    const wid = String(r.worker_id ?? "");
+    const pid = r.project_id != null ? String(r.project_id) : null;
+    return {
+      id: r.id,
+      workerId: wid,
+      workerName: nameByWorker.get(wid) ?? "",
+      projectId: pid,
+      projectName: pid ? (nameByProject.get(pid) ?? null) : null,
+      amount: Number(r.amount) || 0,
+      advanceDate: String(r.advance_date ?? "").slice(0, 10),
+      status: String(r.status ?? "pending"),
+      notes: (r.notes as string | null) ?? null,
+      createdAt: String(r.created_at ?? ""),
+    };
+  });
+}
 
 export type WorkerAdvanceStatus = "pending" | "deducted" | "cancelled";
 
