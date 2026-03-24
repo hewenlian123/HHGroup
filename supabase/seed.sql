@@ -603,6 +603,138 @@ BEGIN
       RAISE NOTICE 'labor_entries: skipped (unrecognized column set). Apply migrations or use app ensure-schema.';
     END IF;
   END IF;
+
+  -- ─── E2E rows for Playwright delete-catalog / list surfaces (empty table → skip) ───
+  -- Fixed UUIDs (non-overlapping with v_project / v_worker / E2E customer).
+  IF to_regclass('public.vendors') IS NOT NULL AND pg_temp.hh_e2e_col('vendors', 'name') THEN
+    EXECUTE $d$DELETE FROM public.vendors WHERE name = '[E2E] Seed Vendor'$d$;
+    IF pg_temp.hh_e2e_col('vendors', 'status') THEN
+      EXECUTE $d$INSERT INTO public.vendors (name, status) VALUES ('[E2E] Seed Vendor', 'active')$d$;
+    ELSE
+      EXECUTE $d$INSERT INTO public.vendors (name) VALUES ('[E2E] Seed Vendor')$d$;
+    END IF;
+  END IF;
+
+  IF to_regclass('public.accounts') IS NOT NULL
+     AND pg_temp.hh_e2e_col('accounts', 'name')
+     AND pg_temp.hh_e2e_col('accounts', 'type') THEN
+    EXECUTE $d$DELETE FROM public.accounts WHERE name = '[E2E] Seed Cash' OR id = '44444444-4444-4444-4444-444444444442'::uuid$d$;
+    EXECUTE $d$INSERT INTO public.accounts (id, name, type) VALUES ('44444444-4444-4444-4444-444444444442'::uuid, '[E2E] Seed Cash', 'Cash')$d$;
+  END IF;
+
+  IF to_regclass('public.expenses') IS NOT NULL AND to_regclass('public.expense_lines') IS NOT NULL THEN
+    EXECUTE $d$DELETE FROM public.expense_lines WHERE expense_id = '44444444-4444-4444-4444-444444444441'::uuid$d$;
+    EXECUTE $d$DELETE FROM public.expenses WHERE id = '44444444-4444-4444-4444-444444444441'::uuid$d$;
+    IF pg_temp.hh_e2e_col('expenses', 'status') THEN
+      EXECUTE $d$INSERT INTO public.expenses (id, expense_date, vendor_name, payment_method, reference_no, total, line_count, status)
+      VALUES ('44444444-4444-4444-4444-444444444441'::uuid, CURRENT_DATE, '[E2E] Seed expense', 'Cash', 'SEED-E1', 99.5, 1, 'approved')$d$;
+    ELSE
+      EXECUTE $d$INSERT INTO public.expenses (id, expense_date, vendor_name, payment_method, reference_no, total, line_count)
+      VALUES ('44444444-4444-4444-4444-444444444441'::uuid, CURRENT_DATE, '[E2E] Seed expense', 'Cash', 'SEED-E1', 99.5, 1)$d$;
+    END IF;
+    IF pg_temp.hh_e2e_col('expense_lines', 'project_id') THEN
+      EXECUTE format(
+        $d$INSERT INTO public.expense_lines (expense_id, project_id, amount) VALUES ('44444444-4444-4444-4444-444444444441'::uuid, %L::uuid, 99.5)$d$,
+        v_project
+      );
+    ELSE
+      EXECUTE $d$INSERT INTO public.expense_lines (expense_id, amount) VALUES ('44444444-4444-4444-4444-444444444441'::uuid, 99.5)$d$;
+    END IF;
+  END IF;
+
+  IF to_regclass('public.ap_bills') IS NOT NULL THEN
+    EXECUTE $d$DELETE FROM public.ap_bills WHERE id = '44444444-4444-4444-4444-444444444443'::uuid$d$;
+    EXECUTE format(
+      $d$INSERT INTO public.ap_bills (id, vendor_name, project_id, status, amount, balance_amount, issue_date)
+      VALUES ('44444444-4444-4444-4444-444444444443'::uuid, '[E2E] Seed AP bill', %L::uuid, 'Draft', 150, 150, CURRENT_DATE)$d$,
+      v_project
+    );
+  END IF;
+
+  IF to_regclass('public.invoices') IS NOT NULL AND to_regclass('public.payments_received') IS NOT NULL THEN
+    EXECUTE $d$DELETE FROM public.payments_received WHERE id = '44444444-4444-4444-4444-444444444448'::uuid$d$;
+    EXECUTE $d$DELETE FROM public.invoice_items WHERE invoice_id = '44444444-4444-4444-4444-444444444447'::uuid$d$;
+    EXECUTE $d$DELETE FROM public.invoices WHERE id = '44444444-4444-4444-4444-444444444447'::uuid$d$;
+    EXECUTE format(
+      $d$INSERT INTO public.invoices (id, invoice_no, project_id, customer_id, client_name, status, subtotal, tax_pct, tax_amount, total, paid_total, balance_due, issue_date, due_date)
+      VALUES (
+        '44444444-4444-4444-4444-444444444447'::uuid,
+        '[E2E]-INV-SEED-001',
+        %L::uuid,
+        '33333333-3333-3333-3333-333333333333'::uuid,
+        '[E2E] Test Customer',
+        'Sent',
+        100,
+        0,
+        0,
+        100,
+        0,
+        100,
+        CURRENT_DATE,
+        CURRENT_DATE
+      )$d$,
+      v_project
+    );
+    EXECUTE format(
+      $d$INSERT INTO public.payments_received (id, invoice_id, project_id, customer_name, payment_date, amount, payment_method)
+      VALUES (
+        '44444444-4444-4444-4444-444444444448'::uuid,
+        '44444444-4444-4444-4444-444444444447'::uuid,
+        %L::uuid,
+        '[E2E] Test Customer',
+        CURRENT_DATE,
+        25,
+        'Check'
+      )$d$,
+      v_project
+    );
+  END IF;
+
+  IF to_regclass('public.labor_invoices') IS NOT NULL
+     AND pg_temp.hh_e2e_col('labor_invoices', 'invoice_no')
+     AND pg_temp.hh_e2e_col('labor_invoices', 'worker_id') THEN
+    EXECUTE $d$DELETE FROM public.labor_invoices WHERE invoice_no = '[E2E]-LI-001'$d$;
+    EXECUTE format(
+      $d$INSERT INTO public.labor_invoices (invoice_no, worker_id, invoice_date, amount, memo, status, project_splits, checklist)
+      VALUES ('[E2E]-LI-001', %L::uuid, CURRENT_DATE, 75, '[E2E] seed', 'draft', '[]'::jsonb, '{"verifiedWorker":false,"verifiedAmount":false,"verifiedAllocation":false,"verifiedAttachment":false}'::jsonb)$d$,
+      v_worker
+    );
+  END IF;
+
+  IF to_regclass('public.worker_reimbursements') IS NOT NULL
+     AND pg_temp.hh_e2e_col('worker_reimbursements', 'worker_id') THEN
+    EXECUTE $d$DELETE FROM public.worker_reimbursements WHERE notes = '[E2E] SEED reimb'$d$;
+    EXECUTE format(
+      $d$INSERT INTO public.worker_reimbursements (worker_id, project_id, amount, notes, reimbursement_date) VALUES (%L::uuid, %L::uuid, 42, '[E2E] SEED reimb', CURRENT_DATE)$d$,
+      v_worker,
+      v_project
+    );
+  END IF;
+
+  IF to_regclass('public.worker_invoices') IS NOT NULL
+     AND pg_temp.hh_e2e_col('worker_invoices', 'worker_id')
+     AND pg_temp.hh_e2e_col('worker_invoices', 'amount') THEN
+    EXECUTE $d$DELETE FROM public.worker_invoices WHERE id = '44444444-4444-4444-4444-444444444446'::uuid$d$;
+    EXECUTE format(
+      $d$INSERT INTO public.worker_invoices (id, worker_id, project_id, amount, invoice_file, status) VALUES ('44444444-4444-4444-4444-444444444446'::uuid, %L::uuid, %L::uuid, 60, '', 'unpaid')$d$,
+      v_worker,
+      v_project
+    );
+  END IF;
+
+  IF to_regclass('public.estimates') IS NOT NULL
+     AND to_regclass('public.estimate_meta') IS NOT NULL
+     AND pg_temp.hh_e2e_col('estimates', 'number') THEN
+    EXECUTE $d$DELETE FROM public.estimate_meta WHERE estimate_id = '44444444-4444-4444-4444-444444444449'::uuid$d$;
+    IF to_regclass('public.estimate_items') IS NOT NULL THEN
+      EXECUTE $d$DELETE FROM public.estimate_items WHERE estimate_id = '44444444-4444-4444-4444-444444444449'::uuid$d$;
+    END IF;
+    EXECUTE $d$DELETE FROM public.estimates WHERE id = '44444444-4444-4444-4444-444444444449'::uuid$d$;
+    EXECUTE $d$INSERT INTO public.estimates (id, number, client, project, status) VALUES ('44444444-4444-4444-4444-444444444449'::uuid, '[E2E]-EST-001', 'Seed Client', 'Seed Job', 'Draft')$d$;
+    EXECUTE $d$INSERT INTO public.estimate_meta (estimate_id, client_name, project_name) VALUES ('44444444-4444-4444-4444-444444444449'::uuid, 'Seed Client', 'Seed Job')$d$;
+  END IF;
+
+  -- worker_payments: intentionally not seeded — payment E2E creates/deletes rows; a seed row can steal the Delete target.
 END $$;
 
 DROP FUNCTION IF EXISTS pg_temp.hh_e2e_col(text, text);

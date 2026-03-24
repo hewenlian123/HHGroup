@@ -144,8 +144,15 @@ test.describe("Integration: data linked across modules", () => {
     await page.getByRole("button", { name: /\+ New Task/i }).click();
     const dlg = page.getByRole("dialog", { name: /New Task/i });
     await expect(dlg).toBeVisible({ timeout: 10_000 });
-    const opts = await dlg.locator("select").first().locator("option").count();
-    test.skip(opts <= 1, "No projects in task dialog — link chain incomplete in DB.");
+    const projectSel = dlg.locator("select").first();
+    try {
+      await expect(async () => {
+        const n = await projectSel.locator("option").count();
+        expect(n).toBeGreaterThan(1);
+      }).toPass({ timeout: 45_000, intervals: [400, 800, 1500] });
+    } catch {
+      test.skip(true, "No projects in task dialog — link chain incomplete in DB.");
+    }
     await dlg.getByRole("button", { name: /Cancel/i }).click();
     await expect(dlg).not.toBeVisible({ timeout: 8000 });
   });

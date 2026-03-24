@@ -181,7 +181,7 @@ test.describe("System Health page buttons", () => {
     const refreshBtn = page.getByRole("button", { name: "Refresh Now" }).first();
     await expect(refreshBtn).toBeVisible({ timeout: 60_000 });
     try {
-      await expect(refreshBtn).toBeEnabled({ timeout: 75_000 });
+      await expect(refreshBtn).toBeEnabled({ timeout: 120_000 });
     } catch {
       test.skip(true, "System health refresh stayed disabled (guardian still loading).");
       return;

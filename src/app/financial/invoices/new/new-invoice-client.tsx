@@ -217,6 +217,7 @@ export default function NewInvoiceClient() {
                 Project
               </label>
               <select
+                data-testid="invoice-new-project-select"
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
                 className="mt-1 flex h-10 w-full rounded-[10px] border border-input bg-white px-3 text-sm"

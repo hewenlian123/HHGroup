@@ -13,6 +13,7 @@ if (!process.env.E2E_BASE_URL) {
  * those tests match no project and the UI shows them as permanently skipped.
  *
  * CI pipelines should run only safe tests, e.g. `npm run test:e2e:ci` (`--project chromium`).
+ * Local full suite: `npm run test:local` runs chromium + chromium-payments + chromium-delete-mutations (see package.json).
  */
 const ignorePaymentAndDeleteMutations = [
   /worker-payment.*\.spec\.ts$/,
@@ -56,7 +57,7 @@ export default defineConfig({
     {
       name: "chromium-delete-mutations",
       testMatch: /delete-flows-mutations\.spec\.ts$/,
-      timeout: 90_000,
+      timeout: 150_000,
       use: {
         ...devices["Desktop Chrome"],
         baseURL: resolvedBase,

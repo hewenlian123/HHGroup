@@ -12,7 +12,7 @@ import { allowWorkerPaymentMutations } from "./payment-e2e-helpers";
  * Optional: `E2E_BASE_URL` (default http://localhost:3000 in this file), `E2E_WORKER_NAME`.
  */
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
-const WORKER_NAME = (process.env.E2E_WORKER_NAME ?? "林哲瀚").trim();
+const WORKER_NAME = (process.env.E2E_WORKER_NAME ?? "[E2E] Seed Worker").trim();
 
 test.describe("Worker payment → receipt labor lines", () => {
   test.describe.configure({ timeout: 120_000 });
