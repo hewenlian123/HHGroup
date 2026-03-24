@@ -82,33 +82,46 @@ export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBala
         }
       };
 
-      let laborRes: { data: unknown[] | null; error: { message?: string } | null };
-      try {
-        laborRes = (await (
-          c
-            .from("labor_entries")
-            .select("worker_id, cost_amount, total, status, worker_payment_id") as any
-        ).eq("worker_id", workerId)) as {
-          data: unknown[] | null;
-          error: { message?: string } | null;
-        };
-      } catch {
-        laborRes = (await c
-          .from("labor_entries")
-          .select("worker_id, cost_amount, total, status, worker_payment_id")) as {
-          data: unknown[] | null;
-          error: { message?: string } | null;
-        };
+      function isMissingColumn(err: { message?: string } | null): boolean {
+        return /column .* does not exist|could not find the .* column|schema cache/i.test(
+          err?.message ?? ""
+        );
       }
-      const laborRows = (laborRes.data ?? []) as Array<{
+      type LaborRaw = {
         worker_id?: string | null;
         cost_amount?: number | null;
         total?: number | null;
         status?: string | null;
         worker_payment_id?: string | null;
-      }>;
+      };
+      let laborRows: LaborRaw[] = [];
+      let laborSettlementMode: "payment_link" | "status_fallback" = "payment_link";
+
+      for (const cols of [
+        "worker_id, cost_amount, total, status, worker_payment_id",
+        "worker_id, cost_amount, status, worker_payment_id",
+        "worker_id, total, status, worker_payment_id",
+        "worker_id, cost_amount, total, status",
+        "worker_id, cost_amount, status",
+        "worker_id, total, status",
+        "worker_id, cost_amount, total",
+      ]) {
+        const base = (c.from("labor_entries") as any).select(cols);
+        const res = (await (typeof base.eq === "function"
+          ? base.eq("worker_id", workerId)
+          : base)) as { data: unknown[] | null; error: { message?: string } | null };
+        if (!res.error || !isMissingColumn(res.error)) {
+          laborRows = (res.data ?? []) as LaborRaw[];
+          laborSettlementMode = /\bworker_payment_id\b/.test(cols)
+            ? "payment_link"
+            : "status_fallback";
+          break;
+        }
+      }
+
       const laborOwed = laborRows.reduce((s, r) => {
-        if (!isLaborUnpaidForWorkerPayroll(r.status, r.worker_payment_id, "payment_link")) return s;
+        if (!isLaborUnpaidForWorkerPayroll(r.status, r.worker_payment_id, laborSettlementMode))
+          return s;
         return s + (Number(r.cost_amount ?? r.total) || 0);
       }, 0);
 
