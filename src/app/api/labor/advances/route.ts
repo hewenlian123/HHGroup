@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
-import {
-  mapWorkerAdvanceRowsForApi,
-  type WorkerAdvanceSelectRow,
-} from "@/lib/worker-advances-db";
+import { mapWorkerAdvanceRowsForApi, type WorkerAdvanceSelectRow } from "@/lib/worker-advances-db";
 
 export const dynamic = "force-dynamic";
 

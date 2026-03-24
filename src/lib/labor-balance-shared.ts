@@ -110,3 +110,90 @@ export async function resolveLaborWorkerForBalance(
   }
   return null;
 }
+
+export function normWorkerBalanceName(s: string | null | undefined): string {
+  return String(s ?? "")
+    .trim()
+    .toLowerCase();
+}
+
+/**
+ * worker_payments / worker_advances / worker_reimbursements reference public.workers(id).
+ * Worker Balances uses labor_workers.id. When UUIDs drift but names match, remap FK → labor row.
+ * Only remaps when exactly one labor_workers row shares the normalized name (avoids ambiguous merges).
+ */
+export async function createWorkersFkToLaborIdResolver(
+  c: SupabaseClient,
+  laborWorkers: { id: string; name: string | null }[],
+  rawWorkerIds: Iterable<string>
+): Promise<(rawWorkerId: string) => string> {
+  const laborIdSet = new Set(laborWorkers.map((w) => String(w.id ?? "").trim()).filter(Boolean));
+  const nameToLaborIds = new Map<string, string[]>();
+  for (const w of laborWorkers) {
+    const k = normWorkerBalanceName(w.name);
+    if (!k) continue;
+    const arr = nameToLaborIds.get(k) ?? [];
+    arr.push(String(w.id));
+    nameToLaborIds.set(k, arr);
+  }
+
+  const orphanIds = new Set<string>();
+  for (const id of rawWorkerIds) {
+    const t = String(id ?? "").trim();
+    if (t && !laborIdSet.has(t)) orphanIds.add(t);
+  }
+
+  const workerNamesById = new Map<string, string | null>();
+  if (orphanIds.size > 0) {
+    const wr = await c
+      .from("workers")
+      .select("id, name")
+      .in("id", [...orphanIds]);
+    if (!wr.error && wr.data) {
+      for (const row of wr.data as { id: string; name: string | null }[]) {
+        workerNamesById.set(String(row.id), row.name);
+      }
+    }
+  }
+
+  return (rawWorkerId: string): string => {
+    const id = String(rawWorkerId ?? "").trim();
+    if (!id) return rawWorkerId;
+    if (laborIdSet.has(id)) return id;
+    const nm = workerNamesById.get(id);
+    const candidates = nameToLaborIds.get(normWorkerBalanceName(nm)) ?? [];
+    if (candidates.length === 1) return candidates[0]!;
+    return id;
+  };
+}
+
+/**
+ * All worker_id values to query for financial rows when opening a labor_workers balance by id.
+ * Includes the labor id plus any workers.id rows with the same normalized name when labor id is not in workers.
+ */
+export async function workerIdsForLaborBalanceFinancialQueries(
+  c: SupabaseClient,
+  laborWorkerId: string
+): Promise<string[]> {
+  const ids = new Set<string>();
+  const lid = laborWorkerId.trim();
+  if (!lid) return [];
+  ids.add(lid);
+
+  const wSame = await c.from("workers").select("id").eq("id", lid).maybeSingle();
+  if (wSame.data && (wSame.data as { id?: string }).id) {
+    return [lid];
+  }
+
+  const lw = await c.from("labor_workers").select("name").eq("id", lid).maybeSingle();
+  const lname = (lw.data as { name?: string | null } | null)?.name;
+  const k = normWorkerBalanceName(lname);
+  if (!k) return [...ids];
+
+  const { data: wrows, error } = await c.from("workers").select("id, name");
+  if (error || !wrows) return [...ids];
+  for (const r of wrows as { id: string; name: string | null }[]) {
+    if (normWorkerBalanceName(r.name) === k) ids.add(String(r.id));
+  }
+  return [...ids];
+}

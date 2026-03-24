@@ -945,7 +945,11 @@ export async function POST(req: Request) {
           .maybeSingle();
         if (!a.error && a.data) storedPayment = a.data as { total_amount?: number };
         else {
-          const b = await c.from("worker_payments").select("id, amount").eq("id", paymentId).maybeSingle();
+          const b = await c
+            .from("worker_payments")
+            .select("id, amount")
+            .eq("id", paymentId)
+            .maybeSingle();
           if (!b.error && b.data) storedPayment = b.data as { amount?: number };
         }
       }

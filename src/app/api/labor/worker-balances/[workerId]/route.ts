@@ -65,7 +65,10 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
       if (!payPrimary.error) {
         payRows = (payPrimary.data ?? []) as PayRow[];
       } else if (paySelectErrorMissingCol(payPrimary.error)) {
-        const payFb = await c.from("worker_payments").select("id, amount").eq("worker_id", workerId);
+        const payFb = await c
+          .from("worker_payments")
+          .select("id, amount")
+          .eq("worker_id", workerId);
         if (!payFb.error) payRows = (payFb.data ?? []) as PayRow[];
       }
 

@@ -1,5 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { isLaborUnpaidForWorkerPayroll } from "@/lib/labor-balance-shared";
+import {
+  createWorkersFkToLaborIdResolver,
+  isLaborUnpaidForWorkerPayroll,
+} from "@/lib/labor-balance-shared";
 import postgres from "postgres";
 
 export type WorkerBalanceRow = {
@@ -176,9 +179,28 @@ export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBala
     status?: string | null;
   }[];
 
+  const advancesRes = await c.from("worker_advances").select("worker_id, amount, status");
+  const advancesRows = (advancesRes.data ?? []) as {
+    worker_id: string;
+    amount?: number | null;
+    status?: string | null;
+  }[];
+
+  const rawFinancialIds = new Set<string>();
+  for (const r of reimbRows) {
+    if (r.worker_id) rawFinancialIds.add(r.worker_id);
+  }
+  for (const r of paymentRows) {
+    if (r.worker_id) rawFinancialIds.add(r.worker_id);
+  }
+  for (const r of advancesRows) {
+    if (r.worker_id) rawFinancialIds.add(r.worker_id);
+  }
+  const toLaborWorkerId = await createWorkersFkToLaborIdResolver(c, workers, rawFinancialIds);
+
   const reimbByWorker = new Map<string, number>();
   for (const r of reimbRows) {
-    const wid = r.worker_id;
+    const wid = toLaborWorkerId(r.worker_id);
     if (!wid) continue;
     const status = (r.status ?? "").toLowerCase();
     if (status === "paid") continue;
@@ -189,25 +211,20 @@ export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBala
   const paymentsByWorker = new Map<string, number>();
   const paymentRowCountByWorker = new Map<string, number>();
   for (const r of paymentRows) {
-    const wid = r.worker_id;
+    const wid = toLaborWorkerId(r.worker_id);
     if (!wid) continue;
     paymentRowCountByWorker.set(wid, (paymentRowCountByWorker.get(wid) ?? 0) + 1);
     const amt = Number(r.amount) || 0;
     paymentsByWorker.set(wid, (paymentsByWorker.get(wid) ?? 0) + amt);
   }
 
-  const advancesRes = await c.from("worker_advances").select("worker_id, amount, status");
-  const advancesRows = (advancesRes.data ?? []) as {
-    worker_id: string;
-    amount?: number | null;
-    status?: string | null;
-  }[];
-
   const advancesByWorker = new Map<string, number>();
   for (const r of advancesRows) {
-    const wid = r.worker_id;
+    const wid = toLaborWorkerId(r.worker_id);
     if (!wid) continue;
-    const status = (r.status ?? "").toLowerCase();
+    const status = String(r.status ?? "")
+      .trim()
+      .toLowerCase();
     /** Pending = recorded only; deducted = applied on payroll — counts toward Advances column and balance. */
     if (status !== "deducted") continue;
     const amt = Number(r.amount) || 0;
