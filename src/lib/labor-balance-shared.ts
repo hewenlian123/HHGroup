@@ -120,7 +120,8 @@ export function normWorkerBalanceName(s: string | null | undefined): string {
 /**
  * worker_payments / worker_advances / worker_reimbursements reference public.workers(id).
  * Worker Balances uses labor_workers.id. When UUIDs drift but names match, remap FK → labor row.
- * Only remaps when exactly one labor_workers row shares the normalized name (avoids ambiguous merges).
+ * If multiple labor_workers rows share the same normalized name, pick a stable first id so
+ * list/detail pages don't diverge by dropping financial rows to an unmapped id.
  */
 export async function createWorkersFkToLaborIdResolver(
   c: SupabaseClient,
@@ -162,7 +163,10 @@ export async function createWorkersFkToLaborIdResolver(
     if (laborIdSet.has(id)) return id;
     const nm = workerNamesById.get(id);
     const candidates = nameToLaborIds.get(normWorkerBalanceName(nm)) ?? [];
-    if (candidates.length === 1) return candidates[0]!;
+    if (candidates.length > 0) {
+      const stable = [...candidates].sort((a, b) => a.localeCompare(b))[0];
+      if (stable) return stable;
+    }
     return id;
   };
 }
