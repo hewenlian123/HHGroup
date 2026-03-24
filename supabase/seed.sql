@@ -703,23 +703,41 @@ BEGIN
 
   IF to_regclass('public.worker_reimbursements') IS NOT NULL
      AND pg_temp.hh_e2e_col('worker_reimbursements', 'worker_id') THEN
-    EXECUTE $d$DELETE FROM public.worker_reimbursements WHERE notes = '[E2E] SEED reimb'$d$;
-    EXECUTE format(
-      $d$INSERT INTO public.worker_reimbursements (worker_id, project_id, amount, notes, reimbursement_date) VALUES (%L::uuid, %L::uuid, 42, '[E2E] SEED reimb', CURRENT_DATE)$d$,
-      v_worker,
-      v_project
-    );
+    IF pg_temp.hh_e2e_col('worker_reimbursements', 'notes') THEN
+      EXECUTE $d$DELETE FROM public.worker_reimbursements WHERE notes = '[E2E] SEED reimb'$d$;
+      EXECUTE format(
+        $d$INSERT INTO public.worker_reimbursements (worker_id, project_id, amount, notes, reimbursement_date) VALUES (%L::uuid, %L::uuid, 42, '[E2E] SEED reimb', CURRENT_DATE)$d$,
+        v_worker,
+        v_project
+      );
+    ELSIF pg_temp.hh_e2e_col('worker_reimbursements', 'note') THEN
+      EXECUTE $d$DELETE FROM public.worker_reimbursements WHERE note = '[E2E] SEED reimb'$d$;
+      EXECUTE format(
+        $d$INSERT INTO public.worker_reimbursements (worker_id, project_id, amount, note, reimbursement_date) VALUES (%L::uuid, %L::uuid, 42, '[E2E] SEED reimb', CURRENT_DATE)$d$,
+        v_worker,
+        v_project
+      );
+    END IF;
   END IF;
 
   IF to_regclass('public.worker_invoices') IS NOT NULL
      AND pg_temp.hh_e2e_col('worker_invoices', 'worker_id')
      AND pg_temp.hh_e2e_col('worker_invoices', 'amount') THEN
     EXECUTE $d$DELETE FROM public.worker_invoices WHERE id = '44444444-4444-4444-4444-444444444446'::uuid$d$;
-    EXECUTE format(
-      $d$INSERT INTO public.worker_invoices (id, worker_id, project_id, amount, invoice_file, status) VALUES ('44444444-4444-4444-4444-444444444446'::uuid, %L::uuid, %L::uuid, 60, '', 'unpaid')$d$,
-      v_worker,
-      v_project
-    );
+    IF pg_temp.hh_e2e_col('worker_invoices', 'invoice_number')
+       AND pg_temp.hh_e2e_col('worker_invoices', 'invoice_date') THEN
+      EXECUTE format(
+        $d$INSERT INTO public.worker_invoices (id, worker_id, project_id, invoice_number, invoice_date, amount, status, attachment_url) VALUES ('44444444-4444-4444-4444-444444444446'::uuid, %L::uuid, %L::uuid, '[E2E]-WI-001', CURRENT_DATE, 60, 'Unpaid', '')$d$,
+        v_worker,
+        v_project
+      );
+    ELSE
+      EXECUTE format(
+        $d$INSERT INTO public.worker_invoices (id, worker_id, project_id, amount, invoice_file, status) VALUES ('44444444-4444-4444-4444-444444444446'::uuid, %L::uuid, %L::uuid, 60, '', 'unpaid')$d$,
+        v_worker,
+        v_project
+      );
+    END IF;
   END IF;
 
   IF to_regclass('public.estimates') IS NOT NULL
