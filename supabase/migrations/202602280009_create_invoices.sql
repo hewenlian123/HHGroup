@@ -145,7 +145,12 @@ as $$
 declare
   target_id uuid;
 begin
-  target_id := coalesce(new.invoice_id, old.invoice_id, new.id, old.id);
+  target_id := coalesce(
+    nullif(to_jsonb(new)->>'invoice_id', '')::uuid,
+    nullif(to_jsonb(old)->>'invoice_id', '')::uuid,
+    nullif(to_jsonb(new)->>'id', '')::uuid,
+    nullif(to_jsonb(old)->>'id', '')::uuid
+  );
   perform public.recompute_invoice_totals(target_id);
   return coalesce(new, old);
 end;
