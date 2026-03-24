@@ -16,7 +16,7 @@ import {
   listTableRowClassName,
 } from "@/lib/list-table-interaction";
 import {
-  getWorkers,
+  getLaborWorkersList,
   getProjects,
   updateWorkerReimbursement,
   type WorkerReimbursement,
@@ -41,7 +41,7 @@ const STATUS_OPTIONS: WorkerReimbursementStatus[] = ["pending", "paid"];
 
 export default function WorkerReimbursementsPage() {
   const router = useRouter();
-  const [workers, setWorkers] = React.useState<Awaited<ReturnType<typeof getWorkers>>>([]);
+  const [workers, setWorkers] = React.useState<Awaited<ReturnType<typeof getLaborWorkersList>>>([]);
   const [projects, setProjects] = React.useState<Awaited<ReturnType<typeof getProjects>>>([]);
   const [rows, setRows] = React.useState<WorkerReimbursement[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -92,7 +92,7 @@ export default function WorkerReimbursementsPage() {
     setSchemaWarning(null);
     try {
       const [w, p, res] = await Promise.all([
-        getWorkers(),
+        getLaborWorkersList(),
         getProjects(),
         fetch("/api/worker-reimbursements", { cache: "no-store" }).then((r) => r.json()),
       ]);

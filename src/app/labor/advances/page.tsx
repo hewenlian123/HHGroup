@@ -1,12 +1,12 @@
 import { PageLayout } from "@/components/base/page-layout";
-import { getProjects, getWorkers } from "@/lib/data";
+import { getLaborWorkersList, getProjects } from "@/lib/data";
 
 import { WorkerAdvancesClient } from "./worker-advances-client";
 
 export const dynamic = "force-dynamic";
 
 export default async function WorkerAdvancesPage() {
-  const [workers, projects] = await Promise.all([getWorkers(), getProjects()]);
+  const [workers, projects] = await Promise.all([getLaborWorkersList(), getProjects()]);
 
   return (
     <PageLayout header={null}>
