@@ -12,7 +12,7 @@ import { allowWorkerPaymentMutations } from "./payment-e2e-helpers";
  * Uses payment method "E2E Cash" so the correct row can be found on /labor/payments if multiple exist.
  */
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
-const WORKER_NAME = (process.env.E2E_WORKER_NAME ?? "林哲瀚").trim();
+const WORKER_NAME = (process.env.E2E_WORKER_NAME ?? "[E2E] Seed Worker").trim();
 
 test.describe("Worker payment full flow: pay → receipt → delete → rollback", () => {
   test.describe.configure({ timeout: 120_000 });

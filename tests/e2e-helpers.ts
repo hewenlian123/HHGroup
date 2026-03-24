@@ -59,10 +59,18 @@ export async function tryCreateDraftInvoiceNavigateToDetail(
   await page.goto(`${trimBaseUrl(baseUrl)}/financial/invoices/new`);
   await page.waitForLoadState("domcontentloaded");
 
-  const projectSelect = page.locator("select").first();
-  await expect(projectSelect).toBeVisible({ timeout: 15_000 });
-  const projectOptions = await projectSelect.locator("option").count();
-  if (projectOptions <= 1) {
+  // Form loads projects via client Supabase after shell paint — wait for real options, not skeleton.
+  await expect(page.getByRole("heading", { name: /^New Invoice$/i })).toBeVisible({
+    timeout: 30_000,
+  });
+  const projectSelect = page.getByTestId("invoice-new-project-select");
+  await expect(projectSelect).toBeVisible({ timeout: 30_000 });
+  try {
+    await expect(async () => {
+      const n = await projectSelect.locator("option").count();
+      expect(n).toBeGreaterThan(1);
+    }).toPass({ timeout: 60_000, intervals: [500, 1000, 2000] });
+  } catch {
     return { ok: false, skipReason: "No project available to create an invoice." };
   }
   await projectSelect.selectOption({ index: 1 });
@@ -70,9 +78,15 @@ export async function tryCreateDraftInvoiceNavigateToDetail(
   const clientName = options?.clientName ?? `PW Invoice ${Date.now()}`;
   await page.getByPlaceholder("Client").fill(clientName);
 
-  const descriptionInput = page.getByPlaceholder("Description").first();
-  await expect(descriptionInput).toBeVisible();
+  const lineItemsTable = page.locator("div.overflow-x-auto table").first();
+  const descriptionInput = lineItemsTable.locator('input[placeholder="Description"]').first();
+  await expect(descriptionInput).toBeVisible({ timeout: 10_000 });
   await descriptionInput.fill(options?.lineDescription ?? "Playwright invoice item");
+  const lineRow = lineItemsTable.locator("tbody tr").first();
+  const unitPriceField = lineRow.locator('input[type="number"]').nth(1);
+  if ((await unitPriceField.count()) > 0) {
+    await unitPriceField.fill("100");
+  }
 
   const createBtn = page.getByRole("button", { name: /Create draft invoice/i });
   await expect(createBtn).toBeEnabled();

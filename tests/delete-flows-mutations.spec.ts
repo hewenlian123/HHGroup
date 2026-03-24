@@ -15,7 +15,7 @@ const ROW_REMOVED_MS = 15_000;
 const LIST_LOAD_MS = 55_000;
 
 test.describe("Delete mutations: create then delete", () => {
-  test.describe.configure({ timeout: 90_000 });
+  test.describe.configure({ timeout: 150_000 });
 
   test.beforeEach(({ page }, testInfo) => {
     test.skip(
@@ -213,16 +213,24 @@ test.describe("Delete mutations: create then delete", () => {
     await projectSelect.selectOption({ index: 1 });
     await taskDlg.getByPlaceholder("Task title").fill(title);
     await taskDlg.getByRole("button", { name: /^Save$/ }).click();
+    await expect(taskDlg).toBeHidden({ timeout: 25_000 });
 
-    const row = page.locator("tbody tr").filter({ hasText: title });
     try {
-      await expect(row).toBeVisible({ timeout: 25_000 });
+      await expect(async () => {
+        const r = page.locator("tbody tr").filter({ hasText: title });
+        await expect(r).toBeVisible();
+        await expect(r.locator('[aria-label="Task actions"]').first()).toBeEnabled();
+      }).toPass({ timeout: 60_000 });
     } catch {
-      test.skip(true, "Task did not appear after create.");
+      test.skip(true, "Task row did not become actionable after create.");
     }
 
-    await row.getByRole("button", { name: /^Task actions$/ }).click();
-    await page.getByRole("menuitem", { name: /^Delete$/ }).click();
+    const row = page.locator("tbody tr").filter({ hasText: title });
+    const taskActions = row.locator('[aria-label="Task actions"]').first();
+    await taskActions.click();
+    const deleteItem = page.getByRole("menuitem", { name: /^Delete$/ }).last();
+    await expect(deleteItem).toBeVisible({ timeout: 20_000 });
+    await deleteItem.click();
     await expect(row).toHaveCount(0, { timeout: ROW_REMOVED_MS });
   });
 

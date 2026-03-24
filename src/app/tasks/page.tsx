@@ -107,8 +107,10 @@ export default function TasksPage() {
     status: "todo" as "todo" | "in_progress" | "done",
   });
 
-  const load = React.useCallback(async () => {
-    setLoading(true);
+  const load = React.useCallback(async (opts?: { silent?: boolean }) => {
+    const silent = Boolean(opts?.silent);
+    /** Full-screen loader nukes the table; sync-triggered refetch should stay silent for stable row actions (E2E + UX). */
+    if (!silent) setLoading(true);
     try {
       const res = await fetch(`/api/operations/tasks?t=${Date.now()}`, {
         cache: "no-store",
@@ -123,7 +125,7 @@ export default function TasksPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load tasks.");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
@@ -133,7 +135,7 @@ export default function TasksPage() {
 
   useOnAppSync(
     React.useCallback(() => {
-      void load();
+      void load({ silent: true });
     }, [load]),
     [load]
   );
