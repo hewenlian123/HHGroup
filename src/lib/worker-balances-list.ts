@@ -39,7 +39,8 @@ export async function fetchWorkerBalanceRowForDelete(
 /**
  * Worker balances summary (same rules as GET /api/labor/worker-balances).
  * Labor Owed = unpaid payroll per `isLaborUnpaidForWorkerPayroll` / worker_payment_id NULL in SQL path.
- * Balance = Labor Owed + Reimbursements - Payments - Advances.
+ * Balance = Labor Owed + Reimbursements - Payments - DeductedAdvances.
+ * Worker list comes from labor_workers; payments/advances aggregate by worker_id (same ids as labor_workers when synced).
  */
 export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBalanceRow[]> {
   const workersRes = await c.from("labor_workers").select("id, name").order("name");
@@ -207,8 +208,8 @@ export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBala
     const wid = r.worker_id;
     if (!wid) continue;
     const status = (r.status ?? "").toLowerCase();
-    /** Only pending advances reduce net pay; deducted = already recovered from payroll. */
-    if (status !== "pending") continue;
+    /** Pending = recorded only; deducted = applied on payroll — counts toward Advances column and balance. */
+    if (status !== "deducted") continue;
     const amt = Number(r.amount) || 0;
     advancesByWorker.set(wid, (advancesByWorker.get(wid) ?? 0) + amt);
   }

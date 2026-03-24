@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
+import {
+  mapWorkerAdvanceRowsForApi,
+  type WorkerAdvanceSelectRow,
+} from "@/lib/worker-advances-db";
 
 export const dynamic = "force-dynamic";
 
@@ -18,27 +22,13 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     const { id } = await params;
     const { data, error } = await admin
       .from("worker_advances")
-      .select(
-        "id, worker_id, project_id, amount, advance_date, status, notes, created_at, workers(name), projects(name)"
-      )
+      .select("id, worker_id, project_id, amount, advance_date, status, notes, created_at")
       .eq("id", id)
       .maybeSingle();
     if (error) throw new Error(error.message ?? "Failed to load worker advance");
     if (!data) return NextResponse.json({ message: "Not found" }, { status: 404 });
 
-    const r: any = data;
-    const result = {
-      id: r.id as string,
-      workerId: r.worker_id as string,
-      workerName: (r.workers?.name as string | null) ?? "",
-      projectId: (r.project_id as string | null) ?? null,
-      projectName: (r.projects?.name as string | null) ?? null,
-      amount: Number(r.amount) || 0,
-      advanceDate: String(r.advance_date ?? "").slice(0, 10),
-      status: String(r.status ?? "pending"),
-      notes: (r.notes as string | null) ?? null,
-      createdAt: String(r.created_at ?? ""),
-    };
+    const [result] = await mapWorkerAdvanceRowsForApi(admin, [data as WorkerAdvanceSelectRow]);
 
     return NextResponse.json(result, { headers: NO_CACHE_HEADERS });
   } catch (e) {
@@ -70,27 +60,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       .from("worker_advances")
       .update(patch)
       .eq("id", id)
-      .select(
-        "id, worker_id, project_id, amount, advance_date, status, notes, created_at, workers(name), projects(name)"
-      )
+      .select("id, worker_id, project_id, amount, advance_date, status, notes, created_at")
       .maybeSingle();
 
     if (error) throw new Error(error.message ?? "Failed to update worker advance");
     if (!data) return NextResponse.json({ message: "Not found" }, { status: 404 });
 
-    const r: any = data;
-    const result = {
-      id: r.id as string,
-      workerId: r.worker_id as string,
-      workerName: (r.workers?.name as string | null) ?? "",
-      projectId: (r.project_id as string | null) ?? null,
-      projectName: (r.projects?.name as string | null) ?? null,
-      amount: Number(r.amount) || 0,
-      advanceDate: String(r.advance_date ?? "").slice(0, 10),
-      status: String(r.status ?? "pending"),
-      notes: (r.notes as string | null) ?? null,
-      createdAt: String(r.created_at ?? ""),
-    };
+    const [result] = await mapWorkerAdvanceRowsForApi(admin, [data as WorkerAdvanceSelectRow]);
 
     return NextResponse.json(result, { headers: NO_CACHE_HEADERS });
   } catch (e) {

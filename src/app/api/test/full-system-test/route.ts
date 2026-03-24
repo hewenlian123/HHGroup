@@ -936,11 +936,19 @@ export async function POST(req: Request) {
       log("labor_workflow", `worker payment id=${paymentId}`);
 
       // Verify payment stored
-      const { data: storedPayment } = await c
-        .from("worker_payments")
-        .select("id, total_amount, amount")
-        .eq("id", paymentId)
-        .maybeSingle();
+      let storedPayment: { total_amount?: number; amount?: number } | null = null;
+      {
+        const a = await c
+          .from("worker_payments")
+          .select("id, total_amount")
+          .eq("id", paymentId)
+          .maybeSingle();
+        if (!a.error && a.data) storedPayment = a.data as { total_amount?: number };
+        else {
+          const b = await c.from("worker_payments").select("id, amount").eq("id", paymentId).maybeSingle();
+          if (!b.error && b.data) storedPayment = b.data as { amount?: number };
+        }
+      }
       if (!storedPayment) throw new Error("Worker payment not found after insert");
       const payAmt = Number(
         (storedPayment as { total_amount?: number; amount?: number }).total_amount ??

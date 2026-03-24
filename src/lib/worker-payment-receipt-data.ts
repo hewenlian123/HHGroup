@@ -254,7 +254,7 @@ async function sumAdvances(
   let s = 0;
   for (const r of (advRes.data ?? []) as { amount?: number | null; status?: string | null }[]) {
     const st = String(r.status ?? "").toLowerCase();
-    if (st !== "pending") continue;
+    if (st !== "deducted") continue;
     s += Number(r.amount) || 0;
   }
   return s;
