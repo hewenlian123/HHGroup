@@ -51,8 +51,9 @@ const AUTO_REPAIR_DDL: string[] = [
   name text not null,
   created_at timestamptz not null default now()
 )`,
-  `INSERT INTO public.labor_workers (id, name, created_at)
-   SELECT w.id, w.name, w.created_at
+  // Only use (id, name): production schemas may not have created_at on labor_workers.
+  `INSERT INTO public.labor_workers (id, name)
+   SELECT w.id, w.name
    FROM public.workers w
    WHERE NOT EXISTS (SELECT 1 FROM public.labor_workers lw WHERE lw.id = w.id)`,
 ];

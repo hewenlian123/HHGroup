@@ -1,0 +1,17 @@
+{
+  "rlsMode": "loose",
+  "criticalTables": [
+    { "table": "project_tasks", "module": "operations" },
+    { "table": "project_schedule", "module": "operations" },
+    { "table": "punch_list", "module": "operations" },
+    { "table": "inspection_logs", "module": "operations" },
+    { "table": "site_photos", "module": "operations" },
+    { "table": "material_catalog", "module": "materials" },
+    { "table": "project_material_selections", "module": "materials" },
+    { "table": "documents", "module": "docs" },
+    { "table": "project_change_orders", "module": "change_orders" },
+    { "table": "project_change_order_items", "module": "change_orders" },
+    { "table": "project_change_order_attachments", "module": "change_orders" },
+    { "table": "project_budget_items", "module": "change_orders" }
+  ]
+}

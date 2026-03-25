@@ -564,15 +564,19 @@ export async function insertDailyLaborEntries(
   // if the sync migration/trigger wasn't applied or backfilled.
   const ensureLaborWorkers = async () => {
     try {
+      // IMPORTANT: production `labor_workers` schema has drifted over time (e.g. created_at dropped).
+      // To stay compatible across schemas, only upsert the minimal common columns: (id, name).
       const payload = Array.from(workerMap.values()).map((w) => ({
         id: w.id,
         name: w.name ?? "",
-        created_at: (w as { created_at?: string }).created_at ?? new Date().toISOString(),
       }));
       if (payload.length === 0) return;
       await c.from("labor_workers").upsert(payload, { onConflict: "id" });
-    } catch {
-      // If labor_workers table doesn't exist in this schema, ignore.
+    } catch (e) {
+      // Only ignore missing table; surface RLS / column drift errors early.
+      const msg = e instanceof Error ? e.message : String(e);
+      if (/schema cache|relation.*does not exist|could not find the table/i.test(msg)) return;
+      throw new Error(`labor_workers: failed to sync selected workers. ${msg}`);
     }
   };
   await ensureLaborWorkers();
@@ -673,13 +677,17 @@ export async function upsertLaborEntry(
         {
           id: worker.id,
           name: worker.name ?? "",
-          created_at: (worker as { created_at?: string }).created_at ?? new Date().toISOString(),
         },
       ],
       { onConflict: "id" }
     );
-  } catch {
-    // ignore (table may not exist in this schema)
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (/schema cache|relation.*does not exist|could not find the table/i.test(msg)) {
+      // table may not exist in this schema
+      // continue: labor_entries may FK directly to workers on older schemas
+    }
+    throw new Error(`labor_workers: failed to sync worker before write. ${msg}`);
   }
 
   const hourlyRate = (worker.halfDayRate ?? 0) / 4;
