@@ -110,7 +110,9 @@ function DepositsPageInner() {
                     <TableCell className="text-right tabular-nums font-medium text-emerald-600/90 dark:text-emerald-400/90">
                       {money(row.amount)}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">—</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {row.payment_method ?? "—"}
+                    </TableCell>
                     <TableCell className="text-muted-foreground">{row.account ?? "—"}</TableCell>
                   </TableRow>
                 ))}

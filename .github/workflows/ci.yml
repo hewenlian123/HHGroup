@@ -2,6 +2,11 @@
 # E2E (Playwright) runs locally only — not in this workflow.
 # Secrets: VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID
 # Optional: vars.NEXT_PUBLIC_SUPABASE_URL, secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY (for next build if needed)
+#
+# Production DB migrations (before Vercel):
+#   Set secret SUPABASE_DB_URL = Postgres connection URI (Supabase Dashboard → Project Settings →
+#   Database → URI; use direct connection or session pooler per Supabase docs for migrations).
+#   If unset, the migrate step is skipped and deploy still runs (add the secret to enforce).
 
 name: CI
 
@@ -57,6 +62,18 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        if: ${{ secrets.SUPABASE_DB_URL != '' }}
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Push Supabase migrations (production)
+        if: ${{ secrets.SUPABASE_DB_URL != '' }}
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: supabase db push --db-url "$SUPABASE_DB_URL"
 
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v25

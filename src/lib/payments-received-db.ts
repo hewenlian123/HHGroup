@@ -220,11 +220,13 @@ export async function createPaymentReceived(
   // Auto-create deposit record (payment_id, invoice_id, project_id, customer_name, deposit_account, amount, payment_method, deposit_date)
   await createDepositFromPayment({
     id: payment.id,
+    invoice_id: payment.invoice_id,
     project_id: payment.project_id,
     amount: payment.amount,
     payment_date: payment.payment_date,
     deposit_account: payment.deposit_account,
-    description: payment.notes ?? payment.customer_name ?? null,
+    customer_name: payment.customer_name,
+    payment_method: payment.payment_method ?? null,
   });
 
   // Sync to invoice_payments so balance / AR derivation sees the payment.
