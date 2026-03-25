@@ -12,6 +12,7 @@
     "lint": "next lint",
     "lint:ci": "eslint \"src/__tests__/**/*.{ts,tsx}\" --max-warnings 0",
     "check:migration-filenames": "node scripts/check-migration-filenames.mjs",
+    "check:migration-order": "node scripts/check-migration-order.mjs",
     "check:schema-vs-code": "node scripts/audit-schema-vs-code.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
