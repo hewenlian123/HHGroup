@@ -25,15 +25,27 @@ export default defineConfig({
   globalTeardown: "./tests/global-teardown.ts",
   timeout: 30000,
   retries: 1,
-  /** CI: build first (`npm run build`), then Playwright starts production server automatically. */
-  webServer: process.env.CI
-    ? {
-        command: "npm run start",
-        url: resolvedBase,
-        reuseExistingServer: false,
-        timeout: 120_000,
-      }
-    : undefined,
+  /**
+   * Web server modes:
+   * - CI: expects build output, runs `next start`
+   * - E2E_WEB_SERVER=dev: runs `next dev` (for local pre-push tests)
+   *
+   * Port is derived from E2E_BASE_URL (defaults to :3000).
+   */
+  webServer:
+    process.env.CI || process.env.E2E_WEB_SERVER === "dev"
+      ? (() => {
+          const u = new URL(resolvedBase);
+          const port = u.port || "3000";
+          const isDev = process.env.E2E_WEB_SERVER === "dev" && !process.env.CI;
+          return {
+            command: isDev ? `npm run dev -- -p ${port}` : `PORT=${port} npm run start`,
+            url: resolvedBase,
+            reuseExistingServer: false,
+            timeout: 120_000,
+          };
+        })()
+      : undefined,
   use: {
     baseURL: (process.env.E2E_BASE_URL || "http://localhost:3000").replace(/\/$/, ""),
     headless: true,

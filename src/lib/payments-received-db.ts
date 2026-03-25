@@ -21,6 +21,7 @@ export type PaymentReceivedRow = {
   deposit_account: string | null;
   notes: string | null;
   attachment_url: string | null;
+  status?: string | null;
   created_at: string;
 };
 
@@ -55,12 +56,30 @@ function isMissingTable(err: { message?: string } | null): boolean {
 /** List all payments received with invoice_no and project name. */
 export async function getPaymentsReceived(): Promise<PaymentReceivedWithMeta[]> {
   const c = client();
-  const { data: rows, error } = await c
-    .from("payments_received")
-    .select(
-      "id, invoice_id, project_id, customer_name, payment_date, amount, payment_method, deposit_account, notes, attachment_url, created_at"
-    )
-    .order("payment_date", { ascending: false });
+  const selectWithStatus =
+    "id, invoice_id, project_id, customer_name, payment_date, amount, payment_method, deposit_account, notes, attachment_url, status, created_at";
+  const selectWithoutStatus =
+    "id, invoice_id, project_id, customer_name, payment_date, amount, payment_method, deposit_account, notes, attachment_url, created_at";
+
+  let rows: unknown[] | null = null;
+  let error: { message?: string } | null = null;
+  {
+    const r = await c
+      .from("payments_received")
+      .select(selectWithStatus)
+      .neq("status", "void")
+      .order("payment_date", { ascending: false });
+    rows = r.data as unknown[] | null;
+    error = r.error as { message?: string } | null;
+  }
+  if (error && isMissingColumn(error)) {
+    const r = await c
+      .from("payments_received")
+      .select(selectWithoutStatus)
+      .order("payment_date", { ascending: false });
+    rows = r.data as unknown[] | null;
+    error = r.error as { message?: string } | null;
+  }
   if (error) {
     if (isMissingTable(error)) return [];
     throw new Error(error.message ?? "Failed to load payments received.");
@@ -96,13 +115,32 @@ export async function getPaymentsReceivedByInvoiceId(
   invoiceId: string
 ): Promise<PaymentReceivedRow[]> {
   const c = client();
-  const { data: rows, error } = await c
-    .from("payments_received")
-    .select(
-      "id, invoice_id, project_id, customer_name, payment_date, amount, payment_method, deposit_account, notes, attachment_url, created_at"
-    )
-    .eq("invoice_id", invoiceId)
-    .order("payment_date", { ascending: false });
+  const selectWithStatus =
+    "id, invoice_id, project_id, customer_name, payment_date, amount, payment_method, deposit_account, notes, attachment_url, status, created_at";
+  const selectWithoutStatus =
+    "id, invoice_id, project_id, customer_name, payment_date, amount, payment_method, deposit_account, notes, attachment_url, created_at";
+
+  let rows: unknown[] | null = null;
+  let error: { message?: string } | null = null;
+  {
+    const r = await c
+      .from("payments_received")
+      .select(selectWithStatus)
+      .eq("invoice_id", invoiceId)
+      .neq("status", "void")
+      .order("payment_date", { ascending: false });
+    rows = r.data as unknown[] | null;
+    error = r.error as { message?: string } | null;
+  }
+  if (error && isMissingColumn(error)) {
+    const r = await c
+      .from("payments_received")
+      .select(selectWithoutStatus)
+      .eq("invoice_id", invoiceId)
+      .order("payment_date", { ascending: false });
+    rows = r.data as unknown[] | null;
+    error = r.error as { message?: string } | null;
+  }
   if (error) {
     if (isMissingTable(error)) return [];
     throw new Error(error.message ?? "Failed to load payments.");
@@ -135,6 +173,35 @@ export async function createPaymentReceived(
 ): Promise<PaymentReceivedRow> {
   const c = client();
   const paymentDate = payload.payment_date.slice(0, 10);
+
+  // Financial safety checks:
+  // - Prevent paying a fully-paid invoice
+  // - Prevent overpayment beyond remaining balance
+  const invRes = await c
+    .from("invoices")
+    .select("id, total, status")
+    .eq("id", payload.invoice_id)
+    .maybeSingle();
+  if (invRes.error) throw new Error(invRes.error.message ?? "Failed to load invoice.");
+  if (!invRes.data) throw new Error("Invoice not found.");
+  const total = Number((invRes.data as { total?: number | null }).total ?? 0) || 0;
+  const invStatusRaw = String((invRes.data as { status?: string | null }).status ?? "");
+
+  const payRes = await c
+    .from("invoice_payments")
+    .select("amount, status")
+    .eq("invoice_id", payload.invoice_id);
+  if (payRes.error) throw new Error(payRes.error.message ?? "Failed to load invoice payments.");
+  const paidTotal = (
+    (payRes.data ?? []) as Array<{ amount?: number | null; status?: string | null }>
+  )
+    .filter((p) => String(p.status ?? "") !== "Voided")
+    .reduce((s, p) => s + (Number(p.amount ?? 0) || 0), 0);
+  const remaining = Math.max(0, total - paidTotal);
+  if (remaining <= 0.0000001) throw new Error("Invoice already fully paid");
+  if ((Number(payload.amount) || 0) - remaining > 0.0000001) {
+    throw new Error("Payment exceeds remaining balance");
+  }
 
   // Full insert with all optional columns. If schema cache lags, retry stripping unknown columns.
   const insertAttempts: Record<string, unknown>[] = [
@@ -188,7 +255,7 @@ export async function createPaymentReceived(
 
   // Select columns: try full then fallback to minimal
   const selectAttempts = [
-    "id, invoice_id, project_id, customer_name, payment_date, amount, payment_method, deposit_account, notes, attachment_url, created_at",
+    "id, invoice_id, project_id, customer_name, payment_date, amount, payment_method, deposit_account, notes, attachment_url, status, created_at",
     "id, invoice_id, project_id, payment_date, amount, payment_method, created_at",
     "id, invoice_id, payment_date, amount, created_at",
   ];
@@ -251,6 +318,19 @@ export async function createPaymentReceived(
     throw new Error(
       syncRes.error.message ?? "Payment saved but failed to sync to invoice_payments."
     );
+  }
+
+  // Auto-calculate invoice status (stored) based on paid vs total.
+  // Map requested statuses: paid/partial/sent → Paid/Partially Paid/Sent (existing UI expects title-case).
+  const newPaid = paidTotal + (Number(payload.amount) || 0);
+  if (invStatusRaw.trim().toLowerCase() !== "void") {
+    let nextStatus: string | null = null;
+    if (newPaid + 0.0000001 >= total) nextStatus = "Paid";
+    else if (newPaid > 0.0000001) nextStatus = "Partially Paid";
+    else if (invStatusRaw.trim().toLowerCase() !== "draft") nextStatus = "Sent";
+    if (nextStatus) {
+      await c.from("invoices").update({ status: nextStatus }).eq("id", payload.invoice_id);
+    }
   }
 
   return payment;

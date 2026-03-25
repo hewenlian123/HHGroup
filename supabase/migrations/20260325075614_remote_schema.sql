@@ -132,13 +132,15 @@ drop policy "categories_perm_select" on "public"."categories";
 
 drop policy "categories_perm_update" on "public"."categories";
 
-drop policy "commission_payment_records_delete" on "public"."commission_payment_records";
-
-drop policy "commission_payment_records_insert" on "public"."commission_payment_records";
-
-drop policy "commission_payment_records_select" on "public"."commission_payment_records";
-
-drop policy "commission_payment_records_update" on "public"."commission_payment_records";
+do $$
+begin
+  if to_regclass('public.commission_payment_records') is not null then
+    drop policy if exists "commission_payment_records_delete" on "public"."commission_payment_records";
+    drop policy if exists "commission_payment_records_insert" on "public"."commission_payment_records";
+    drop policy if exists "commission_payment_records_select" on "public"."commission_payment_records";
+    drop policy if exists "commission_payment_records_update" on "public"."commission_payment_records";
+  end if;
+end $$;
 
 drop policy "commitments_delete_all" on "public"."commitments";
 
@@ -172,13 +174,15 @@ drop policy "estimate_payment_schedule_select_all" on "public"."estimate_payment
 
 drop policy "estimate_payment_schedule_update_all" on "public"."estimate_payment_schedule";
 
-drop policy "inspection_log_delete_all" on "public"."inspection_log";
-
-drop policy "inspection_log_insert_all" on "public"."inspection_log";
-
-drop policy "inspection_log_select_all" on "public"."inspection_log";
-
-drop policy "inspection_log_update_all" on "public"."inspection_log";
+do $$
+begin
+  if to_regclass('public.inspection_log') is not null then
+    drop policy if exists "inspection_log_delete_all" on "public"."inspection_log";
+    drop policy if exists "inspection_log_insert_all" on "public"."inspection_log";
+    drop policy if exists "inspection_log_select_all" on "public"."inspection_log";
+    drop policy if exists "inspection_log_update_all" on "public"."inspection_log";
+  end if;
+end $$;
 
 drop policy "invoice_items_delete_all" on "public"."invoice_items";
 
@@ -212,13 +216,15 @@ drop policy "labor_payments_select_all" on "public"."labor_payments";
 
 drop policy "labor_payments_update_all" on "public"."labor_payments";
 
-drop policy "material_catalog_delete_all" on "public"."material_catalog";
-
-drop policy "material_catalog_insert_all" on "public"."material_catalog";
-
-drop policy "material_catalog_select_all" on "public"."material_catalog";
-
-drop policy "material_catalog_update_all" on "public"."material_catalog";
+do $$
+begin
+  if to_regclass('public.material_catalog') is not null then
+    drop policy if exists "material_catalog_delete_all" on "public"."material_catalog";
+    drop policy if exists "material_catalog_insert_all" on "public"."material_catalog";
+    drop policy if exists "material_catalog_select_all" on "public"."material_catalog";
+    drop policy if exists "material_catalog_update_all" on "public"."material_catalog";
+  end if;
+end $$;
 
 drop policy "payment_methods_perm_delete" on "public"."payment_methods";
 
@@ -258,39 +264,40 @@ drop policy "project_change_order_attachments_select_all" on "public"."project_c
 
 drop policy "project_change_order_attachments_update_all" on "public"."project_change_order_attachments";
 
-drop policy "project_closeout_completion_insert" on "public"."project_closeout_completion";
+do $$
+begin
+  if to_regclass('public.project_closeout_completion') is not null then
+    drop policy if exists "project_closeout_completion_insert" on "public"."project_closeout_completion";
+    drop policy if exists "project_closeout_completion_select" on "public"."project_closeout_completion";
+    drop policy if exists "project_closeout_completion_update" on "public"."project_closeout_completion";
+  end if;
+  if to_regclass('public.project_closeout_punch') is not null then
+    drop policy if exists "project_closeout_punch_insert" on "public"."project_closeout_punch";
+    drop policy if exists "project_closeout_punch_select" on "public"."project_closeout_punch";
+    drop policy if exists "project_closeout_punch_update" on "public"."project_closeout_punch";
+  end if;
+  if to_regclass('public.project_closeout_warranty') is not null then
+    drop policy if exists "project_closeout_warranty_insert" on "public"."project_closeout_warranty";
+    drop policy if exists "project_closeout_warranty_select" on "public"."project_closeout_warranty";
+    drop policy if exists "project_closeout_warranty_update" on "public"."project_closeout_warranty";
+  end if;
+  if to_regclass('public.project_commissions') is not null then
+    drop policy if exists "project_commissions_delete" on "public"."project_commissions";
+    drop policy if exists "project_commissions_insert" on "public"."project_commissions";
+    drop policy if exists "project_commissions_select" on "public"."project_commissions";
+    drop policy if exists "project_commissions_update" on "public"."project_commissions";
+  end if;
+end $$;
 
-drop policy "project_closeout_completion_select" on "public"."project_closeout_completion";
-
-drop policy "project_closeout_completion_update" on "public"."project_closeout_completion";
-
-drop policy "project_closeout_punch_insert" on "public"."project_closeout_punch";
-
-drop policy "project_closeout_punch_select" on "public"."project_closeout_punch";
-
-drop policy "project_closeout_punch_update" on "public"."project_closeout_punch";
-
-drop policy "project_closeout_warranty_insert" on "public"."project_closeout_warranty";
-
-drop policy "project_closeout_warranty_select" on "public"."project_closeout_warranty";
-
-drop policy "project_closeout_warranty_update" on "public"."project_closeout_warranty";
-
-drop policy "project_commissions_delete" on "public"."project_commissions";
-
-drop policy "project_commissions_insert" on "public"."project_commissions";
-
-drop policy "project_commissions_select" on "public"."project_commissions";
-
-drop policy "project_commissions_update" on "public"."project_commissions";
-
-drop policy "project_material_selections_delete_all" on "public"."project_material_selections";
-
-drop policy "project_material_selections_insert_all" on "public"."project_material_selections";
-
-drop policy "project_material_selections_select_all" on "public"."project_material_selections";
-
-drop policy "project_material_selections_update_all" on "public"."project_material_selections";
+do $$
+begin
+  if to_regclass('public.project_material_selections') is not null then
+    drop policy if exists "project_material_selections_delete_all" on "public"."project_material_selections";
+    drop policy if exists "project_material_selections_insert_all" on "public"."project_material_selections";
+    drop policy if exists "project_material_selections_select_all" on "public"."project_material_selections";
+    drop policy if exists "project_material_selections_update_all" on "public"."project_material_selections";
+  end if;
+end $$;
 
 drop policy "project_schedule_delete_all" on "public"."project_schedule";
 
@@ -316,25 +323,29 @@ drop policy "projects_perm_select" on "public"."projects";
 
 drop policy "projects_perm_update" on "public"."projects";
 
-drop policy "punch_list_delete_all" on "public"."punch_list";
-
-drop policy "punch_list_insert_all" on "public"."punch_list";
-
-drop policy "punch_list_select_all" on "public"."punch_list";
-
-drop policy "punch_list_update_all" on "public"."punch_list";
+do $$
+begin
+  if to_regclass('public.punch_list') is not null then
+    drop policy if exists "punch_list_delete_all" on "public"."punch_list";
+    drop policy if exists "punch_list_insert_all" on "public"."punch_list";
+    drop policy if exists "punch_list_select_all" on "public"."punch_list";
+    drop policy if exists "punch_list_update_all" on "public"."punch_list";
+  end if;
+end $$;
 
 drop policy "role_permissions_owner_select" on "public"."role_permissions";
 
 drop policy "role_permissions_owner_write" on "public"."role_permissions";
 
-drop policy "site_photos_delete_all" on "public"."site_photos";
-
-drop policy "site_photos_insert_all" on "public"."site_photos";
-
-drop policy "site_photos_select_all" on "public"."site_photos";
-
-drop policy "site_photos_update_all" on "public"."site_photos";
+do $$
+begin
+  if to_regclass('public.site_photos') is not null then
+    drop policy if exists "site_photos_delete_all" on "public"."site_photos";
+    drop policy if exists "site_photos_insert_all" on "public"."site_photos";
+    drop policy if exists "site_photos_select_all" on "public"."site_photos";
+    drop policy if exists "site_photos_update_all" on "public"."site_photos";
+  end if;
+end $$;
 
 drop policy "subcontractors_perm_delete" on "public"."subcontractors";
 
