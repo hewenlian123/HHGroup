@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/empty-state";
 import { Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 
 function fmtUsd(n: number): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -18,12 +19,23 @@ function fmtUsd(n: number): string {
 export const dynamic = "force-dynamic";
 
 export default async function SubcontractorsPage() {
-  const [subcontractors, subcontracts, billsSummary, paymentsSummary] = await Promise.all([
-    getSubcontractorsWithInsuranceAlerts(),
-    getSubcontractsSummaryAll(),
-    getBillsSummaryAll(),
-    getPaymentsSummaryAll(),
-  ]);
+  let subcontractors: Awaited<ReturnType<typeof getSubcontractorsWithInsuranceAlerts>> = [];
+  let subcontracts: Awaited<ReturnType<typeof getSubcontractsSummaryAll>> = [];
+  let billsSummary: Awaited<ReturnType<typeof getBillsSummaryAll>> = [];
+  let paymentsSummary: Awaited<ReturnType<typeof getPaymentsSummaryAll>> = [];
+  let dataLoadWarning: string | null = null;
+
+  try {
+    [subcontractors, subcontracts, billsSummary, paymentsSummary] = await Promise.all([
+      getSubcontractorsWithInsuranceAlerts(),
+      getSubcontractsSummaryAll(),
+      getBillsSummaryAll(),
+      getPaymentsSummaryAll(),
+    ]);
+  } catch (e) {
+    logServerPageDataError("subcontractors", e);
+    dataLoadWarning = serverDataLoadWarning(e, "subcontractors summary");
+  }
 
   const subcontractIdsBySubcontractorId = new Map<string, string[]>();
   const totalContractsBySubcontractorId = new Map<string, number>();
@@ -78,6 +90,7 @@ export default async function SubcontractorsPage() {
         />
       }
     >
+      {dataLoadWarning ? <p className="text-sm text-muted-foreground">{dataLoadWarning}</p> : null}
       {rows.length === 0 ? (
         <EmptyState
           title="No subcontractors yet"
