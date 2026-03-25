@@ -665,6 +665,23 @@ export async function upsertLaborEntry(
   const c = client();
   const worker = await getWorkerById(entry.workerId);
   if (!worker) throw new Error(`Worker not found: ${entry.workerId}`);
+
+  // Safety: ensure labor_workers contains this worker for FK schemas.
+  try {
+    await c.from("labor_workers").upsert(
+      [
+        {
+          id: worker.id,
+          name: worker.name ?? "",
+          created_at: (worker as { created_at?: string }).created_at ?? new Date().toISOString(),
+        },
+      ],
+      { onConflict: "id" }
+    );
+  } catch {
+    // ignore (table may not exist in this schema)
+  }
+
   const hourlyRate = (worker.halfDayRate ?? 0) / 4;
   const hours = Math.max(0, entry.hours ?? 0);
   const payload = {
