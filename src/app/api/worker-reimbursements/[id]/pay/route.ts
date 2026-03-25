@@ -9,9 +9,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
   try {
     try {
-      const { ensureExpensesSourceColumns } = await import(
-        "@/lib/ensure-expenses-source-columns"
-      );
+      const { ensureExpensesSourceColumns } = await import("@/lib/ensure-expenses-source-columns");
       await ensureExpensesSourceColumns();
     } catch {
       /* optional DB migration; duplicate-key logic still applies when columns exist */

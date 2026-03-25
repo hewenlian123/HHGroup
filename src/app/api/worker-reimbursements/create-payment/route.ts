@@ -10,9 +10,7 @@ import { createExpenseFromPaidReimbursement } from "@/lib/expenses-db";
 export async function POST(req: Request) {
   try {
     try {
-      const { ensureExpensesSourceColumns } = await import(
-        "@/lib/ensure-expenses-source-columns"
-      );
+      const { ensureExpensesSourceColumns } = await import("@/lib/ensure-expenses-source-columns");
       await ensureExpensesSourceColumns();
     } catch {
       /* optional migration */

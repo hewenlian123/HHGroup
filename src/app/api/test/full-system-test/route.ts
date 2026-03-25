@@ -218,11 +218,7 @@ export async function POST(req: Request) {
     ];
     let lastErr = "";
     for (const payload of attempts) {
-      const { data, error } = await c!
-        .from("labor_entries")
-        .insert(payload)
-        .select("id")
-        .single();
+      const { data, error } = await c!.from("labor_entries").insert(payload).select("id").single();
       if (!error && data) return data as { id: string };
       lastErr = error?.message ?? "";
       if (lastErr && !isSchemaOrMissingColumn(lastErr)) break;
@@ -720,10 +716,7 @@ export async function POST(req: Request) {
         .eq("id", reimbId)
         .select("id, status")
         .single();
-      if (
-        paidRes.error &&
-        isSchemaOrMissingColumn(paidRes.error.message ?? "")
-      ) {
+      if (paidRes.error && isSchemaOrMissingColumn(paidRes.error.message ?? "")) {
         paidRes = await c
           .from("worker_reimbursements")
           .update({ status: "paid" })
@@ -734,7 +727,8 @@ export async function POST(req: Request) {
       const { data: paid, error: paidErr } = paidRes;
       if (paidErr || !paid) throw new Error(`Mark paid failed: ${paidErr?.message}`);
       const st = String((paid as { status?: string }).status ?? "").toLowerCase();
-      if (st !== "paid") throw new Error(`Status not updated to paid (got ${(paid as { status?: string }).status})`);
+      if (st !== "paid")
+        throw new Error(`Status not updated to paid (got ${(paid as { status?: string }).status})`);
       steps.push("reimbursement marked paid");
       log("reimbursements_workflow", "marked paid");
 
