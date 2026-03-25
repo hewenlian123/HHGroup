@@ -21,6 +21,8 @@ import {
   getCloseoutCompletion,
 } from "@/lib/data";
 import { getCanonicalProjectProfit } from "@/lib/profit-engine";
+import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
+import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { ProjectDetailTabsClient } from "./project-detail-tabs-client";
 import type { RecentExpenseLineRow } from "./recent-expense-lines";
 
@@ -72,7 +74,19 @@ export default async function ProjectDetailPage({
   ];
   const tab: TabKey = validTabs.includes(tabParam as TabKey) ? (tabParam as TabKey) : "overview";
 
-  const project = await getProjectById(id);
+  let project: Awaited<ReturnType<typeof getProjectById>> | undefined;
+  try {
+    project = await getProjectById(id);
+  } catch (e) {
+    logServerPageDataError(`projects/${id}`, e);
+    return (
+      <ServerDataLoadFallback
+        message={serverDataLoadWarning(e, "project")}
+        backHref="/projects"
+        backLabel="Back to projects"
+      />
+    );
+  }
   if (!project) notFound();
 
   /** Wrap a fetch in try/catch so missing tables or other DB errors don't crash the page. */

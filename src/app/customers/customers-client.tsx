@@ -27,6 +27,7 @@ import { runOptimisticPersist } from "@/lib/optimistic-save";
 
 type Props = {
   initialCustomers: Customer[];
+  dataLoadWarning?: string | null;
 };
 
 type Draft = {
@@ -45,7 +46,7 @@ function truncateText(s: string | null | undefined, max: number): string {
   return t.length <= max ? t : `${t.slice(0, max - 1)}…`;
 }
 
-export function CustomersClient({ initialCustomers }: Props) {
+export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Props) {
   const router = useRouter();
   const [items, setItems] = React.useState<Customer[]>(initialCustomers);
   const [search, setSearch] = React.useState("");
@@ -250,6 +251,11 @@ export function CustomersClient({ initialCustomers }: Props) {
 
   return (
     <div className="space-y-4">
+      {dataLoadWarning ? (
+        <p className="border-b border-border/60 pb-3 text-sm text-muted-foreground" role="status">
+          {dataLoadWarning}
+        </p>
+      ) : null}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
@@ -279,9 +285,13 @@ export function CustomersClient({ initialCustomers }: Props) {
             <div className="flex h-10 w-10 items-center justify-center rounded-full border border-dashed border-border/60 text-xs text-muted-foreground">
               ☺
             </div>
-            <p className="text-sm font-medium text-foreground">No customers yet.</p>
+            <p className="text-sm font-medium text-foreground">
+              {dataLoadWarning ? "Could not load customers." : "No customers yet."}
+            </p>
             <p className="text-xs text-muted-foreground">
-              Add your first client to start tracking projects and estimates.
+              {dataLoadWarning
+                ? "Check your connection and database configuration, then refresh."
+                : "Add your first client to start tracking projects and estimates."}
             </p>
             <Button
               type="button"

@@ -1,12 +1,20 @@
 import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
 import { getWorkers } from "@/lib/workers-db";
+import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { WorkersListClient } from "./workers-list-client";
 import { WorkersActions } from "./workers-actions";
 
 export const dynamic = "force-dynamic";
 
 export default async function WorkersPage() {
-  const rows = await getWorkers();
+  let rows: Awaited<ReturnType<typeof getWorkers>> = [];
+  let dataLoadWarning: string | null = null;
+  try {
+    rows = await getWorkers();
+  } catch (e) {
+    logServerPageDataError("workers", e);
+    dataLoadWarning = serverDataLoadWarning(e, "workers");
+  }
 
   return (
     <PageLayout
@@ -20,7 +28,7 @@ export default async function WorkersPage() {
       <SectionHeader label="Workers" action={<WorkersActions />} />
       <Divider />
 
-      <WorkersListClient rows={rows} />
+      <WorkersListClient rows={rows} dataLoadWarning={dataLoadWarning} />
     </PageLayout>
   );
 }

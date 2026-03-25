@@ -9,9 +9,12 @@ import { Input } from "@/components/ui/input";
 import { createApBill } from "@/lib/data";
 import { AP_BILL_TYPES } from "@/lib/data";
 
-type Props = { projects: { id: string; name: string }[] };
+type Props = {
+  projects: { id: string; name: string }[];
+  dataLoadWarning?: string | null;
+};
 
-export function NewBillClient({ projects }: Props) {
+export function NewBillClient({ projects, dataLoadWarning = null }: Props) {
   const router = useRouter();
   const [vendorName, setVendorName] = React.useState("");
   const [billType, setBillType] = React.useState<
@@ -61,6 +64,11 @@ export function NewBillClient({ projects }: Props) {
 
   return (
     <>
+      {dataLoadWarning ? (
+        <p className="border-b border-border/60 pb-3 text-sm text-muted-foreground" role="status">
+          {dataLoadWarning}
+        </p>
+      ) : null}
       <SectionHeader label="Bill details" />
       <Divider />
       <form onSubmit={handleSubmit} className="max-w-xl space-y-4 py-4">

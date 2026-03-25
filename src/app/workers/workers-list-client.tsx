@@ -33,7 +33,13 @@ function fmtRate(n: number): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
+export function WorkersListClient({
+  rows,
+  dataLoadWarning = null,
+}: {
+  rows: WorkerRow[];
+  dataLoadWarning?: string | null;
+}) {
   const router = useRouter();
   const { toast } = useToast();
   const [items, setItems] = React.useState<WorkerRow[]>(rows);
@@ -160,6 +166,11 @@ export function WorkersListClient({ rows }: { rows: WorkerRow[] }) {
 
   return (
     <>
+      {dataLoadWarning ? (
+        <p className="border-b border-border/60 pb-3 text-sm text-muted-foreground" role="status">
+          {dataLoadWarning}
+        </p>
+      ) : null}
       {/* Mobile: card layout */}
       <div className="flex flex-col gap-3 md:hidden">
         {items.map((r) => (

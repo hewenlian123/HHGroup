@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
 import { getWorkerById, getWorkerEarningsAllocations, getWorkerLaborPayments } from "@/lib/data";
+import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
+import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 import { DocumentCompanyHeader } from "@/components/documents/document-company-header";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
@@ -17,11 +19,37 @@ export default async function WorkerStatementPrintPage({
   const end = qs.end ?? new Date().toISOString().slice(0, 10);
   const project = qs.project || undefined;
 
-  const [worker, company] = await Promise.all([getWorkerById(id), fetchDocumentCompanyProfile()]);
+  let worker: Awaited<ReturnType<typeof getWorkerById>> | undefined;
+  let company: Awaited<ReturnType<typeof fetchDocumentCompanyProfile>>;
+  try {
+    [worker, company] = await Promise.all([getWorkerById(id), fetchDocumentCompanyProfile()]);
+  } catch (e) {
+    logServerPageDataError(`workers/${id}/statement/print`, e);
+    return (
+      <ServerDataLoadFallback
+        message={serverDataLoadWarning(e, "worker statement")}
+        backHref={`/workers/${id}`}
+        backLabel="Back to worker"
+      />
+    );
+  }
   if (!worker) notFound();
 
-  const earningsRows = await getWorkerEarningsAllocations(id, start, end, project);
-  const payments = await getWorkerLaborPayments(id, start, end);
+  let earningsRows: Awaited<ReturnType<typeof getWorkerEarningsAllocations>> = [];
+  let payments: Awaited<ReturnType<typeof getWorkerLaborPayments>> = [];
+  try {
+    earningsRows = await getWorkerEarningsAllocations(id, start, end, project);
+    payments = await getWorkerLaborPayments(id, start, end);
+  } catch (e) {
+    logServerPageDataError(`workers/${id}/statement/print rows`, e);
+    return (
+      <ServerDataLoadFallback
+        message={serverDataLoadWarning(e, "statement data")}
+        backHref={`/workers/${id}`}
+        backLabel="Back to worker"
+      />
+    );
+  }
   const earningsTotal = earningsRows.reduce((s, r) => s + r.amount, 0);
   const paidTotal = payments.reduce((s, p) => s + p.amount, 0);
   const balance = Math.max(0, earningsTotal - paidTotal);

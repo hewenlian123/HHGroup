@@ -10,6 +10,8 @@ import { EstimateReadOnlyContent } from "../estimate-read-only";
 import { Download } from "lucide-react";
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 import { DocumentCompanyHeader } from "@/components/documents/document-company-header";
+import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
+import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 
 export default async function EstimateSnapshotPage({
@@ -18,15 +20,42 @@ export default async function EstimateSnapshotPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const estimate = await getEstimateById(id);
+  let estimate: Awaited<ReturnType<typeof getEstimateById>> | null = null;
+  try {
+    estimate = await getEstimateById(id);
+  } catch (e) {
+    logServerPageDataError(`estimates/${id}/snapshot`, e);
+    return (
+      <ServerDataLoadFallback
+        message={serverDataLoadWarning(e, "estimate")}
+        backHref="/estimates"
+        backLabel="Back to estimates"
+      />
+    );
+  }
   if (!estimate) notFound();
 
-  const [meta, items, categories, company] = await Promise.all([
-    getEstimateMeta(id),
-    getEstimateItems(id),
-    getEstimateCategories(id),
-    fetchDocumentCompanyProfile(),
-  ]);
+  let meta: Awaited<ReturnType<typeof getEstimateMeta>>;
+  let items: Awaited<ReturnType<typeof getEstimateItems>> = [];
+  let categories: Awaited<ReturnType<typeof getEstimateCategories>> = [];
+  let company: Awaited<ReturnType<typeof fetchDocumentCompanyProfile>>;
+  try {
+    [meta, items, categories, company] = await Promise.all([
+      getEstimateMeta(id),
+      getEstimateItems(id),
+      getEstimateCategories(id),
+      fetchDocumentCompanyProfile(),
+    ]);
+  } catch (e) {
+    logServerPageDataError(`estimates/${id}/snapshot details`, e);
+    return (
+      <ServerDataLoadFallback
+        message={serverDataLoadWarning(e, "estimate details")}
+        backHref={`/estimates/${id}`}
+        backLabel="Back to estimate"
+      />
+    );
+  }
 
   const estimateCategories = [...categories].sort((a, b) => a.costCode.localeCompare(b.costCode));
 

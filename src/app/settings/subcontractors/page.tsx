@@ -1,13 +1,21 @@
 import Link from "next/link";
 import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
 import { getSubcontractors } from "@/lib/data";
+import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { SubcontractorsActions } from "./subcontractors-actions";
 import { SubcontractorsTableClient } from "./subcontractors-table-client";
 
 export const dynamic = "force-dynamic";
 
 export default async function SubcontractorsPage() {
-  const rows = await getSubcontractors();
+  let rows: Awaited<ReturnType<typeof getSubcontractors>> = [];
+  let dataLoadWarning: string | null = null;
+  try {
+    rows = await getSubcontractors();
+  } catch (e) {
+    logServerPageDataError("settings/subcontractors", e);
+    dataLoadWarning = serverDataLoadWarning(e, "subcontractors");
+  }
 
   return (
     <PageLayout
@@ -26,7 +34,7 @@ export default async function SubcontractorsPage() {
       <SectionHeader label="Subcontractors" action={<SubcontractorsActions />} />
       <Divider />
 
-      <SubcontractorsTableClient rows={rows} />
+      <SubcontractorsTableClient rows={rows} dataLoadWarning={dataLoadWarning} />
     </PageLayout>
   );
 }
