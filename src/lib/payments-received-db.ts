@@ -227,15 +227,29 @@ export async function createPaymentReceived(
     description: payment.notes ?? payment.customer_name ?? null,
   });
 
-  // Sync to invoice_payments so existing recompute_invoice_totals trigger updates the invoice.
-  await c.from("invoice_payments").insert({
+  // Sync to invoice_payments so balance / AR derivation sees the payment.
+  const syncFull = {
     invoice_id: payload.invoice_id,
     paid_at: paymentDate,
     amount: payload.amount,
     method: payload.payment_method || null,
     memo: payload.notes ?? payload.deposit_account ?? null,
-    status: "Posted",
-  });
+    status: "Posted" as const,
+  };
+  let syncRes = await c.from("invoice_payments").insert(syncFull);
+  if (syncRes.error && isMissingColumn(syncRes.error)) {
+    syncRes = await c.from("invoice_payments").insert({
+      invoice_id: payload.invoice_id,
+      paid_at: paymentDate,
+      amount: payload.amount,
+      status: "Posted",
+    });
+  }
+  if (syncRes.error) {
+    throw new Error(
+      syncRes.error.message ?? "Payment saved but failed to sync to invoice_payments."
+    );
+  }
 
   return payment;
 }

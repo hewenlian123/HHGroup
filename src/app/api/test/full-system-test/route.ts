@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server";
-import { createPaymentReceived, markInvoiceSent } from "@/lib/data";
+import { markInvoiceSent } from "@/lib/invoices-db";
+import { createPaymentReceived } from "@/lib/payments-received-db";
 import { createWorkerPaymentWithClient } from "@/lib/worker-payments-db";
 import postgres from "postgres";
 
@@ -178,6 +179,57 @@ export async function POST(req: Request) {
     return msg;
   }
 
+  function isSchemaOrMissingColumn(msg: string): boolean {
+    return /could not find the .* column|column .* does not exist|schema cache/i.test(msg);
+  }
+
+  /** `labor_entries` shape differs across migrations (timesheet vs daily log vs legacy). */
+  async function insertLaborEntryForWorkflow(opts: {
+    workerId: string;
+    projectId: string;
+    workDate: string;
+  }): Promise<{ id: string }> {
+    const { workerId, projectId, workDate } = opts;
+    const attempts: Record<string, unknown>[] = [
+      {
+        worker_id: workerId,
+        project_id: projectId,
+        work_date: workDate,
+        hours: 4,
+        cost_amount: 50,
+      },
+      {
+        worker_id: workerId,
+        work_date: workDate,
+        project_am_id: projectId,
+        day_rate: 50,
+        ot_amount: 0,
+        total: 50,
+      },
+      {
+        worker_id: workerId,
+        date: workDate,
+        am_project_id: projectId,
+        half_day_rate: 50,
+        ot_amount: 0,
+        total: 50,
+        status: "draft",
+      },
+    ];
+    let lastErr = "";
+    for (const payload of attempts) {
+      const { data, error } = await c!
+        .from("labor_entries")
+        .insert(payload)
+        .select("id")
+        .single();
+      if (!error && data) return data as { id: string };
+      lastErr = error?.message ?? "";
+      if (lastErr && !isSchemaOrMissingColumn(lastErr)) break;
+    }
+    throw new Error(lastErr || "labor_entries insert failed");
+  }
+
   /** Call an API route the same way the UI does. Returns parsed JSON or throws. */
   async function callApi(
     method: "POST" | "DELETE" | "PATCH",
@@ -261,7 +313,7 @@ export async function POST(req: Request) {
       // Create
       const { data: created, error: createErr } = await c
         .from("projects")
-        .insert({ name: "Workflow Test Project", status: "active", contract_amount: 1000 })
+        .insert({ name: "Workflow Test Project", status: "active", budget: 1000 })
         .select("id, name, status")
         .single();
       if (createErr || !created) throw new Error(`Create failed: ${createErr?.message}`);
@@ -627,8 +679,9 @@ export async function POST(req: Request) {
       steps.push("receipt approved");
       log("reimbursements_workflow", "receipt approved");
 
-      // Create reimbursement
-      const { data: reimb, error: reimbErr } = await c
+      // Create reimbursement (column set varies by migration)
+      const todayReimb = new Date().toISOString().slice(0, 10);
+      let reimbRes = await c
         .from("worker_reimbursements")
         .insert({
           worker_id: workerId,
@@ -638,6 +691,19 @@ export async function POST(req: Request) {
         })
         .select("id, status")
         .single();
+      if (reimbRes.error && isSchemaOrMissingColumn(reimbRes.error.message ?? "")) {
+        reimbRes = await c
+          .from("worker_reimbursements")
+          .insert({
+            worker_id: workerId,
+            amount: 75,
+            notes: "Workflow Test reimbursement",
+            reimbursement_date: todayReimb,
+          })
+          .select("id")
+          .single();
+      }
+      const { data: reimb, error: reimbErr } = reimbRes;
       if (reimbErr || !reimb) throw new Error(`Reimbursement create failed: ${reimbErr?.message}`);
       reimbId = (reimb as { id: string }).id;
       steps.push("reimbursement created");
@@ -647,16 +713,28 @@ export async function POST(req: Request) {
       await c.from("worker_receipts").update({ reimbursement_id: reimbId }).eq("id", receiptId);
       steps.push("receipt linked to reimbursement");
 
-      // Mark reimbursement paid
-      const { data: paid, error: paidErr } = await c
+      // Mark reimbursement paid (paid_at may not exist on all schemas)
+      let paidRes = await c
         .from("worker_reimbursements")
         .update({ status: "paid", paid_at: new Date().toISOString() })
         .eq("id", reimbId)
         .select("id, status")
         .single();
+      if (
+        paidRes.error &&
+        isSchemaOrMissingColumn(paidRes.error.message ?? "")
+      ) {
+        paidRes = await c
+          .from("worker_reimbursements")
+          .update({ status: "paid" })
+          .eq("id", reimbId)
+          .select("id, status")
+          .single();
+      }
+      const { data: paid, error: paidErr } = paidRes;
       if (paidErr || !paid) throw new Error(`Mark paid failed: ${paidErr?.message}`);
-      if ((paid as { status?: string }).status !== "paid")
-        throw new Error("Status not updated to paid");
+      const st = String((paid as { status?: string }).status ?? "").toLowerCase();
+      if (st !== "paid") throw new Error(`Status not updated to paid (got ${(paid as { status?: string }).status})`);
       steps.push("reimbursement marked paid");
       log("reimbursements_workflow", "marked paid");
 
@@ -695,8 +773,7 @@ export async function POST(req: Request) {
           expense_date: new Date().toISOString().slice(0, 10),
           vendor_name: "Workflow Test Vendor",
           total: 100,
-          amount: 100,
-          status: "draft",
+          line_count: 0,
         })
         .select("id, vendor_name, total")
         .single();
@@ -730,7 +807,7 @@ export async function POST(req: Request) {
       // Update expense
       const { error: updateErr } = await c
         .from("expenses")
-        .update({ vendor_name: "Workflow Test Vendor Updated", total: 120, amount: 120 })
+        .update({ vendor_name: "Workflow Test Vendor Updated", total: 120 })
         .eq("id", expenseId);
       if (updateErr) throw new Error(`Expense update failed: ${updateErr.message}`);
       steps.push("expense updated");
@@ -782,7 +859,7 @@ export async function POST(req: Request) {
       // Need a project
       const { data: proj, error: projErr } = await c
         .from("projects")
-        .insert({ name: "Workflow Test Invoice Project", status: "active", contract_amount: 5000 })
+        .insert({ name: "Workflow Test Invoice Project", status: "active", budget: 5000 })
         .select("id")
         .single();
       if (projErr || !proj) throw new Error(`Project create failed: ${projErr?.message}`);
@@ -896,28 +973,21 @@ export async function POST(req: Request) {
       if (projErr || !proj) throw new Error(`Project create failed: ${projErr?.message}`);
       projectId = (proj as { id: string }).id;
 
-      // Create labor entry
+      // Create labor entry (schema varies by migration — try multiple shapes)
       const today = new Date().toISOString().slice(0, 10);
-      const { data: labor, error: laborErr } = await c
-        .from("labor_entries")
-        .insert({
-          worker_id: workerId,
-          project_id: projectId,
-          work_date: today,
-          hours: 4,
-          cost_amount: 50,
-        })
-        .select("id, hours, cost_amount")
-        .single();
-      if (laborErr || !labor) throw new Error(`Labor entry create failed: ${laborErr?.message}`);
-      laborId = (labor as { id: string }).id;
+      const labor = await insertLaborEntryForWorkflow({
+        workerId,
+        projectId,
+        workDate: today,
+      });
+      laborId = labor.id;
       steps.push("labor entry created");
       log("labor_workflow", `labor entry id=${laborId}`);
 
       // Verify labor entry was stored
       const { data: storedLabor } = await c
         .from("labor_entries")
-        .select("id, hours")
+        .select("id")
         .eq("id", laborId)
         .maybeSingle();
       if (!storedLabor) throw new Error("Labor entry not found after insert");

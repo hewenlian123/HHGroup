@@ -26,7 +26,12 @@ export default function nextConfig(phase) {
     },
     // Avoid broken server chunks like `vendor-chunks/@supabase.js` (MODULE_NOT_FOUND) on App Router pages.
     experimental: {
-      serverComponentsExternalPackages: ["@supabase/supabase-js", "@supabase/ssr"],
+      serverComponentsExternalPackages: [
+        "@supabase/supabase-js",
+        "@supabase/ssr",
+        // Used by ensure-expenses-source-columns; bundling breaks RSC route chunks (webpack __webpack_modules__ error).
+        "postgres",
+      ],
     },
     // Avoid ENOENT/rename errors in .next/cache/webpack (path with spaces, concurrent access)
     webpack: (config, { dev }) => {

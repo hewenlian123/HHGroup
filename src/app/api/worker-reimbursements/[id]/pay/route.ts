@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { ensureExpensesSourceColumns } from "@/lib/ensure-expenses-source-columns";
 import { getReimbursementById, markReimbursementPaid } from "@/lib/worker-reimbursements-db";
 import { createExpenseFromPaidReimbursement } from "@/lib/expenses-db";
 
@@ -9,7 +8,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     console.log("[reimbursement/pay] start", { reimbursementId });
   }
   try {
-    await ensureExpensesSourceColumns();
+    try {
+      const { ensureExpensesSourceColumns } = await import(
+        "@/lib/ensure-expenses-source-columns"
+      );
+      await ensureExpensesSourceColumns();
+    } catch {
+      /* optional DB migration; duplicate-key logic still applies when columns exist */
+    }
     const body = await req.json().catch(() => ({}));
 
     // Step 1: Find reimbursement by id

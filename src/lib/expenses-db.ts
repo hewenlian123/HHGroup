@@ -405,17 +405,23 @@ export async function createExpense(payload: {
 
     let id: string | null = null;
     if (error) {
-      if (!isMissingFunction(error)) throw new Error(error.message ?? "Failed to create expense.");
+      const msg = error.message ?? "";
+      const rpcSchemaMismatch =
+        /project_id.*expenses|column.*project_id.*relation.*expenses|expenses.*project_id/i.test(
+          msg
+        );
+      if (!isMissingFunction(error) && !rpcSchemaMismatch)
+        throw new Error(error.message ?? "Failed to create expense.");
       // Fallback: insert expense header then expense_lines directly.
       const totalGroupAmount = group.reduce((s, l) => s + (Number(l.amount) || 0), 0);
+      // Header row: canonical schema has no project_id / amount on expenses (lines carry project_id).
       const insertPayload: Record<string, unknown> = {
-        project_id: projectId,
-        vendor: vendor,
         expense_date: date,
+        vendor_name: vendor,
         notes: notes,
         reference_no: payload.referenceNo?.trim() || null,
         total: totalGroupAmount,
-        amount: totalGroupAmount,
+        line_count: group.length,
         card_name: payload.cardName?.trim() || null,
         account_id: payload.accountId ?? null,
       };
@@ -428,6 +434,21 @@ export async function createExpense(payload: {
         .single();
       if (ins.error && isMissingColumn(ins.error)) {
         ins = await c.from("expenses").insert(insertPayload).select("id").single();
+      }
+      if (ins.error && isMissingColumn(ins.error)) {
+        ins = await c
+          .from("expenses")
+          .insert({
+            expense_date: date,
+            vendor: vendor,
+            notes: notes,
+            reference_no: payload.referenceNo?.trim() || null,
+            total: totalGroupAmount,
+            line_count: group.length,
+            payment_method: payload.paymentMethod ?? "Card",
+          })
+          .select("id")
+          .single();
       }
       expInsErr = ins.error as { message?: string } | null;
       expRow = ins.data as { id: string } | null;

@@ -98,6 +98,11 @@ function isNetworkError(err: { message?: string } | null): boolean {
   return /failed to fetch|network error|load failed|connection|timeout|unable to connect/i.test(m);
 }
 
+function isMissingColumn(err: { message?: string } | null): boolean {
+  const m = err?.message ?? "";
+  return /column .* does not exist|could not find the .* column|schema cache/i.test(m);
+}
+
 /** Avoid appending migration HINT to connection/network errors. */
 function throwInvoiceError(error: { message?: string } | null, fallbackHint: string): never {
   const msg = error?.message ?? "";
@@ -118,10 +123,20 @@ function toLineItem(r: InvoiceItemRow): InvoiceLineItem {
   };
 }
 
+function normalizeInvoiceStatus(raw: string | undefined | null): InvoiceStatus {
+  const s = (raw ?? "").trim();
+  if (["Draft", "Sent", "Partially Paid", "Paid", "Void"].includes(s)) return s as InvoiceStatus;
+  const lower = s.toLowerCase();
+  if (lower === "draft") return "Draft";
+  if (lower === "sent") return "Sent";
+  if (lower === "partially paid" || lower === "partial") return "Partially Paid";
+  if (lower === "paid") return "Paid";
+  if (lower === "void") return "Void";
+  return "Draft";
+}
+
 function toInvoice(row: InvoiceRow, items: InvoiceItemRow[]): Invoice {
-  const status = (
-    ["Draft", "Sent", "Partially Paid", "Paid", "Void"].includes(row.status) ? row.status : "Draft"
-  ) as InvoiceStatus;
+  const status = normalizeInvoiceStatus(row.status);
   const dueDate =
     row.due_date?.slice?.(0, 10) ?? (typeof row.due_date === "string" ? row.due_date : "");
   const issueDate = row.issue_date?.slice?.(0, 10) ?? row.created_at?.slice?.(0, 10) ?? "";
@@ -234,11 +249,23 @@ export async function getInvoicePayments(): Promise<InvoicePayment[]> {
 
 export async function getPaymentsByInvoiceId(invoiceId: string): Promise<InvoicePayment[]> {
   const c = client();
-  const { data: rows } = await c
+  const fullCols =
+    "id, invoice_id, amount, payment_date, paid_at, method, reference, memo, status";
+  let { data: rows, error } = await c
     .from("invoice_payments")
-    .select("id, invoice_id, amount, payment_date, paid_at, method, reference, memo, status")
+    .select(fullCols)
     .eq("invoice_id", invoiceId)
     .order("payment_date", { ascending: false });
+  if (error && isMissingColumn(error)) {
+    const fb = await c
+      .from("invoice_payments")
+      .select("id, invoice_id, amount, paid_at, method, memo, status")
+      .eq("invoice_id", invoiceId)
+      .order("paid_at", { ascending: false });
+    rows = fb.data as typeof rows;
+    error = fb.error;
+  }
+  if (error && !isMissingColumn(error)) return [];
   return ((rows ?? []) as InvoicePaymentRow[]).map(toPayment);
 }
 
@@ -259,6 +286,21 @@ function computeDerived(
   if (inv.status === "Void")
     return { paidTotal, balanceDue, computedStatus: "Void", daysOverdue: 0 };
   if (inv.status === "Draft") {
+    // Payments may exist before status is flipped to Sent (or mark-sent failed); still show AR correctly.
+    if (balanceDue === 0 && hasPayments)
+      return { paidTotal, balanceDue, computedStatus: "Paid", daysOverdue: 0 };
+    if (hasPayments && balanceDue > 0) {
+      if (inv.dueDate < today) {
+        const daysOverdue = Math.max(
+          0,
+          Math.floor(
+            (new Date().getTime() - new Date(inv.dueDate).getTime()) / (24 * 60 * 60 * 1000)
+          )
+        );
+        return { paidTotal, balanceDue, computedStatus: "Overdue", daysOverdue };
+      }
+      return { paidTotal, balanceDue, computedStatus: "Partial", daysOverdue: 0 };
+    }
     const daysOverdue =
       balanceDue > 0 && inv.dueDate < today
         ? Math.max(

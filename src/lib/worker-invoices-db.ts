@@ -43,16 +43,26 @@ function isTableMissingError(error: { message?: string; code?: string }): boolea
 const COLS = "id, worker_id, project_id, amount, invoice_file, status, created_at";
 
 function fromRow(r: Record<string, unknown>): WorkerInvoice {
-  const status = (r.status as string) ?? "unpaid";
+  const raw = String(r.status ?? "unpaid").toLowerCase();
+  const status: WorkerInvoiceStatus = raw === "paid" ? "paid" : "unpaid";
+  const file =
+    (r.invoice_file as string | null) ?? (r.attachment_url as string | null) ?? null;
   return {
     id: r.id as string,
     workerId: r.worker_id as string,
     projectId: (r.project_id as string | null) ?? null,
     amount: Number(r.amount) || 0,
-    invoiceFile: (r.invoice_file as string | null) ?? null,
-    status: status === "paid" ? "paid" : "unpaid",
+    invoiceFile: file,
+    status,
     createdAt: r.created_at as string,
   };
+}
+
+function isInvoiceInsertFallback(err: { message?: string } | null | undefined): boolean {
+  const m = err?.message ?? "";
+  return (
+    /invoice_number|null value|violates not-null|could not find the .* column|schema cache/i.test(m)
+  );
 }
 
 export async function getWorkerInvoices(): Promise<WorkerInvoice[]> {
@@ -81,17 +91,31 @@ export async function getWorkerInvoiceById(id: string): Promise<WorkerInvoice | 
 }
 
 export async function insertWorkerInvoice(draft: WorkerInvoiceDraft): Promise<WorkerInvoice> {
-  const { data, error } = await client()
-    .from("worker_invoices")
-    .insert({
-      worker_id: draft.workerId,
-      project_id: draft.projectId,
-      amount: draft.amount,
-      invoice_file: draft.invoiceFile?.trim() || null,
-      status: draft.status ?? "unpaid",
-    })
-    .select(COLS)
-    .single();
+  const c = client();
+  const invNo = `WI-${Date.now()}`;
+  const today = new Date().toISOString().slice(0, 10);
+  const modern = {
+    worker_id: draft.workerId,
+    project_id: draft.projectId,
+    amount: draft.amount,
+    invoice_number: invNo,
+    invoice_date: today,
+    attachment_url: draft.invoiceFile?.trim() || null,
+    status: draft.status === "paid" ? "Paid" : "Unpaid",
+  };
+  const legacy = {
+    worker_id: draft.workerId,
+    project_id: draft.projectId,
+    amount: draft.amount,
+    invoice_file: draft.invoiceFile?.trim() || "",
+    status: draft.status ?? "unpaid",
+  };
+
+  let { data, error } = await c.from("worker_invoices").insert(modern).select("*").single();
+  if (error && isTableMissingError(error)) throw new Error(TABLE_MISSING_MESSAGE);
+  if (error && isInvoiceInsertFallback(error)) {
+    ({ data, error } = await c.from("worker_invoices").insert(legacy).select("*").single());
+  }
   if (error) {
     if (isTableMissingError(error)) throw new Error(TABLE_MISSING_MESSAGE);
     throw new Error(error.message ?? "Failed to create worker invoice.");
