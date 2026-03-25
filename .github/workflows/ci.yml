@@ -71,6 +71,35 @@ jobs:
         with:
           version: latest
 
+      - name: Validate SUPABASE_DB_URL format
+        if: ${{ env.SUPABASE_DB_URL != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          from urllib.parse import urlsplit
+
+          raw = os.environ.get("SUPABASE_DB_URL", "")
+          if not raw:
+              raise SystemExit("SUPABASE_DB_URL is empty.")
+
+          u = urlsplit(raw)
+          if u.scheme not in ("postgres", "postgresql"):
+              raise SystemExit("SUPABASE_DB_URL must start with postgres:// or postgresql://")
+          if not u.hostname:
+              raise SystemExit("SUPABASE_DB_URL is missing host.")
+          if not u.username:
+              raise SystemExit("SUPABASE_DB_URL is missing username.")
+          if u.password is None or u.password == "":
+              raise SystemExit("SUPABASE_DB_URL is missing password.")
+          if (u.path or "").strip("/") != "postgres":
+              raise SystemExit("SUPABASE_DB_URL path must be /postgres.")
+          if u.query and "sslmode=" not in u.query:
+              raise SystemExit("SUPABASE_DB_URL query should include sslmode=require.")
+          print("SUPABASE_DB_URL format looks valid.")
+          PY
+
       - name: Push Supabase migrations (production)
         if: ${{ env.SUPABASE_DB_URL != '' }}
         run: supabase db push --db-url "$SUPABASE_DB_URL"
