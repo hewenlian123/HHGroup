@@ -50,6 +50,9 @@ jobs:
       - name: Check migration ordering (no insert-before-last)
         run: npm run check:migration-order
 
+      - name: Schema preflight (tables + hints)
+        run: npm run check:schema-preflight:strict
+
       - name: Audit schema vs code columns
         run: npm run check:schema-vs-code
 
