@@ -10,6 +10,8 @@ import {
   getLaborCostThisWeek,
   getExpensesThisMonth,
   getOverdueInvoices,
+  type ProjectRiskOverview,
+  type RecentTransaction,
 } from "@/lib/data";
 import { getCanonicalProjectProfitBatch } from "@/lib/profit-engine";
 import { DollarSign, FolderKanban, TrendingUp, Wallet } from "lucide-react";
@@ -17,17 +19,49 @@ import { DashboardView } from "./dashboard-view";
 
 export const dynamic = "force-dynamic";
 
+const EMPTY_RISK_OVERVIEW: ProjectRiskOverview = {
+  summary: {
+    highCount: 0,
+    overBudgetCount: 0,
+    laborOverCount: 0,
+    lowRunwayCount: 0,
+  },
+  projects: [],
+};
+
 export default async function DashboardPage({
   searchParams,
 }: {
   searchParams?: { [key: string]: string | string[] | undefined };
 }) {
-  const [stats, transactions, riskOverview, projects] = await Promise.all([
-    getDashboardStats(),
-    getRecentTransactions(20),
-    getProjectRiskOverview(),
-    getProjectsDashboard(200),
-  ]);
+  let stats: Awaited<ReturnType<typeof getDashboardStats>> = {
+    totalProjects: 0,
+    activeProjects: 0,
+    totalBudget: 0,
+    totalSpent: 0,
+    totalProfit: 0,
+  };
+  let transactions: RecentTransaction[] = [];
+  let riskOverview: ProjectRiskOverview = EMPTY_RISK_OVERVIEW;
+  let projects: Awaited<ReturnType<typeof getProjectsDashboard>> = [];
+  let dataLoadWarning: string | null = null;
+
+  try {
+    const batch = await Promise.all([
+      getDashboardStats(),
+      getRecentTransactions(20),
+      getProjectRiskOverview(),
+      getProjectsDashboard(200),
+    ]);
+    [stats, transactions, riskOverview, projects] = batch;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[dashboard] primary data load failed", e);
+    dataLoadWarning =
+      msg.includes("Supabase is not configured") || msg.includes("not configured")
+        ? "Database connection is not configured. Check NEXT_PUBLIC_SUPABASE_URL and keys in the deployment environment."
+        : `Could not load dashboard data: ${msg}`;
+  }
   let subcontractsDetails: Awaited<ReturnType<typeof getSubcontractsWithDetailsAll>> = [];
   let billsSummary: Awaited<ReturnType<typeof getBillsSummaryAll>> = [];
   let paymentsSummary: Awaited<ReturnType<typeof getPaymentsSummaryAll>> = [];
@@ -194,30 +228,33 @@ export default async function DashboardPage({
     stats.totalBudget > 0 ? Math.min(100, (stats.totalSpent / stats.totalBudget) * 100) : 0;
   const profitPositive = stats.totalProfit >= 0;
 
-  return DashboardView({
-    stats,
-    transactions,
-    riskOverview,
-    projects,
-    subcontractsDetails,
-    billsSummary,
-    paymentsSummary,
-    apBillsSummary,
-    laborCostThisWeek,
-    expensesThisMonth,
-    overdueInvoices,
-    riskByProjectId,
-    outstandingSubcontracts,
-    projectHealthRows,
-    projectProfitSummary,
-    debugEnabled,
-    supabaseUrl,
-    supabaseAnonKey,
-    maskTail,
-    kpis,
-    upcomingTasks,
-    recentActivity,
-    budgetUsagePct,
-    profitPositive,
-  });
+  return (
+    <DashboardView
+      stats={stats}
+      transactions={transactions}
+      riskOverview={riskOverview}
+      projects={projects}
+      subcontractsDetails={subcontractsDetails}
+      billsSummary={billsSummary}
+      paymentsSummary={paymentsSummary}
+      apBillsSummary={apBillsSummary}
+      laborCostThisWeek={laborCostThisWeek}
+      expensesThisMonth={expensesThisMonth}
+      overdueInvoices={overdueInvoices}
+      riskByProjectId={riskByProjectId}
+      outstandingSubcontracts={outstandingSubcontracts}
+      projectHealthRows={projectHealthRows}
+      projectProfitSummary={projectProfitSummary}
+      debugEnabled={debugEnabled}
+      supabaseUrl={supabaseUrl}
+      supabaseAnonKey={supabaseAnonKey}
+      maskTail={maskTail}
+      kpis={kpis}
+      upcomingTasks={upcomingTasks}
+      recentActivity={recentActivity}
+      budgetUsagePct={budgetUsagePct}
+      profitPositive={profitPositive}
+      dataLoadWarning={dataLoadWarning}
+    />
+  );
 }
