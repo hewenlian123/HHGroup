@@ -19,6 +19,8 @@ import {
   getCloseoutPunch,
   getCloseoutWarranty,
   getCloseoutCompletion,
+  getProjectSchedule,
+  getInvoicesWithDerived,
 } from "@/lib/data";
 import { getCanonicalProjectProfit } from "@/lib/profit-engine";
 import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
@@ -118,6 +120,8 @@ export default async function ProjectDetailPage({
     closeoutPunch,
     closeoutWarranty,
     closeoutCompletion,
+    scheduleItems,
+    projectInvoicesRaw,
   ] = await Promise.all([
     safe(() => getCanonicalProjectProfit(id), {
       revenue: 0,
@@ -138,7 +142,7 @@ export default async function ProjectDetailPage({
     }),
     safe(() => getProjectTasks(id), []),
     safe(() => getWorkers(), []),
-    safe(() => getExpenseLinesByProject(id, 10), []),
+    safe(() => getExpenseLinesByProject(id, 500), []),
     safe(() => getLaborEntriesWithJoins({ project_id: id }), []),
     safe(() => getDocumentsByProject(id), []),
     safe(() => getCommissionsByProject(id), []),
@@ -153,10 +157,12 @@ export default async function ProjectDetailPage({
     safe(() => getCloseoutPunch(id), null),
     safe(() => getCloseoutWarranty(id), null),
     safe(() => getCloseoutCompletion(id), null),
+    safe(() => getProjectSchedule(id), []),
+    safe(() => getInvoicesWithDerived({ projectId: id }), []),
   ]);
 
-  // Map expense lines to Overview recent-expense-lines shape
-  const recentExpenseLines: RecentExpenseLineRow[] = (expenseLinesRaw ?? []).map(
+  // Map expense lines to Overview / Expenses tab shape (overview shows first 10)
+  const expenseLineRowsAll: RecentExpenseLineRow[] = (expenseLinesRaw ?? []).map(
     ({ expenseId, date, vendorName, line }) => ({
       id: line.id,
       expenseId,
@@ -167,6 +173,8 @@ export default async function ProjectDetailPage({
       amount: line.amount ?? 0,
     })
   );
+  const recentExpenseLines = expenseLineRowsAll.slice(0, 10);
+  const projectInvoices = (projectInvoicesRaw ?? []).filter((i) => i.computedStatus !== "Void");
 
   const financialSummary = {
     budget: project.budget ?? 0,
@@ -190,6 +198,9 @@ export default async function ProjectDetailPage({
       tasks={tasks ?? []}
       workers={workers ?? []}
       recentExpenseLines={recentExpenseLines}
+      expenseLineRows={expenseLineRowsAll}
+      scheduleItems={scheduleItems ?? []}
+      projectInvoices={projectInvoices}
       laborEntries={laborEntries ?? []}
       documents={documents ?? []}
       commissions={commissions ?? []}

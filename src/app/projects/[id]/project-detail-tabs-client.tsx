@@ -30,6 +30,7 @@ import { ProjectMaterialsTab } from "./project-materials-tab";
 import { ProjectCommissionTab } from "./project-commission-tab";
 import { ProjectPunchListTab } from "./project-punch-list-tab";
 import { RecentExpenseLines } from "./recent-expense-lines";
+import { InvoiceStatusBadge } from "@/components/invoice-status-badge";
 import { archiveProjectAction, deleteProjectAction, updateProjectAction } from "../actions";
 import { EditProjectModal, type ProjectEditSavePatch } from "./edit-project-modal";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
@@ -67,6 +68,10 @@ export interface ProjectDetailTabsClientProps {
   tasks: import("@/lib/data").ProjectTaskWithWorker[];
   workers: import("@/lib/labor-db").Worker[];
   recentExpenseLines: import("./recent-expense-lines").RecentExpenseLineRow[];
+  /** All expense lines for this project (Expenses tab); overview uses first 10 of recentExpenseLines. */
+  expenseLineRows: import("./recent-expense-lines").RecentExpenseLineRow[];
+  scheduleItems: import("@/lib/data").ProjectScheduleItem[];
+  projectInvoices: import("@/lib/data").InvoiceWithDerived[];
   laborEntries: import("@/lib/daily-labor-db").LaborEntryWithJoins[];
   documents: import("@/lib/data").DocumentRow[];
   commissions: import("@/lib/data").ProjectCommission[];
@@ -83,14 +88,6 @@ export interface ProjectDetailTabsClientProps {
   closeoutCompletion: import("@/lib/data").CloseoutCompletion | null;
 }
 
-const skeletonTable = (
-  <div className="space-y-2 py-4">
-    {Array.from({ length: 6 }).map((_, i) => (
-      <div key={i} className="h-10 w-full animate-pulse rounded-sm bg-muted" />
-    ))}
-  </div>
-);
-
 export function ProjectDetailTabsClient({
   projectId,
   project,
@@ -101,6 +98,9 @@ export function ProjectDetailTabsClient({
   tasks,
   workers,
   recentExpenseLines,
+  expenseLineRows,
+  scheduleItems,
+  projectInvoices,
   laborEntries,
   documents,
   commissions,
@@ -127,7 +127,14 @@ export function ProjectDetailTabsClient({
 
   React.useEffect(() => {
     setDisplayProject(project);
-  }, [projectId]);
+  }, [
+    projectId,
+    project.updated,
+    project.name,
+    project.budget,
+    project.customerId,
+    project.address,
+  ]);
 
   React.useEffect(() => {
     let t: ReturnType<typeof setTimeout> | null = null;
@@ -606,7 +613,46 @@ export function ProjectDetailTabsClient({
                 className="text-[11px] tracking-[0.08em] text-[#9CA3AF] font-medium"
               />
               <Divider />
-              {skeletonTable}
+              {scheduleItems.length === 0 ? (
+                <p className="py-6 text-sm text-muted-foreground">
+                  No schedule milestones for this project.
+                </p>
+              ) : (
+                <>
+                  <div className="border border-border/60 rounded-sm overflow-hidden mt-2">
+                    <table className="w-full text-sm border-collapse">
+                      <thead>
+                        <tr className="border-b border-border/60 bg-muted/10">
+                          <th className="text-left py-2 px-3 font-medium">Title</th>
+                          <th className="text-left py-2 px-3 font-medium">Start</th>
+                          <th className="text-left py-2 px-3 font-medium">End</th>
+                          <th className="text-left py-2 px-3 font-medium">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {scheduleItems.map((s) => (
+                          <tr key={s.id} className="border-b border-border/30">
+                            <td className="py-2 px-3">{s.title}</td>
+                            <td className="py-2 px-3 tabular-nums">{s.start_date ?? "—"}</td>
+                            <td className="py-2 px-3 tabular-nums">{s.end_date ?? "—"}</td>
+                            <td className="py-2 px-3 capitalize">
+                              {(s.status ?? "scheduled").replace(/_/g, " ")}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="mt-3">
+                    <Link
+                      href="/schedule"
+                      className="text-xs font-medium text-muted-foreground hover:text-foreground"
+                    >
+                      Open company schedule →
+                    </Link>
+                  </div>
+                </>
+              )}
             </TabsContent>
 
             <TabsContent value="financial" className="mt-4">
@@ -615,7 +661,62 @@ export function ProjectDetailTabsClient({
                 className="text-[11px] tracking-[0.08em] text-[#9CA3AF] font-medium"
               />
               <Divider />
-              {skeletonTable}
+              <p className="text-sm text-muted-foreground mt-1">
+                Invoiced ${billingSummary.invoicedTotal.toLocaleString()} · Collected $
+                {billingSummary.paidTotal.toLocaleString()} · AR balance $
+                {billingSummary.arBalance.toLocaleString()}
+              </p>
+              {projectInvoices.length === 0 ? (
+                <p className="py-6 text-sm text-muted-foreground">No invoices for this project.</p>
+              ) : (
+                <div className="border border-border/60 rounded-sm overflow-hidden mt-3">
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="border-b border-border/60 bg-muted/10">
+                        <th className="text-left py-2 px-3 font-medium">Invoice</th>
+                        <th className="text-left py-2 px-3 font-medium">Issue date</th>
+                        <th className="text-left py-2 px-3 font-medium">Status</th>
+                        <th className="text-right py-2 px-3 font-medium">Total</th>
+                        <th className="text-right py-2 px-3 font-medium">Balance</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {projectInvoices.map((inv) => (
+                        <tr key={inv.id} className="border-b border-border/30">
+                          <td className="py-2 px-3">
+                            <Link
+                              href={`/financial/invoices/${inv.id}`}
+                              className="font-medium text-foreground hover:underline"
+                            >
+                              {inv.invoiceNo}
+                            </Link>
+                          </td>
+                          <td className="py-2 px-3 tabular-nums">
+                            {inv.issueDate?.slice(0, 10) ?? "—"}
+                          </td>
+                          <td className="py-2 px-3">
+                            <InvoiceStatusBadge status={inv.computedStatus} />
+                          </td>
+                          <td className="py-2 px-3 text-right tabular-nums">
+                            ${inv.total.toLocaleString()}
+                          </td>
+                          <td className="py-2 px-3 text-right tabular-nums">
+                            ${inv.balanceDue.toLocaleString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <div className="mt-3">
+                <Link
+                  href="/financial/invoices"
+                  className="text-xs font-medium text-muted-foreground hover:text-foreground"
+                >
+                  View all invoices →
+                </Link>
+              </div>
             </TabsContent>
 
             <TabsContent value="documents" className="mt-4">
@@ -629,7 +730,7 @@ export function ProjectDetailTabsClient({
               />
               <Divider />
               <div className="mt-2">
-                <RecentExpenseLines rows={recentExpenseLines} />
+                <RecentExpenseLines rows={expenseLineRows} />
               </div>
               <div className="mt-3">
                 <Link

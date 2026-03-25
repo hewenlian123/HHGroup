@@ -51,20 +51,33 @@ async function loadUnpaidPayItems(
     error: { message?: string } | null;
   } = await admin
     .from("labor_entries")
-    .select("id, worker_id, cost_amount, status, worker_payment_id, project_id")
+    .select("id, worker_id, cost_amount, total, status, worker_payment_id, project_id")
     .eq("worker_id", workerId);
+  if (laborQ.error && /column|schema cache|total/i.test(laborQ.error.message ?? "")) {
+    laborQ = await admin
+      .from("labor_entries")
+      .select("id, worker_id, cost_amount, status, worker_payment_id, project_id")
+      .eq("worker_id", workerId);
+  }
   if (laborQ.error && /column|schema cache|worker_payment_id/i.test(laborQ.error.message ?? "")) {
     laborSettlementMode = "status_fallback";
     laborQ = await admin
       .from("labor_entries")
-      .select("id, worker_id, cost_amount, status, project_id")
+      .select("id, worker_id, cost_amount, total, status, project_id")
       .eq("worker_id", workerId);
+    if (laborQ.error && /column|schema cache|total/i.test(laborQ.error.message ?? "")) {
+      laborQ = await admin
+        .from("labor_entries")
+        .select("id, worker_id, cost_amount, status, project_id")
+        .eq("worker_id", workerId);
+    }
   }
   if (laborQ.error) throw new Error(laborQ.error.message ?? "Failed to load labor entries.");
 
   const laborRaw = (laborQ.data ?? []) as {
     id: string;
     cost_amount?: number | null;
+    total?: number | null;
     status?: string | null;
     worker_payment_id?: string | null;
     project_id?: string | null;
@@ -74,7 +87,7 @@ async function loadUnpaidPayItems(
     if (projectId && (r.project_id ?? null) !== projectId) continue;
     if (!isLaborUnpaidForWorkerPayroll(r.status, r.worker_payment_id, laborSettlementMode))
       continue;
-    const cents = toCents(Number(r.cost_amount) || 0);
+    const cents = toCents(Number(r.cost_amount ?? r.total) || 0);
     if (cents <= 0) continue;
     items.push({ kind: "labor", id: r.id, cents });
   }

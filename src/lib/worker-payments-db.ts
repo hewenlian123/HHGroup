@@ -53,8 +53,22 @@ function isUnknownColumnError(err: { message?: string } | null): boolean {
   return /could not find the .* column|column .* does not exist|schema cache|pgrst204/i.test(m);
 }
 
-const COLS_BASE = "id, worker_id, total_amount, payment_method, note, created_at";
-const COLS = `${COLS_BASE}, labor_entry_ids`;
+function isRetryableWorkerPaymentsSelectError(err: { message?: string } | null): boolean {
+  if (!err || isMissingTable(err)) return false;
+  return isUnknownColumnError(err);
+}
+
+/**
+ * Canonical shape (local / migrations): id, worker_id, total_amount, payment_method, note, created_at [, labor_entry_ids].
+ * Extra variants cover legacy or partial schemas without breaking the payments UI.
+ */
+const WORKER_PAYMENTS_SELECT_VARIANTS = [
+  "id, worker_id, total_amount, payment_method, note, created_at, labor_entry_ids",
+  "id, worker_id, total_amount, payment_method, note, created_at",
+  "id, worker_id, amount, payment_method, note, created_at",
+  "id, worker_id, total_amount, payment_method, notes, created_at",
+  "id, worker_id, amount, payment_method, notes, created_at",
+] as const;
 
 function parseLaborEntryIds(raw: unknown): string[] | null {
   if (raw == null) return null;
@@ -133,8 +147,12 @@ export async function getWorkerPayments(filters?: {
   limit?: number;
 }): Promise<WorkerPayment[]> {
   const c = client();
-  async function runSelect(cols: string) {
-    let q = c.from("worker_payments").select(cols).order("created_at", { ascending: false });
+  async function runSelect(cols: (typeof WORKER_PAYMENTS_SELECT_VARIANTS)[number]) {
+    // Dynamic column lists for schema variants — not representable in generated Supabase types.
+    let q = c
+      .from("worker_payments")
+      .select(cols as never)
+      .order("created_at", { ascending: false });
     if (filters?.workerId) q = q.eq("worker_id", filters.workerId);
     // worker_payments has no project_id — ignore projectId filter.
     if (filters?.fromDate) q = q.gte("created_at", `${filters.fromDate}T00:00:00.000Z`);
@@ -142,31 +160,39 @@ export async function getWorkerPayments(filters?: {
     if (filters?.limit) q = q.limit(Math.max(1, Math.min(filters.limit, 500)));
     return q;
   }
-  let res = await runSelect(COLS);
-  if (res.error && /labor_entry_ids|schema cache/i.test(res.error.message ?? "")) {
-    res = await runSelect(COLS_BASE);
+
+  let lastError: { message?: string } | null = null;
+  for (const cols of WORKER_PAYMENTS_SELECT_VARIANTS) {
+    const res = await runSelect(cols);
+    if (!res.error) {
+      return ((res.data ?? []) as unknown as Record<string, unknown>[]).map(fromRow);
+    }
+    lastError = res.error;
+    if (isMissingTable(res.error)) return [];
+    if (!isRetryableWorkerPaymentsSelectError(res.error)) {
+      throw new Error(res.error.message ?? "Failed to load worker payments.");
+    }
   }
-  const { data, error } = res;
-  if (error) {
-    if (isMissingTable(error)) return [];
-    throw new Error(error.message ?? "Failed to load worker payments.");
-  }
-  return ((data ?? []) as unknown as Record<string, unknown>[]).map(fromRow);
+  throw new Error(lastError?.message ?? "Failed to load worker payments.");
 }
 
 export async function getWorkerPaymentById(id: string): Promise<WorkerPayment | null> {
   const c = client();
-  let { data, error } = await c.from("worker_payments").select(COLS).eq("id", id).maybeSingle();
-  if (error && /labor_entry_ids|schema cache/i.test(error.message ?? "")) {
-    ({ data, error } = await c
+  let lastError: { message?: string } | null = null;
+  for (const cols of WORKER_PAYMENTS_SELECT_VARIANTS) {
+    const { data, error } = await c
       .from("worker_payments")
-      .select(COLS_BASE)
+      .select(cols as never)
       .eq("id", id)
-      .maybeSingle());
-  }
-  if (error) {
+      .maybeSingle();
+    if (!error) {
+      return data ? fromRow(data as unknown as Record<string, unknown>) : null;
+    }
+    lastError = error;
     if (isMissingTable(error)) return null;
-    throw new Error(error.message ?? "Failed to load worker payment.");
+    if (!isRetryableWorkerPaymentsSelectError(error)) {
+      throw new Error(error.message ?? "Failed to load worker payment.");
+    }
   }
-  return data ? fromRow(data as Record<string, unknown>) : null;
+  throw new Error(lastError?.message ?? "Failed to load worker payment.");
 }

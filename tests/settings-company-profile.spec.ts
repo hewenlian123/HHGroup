@@ -234,14 +234,15 @@ test.describe("Settings → Company Profile", () => {
       if (await skipIfNoSupabase(page)) test.skip(true, "Supabase not configured.");
 
       await waitForCompanyProfileReady(page);
-      const stateInput = page.getByTestId("company-input-state");
-      await expect(stateInput).toBeVisible({ timeout: 30_000 });
+      const notesInput = page.getByTestId("company-input-notes");
+      await expect(notesInput).toBeVisible({ timeout: 30_000 });
 
-      // Prefer `state` for persistence: some DBs omit newer columns from updates (retry strips unknown fields).
+      // Use `notes` (not `state`) so this test does not race the multi-field test on the same row.
       const marker = `E2E-ST-${Date.now()}`;
-      await stateInput.click();
-      await stateInput.clear();
-      await stateInput.fill(marker);
+      await notesInput.click();
+      await notesInput.clear();
+      await notesInput.fill(marker);
+      await expect(notesInput).toHaveValue(marker);
 
       const saveBtn = page.getByTestId("company-save-button");
       const saveRespP = page.waitForResponse(
@@ -251,7 +252,12 @@ test.describe("Settings → Company Profile", () => {
         { timeout: 35_000 }
       );
       await saveBtn.click();
-      await expect(saveBtn).toContainText("Saving...", { timeout: 5000 });
+      const saveResp = await saveRespP;
+      try {
+        await expect(saveBtn).toContainText(/Saving/i, { timeout: 3000 });
+      } catch {
+        /* very fast saves may skip the intermediate label */
+      }
       await expect(
         page
           .locator('[role="status"]')
@@ -260,20 +266,19 @@ test.describe("Settings → Company Profile", () => {
       ).toBeVisible({ timeout: 30_000 });
       await expect(saveBtn).toContainText("Save Profile", { timeout: 15_000 });
 
-      const saveResp = await saveRespP;
       expect(saveResp.status(), "company-profile POST should succeed").toBe(200);
       const saveBody = (await saveResp.json().catch(() => null)) as {
         ok?: boolean;
-        profile?: { state?: string | null };
+        profile?: { notes?: string | null };
       } | null;
       expect(saveBody?.ok).toBe(true);
-      expect(saveBody?.profile?.state).toBe(marker);
+      expect(saveBody?.profile?.notes).toBe(marker);
 
-      await expect(stateInput).toHaveValue(marker, { timeout: 15_000 });
+      await expect(notesInput).toHaveValue(marker, { timeout: 15_000 });
 
       await page.reload({ waitUntil: "domcontentloaded" });
       await waitForCompanyProfileReady(page);
-      await expect(page.getByTestId("company-input-state")).toHaveValue(marker, {
+      await expect(page.getByTestId("company-input-notes")).toHaveValue(marker, {
         timeout: 30_000,
       });
     });
