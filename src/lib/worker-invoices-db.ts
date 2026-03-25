@@ -45,8 +45,7 @@ const COLS = "id, worker_id, project_id, amount, invoice_file, status, created_a
 function fromRow(r: Record<string, unknown>): WorkerInvoice {
   const raw = String(r.status ?? "unpaid").toLowerCase();
   const status: WorkerInvoiceStatus = raw === "paid" ? "paid" : "unpaid";
-  const file =
-    (r.invoice_file as string | null) ?? (r.attachment_url as string | null) ?? null;
+  const file = (r.invoice_file as string | null) ?? (r.attachment_url as string | null) ?? null;
   return {
     id: r.id as string,
     workerId: r.worker_id as string,
@@ -60,8 +59,8 @@ function fromRow(r: Record<string, unknown>): WorkerInvoice {
 
 function isInvoiceInsertFallback(err: { message?: string } | null | undefined): boolean {
   const m = err?.message ?? "";
-  return (
-    /invoice_number|null value|violates not-null|could not find the .* column|schema cache/i.test(m)
+  return /invoice_number|null value|violates not-null|could not find the .* column|schema cache/i.test(
+    m
   );
 }
 

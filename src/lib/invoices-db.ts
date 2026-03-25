@@ -249,8 +249,7 @@ export async function getInvoicePayments(): Promise<InvoicePayment[]> {
 
 export async function getPaymentsByInvoiceId(invoiceId: string): Promise<InvoicePayment[]> {
   const c = client();
-  const fullCols =
-    "id, invoice_id, amount, payment_date, paid_at, method, reference, memo, status";
+  const fullCols = "id, invoice_id, amount, payment_date, paid_at, method, reference, memo, status";
   let { data: rows, error } = await c
     .from("invoice_payments")
     .select(fullCols)

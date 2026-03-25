@@ -401,10 +401,16 @@ export async function approveWorkerReceiptWithClient(
       );
     }
     if (rErr && isMissingColumn(rErr)) {
-      await tryInsert(legacyInsert, "id, worker_id, project_id, amount, description, status, created_at");
+      await tryInsert(
+        legacyInsert,
+        "id, worker_id, project_id, amount, description, status, created_at"
+      );
     }
     if (rErr && isMissingColumn(rErr)) {
-      await tryInsert(minimalInsert, "id, worker_id, project_id, amount, notes, reimbursement_date, created_at");
+      await tryInsert(
+        minimalInsert,
+        "id, worker_id, project_id, amount, notes, reimbursement_date, created_at"
+      );
     }
     if (rErr && isMissingColumn(rErr)) {
       await tryInsert(
