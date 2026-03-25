@@ -1,5 +1,8 @@
 import { test, expect } from "@playwright/test";
-import { allowWorkerPaymentMutations } from "./payment-e2e-helpers";
+import {
+  allowWorkerPaymentMutations,
+  deleteAllWorkerPaymentsForWorker,
+} from "./payment-e2e-helpers";
 
 /**
  * E2E: Pay worker → receipt has labor lines → delete payment → labor shows as unpaid again (rollback).
@@ -23,6 +26,8 @@ test.describe("Worker payment full flow: pay → receipt → delete → rollback
       'Pick Playwright project "chromium-payments", use localhost, or set E2E_ALLOW_PAYMENT_MUTATIONS=1.'
     );
     test.skip(!WORKER_NAME, "Set E2E_WORKER_NAME.");
+
+    await deleteAllWorkerPaymentsForWorker(page, WORKER_NAME);
 
     await page.goto(`${BASE}/labor/worker-balances`);
     await page.waitForLoadState("domcontentloaded");
@@ -62,8 +67,20 @@ test.describe("Worker payment full flow: pay → receipt → delete → rollback
     test.skip(totalText === "$0.00" || totalText === "", "Payment total is zero.");
 
     await payDialog.getByPlaceholder(/Check|ACH|Cash/i).fill("E2E Cash");
+    const payPost = page.waitForResponse(
+      (r) =>
+        r.url().includes("/api/labor/workers/") &&
+        r.url().includes("/pay") &&
+        r.request().method() === "POST",
+      { timeout: 65_000 }
+    );
     await payDialog.getByRole("button", { name: "Confirm Payment" }).click();
-    await expect(payDialog).not.toBeVisible({ timeout: 60_000 });
+    const payResp = await payPost;
+    const payText = await payResp.text().catch(() => "");
+    expect(payResp.ok(), `POST /pay failed (${payResp.status()}): ${payText.slice(0, 500)}`).toBe(
+      true
+    );
+    await expect(payDialog).not.toBeVisible({ timeout: 30_000 });
 
     // Receipt
     await page.goto(`${BASE}/labor/payments`);
@@ -79,11 +96,18 @@ test.describe("Worker payment full flow: pay → receipt → delete → rollback
       payRow = page.locator("tbody tr").filter({ hasText: WORKER_NAME }).first();
     }
     test.skip((await payRow.count()) === 0, "No payment row for worker.");
-    await payRow.getByRole("link", { name: "View Receipt" }).click();
-    await page.waitForLoadState("load");
-
-    await expect(page.getByText(/Labor included in this payment/i)).toBeVisible();
-    await expect(page.getByText(/^0 lines$/)).not.toBeVisible();
+    await payRow.getByRole("button", { name: "View Receipt" }).click();
+    const receiptPreview = page.getByRole("dialog", { name: /Receipt preview/i });
+    await expect(receiptPreview).toBeVisible({ timeout: 30_000 });
+    await expect(receiptPreview.getByText("Loading receipt…")).not.toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(
+      receiptPreview
+        .getByTestId("document-company-header")
+        .getByText("Worker Payment Receipt", { exact: true })
+    ).toBeVisible();
+    await expect(receiptPreview.getByText(/No labor lines linked/i)).toHaveCount(0);
 
     await page.goto(`${BASE}/labor/payments`);
     await page.waitForLoadState("domcontentloaded");

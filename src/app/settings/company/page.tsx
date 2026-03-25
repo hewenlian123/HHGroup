@@ -137,6 +137,10 @@ export default function SettingsCompanyPage() {
    * look empty and `ensureCompanyProfile` insert a default "HH Group" row — skip one reload.
    */
   const suppressNextCompanyProfileSyncReloadRef = React.useRef(false);
+  /** Ignore stale loadProfile completions (Strict Mode double mount, overlapping GETs) so they do not overwrite in-progress edits. */
+  const loadProfileGenerationRef = React.useRef(0);
+  const savingRef = React.useRef(false);
+  const uploadingRef = React.useRef(false);
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const configured = Boolean(url && anon);
@@ -157,11 +161,19 @@ export default function SettingsCompanyPage() {
     setLogoLoadError(false);
   }, [profile?.logo_url]);
 
+  React.useEffect(() => {
+    savingRef.current = saving;
+  }, [saving]);
+  React.useEffect(() => {
+    uploadingRef.current = uploading;
+  }, [uploading]);
+
   const loadProfile = React.useCallback(async () => {
     if (!supabase) {
       setLoading(false);
       return;
     }
+    const myGen = ++loadProfileGenerationRef.current;
     setLoading(true);
     try {
       const res = await fetch("/api/settings/company-profile", {
@@ -176,6 +188,7 @@ export default function SettingsCompanyPage() {
       } | null;
 
       if (res.ok && json?.ok && json.profile) {
+        if (myGen !== loadProfileGenerationRef.current) return;
         setProfile(json.profile);
         setForm(toFormState(json.profile));
         return;
@@ -183,28 +196,36 @@ export default function SettingsCompanyPage() {
 
       if (res.status !== 503 || json?.fallback !== "client") {
         const msg = json?.message || `Load failed (${res.status}).`;
-        toast({ title: "Load failed", description: msg, variant: "error" });
+        if (myGen === loadProfileGenerationRef.current) {
+          toast({ title: "Load failed", description: msg, variant: "error" });
+        }
         return;
       }
 
       const row = await ensureCompanyProfile(supabase);
+      if (myGen !== loadProfileGenerationRef.current) return;
       setProfile(row);
       setForm(toFormState(row));
     } catch (e: unknown) {
       try {
         const row = await ensureCompanyProfile(supabase);
+        if (myGen !== loadProfileGenerationRef.current) return;
         setProfile(row);
         setForm(toFormState(row));
       } catch {
         const msg = e instanceof Error ? e.message : String(e);
-        toast({
-          title: "Load failed",
-          description: msg || "Failed to load company profile.",
-          variant: "error",
-        });
+        if (myGen === loadProfileGenerationRef.current) {
+          toast({
+            title: "Load failed",
+            description: msg || "Failed to load company profile.",
+            variant: "error",
+          });
+        }
       }
     } finally {
-      setLoading(false);
+      if (myGen === loadProfileGenerationRef.current) {
+        setLoading(false);
+      }
     }
   }, [supabase, toast]);
 
@@ -223,6 +244,7 @@ export default function SettingsCompanyPage() {
         suppressNextCompanyProfileSyncReloadRef.current = false;
         return;
       }
+      if (savingRef.current || uploadingRef.current) return;
       void loadProfile();
     }, [loadProfile]),
     [loadProfile]
@@ -688,6 +710,8 @@ export default function SettingsCompanyPage() {
             value={form.notes}
             onChange={(e) => updateField("notes", e.target.value)}
             placeholder="Notes"
+            data-testid="company-input-notes"
+            aria-label="Notes"
             className="min-h-24 rounded-sm border border-[#EBEBE9] bg-background px-3 py-2 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring dark:border-border"
           />
         </div>

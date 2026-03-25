@@ -1,5 +1,8 @@
 import { test, expect } from "@playwright/test";
-import { allowWorkerPaymentMutations } from "./payment-e2e-helpers";
+import {
+  allowWorkerPaymentMutations,
+  deleteAllWorkerPaymentsForWorker,
+} from "./payment-e2e-helpers";
 
 /**
  * End-to-end: pay worker with labor selected → Worker Payments → receipt shows labor lines (not "0 lines").
@@ -23,6 +26,8 @@ test.describe("Worker payment → receipt labor lines", () => {
       'Pick Playwright project "chromium-payments", use localhost, or set E2E_ALLOW_PAYMENT_MUTATIONS=1.'
     );
     test.skip(!WORKER_NAME, "Set E2E_WORKER_NAME to a worker that has unpaid labor.");
+
+    await deleteAllWorkerPaymentsForWorker(page, WORKER_NAME);
 
     await page.goto(`${BASE}/labor/worker-balances`);
     await page.waitForLoadState("domcontentloaded");
@@ -69,9 +74,21 @@ test.describe("Worker payment → receipt labor lines", () => {
     );
 
     await dialog.getByPlaceholder(/Check|ACH|Cash/i).fill("E2E Cash");
+    const payPost = page.waitForResponse(
+      (r) =>
+        r.url().includes("/api/labor/workers/") &&
+        r.url().includes("/pay") &&
+        r.request().method() === "POST",
+      { timeout: 65_000 }
+    );
     await dialog.getByRole("button", { name: "Confirm Payment" }).click();
+    const payResp = await payPost;
+    const payText = await payResp.text().catch(() => "");
+    expect(payResp.ok(), `POST /pay failed (${payResp.status()}): ${payText.slice(0, 500)}`).toBe(
+      true
+    );
 
-    await expect(dialog).not.toBeVisible({ timeout: 60_000 });
+    await expect(dialog).not.toBeVisible({ timeout: 30_000 });
 
     await page.goto(`${BASE}/labor/payments`);
     await page.waitForLoadState("domcontentloaded");
@@ -79,19 +96,24 @@ test.describe("Worker payment → receipt labor lines", () => {
 
     const payRow = page.locator("tbody tr").filter({ hasText: WORKER_NAME }).first();
     test.skip((await payRow.count()) === 0, "No payment row for this worker on /labor/payments.");
-    await payRow.getByRole("link", { name: "View Receipt" }).click();
-    await page.waitForLoadState("load");
-
-    await expect(page.getByRole("heading", { name: /Worker Payment Receipt/i })).toBeVisible();
+    await payRow.getByRole("button", { name: "View Receipt" }).click();
+    const receiptPreview = page.getByRole("dialog", { name: /Receipt preview/i });
+    await expect(receiptPreview).toBeVisible({ timeout: 30_000 });
+    await expect(receiptPreview.getByText("Loading receipt…")).not.toBeVisible({
+      timeout: 30_000,
+    });
     await expect(
-      page.locator(".receipt-summary").getByText("Subtotal", { exact: true })
+      receiptPreview
+        .getByTestId("document-company-header")
+        .getByText("Worker Payment Receipt", { exact: true })
     ).toBeVisible();
-    await expect(page.getByText(/^0 lines$/)).not.toBeVisible();
+    await expect(
+      receiptPreview.locator(".receipt-summary").getByText("Subtotal", { exact: true })
+    ).toBeVisible();
+    await expect(receiptPreview.getByText(/No labor lines linked/i)).toHaveCount(0);
     await expect(page.locator("body")).not.toContainText(
       /Application error|Internal Server Error/i
     );
-    await expect(
-      page.getByRole("table").filter({ has: page.getByRole("columnheader", { name: "Session" }) })
-    ).toBeVisible();
+    await expect(receiptPreview.locator(".receipt-table--labor")).toBeVisible();
   });
 });

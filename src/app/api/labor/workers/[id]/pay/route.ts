@@ -97,9 +97,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           error: { message?: string } | null;
         } = await admin
           .from("labor_entries")
-          .select("id, worker_id, cost_amount, status, worker_payment_id")
+          .select("id, worker_id, cost_amount, total, status, worker_payment_id")
           .eq("worker_id", workerId)
           .in("id", laborIds);
+        if (laborQ.error && /column|schema cache|total/i.test(laborQ.error.message ?? "")) {
+          laborQ = await admin
+            .from("labor_entries")
+            .select("id, worker_id, cost_amount, status, worker_payment_id")
+            .eq("worker_id", workerId)
+            .in("id", laborIds);
+        }
         if (
           laborQ.error &&
           /column|schema cache|worker_payment_id/i.test(laborQ.error.message ?? "")
@@ -107,9 +114,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           laborSettlementMode = "status_fallback";
           laborQ = await admin
             .from("labor_entries")
-            .select("id, worker_id, cost_amount, status")
+            .select("id, worker_id, cost_amount, total, status")
             .eq("worker_id", workerId)
             .in("id", laborIds);
+          if (laborQ.error && /column|schema cache|total/i.test(laborQ.error.message ?? "")) {
+            laborQ = await admin
+              .from("labor_entries")
+              .select("id, worker_id, cost_amount, status")
+              .eq("worker_id", workerId)
+              .in("id", laborIds);
+          }
         }
         const { data: laborRows, error: leErr } = laborQ;
         if (leErr) throw new Error(leErr.message ?? "Failed to validate labor entries.");
@@ -117,6 +131,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           id: string;
           worker_id: string;
           cost_amount?: number | null;
+          total?: number | null;
           status?: string | null;
           worker_payment_id?: string | null;
         }[];
@@ -133,7 +148,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
               { status: 400 }
             );
           }
-          expectedTotal += Number(r.cost_amount) || 0;
+          expectedTotal += Number(r.cost_amount ?? r.total) || 0;
         }
       }
 

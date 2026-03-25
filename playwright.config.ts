@@ -49,6 +49,8 @@ export default defineConfig({
       name: "chromium-payments",
       testMatch: /worker-payment.*\.spec\.ts$/,
       timeout: 120_000,
+      /** Both specs pay the same seed worker; parallel runs deadlock or leave the Pay dialog stuck. */
+      workers: 1,
       use: {
         ...devices["Desktop Chrome"],
         baseURL: resolvedBase,
