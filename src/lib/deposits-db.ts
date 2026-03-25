@@ -1,6 +1,7 @@
 /**
- * Deposits — table: deposits.
- * Columns (per DB): id, payment_id, amount, account, date, description, project_id, created_at.
+ * Deposits — table: deposits (migration 202603201100_deposits.sql).
+ * DB: deposit_account, deposit_date, customer_name, invoice_id, payment_method, …
+ * UI row: account, date, description (mapped from customer_name).
  */
 
 import { getSupabaseClient } from "@/lib/supabase";
@@ -16,10 +17,39 @@ export type DepositRow = {
   created_at: string;
 };
 
+type DepositsDbRow = {
+  id: string;
+  payment_id: string;
+  invoice_id: string;
+  amount: number;
+  deposit_account: string | null;
+  deposit_date: string;
+  customer_name: string;
+  project_id: string | null;
+  payment_method: string | null;
+  created_at: string;
+};
+
 export type DepositWithMeta = DepositRow & {
   invoice_no: string | null;
   project_name: string | null;
+  payment_method: string | null;
 };
+
+function mapDepositDbRow(r: DepositsDbRow): DepositRow {
+  const depDate =
+    typeof r.deposit_date === "string" ? r.deposit_date.slice(0, 10) : String(r.deposit_date ?? "");
+  return {
+    id: r.id,
+    payment_id: r.payment_id,
+    amount: Number(r.amount) || 0,
+    account: r.deposit_account,
+    date: depDate,
+    description: r.customer_name?.trim() ? r.customer_name : null,
+    project_id: r.project_id,
+    created_at: r.created_at,
+  };
+}
 
 function client() {
   const c = getSupabaseClient();
@@ -32,36 +62,66 @@ function isMissingTable(err: { message?: string } | null): boolean {
   return /relation.*does not exist|table.*does not exist|could not find/i.test(m);
 }
 
-/** List all deposits. Newest first. Uses columns: id, payment_id, amount, account, date, description, project_id, created_at. */
+/** List all deposits. Newest first. */
 export async function getDeposits(): Promise<DepositWithMeta[]> {
   const c = client();
   const { data: rows, error } = await c
     .from("deposits")
-    .select("id, payment_id, amount, account, date, description, project_id, created_at")
-    .order("date", { ascending: false });
+    .select(
+      "id, payment_id, invoice_id, amount, deposit_account, deposit_date, customer_name, project_id, payment_method, created_at"
+    )
+    .order("deposit_date", { ascending: false });
   if (error) {
     if (isMissingTable(error)) return [];
     throw new Error(error.message ?? "Failed to load deposits.");
   }
-  const list = (rows ?? []) as DepositRow[];
-  if (list.length === 0) return list.map((r) => ({ ...r, invoice_no: null, project_name: null }));
-  const projectIds = Array.from(new Set(list.map((r) => r.project_id).filter(Boolean))) as string[];
-  const projRes = projectIds.length
-    ? await c.from("projects").select("id, name").in("id", projectIds)
-    : { data: [] };
+  const raw = (rows ?? []) as DepositsDbRow[];
+  if (raw.length === 0) return [];
+  const projectIds = Array.from(new Set(raw.map((r) => r.project_id).filter(Boolean))) as string[];
+  const invoiceIds = Array.from(new Set(raw.map((r) => r.invoice_id).filter(Boolean))) as string[];
+  const [projRes, invRes] = await Promise.all([
+    projectIds.length
+      ? c.from("projects").select("id, name").in("id", projectIds)
+      : Promise.resolve({ data: [] }),
+    invoiceIds.length
+      ? c.from("invoices").select("id, invoice_no").in("id", invoiceIds)
+      : Promise.resolve({ data: [] }),
+  ]);
   const projectNameById = new Map(
     (projRes.data ?? []).map((r: { id: string; name?: string }) => [r.id, r.name ?? null])
   );
-  return list.map((r) => ({
-    ...r,
-    invoice_no: null,
-    project_name: r.project_id ? (projectNameById.get(r.project_id) ?? null) : null,
-  }));
+  const invoiceNoById = new Map(
+    (invRes.data ?? []).map((r: { id: string; invoice_no?: string }) => [
+      r.id,
+      r.invoice_no ?? null,
+    ])
+  );
+  return raw.map((r) => {
+    const base = mapDepositDbRow(r);
+    return {
+      ...base,
+      invoice_no: invoiceNoById.get(r.invoice_id) ?? null,
+      project_name: r.project_id ? (projectNameById.get(r.project_id) ?? null) : null,
+      payment_method: r.payment_method ?? null,
+    };
+  });
 }
 
-/** Get deposits for a single invoice. deposits table has no invoice_id; returns [] unless schema has it. */
-export async function getDepositsByInvoiceId(_invoiceId: string): Promise<DepositRow[]> {
-  return [];
+/** Deposits linked to an invoice (via invoice_id). */
+export async function getDepositsByInvoiceId(invoiceId: string): Promise<DepositRow[]> {
+  const c = client();
+  const { data: rows, error } = await c
+    .from("deposits")
+    .select(
+      "id, payment_id, invoice_id, amount, deposit_account, deposit_date, customer_name, project_id, payment_method, created_at"
+    )
+    .eq("invoice_id", invoiceId)
+    .order("deposit_date", { ascending: false });
+  if (error) {
+    if (isMissingTable(error)) return [];
+    throw new Error(error.message ?? "Failed to load deposits.");
+  }
+  return ((rows ?? []) as DepositsDbRow[]).map(mapDepositDbRow);
 }
 
 /** Sum of deposits.amount (Cash In for dashboard). */
@@ -72,31 +132,35 @@ export async function getTotalDepositsAmount(): Promise<number> {
   return (rows as { amount: number }[]).reduce((s, r) => s + Number(r.amount ?? 0), 0);
 }
 
-/**
- * Create a deposit record. Table columns: payment_id, amount, account, date, description, project_id.
- */
+/** Insert row matching public.deposits (invoice_id required by FK). */
 export async function createDepositFromPayment(payment: {
   id: string;
+  invoice_id: string;
   project_id?: string | null;
   amount: number;
   payment_date?: string;
   deposit_account?: string | null;
-  description?: string | null;
+  customer_name: string;
+  payment_method?: string | null;
 }): Promise<DepositRow | null> {
   const c = client();
-  const date = payment.payment_date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
+  const depositDate = payment.payment_date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
   const { data: row, error } = await c
     .from("deposits")
     .insert({
       payment_id: payment.id,
+      invoice_id: payment.invoice_id,
       amount: payment.amount,
-      account: payment.deposit_account ?? null,
-      date,
-      description: payment.description ?? null,
       project_id: payment.project_id ?? null,
+      customer_name: payment.customer_name?.trim() || "",
+      deposit_account: payment.deposit_account ?? null,
+      payment_method: payment.payment_method ?? null,
+      deposit_date: depositDate,
     })
-    .select("id, payment_id, amount, account, date, description, project_id, created_at")
+    .select(
+      "id, payment_id, invoice_id, amount, deposit_account, deposit_date, customer_name, project_id, payment_method, created_at"
+    )
     .single();
   if (error) return null;
-  return row as DepositRow;
+  return mapDepositDbRow(row as DepositsDbRow);
 }
