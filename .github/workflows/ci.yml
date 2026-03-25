@@ -32,6 +32,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -44,6 +46,9 @@ jobs:
 
       - name: Check migration file names
         run: npm run check:migration-filenames
+
+      - name: Check migration ordering (no insert-before-last)
+        run: npm run check:migration-order
 
       - name: Audit schema vs code columns
         run: npm run check:schema-vs-code
@@ -70,6 +75,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Supabase CLI
         if: ${{ env.SUPABASE_DB_URL != '' }}
