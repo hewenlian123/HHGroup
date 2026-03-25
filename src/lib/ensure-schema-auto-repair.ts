@@ -44,6 +44,17 @@ const AUTO_REPAIR_DDL: string[] = [
   `ALTER TABLE public.labor_entries ADD COLUMN IF NOT EXISTS status text DEFAULT 'pending'`,
   `ALTER TABLE public.labor_entries ADD COLUMN IF NOT EXISTS worker_payment_id uuid`,
   `ALTER TABLE public.worker_payments ADD COLUMN IF NOT EXISTS labor_entry_ids uuid[]`,
+
+  // 6. labor_workers sync (for schemas where labor_entries FK → labor_workers)
+  `CREATE TABLE IF NOT EXISTS public.labor_workers (
+  id uuid primary key,
+  name text not null,
+  created_at timestamptz not null default now()
+)`,
+  `INSERT INTO public.labor_workers (id, name, created_at)
+   SELECT w.id, w.name, w.created_at
+   FROM public.workers w
+   WHERE NOT EXISTS (SELECT 1 FROM public.labor_workers lw WHERE lw.id = w.id)`,
 ];
 
 export type SchemaAutoRepairResult = {
