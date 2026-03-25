@@ -11,6 +11,8 @@
     "start": "next start",
     "lint": "next lint",
     "lint:ci": "eslint \"src/__tests__/**/*.{ts,tsx}\" --max-warnings 0",
+    "check:migration-filenames": "node scripts/check-migration-filenames.mjs",
+    "check:schema-vs-code": "node scripts/audit-schema-vs-code.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "format:check:ci": "prettier --check \".github/workflows/**/*.yml\" \"docs/**/*.md\" \"README.md\" \"package.json\" \"tsconfig.json\" \"vitest.config.ts\" \"playwright.config.ts\" \".eslintrc.json\" \".prettierrc.json\" \"next.config.mjs\" \"src/**\"",
