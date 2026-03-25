@@ -47,16 +47,38 @@ export async function fetchWorkerBalanceRowForDelete(
  * Worker list comes from labor_workers; payments/advances aggregate by worker_id (same ids as labor_workers when synced).
  */
 export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBalanceRow[]> {
-  const workersRes = await c.from("labor_workers").select("id, name").order("name");
-  const rawWorkers = (workersRes.data ?? []) as { id: string; name: string | null }[];
-  /** Defensive: same id should not appear twice; dedupe keeps UI/API stable. */
-  const seenIds = new Set<string>();
-  const workers = rawWorkers.filter((w) => {
-    const id = w.id;
-    if (!id || seenIds.has(id)) return false;
-    seenIds.add(id);
-    return true;
-  });
+  // Canonical source is labor_workers, but some environments still write entries using workers(id).
+  // To avoid missing rows in Worker Balances, include any worker_id that appears in labor_entries.
+  const [workersRes, entryWorkerIdsRes, workersNameRes] = await Promise.all([
+    c.from("labor_workers").select("id, name").order("name"),
+    c.from("labor_entries").select("worker_id"),
+    c.from("workers").select("id, name"),
+  ]);
+
+  const rawLaborWorkers = (workersRes.data ?? []) as { id: string; name: string | null }[];
+  const workersById = new Map<string, { id: string; name: string | null }>();
+  for (const w of rawLaborWorkers) {
+    const id = String(w.id ?? "").trim();
+    if (!id) continue;
+    if (!workersById.has(id)) workersById.set(id, { id, name: w.name ?? null });
+  }
+
+  const workersNameById = new Map<string, string | null>();
+  for (const w of (workersNameRes.data ?? []) as Array<{ id: string; name: string | null }>) {
+    const id = String(w.id ?? "").trim();
+    if (!id) continue;
+    workersNameById.set(id, w.name ?? null);
+  }
+
+  for (const r of (entryWorkerIdsRes.data ?? []) as Array<{ worker_id?: string | null }>) {
+    const id = String(r.worker_id ?? "").trim();
+    if (!id || workersById.has(id)) continue;
+    workersById.set(id, { id, name: workersNameById.get(id) ?? null });
+  }
+
+  const workers = [...workersById.values()].sort((a, b) =>
+    (a.name ?? "").localeCompare(b.name ?? "", undefined, { sensitivity: "base" })
+  );
   const dbUrl = process.env.SUPABASE_DATABASE_URL ?? process.env.DATABASE_URL;
 
   // Robust per-worker aggregation (matches detail page behavior and avoids cross-table id drift issues).
