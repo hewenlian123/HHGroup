@@ -47,6 +47,11 @@ export type WorkerReceiptWithNames = WorkerReceipt & {
 const COLS =
   "id, worker_id, worker_name, project_id, expense_type, vendor, amount, description, receipt_url, notes, receipt_date, status, rejection_reason, reimbursement_id, created_at";
 
+function isMissingColumn(err: { message?: string } | null | undefined): boolean {
+  const m = err?.message ?? "";
+  return /could not find the .* column|column .* does not exist|schema cache/i.test(m);
+}
+
 function client() {
   const c = getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
@@ -343,37 +348,98 @@ export async function approveWorkerReceiptWithClient(
       [approvedReceipt.vendor, approvedReceipt.expenseType].filter(Boolean).join(" · ") ||
       approvedReceipt.description ||
       null;
-    const { data: reimbRow, error: rErr } = await c
-      .from("worker_reimbursements")
-      .insert({
-        worker_id: workerId,
-        project_id: projectId,
-        vendor: approvedReceipt.vendor ?? null,
-        amount: approvedReceipt.amount ?? 0,
-        description,
-        receipt_url: approvedReceipt.receiptUrl ?? null,
-        status: "pending",
-      })
-      .select(
-        "id, worker_id, project_id, vendor, amount, description, receipt_url, status, created_at"
-      )
-      .single();
-    if (rErr) throw new Error(rErr.message ?? "Failed to create reimbursement.");
+    const fullInsert = {
+      worker_id: workerId,
+      project_id: projectId,
+      vendor: approvedReceipt.vendor ?? null,
+      amount: approvedReceipt.amount ?? 0,
+      description,
+      receipt_url: approvedReceipt.receiptUrl ?? null,
+      status: "pending",
+    };
+    const legacyInsert = {
+      worker_id: workerId,
+      project_id: projectId,
+      amount: approvedReceipt.amount ?? 0,
+      description:
+        description ||
+        [approvedReceipt.vendor, approvedReceipt.expenseType].filter(Boolean).join(" · ") ||
+        null,
+      receipt_url: approvedReceipt.receiptUrl ?? null,
+      status: "pending",
+    };
+    const notesText =
+      description ||
+      [approvedReceipt.vendor, approvedReceipt.expenseType].filter(Boolean).join(" · ") ||
+      "Receipt reimbursement";
+    const minimalInsert = {
+      worker_id: workerId,
+      project_id: projectId,
+      amount: approvedReceipt.amount ?? 0,
+      notes: notesText,
+      reimbursement_date: new Date().toISOString().slice(0, 10),
+      receipt_url: approvedReceipt.receiptUrl ?? null,
+    };
+
+    let reimbRow: Record<string, unknown> | null = null;
+    let rErr: { message?: string } | null = null;
+
+    const tryInsert = async (payload: Record<string, unknown>, selectCols: string) => {
+      const res = await c.from("worker_reimbursements").insert(payload).select(selectCols).single();
+      reimbRow = (res.data as Record<string, unknown> | null) ?? null;
+      rErr = res.error as { message?: string } | null;
+    };
+
+    await tryInsert(
+      fullInsert,
+      "id, worker_id, project_id, vendor, amount, description, receipt_url, status, created_at"
+    );
+    if (rErr && isMissingColumn(rErr)) {
+      await tryInsert(
+        legacyInsert,
+        "id, worker_id, project_id, amount, description, receipt_url, status, created_at"
+      );
+    }
+    if (rErr && isMissingColumn(rErr)) {
+      await tryInsert(legacyInsert, "id, worker_id, project_id, amount, description, status, created_at");
+    }
+    if (rErr && isMissingColumn(rErr)) {
+      await tryInsert(minimalInsert, "id, worker_id, project_id, amount, notes, reimbursement_date, created_at");
+    }
+    if (rErr && isMissingColumn(rErr)) {
+      await tryInsert(
+        {
+          worker_id: workerId,
+          project_id: projectId,
+          amount: approvedReceipt.amount ?? 0,
+          notes: notesText,
+        },
+        "id, worker_id, project_id, amount, notes, created_at"
+      );
+    }
+    if (rErr != null)
+      throw new Error((rErr as { message?: string }).message ?? "Failed to create reimbursement.");
+    if (!reimbRow) throw new Error("Failed to create reimbursement.");
+
+    const row = reimbRow as Record<string, unknown>;
 
     const reimbursementCreated: WorkerReimbursement = {
-      id: String((reimbRow as any).id),
-      workerId: String((reimbRow as any).worker_id),
+      id: String(row.id),
+      workerId: String(row.worker_id),
       workerName: null,
-      projectId: (reimbRow as any).project_id != null ? String((reimbRow as any).project_id) : null,
+      projectId: row.project_id != null ? String(row.project_id) : null,
       projectName: null,
-      vendor: (reimbRow as any).vendor != null ? String((reimbRow as any).vendor) : null,
-      amount: Number((reimbRow as any).amount) || 0,
+      vendor: row.vendor != null ? String(row.vendor) : null,
+      amount: Number(row.amount) || 0,
       description:
-        (reimbRow as any).description != null ? String((reimbRow as any).description) : null,
-      receiptUrl:
-        (reimbRow as any).receipt_url != null ? String((reimbRow as any).receipt_url) : null,
+        row.description != null
+          ? String(row.description)
+          : row.notes != null
+            ? String(row.notes)
+            : null,
+      receiptUrl: row.receipt_url != null ? String(row.receipt_url) : null,
       status: "pending",
-      createdAt: String((reimbRow as any).created_at ?? ""),
+      createdAt: String(row.created_at ?? ""),
       paidAt: null,
       paymentId: null,
     };

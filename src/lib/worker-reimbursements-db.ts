@@ -341,17 +341,26 @@ export async function insertWorkerReimbursementPayment(params: {
  */
 export async function markReimbursementPaid(reimbursementId: string): Promise<WorkerReimbursement> {
   const c = client();
-  const payload = { status: "paid" as const, paid_at: new Date().toISOString() };
+  const withPaidAt = { status: "paid" as const, paid_at: new Date().toISOString() };
+  const statusOnly = { status: "paid" as const };
   let result = await c
     .from(TABLE_NAME)
-    .update(payload)
+    .update(withPaidAt)
     .eq("id", reimbursementId)
     .select(COLS)
     .maybeSingle();
   if (result.error && isColumnMissingError(result.error)) {
     result = await c
       .from(TABLE_NAME)
-      .update(payload)
+      .update(withPaidAt)
+      .eq("id", reimbursementId)
+      .select(COLS_MINIMAL)
+      .maybeSingle();
+  }
+  if (result.error && isColumnMissingError(result.error)) {
+    result = await c
+      .from(TABLE_NAME)
+      .update(statusOnly)
       .eq("id", reimbursementId)
       .select(COLS_MINIMAL)
       .maybeSingle();

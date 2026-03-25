@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { ensureExpensesSourceColumns } from "@/lib/ensure-expenses-source-columns";
 import { recordBatchReimbursementPayment } from "@/lib/worker-reimbursements-db";
 import { createExpenseFromPaidReimbursement } from "@/lib/expenses-db";
 
@@ -10,7 +9,14 @@ import { createExpenseFromPaidReimbursement } from "@/lib/expenses-db";
  */
 export async function POST(req: Request) {
   try {
-    await ensureExpensesSourceColumns();
+    try {
+      const { ensureExpensesSourceColumns } = await import(
+        "@/lib/ensure-expenses-source-columns"
+      );
+      await ensureExpensesSourceColumns();
+    } catch {
+      /* optional migration */
+    }
     const body = await req.json().catch(() => ({}));
     const ids = body?.reimbursementIds;
     if (!Array.isArray(ids) || ids.length === 0) {

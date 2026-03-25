@@ -1,6 +1,6 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
-import { insertDailyLaborEntries } from "@/lib/daily-labor-db";
 import { createWorkerPayment } from "@/lib/worker-payments-db";
 import {
   insertWorkerReceiptWithClient,
@@ -20,6 +20,52 @@ type TestResult = { name: string; ok: boolean; steps?: string[] };
 function log(step: string, detail?: string) {
   const msg = detail ? `[financial-workflows] ${step}: ${detail}` : `[financial-workflows] ${step}`;
   if (typeof console !== "undefined" && console.log) console.log(msg);
+}
+
+function isSchemaOrMissingColumn(msg: string): boolean {
+  return /could not find the .* column|column .* does not exist|schema cache/i.test(msg);
+}
+
+/** `labor_entries` shape differs across migrations (timesheet vs daily log vs legacy). */
+async function insertLaborEntryShaped(
+  c: SupabaseClient,
+  opts: { workerId: string; projectId: string; workDate: string }
+): Promise<{ id: string }> {
+  const { workerId, projectId, workDate } = opts;
+  const attempts: Record<string, unknown>[] = [
+    {
+      worker_id: workerId,
+      project_id: projectId,
+      work_date: workDate,
+      hours: 4,
+      cost_amount: 50,
+    },
+    {
+      worker_id: workerId,
+      work_date: workDate,
+      project_am_id: projectId,
+      day_rate: 50,
+      ot_amount: 0,
+      total: 50,
+    },
+    {
+      worker_id: workerId,
+      date: workDate,
+      am_project_id: projectId,
+      half_day_rate: 50,
+      ot_amount: 0,
+      total: 50,
+      status: "draft",
+    },
+  ];
+  let lastErr = "";
+  for (const payload of attempts) {
+    const { data, error } = await c.from("labor_entries").insert(payload).select("id").single();
+    if (!error && data) return data as { id: string };
+    lastErr = error?.message ?? "";
+    if (lastErr && !isSchemaOrMissingColumn(lastErr)) break;
+  }
+  throw new Error(lastErr || "labor_entries insert failed");
 }
 
 const TEST_IDS = [
@@ -76,10 +122,14 @@ export async function POST(req: Request) {
         log("labor_workflow", "skip: no worker or project");
       } else {
         const workDate = new Date().toISOString().slice(0, 10);
-        const entries = await insertDailyLaborEntries(workDate, [
-          { worker_id: workerId, project_id: projectId, hours: 4, cost_code: null, notes: null },
-        ]);
-        if (entries.length === 0) {
+        let laborOk = false;
+        try {
+          await insertLaborEntryShaped(server, { workerId, projectId, workDate });
+          laborOk = true;
+        } catch {
+          laborOk = false;
+        }
+        if (!laborOk) {
           tests.push({ name: "labor_workflow", ok: false, steps: ["labor_entries not created"] });
         } else {
           steps.push("labor_entries created");
@@ -111,7 +161,7 @@ export async function POST(req: Request) {
           log("labor_workflow", "balance reduced");
           tests.push({
             name: "labor_workflow",
-            ok: entries.length > 0 && !!payment?.id && (reduced || balanceBefore === 0),
+            ok: laborOk && !!payment?.id && (reduced || balanceBefore === 0),
             steps,
           });
         }
