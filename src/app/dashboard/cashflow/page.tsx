@@ -13,6 +13,7 @@ import {
   getDeposits,
   getTotalDepositsAmount,
 } from "@/lib/data";
+import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 
 export const dynamic = "force-dynamic";
 
@@ -21,29 +22,46 @@ function fmtUsd(n: number): string {
 }
 
 export default async function CashflowPage() {
-  const [
-    invoicesWithDerived,
-    subcontractPaymentsSummary,
-    billsAll,
-    subcontractPaymentsAll,
-    laborPayments,
-    totalExpenses,
-    projects,
-    subcontractsDetails,
-    depositsTotal,
-    depositsList,
-  ] = await Promise.all([
-    getInvoicesWithDerived(),
-    getPaymentsSummaryAll(),
-    getBillsAll(),
-    getSubcontractPaymentsAll(),
-    getLaborPayments(),
-    getTotalExpenses(),
-    getProjects(),
-    getSubcontractsWithDetailsAll().catch(() => []),
-    getTotalDepositsAmount(),
-    getDeposits(),
-  ]);
+  let invoicesWithDerived: Awaited<ReturnType<typeof getInvoicesWithDerived>> = [];
+  let subcontractPaymentsSummary: Awaited<ReturnType<typeof getPaymentsSummaryAll>> = [];
+  let billsAll: Awaited<ReturnType<typeof getBillsAll>> = [];
+  let subcontractPaymentsAll: Awaited<ReturnType<typeof getSubcontractPaymentsAll>> = [];
+  let laborPayments: Awaited<ReturnType<typeof getLaborPayments>> = [];
+  let totalExpenses = 0;
+  let projects: Awaited<ReturnType<typeof getProjects>> = [];
+  let subcontractsDetails: Awaited<ReturnType<typeof getSubcontractsWithDetailsAll>> = [];
+  let depositsTotal = 0;
+  let depositsList: Awaited<ReturnType<typeof getDeposits>> = [];
+  let dataLoadWarning: string | null = null;
+
+  try {
+    [
+      invoicesWithDerived,
+      subcontractPaymentsSummary,
+      billsAll,
+      subcontractPaymentsAll,
+      laborPayments,
+      totalExpenses,
+      projects,
+      subcontractsDetails,
+      depositsTotal,
+      depositsList,
+    ] = await Promise.all([
+      getInvoicesWithDerived(),
+      getPaymentsSummaryAll(),
+      getBillsAll(),
+      getSubcontractPaymentsAll(),
+      getLaborPayments(),
+      getTotalExpenses(),
+      getProjects(),
+      getSubcontractsWithDetailsAll().catch(() => []),
+      getTotalDepositsAmount(),
+      getDeposits(),
+    ]);
+  } catch (e) {
+    logServerPageDataError("dashboard/cashflow", e);
+    dataLoadWarning = serverDataLoadWarning(e, "cashflow data");
+  }
 
   const cashIn = depositsTotal;
   const subcontractOut = subcontractPaymentsSummary.reduce((s, p) => s + p.amount, 0);
@@ -77,9 +95,18 @@ export default async function CashflowPage() {
     const projectId = subcontractIdToProjectId.get(p.subcontract_id) ?? "";
     cashOutByProject.set(projectId, (cashOutByProject.get(projectId) ?? 0) + p.amount);
   }
-  const projectExpenseTotals = await Promise.all(
-    projects.map((p) => getExpenseTotalsByProject(p.id))
-  );
+  let projectExpenseTotals: number[] = [];
+  if (projects.length > 0) {
+    try {
+      projectExpenseTotals = await Promise.all(
+        projects.map((p) => getExpenseTotalsByProject(p.id))
+      );
+    } catch (e) {
+      logServerPageDataError("dashboard/cashflow expense totals", e);
+      dataLoadWarning = dataLoadWarning ?? serverDataLoadWarning(e, "expense totals by project");
+      projectExpenseTotals = projects.map(() => 0);
+    }
+  }
   projects.forEach((p, i) => {
     const exp = projectExpenseTotals[i] ?? 0;
     cashOutByProject.set(p.id, (cashOutByProject.get(p.id) ?? 0) + exp);
@@ -106,6 +133,11 @@ export default async function CashflowPage() {
         />
       }
     >
+      {dataLoadWarning ? (
+        <p className="border-b border-border/60 pb-3 text-sm text-muted-foreground" role="status">
+          {dataLoadWarning}
+        </p>
+      ) : null}
       <SectionHeader label="Current Position" />
       <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 py-3 border-b border-border/60">
         <span className="text-sm text-muted-foreground">Cash In</span>

@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
 import { getProjectById, getLaborEntriesWithJoins, getWorkers } from "@/lib/data";
+import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
+import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 
 function fmtUsd(n: number): string {
@@ -12,13 +14,34 @@ type Props = { params: Promise<{ id: string }> };
 
 export default async function ProjectLaborPage({ params }: Props) {
   const { id } = await params;
-  const [project, entries] = await Promise.all([
-    getProjectById(id),
-    getLaborEntriesWithJoins({ project_id: id }),
-  ]);
-  const workers = await getWorkers();
 
+  let project: Awaited<ReturnType<typeof getProjectById>> | undefined;
+  try {
+    project = await getProjectById(id);
+  } catch (e) {
+    logServerPageDataError(`projects/${id}/labor`, e);
+    return (
+      <ServerDataLoadFallback
+        message={serverDataLoadWarning(e, "project")}
+        backHref="/projects"
+        backLabel="Back to projects"
+      />
+    );
+  }
   if (!project) notFound();
+
+  let entries: Awaited<ReturnType<typeof getLaborEntriesWithJoins>> = [];
+  let workers: Awaited<ReturnType<typeof getWorkers>> = [];
+  let dataLoadWarning: string | null = null;
+  try {
+    [entries, workers] = await Promise.all([
+      getLaborEntriesWithJoins({ project_id: id }),
+      getWorkers(),
+    ]);
+  } catch (e) {
+    logServerPageDataError(`projects/${id}/labor entries`, e);
+    dataLoadWarning = serverDataLoadWarning(e, "labor data");
+  }
 
   const hourlyRateByWorkerId = new Map(workers.map((w) => [w.id, (w.halfDayRate ?? 0) / 4]));
   const entryAmount = (workerId: string, hours: number) =>
@@ -82,6 +105,11 @@ export default async function ProjectLaborPage({ params }: Props) {
       }
     >
       <SetBreadcrumbEntityTitle label={project.name} />
+      {dataLoadWarning ? (
+        <p className="border-b border-border/60 pb-3 text-sm text-muted-foreground" role="status">
+          {dataLoadWarning}
+        </p>
+      ) : null}
       {/* Header: Project name, Total Labor Cost */}
       <div className="flex items-baseline justify-between py-3 border-b border-border/60">
         <h2 className="text-lg font-semibold">{project.name}</h2>

@@ -21,7 +21,13 @@ import {
 } from "@/app/subcontractors/[id]/actions";
 import { runOptimisticPersist } from "@/lib/optimistic-save";
 
-export function SubcontractorsTableClient({ rows }: { rows: SubcontractorRow[] }) {
+export function SubcontractorsTableClient({
+  rows,
+  dataLoadWarning = null,
+}: {
+  rows: SubcontractorRow[];
+  dataLoadWarning?: string | null;
+}) {
   const router = useRouter();
   const { toast } = useToast();
   const [localRows, setLocalRows] = React.useState<SubcontractorRow[]>(rows);
@@ -124,6 +130,11 @@ export function SubcontractorsTableClient({ rows }: { rows: SubcontractorRow[] }
 
   return (
     <>
+      {dataLoadWarning ? (
+        <p className="border-b border-border/60 pb-3 text-sm text-muted-foreground" role="status">
+          {dataLoadWarning}
+        </p>
+      ) : null}
       <div className="overflow-x-auto">
         <table className="w-full text-sm border-collapse">
           <thead>
@@ -147,7 +158,7 @@ export function SubcontractorsTableClient({ rows }: { rows: SubcontractorRow[] }
             {localRows.length === 0 ? (
               <tr className="border-b border-border/40">
                 <td colSpan={5} className="py-6 px-3 text-center text-muted-foreground text-xs">
-                  No subcontractors yet.
+                  {dataLoadWarning ? "Could not load subcontractors." : "No subcontractors yet."}
                 </td>
               </tr>
             ) : (

@@ -7,6 +7,7 @@ import {
   getSubcontractsSummaryAll,
   getPaymentsSummaryAll,
 } from "@/lib/data";
+import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 
 export const dynamic = "force-dynamic";
 
@@ -15,13 +16,32 @@ function fmtUsd(n: number): string {
 }
 
 export default async function OwnerPage() {
-  const projects = await getProjects();
-  const projectSummaries = await Promise.all(
-    projects.map(async (p) => {
-      const s = await getProjectForecastSummary(p.id, { includeCostCodeVariances: true });
-      return { project: p, ...s };
-    })
-  );
+  let projects: Awaited<ReturnType<typeof getProjects>> = [];
+  let dataLoadWarning: string | null = null;
+  try {
+    projects = await getProjects();
+  } catch (e) {
+    logServerPageDataError("owner projects", e);
+    dataLoadWarning = serverDataLoadWarning(e, "projects");
+  }
+
+  type SummaryRow = Awaited<ReturnType<typeof getProjectForecastSummary>> & {
+    project: (typeof projects)[number];
+  };
+  let projectSummaries: SummaryRow[] = [];
+  if (projects.length > 0) {
+    try {
+      projectSummaries = await Promise.all(
+        projects.map(async (p) => {
+          const s = await getProjectForecastSummary(p.id, { includeCostCodeVariances: true });
+          return { project: p, ...s };
+        })
+      );
+    } catch (e) {
+      logServerPageDataError("owner forecasts", e);
+      dataLoadWarning = dataLoadWarning ?? serverDataLoadWarning(e, "project forecasts");
+    }
+  }
 
   const totalRevenue = projectSummaries.reduce((s, x) => s + x.revenue, 0);
   const totalActualCost = projectSummaries.reduce((s, x) => s + x.actualCost, 0);
@@ -43,11 +63,19 @@ export default async function OwnerPage() {
     .sort((a, b) => b.variance - a.variance)
     .slice(0, 5);
 
-  const [subcontractors, subcontractsSummary, paymentsSummary] = await Promise.all([
-    getSubcontractors(),
-    getSubcontractsSummaryAll().catch(() => []),
-    getPaymentsSummaryAll().catch(() => []),
-  ]);
+  let subcontractors: Awaited<ReturnType<typeof getSubcontractors>> = [];
+  let subcontractsSummary: Awaited<ReturnType<typeof getSubcontractsSummaryAll>> = [];
+  let paymentsSummary: Awaited<ReturnType<typeof getPaymentsSummaryAll>> = [];
+  try {
+    subcontractors = await getSubcontractors();
+    [subcontractsSummary, paymentsSummary] = await Promise.all([
+      getSubcontractsSummaryAll().catch(() => []),
+      getPaymentsSummaryAll().catch(() => []),
+    ]);
+  } catch (e) {
+    logServerPageDataError("owner subcontractors", e);
+    dataLoadWarning = dataLoadWarning ?? serverDataLoadWarning(e, "subcontractor data");
+  }
   const paidBySubcontractId = new Map<string, number>();
   for (const p of paymentsSummary) {
     paidBySubcontractId.set(
@@ -93,6 +121,11 @@ export default async function OwnerPage() {
         />
       }
     >
+      {dataLoadWarning ? (
+        <p className="border-b border-border/60 pb-3 text-sm text-muted-foreground" role="status">
+          {dataLoadWarning}
+        </p>
+      ) : null}
       <SectionHeader label="Totals" />
       <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 py-3 border-b border-border/60">
         <span className="text-sm text-muted-foreground">Total Revenue</span>

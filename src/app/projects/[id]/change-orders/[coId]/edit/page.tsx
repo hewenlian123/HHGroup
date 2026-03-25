@@ -4,6 +4,8 @@ import { getProjectById, getChangeOrderById, getChangeOrderItems } from "@/lib/d
 import { PageLayout, PageHeader } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { ChangeOrderEditClient } from "./change-order-edit-client";
+import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
+import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 
 export default async function ChangeOrderEditPage({
@@ -12,12 +14,50 @@ export default async function ChangeOrderEditPage({
   params: Promise<{ id: string; coId: string }>;
 }) {
   const { id: projectId, coId } = await params;
-  const project = await getProjectById(projectId);
+  let project: Awaited<ReturnType<typeof getProjectById>> | undefined;
+  try {
+    project = await getProjectById(projectId);
+  } catch (e) {
+    logServerPageDataError(`projects/${projectId}/change-orders/${coId}/edit`, e);
+    return (
+      <ServerDataLoadFallback
+        message={serverDataLoadWarning(e, "project")}
+        backHref="/projects"
+        backLabel="Back to projects"
+      />
+    );
+  }
   if (!project) notFound();
-  const co = await getChangeOrderById(coId);
+
+  let co: Awaited<ReturnType<typeof getChangeOrderById>> | null = null;
+  try {
+    co = await getChangeOrderById(coId);
+  } catch (e) {
+    logServerPageDataError(`projects/${projectId}/change-orders/${coId}/edit co`, e);
+    return (
+      <ServerDataLoadFallback
+        message={serverDataLoadWarning(e, "change order")}
+        backHref={`/projects/${projectId}?tab=change-orders`}
+        backLabel="Back to change orders"
+      />
+    );
+  }
   if (!co || co.projectId !== projectId) notFound();
   if (co.status !== "Draft") redirect(`/projects/${projectId}/change-orders/${coId}`);
-  const items = await getChangeOrderItems(coId);
+
+  let items: Awaited<ReturnType<typeof getChangeOrderItems>> = [];
+  try {
+    items = await getChangeOrderItems(coId);
+  } catch (e) {
+    logServerPageDataError(`projects/${projectId}/change-orders/${coId}/edit items`, e);
+    return (
+      <ServerDataLoadFallback
+        message={serverDataLoadWarning(e, "change order line items")}
+        backHref={`/projects/${projectId}/change-orders/${coId}`}
+        backLabel="Back to change order"
+      />
+    );
+  }
   const subtotal = items.reduce((s, i) => s + i.total, 0);
   const total = co.total;
 

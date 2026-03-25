@@ -12,6 +12,8 @@ import { Pencil } from "lucide-react";
 import { ChangeOrderStatusDropdown } from "./change-order-header-actions";
 import { ChangeOrderLineItemsTable } from "./change-order-line-items-table";
 import { ChangeOrderAttachmentsSection } from "./change-order-attachments-section";
+import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
+import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 
 function fmtUsd(n: number): string {
@@ -24,14 +26,48 @@ export default async function ChangeOrderDetailPage({
   params: Promise<{ id: string; coId: string }>;
 }) {
   const { id: projectId, coId } = await params;
-  const project = await getProjectById(projectId);
+  let project: Awaited<ReturnType<typeof getProjectById>> | undefined;
+  try {
+    project = await getProjectById(projectId);
+  } catch (e) {
+    logServerPageDataError(`projects/${projectId}/change-orders/${coId}`, e);
+    return (
+      <ServerDataLoadFallback
+        message={serverDataLoadWarning(e, "project")}
+        backHref="/projects"
+        backLabel="Back to projects"
+      />
+    );
+  }
   if (!project) notFound();
-  const co = await getChangeOrderById(coId);
+
+  let co: Awaited<ReturnType<typeof getChangeOrderById>> | null = null;
+  try {
+    co = await getChangeOrderById(coId);
+  } catch (e) {
+    logServerPageDataError(`projects/${projectId}/change-orders/${coId} co`, e);
+    return (
+      <ServerDataLoadFallback
+        message={serverDataLoadWarning(e, "change order")}
+        backHref={`/projects/${projectId}?tab=change-orders`}
+        backLabel="Back to change orders"
+      />
+    );
+  }
   if (!co || co.projectId !== projectId) notFound();
-  const [items, attachments] = await Promise.all([
-    getChangeOrderItems(coId),
-    getChangeOrderAttachments(coId),
-  ]);
+
+  let items: Awaited<ReturnType<typeof getChangeOrderItems>> = [];
+  let attachments: Awaited<ReturnType<typeof getChangeOrderAttachments>> = [];
+  let dataLoadWarning: string | null = null;
+  try {
+    [items, attachments] = await Promise.all([
+      getChangeOrderItems(coId),
+      getChangeOrderAttachments(coId),
+    ]);
+  } catch (e) {
+    logServerPageDataError(`projects/${projectId}/change-orders/${coId} items`, e);
+    dataLoadWarning = serverDataLoadWarning(e, "change order line items");
+  }
   const subtotal = items.reduce((s, i) => s + i.total, 0);
   const revenueAmount = co.amount != null ? co.amount : co.total;
   const isLocked = co.status === "Approved";
@@ -41,6 +77,14 @@ export default async function ChangeOrderDetailPage({
   return (
     <div className="page-container py-6">
       <SetBreadcrumbEntityTitle label={coBreadcrumbLabel} />
+      {dataLoadWarning ? (
+        <p
+          className="mb-3 border-b border-border/60 pb-3 text-sm text-muted-foreground"
+          role="status"
+        >
+          {dataLoadWarning}
+        </p>
+      ) : null}
       <div className="mb-3">
         <Link
           href={`/projects/${projectId}?tab=change-orders`}

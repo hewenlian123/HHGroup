@@ -11,6 +11,8 @@ import {
 } from "@/lib/data";
 import { SubcontractorW9 } from "./subcontractor-w9";
 import { SubcontractorDetailClient } from "./subcontractor-detail-client";
+import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
+import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 
 function fmtUsd(n: number): string {
@@ -21,17 +23,41 @@ type Props = { params: Promise<{ id: string }> };
 
 export default async function SubcontractorDetailPage({ params }: Props) {
   const { id } = await params;
-  const subcontractor = await getSubcontractorById(id);
+  let subcontractor: SubcontractorRow | null = null;
+  try {
+    subcontractor = await getSubcontractorById(id);
+  } catch (e) {
+    logServerPageDataError(`subcontractors/${id}`, e);
+    return (
+      <ServerDataLoadFallback
+        message={serverDataLoadWarning(e, "subcontractor")}
+        backHref="/subcontractors"
+        backLabel="Back to subcontractors"
+      />
+    );
+  }
   if (!subcontractor) notFound();
 
-  const contracts = await getSubcontractsBySubcontractor(id);
-  const subcontractIds = contracts.map((c) => c.id);
+  let contracts: Awaited<ReturnType<typeof getSubcontractsBySubcontractor>> = [];
+  let bills: Awaited<ReturnType<typeof getBillsBySubcontractIds>> = [];
+  let payments: Awaited<ReturnType<typeof getPaymentsBySubcontractIds>> = [];
+  let budgetItemArrays: Awaited<ReturnType<typeof getProjectBudgetItems>>[] = [];
+  let dataLoadWarning: string | null = null;
+  try {
+    contracts = await getSubcontractsBySubcontractor(id);
+    const subcontractIds = contracts.map((c) => c.id);
+    const projectIds = Array.from(new Set(contracts.map((c) => c.project_id)));
+    [bills, payments] = await Promise.all([
+      getBillsBySubcontractIds(subcontractIds),
+      getPaymentsBySubcontractIds(subcontractIds),
+    ]);
+    budgetItemArrays = await Promise.all(projectIds.map((pid) => getProjectBudgetItems(pid)));
+  } catch (e) {
+    logServerPageDataError(`subcontractors/${id} financials`, e);
+    dataLoadWarning = serverDataLoadWarning(e, "subcontractor contracts or payments");
+  }
+
   const projectIds = Array.from(new Set(contracts.map((c) => c.project_id)));
-  const [bills, payments, ...budgetItemArrays] = await Promise.all([
-    getBillsBySubcontractIds(subcontractIds),
-    getPaymentsBySubcontractIds(subcontractIds),
-    ...projectIds.map((pid) => getProjectBudgetItems(pid)),
-  ]);
 
   const approvedCoByProjectAndCostCode = new Map<string, Map<string, number>>();
   projectIds.forEach((pid, idx) => {
@@ -96,6 +122,11 @@ export default async function SubcontractorDetailPage({ params }: Props) {
       }
     >
       <SetBreadcrumbEntityTitle label={subcontractor.name} />
+      {dataLoadWarning ? (
+        <p className="border-b border-border/60 pb-3 text-sm text-muted-foreground" role="status">
+          {dataLoadWarning}
+        </p>
+      ) : null}
       {insuranceAlert ? (
         <div className="py-2 px-3 border-b border-border/60 bg-amber-500/10 dark:bg-amber-500/10">
           <StatusBadge

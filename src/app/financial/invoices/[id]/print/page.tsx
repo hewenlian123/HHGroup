@@ -3,6 +3,8 @@ import Link from "next/link";
 import { getInvoiceById, getProjectById } from "@/lib/data";
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 import { DocumentCompanyHeader } from "@/components/documents/document-company-header";
+import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
+import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 
 /** Company block must reflect latest `company_profile` after Settings saves (no stale RSC cache). */
@@ -10,12 +12,38 @@ export const dynamic = "force-dynamic";
 
 export default async function InvoicePrintPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const invoice = await getInvoiceById(id);
+  let invoice: Awaited<ReturnType<typeof getInvoiceById>> | null = null;
+  try {
+    invoice = await getInvoiceById(id);
+  } catch (e) {
+    logServerPageDataError(`financial/invoices/${id}/print`, e);
+    return (
+      <ServerDataLoadFallback
+        message={serverDataLoadWarning(e, "invoice")}
+        backHref="/financial/invoices"
+        backLabel="Back to invoices"
+      />
+    );
+  }
   if (!invoice) notFound();
-  const [project, company] = await Promise.all([
-    getProjectById(invoice.projectId),
-    fetchDocumentCompanyProfile(),
-  ]);
+
+  let project: Awaited<ReturnType<typeof getProjectById>> | undefined;
+  let company: Awaited<ReturnType<typeof fetchDocumentCompanyProfile>>;
+  try {
+    [project, company] = await Promise.all([
+      getProjectById(invoice.projectId),
+      fetchDocumentCompanyProfile(),
+    ]);
+  } catch (e) {
+    logServerPageDataError(`financial/invoices/${id}/print details`, e);
+    return (
+      <ServerDataLoadFallback
+        message={serverDataLoadWarning(e, "invoice details")}
+        backHref={`/financial/invoices/${id}`}
+        backLabel="View invoice in app"
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white text-black p-8 mx-auto" style={{ maxWidth: "8.5in" }}>

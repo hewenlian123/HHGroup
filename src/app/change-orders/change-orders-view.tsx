@@ -54,9 +54,11 @@ function formatAmount(total: number, amount: number | null): string {
 export function ChangeOrdersView({
   projects,
   grouped,
+  dataLoadWarning = null,
 }: {
   projects: { id: string; name: string }[];
   grouped: ProjectGroup[];
+  dataLoadWarning?: string | null;
 }) {
   const router = useRouter();
   useOnAppSync(
@@ -106,11 +108,20 @@ export function ChangeOrdersView({
         className="min-w-0 font-sans"
         style={{ fontFamily: "var(--font-inter), Inter, system-ui, sans-serif" }}
       >
+        {dataLoadWarning ? (
+          <p className="border-b border-border/60 pb-3 text-sm text-muted-foreground" role="status">
+            {dataLoadWarning}
+          </p>
+        ) : null}
         {grouped.length === 0 ? (
           <div className="py-24 text-center">
-            <p className="text-[15px] text-[#6b7280]">No change orders yet.</p>
+            <p className="text-[15px] text-[#6b7280]">
+              {dataLoadWarning ? "Could not load change orders." : "No change orders yet."}
+            </p>
             <p className="mt-1 text-sm text-[#9ca3af]">
-              Create a project first, then add change orders from the project.
+              {dataLoadWarning
+                ? "Check your connection and database configuration, then refresh."
+                : "Create a project first, then add change orders from the project."}
             </p>
             {projects.length > 0 && (
               <Button

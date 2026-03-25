@@ -2,6 +2,7 @@ import Link from "next/link";
 import { unstable_noStore } from "next/cache";
 import { PageHeader } from "@/components/page-header";
 import { getEstimateList } from "@/lib/data";
+import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, FlaskConical } from "lucide-react";
@@ -19,7 +20,14 @@ export default async function EstimatesListPage({
 }) {
   unstable_noStore();
   const { saved, error } = await searchParams;
-  const list = await getEstimateList();
+  let list: Awaited<ReturnType<typeof getEstimateList>> = [];
+  let loadWarning: string | null = null;
+  try {
+    list = await getEstimateList();
+  } catch (e) {
+    logServerPageDataError("estimates", e);
+    loadWarning = serverDataLoadWarning(e, "estimates");
+  }
 
   const errorMessage =
     error === "create"
@@ -56,6 +64,11 @@ export default async function EstimatesListPage({
         }
       />
       <EstimateSuccessBanner saved={saved} />
+      {loadWarning && (
+        <p role="status" className="border-b border-border/60 pb-3 text-sm text-muted-foreground">
+          {loadWarning}
+        </p>
+      )}
       {errorMessage && (
         <p
           role="alert"
@@ -66,8 +79,12 @@ export default async function EstimatesListPage({
       )}
       {list.length === 0 ? (
         <EmptyState
-          title="No estimates yet"
-          description="Create an estimate to get started."
+          title={loadWarning ? "Could not load estimates" : "No estimates yet"}
+          description={
+            loadWarning
+              ? "Check your connection and database configuration, then refresh."
+              : "Create an estimate to get started."
+          }
           icon={<FlaskConical className="h-5 w-5" />}
           action={
             <Button asChild size="sm" className="h-8">

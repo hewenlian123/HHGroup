@@ -62,9 +62,11 @@ function profitClass(n: number): string {
 export function ProjectsListClient({
   rows,
   titleFontClassName,
+  dataLoadWarning = null,
 }: {
   rows: ProjectsListRow[];
   titleFontClassName: string;
+  dataLoadWarning?: string | null;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -150,6 +152,14 @@ export function ProjectsListClient({
 
   return (
     <div className="font-sans text-graphite antialiased">
+      {dataLoadWarning ? (
+        <p
+          className="mb-6 border-b border-border/60 pb-3 text-sm text-muted-foreground"
+          role="status"
+        >
+          {dataLoadWarning}
+        </p>
+      ) : null}
       {/* Title + actions */}
       <div className="mb-10 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-3">
@@ -211,7 +221,11 @@ export function ProjectsListClient({
       {filtered.length === 0 ? (
         <div className="rounded-3xl border border-border-soft/60 bg-white px-10 py-16 text-center shadow-paper-card dark:border-border dark:bg-card dark:shadow-none">
           <p className="text-sm font-medium text-graphite/60">
-            {query.trim() || view !== "all" ? "No projects match your filter." : "No projects yet."}
+            {dataLoadWarning
+              ? "Could not load projects."
+              : query.trim() || view !== "all"
+                ? "No projects match your filter."
+                : "No projects yet."}
           </p>
           {!query.trim() && view === "all" ? (
             <Button

@@ -32,7 +32,13 @@ function statusDot(status: string) {
 
 export type ReceiptRow = WorkerReceipt & { projectName: string };
 
-export function ReceiptsClient({ initialRows }: { initialRows: ReceiptRow[] }) {
+export function ReceiptsClient({
+  initialRows,
+  dataLoadWarning = null,
+}: {
+  initialRows: ReceiptRow[];
+  dataLoadWarning?: string | null;
+}) {
   const router = useRouter();
   const [rows, setRows] = React.useState(initialRows);
   const [busyId, setBusyId] = React.useState<string | null>(null);
@@ -181,6 +187,12 @@ export function ReceiptsClient({ initialRows }: { initialRows: ReceiptRow[] }) {
         title="Worker Receipt Uploads"
         description="Approve or reject uploaded receipts; approved items become reimbursements."
       />
+
+      {dataLoadWarning ? (
+        <p className="border-b border-border/60 pb-3 text-sm text-muted-foreground" role="status">
+          {dataLoadWarning}
+        </p>
+      ) : null}
 
       {message && (
         <p className="text-sm text-destructive border-b border-border/60 pb-3 mb-3 flex items-center justify-between gap-2">
