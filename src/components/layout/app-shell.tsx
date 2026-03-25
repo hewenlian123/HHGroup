@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 import { BottomNav } from "./bottom-nav";
@@ -17,11 +17,16 @@ import { cn } from "@/lib/utils";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const modeParam = searchParams?.get("mode")?.toLowerCase() ?? "";
+  const workerModeUrl =
+    (pathname === "/labor/daily-entry" || pathname === "/labor/daily") && modeParam === "worker";
   const barePage =
     pathname === "/receipt" ||
     pathname === "/upload-receipt" ||
     pathname?.startsWith("/upload-receipt/") ||
-    pathname?.startsWith("/receipt/print/");
+    pathname?.startsWith("/receipt/print/") ||
+    workerModeUrl;
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [collapsed, setCollapsed] = React.useState(false);
 

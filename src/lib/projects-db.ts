@@ -217,13 +217,19 @@ const COLS =
 
 /** Same as COLS plus linked customer name for list/detail when `client` / `client_name` are empty. */
 const COLS_WITH_CUSTOMER = `${COLS},customers(name)`;
+/** Legacy-safe minimal columns for partially migrated local schemas. */
+const COLS_BASE = "id,name,status,budget,spent,created_at,updated_at,client,address";
 
 export async function getProjects(): Promise<Project[]> {
   const c = client();
-  const { data: rows, error } = await c
-    .from("projects")
-    .select(COLS_WITH_CUSTOMER)
-    .order("updated_at", { ascending: false });
+  let rows: ProjectRow[] | null = null;
+  let error: { message?: string } | null = null;
+  for (const cols of [COLS_WITH_CUSTOMER, COLS, COLS_BASE]) {
+    const res = await c.from("projects").select(cols).order("updated_at", { ascending: false });
+    rows = (res.data ?? null) as ProjectRow[] | null;
+    error = res.error;
+    if (!error) break;
+  }
   if (error) {
     if (isMissingTable(error)) throw new Error(`Projects table not found. ${HINT}`);
     throw new Error(error.message ? `${error.message} ${HINT}` : HINT);
@@ -276,11 +282,14 @@ export async function getProjectsDashboard(
 
 export async function getProjectById(id: string): Promise<Project | null> {
   const c = client();
-  const { data: r, error } = await c
-    .from("projects")
-    .select(COLS_WITH_CUSTOMER)
-    .eq("id", id)
-    .maybeSingle();
+  let r: ProjectRow | null = null;
+  let error: { message?: string } | null = null;
+  for (const cols of [COLS_WITH_CUSTOMER, COLS, COLS_BASE]) {
+    const res = await c.from("projects").select(cols).eq("id", id).maybeSingle();
+    r = (res.data ?? null) as ProjectRow | null;
+    error = res.error;
+    if (!error) break;
+  }
   if (error) {
     if (isMissingTable(error)) throw new Error(`Projects table not found. ${HINT}`);
     throw new Error(error.message ? `${error.message} ${HINT}` : HINT);
@@ -291,11 +300,18 @@ export async function getProjectById(id: string): Promise<Project | null> {
 /** Used to prevent duplicate convert-from-estimate: one estimate → one project. */
 export async function getProjectBySourceEstimateId(estimateId: string): Promise<Project | null> {
   const c = client();
-  const { data: r, error } = await c
-    .from("projects")
-    .select(COLS_WITH_CUSTOMER)
-    .eq("source_estimate_id", estimateId)
-    .maybeSingle();
+  let r: ProjectRow | null = null;
+  let error: { message?: string } | null = null;
+  for (const cols of [COLS_WITH_CUSTOMER, COLS, COLS_BASE]) {
+    const res = await c
+      .from("projects")
+      .select(cols)
+      .eq("source_estimate_id", estimateId)
+      .maybeSingle();
+    r = (res.data ?? null) as ProjectRow | null;
+    error = res.error;
+    if (!error) break;
+  }
   if (error) {
     if (isMissingTable(error)) throw new Error(`Projects table not found. ${HINT}`);
     throw new Error(error.message ? `${error.message} ${HINT}` : HINT);

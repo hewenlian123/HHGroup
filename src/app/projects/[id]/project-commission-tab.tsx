@@ -29,6 +29,7 @@ export function ProjectCommissionTab({
   commissions: ProjectCommission[];
   onRefresh: () => void;
 }) {
+  const [rows, setRows] = React.useState<ProjectCommission[]>(commissions);
   const [modalOpen, setModalOpen] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -47,6 +48,10 @@ export function ProjectCommissionTab({
     form.calculation_mode === "Auto" && form.rate !== "" && form.base_amount !== ""
       ? Number(form.base_amount) * Number(form.rate)
       : null;
+
+  React.useEffect(() => {
+    setRows(commissions);
+  }, [commissions]);
 
   const handleOpen = () => {
     setForm({
@@ -90,6 +95,9 @@ export function ProjectCommissionTab({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message ?? "Failed to create commission");
+      if (data?.commission) {
+        setRows((prev) => [data.commission as ProjectCommission, ...prev]);
+      }
       setModalOpen(false);
       onRefresh();
     } catch (err) {
@@ -105,6 +113,7 @@ export function ProjectCommissionTab({
       const res = await fetch(`/api/projects/${projectId}/commissions/${id}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message ?? "Failed to delete");
+      setRows((prev) => prev.filter((r) => r.id !== id));
       onRefresh();
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to delete");
@@ -151,14 +160,14 @@ export function ProjectCommissionTab({
             </tr>
           </thead>
           <tbody>
-            {commissions.length === 0 ? (
+            {rows.length === 0 ? (
               <tr>
                 <td colSpan={8} className="py-6 text-center text-muted-foreground text-sm">
                   No commissions. Click &quot;+ Add Commission&quot; to add one.
                 </td>
               </tr>
             ) : (
-              commissions.map((c) => (
+              rows.map((c) => (
                 <tr key={c.id} className="border-b border-border/60 last:border-b-0">
                   <td className="py-2 px-3 font-medium text-foreground">{c.person_name || "—"}</td>
                   <td className="py-2 px-3 text-muted-foreground">{c.role}</td>
