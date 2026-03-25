@@ -559,6 +559,24 @@ export async function insertDailyLaborEntries(
   const workers = await Promise.all(workerIds.map((id) => getWorkerById(id)));
   const workerMap = new Map(workers.filter((w): w is Worker => w != null).map((w) => [w.id, w]));
 
+  // Safety: ensure labor_workers has rows for selected workers.
+  // Some schemas have labor_entries.worker_id FK → labor_workers(id), but labor_workers can drift
+  // if the sync migration/trigger wasn't applied or backfilled.
+  const ensureLaborWorkers = async () => {
+    try {
+      const payload = Array.from(workerMap.values()).map((w) => ({
+        id: w.id,
+        name: w.name ?? "",
+        created_at: (w as { created_at?: string }).created_at ?? new Date().toISOString(),
+      }));
+      if (payload.length === 0) return;
+      await c.from("labor_workers").upsert(payload, { onConflict: "id" });
+    } catch {
+      // If labor_workers table doesn't exist in this schema, ignore.
+    }
+  };
+  await ensureLaborWorkers();
+
   const payloads: Array<Record<string, unknown>> = [];
   for (const r of toInsert) {
     const worker = workerMap.get(r.workerId);
@@ -586,7 +604,7 @@ export async function insertDailyLaborEntries(
   if (payloads.length === 0) return [];
 
   const colsForSelect = LABOR_ENTRIES_DAILY_COLS;
-  const { data: inserted, error } = await c
+  let { data: inserted, error } = await c
     .from("labor_entries")
     .insert(payloads)
     .select(colsForSelect);
@@ -607,9 +625,14 @@ export async function insertDailyLaborEntries(
     }
     const msg = error.message ?? "";
     if (/foreign key constraint|worker_id_fkey/i.test(msg)) {
-      throw new Error(
-        "Selected worker(s) not found in the database. Run the migration that syncs labor_workers from workers (202604010000), or run supabase/sync_labor_workers_from_workers.sql in the Supabase SQL Editor."
-      );
+      // One retry after syncing labor_workers from workers table.
+      await ensureLaborWorkers();
+      const retry = await c.from("labor_entries").insert(payloads).select(colsForSelect);
+      inserted = retry.data as typeof inserted;
+      error = retry.error as typeof error;
+      if (!error) return (inserted ?? []).map((r) => toLaborEntry(r as LaborEntryRow));
+
+      throw new Error("Selected worker(s) not found in the database.");
     }
     throw new Error(error.message ?? "Failed to save daily labor entries.");
   }
