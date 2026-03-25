@@ -69,6 +69,8 @@ export interface DashboardViewProps {
   recentActivity: RecentTransaction[];
   budgetUsagePct: number;
   profitPositive: boolean;
+  /** Set when primary dashboard queries failed (e.g. Supabase misconfiguration). */
+  dataLoadWarning?: string | null;
 }
 
 function fmtUsd(n: number): string {
@@ -113,11 +115,17 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
     recentActivity,
     budgetUsagePct,
     profitPositive,
+    dataLoadWarning,
   } = props;
 
   return (
     <div className="min-h-full bg-warm-grey dark:bg-background">
       <div className="max-w-6xl mx-auto px-6 py-6 space-y-6">
+        {dataLoadWarning ? (
+          <p className="border-b border-border/60 pb-3 text-sm text-muted-foreground" role="status">
+            {dataLoadWarning}
+          </p>
+        ) : null}
         {/* Section 1 — Page header */}
         <header className="flex items-start justify-between gap-4">
           <div>
