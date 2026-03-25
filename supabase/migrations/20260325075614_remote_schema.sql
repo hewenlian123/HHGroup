@@ -363,21 +363,25 @@ drop policy "vendors_perm_select" on "public"."vendors";
 
 drop policy "vendors_perm_update" on "public"."vendors";
 
-drop policy "worker_advances_delete_all" on "public"."worker_advances";
+do $$
+begin
+  if to_regclass('public.worker_advances') is not null then
+    drop policy if exists "worker_advances_delete_all" on "public"."worker_advances";
+    drop policy if exists "worker_advances_insert_all" on "public"."worker_advances";
+    drop policy if exists "worker_advances_select_all" on "public"."worker_advances";
+    drop policy if exists "worker_advances_update_all" on "public"."worker_advances";
+  end if;
+end $$;
 
-drop policy "worker_advances_insert_all" on "public"."worker_advances";
-
-drop policy "worker_advances_select_all" on "public"."worker_advances";
-
-drop policy "worker_advances_update_all" on "public"."worker_advances";
-
-drop policy "worker_receipts_delete" on "public"."worker_receipts";
-
-drop policy "worker_receipts_insert" on "public"."worker_receipts";
-
-drop policy "worker_receipts_select" on "public"."worker_receipts";
-
-drop policy "worker_receipts_update" on "public"."worker_receipts";
+do $$
+begin
+  if to_regclass('public.worker_receipts') is not null then
+    drop policy if exists "worker_receipts_delete" on "public"."worker_receipts";
+    drop policy if exists "worker_receipts_insert" on "public"."worker_receipts";
+    drop policy if exists "worker_receipts_select" on "public"."worker_receipts";
+    drop policy if exists "worker_receipts_update" on "public"."worker_receipts";
+  end if;
+end $$;
 
 revoke delete on table "public"."ap_bill_payments" from "anon";
 
@@ -925,131 +929,41 @@ revoke truncate on table "public"."project_change_order_attachments" from "servi
 
 revoke update on table "public"."project_change_order_attachments" from "service_role";
 
-revoke delete on table "public"."project_closeout_completion" from "anon";
+do $$
+begin
+  if to_regclass('public.project_closeout_completion') is not null then
+    revoke delete, insert, references, select, trigger, truncate, update
+      on table "public"."project_closeout_completion" from "anon";
+    revoke delete, insert, references, select, trigger, truncate, update
+      on table "public"."project_closeout_completion" from "authenticated";
+    revoke delete, insert, references, select, trigger, truncate, update
+      on table "public"."project_closeout_completion" from "service_role";
+  end if;
+end $$;
 
-revoke insert on table "public"."project_closeout_completion" from "anon";
+do $$
+begin
+  if to_regclass('public.project_closeout_punch') is not null then
+    revoke delete, insert, references, select, trigger, truncate, update
+      on table "public"."project_closeout_punch" from "anon";
+    revoke delete, insert, references, select, trigger, truncate, update
+      on table "public"."project_closeout_punch" from "authenticated";
+    revoke delete, insert, references, select, trigger, truncate, update
+      on table "public"."project_closeout_punch" from "service_role";
+  end if;
+end $$;
 
-revoke references on table "public"."project_closeout_completion" from "anon";
-
-revoke select on table "public"."project_closeout_completion" from "anon";
-
-revoke trigger on table "public"."project_closeout_completion" from "anon";
-
-revoke truncate on table "public"."project_closeout_completion" from "anon";
-
-revoke update on table "public"."project_closeout_completion" from "anon";
-
-revoke delete on table "public"."project_closeout_completion" from "authenticated";
-
-revoke insert on table "public"."project_closeout_completion" from "authenticated";
-
-revoke references on table "public"."project_closeout_completion" from "authenticated";
-
-revoke select on table "public"."project_closeout_completion" from "authenticated";
-
-revoke trigger on table "public"."project_closeout_completion" from "authenticated";
-
-revoke truncate on table "public"."project_closeout_completion" from "authenticated";
-
-revoke update on table "public"."project_closeout_completion" from "authenticated";
-
-revoke delete on table "public"."project_closeout_completion" from "service_role";
-
-revoke insert on table "public"."project_closeout_completion" from "service_role";
-
-revoke references on table "public"."project_closeout_completion" from "service_role";
-
-revoke select on table "public"."project_closeout_completion" from "service_role";
-
-revoke trigger on table "public"."project_closeout_completion" from "service_role";
-
-revoke truncate on table "public"."project_closeout_completion" from "service_role";
-
-revoke update on table "public"."project_closeout_completion" from "service_role";
-
-revoke delete on table "public"."project_closeout_punch" from "anon";
-
-revoke insert on table "public"."project_closeout_punch" from "anon";
-
-revoke references on table "public"."project_closeout_punch" from "anon";
-
-revoke select on table "public"."project_closeout_punch" from "anon";
-
-revoke trigger on table "public"."project_closeout_punch" from "anon";
-
-revoke truncate on table "public"."project_closeout_punch" from "anon";
-
-revoke update on table "public"."project_closeout_punch" from "anon";
-
-revoke delete on table "public"."project_closeout_punch" from "authenticated";
-
-revoke insert on table "public"."project_closeout_punch" from "authenticated";
-
-revoke references on table "public"."project_closeout_punch" from "authenticated";
-
-revoke select on table "public"."project_closeout_punch" from "authenticated";
-
-revoke trigger on table "public"."project_closeout_punch" from "authenticated";
-
-revoke truncate on table "public"."project_closeout_punch" from "authenticated";
-
-revoke update on table "public"."project_closeout_punch" from "authenticated";
-
-revoke delete on table "public"."project_closeout_punch" from "service_role";
-
-revoke insert on table "public"."project_closeout_punch" from "service_role";
-
-revoke references on table "public"."project_closeout_punch" from "service_role";
-
-revoke select on table "public"."project_closeout_punch" from "service_role";
-
-revoke trigger on table "public"."project_closeout_punch" from "service_role";
-
-revoke truncate on table "public"."project_closeout_punch" from "service_role";
-
-revoke update on table "public"."project_closeout_punch" from "service_role";
-
-revoke delete on table "public"."project_closeout_warranty" from "anon";
-
-revoke insert on table "public"."project_closeout_warranty" from "anon";
-
-revoke references on table "public"."project_closeout_warranty" from "anon";
-
-revoke select on table "public"."project_closeout_warranty" from "anon";
-
-revoke trigger on table "public"."project_closeout_warranty" from "anon";
-
-revoke truncate on table "public"."project_closeout_warranty" from "anon";
-
-revoke update on table "public"."project_closeout_warranty" from "anon";
-
-revoke delete on table "public"."project_closeout_warranty" from "authenticated";
-
-revoke insert on table "public"."project_closeout_warranty" from "authenticated";
-
-revoke references on table "public"."project_closeout_warranty" from "authenticated";
-
-revoke select on table "public"."project_closeout_warranty" from "authenticated";
-
-revoke trigger on table "public"."project_closeout_warranty" from "authenticated";
-
-revoke truncate on table "public"."project_closeout_warranty" from "authenticated";
-
-revoke update on table "public"."project_closeout_warranty" from "authenticated";
-
-revoke delete on table "public"."project_closeout_warranty" from "service_role";
-
-revoke insert on table "public"."project_closeout_warranty" from "service_role";
-
-revoke references on table "public"."project_closeout_warranty" from "service_role";
-
-revoke select on table "public"."project_closeout_warranty" from "service_role";
-
-revoke trigger on table "public"."project_closeout_warranty" from "service_role";
-
-revoke truncate on table "public"."project_closeout_warranty" from "service_role";
-
-revoke update on table "public"."project_closeout_warranty" from "service_role";
+do $$
+begin
+  if to_regclass('public.project_closeout_warranty') is not null then
+    revoke delete, insert, references, select, trigger, truncate, update
+      on table "public"."project_closeout_warranty" from "anon";
+    revoke delete, insert, references, select, trigger, truncate, update
+      on table "public"."project_closeout_warranty" from "authenticated";
+    revoke delete, insert, references, select, trigger, truncate, update
+      on table "public"."project_closeout_warranty" from "service_role";
+  end if;
+end $$;
 
 revoke delete on table "public"."project_subcontractors" from "anon";
 
@@ -1135,177 +1049,206 @@ revoke truncate on table "public"."role_permissions" from "service_role";
 
 revoke update on table "public"."role_permissions" from "service_role";
 
-alter table "public"."accounts" drop constraint "accounts_type_check";
+alter table "public"."accounts" drop constraint if exists "accounts_type_check";
 
-alter table "public"."ap_bill_payments" drop constraint "ap_bill_payments_bill_id_fkey";
+alter table "public"."ap_bill_payments" drop constraint if exists "ap_bill_payments_bill_id_fkey";
 
-alter table "public"."ap_bills" drop constraint "ap_bills_bill_type_check";
+alter table "public"."ap_bills" drop constraint if exists "ap_bills_bill_type_check";
 
-alter table "public"."ap_bills" drop constraint "ap_bills_project_id_fkey";
+alter table "public"."ap_bills" drop constraint if exists "ap_bills_project_id_fkey";
 
-alter table "public"."ap_bills" drop constraint "ap_bills_status_check";
+alter table "public"."ap_bills" drop constraint if exists "ap_bills_status_check";
 
-alter table "public"."attachments" drop constraint "attachments_entity_type_check";
+alter table "public"."attachments" drop constraint if exists "attachments_entity_type_check";
 
-alter table "public"."bank_transactions" drop constraint "bank_transactions_linked_expense_id_fkey";
+alter table "public"."bank_transactions" drop constraint if exists "bank_transactions_linked_expense_id_fkey";
 
-alter table "public"."bank_transactions" drop constraint "bank_transactions_reconcile_type_check";
+alter table "public"."bank_transactions" drop constraint if exists "bank_transactions_reconcile_type_check";
 
-alter table "public"."bank_transactions" drop constraint "bank_transactions_status_check";
+alter table "public"."bank_transactions" drop constraint if exists "bank_transactions_status_check";
 
-alter table "public"."bill_items" drop constraint "bill_items_bill_id_fkey";
+alter table "public"."bill_items" drop constraint if exists "bill_items_bill_id_fkey";
 
-alter table "public"."bill_items" drop constraint "bill_items_project_id_fkey";
+alter table "public"."bill_items" drop constraint if exists "bill_items_project_id_fkey";
 
-alter table "public"."bill_payments" drop constraint "bill_payments_bill_id_fkey";
+alter table "public"."bill_payments" drop constraint if exists "bill_payments_bill_id_fkey";
 
-alter table "public"."bills" drop constraint "bills_category_id_fkey";
+alter table "public"."bills" drop constraint if exists "bills_category_id_fkey";
 
-alter table "public"."bills" drop constraint "bills_status_check";
+alter table "public"."bills" drop constraint if exists "bills_status_check";
 
-alter table "public"."bills" drop constraint "bills_subcontractor_id_fkey";
+alter table "public"."bills" drop constraint if exists "bills_subcontractor_id_fkey";
 
-alter table "public"."categories" drop constraint "categories_status_check";
+alter table "public"."categories" drop constraint if exists "categories_status_check";
 
-alter table "public"."categories" drop constraint "categories_type_check";
+alter table "public"."categories" drop constraint if exists "categories_type_check";
 
-alter table "public"."commitments" drop constraint "commitments_commitment_type_check";
+alter table "public"."commitments" drop constraint if exists "commitments_commitment_type_check";
 
-alter table "public"."commitments" drop constraint "commitments_status_check";
+alter table "public"."commitments" drop constraint if exists "commitments_status_check";
 
-alter table "public"."customers" drop constraint "customers_status_check";
+alter table "public"."customers" drop constraint if exists "customers_status_check";
 
-alter table "public"."daily_work_entries" drop constraint "daily_work_entries_day_type_check";
+alter table "public"."daily_work_entries" drop constraint if exists "daily_work_entries_day_type_check";
 
-alter table "public"."documents" drop constraint "documents_file_type_check";
+alter table "public"."documents" drop constraint if exists "documents_file_type_check";
 
-alter table "public"."estimate_payment_schedule" drop constraint "estimate_payment_schedule_amount_type_check";
+alter table "public"."estimate_payment_schedule" drop constraint if exists "estimate_payment_schedule_amount_type_check";
 
-alter table "public"."estimate_payment_schedule" drop constraint "estimate_payment_schedule_estimate_id_fkey";
+alter table "public"."estimate_payment_schedule" drop constraint if exists "estimate_payment_schedule_estimate_id_fkey";
 
-alter table "public"."estimate_payment_schedule" drop constraint "estimate_payment_schedule_status_check";
+alter table "public"."estimate_payment_schedule" drop constraint if exists "estimate_payment_schedule_status_check";
 
-alter table "public"."estimate_snapshots" drop constraint "estimate_snapshots_estimate_version_unique";
+alter table "public"."estimate_snapshots" drop constraint if exists "estimate_snapshots_estimate_version_unique";
 
-alter table "public"."expense_lines" drop constraint "expense_lines_project_id_fkey";
+alter table "public"."expense_lines" drop constraint if exists "expense_lines_project_id_fkey";
 
-alter table "public"."expenses" drop constraint "expenses_account_id_fkey";
+alter table "public"."expenses" drop constraint if exists "expenses_account_id_fkey";
 
-alter table "public"."expenses" drop constraint "expenses_status_check";
+alter table "public"."expenses" drop constraint if exists "expenses_status_check";
 
-alter table "public"."expenses" drop constraint "expenses_worker_id_fkey";
+alter table "public"."expenses" drop constraint if exists "expenses_worker_id_fkey";
 
-alter table "public"."invoice_payments" drop constraint "invoice_payments_status_check";
+alter table "public"."invoice_payments" drop constraint if exists "invoice_payments_status_check";
 
-alter table "public"."invoices" drop constraint "invoices_invoice_no_key";
+alter table "public"."invoices" drop constraint if exists "invoices_invoice_no_key";
 
-alter table "public"."invoices" drop constraint "invoices_status_check";
+alter table "public"."invoices" drop constraint if exists "invoices_status_check";
 
-alter table "public"."labor_entries" drop constraint "labor_entries_project_am_id_fkey";
+alter table "public"."labor_entries" drop constraint if exists "labor_entries_project_am_id_fkey";
 
-alter table "public"."labor_entries" drop constraint "labor_entries_project_pm_id_fkey";
+alter table "public"."labor_entries" drop constraint if exists "labor_entries_project_pm_id_fkey";
 
-alter table "public"."labor_entries" drop constraint "labor_entries_status_check";
+alter table "public"."labor_entries" drop constraint if exists "labor_entries_status_check";
 
-alter table "public"."payment_methods" drop constraint "payment_methods_name_key";
+alter table "public"."payment_methods" drop constraint if exists "payment_methods_name_key";
 
-alter table "public"."payment_methods" drop constraint "payment_methods_status_check";
+alter table "public"."payment_methods" drop constraint if exists "payment_methods_status_check";
 
-alter table "public"."payment_schedule_template_items" drop constraint "payment_schedule_template_items_amount_type_check";
+alter table "public"."payment_schedule_template_items" drop constraint if exists "payment_schedule_template_items_amount_type_check";
 
-alter table "public"."payment_schedule_template_items" drop constraint "payment_schedule_template_items_template_id_fkey";
+alter table "public"."payment_schedule_template_items" drop constraint if exists "payment_schedule_template_items_template_id_fkey";
 
-alter table "public"."payments_received" drop constraint "payments_received_invoice_id_fkey";
+alter table "public"."payments_received" drop constraint if exists "payments_received_invoice_id_fkey";
 
-alter table "public"."profiles" drop constraint "profiles_id_fkey";
+alter table "public"."profiles" drop constraint if exists "profiles_id_fkey";
 
-alter table "public"."profiles" drop constraint "profiles_role_check";
+alter table "public"."profiles" drop constraint if exists "profiles_role_check";
 
-alter table "public"."project_change_order_attachments" drop constraint "project_change_order_attachments_change_order_id_fkey";
+alter table "public"."project_change_order_attachments" drop constraint if exists "project_change_order_attachments_change_order_id_fkey";
 
-alter table "public"."project_change_orders" drop constraint "project_change_orders_status_check";
+alter table "public"."project_change_orders" drop constraint if exists "project_change_orders_status_check";
 
-alter table "public"."project_closeout_completion" drop constraint "project_closeout_completion_project_id_fkey";
+do $$
+begin
+  if to_regclass('public.project_closeout_completion') is not null then
+    alter table "public"."project_closeout_completion" drop constraint if exists "project_closeout_completion_project_id_fkey";
+    alter table "public"."project_closeout_completion" drop constraint if exists "project_closeout_completion_project_id_key";
+  end if;
+  if to_regclass('public.project_closeout_punch') is not null then
+    alter table "public"."project_closeout_punch" drop constraint if exists "project_closeout_punch_project_id_fkey";
+    alter table "public"."project_closeout_punch" drop constraint if exists "project_closeout_punch_project_id_key";
+  end if;
+  if to_regclass('public.project_closeout_warranty') is not null then
+    alter table "public"."project_closeout_warranty" drop constraint if exists "project_closeout_warranty_project_id_fkey";
+    alter table "public"."project_closeout_warranty" drop constraint if exists "project_closeout_warranty_project_id_key";
+  end if;
+end $$;
 
-alter table "public"."project_closeout_completion" drop constraint "project_closeout_completion_project_id_key";
+do $$
+begin
+  if to_regclass('public.project_material_selections') is not null then
+    alter table "public"."project_material_selections" drop constraint if exists "project_material_selections_material_id_fkey";
+  end if;
+end $$;
 
-alter table "public"."project_closeout_punch" drop constraint "project_closeout_punch_project_id_fkey";
+alter table "public"."project_subcontractors" drop constraint if exists "project_subcontractors_project_id_fkey";
 
-alter table "public"."project_closeout_punch" drop constraint "project_closeout_punch_project_id_key";
+alter table "public"."project_subcontractors" drop constraint if exists "project_subcontractors_rate_type_check";
 
-alter table "public"."project_closeout_warranty" drop constraint "project_closeout_warranty_project_id_fkey";
+alter table "public"."project_subcontractors" drop constraint if exists "project_subcontractors_subcontractor_id_fkey";
 
-alter table "public"."project_closeout_warranty" drop constraint "project_closeout_warranty_project_id_key";
+alter table "public"."project_subcontractors" drop constraint if exists "project_subcontractors_unique";
 
-alter table "public"."project_material_selections" drop constraint "project_material_selections_material_id_fkey";
+alter table "public"."project_tasks" drop constraint if exists "project_tasks_priority_check";
 
-alter table "public"."project_subcontractors" drop constraint "project_subcontractors_project_id_fkey";
+alter table "public"."project_tasks" drop constraint if exists "project_tasks_status_check";
 
-alter table "public"."project_subcontractors" drop constraint "project_subcontractors_rate_type_check";
+alter table "public"."projects" drop constraint if exists "projects_source_estimate_id_unique";
 
-alter table "public"."project_subcontractors" drop constraint "project_subcontractors_subcontractor_id_fkey";
+alter table "public"."projects" drop constraint if exists "projects_status_check";
 
-alter table "public"."project_subcontractors" drop constraint "project_subcontractors_unique";
+do $$
+begin
+  if to_regclass('public.punch_list') is not null then
+    alter table "public"."punch_list" drop constraint if exists "punch_list_photo_id_fkey";
+  end if;
+end $$;
 
-alter table "public"."project_tasks" drop constraint "project_tasks_priority_check";
+alter table "public"."role_permissions" drop constraint if exists "role_permissions_role_check";
 
-alter table "public"."project_tasks" drop constraint "project_tasks_status_check";
+alter table "public"."subcontractors" drop constraint if exists "subcontractors_status_check";
 
-alter table "public"."projects" drop constraint "projects_source_estimate_id_unique";
+alter table "public"."subcontracts" drop constraint if exists "subcontracts_status_check";
 
-alter table "public"."projects" drop constraint "projects_status_check";
+alter table "public"."vendors" drop constraint if exists "vendors_status_check";
 
-alter table "public"."punch_list" drop constraint "punch_list_photo_id_fkey";
+do $$
+begin
+  if to_regclass('public.worker_receipts') is not null then
+    alter table "public"."worker_receipts" drop constraint if exists "worker_receipts_project_id_fkey";
+  end if;
+end $$;
 
-alter table "public"."role_permissions" drop constraint "role_permissions_role_check";
+alter table "public"."worker_reimbursements" drop constraint if exists "worker_reimbursements_payment_id_fkey";
 
-alter table "public"."subcontractors" drop constraint "subcontractors_status_check";
+alter table "public"."workers" drop constraint if exists "workers_status_check_v2";
 
-alter table "public"."subcontracts" drop constraint "subcontracts_status_check";
+alter table "public"."bills" drop constraint if exists "bills_project_id_fkey";
 
-alter table "public"."vendors" drop constraint "vendors_status_check";
+alter table "public"."bills" drop constraint if exists "bills_vendor_id_fkey";
 
-alter table "public"."worker_receipts" drop constraint "worker_receipts_project_id_fkey";
+alter table "public"."commitments" drop constraint if exists "commitments_project_id_fkey";
 
-alter table "public"."worker_reimbursements" drop constraint "worker_reimbursements_payment_id_fkey";
+alter table "public"."daily_work_entries" drop constraint if exists "daily_work_entries_worker_id_fkey";
 
-alter table "public"."workers" drop constraint "workers_status_check_v2";
+alter table "public"."deposits" drop constraint if exists "deposits_invoice_id_fkey";
 
-alter table "public"."bills" drop constraint "bills_project_id_fkey";
+alter table "public"."documents" drop constraint if exists "documents_project_id_fkey";
 
-alter table "public"."bills" drop constraint "bills_vendor_id_fkey";
+alter table "public"."expenses" drop constraint if exists "expenses_project_id_fkey";
 
-alter table "public"."commitments" drop constraint "commitments_project_id_fkey";
+alter table "public"."invoices" drop constraint if exists "invoices_customer_id_fkey";
 
-alter table "public"."daily_work_entries" drop constraint "daily_work_entries_worker_id_fkey";
+alter table "public"."invoices" drop constraint if exists "invoices_project_id_fkey";
 
-alter table "public"."deposits" drop constraint "deposits_invoice_id_fkey";
+alter table "public"."labor_entries" drop constraint if exists "labor_entries_worker_id_fkey";
 
-alter table "public"."documents" drop constraint "documents_project_id_fkey";
+alter table "public"."labor_payments" drop constraint if exists "labor_payments_worker_id_fkey";
 
-alter table "public"."expenses" drop constraint "expenses_project_id_fkey";
+alter table "public"."project_commissions" drop constraint if exists "project_commissions_project_id_fkey";
 
-alter table "public"."invoices" drop constraint "invoices_customer_id_fkey";
+alter table "public"."project_tasks" drop constraint if exists "project_tasks_assigned_worker_id_fkey";
 
-alter table "public"."invoices" drop constraint "invoices_project_id_fkey";
+do $$
+begin
+  if to_regclass('public.punch_list') is not null then
+    alter table "public"."punch_list" drop constraint if exists "punch_list_assigned_worker_id_fkey";
+  end if;
+end $$;
 
-alter table "public"."labor_entries" drop constraint "labor_entries_worker_id_fkey";
+alter table "public"."worker_invoices" drop constraint if exists "worker_invoices_worker_id_fkey";
 
-alter table "public"."labor_payments" drop constraint "labor_payments_worker_id_fkey";
+alter table "public"."worker_payments" drop constraint if exists "worker_payments_worker_id_fkey";
 
-alter table "public"."project_commissions" drop constraint "project_commissions_project_id_fkey";
+do $$
+begin
+  if to_regclass('public.worker_receipts') is not null then
+    alter table "public"."worker_receipts" drop constraint if exists "worker_receipts_worker_id_fkey";
+  end if;
+end $$;
 
-alter table "public"."project_tasks" drop constraint "project_tasks_assigned_worker_id_fkey";
-
-alter table "public"."punch_list" drop constraint "punch_list_assigned_worker_id_fkey";
-
-alter table "public"."worker_invoices" drop constraint "worker_invoices_worker_id_fkey";
-
-alter table "public"."worker_payments" drop constraint "worker_payments_worker_id_fkey";
-
-alter table "public"."worker_receipts" drop constraint "worker_receipts_worker_id_fkey";
-
-alter table "public"."worker_reimbursements" drop constraint "worker_reimbursements_worker_id_fkey";
+alter table "public"."worker_reimbursements" drop constraint if exists "worker_reimbursements_worker_id_fkey";
 
 drop function if exists "public"."allocate_labor_cost_on_insert"();
 
@@ -1379,41 +1322,48 @@ drop function if exists "public"."void_subcontract_bill"(p_bill_id uuid);
 
 drop view if exists "public"."worker_payable_summary";
 
-alter table "public"."ap_bill_payments" drop constraint "ap_bill_payments_pkey";
+alter table "public"."ap_bill_payments" drop constraint if exists "ap_bill_payments_pkey";
 
-alter table "public"."ap_bills" drop constraint "ap_bills_pkey";
+alter table "public"."ap_bills" drop constraint if exists "ap_bills_pkey";
 
-alter table "public"."attachments" drop constraint "attachments_pkey";
+alter table "public"."attachments" drop constraint if exists "attachments_pkey";
 
-alter table "public"."bank_transactions" drop constraint "bank_transactions_pkey";
+alter table "public"."bank_transactions" drop constraint if exists "bank_transactions_pkey";
 
-alter table "public"."bill_items" drop constraint "bill_items_pkey";
+alter table "public"."bill_items" drop constraint if exists "bill_items_pkey";
 
-alter table "public"."bill_payments" drop constraint "bill_payments_pkey";
+alter table "public"."bill_payments" drop constraint if exists "bill_payments_pkey";
 
-alter table "public"."categories" drop constraint "categories_pkey";
+alter table "public"."categories" drop constraint if exists "categories_pkey";
 
-alter table "public"."estimate_payment_schedule" drop constraint "estimate_payment_schedule_pkey";
+alter table "public"."estimate_payment_schedule" drop constraint if exists "estimate_payment_schedule_pkey";
 
-alter table "public"."payment_methods" drop constraint "payment_methods_pkey";
+alter table "public"."payment_methods" drop constraint if exists "payment_methods_pkey";
 
-alter table "public"."payment_schedule_template_items" drop constraint "payment_schedule_template_items_pkey";
+alter table "public"."payment_schedule_template_items" drop constraint if exists "payment_schedule_template_items_pkey";
 
-alter table "public"."payment_schedule_templates" drop constraint "payment_schedule_templates_pkey";
+alter table "public"."payment_schedule_templates" drop constraint if exists "payment_schedule_templates_pkey";
 
-alter table "public"."profiles" drop constraint "profiles_pkey";
+alter table "public"."profiles" drop constraint if exists "profiles_pkey";
 
-alter table "public"."project_change_order_attachments" drop constraint "project_change_order_attachments_pkey";
+alter table "public"."project_change_order_attachments" drop constraint if exists "project_change_order_attachments_pkey";
 
-alter table "public"."project_closeout_completion" drop constraint "project_closeout_completion_pkey";
+do $$
+begin
+  if to_regclass('public.project_closeout_completion') is not null then
+    alter table "public"."project_closeout_completion" drop constraint if exists "project_closeout_completion_pkey";
+  end if;
+  if to_regclass('public.project_closeout_punch') is not null then
+    alter table "public"."project_closeout_punch" drop constraint if exists "project_closeout_punch_pkey";
+  end if;
+  if to_regclass('public.project_closeout_warranty') is not null then
+    alter table "public"."project_closeout_warranty" drop constraint if exists "project_closeout_warranty_pkey";
+  end if;
+end $$;
 
-alter table "public"."project_closeout_punch" drop constraint "project_closeout_punch_pkey";
+alter table "public"."project_subcontractors" drop constraint if exists "project_subcontractors_pkey";
 
-alter table "public"."project_closeout_warranty" drop constraint "project_closeout_warranty_pkey";
-
-alter table "public"."project_subcontractors" drop constraint "project_subcontractors_pkey";
-
-alter table "public"."role_permissions" drop constraint "role_permissions_pkey";
+alter table "public"."role_permissions" drop constraint if exists "role_permissions_pkey";
 
 drop index if exists "public"."accounts_name_idx";
 
@@ -2275,31 +2225,24 @@ alter table "public"."project_commissions" alter column "status" set default 'pe
 
 alter table "public"."project_commissions" alter column "status" drop not null;
 
-alter table "public"."project_material_selections" drop column "category";
-
-alter table "public"."project_material_selections" drop column "item";
-
-alter table "public"."project_material_selections" drop column "material_id";
-
-alter table "public"."project_material_selections" drop column "material_name";
-
-alter table "public"."project_material_selections" drop column "photo_url";
-
-alter table "public"."project_material_selections" drop column "supplier";
-
-alter table "public"."project_material_selections" add column "catalog_id" uuid;
-
-alter table "public"."project_material_selections" add column "item_name" text;
-
-alter table "public"."project_material_selections" alter column "created_at" drop not null;
-
-alter table "public"."project_material_selections" alter column "created_at" set data type timestamp without time zone using "created_at"::timestamp without time zone;
-
-alter table "public"."project_material_selections" alter column "project_id" drop not null;
-
-alter table "public"."project_material_selections" alter column "status" set default 'pending'::text;
-
-alter table "public"."project_material_selections" alter column "status" drop not null;
+do $$
+begin
+  if to_regclass('public.project_material_selections') is not null then
+    alter table "public"."project_material_selections" drop column if exists "category";
+    alter table "public"."project_material_selections" drop column if exists "item";
+    alter table "public"."project_material_selections" drop column if exists "material_id";
+    alter table "public"."project_material_selections" drop column if exists "material_name";
+    alter table "public"."project_material_selections" drop column if exists "photo_url";
+    alter table "public"."project_material_selections" drop column if exists "supplier";
+    alter table "public"."project_material_selections" add column if not exists "catalog_id" uuid;
+    alter table "public"."project_material_selections" add column if not exists "item_name" text;
+    alter table "public"."project_material_selections" alter column "created_at" drop not null;
+    alter table "public"."project_material_selections" alter column "created_at" set data type timestamp without time zone using "created_at"::timestamp without time zone;
+    alter table "public"."project_material_selections" alter column "project_id" drop not null;
+    alter table "public"."project_material_selections" alter column "status" set default 'pending'::text;
+    alter table "public"."project_material_selections" alter column "status" drop not null;
+  end if;
+end $$;
 
 alter table "public"."project_schedule" add column "description" text;
 
@@ -2355,27 +2298,22 @@ alter table "public"."projects" alter column "updated_at" drop not null;
 
 alter table "public"."projects" alter column "updated_at" set data type timestamp with time zone using "updated_at"::timestamp with time zone;
 
-alter table "public"."punch_list" drop column "completed_at";
-
-alter table "public"."punch_list" drop column "description";
-
-alter table "public"."punch_list" drop column "photo_id";
-
-alter table "public"."punch_list" drop column "priority";
-
-alter table "public"."punch_list" alter column "created_at" drop not null;
-
-alter table "public"."punch_list" alter column "created_at" set data type timestamp without time zone using "created_at"::timestamp without time zone;
-
-alter table "public"."punch_list" alter column "created_by" set data type uuid using "created_by"::uuid;
-
-alter table "public"."punch_list" alter column "issue" drop default;
-
-alter table "public"."punch_list" alter column "issue" drop not null;
-
-alter table "public"."punch_list" alter column "project_id" drop not null;
-
-alter table "public"."punch_list" alter column "status" drop not null;
+do $$
+begin
+  if to_regclass('public.punch_list') is not null then
+    alter table "public"."punch_list" drop column if exists "completed_at";
+    alter table "public"."punch_list" drop column if exists "description";
+    alter table "public"."punch_list" drop column if exists "photo_id";
+    alter table "public"."punch_list" drop column if exists "priority";
+    alter table "public"."punch_list" alter column "created_at" drop not null;
+    alter table "public"."punch_list" alter column "created_at" set data type timestamp without time zone using "created_at"::timestamp without time zone;
+    alter table "public"."punch_list" alter column "created_by" set data type uuid using "created_by"::uuid;
+    alter table "public"."punch_list" alter column "issue" drop default;
+    alter table "public"."punch_list" alter column "issue" drop not null;
+    alter table "public"."punch_list" alter column "project_id" drop not null;
+    alter table "public"."punch_list" alter column "status" drop not null;
+  end if;
+end $$;
 
 alter table "public"."site_photos" alter column "created_at" drop not null;
 
@@ -2491,15 +2429,16 @@ alter table "public"."worker_payments" alter column "amount" set data type numer
 
 alter table "public"."worker_payments" alter column "worker_id" drop not null;
 
-alter table "public"."worker_receipts" alter column "amount" drop default;
-
-alter table "public"."worker_receipts" alter column "amount" drop not null;
-
-alter table "public"."worker_receipts" alter column "amount" set data type numeric(12,2) using "amount"::numeric(12,2);
-
-alter table "public"."worker_receipts" alter column "created_at" drop not null;
-
-alter table "public"."worker_receipts" alter column "status" drop not null;
+do $$
+begin
+  if to_regclass('public.worker_receipts') is not null then
+    alter table "public"."worker_receipts" alter column "amount" drop default;
+    alter table "public"."worker_receipts" alter column "amount" drop not null;
+    alter table "public"."worker_receipts" alter column "amount" set data type numeric(12,2) using "amount"::numeric(12,2);
+    alter table "public"."worker_receipts" alter column "created_at" drop not null;
+    alter table "public"."worker_receipts" alter column "status" drop not null;
+  end if;
+end $$;
 
 alter table "public"."worker_reimbursements" drop column "reimbursement_date";
 
@@ -2649,17 +2588,29 @@ alter table "public"."project_cost_codes" add constraint "project_cost_codes_pro
 
 alter table "public"."project_cost_codes" validate constraint "project_cost_codes_project_id_fkey";
 
-alter table "public"."project_material_selections" add constraint "project_material_selections_catalog_id_fkey" FOREIGN KEY (catalog_id) REFERENCES public.material_catalog(id) not valid;
-
-alter table "public"."project_material_selections" validate constraint "project_material_selections_catalog_id_fkey";
+do $$
+begin
+  if to_regclass('public.project_material_selections') is not null then
+    alter table "public"."project_material_selections" add constraint "project_material_selections_catalog_id_fkey" FOREIGN KEY (catalog_id) REFERENCES public.material_catalog(id) not valid;
+    alter table "public"."project_material_selections" validate constraint "project_material_selections_catalog_id_fkey";
+  end if;
+exception
+  when duplicate_object then null;
+end $$;
 
 alter table "public"."projects" add constraint "projects_client_id_fkey" FOREIGN KEY (client_id) REFERENCES public.clients(id) not valid;
 
 alter table "public"."projects" validate constraint "projects_client_id_fkey";
 
-alter table "public"."punch_list" add constraint "punch_list_created_by_fkey" FOREIGN KEY (created_by) REFERENCES public.workers(id) ON DELETE SET NULL not valid;
-
-alter table "public"."punch_list" validate constraint "punch_list_created_by_fkey";
+do $$
+begin
+  if to_regclass('public.punch_list') is not null then
+    alter table "public"."punch_list" add constraint "punch_list_created_by_fkey" FOREIGN KEY (created_by) REFERENCES public.workers(id) ON DELETE SET NULL not valid;
+    alter table "public"."punch_list" validate constraint "punch_list_created_by_fkey";
+  end if;
+exception
+  when duplicate_object then null;
+end $$;
 
 alter table "public"."warranties" add constraint "warranties_project_id_fkey" FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE not valid;
 
@@ -2721,9 +2672,15 @@ alter table "public"."project_tasks" add constraint "project_tasks_assigned_work
 
 alter table "public"."project_tasks" validate constraint "project_tasks_assigned_worker_id_fkey";
 
-alter table "public"."punch_list" add constraint "punch_list_assigned_worker_id_fkey" FOREIGN KEY (assigned_worker_id) REFERENCES public.workers(id) not valid;
-
-alter table "public"."punch_list" validate constraint "punch_list_assigned_worker_id_fkey";
+do $$
+begin
+  if to_regclass('public.punch_list') is not null then
+    alter table "public"."punch_list" add constraint "punch_list_assigned_worker_id_fkey" FOREIGN KEY (assigned_worker_id) REFERENCES public.workers(id) not valid;
+    alter table "public"."punch_list" validate constraint "punch_list_assigned_worker_id_fkey";
+  end if;
+exception
+  when duplicate_object then null;
+end $$;
 
 alter table "public"."worker_invoices" add constraint "worker_invoices_worker_id_fkey" FOREIGN KEY (worker_id) REFERENCES public.workers(id) ON DELETE SET NULL not valid;
 
@@ -2733,9 +2690,15 @@ alter table "public"."worker_payments" add constraint "worker_payments_worker_id
 
 alter table "public"."worker_payments" validate constraint "worker_payments_worker_id_fkey";
 
-alter table "public"."worker_receipts" add constraint "worker_receipts_worker_id_fkey" FOREIGN KEY (worker_id) REFERENCES public.workers(id) ON DELETE SET NULL not valid;
-
-alter table "public"."worker_receipts" validate constraint "worker_receipts_worker_id_fkey";
+do $$
+begin
+  if to_regclass('public.worker_receipts') is not null then
+    alter table "public"."worker_receipts" add constraint "worker_receipts_worker_id_fkey" FOREIGN KEY (worker_id) REFERENCES public.workers(id) ON DELETE SET NULL not valid;
+    alter table "public"."worker_receipts" validate constraint "worker_receipts_worker_id_fkey";
+  end if;
+exception
+  when duplicate_object then null;
+end $$;
 
 alter table "public"."worker_reimbursements" add constraint "worker_reimbursements_worker_id_fkey" FOREIGN KEY (worker_id) REFERENCES public.workers(id) ON DELETE SET NULL not valid;
 
