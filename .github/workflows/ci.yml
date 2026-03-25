@@ -59,20 +59,20 @@ jobs:
     needs: ci
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Supabase CLI
-        if: ${{ secrets.SUPABASE_DB_URL != '' }}
+        if: ${{ env.SUPABASE_DB_URL != '' }}
         uses: supabase/setup-cli@v1
         with:
           version: latest
 
       - name: Push Supabase migrations (production)
-        if: ${{ secrets.SUPABASE_DB_URL != '' }}
-        env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        if: ${{ env.SUPABASE_DB_URL != '' }}
         run: supabase db push --db-url "$SUPABASE_DB_URL"
 
       - name: Deploy to Vercel
