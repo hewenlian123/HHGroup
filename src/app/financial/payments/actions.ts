@@ -12,20 +12,28 @@ export async function deletePaymentReceivedAction(
     const c = admin ?? server;
     if (!c) return { ok: false, error: "Supabase is not configured." };
 
-    // Best-effort: read the payment to also remove associated deposit + invoice_payment.
+    // Financial safety system:
+    // payments_received with deposits cannot be deleted; void instead.
     const { data: pay, error: fetchErr } = await c
       .from("payments_received")
-      .select("id, invoice_id, payment_date, amount, notes, deposit_account")
+      .select("id, invoice_id, payment_date, amount, notes, deposit_account, status")
       .eq("id", paymentId)
       .maybeSingle();
     if (fetchErr) throw new Error(fetchErr.message ?? "Failed to load payment.");
     if (!pay) return { ok: false, error: "Payment not found." };
 
-    // Best-effort: remove associated deposit (deposits.payment_id = payments_received.id).
-    try {
-      await c.from("deposits").delete().eq("payment_id", paymentId);
-    } catch {
-      // deposits table may lack payment_id or row; continue with payment delete
+    const depRes = await c.from("deposits").select("id, status").eq("payment_id", paymentId);
+    if (depRes.error) throw new Error(depRes.error.message ?? "Failed to load deposit.");
+    const hasNonVoidDeposit = (depRes.data ?? []).some(
+      (d: { status?: string | null }) => String(d.status ?? "recorded") !== "void"
+    );
+    // If a deposit exists, we must void (never hard-delete).
+    if (hasNonVoidDeposit) {
+      const { error: depVoidErr } = await c
+        .from("deposits")
+        .update({ status: "void" })
+        .eq("payment_id", paymentId);
+      if (depVoidErr) throw new Error(depVoidErr.message ?? "Failed to void deposit.");
     }
 
     // Best-effort: remove corresponding invoice_payment row (no FK; match by invoice_id, amount, date).
@@ -35,7 +43,7 @@ export async function deletePaymentReceivedAction(
         const amount = Number((pay as { amount?: number }).amount ?? 0);
         let q = c
           .from("invoice_payments")
-          .delete()
+          .update({ status: "Voided" })
           .eq("invoice_id", pay.invoice_id)
           .eq("amount", amount);
         if (paidAt) q = q.eq("paid_at", paidAt);
@@ -49,9 +57,12 @@ export async function deletePaymentReceivedAction(
       }
     }
 
-    // Delete payment itself.
-    const { error: delErr } = await c.from("payments_received").delete().eq("id", paymentId);
-    if (delErr) throw new Error(delErr.message ?? "Failed to delete payment.");
+    // Payment itself: do not delete. Mark void.
+    const { error: updErr } = await c
+      .from("payments_received")
+      .update({ status: "void" })
+      .eq("id", paymentId);
+    if (updErr) throw new Error(updErr.message ?? "Failed to void payment.");
 
     revalidatePath("/financial/payments");
     revalidatePath("/financial/payments-received");

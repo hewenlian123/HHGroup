@@ -11,8 +11,7 @@ export async function deleteInvoiceAction(
     if (!deleted)
       return {
         ok: false,
-        error:
-          "Only draft or void invoices can be deleted. Issued or paid invoices cannot be removed.",
+        error: "Cannot delete: void instead",
       };
     revalidatePath("/financial/invoices");
     revalidatePath(`/financial/invoices/${invoiceId}`);

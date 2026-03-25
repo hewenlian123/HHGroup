@@ -162,12 +162,15 @@ function PaymentsReceivedPageInner() {
                           if (!res.ok) {
                             if (snapshot) setPayments(snapshot);
                             toast({
-                              title: "Delete failed",
+                              title: (res.error ?? "").includes("Cannot delete: void instead")
+                                ? "Cannot delete"
+                                : "Delete failed",
                               description: res.error ?? "Could not delete payment.",
                               variant: "error",
                             });
                             return;
                           }
+                          toast({ title: "Payment voided", variant: "success" });
                           void load();
                         }}
                       />

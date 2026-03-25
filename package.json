@@ -23,7 +23,7 @@
     "test:e2e:ci": "playwright test --project chromium",
     "test:local": "CI= E2E_WORKER_NAME='[E2E] Seed Worker' npx playwright test --project=chromium --project=chromium-payments --project=chromium-delete-mutations",
     "test:local:ui-only": "CI= npx playwright test --project=chromium",
-    "test:before-push": "npx prettier --write . && CI= npx playwright test --project=chromium && git push origin main",
+    "test:before-push": "npx prettier --write . && E2E_WEB_SERVER=dev E2E_BASE_URL='http://localhost:3199' npx playwright test --project=chromium && git push origin main",
     "test:e2e:company-profile": "CI= playwright test tests/settings-company-profile.spec.ts --project=chromium",
     "test:e2e:document-header": "CI= playwright test tests/settings-company-profile.spec.ts -g \"invoice print header\" --project=chromium",
     "test:e2e:company-branding": "CI= playwright test tests/settings-company-profile.spec.ts --project=chromium",

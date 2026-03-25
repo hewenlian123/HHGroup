@@ -556,6 +556,22 @@ export async function deleteInvoice(invoiceId: string): Promise<boolean> {
   const inv = await getInvoiceById(invoiceId);
   if (!inv) return false;
   if (inv.status !== "Draft" && inv.status !== "Void") return false;
+
+  // Financial safety: if invoice has any non-void payments, it cannot be deleted (void instead).
+  const payCountRes = await c
+    .from("invoice_payments")
+    .select("id", { count: "exact", head: true })
+    .eq("invoice_id", invoiceId)
+    .neq("status", "Voided");
+  if (!payCountRes.error && (payCountRes.count ?? 0) > 0) return false;
+
+  const prCountRes = await c
+    .from("payments_received")
+    .select("id", { count: "exact", head: true })
+    .eq("invoice_id", invoiceId)
+    .neq("status", "void");
+  if (!prCountRes.error && (prCountRes.count ?? 0) > 0) return false;
+
   const { error } = await c.from("invoices").delete().eq("id", invoiceId);
   return !error;
 }
