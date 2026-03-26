@@ -18,8 +18,8 @@ export async function middleware(request: NextRequest) {
 
   if (isWorkerModePath && mode === "worker") {
     const response =
-      pathname === "/labor/daily-entry"
-        ? NextResponse.redirect(new URL("/labor/daily?mode=worker", request.url))
+      pathname === "/labor/daily"
+        ? NextResponse.redirect(new URL("/labor/daily-entry?mode=worker", request.url))
         : NextResponse.next();
     response.cookies.set("hh_worker_mode", "1", {
       path: "/",
@@ -31,9 +31,9 @@ export async function middleware(request: NextRequest) {
 
   if (workerModeCookie) {
     const target = request.nextUrl.clone();
-    target.pathname = "/labor/daily";
+    target.pathname = "/labor/daily-entry";
     target.search = "?mode=worker";
-    if (pathname !== "/labor/daily" || mode !== "worker") {
+    if (pathname !== "/labor/daily-entry" || mode !== "worker") {
       return NextResponse.redirect(target);
     }
   }
