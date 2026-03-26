@@ -52,6 +52,20 @@ function client() {
   return c;
 }
 
+type WorkerRateRow = {
+  id: string;
+  half_day_rate?: number | null;
+  daily_rate?: number | null;
+};
+
+function resolveDailyRateFromWorkerRow(row: WorkerRateRow | null | undefined): number {
+  const daily = Number(row?.daily_rate) || 0;
+  if (daily > 0) return daily;
+  // Legacy schemas sometimes stored full-day amount in half_day_rate.
+  const halfOrLegacyDaily = Number(row?.half_day_rate) || 0;
+  return Math.max(0, halfOrLegacyDaily);
+}
+
 export type LaborEntryWithJoins = {
   id: string;
   worker_id: string;
@@ -555,15 +569,25 @@ export async function insertDailyLaborEntries(
 
   const rowsToInsert = filtered;
   const workerIds2 = Array.from(new Set(rowsToInsert.map((r) => r.worker_id).filter(Boolean)));
-  const { data: workerRows2, error: workerError2 } = workerIds2.length
-    ? await c.from("workers").select("id, half_day_rate").in("id", workerIds2)
-    : { data: [], error: null };
-  if (workerError2) throw new Error(workerError2.message ?? "Failed to load worker rates.");
+  const workerRows2: WorkerRateRow[] = [];
+  if (workerIds2.length) {
+    const withDaily = await c
+      .from("workers")
+      .select("id, half_day_rate, daily_rate")
+      .in("id", workerIds2);
+    if (withDaily.error && !isMissingColumn(withDaily.error)) {
+      throw new Error(withDaily.error.message ?? "Failed to load worker rates.");
+    }
+    if (withDaily.error && isMissingColumn(withDaily.error)) {
+      const fallback = await c.from("workers").select("id, half_day_rate").in("id", workerIds2);
+      if (fallback.error) throw new Error(fallback.error.message ?? "Failed to load worker rates.");
+      workerRows2.push(...((fallback.data ?? []) as WorkerRateRow[]));
+    } else {
+      workerRows2.push(...((withDaily.data ?? []) as WorkerRateRow[]));
+    }
+  }
   const hourlyRateByWorkerId2 = new Map(
-    ((workerRows2 ?? []) as Array<{ id: string; half_day_rate?: number | null }>).map((row) => [
-      row.id,
-      (Number(row.half_day_rate) || 0) / 4,
-    ])
+    workerRows2.map((row) => [row.id, resolveDailyRateFromWorkerRow(row) / 8])
   );
 
   const payloads = rowsToInsert.map((r) => ({
@@ -639,14 +663,27 @@ export async function updateDailyLaborEntry(
   const status = (currentRow as { status?: string } | null)?.status;
   if (status === "Locked") throw new Error("Cannot edit a locked labor entry.");
 
-  const { data: workerRow, error: workerError } = await c
+  let workerRow: WorkerRateRow | null = null;
+  const withDaily = await c
     .from("workers")
-    .select("id, half_day_rate")
+    .select("id, half_day_rate, daily_rate")
     .eq("id", draft.worker_id)
     .maybeSingle();
-  if (workerError) throw new Error(workerError.message ?? "Failed to load worker rate.");
-  const hourlyRate =
-    (Number((workerRow as { half_day_rate?: number | null } | null)?.half_day_rate) || 0) / 4;
+  if (withDaily.error && !isMissingColumn(withDaily.error)) {
+    throw new Error(withDaily.error.message ?? "Failed to load worker rate.");
+  }
+  if (withDaily.error && isMissingColumn(withDaily.error)) {
+    const fallback = await c
+      .from("workers")
+      .select("id, half_day_rate")
+      .eq("id", draft.worker_id)
+      .maybeSingle();
+    if (fallback.error) throw new Error(fallback.error.message ?? "Failed to load worker rate.");
+    workerRow = (fallback.data as WorkerRateRow | null) ?? null;
+  } else {
+    workerRow = (withDaily.data as WorkerRateRow | null) ?? null;
+  }
+  const hourlyRate = resolveDailyRateFromWorkerRow(workerRow) / 8;
   const payload = {
     worker_id: draft.worker_id,
     project_id: draft.project_id || null,
