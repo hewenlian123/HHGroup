@@ -122,6 +122,8 @@ export default function LaborPageClient() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const workerMode =
+    pathname === "/labor/daily-entry" && (searchParams.get("mode") ?? "") === "worker";
   const now = new Date();
   const initialMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const [selectedMonth, setSelectedMonth] = React.useState(initialMonth);
@@ -271,6 +273,14 @@ export default function LaborPageClient() {
 
   const handleDelete = React.useCallback(
     async (e: LaborEntryWithJoins) => {
+      if (workerMode) {
+        toast({
+          title: "Delete is disabled in worker link",
+          description: "Please use the main Labor page to delete entries.",
+          variant: "error",
+        });
+        return;
+      }
       const ok = window.confirm(
         `Delete entry for ${e.worker_name ?? "worker"} on ${e.work_date?.slice(0, 10) ?? "date"}?`
       );
@@ -288,7 +298,7 @@ export default function LaborPageClient() {
         setError(err instanceof Error ? err.message : "Failed to delete.");
       }
     },
-    [loadMonthEntries]
+    [loadMonthEntries, toast, workerMode]
   );
 
   const summary = React.useMemo(() => {
@@ -634,6 +644,12 @@ export default function LaborPageClient() {
                                           className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-red-600 hover:text-red-700 hover:bg-red-50/60"
                                           onClick={() => void handleDelete(e)}
                                           aria-label="Delete"
+                                          disabled={workerMode}
+                                          title={
+                                            workerMode
+                                              ? "Delete is available only on the main Labor page."
+                                              : "Delete entry"
+                                          }
                                         >
                                           <Trash2 className="h-4 w-4" />
                                         </button>
@@ -837,6 +853,12 @@ export default function LaborPageClient() {
                                   className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-red-600 hover:text-red-700 hover:bg-red-50/60"
                                   onClick={() => void handleDelete(e)}
                                   aria-label="Delete"
+                                  disabled={workerMode}
+                                  title={
+                                    workerMode
+                                      ? "Delete is available only on the main Labor page."
+                                      : "Delete entry"
+                                  }
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </button>
