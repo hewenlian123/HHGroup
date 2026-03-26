@@ -1766,6 +1766,9 @@ export async function createQuickExpense(payload: {
   vendorName: string;
   totalAmount: number;
   receiptUrl: string;
+  category?: string;
+  notes?: string;
+  projectId?: string | null;
 }): Promise<Expense> {
   return expensesDb.createQuickExpense(payload);
 }

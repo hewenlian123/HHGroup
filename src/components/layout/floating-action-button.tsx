@@ -157,6 +157,11 @@ export function FloatingActionButton() {
                 const handled = laborAddEntry?.triggerOpenDailyEntry() ?? false;
                 setOpen(false);
                 if (!handled) {
+                  try {
+                    window.sessionStorage.setItem("hh.openLaborEntryFromFab", "1");
+                  } catch {
+                    // ignore storage failures; fallback path still navigates
+                  }
                   requestAnimationFrame(() => router.push("/labor?addDaily=1"));
                 }
               }}

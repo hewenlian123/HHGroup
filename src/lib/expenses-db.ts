@@ -523,17 +523,23 @@ export async function createQuickExpense(payload: {
   vendorName: string;
   totalAmount: number;
   receiptUrl: string;
+  category?: string;
+  notes?: string;
+  projectId?: string | null;
 }): Promise<Expense> {
   const c = client();
   const date = payload.date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
   const vendor = (payload.vendorName ?? "").trim() || "Unknown";
   const total = Number(payload.totalAmount) || 0;
   const receiptUrl = payload.receiptUrl || "";
+  const category = (payload.category ?? "Other").trim() || "Other";
+  const notes = (payload.notes ?? "").trim();
+  const projectId = payload.projectId ?? null;
 
   const insertRow: Record<string, unknown> = {
     expense_date: date,
     vendor_name: vendor,
-    notes: null,
+    notes: notes || null,
     reference_no: null,
     total,
     line_count: 1,
@@ -552,7 +558,7 @@ export async function createQuickExpense(payload: {
     const insertRowLegacy: Record<string, unknown> = {
       expense_date: date,
       vendor,
-      notes: null,
+      notes: notes || null,
       reference_no: null,
       total,
       line_count: 1,
@@ -564,13 +570,40 @@ export async function createQuickExpense(payload: {
   const expenseId = (expRow as { id: string } | null)?.id;
   if (!expenseId) throw new Error("Failed to create quick expense: no id.");
 
-  const { error: lineErr } = await c.from("expense_lines").insert({
-    expense_id: expenseId,
-    project_id: null,
-    category: "Other",
-    memo: null,
-    amount: total,
-  });
+  const lineAttempts: Record<string, unknown>[] = [
+    {
+      expense_id: expenseId,
+      project_id: projectId,
+      category,
+      memo: notes || null,
+      amount: total,
+    },
+    {
+      expense_id: expenseId,
+      project_id: projectId,
+      category,
+      amount: total,
+    },
+    {
+      expense_id: expenseId,
+      category,
+      amount: total,
+    },
+    {
+      expense_id: expenseId,
+      amount: total,
+    },
+    {
+      expense_id: expenseId,
+    },
+  ];
+  let lineErr: { message?: string } | null = null;
+  for (const attempt of lineAttempts) {
+    const { error } = await c.from("expense_lines").insert(attempt);
+    lineErr = error;
+    if (!lineErr) break;
+    if (!isMissingColumn(lineErr)) break;
+  }
   if (lineErr) throw new Error(lineErr.message ?? "Failed to create expense line.");
 
   const exp = await getExpenseById(expenseId);

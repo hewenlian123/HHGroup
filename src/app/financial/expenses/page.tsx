@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { flushSync } from "react-dom";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -26,7 +25,7 @@ import {
   type Expense,
 } from "@/lib/data";
 import { createBrowserClient } from "@/lib/supabase";
-import { Plus, Trash2 } from "lucide-react";
+import { Check, Eye, Minus, Pencil, Plus, Trash2, X } from "lucide-react";
 import { Pagination } from "@/components/ui/pagination";
 import { useSearchParams } from "next/navigation";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -35,8 +34,9 @@ import { EditExpenseModal, type ExpenseReviewSavePatch } from "./edit-expense-mo
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { useToast } from "@/components/toast/toast-provider";
 
-type ProjectRow = { id: string; name: string | null };
+type ProjectRow = { id: string; name: string | null; status?: string | null };
 type WorkerRow = { id: string; name: string };
+type ReceiptItem = { url: string; fileName: string };
 
 function statusLabel(s: string): string {
   if (s === "needs_review") return "Needs Review";
@@ -79,6 +79,42 @@ function projectLabel(expense: Expense, projectNameById: Map<string, string>): s
   return "Multiple";
 }
 
+function getReceiptItems(expense: Expense): ReceiptItem[] {
+  const items: ReceiptItem[] = [];
+  if (expense.receiptUrl) {
+    items.push({ url: expense.receiptUrl, fileName: "Receipt" });
+  }
+  for (const a of expense.attachments ?? []) {
+    if (!a?.url) continue;
+    items.push({ url: a.url, fileName: a.fileName || "Attachment" });
+  }
+  const seen = new Set<string>();
+  return items.filter((i) => {
+    if (seen.has(i.url)) return false;
+    seen.add(i.url);
+    return true;
+  });
+}
+
+function normalizedVendorLabel(vendor: string): string {
+  const v = (vendor ?? "").trim();
+  if (!v || /^unknown$/i.test(v) || /^smokevendor[-_]/i.test(v)) return "Needs Review";
+  return v;
+}
+
+function extractExpenseTags(expense: Expense): string[] {
+  const notes = expense.notes ?? "";
+  const m = notes.match(/items:\s*(.+)$/im);
+  if (m?.[1]) {
+    return m[1]
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .slice(0, 3);
+  }
+  return Array.from(new Set(expense.lines.map((l) => l.category).filter(Boolean))).slice(0, 3);
+}
+
 export default function ExpensesPage() {
   return (
     <React.Suspense fallback={<div className="page-container py-6" />}>
@@ -107,6 +143,10 @@ function ExpensesPageInner() {
   const [search, setSearch] = React.useState("");
   const [projectFilter, setProjectFilter] = React.useState("");
   const [categoryFilter, setCategoryFilter] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState("");
+  const [dateRangeFilter, setDateRangeFilter] = React.useState<"all" | "week" | "month">("all");
+  const [editingVendorId, setEditingVendorId] = React.useState<string | null>(null);
+  const [vendorDraft, setVendorDraft] = React.useState("");
   const appliedProjectIdFromUrl = React.useRef(false);
   React.useEffect(() => {
     if (appliedProjectIdFromUrl.current) return;
@@ -117,10 +157,11 @@ function ExpensesPageInner() {
     }
   }, [searchParams]);
   const [receiptPreview, setReceiptPreview] = React.useState<{
-    url: string;
-    fileName: string;
+    items: ReceiptItem[];
+    index: number;
     expenseId?: string;
   } | null>(null);
+  const [receiptZoom, setReceiptZoom] = React.useState(1);
   const [quickExpenseOpen, setQuickExpenseOpen] = React.useState(false);
   const receiptReplaceRef = React.useRef<HTMLInputElement>(null);
   const [receiptReplacing, setReceiptReplacing] = React.useState(false);
@@ -189,8 +230,8 @@ function ExpensesPageInner() {
       .filter((e) => (e.date ?? "").startsWith(ym))
       .reduce((s, e) => s + getExpenseTotal(e), 0);
     const allTotal = expenses.reduce((s, e) => s + getExpenseTotal(e), 0);
-    const projectsCount = safeProjects.length;
-    return { monthTotal, allTotal, projectsCount };
+    const needsReview = expenses.filter((e) => (e.status ?? "pending") === "needs_review").length;
+    return { monthTotal, allTotal, needsReview };
   }, [expenses, safeProjects]);
 
   const filtered = React.useMemo(() => {
@@ -199,17 +240,30 @@ function ExpensesPageInner() {
       const q = search.toLowerCase();
       list = list.filter(
         (e) =>
-          e.vendorName.toLowerCase().includes(q) ||
+          normalizedVendorLabel(e.vendorName).toLowerCase().includes(q) ||
           e.referenceNo?.toLowerCase().includes(q) ||
-          e.lines.some((l) => (l.memo ?? "").toLowerCase().includes(q))
+          e.lines.some((l) => (l.memo ?? "").toLowerCase().includes(q)) ||
+          extractExpenseTags(e).some((t) => t.toLowerCase().includes(q)) ||
+          getExpenseTotal(e).toFixed(2).includes(q.replace(/[$,]/g, ""))
       );
     }
     if (projectFilter)
       list = list.filter((e) => e.lines.some((l) => l.projectId === projectFilter));
     if (categoryFilter)
       list = list.filter((e) => e.lines.some((l) => l.category === categoryFilter));
+    if (statusFilter) list = list.filter((e) => (e.status ?? "pending") === statusFilter);
+    if (dateRangeFilter !== "all") {
+      const now = new Date();
+      const start = new Date(now);
+      if (dateRangeFilter === "week") start.setDate(now.getDate() - 7);
+      if (dateRangeFilter === "month") start.setDate(1);
+      list = list.filter((e) => {
+        const d = new Date(e.date);
+        return Number.isFinite(d.getTime()) && d >= start && d <= now;
+      });
+    }
     return list;
-  }, [expenses, search, projectFilter, categoryFilter]);
+  }, [expenses, search, projectFilter, categoryFilter, statusFilter, dateRangeFilter]);
 
   const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
   const pageSize = 20;
@@ -317,6 +371,49 @@ function ExpensesPageInner() {
     }
   };
 
+  const handleVendorInlineSave = async (expenseId: string) => {
+    const nextVendor = vendorDraft.trim();
+    if (!nextVendor) return;
+    const prev = expensesRef.current;
+    setExpenses((list) =>
+      list.map((e) => (e.id === expenseId ? { ...e, vendorName: nextVendor } : e))
+    );
+    setEditingVendorId(null);
+    try {
+      const next = await updateExpenseForReview(expenseId, { vendorName: nextVendor });
+      if (!next) throw new Error("Failed");
+      setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
+    } catch {
+      setExpenses(prev);
+      toast({ title: "Vendor update failed", variant: "error" });
+    }
+  };
+
+  const toggleStatus = async (expense: Expense) => {
+    const current = expense.status ?? "pending";
+    const next = current === "needs_review" ? "approved" : "needs_review";
+    const prev = expensesRef.current;
+    setExpenses((list) => list.map((e) => (e.id === expense.id ? { ...e, status: next } : e)));
+    try {
+      const saved = await updateExpenseForReview(expense.id, { status: next });
+      if (!saved) throw new Error("Failed");
+      const persisted = (saved.status ?? "pending") === next;
+      if (persisted) {
+        setExpenses((list) => list.map((e) => (e.id === expense.id ? saved : e)));
+      } else {
+        // Some schemas may not support status persistence; keep optimistic UI state.
+        toast({
+          title: "Status changed locally",
+          description: "This environment does not persist status updates yet.",
+          variant: "default",
+        });
+      }
+    } catch {
+      setExpenses(prev);
+      toast({ title: "Status update failed", variant: "error" });
+    }
+  };
+
   return (
     <div className="page-container page-stack px-8 py-8">
       <PageHeader
@@ -357,9 +454,11 @@ function ExpensesPageInner() {
             </div>
           </div>
           <div className="px-5 py-5 sm:border-l sm:border-border/60">
-            <div className="text-xs uppercase tracking-wider text-muted-foreground">Projects</div>
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">
+              Needs Review
+            </div>
             <div className="mt-1 text-2xl font-semibold tabular-nums text-foreground">
-              {summary.projectsCount.toLocaleString()}
+              {summary.needsReview.toLocaleString()}
             </div>
           </div>
         </div>
@@ -372,7 +471,7 @@ function ExpensesPageInner() {
           onChange={(e) => setSearch(e.target.value)}
           className="h-10"
         />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1">
             <select
               className="flex min-h-[44px] h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm md:min-h-0"
@@ -402,6 +501,28 @@ function ExpensesPageInner() {
               </option>
             ))}
           </select>
+          <select
+            className="flex min-h-[44px] h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm md:min-h-0"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="">All status</option>
+            <option value="needs_review">Needs Review</option>
+            <option value="approved">Completed / Verified</option>
+            <option value="reimbursed">Completed / Verified</option>
+            <option value="paid">Completed / Verified</option>
+          </select>
+          <select
+            className="flex min-h-[44px] h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm md:min-h-0"
+            value={dateRangeFilter}
+            onChange={(e) =>
+              setDateRangeFilter((e.target.value as "all" | "week" | "month") ?? "all")
+            }
+          >
+            <option value="all">All dates</option>
+            <option value="week">This week</option>
+            <option value="month">This month</option>
+          </select>
         </div>
       </section>
 
@@ -412,20 +533,40 @@ function ExpensesPageInner() {
               <Plus className="h-5 w-5" />
             </div>
             <p className="text-sm font-medium text-foreground">
-              {search.trim() || projectFilter || categoryFilter
+              {search.trim() ||
+              projectFilter ||
+              categoryFilter ||
+              statusFilter ||
+              dateRangeFilter !== "all"
                 ? "No expenses match filters"
                 : "No expenses yet"}
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              {search.trim() || projectFilter || categoryFilter
+              {search.trim() ||
+              projectFilter ||
+              categoryFilter ||
+              statusFilter ||
+              dateRangeFilter !== "all"
                 ? "Try adjusting the filters."
                 : "Create your first expense to start tracking project costs."}
             </p>
-            {search.trim() || projectFilter || categoryFilter ? null : (
-              <div className="mt-5">
+            {search.trim() ||
+            projectFilter ||
+            categoryFilter ||
+            statusFilter ||
+            dateRangeFilter !== "all" ? null : (
+              <div className="mt-5 flex items-center gap-2">
                 <Button size="sm" className="h-8" onClick={handleNew}>
                   <Plus className="h-4 w-4 mr-2" />
                   Add Expense
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8"
+                  onClick={() => setQuickExpenseOpen(true)}
+                >
+                  Quick Upload
                 </Button>
               </div>
             )}
@@ -449,16 +590,37 @@ function ExpensesPageInner() {
                     }}
                     className="flex min-h-[44px] w-full touch-manipulation flex-col items-stretch gap-1 rounded-sm border border-border/60 bg-background p-4 text-left transition-colors active:bg-muted/30"
                   >
-                    <span className="font-medium text-foreground truncate">{row.vendorName}</span>
+                    <span className="font-medium text-foreground truncate">
+                      {normalizedVendorLabel(row.vendorName)}
+                    </span>
                     <span className="text-sm text-muted-foreground truncate">
                       {row.date} · {workerName}
+                    </span>
+                    <span className="text-xs text-muted-foreground truncate">
+                      {extractExpenseTags(row).join(" · ") || (row.notes ?? "—")}
                     </span>
                     <span className="text-sm text-muted-foreground truncate">{projLabel}</span>
                     <div className="mt-1 flex items-center justify-between gap-2">
                       <span className="text-xs text-red-600 font-medium tabular-nums dark:text-red-400">
-                        −${rowTotal.toLocaleString()}
+                        −$
+                        {rowTotal.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
                       </span>
-                      <span className="text-xs text-muted-foreground">{statusLabel(status)}</span>
+                      <button
+                        className={`text-[11px] rounded-sm border px-1.5 py-0.5 ${
+                          status === "needs_review"
+                            ? "border-red-500/40 text-red-600 dark:text-red-400"
+                            : "border-emerald-500/40 text-emerald-700 dark:text-emerald-400"
+                        }`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void toggleStatus(row);
+                        }}
+                      >
+                        {status === "needs_review" ? "Needs Review" : "Completed"}
+                      </button>
                     </div>
                   </button>
                 );
@@ -476,6 +638,9 @@ function ExpensesPageInner() {
                     </TableHead>
                     <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
                       Vendor
+                    </TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                      Items / Description
                     </TableHead>
                     <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
                       Project
@@ -513,29 +678,115 @@ function ExpensesPageInner() {
                       >
                         <TableCell className="tabular-nums text-foreground">{row.date}</TableCell>
                         <TableCell className="text-muted-foreground">{workerName}</TableCell>
-                        <TableCell className="text-foreground">{row.vendorName}</TableCell>
-                        <TableCell className="text-muted-foreground text-sm">{projLabel}</TableCell>
-                        <TableCell className="text-right tabular-nums font-medium text-red-600/90 dark:text-red-400/90">
-                          −${rowTotal.toLocaleString()}
+                        <TableCell className="text-foreground">
+                          {editingVendorId === row.id ? (
+                            <div className="flex items-center gap-1">
+                              <Input
+                                className="h-8"
+                                value={vendorDraft}
+                                autoFocus
+                                onChange={(e) => setVendorDraft(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") void handleVendorInlineSave(row.id);
+                                  if (e.key === "Escape") setEditingVendorId(null);
+                                }}
+                              />
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                aria-label="Confirm vendor"
+                                title="Confirm vendor"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => void handleVendorInlineSave(row.id)}
+                              >
+                                <Check className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                aria-label="Cancel vendor edit"
+                                title="Cancel vendor edit"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => setEditingVendorId(null)}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <button
+                              className="hover:underline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingVendorId(row.id);
+                                setVendorDraft(normalizedVendorLabel(row.vendorName));
+                              }}
+                            >
+                              {normalizedVendorLabel(row.vendorName)}
+                            </button>
+                          )}
                         </TableCell>
                         <TableCell className="text-muted-foreground text-sm">
-                          {statusLabel(status)}
+                          <div className="flex flex-wrap gap-1">
+                            {extractExpenseTags(row).length > 0 ? (
+                              extractExpenseTags(row).map((t) => (
+                                <span
+                                  key={`${row.id}-${t}`}
+                                  className="rounded-sm border border-border/60 px-1.5 py-0.5 text-xs"
+                                >
+                                  {t}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">{projLabel}</TableCell>
+                        <TableCell
+                          className="text-right tabular-nums font-medium text-red-600/90 dark:text-red-400/90"
+                          title={`Total: $${rowTotal.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}`}
+                        >
+                          −$
+                          {rowTotal.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </TableCell>
+                        <TableCell
+                          className="text-muted-foreground text-sm"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            className={`rounded-sm border px-2 py-0.5 text-xs ${
+                              status === "needs_review"
+                                ? "border-red-500/40 text-red-600 dark:text-red-400"
+                                : "border-emerald-500/40 text-emerald-700 dark:text-emerald-400"
+                            }`}
+                            onClick={() => void toggleStatus(row)}
+                          >
+                            {status === "needs_review" ? "Needs Review" : "Completed"}
+                          </button>
                         </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
-                          {row.receiptUrl ? (
+                          {getReceiptItems(row).length > 0 ? (
                             <Button
                               variant="ghost"
-                              size="sm"
-                              className="h-8"
-                              onClick={() =>
-                                setReceiptPreview({
-                                  url: row.receiptUrl!,
-                                  fileName: "Receipt",
-                                  expenseId: row.id,
-                                })
-                              }
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => {
+                                const items = getReceiptItems(row);
+                                setReceiptZoom(1);
+                                setReceiptPreview({ items, index: 0, expenseId: row.id });
+                              }}
+                              aria-label="View receipt"
+                              title="View receipt"
                             >
-                              View
+                              <Eye className="h-4 w-4" />
                             </Button>
                           ) : (
                             <span className="text-muted-foreground text-sm">—</span>
@@ -546,9 +797,35 @@ function ExpensesPageInner() {
                             className="flex items-center justify-end gap-1"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <Button asChild variant="ghost" size="sm">
-                              <Link href={`/financial/expenses/${row.id}`}>View</Link>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              title="Edit"
+                              aria-label="Edit"
+                              onClick={() => {
+                                setEditExpense(row);
+                                setEditModalOpen(true);
+                              }}
+                            >
+                              <Pencil className="h-4 w-4" />
                             </Button>
+                            {getReceiptItems(row).length > 0 ? (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                title="View receipt"
+                                aria-label="View receipt"
+                                onClick={() => {
+                                  const items = getReceiptItems(row);
+                                  setReceiptZoom(1);
+                                  setReceiptPreview({ items, index: 0, expenseId: row.id });
+                                }}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            ) : null}
                             <Button
                               variant="ghost"
                               size="icon"
@@ -575,17 +852,27 @@ function ExpensesPageInner() {
         <Pagination page={curPage} pageSize={pageSize} total={total} onPageChange={setPage} />
       ) : null}
 
-      <Dialog open={!!receiptPreview} onOpenChange={(open) => !open && setReceiptPreview(null)}>
+      <Dialog
+        open={!!receiptPreview}
+        onOpenChange={(open) => {
+          if (!open) {
+            setReceiptPreview(null);
+            setReceiptZoom(1);
+          }
+        }}
+      >
         <DialogContent className="max-h-[90vh] max-w-4xl border-border/60 p-0 gap-0 overflow-hidden flex flex-col">
           <DialogHeader className="shrink-0 border-b border-border/60 px-4 py-2">
             <DialogTitle className="text-sm font-medium truncate">
-              {receiptPreview?.fileName ?? "Receipt"}
+              {receiptPreview
+                ? `${receiptPreview.items[receiptPreview.index]?.fileName ?? "Receipt"} (${receiptPreview.index + 1}/${receiptPreview.items.length})`
+                : "Receipt"}
             </DialogTitle>
           </DialogHeader>
           <div className="flex-1 min-h-0 overflow-auto p-4">
             {receiptPreview
               ? (() => {
-                  const u = receiptPreview.url;
+                  const u = receiptPreview.items[receiptPreview.index]?.url ?? "";
                   if (u.toLowerCase().endsWith(".pdf")) {
                     return (
                       <iframe
@@ -601,7 +888,12 @@ function ExpensesPageInner() {
                       <img
                         src={u}
                         alt="Receipt"
+                        loading="lazy"
                         className="max-w-full max-h-[70vh] object-contain rounded border border-border/60"
+                        style={{
+                          transform: `scale(${receiptZoom})`,
+                          transformOrigin: "top center",
+                        }}
                       />
                     );
                   }
@@ -622,8 +914,67 @@ function ExpensesPageInner() {
           </div>
           {receiptPreview ? (
             <div className="shrink-0 border-t border-border/60 px-4 py-2 flex items-center justify-end gap-2">
+              {receiptPreview.items.length > 1 ? (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8"
+                    onClick={() =>
+                      setReceiptPreview((p) =>
+                        p
+                          ? {
+                              ...p,
+                              index: (p.index - 1 + p.items.length) % p.items.length,
+                            }
+                          : p
+                      )
+                    }
+                  >
+                    Prev
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8"
+                    onClick={() =>
+                      setReceiptPreview((p) =>
+                        p
+                          ? {
+                              ...p,
+                              index: (p.index + 1) % p.items.length,
+                            }
+                          : p
+                      )
+                    }
+                  >
+                    Next
+                  </Button>
+                </>
+              ) : null}
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8"
+                onClick={() => setReceiptZoom((z) => Math.max(0.5, Number((z - 0.1).toFixed(2))))}
+              >
+                <Minus className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8"
+                onClick={() => setReceiptZoom((z) => Math.min(3, Number((z + 0.1).toFixed(2))))}
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </Button>
               <Button variant="outline" size="sm" className="h-8" asChild>
-                <a href={receiptPreview.url} download target="_blank" rel="noopener noreferrer">
+                <a
+                  href={receiptPreview.items[receiptPreview.index]?.url ?? "#"}
+                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   Download
                 </a>
               </Button>
@@ -650,7 +1001,16 @@ function ExpensesPageInner() {
                         if (error) throw error;
                         const { data } = supabase.storage.from("receipts").getPublicUrl(path);
                         await updateExpenseReceiptUrl(receiptPreview.expenseId, data.publicUrl);
-                        setReceiptPreview((p) => (p ? { ...p, url: data.publicUrl } : null));
+                        setReceiptPreview((p) =>
+                          p
+                            ? {
+                                ...p,
+                                items: p.items.map((it, idx) =>
+                                  idx === p.index ? { ...it, url: data.publicUrl } : it
+                                ),
+                              }
+                            : null
+                        );
                         refresh();
                       } finally {
                         setReceiptReplacing(false);
@@ -678,6 +1038,8 @@ function ExpensesPageInner() {
         open={quickExpenseOpen}
         onOpenChange={setQuickExpenseOpen}
         onSuccess={refresh}
+        projects={safeProjects}
+        expenses={expenses}
       />
       <EditExpenseModal
         expense={editExpense}
