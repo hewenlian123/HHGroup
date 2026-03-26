@@ -302,7 +302,7 @@ test.describe("Settings → Company Profile", () => {
         timeout: 30_000,
       });
 
-      const inv = await tryCreateDraftInvoiceNavigateToDetail(page, BASE);
+      const inv = await tryCreateDraftInvoiceNavigateToDetail(page);
       test.skip(!inv.ok, inv.ok ? "" : inv.skipReason);
 
       const url = page.url();

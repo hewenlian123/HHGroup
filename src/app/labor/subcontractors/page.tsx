@@ -212,16 +212,32 @@ export default function SubcontractorsPage() {
     };
     try {
       if (editorMode === "create") {
-        const { error } = await supabase.from("subcontractors").insert([payload]);
+        const { data, error } = await supabase
+          .from("subcontractors")
+          .insert([payload])
+          .select("*")
+          .single();
         if (error) throw error;
+        if (data) {
+          setRows((prev) => [data as SubcontractorRow, ...prev]);
+        }
       } else {
         if (!form.id) throw new Error("Missing subcontractor id.");
-        const { error } = await supabase.from("subcontractors").update(payload).eq("id", form.id);
+        const { data, error } = await supabase
+          .from("subcontractors")
+          .update(payload)
+          .eq("id", form.id)
+          .select("*")
+          .single();
         if (error) throw error;
+        if (data) {
+          setRows((prev) =>
+            prev.map((row) => (row.id === form.id ? (data as SubcontractorRow) : row))
+          );
+        }
       }
       setEditorOpen(false);
       setForm(EMPTY_FORM);
-      await refresh();
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : String(error);
       setMessage(msg || "Failed to save subcontractor.");

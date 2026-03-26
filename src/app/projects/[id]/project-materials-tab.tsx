@@ -41,6 +41,7 @@ export function ProjectMaterialsTab({
   catalog: MaterialCatalogRow[];
   onRefresh: () => void;
 }) {
+  const [rows, setRows] = React.useState<ProjectMaterialSelectionWithMaterial[]>(selections);
   const [modalOpen, setModalOpen] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [generating, setGenerating] = React.useState(false);
@@ -54,6 +55,10 @@ export function ProjectMaterialsTab({
     status: "Pending" as "Selected" | "Pending" | "Ordered",
     notes: "",
   });
+
+  React.useEffect(() => {
+    setRows(selections);
+  }, [selections]);
 
   const openModal = () => {
     setForm({
@@ -102,6 +107,10 @@ export function ProjectMaterialsTab({
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.message || "Failed to add");
+      if (data.selection) {
+        const selection = data.selection as ProjectMaterialSelectionWithMaterial;
+        setRows((prev) => [selection, ...prev]);
+      }
       setModalOpen(false);
       onRefresh();
     } catch (e) {
@@ -159,7 +168,7 @@ export function ProjectMaterialsTab({
       </div>
 
       <div className="border border-border/60 rounded-sm overflow-hidden">
-        {selections.length === 0 ? (
+        {rows.length === 0 ? (
           <div className="py-10 text-center text-sm text-muted-foreground">
             No selections yet. Add one from the catalog.
           </div>
@@ -186,7 +195,7 @@ export function ProjectMaterialsTab({
               </tr>
             </thead>
             <tbody>
-              {selections.map((row) => (
+              {rows.map((row) => (
                 <tr
                   key={row.id}
                   className="border-b border-border/60 last:border-b-0 hover:bg-muted/40 transition-colors"

@@ -4,6 +4,7 @@ import {
   dispatchClientDataSync,
   HH_APP_SYNC_EVENT,
   HH_PROJECT_EDIT_OPTIMISTIC_REASON,
+  syncClientsThenRefreshInBackground,
   syncRouterAndClients,
 } from "@/lib/sync-router-client";
 import * as React from "react";
@@ -118,6 +119,7 @@ export function ProjectDetailTabsClient({
 }: ProjectDetailTabsClientProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const [, startTabTransition] = React.useTransition();
   const [tab, setTab] = React.useState<TabKey>(initialTab);
   const [editModalOpen, setEditModalOpen] = React.useState(false);
   const [displayProject, setDisplayProject] = React.useState<Project>(() => project);
@@ -324,7 +326,13 @@ export function ProjectDetailTabsClient({
       />
       <div className="bg-[#F9FAFB] -mx-4 -mb-4 px-4 pb-6 sm:-mx-6 sm:px-6">
         <div className="bg-white rounded-sm px-4 py-3 sm:px-5 sm:py-4 space-y-4">
-          <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)} className="w-full">
+          <Tabs
+            value={tab}
+            onValueChange={(v) => {
+              startTabTransition(() => setTab(v as TabKey));
+            }}
+            className="w-full"
+          >
             <div className="flex items-center justify-between gap-2 border-b border-border/60">
               <TabsList className="h-9 flex-1 justify-start rounded-none border-0 bg-transparent p-0 gap-0 min-h-0 overflow-x-auto whitespace-nowrap">
                 {(
@@ -602,8 +610,12 @@ export function ProjectDetailTabsClient({
                 projectId={projectId}
                 tasks={tasks}
                 workers={workers}
-                onTaskCreated={() => void syncRouterAndClients(router)}
-                onTaskUpdated={() => void syncRouterAndClients(router)}
+                onTaskCreated={() =>
+                  syncClientsThenRefreshInBackground(router, "project-task-created")
+                }
+                onTaskUpdated={() =>
+                  syncClientsThenRefreshInBackground(router, "project-task-updated")
+                }
               />
             </TabsContent>
 
@@ -842,7 +854,9 @@ export function ProjectDetailTabsClient({
                 }
                 selections={materialSelections}
                 catalog={materialCatalog}
-                onRefresh={() => void syncRouterAndClients(router)}
+                onRefresh={() =>
+                  syncClientsThenRefreshInBackground(router, "project-materials-mutated")
+                }
               />
             </TabsContent>
             <TabsContent value="closeout" className="mt-4">
@@ -854,14 +868,18 @@ export function ProjectDetailTabsClient({
                 punch={closeoutPunch}
                 warranty={closeoutWarranty}
                 completion={closeoutCompletion}
-                onRefresh={() => void syncRouterAndClients(router)}
+                onRefresh={() =>
+                  syncClientsThenRefreshInBackground(router, "project-closeout-mutated")
+                }
               />
             </TabsContent>
             <TabsContent value="commission" className="mt-4">
               <ProjectCommissionTab
                 projectId={projectId}
                 commissions={commissions}
-                onRefresh={() => void syncRouterAndClients(router)}
+                onRefresh={() =>
+                  syncClientsThenRefreshInBackground(router, "project-commission-mutated")
+                }
               />
             </TabsContent>
             <TabsContent value="punch-list" className="mt-4">

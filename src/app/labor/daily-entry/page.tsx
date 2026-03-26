@@ -1,11 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
 import { AddDailyEntryModal } from "@/app/labor/add-daily-entry-modal";
+import { dispatchClientDataSync } from "@/lib/sync-router-client";
 
 export default function WorkerDailyEntryPage() {
-  const router = useRouter();
   const [nonce, setNonce] = React.useState(0);
 
   return (
@@ -18,7 +17,7 @@ export default function WorkerDailyEntryPage() {
         }}
         onSuccess={() => {
           setNonce((n) => n + 1);
-          router.refresh();
+          dispatchClientDataSync({ reason: "worker-daily-entry-created" });
         }}
       />
     </div>

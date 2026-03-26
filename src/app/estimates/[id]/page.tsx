@@ -22,6 +22,8 @@ export default async function EstimateDetailPage({
   searchParams: Promise<{ created?: string; saved?: string }>;
 }) {
   const { id } = await params;
+  /** When the dynamic segment incorrectly receives `new`, avoid UUID queries and send the canonical route. */
+  if (id === "new") redirect("/estimates/new");
   const { created, saved } = await searchParams;
   const [estimate, meta, items, categories, summary, costCodes, paymentSchedule, paymentTemplates] =
     await Promise.all([

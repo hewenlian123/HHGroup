@@ -48,6 +48,7 @@
     "db:migrate": "npx supabase db push",
     "db:seed": "npx supabase db reset --local",
     "db:seed:remote": "node scripts/seed-supabase-remote.mjs",
+    "db:seed:e2e": "npx tsx scripts/ensure-e2e-seed.ts",
     "prepare": "husky"
   },
   "dependencies": {

@@ -159,6 +159,20 @@ export default function LaborWorkersPage() {
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.message ?? "Failed to create worker.");
+        setRows((prev) => [
+          {
+            id: String(data.id ?? crypto.randomUUID()),
+            name: String(data.name ?? name),
+            role: (data.trade ?? data.role ?? form.role ?? null) as string | null,
+            phone: (data.phone ?? form.phone ?? null) as string | null,
+            half_day_rate: Number(data.halfDayRate ?? data.half_day_rate ?? rate) || 0,
+            status: (data.status === "inactive" ? "inactive" : "active") as
+              | "active"
+              | "inactive"
+              | null,
+          },
+          ...prev,
+        ]);
       } else {
         if (!form.id) throw new Error("Missing worker id.");
         const res = await fetch(`/api/labor/workers/${form.id}`, {
@@ -174,10 +188,26 @@ export default function LaborWorkersPage() {
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.message ?? "Failed to update worker.");
+        setRows((prev) =>
+          prev.map((w) =>
+            w.id === form.id
+              ? {
+                  ...w,
+                  name: String(data.name ?? name),
+                  role: (data.trade ?? data.role ?? form.role ?? null) as string | null,
+                  phone: (data.phone ?? form.phone ?? null) as string | null,
+                  half_day_rate: Number(data.halfDayRate ?? data.half_day_rate ?? rate) || 0,
+                  status: (data.status === "inactive" ? "inactive" : "active") as
+                    | "active"
+                    | "inactive"
+                    | null,
+                }
+              : w
+          )
+        );
       }
       setEditorOpen(false);
       setForm(EMPTY_FORM);
-      await refresh();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       setMessage(msg || "Failed to save worker.");

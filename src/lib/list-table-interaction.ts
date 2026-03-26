@@ -17,13 +17,12 @@ export const listTableAmountCellClassName = cn(
   "transition-colors duration-200 group-hover:!text-[#2D2D2D] dark:group-hover:!text-foreground"
 );
 
-/** … trigger: hidden until row hover (desktop); always visible on small screens for touch. */
+/** Row actions trigger: always visible (keyboard, screen readers, E2E); hover still styles the control. */
 export const listRowActionsTriggerClassName = cn(
   "h-auto w-auto min-h-0 min-w-0 shrink-0 p-2 rounded-lg text-muted-foreground",
   "opacity-100 transition-opacity duration-200",
   "hover:bg-white hover:text-foreground hover:shadow-sm",
-  "data-[state=open]:opacity-100 data-[state=open]:bg-white data-[state=open]:shadow-sm dark:data-[state=open]:bg-popover",
-  "md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
+  "data-[state=open]:opacity-100 data-[state=open]:bg-white data-[state=open]:shadow-sm dark:data-[state=open]:bg-popover"
 );
 
 export const listRowActionsContentClassName = cn(

@@ -32,8 +32,27 @@ export async function syncRouterAndClients(
   router: MinimalAppRouter,
   reason?: string
 ): Promise<void> {
-  await Promise.resolve(router.refresh());
   dispatchClientDataSync({ reason });
+  await Promise.resolve(router.refresh());
+}
+
+/**
+ * Keep UI responsive for heavy pages:
+ * - notify client listeners immediately
+ * - run router.refresh() in the background after a short delay
+ */
+export function syncClientsThenRefreshInBackground(
+  router: MinimalAppRouter,
+  reason?: string,
+  delayMs = 120
+): void {
+  dispatchClientDataSync({ reason });
+  setTimeout(
+    () => {
+      void Promise.resolve(router.refresh());
+    },
+    Math.max(0, delayMs)
+  );
 }
 
 /** Subscribe to cross-app sync (debounce in the hook, not here). */

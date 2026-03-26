@@ -126,6 +126,7 @@ function ExpensesPageInner() {
   const [receiptReplacing, setReceiptReplacing] = React.useState(false);
   const [editExpense, setEditExpense] = React.useState<Expense | null>(null);
   const [editModalOpen, setEditModalOpen] = React.useState(false);
+  const [deletingExpenseId, setDeletingExpenseId] = React.useState<string | null>(null);
   const expensesRef = React.useRef<Expense[]>([]);
   expensesRef.current = expenses;
 
@@ -300,12 +301,19 @@ function ExpensesPageInner() {
   };
 
   const handleDelete = async (expense: Expense) => {
-    if (typeof window !== "undefined" && window.confirm("Delete this expense?")) {
+    if (typeof window === "undefined" || !window.confirm("Delete this expense?")) return;
+    const prev = expensesRef.current;
+    setDeletingExpenseId(expense.id);
+    setExpenses((list) => list.filter((e) => e.id !== expense.id));
+    try {
       expense.attachments?.forEach((a) => {
         if (a.url?.startsWith("blob:")) URL.revokeObjectURL(a.url);
       });
       await deleteExpense(expense.id);
-      await refresh();
+    } catch {
+      setExpenses(prev);
+    } finally {
+      setDeletingExpenseId(null);
     }
   };
 
@@ -546,6 +554,7 @@ function ExpensesPageInner() {
                               size="icon"
                               className="h-8 w-8 text-destructive"
                               onClick={() => handleDelete(row)}
+                              disabled={deletingExpenseId === row.id}
                               aria-label="Delete"
                             >
                               <Trash2 className="h-4 w-4" />
