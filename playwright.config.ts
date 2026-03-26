@@ -1,4 +1,11 @@
+import { resolve } from "node:path";
+
 import { defineConfig, devices } from "@playwright/test";
+import { config as loadDotenv } from "dotenv";
+
+/** Same load order as tests/global-setup.ts so `webServer` (next dev/start) sees service role. */
+loadDotenv({ path: resolve(process.cwd(), ".env") });
+loadDotenv({ path: resolve(process.cwd(), ".env.local"), override: true });
 
 /** Dynamic base URL for local dev (default :3000) or CI override. */
 const resolvedBase = (process.env.E2E_BASE_URL || "http://localhost:3000").replace(/\/$/, "");
@@ -22,13 +29,14 @@ const ignorePaymentAndDeleteMutations = [
 
 export default defineConfig({
   testDir: "./tests",
+  globalSetup: "./tests/global-setup.ts",
   globalTeardown: "./tests/global-teardown.ts",
   timeout: 30000,
   retries: 1,
   /**
    * Web server modes:
-   * - CI: expects build output, runs `next start`
-   * - E2E_WEB_SERVER=dev: runs `next dev` (for local pre-push tests)
+   * - CI (without E2E_WEB_SERVER=dev): expects build output, runs `next start`
+   * - E2E_WEB_SERVER=dev: always runs `next dev` (even if CI=true — Cursor often sets CI)
    *
    * Port is derived from E2E_BASE_URL (defaults to :3000).
    */
@@ -37,12 +45,18 @@ export default defineConfig({
       ? (() => {
           const u = new URL(resolvedBase);
           const port = u.port || "3000";
-          const isDev = process.env.E2E_WEB_SERVER === "dev" && !process.env.CI;
+          const isDev = process.env.E2E_WEB_SERVER === "dev";
           return {
-            command: isDev ? `npm run dev -- -p ${port}` : `PORT=${port} npm run start`,
+            command: isDev ? `npm run dev:safe -- -p ${port}` : `PORT=${port} npm run start`,
             url: resolvedBase,
-            reuseExistingServer: false,
+            reuseExistingServer: !process.env.CI,
             timeout: 120_000,
+            env: {
+              ...process.env,
+              NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
+              NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
+              SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
+            },
           };
         })()
       : undefined,

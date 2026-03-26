@@ -77,6 +77,7 @@ export default function InvoiceDetailPage() {
   const [deleteBlockedOpen, setDeleteBlockedOpen] = React.useState(false);
   const [revertOpen, setRevertOpen] = React.useState(false);
   const [actionBusy, setActionBusy] = React.useState(false);
+  const [deletingPaymentId, setDeletingPaymentId] = React.useState<string | null>(null);
 
   const refresh = React.useCallback(async () => {
     if (!id) return;
@@ -140,7 +141,7 @@ export default function InvoiceDetailPage() {
   const handleMarkSent = async () => {
     if (!id) return;
     await markInvoiceSent(id);
-    await refresh();
+    void refresh();
   };
 
   const handleVoid = async () => {
@@ -157,7 +158,7 @@ export default function InvoiceDetailPage() {
         return;
       }
       toast({ title: "Invoice voided", variant: "success" });
-      await refresh();
+      void refresh();
     } catch (e) {
       toast({
         title: "Could not void invoice",
@@ -183,7 +184,7 @@ export default function InvoiceDetailPage() {
     try {
       await revertInvoiceToDraft(id);
       setRevertOpen(false);
-      await refresh();
+      void refresh();
     } finally {
       setActionBusy(false);
     }
@@ -202,12 +203,29 @@ export default function InvoiceDetailPage() {
     setPaymentAmount("");
     setPaymentMemo("");
     setShowPaymentModal(false);
-    await refresh();
+    void refresh();
   };
 
   const handleDeletePayment = async (paymentId: string) => {
-    await deleteInvoicePayment(paymentId);
-    await refresh();
+    setDeletingPaymentId(paymentId);
+    const prev = payments;
+    setPayments((list) => list.filter((p) => p.id !== paymentId));
+    if (invoice) {
+      const removed = payments.find((p) => p.id === paymentId);
+      if (removed) {
+        const nextPaid = Math.max(0, invoice.paidTotal - removed.amount);
+        const nextBalance = Math.max(0, invoice.total - nextPaid);
+        setInvoice({ ...invoice, paidTotal: nextPaid, balanceDue: nextBalance });
+      }
+    }
+    try {
+      await deleteInvoicePayment(paymentId);
+      void refresh();
+    } catch {
+      setPayments(prev);
+    } finally {
+      setDeletingPaymentId(null);
+    }
   };
 
   if (!id) {
@@ -514,6 +532,7 @@ export default function InvoiceDetailPage() {
                         size="sm"
                         className="h-8 text-red-600 hover:text-red-700"
                         onClick={() => handleDeletePayment(p.id)}
+                        disabled={deletingPaymentId === p.id}
                         title="Delete payment"
                       >
                         <Trash2 className="h-4 w-4" />

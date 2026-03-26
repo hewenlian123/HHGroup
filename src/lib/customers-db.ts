@@ -24,12 +24,11 @@ function admin() {
 
 export async function getAllCustomers(): Promise<Customer[]> {
   const c = admin();
-  const { data, error } = await c
-    .from("customers")
-    .select(CUSTOMERS_DB_COLUMNS)
-    .order("name", { ascending: true });
+  const { data, error } = await c.from("customers").select(CUSTOMERS_DB_COLUMNS);
   if (error) throw new Error(error.message ?? "Failed to load customers.");
-  return (data ?? []) as Customer[];
+  return [...((data ?? []) as Customer[])].sort((a, b) =>
+    (a.name ?? "").localeCompare(b.name ?? "")
+  );
 }
 
 export async function getCustomerById(

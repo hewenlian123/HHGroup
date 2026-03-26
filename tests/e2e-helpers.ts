@@ -1,10 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
-function trimBaseUrl(base: string): string {
-  return base.replace(/\/$/, "");
-}
-
 /** Auto-accept `window.confirm` / `alert` (e.g. vendor/category/worker delete). Register in `test.beforeEach`. */
 export function acceptBrowserDialogs(page: Page): void {
   page.on("dialog", (d) => void d.accept());
@@ -53,10 +49,9 @@ export type CreateDraftInvoiceResult = { ok: true } | { ok: false; skipReason: s
  */
 export async function tryCreateDraftInvoiceNavigateToDetail(
   page: Page,
-  baseUrl: string,
   options?: { clientName?: string; lineDescription?: string }
 ): Promise<CreateDraftInvoiceResult> {
-  await page.goto(`${trimBaseUrl(baseUrl)}/financial/invoices/new`);
+  await page.goto("/financial/invoices/new");
   await page.waitForLoadState("domcontentloaded");
 
   // Form loads projects via client Supabase after shell paint — wait for real options, not skeleton.
@@ -112,9 +107,9 @@ export async function tryCreateDraftInvoiceNavigateToDetail(
  * Desktop `/projects`: {@link ProjectsListClient} uses All / Active / Closed toggles (not a status column).
  * Asserts list loaded and the Active view filter applies without error.
  */
-export async function openFirstProjectStatusSelect(page: Page, baseUrl: string): Promise<void> {
+export async function openFirstProjectStatusSelect(page: Page): Promise<void> {
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.goto(`${trimBaseUrl(baseUrl)}/projects`);
+  await page.goto("/projects");
   await page.waitForLoadState("domcontentloaded");
 
   await expect(page).toHaveURL(/\/projects\/?($|[?#])/, { timeout: 30_000 });

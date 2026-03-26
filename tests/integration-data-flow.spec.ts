@@ -119,7 +119,7 @@ test.describe("Integration: data linked across modules", () => {
   test("financial: new invoice flow requires project (customer ↔ project graph)", async ({
     page,
   }) => {
-    const r = await tryCreateDraftInvoiceNavigateToDetail(page, BASE);
+    const r = await tryCreateDraftInvoiceNavigateToDetail(page);
     test.skip(!r.ok, r.ok ? "" : r.skipReason);
     await expect(page).toHaveURL(/\/financial\/invoices\/[^/]+/);
     await expect(page.locator("body")).not.toContainText(

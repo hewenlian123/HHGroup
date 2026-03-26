@@ -1,6 +1,7 @@
 -- ═══════════════════════════════════════════════════════════════════════════
 -- E2E / staging SEED DATA — DO NOT RUN ON PRODUCTION
 -- Path: `supabase/seed.sql` (local: `supabase db reset --local`; remote: `npm run db:seed:remote`).
+-- Minimal subset only (no DB reset): `npm run db:seed:e2e` or Playwright `globalSetup` (tests/global-setup.ts).
 -- All human-visible seed labels use an `[E2E]` prefix so they are easy to identify (and are not removed by
 -- Playwright global-teardown, which only deletes rows matching PW / Playwright / Workflow Test / etc.).
 -- ═══════════════════════════════════════════════════════════════════════════

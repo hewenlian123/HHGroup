@@ -25,6 +25,7 @@ export default function LaborInvoicesPage() {
   const [fromDate, setFromDate] = React.useState("");
   const [toDate, setToDate] = React.useState("");
   const [workers, setWorkers] = React.useState<Awaited<ReturnType<typeof getWorkers>>>([]);
+  const [busyId, setBusyId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -73,16 +74,39 @@ export default function LaborInvoicesPage() {
       setMessage("Confirmed invoice cannot be deleted. Void it instead.");
       return;
     }
-    await deleteLaborInvoice(id);
-    setMessage("Invoice deleted.");
-    await refresh();
+    const prev = rows;
+    setBusyId(id);
+    setRows((list) => list.filter((row) => row.id !== id));
+    try {
+      await deleteLaborInvoice(id);
+      setMessage("Invoice deleted.");
+    } catch {
+      setRows(prev);
+      setMessage("Delete failed.");
+    } finally {
+      setBusyId(null);
+    }
   };
 
   const handleVoid = async (id: string) => {
     if (!window.confirm("Void this invoice?")) return;
-    const updated = await voidLaborInvoice(id);
-    setMessage(updated ? "Invoice voided." : "Void failed.");
-    await refresh();
+    const prev = rows;
+    setBusyId(id);
+    setRows((list) => list.map((row) => (row.id === id ? { ...row, status: "void" } : row)));
+    try {
+      const updated = await voidLaborInvoice(id);
+      if (!updated) {
+        setRows(prev);
+        setMessage("Void failed.");
+        return;
+      }
+      setMessage("Invoice voided.");
+    } catch {
+      setRows(prev);
+      setMessage("Void failed.");
+    } finally {
+      setBusyId(null);
+    }
   };
 
   const filtered = React.useMemo(() => {
@@ -205,17 +229,18 @@ export default function LaborInvoicesPage() {
                         variant="outline"
                         className="h-8 rounded-sm"
                         onClick={() => handleVoid(row.id)}
-                        disabled={row.status === "void"}
+                        disabled={row.status === "void" || busyId === row.id}
                       >
-                        Void
+                        {busyId === row.id ? "Working..." : "Void"}
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
                         className="h-8 rounded-sm"
                         onClick={() => handleDelete(row.id)}
+                        disabled={busyId === row.id}
                       >
-                        Delete
+                        {busyId === row.id ? "Working..." : "Delete"}
                       </Button>
                     </div>
                   </td>

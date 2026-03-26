@@ -36,6 +36,8 @@ export type WorkerDraft = {
 const COLS_EXT = "id, name, phone, trade, daily_rate, default_ot_rate, status, notes, created_at";
 /** Base columns (original labor schema — always present). */
 const COLS_BASE = "id, name, phone, role, half_day_rate, status, notes, created_at";
+/** Minimal columns when role/half_day_rate are absent (sparse remotes). */
+const COLS_MIN = "id, name, phone, status, notes, created_at";
 
 function client() {
   const c = getSupabaseClient();
@@ -93,24 +95,41 @@ function mapBaseRow(r: Record<string, unknown>): WorkerRow {
   };
 }
 
+function mapMinRow(r: Record<string, unknown>): WorkerRow {
+  const row = mapBaseRow({
+    ...r,
+    role: null,
+    half_day_rate: 0,
+  });
+  return { ...row, trade: null, daily_rate: 0, default_ot_rate: 0 };
+}
+
 /** Fetch all workers, ordered by name. */
 export async function getWorkers(): Promise<WorkerRow[]> {
   const c = client();
-  const { data: rows, error } = await c.from("workers").select(COLS_EXT).order("name");
+  const byName = (a: WorkerRow, b: WorkerRow) => a.name.localeCompare(b.name);
+  const { data: rows, error } = await c.from("workers").select(COLS_EXT);
   if (error) {
     if (isMissingTable(error)) return [];
     if (isMissingColumn(error)) {
       // fall back to old schema
-      const { data: rows2, error: err2 } = await c.from("workers").select(COLS_BASE).order("name");
-      if (err2) {
-        if (isMissingTable(err2)) return [];
-        throw new Error(err2.message ?? "Failed to load workers.");
+      const { data: rows2, error: err2 } = await c.from("workers").select(COLS_BASE);
+      if (!err2)
+        return (rows2 ?? []).map((r: Record<string, unknown>) => mapBaseRow(r)).sort(byName);
+      if (isMissingTable(err2)) return [];
+      if (isMissingColumn(err2)) {
+        const { data: rows3, error: err3 } = await c.from("workers").select(COLS_MIN);
+        if (err3) {
+          if (isMissingTable(err3)) return [];
+          throw new Error(err3.message ?? "Failed to load workers.");
+        }
+        return (rows3 ?? []).map((r: Record<string, unknown>) => mapMinRow(r)).sort(byName);
       }
-      return (rows2 ?? []).map((r: Record<string, unknown>) => mapBaseRow(r));
+      throw new Error(err2.message ?? "Failed to load workers.");
     }
     throw new Error(error.message ?? "Failed to load workers.");
   }
-  return (rows ?? []).map((r: Record<string, unknown>) => mapExtRow(r));
+  return (rows ?? []).map((r: Record<string, unknown>) => mapExtRow(r)).sort(byName);
 }
 
 /** Fetch one worker by id. Returns null if not found. */
@@ -125,8 +144,16 @@ export async function getWorkerById(id: string): Promise<WorkerRow | null> {
         .select(COLS_BASE)
         .eq("id", id)
         .maybeSingle();
-      if (err2 || !row2) return null;
-      return mapBaseRow(row2 as Record<string, unknown>);
+      if (!err2) return row2 ? mapBaseRow(row2 as Record<string, unknown>) : null;
+      if (isMissingTable(err2)) return null;
+      if (!isMissingColumn(err2)) return null;
+      const { data: row3, error: err3 } = await c
+        .from("workers")
+        .select(COLS_MIN)
+        .eq("id", id)
+        .maybeSingle();
+      if (err3 || !row3) return null;
+      return mapMinRow(row3 as Record<string, unknown>);
     }
     throw new Error(error.message ?? "Failed to load worker.");
   }

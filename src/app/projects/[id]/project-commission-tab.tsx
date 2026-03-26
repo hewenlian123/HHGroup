@@ -32,6 +32,7 @@ export function ProjectCommissionTab({
   const [rows, setRows] = React.useState<ProjectCommission[]>(commissions);
   const [modalOpen, setModalOpen] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
+  const [deletingId, setDeletingId] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [form, setForm] = React.useState({
     person_name: "",
@@ -109,6 +110,9 @@ export function ProjectCommissionTab({
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this commission?")) return;
+    const prev = rows;
+    setDeletingId(id);
+    setRows((p) => p.filter((r) => r.id !== id));
     try {
       const res = await fetch(`/api/projects/${projectId}/commissions/${id}`, { method: "DELETE" });
       const data = await res.json();
@@ -116,7 +120,10 @@ export function ProjectCommissionTab({
       setRows((prev) => prev.filter((r) => r.id !== id));
       onRefresh();
     } catch (err) {
+      setRows(prev);
       alert(err instanceof Error ? err.message : "Failed to delete");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -187,8 +194,9 @@ export function ProjectCommissionTab({
                       size="sm"
                       className="h-7 text-xs text-muted-foreground hover:text-destructive"
                       onClick={() => handleDelete(c.id)}
+                      disabled={deletingId === c.id}
                     >
-                      Delete
+                      {deletingId === c.id ? "Deleting…" : "Delete"}
                     </Button>
                   </td>
                 </tr>

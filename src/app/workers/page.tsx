@@ -1,10 +1,27 @@
 import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
+import { getWorkers as getLaborWorkersFlat, type Worker as LaborWorker } from "@/lib/labor-db";
 import { getWorkers } from "@/lib/workers-db";
+import type { WorkerRow, WorkerStatus } from "@/lib/workers-db";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { WorkersListClient } from "./workers-list-client";
 import { WorkersActions } from "./workers-actions";
 
 export const dynamic = "force-dynamic";
+
+function laborWorkerToWorkerRow(w: LaborWorker): WorkerRow {
+  const st: WorkerStatus = w.status === "inactive" ? "Inactive" : "Active";
+  return {
+    id: w.id,
+    name: w.name,
+    phone: w.phone ?? null,
+    trade: w.trade ?? null,
+    daily_rate: Number(w.dailyRate) || 0,
+    default_ot_rate: 0,
+    status: st,
+    notes: w.notes ?? null,
+    created_at: w.createdAt ?? "",
+  };
+}
 
 export default async function WorkersPage() {
   let rows: Awaited<ReturnType<typeof getWorkers>> = [];
@@ -16,6 +33,15 @@ export default async function WorkersPage() {
     dataLoadWarning = serverDataLoadWarning(e, "workers");
   }
 
+  /** Same table, narrower column set — fills list when workers-db extended select misbehaves. */
+  if (rows.length === 0) {
+    try {
+      const lw = await getLaborWorkersFlat();
+      if (lw.length > 0) rows = lw.map(laborWorkerToWorkerRow);
+    } catch {
+      /* keep empty / existing warning */
+    }
+  }
   return (
     <PageLayout
       header={
