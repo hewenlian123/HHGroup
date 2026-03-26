@@ -6,6 +6,7 @@ export async function middleware(request: NextRequest) {
   const mode = (searchParams.get("mode") ?? "").toLowerCase();
   const workerModeCookie = request.cookies.get("hh_worker_mode")?.value === "1";
   const isWorkerModePath = pathname === "/labor/daily" || pathname === "/labor/daily-entry";
+  const isLaborPath = pathname === "/labor" || pathname.startsWith("/labor/");
 
   if (isWorkerModePath && mode === "exit") {
     const target = request.nextUrl.clone();
@@ -29,7 +30,7 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  if (workerModeCookie) {
+  if (workerModeCookie && isLaborPath) {
     const target = request.nextUrl.clone();
     target.pathname = "/labor/daily-entry";
     target.search = "?mode=worker";
