@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { useRegisterLaborOpenDailyEntry } from "@/contexts/labor-add-entry-context";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { invalidateDataCache } from "@/lib/client-data-cache";
+import { useToast } from "@/components/toast/toast-provider";
 import { AddDailyEntryModal as QuickTimesheetModal } from "./add-daily-entry-modal";
 import { EditEntryModal, sessionLabel } from "./edit-entry-modal";
 import type { LaborSession } from "./edit-entry-modal";
@@ -118,7 +119,9 @@ const MONTH_OPTIONS = buildMonthOptions();
 
 export default function LaborPageClient() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { toast } = useToast();
   const now = new Date();
   const initialMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const [selectedMonth, setSelectedMonth] = React.useState(initialMonth);
@@ -141,6 +144,32 @@ export default function LaborPageClient() {
     setModalOpen(true);
     router.replace("/labor", { scroll: false });
   }, [searchParams, router]);
+  const workerModeAutoOpenedRef = React.useRef(false);
+  React.useEffect(() => {
+    const mode = (searchParams.get("mode") ?? "").toLowerCase();
+    const autoOpenKey = "hh.worker-daily-entry-auto-opened";
+    if (pathname !== "/labor/daily-entry" || mode !== "worker") {
+      try {
+        window.sessionStorage.removeItem(autoOpenKey);
+      } catch {
+        // ignore storage errors
+      }
+      return;
+    }
+    if (workerModeAutoOpenedRef.current) return;
+    try {
+      if (window.sessionStorage.getItem(autoOpenKey) === "1") return;
+    } catch {
+      // ignore storage errors
+    }
+    setModalOpen(true);
+    workerModeAutoOpenedRef.current = true;
+    try {
+      window.sessionStorage.setItem(autoOpenKey, "1");
+    } catch {
+      // ignore storage errors
+    }
+  }, [pathname, searchParams]);
   const [projects, setProjects] = React.useState<Awaited<ReturnType<typeof getProjects>>>([]);
   const [workers, setWorkers] = React.useState<{ id: string; name: string }[]>([]);
   const [monthEntries, setMonthEntries] = React.useState<LaborEntryWithJoins[]>([]);
@@ -236,8 +265,9 @@ export default function LaborPageClient() {
   const handleSaved = React.useCallback(() => {
     setMessage("Entries saved.");
     setError(null);
+    toast({ title: "Entry saved successfully", variant: "success" });
     void loadMonthEntries();
-  }, [loadMonthEntries]);
+  }, [loadMonthEntries, toast]);
 
   const handleDelete = React.useCallback(
     async (e: LaborEntryWithJoins) => {
