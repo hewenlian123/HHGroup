@@ -30,7 +30,7 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  if (workerModeCookie && isLaborPath) {
+  if (workerModeCookie && isWorkerModePath) {
     const target = request.nextUrl.clone();
     target.pathname = "/labor/daily-entry";
     target.search = "?mode=worker";

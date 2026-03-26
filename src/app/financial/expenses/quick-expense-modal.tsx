@@ -2,10 +2,16 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { createQuickExpense } from "@/lib/data";
+import {
+  addExpenseAttachment,
+  createQuickExpense,
+  getExpenseTotal,
+  type Expense,
+} from "@/lib/data";
 import { createBrowserClient } from "@/lib/supabase";
-import { Camera, Upload } from "lucide-react";
+import { Camera, Loader2, Upload } from "lucide-react";
 import { useToast } from "@/components/toast/toast-provider";
 
 type ReceiptOcrResult = {
@@ -13,19 +19,338 @@ type ReceiptOcrResult = {
   total_amount: number;
   purchase_date: string;
   items?: Array<{ name?: string; amount?: number }>;
+  ocr_status?: "ok" | "fallback";
+  ocr_reason?: string;
+  raw_text?: string;
+  confidence?: {
+    vendor?: "high" | "medium" | "low";
+    amount?: "high" | "medium" | "low";
+    date?: "high" | "medium" | "low";
+  };
 };
+
+type FieldConfidence = "high" | "medium" | "low";
+type OcrSource = "cloud" | "local" | "manual" | "none";
+type OcrDebugInfo = {
+  source: OcrSource;
+  fallbackTriggered: boolean;
+  cloud: Array<{ status?: string; reason?: string; confidence?: unknown }>;
+  rawText: string;
+  parsed: { vendor: string; amount: number; date: string };
+  parsedItems: string[];
+  matchedRules: string[];
+  confidence: { vendor: FieldConfidence; amount: FieldConfidence; date: FieldConfidence };
+};
+
+const ITEM_CATALOG = [
+  "Paint",
+  "Lumber",
+  "Concrete",
+  "Plumbing",
+  "Electrical",
+  "Materials",
+] as const;
+
+function titleCase(v: string): string {
+  return (v || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function dedupeItems(values: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of values) {
+    const item = titleCase(raw);
+    if (!item) continue;
+    const key = item.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+  return out;
+}
+
+function mapItemCategory(text: string): string[] {
+  const t = text.toLowerCase();
+  const hits: string[] = [];
+  if (/\bpaint\b|\bprimer\b/.test(t)) hits.push("Paint");
+  if (/\blumber\b|\bwood\b|\b2x4\b/.test(t)) hits.push("Lumber");
+  if (/\bconcrete\b|\bcement\b/.test(t)) hits.push("Concrete");
+  if (/\bpipe\b|\bpvc\b/.test(t)) hits.push("Plumbing");
+  if (/\bwire\b|\bbreaker\b|\boutlet\b/.test(t)) hits.push("Electrical");
+  return dedupeItems(hits);
+}
+
+async function fileToDataUrl(file: File): Promise<string> {
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("Failed to load image for OCR"));
+      el.src = objectUrl;
+    });
+    const maxWidth = 1400;
+    const scale = img.width > maxWidth ? maxWidth / img.width : 1;
+    const width = Math.max(1, Math.round(img.width * scale));
+    const height = Math.max(1, Math.round(img.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to create OCR canvas context");
+    ctx.drawImage(img, 0, 0, width, height);
+    return canvas.toDataURL("image/png");
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+function pickLikelyAmount(text: string): number {
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  let best = 0;
+  for (const line of lines) {
+    const nums = line.match(/\$?\s*\d{1,4}(?:,\d{3})*(?:\.\d{2})?/g) ?? [];
+    const parsed = nums
+      .map((raw) => {
+        const normalized = raw.replace(/[$,\s]/g, "");
+        const n = Number(normalized);
+        const isYearLike = /^\d{4}$/.test(normalized) && n >= 1900 && n <= 2100;
+        return isYearLike ? 0 : n;
+      })
+      .filter((n) => Number.isFinite(n) && n > 0);
+    if (parsed.length === 0) continue;
+    const lineBest = Math.max(...parsed);
+    if (/\b(total|amount due|balance due|grand total)\b/i.test(line)) {
+      return lineBest;
+    }
+    if (lineBest > best) best = lineBest;
+  }
+  return best;
+}
+
+function parseDateFromText(text: string): string | null {
+  const m1 = text.match(/\b(\d{4})[-/](\d{1,2})[-/](\d{1,2})\b/);
+  if (m1) {
+    const y = m1[1];
+    const m = m1[2].padStart(2, "0");
+    const d = m1[3].padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+  const m2 = text.match(/\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/);
+  if (m2) {
+    const a = Number(m2[1]);
+    const b = Number(m2[2]);
+    const y = m2[3];
+    const month = a > 12 ? b : a;
+    const day = a > 12 ? a : b;
+    return `${y}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  }
+  return null;
+}
+
+function pickLikelyVendor(text: string): string {
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .slice(0, 12);
+  for (const line of lines) {
+    if (line.length < 2 || line.length > 40) continue;
+    if (/\d{2,}/.test(line)) continue;
+    if (/\b(receipt|invoice|total|tax|date|cash|card|visa|mastercard)\b/i.test(line)) continue;
+    return line;
+  }
+  return "Unknown";
+}
+
+function sanitizeVendorCandidate(v: string): string {
+  const t = (v ?? "").trim();
+  if (!t) return "Needs Review";
+  if (t.length < 3) return "Needs Review";
+  if (!/[a-zA-Z]/.test(t)) return "Needs Review";
+  const alphaCount = (t.match(/[a-zA-Z]/g) ?? []).length;
+  if (alphaCount / t.length < 0.6) return "Needs Review";
+  if (/^[^a-zA-Z0-9]{1,8}$/.test(t)) return "Needs Review";
+  return t;
+}
+
+function normalizeVendor(v: string): string {
+  return (v || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function detectKnownVendor(text: string): string | null {
+  const t = text.toLowerCase();
+  if (t.includes("home depot")) return "Home Depot";
+  if (t.includes("lowe") || t.includes("lowe's")) return "Lowe's";
+  if (t.includes("walmart")) return "Walmart";
+  if (t.includes("costco")) return "Costco";
+  return null;
+}
+
+function parseVendorSpecificAmount(text: string, vendor: string): number {
+  const lines = text.split(/\r?\n/);
+  const candidates: number[] = [];
+  const rules =
+    vendor === "Home Depot" || vendor === "Lowe's" || vendor === "Walmart" || vendor === "Costco"
+      ? [/\btotal\b/i, /\bsubtotal\b/i, /\btax\b/i]
+      : [/\bfuel total\b/i, /\btotal\b/i];
+  for (const line of lines) {
+    if (!rules.some((r) => r.test(line))) continue;
+    const nums = line.match(/\$?\s*\d{1,4}(?:,\d{3})*(?:\.\d{2})?/g) ?? [];
+    for (const raw of nums) {
+      const normalized = raw.replace(/[$,\s]/g, "");
+      const n = Number(normalized);
+      const isYearLike = /^\d{4}$/.test(normalized) && n >= 1900 && n <= 2100;
+      if (isYearLike) continue;
+      if (Number.isFinite(n) && n > 0) candidates.push(n);
+    }
+  }
+  return candidates.length ? Math.max(...candidates) : 0;
+}
+
+function parseAmountProduction(
+  text: string,
+  vendor: string
+): { amount: number; confidence: FieldConfidence; matchedRules: string[] } {
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  const matchedRules: string[] = [];
+  const strictPatterns = [/\btotal\b/i, /\bamount\b/i, /\bbalance due\b/i, /\bfuel total\b/i];
+  const labeled: number[] = [];
+  for (const line of lines) {
+    const hit = strictPatterns.some((p) => p.test(line));
+    if (!hit) continue;
+    matchedRules.push(`label:${line}`);
+    const nums = line.match(/\$?\s*\d{1,4}(?:,\d{3})*(?:\.\d{2})?/g) ?? [];
+    for (const raw of nums) {
+      const n = Number(raw.replace(/[$,\s]/g, ""));
+      if (Number.isFinite(n) && n > 0) labeled.push(n);
+    }
+  }
+  const vendorSpecific = parseVendorSpecificAmount(text, vendor);
+  if (vendorSpecific > 0) matchedRules.push(`vendor-specific:${vendor}`);
+  const labeledBest = labeled.length ? Math.max(...labeled) : 0;
+  if (Math.max(labeledBest, vendorSpecific) > 0) {
+    return {
+      amount: Math.max(labeledBest, vendorSpecific),
+      confidence: "high",
+      matchedRules: matchedRules.length ? matchedRules : ["regex:strict"],
+    };
+  }
+  const generic = pickLikelyAmount(text);
+  if (generic > 0)
+    return { amount: generic, confidence: "medium", matchedRules: ["fallback:largest"] };
+  return { amount: 0.01, confidence: "low", matchedRules: ["fallback:min-amount"] };
+}
+
+async function runLocalBrowserOcr(file: File): Promise<ReceiptOcrResult | null> {
+  try {
+    const { createWorker } = await import("tesseract.js");
+    const dataUrl = await fileToDataUrl(file);
+    const worker = await createWorker("eng", 1, {
+      logger: () => {
+        // reduce console noise
+      },
+    });
+    const result = await worker.recognize(dataUrl);
+    await worker.terminate();
+    const text = result?.data?.text ?? "";
+    if (!text.trim()) return null;
+    const known = detectKnownVendor(text);
+    const parsedAmount = parseAmountProduction(text, known ?? pickLikelyVendor(text));
+    const parsedDate = parseDateFromText(text);
+    return {
+      vendor_name: known ?? pickLikelyVendor(text),
+      total_amount: parsedAmount.amount,
+      purchase_date: parsedDate ?? new Date().toISOString().slice(0, 10),
+      items: [],
+      ocr_status: "ok",
+      ocr_reason: "local_browser_ocr",
+      raw_text: text,
+      confidence: {
+        vendor: known ? "high" : "medium",
+        amount: parsedAmount.confidence,
+        date: parsedDate ? "medium" : "low",
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function runLocalBrowserOcrWithTimeout(
+  file: File,
+  timeoutMs = 8000
+): Promise<ReceiptOcrResult | null> {
+  return await Promise.race([
+    runLocalBrowserOcr(file),
+    new Promise<null>((resolve) => {
+      setTimeout(() => resolve(null), timeoutMs);
+    }),
+  ]);
+}
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  projects: Array<{ id: string; name: string | null; status?: string | null }>;
+  expenses: Expense[];
 };
 
-export function QuickExpenseModal({ open, onOpenChange, onSuccess }: Props) {
+export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, expenses }: Props) {
   const { toast } = useToast();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const [uploading, setUploading] = React.useState(false);
+  const [processing, setProcessing] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+  const [dragOver, setDragOver] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [step, setStep] = React.useState<"upload" | "edit">("upload");
+  const [uploadedUrls, setUploadedUrls] = React.useState<string[]>([]);
+  const [vendorName, setVendorName] = React.useState("");
+  const [amount, setAmount] = React.useState("");
+  const [date, setDate] = React.useState(new Date().toISOString().slice(0, 10));
+  const [category, setCategory] = React.useState("Other");
+  const [notes, setNotes] = React.useState("");
+  const [projectSearch, setProjectSearch] = React.useState("");
+  const [projectId, setProjectId] = React.useState<string>("");
+  const [ocrSource, setOcrSource] = React.useState<OcrSource>("none");
+  const [recognizedItems, setRecognizedItems] = React.useState<string[]>([]);
+  const [itemDraft, setItemDraft] = React.useState("");
+  const [fieldConfidence, setFieldConfidence] = React.useState<{
+    vendor: FieldConfidence;
+    amount: FieldConfidence;
+    date: FieldConfidence;
+  }>({ vendor: "low", amount: "low", date: "low" });
+  const [detectedSnapshot, setDetectedSnapshot] = React.useState<{
+    vendor: string;
+    amount: number;
+  } | null>(null);
+  const [debugUnlocked, setDebugUnlocked] = React.useState(false);
+  const [debugOpen, setDebugOpen] = React.useState(false);
+  const [debugData, setDebugData] = React.useState<OcrDebugInfo | null>(null);
+  const [duplicateConfirmed, setDuplicateConfirmed] = React.useState(false);
+  const [duplicateCandidate, setDuplicateCandidate] = React.useState<{
+    id: string;
+    vendor: string;
+    date: string;
+    amount: number;
+  } | null>(null);
+  const categories = ["Other", "Materials", "Vehicle", "Meals"];
+  const LAST_PROJECT_KEY = "hh.quick-expense-last-project-id";
+  const OCR_LEARN_KEY = "hh.quick-expense-ocr-learn";
+  const OCR_HISTORY_KEY = "hh.quick-expense-ocr-history";
+  const vendorInputRef = React.useRef<HTMLInputElement>(null);
+  const amountInputRef = React.useRef<HTMLInputElement>(null);
+  const dateInputRef = React.useRef<HTMLInputElement>(null);
 
   const supabase = React.useMemo(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -33,76 +358,465 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess }: Props) {
     return url && anon ? createBrowserClient(url, anon) : null;
   }, []);
 
-  const handleFile = async (file: File | null) => {
-    if (!file) return;
-    if (!supabase) {
-      setError(
-        "Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY."
-      );
-      toast({
-        title: "Configuration required",
-        description: "Supabase must be configured to upload and save expenses.",
-        variant: "error",
+  const inferCategory = React.useCallback((vendor: string, itemNames: string[] = []) => {
+    const haystack = `${vendor} ${itemNames.join(" ")}`.toLowerCase();
+    if (/home depot|lowe'?s|lowes/.test(haystack)) return "Materials";
+    if (/gas|fuel|shell|chevron|exxon|mobil|bp/.test(haystack)) return "Vehicle";
+    if (/restaurant|cafe|coffee|diner|bbq|burger|pizza/.test(haystack)) return "Meals";
+    return "Other";
+  }, []);
+
+  const suggestedProjectId = React.useMemo(() => {
+    const recent = [...expenses]
+      .filter((e) => e.lines.some((l) => l.projectId))
+      .sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""))
+      .slice(0, 30);
+    const counts = new Map<string, number>();
+    for (const e of recent) {
+      const pid = e.lines[0]?.projectId;
+      if (!pid) continue;
+      counts.set(pid, (counts.get(pid) ?? 0) + 1);
+    }
+    const ranked = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+    return ranked[0]?.[0] ?? "";
+  }, [expenses]);
+
+  const assessImageQuality = React.useCallback(async (file: File): Promise<string | null> => {
+    try {
+      const objectUrl = URL.createObjectURL(file);
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const el = new Image();
+        el.onload = () => resolve(el);
+        el.onerror = () => reject(new Error("image load failed"));
+        el.src = objectUrl;
       });
+      URL.revokeObjectURL(objectUrl);
+      if (img.width < 700 || img.height < 700) return "Image quality is low, please retake.";
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.min(500, img.width);
+      canvas.height = Math.max(1, Math.round((canvas.width / img.width) * img.height));
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return null;
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      let sum = 0;
+      let sumSq = 0;
+      const n = data.length / 4;
+      for (let i = 0; i < data.length; i += 4) {
+        const lum = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+        sum += lum;
+        sumSq += lum * lum;
+      }
+      const mean = sum / n;
+      const variance = Math.max(0, sumSq / n - mean * mean);
+      if (Math.sqrt(variance) < 28) return "Image quality is low, please retake.";
+      return null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const enterFallbackEdit = React.useCallback(
+    (msg?: string) => {
+      setDate(new Date().toISOString().slice(0, 10));
+      setVendorName("Unknown");
+      setAmount("");
+      setCategory("Other");
+      setStep("edit");
+      if (msg) {
+        setError(msg);
+        toast({
+          title: "OCR fallback",
+          description: msg,
+          variant: "default",
+        });
+      }
+    },
+    [toast]
+  );
+
+  const resetState = React.useCallback(() => {
+    setProcessing(false);
+    setSaving(false);
+    setDragOver(false);
+    setError(null);
+    setStep("upload");
+    setUploadedUrls([]);
+    setVendorName("");
+    setAmount("");
+    setDate(new Date().toISOString().slice(0, 10));
+    setCategory("Other");
+    setNotes("");
+    setProjectSearch("");
+    setProjectId("");
+    setOcrSource("none");
+    setFieldConfidence({ vendor: "low", amount: "low", date: "low" });
+    setDetectedSnapshot(null);
+    setRecognizedItems([]);
+    setItemDraft("");
+    setDebugData(null);
+    setDebugOpen(false);
+    setDuplicateConfirmed(false);
+    setDuplicateCandidate(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }, []);
+
+  React.useEffect(() => {
+    if (!open) resetState();
+  }, [open, resetState]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if ((params.get("debug") ?? "").toLowerCase() === "ocr") {
+        setDebugUnlocked(true);
+        setDebugOpen(true);
+      }
+    } catch {
+      // ignore
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "d") {
+        e.preventDefault();
+        setDebugUnlocked(true);
+        setDebugOpen((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
+  const projectOptions = React.useMemo(() => {
+    const sorted = [...projects].sort((a, b) => {
+      const aActive = (a.status ?? "").toLowerCase() === "active" ? 0 : 1;
+      const bActive = (b.status ?? "").toLowerCase() === "active" ? 0 : 1;
+      if (aActive !== bActive) return aActive - bActive;
+      return (a.name ?? "").localeCompare(b.name ?? "");
+    });
+    const q = projectSearch.trim().toLowerCase();
+    if (!q) return sorted;
+    return sorted.filter(
+      (p) => (p.name ?? "").toLowerCase().includes(q) || p.id.toLowerCase().includes(q)
+    );
+  }, [projectSearch, projects]);
+
+  React.useEffect(() => {
+    if (step !== "edit") return;
+    if (projectId) return;
+    try {
+      const last = window.localStorage.getItem(LAST_PROJECT_KEY) ?? "";
+      if (last && projects.some((p) => p.id === last)) setProjectId(last);
+      else if (suggestedProjectId) setProjectId(suggestedProjectId);
+    } catch {
+      // ignore
+    }
+  }, [step, projectId, projects, suggestedProjectId]);
+
+  React.useEffect(() => {
+    if (step !== "edit") return;
+    const score = (v: FieldConfidence) => (v === "low" ? 0 : v === "medium" ? 1 : 2);
+    const ranked = [
+      { key: "amount", score: score(fieldConfidence.amount), ref: amountInputRef.current },
+      { key: "vendor", score: score(fieldConfidence.vendor), ref: vendorInputRef.current },
+      { key: "date", score: score(fieldConfidence.date), ref: dateInputRef.current },
+    ].sort((a, b) => a.score - b.score);
+    const target = ranked[0]?.ref;
+    if (target) setTimeout(() => target.focus(), 0);
+  }, [step, fieldConfidence]);
+
+  const handleFiles = async (files: FileList | File[] | null) => {
+    if (!files || files.length === 0) return;
+    if (!supabase) {
+      enterFallbackEdit("Storage is unavailable. Please enter expense details manually and save.");
       return;
     }
     setError(null);
-    setUploading(true);
+    setProcessing(true);
+    setOcrSource("none");
     try {
-      const timestamp = Date.now();
-      const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_") || "receipt.jpg";
-      const path = `receipts/${timestamp}-${safeName}`;
-
-      const { error: uploadErr } = await supabase.storage.from("receipts").upload(path, file, {
-        contentType: file.type || "image/jpeg",
-        upsert: true,
-      });
-      if (uploadErr) throw new Error(uploadErr.message);
-
-      const { data: urlData } = supabase.storage.from("receipts").getPublicUrl(path);
-      const receiptUrl = urlData.publicUrl;
-
-      let ocr: ReceiptOcrResult = {
-        vendor_name: "Unknown",
-        total_amount: 0,
-        purchase_date: new Date().toISOString().slice(0, 10),
-      };
-      try {
-        const form = new FormData();
-        form.append("file", file);
-        const res = await fetch("/api/ocr-receipt", { method: "POST", body: form });
-        if (res.ok) {
-          ocr = await res.json();
+      const list = Array.from(files).slice(0, 5);
+      const qualityWarning = await assessImageQuality(list[0]);
+      if (qualityWarning) {
+        toast({ title: "Image quality warning", description: qualityWarning, variant: "default" });
+      }
+      const urls: string[] = [];
+      for (const file of list) {
+        const timestamp = Date.now();
+        const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_") || "receipt.jpg";
+        const path = `receipts/${timestamp}-${safeName}`;
+        const { error: uploadErr } = await supabase.storage.from("receipts").upload(path, file, {
+          contentType: file.type || "image/jpeg",
+          upsert: true,
+        });
+        if (uploadErr) {
+          continue;
         }
-      } catch {
-        // use fallback
+        const { data: urlData } = supabase.storage.from("receipts").getPublicUrl(path);
+        if (urlData.publicUrl) urls.push(urlData.publicUrl);
+      }
+      setUploadedUrls(urls);
+
+      const ocrResults: Array<{ result: ReceiptOcrResult; source: OcrSource }> = [];
+      for (const file of list) {
+        let ocr: ReceiptOcrResult = {
+          vendor_name: "Unknown",
+          total_amount: 0,
+          purchase_date: new Date().toISOString().slice(0, 10),
+        };
+        let source: OcrSource = "cloud";
+        try {
+          const form = new FormData();
+          form.append("file", file);
+          const res = await fetch("/api/ocr-receipt", { method: "POST", body: form });
+          if (res.ok) ocr = await res.json();
+          else source = "manual";
+        } catch {
+          source = "manual";
+        }
+        const cloudFailed =
+          ocr.ocr_status === "fallback" ||
+          ((ocr.vendor_name || "Unknown") === "Unknown" && (Number(ocr.total_amount) || 0) <= 0);
+        if (cloudFailed) {
+          const local = await runLocalBrowserOcrWithTimeout(file, 8000);
+          if (local) {
+            ocr = local;
+            source = "local";
+          } else {
+            source = "manual";
+          }
+        }
+        ocrResults.push({ result: ocr, source });
       }
 
-      const date = ocr.purchase_date || new Date().toISOString().slice(0, 10);
-      const vendorName = (ocr.vendor_name || "Unknown").trim();
-      const totalAmount = Number(ocr.total_amount) || 0;
+      const mergedText = ocrResults.map((r) => r.result.raw_text ?? "").join("\n");
+      const bestKnownVendor =
+        detectKnownVendor(mergedText) ??
+        ocrResults.find(
+          (r) => (r.result.vendor_name ?? "").trim() && r.result.vendor_name !== "Unknown"
+        )?.result.vendor_name ??
+        pickLikelyVendor(mergedText);
+      let finalVendor = sanitizeVendorCandidate(bestKnownVendor || "Unknown");
+      const amountFromRules = parseAmountProduction(mergedText, finalVendor);
+      let finalAmount = amountFromRules.amount;
+      const dateFromRules = parseDateFromText(mergedText);
+      const finalDate =
+        dateFromRules ??
+        ocrResults.find((r) => r.result.purchase_date)?.result.purchase_date ??
+        new Date().toISOString().slice(0, 10);
 
-      await createQuickExpense({
-        date,
-        vendorName,
-        totalAmount,
-        receiptUrl,
+      // Learn from prior user corrections for same OCR vendor token.
+      try {
+        const raw = window.localStorage.getItem(OCR_LEARN_KEY);
+        if (raw) {
+          const learned = JSON.parse(raw) as {
+            vendorAliases?: Record<string, string>;
+            amountHints?: Record<string, number>;
+          };
+          const key = normalizeVendor(finalVendor);
+          const alias = learned.vendorAliases?.[key];
+          if (alias) finalVendor = sanitizeVendorCandidate(alias);
+          const hinted = Number(learned.amountHints?.[key] ?? 0);
+          if (finalAmount <= 0.01 && hinted > 0) finalAmount = hinted;
+        }
+      } catch {
+        // ignore
+      }
+
+      // Always return an amount > 0 for stable flow.
+      if (!(finalAmount > 0)) finalAmount = 0.01;
+
+      const source: OcrSource = ocrResults.some((r) => r.source === "local")
+        ? "local"
+        : ocrResults.every((r) => r.source === "cloud")
+          ? "cloud"
+          : "manual";
+
+      const itemNames = ocrResults
+        .flatMap((r) => (Array.isArray(r.result.items) ? r.result.items : []))
+        .map((i) => i?.name ?? "");
+      const fromRawRules = mapItemCategory(mergedText);
+      const fromItemNames = itemNames.flatMap((n) => mapItemCategory(n));
+      const initialItems = dedupeItems([...fromRawRules, ...fromItemNames]);
+      const finalItems = initialItems.length ? initialItems : ["Materials"];
+      const mappedCategory = inferCategory(finalVendor, itemNames);
+      const vendorConfidence: FieldConfidence = finalVendor !== "Unknown" ? "high" : "low";
+      const amountConfidence = amountFromRules.confidence;
+      const dateConfidence: FieldConfidence = dateFromRules ? "high" : "medium";
+
+      setDate(finalDate);
+      setVendorName(finalVendor);
+      setAmount(String(finalAmount));
+      setCategory(mappedCategory);
+      setFieldConfidence({
+        vendor: vendorConfidence,
+        amount: amountConfidence,
+        date: dateConfidence,
+      });
+      setDetectedSnapshot({ vendor: finalVendor, amount: finalAmount });
+      setRecognizedItems(finalItems);
+      setOcrSource(source);
+      setStep("edit");
+      setDebugData({
+        source,
+        fallbackTriggered: source !== "cloud",
+        cloud: ocrResults.map((r) => ({
+          status: r.result.ocr_status,
+          reason: r.result.ocr_reason,
+          confidence: r.result.confidence,
+        })),
+        rawText: mergedText,
+        parsed: { vendor: finalVendor, amount: finalAmount, date: finalDate },
+        parsedItems: finalItems,
+        matchedRules: amountFromRules.matchedRules,
+        confidence: { vendor: vendorConfidence, amount: amountConfidence, date: dateConfidence },
       });
 
-      toast({
-        title: "Quick expense created",
-        description: `${vendorName} — $${totalAmount.toLocaleString()}`,
-        variant: "success",
-      });
-      onSuccess();
-      onOpenChange(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      if (source !== "cloud" || amountConfidence === "low" || vendorConfidence === "low") {
+        toast({
+          title: "OCR needs manual confirmation",
+          description: "Please quickly verify highlighted fields before saving.",
+          variant: "default",
+        });
+      }
+      setDuplicateConfirmed(false);
+      setDuplicateCandidate(null);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Upload failed.";
-      setError(msg);
-      toast({ title: "Failed", description: msg, variant: "error" });
+      enterFallbackEdit(msg);
     } finally {
-      setUploading(false);
+      setProcessing(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (saving || processing) return;
+    const totalAmount = Number(amount);
+    if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
+      setError("Amount must be greater than 0.");
+      return;
+    }
+    const sameDay = expenses.filter(
+      (e) => (e.date ?? "") === (date || new Date().toISOString().slice(0, 10))
+    );
+    const dup = sameDay.find((e) => {
+      const sameVendor = normalizeVendor(e.vendorName ?? "") === normalizeVendor(vendorName ?? "");
+      const closeAmount = Math.abs(getExpenseTotal(e) - totalAmount) < 0.01;
+      return sameVendor && closeAmount;
+    });
+    if (dup && !duplicateConfirmed) {
+      setDuplicateConfirmed(true);
+      setDuplicateCandidate({
+        id: dup.id,
+        vendor: dup.vendorName ?? "Unknown",
+        date: dup.date ?? "",
+        amount: getExpenseTotal(dup),
+      });
+      toast({
+        title: "This receipt may already exist",
+        description: "Same vendor/date/amount found. Click Save again to continue.",
+        variant: "default",
+      });
+      return;
+    }
+    setDuplicateCandidate(null);
+    setSaving(true);
+    setError(null);
+    try {
+      const created = await createQuickExpense({
+        date: date || new Date().toISOString().slice(0, 10),
+        vendorName: vendorName.trim() || "Unknown",
+        totalAmount,
+        receiptUrl: uploadedUrls[0] ?? "",
+        category,
+        notes: (() => {
+          const userNotes = notes.trim();
+          const itemsPart = `Items: ${dedupeItems(recognizedItems).join(", ")}`;
+          if (!itemsPart || dedupeItems(recognizedItems).length === 0)
+            return userNotes || undefined;
+          return userNotes ? `${userNotes}\n${itemsPart}` : itemsPart;
+        })(),
+        projectId: projectId || null,
+      });
+      const extra = uploadedUrls.slice(1);
+      for (const url of extra) {
+        await addExpenseAttachment(created.id, {
+          id: crypto.randomUUID(),
+          fileName: "receipt",
+          mimeType: "image/jpeg",
+          size: 0,
+          url,
+          createdAt: new Date().toISOString(),
+        });
+      }
+      toast({
+        title: "Expense saved",
+        description: `${vendorName.trim() || "Unknown"} — $${totalAmount.toLocaleString()}`,
+        variant: "success",
+      });
+      if (uploadedUrls.length === 0) {
+        toast({
+          title: "Saved without attachment",
+          description: "Receipt upload failed, but expense was saved for manual follow-up.",
+          variant: "default",
+        });
+      }
+      try {
+        if (detectedSnapshot) {
+          const changedVendor =
+            normalizeVendor(vendorName) !== normalizeVendor(detectedSnapshot.vendor);
+          const changedAmount = Math.abs(totalAmount - detectedSnapshot.amount) >= 0.01;
+          if (changedVendor || changedAmount) {
+            const raw = window.localStorage.getItem(OCR_LEARN_KEY);
+            const learned = raw
+              ? (JSON.parse(raw) as {
+                  vendorAliases?: Record<string, string>;
+                  amountHints?: Record<string, number>;
+                })
+              : {};
+            const key = normalizeVendor(detectedSnapshot.vendor);
+            if (changedVendor) {
+              learned.vendorAliases = learned.vendorAliases ?? {};
+              learned.vendorAliases[key] = vendorName.trim() || detectedSnapshot.vendor;
+            }
+            if (changedAmount) {
+              learned.amountHints = learned.amountHints ?? {};
+              learned.amountHints[key] = totalAmount;
+            }
+            window.localStorage.setItem(OCR_LEARN_KEY, JSON.stringify(learned));
+          }
+        }
+        if (projectId) window.localStorage.setItem(LAST_PROJECT_KEY, projectId);
+        const historyRaw = window.localStorage.getItem(OCR_HISTORY_KEY);
+        const history = historyRaw ? (JSON.parse(historyRaw) as unknown[]) : [];
+        const entry = {
+          at: new Date().toISOString(),
+          source: ocrSource,
+          raw_text: debugData?.rawText ?? "",
+          parsed_result: {
+            vendor: vendorName.trim() || "Unknown",
+            amount: totalAmount,
+            date: date || new Date().toISOString().slice(0, 10),
+            items: dedupeItems(recognizedItems),
+            category,
+            projectId: projectId || null,
+          },
+        };
+        window.localStorage.setItem(
+          OCR_HISTORY_KEY,
+          JSON.stringify([entry, ...history].slice(0, 50))
+        );
+      } catch {
+        // ignore
+      }
+      await onSuccess();
+      onOpenChange(false);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to save expense.";
+      setError(msg);
+      toast({ title: "Save failed", description: msg, variant: "error" });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -120,7 +834,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess }: Props) {
                 NEXT_PUBLIC_SUPABASE_ANON_KEY to upload receipts and save expenses to your database.
               </p>
             ) : (
-              <div>
+              <div className="space-y-3">
                 <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
                   Receipt Photo
                 </p>
@@ -129,45 +843,414 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess }: Props) {
                   type="file"
                   accept="image/*"
                   capture="environment"
+                  multiple
                   className="hidden"
                   onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) void handleFile(f);
+                    void handleFiles(e.target.files);
                   }}
                 />
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-12 flex-1 text-base sm:h-11"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading}
+                {step === "upload" ? (
+                  <div
+                    className={`rounded border border-dashed p-4 transition-colors ${
+                      dragOver ? "border-primary" : "border-border/60"
+                    }`}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setDragOver(true);
+                    }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setDragOver(false);
+                      void handleFiles(e.dataTransfer.files);
+                    }}
                   >
-                    <Camera className="mr-2 h-5 w-5" />
-                    Take Photo
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-12 flex-1 text-base sm:h-11"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading}
-                  >
-                    <Upload className="mr-2 h-5 w-5" />
-                    Upload File
-                  </Button>
-                </div>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Drag and drop receipt images here, or use buttons below.
+                    </p>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-12 flex-1 text-base sm:h-11"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={processing}
+                      >
+                        <Camera className="mr-2 h-5 w-5" />
+                        Take Photo
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-12 flex-1 text-base sm:h-11"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={processing}
+                      >
+                        <Upload className="mr-2 h-5 w-5" />
+                        Upload File(s)
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+                {step === "edit" ? (
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Vendor
+                      </label>
+                      <Input
+                        ref={vendorInputRef}
+                        value={vendorName}
+                        onChange={(e) => setVendorName(e.target.value)}
+                        className={`mt-1 h-9 ${fieldConfidence.vendor === "low" ? "border-destructive" : ""}`}
+                        disabled={saving}
+                      />
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        Confidence: {fieldConfidence.vendor}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                          Amount
+                        </label>
+                        <Input
+                          ref={amountInputRef}
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={amount}
+                          onChange={(e) => setAmount(e.target.value)}
+                          className={`mt-1 h-9 ${fieldConfidence.amount === "low" ? "border-destructive" : ""}`}
+                          disabled={saving}
+                        />
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          Confidence: {fieldConfidence.amount}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                          Date
+                        </label>
+                        <Input
+                          ref={dateInputRef}
+                          type="date"
+                          value={date}
+                          onChange={(e) => setDate(e.target.value)}
+                          className={`mt-1 h-9 ${fieldConfidence.date === "low" ? "border-destructive" : ""}`}
+                          disabled={saving}
+                        />
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          Confidence: {fieldConfidence.date}
+                        </p>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Items
+                      </label>
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {dedupeItems(recognizedItems).map((item) => (
+                          <span
+                            key={item}
+                            className="inline-flex items-center gap-1 rounded-sm border border-border/60 px-2 py-1 text-xs"
+                          >
+                            {item}
+                            <button
+                              type="button"
+                              className="text-muted-foreground hover:text-foreground"
+                              onClick={() =>
+                                setRecognizedItems((prev) =>
+                                  prev.filter((p) => p.toLowerCase() !== item.toLowerCase())
+                                )
+                              }
+                              disabled={saving}
+                              aria-label={`Remove ${item}`}
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                      <div className="mt-2 flex items-center gap-2">
+                        <Input
+                          value={itemDraft}
+                          onChange={(e) => setItemDraft(e.target.value)}
+                          className="h-9"
+                          placeholder="Add item"
+                          disabled={saving}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-9"
+                          disabled={saving}
+                          onClick={() => {
+                            const next = titleCase(itemDraft);
+                            if (!next) return;
+                            setRecognizedItems((prev) => dedupeItems([...prev, next]));
+                            setItemDraft("");
+                          }}
+                        >
+                          Add
+                        </Button>
+                      </div>
+                      <div className="mt-2">
+                        <select
+                          className="h-9 w-full rounded border border-input bg-transparent px-2 text-sm"
+                          value=""
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            if (!v) return;
+                            setRecognizedItems((prev) => dedupeItems([...prev, v]));
+                          }}
+                          disabled={saving}
+                        >
+                          <option value="">Add from common items...</option>
+                          {ITEM_CATALOG.map((opt) => (
+                            <option key={opt} value={opt}>
+                              {opt}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Project (Optional)
+                      </label>
+                      <Input
+                        value={projectSearch}
+                        onChange={(e) => setProjectSearch(e.target.value)}
+                        className="mt-1 h-9"
+                        placeholder="Search project..."
+                        disabled={saving}
+                      />
+                      <select
+                        value={projectId}
+                        onChange={(e) => setProjectId(e.target.value)}
+                        className="mt-2 h-9 w-full rounded border border-input bg-transparent px-2 text-sm"
+                        disabled={saving}
+                      >
+                        <option value="">No project</option>
+                        {projectOptions.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name ?? p.id}
+                          </option>
+                        ))}
+                      </select>
+                      {projectId && projectId === suggestedProjectId ? (
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          Suggested from recent activity.
+                        </p>
+                      ) : null}
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Category (Optional)
+                      </label>
+                      <select
+                        value={category}
+                        onChange={(e) => setCategory(e.target.value)}
+                        className="mt-1 h-9 w-full rounded border border-input bg-transparent px-2 text-sm"
+                        disabled={saving}
+                      >
+                        {categories.map((c) => (
+                          <option key={c} value={c}>
+                            {c}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Notes
+                      </label>
+                      <Input
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        className="mt-1 h-9"
+                        placeholder="Optional"
+                        disabled={saving}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                        Attachments
+                      </label>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {uploadedUrls.length} file(s) uploaded and attached.
+                      </p>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-2">
+                      {duplicateCandidate ? (
+                        <div className="mr-auto flex items-center gap-2 rounded-sm border border-amber-500/40 px-2 py-1 text-xs text-amber-700 dark:text-amber-300">
+                          <span>
+                            Possible duplicate: {duplicateCandidate.vendor} ·{" "}
+                            {duplicateCandidate.date} · $
+                            {duplicateCandidate.amount.toLocaleString()}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-xs"
+                            asChild
+                          >
+                            <a
+                              href={`/financial/expenses/${duplicateCandidate.id}`}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              View existing
+                            </a>
+                          </Button>
+                        </div>
+                      ) : null}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-8"
+                        onClick={() => setStep("upload")}
+                        disabled={saving}
+                      >
+                        Back
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="h-8"
+                        onClick={() => void handleSave()}
+                        disabled={saving}
+                      >
+                        {saving ? (
+                          <>
+                            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
+                            Saving...
+                          </>
+                        ) : (
+                          "Save"
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
                 <p className="mt-2 text-xs text-muted-foreground">
-                  Use camera or choose an image. OCR will extract vendor and amount.
+                  OCR fills vendor, amount, and date automatically. You can edit before save.
                 </p>
+                {process.env.NODE_ENV !== "production" && ocrSource !== "none" ? (
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs text-muted-foreground">
+                      OCR source:{" "}
+                      {ocrSource === "cloud"
+                        ? "Cloud OCR"
+                        : ocrSource === "local"
+                          ? "Local browser OCR fallback"
+                          : "Manual fallback"}
+                    </p>
+                    {debugUnlocked ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => setDebugOpen(true)}
+                      >
+                        Debug OCR
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             )}
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
-            {uploading ? (
-              <p className="text-sm text-muted-foreground">Uploading and creating expense…</p>
+            {processing ? (
+              <p className="text-sm text-muted-foreground flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Processing...
+              </p>
             ) : null}
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={debugOpen} onOpenChange={setDebugOpen}>
+        <DialogContent className="max-w-2xl border-border/60">
+          <DialogHeader className="border-b border-border/60 pb-2">
+            <DialogTitle className="text-base font-medium">OCR Debug Panel</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-3">
+            <div className="text-xs text-muted-foreground">
+              Hidden tool mode: `Cmd/Ctrl + Shift + D` or `?debug=ocr`
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div>Source: {debugData?.source ?? "n/a"}</div>
+              <div>Fallback: {debugData?.fallbackTriggered ? "yes" : "no"}</div>
+            </div>
+            <div className="text-sm">
+              Status/Reason:{" "}
+              {(debugData?.cloud ?? [])
+                .map((c) => `${c.status ?? "n/a"}${c.reason ? ` (${c.reason})` : ""}`)
+                .join(" | ")}
+            </div>
+            <div>
+              <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Parsed JSON
+              </div>
+              <pre className="max-h-40 overflow-auto rounded-sm border border-border/60 p-2 text-xs">
+                {JSON.stringify(debugData?.parsed ?? {}, null, 2)}
+              </pre>
+            </div>
+            <div>
+              <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Parsed Items
+              </div>
+              <pre className="max-h-28 overflow-auto rounded-sm border border-border/60 p-2 text-xs">
+                {JSON.stringify(debugData?.parsedItems ?? [], null, 2)}
+              </pre>
+            </div>
+            <div>
+              <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Matched Rules
+              </div>
+              <pre className="max-h-28 overflow-auto rounded-sm border border-border/60 p-2 text-xs">
+                {JSON.stringify(debugData?.matchedRules ?? [], null, 2)}
+              </pre>
+            </div>
+            <div>
+              <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Confidence
+              </div>
+              <pre className="max-h-28 overflow-auto rounded-sm border border-border/60 p-2 text-xs">
+                {JSON.stringify(debugData?.confidence ?? {}, null, 2)}
+              </pre>
+            </div>
+            <div>
+              <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Raw OCR Text
+              </div>
+              <pre className="max-h-48 overflow-auto rounded-sm border border-border/60 p-2 text-xs whitespace-pre-wrap">
+                {debugData?.rawText ?? ""}
+              </pre>
+            </div>
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8"
+                onClick={async () => {
+                  const payload = JSON.stringify(debugData ?? {}, null, 2);
+                  await navigator.clipboard.writeText(payload);
+                  toast({ title: "Copied OCR debug", variant: "success" });
+                }}
+              >
+                Copy Debug JSON
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

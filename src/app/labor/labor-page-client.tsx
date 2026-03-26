@@ -143,6 +143,14 @@ export default function LaborPageClient() {
   /** Mobile FAB: open Add Daily Entry after redirect from quick actions when /labor was not mounted. */
   React.useEffect(() => {
     if (searchParams.get("addDaily") !== "1") return;
+    let shouldOpen = false;
+    try {
+      shouldOpen = window.sessionStorage.getItem("hh.openLaborEntryFromFab") === "1";
+      window.sessionStorage.removeItem("hh.openLaborEntryFromFab");
+    } catch {
+      shouldOpen = false;
+    }
+    if (!shouldOpen) return;
     setModalOpen(true);
     router.replace("/labor", { scroll: false });
   }, [searchParams, router]);

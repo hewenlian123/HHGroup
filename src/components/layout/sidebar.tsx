@@ -51,6 +51,14 @@ const STORAGE_KEY = "hh.sidebarSections";
 type NavItem = { href: string; label: string; icon?: LucideIcon };
 
 const SECTION_KEYS = ["PROJECTS", "OPERATIONS", "FINANCE", "LABOR", "PEOPLE", "SYSTEM"] as const;
+const DEFAULT_OPEN_SECTIONS: Record<(typeof SECTION_KEYS)[number], boolean> = {
+  PROJECTS: true,
+  OPERATIONS: true,
+  FINANCE: true,
+  LABOR: true,
+  PEOPLE: true,
+  SYSTEM: true,
+};
 
 const sections: { key: (typeof SECTION_KEYS)[number]; label: string; items: NavItem[] }[] = [
   {
@@ -147,6 +155,16 @@ export function Sidebar({
   const [logoUrl, setLogoUrl] = React.useState<string | null>(null);
   const [openSections, setOpenSections] = React.useState<Record<string, boolean>>(() => ({}));
   const sectionsInitDone = React.useRef(false);
+  const activeSectionKey = React.useMemo(() => {
+    for (const section of sections) {
+      if (
+        section.items.some((item) => pathname === item.href || pathname.startsWith(item.href + "/"))
+      ) {
+        return section.key;
+      }
+    }
+    return null;
+  }, [pathname]);
 
   React.useEffect(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -189,19 +207,31 @@ export function Sidebar({
       if (raw) {
         const parsed = JSON.parse(raw) as Record<string, boolean>;
         if (parsed && typeof parsed === "object") {
-          setOpenSections(parsed);
+          setOpenSections({ ...DEFAULT_OPEN_SECTIONS, ...parsed });
           return;
         }
       }
     } catch {
       // ignore
     }
-    const allOpen = SECTION_KEYS.reduce(
-      (acc, k) => ({ ...acc, [k]: true }),
-      {} as Record<string, boolean>
-    );
-    setOpenSections(allOpen);
+    setOpenSections(DEFAULT_OPEN_SECTIONS);
   }, []);
+
+  React.useEffect(() => {
+    if (!activeSectionKey || collapsed) return;
+    setOpenSections((prev) => {
+      if (prev[activeSectionKey]) return prev;
+      const next = { ...prev, [activeSectionKey]: true };
+      try {
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        }
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, [activeSectionKey, collapsed]);
 
   const setSectionOpen = React.useCallback((key: string, open: boolean) => {
     setOpenSections((prev) => {
@@ -339,11 +369,8 @@ export function Sidebar({
                   )}
                   <span className="truncate">{section.label}</span>
                 </button>
-                <div
-                  className="grid transition-[grid-template-rows] duration-200 ease-out"
-                  style={{ gridTemplateRows: isOpen ? "1fr" : "0fr" }}
-                >
-                  <div className="min-h-0 overflow-hidden">
+                {isOpen ? (
+                  <div>
                     <div className="flex flex-col gap-1">
                       {section.items.map((item) => {
                         const active = isActive(item.href);
@@ -366,7 +393,7 @@ export function Sidebar({
                       })}
                     </div>
                   </div>
-                </div>
+                ) : null}
               </div>
             );
           })}

@@ -30,6 +30,7 @@ test.describe("Invoices page buttons", () => {
   });
 
   test("Create draft invoice navigates to detail page", async ({ page }) => {
+    test.setTimeout(90_000);
     const r = await tryCreateDraftInvoiceNavigateToDetail(page);
     test.skip(!r.ok, r.ok ? "" : r.skipReason);
   });

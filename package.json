@@ -25,7 +25,7 @@
     "test:e2e:ci": "playwright test --project chromium",
     "test:local": "CI= E2E_WORKER_NAME='[E2E] Seed Worker' npx playwright test --project=chromium --project=chromium-payments --project=chromium-delete-mutations",
     "test:local:ui-only": "CI= npx playwright test --project=chromium",
-    "test:before-push": "npx prettier --write . && E2E_WEB_SERVER=dev E2E_BASE_URL='http://localhost:3199' npx playwright test --project=chromium && git push origin main",
+    "test:before-push": "npx prettier --write . && CI= E2E_BASE_URL='http://localhost:3000' npx playwright test --project=chromium && node scripts/guard-no-test-data-push.mjs && git push origin main",
     "test:e2e:company-profile": "CI= playwright test tests/settings-company-profile.spec.ts --project=chromium",
     "test:e2e:document-header": "CI= playwright test tests/settings-company-profile.spec.ts -g \"invoice print header\" --project=chromium",
     "test:e2e:company-branding": "CI= playwright test tests/settings-company-profile.spec.ts --project=chromium",
@@ -79,7 +79,8 @@
     "react": "^18",
     "react-dom": "^18",
     "tailwind-merge": "^3.5.0",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "@playwright/test": "1.58.2",
