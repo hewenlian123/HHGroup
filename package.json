@@ -32,6 +32,7 @@
     "test:e2e:delete": "playwright test tests/delete-flows.spec.ts tests/delete-flows-mutations.spec.ts",
     "test:e2e:delete-catalog": "playwright test tests/delete-all-surfaces.spec.ts",
     "test:e2e:integration": "playwright test tests/integration-data-flow.spec.ts",
+    "test:e2e:quick-expense": "CI= playwright test tests/quick-expense-upload.spec.ts --project=chromium",
     "test:e2e:payment-receipt": "E2E_ALLOW_PAYMENT_MUTATIONS=1 playwright test tests/worker-payment-receipt.spec.ts",
     "test:e2e:payment-full-flow": "E2E_ALLOW_PAYMENT_MUTATIONS=1 playwright test tests/worker-payment-full-flow.spec.ts",
     "test:e2e:ui": "playwright test --ui",

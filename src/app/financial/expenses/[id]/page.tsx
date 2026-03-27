@@ -384,6 +384,40 @@ export default function ExpenseDetailPage() {
 
       <section>
         <h2 className="text-sm font-semibold text-foreground mb-3">Receipt attachments</h2>
+        {expense.receiptUrl ? (
+          <div className="mb-4 flex flex-wrap items-start gap-3 border-b border-border/60 pb-4">
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                Primary receipt
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                {/\.(jpe?g|png|gif|webp)(\?|#|$)/i.test(expense.receiptUrl) ? (
+                  <button
+                    type="button"
+                    className="overflow-hidden rounded-sm border border-border/60"
+                    onClick={() =>
+                      window.open(expense.receiptUrl!, "_blank", "noopener,noreferrer")
+                    }
+                    aria-label="Open primary receipt image"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- dynamic receipt URL */}
+                    <img
+                      src={expense.receiptUrl}
+                      alt=""
+                      className="h-16 w-16 object-cover"
+                      loading="lazy"
+                    />
+                  </button>
+                ) : null}
+                <Button variant="outline" size="sm" className="rounded-sm" asChild>
+                  <a href={expense.receiptUrl} target="_blank" rel="noopener noreferrer">
+                    View attachment
+                  </a>
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : null}
         <input
           ref={fileInputRef}
           type="file"
