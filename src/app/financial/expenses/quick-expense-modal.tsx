@@ -14,6 +14,99 @@ import { createBrowserClient } from "@/lib/supabase";
 import { Camera, Loader2, Upload } from "lucide-react";
 import { useToast } from "@/components/toast/toast-provider";
 
+type BrowserSupabase = NonNullable<ReturnType<typeof createBrowserClient>>;
+
+type QuickExpenseAttachmentSlot = {
+  previewUrl: string;
+  attachmentPath: string | null;
+  receiptsPublicUrl: string | null;
+  revoke?: () => void;
+  pendingFile?: File;
+};
+
+function sanitizeNumericAmount(n: number): number | null {
+  if (!Number.isFinite(n) || n <= 0) return null;
+  if (n > 9_999_999) return null;
+  const rounded = Math.round(n * 100) / 100;
+  if (rounded >= 1900 && rounded <= 2100 && Number.isInteger(rounded)) return null;
+  return rounded;
+}
+
+function clampPurchaseDate(iso: string): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec((iso ?? "").trim());
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  const dt = new Date(y, mo - 1, d);
+  if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return null;
+  if (y < 2000) return null;
+  const today = new Date();
+  const endToday = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate(),
+    23,
+    59,
+    59,
+    999
+  );
+  if (dt > endToday) return null;
+  return `${m[1]}-${m[2]}-${m[3]}`;
+}
+
+async function uploadReceiptToStorage(
+  supabase: BrowserSupabase,
+  file: File,
+  keySuffix: string
+): Promise<QuickExpenseAttachmentSlot> {
+  const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_") || "receipt.jpg";
+  const expPath = `quick-expense/${Date.now()}-${keySuffix}-${safeName}`;
+  const { error: expErr } = await supabase.storage
+    .from("expense-attachments")
+    .upload(expPath, file, {
+      contentType: file.type || "image/jpeg",
+      upsert: true,
+    });
+  if (!expErr) {
+    const { data: signed } = await supabase.storage
+      .from("expense-attachments")
+      .createSignedUrl(expPath, 60 * 60 * 6);
+    if (signed?.signedUrl) {
+      return {
+        previewUrl: signed.signedUrl,
+        attachmentPath: expPath,
+        receiptsPublicUrl: null,
+      };
+    }
+    const blob = URL.createObjectURL(file);
+    return {
+      previewUrl: blob,
+      attachmentPath: expPath,
+      receiptsPublicUrl: null,
+      revoke: () => URL.revokeObjectURL(blob),
+    };
+  }
+  const rPath = `receipts/${Date.now()}-${keySuffix}-${safeName}`;
+  const { error: recErr } = await supabase.storage.from("receipts").upload(rPath, file, {
+    contentType: file.type || "image/jpeg",
+    upsert: true,
+  });
+  if (!recErr) {
+    const { data: pub } = supabase.storage.from("receipts").getPublicUrl(rPath);
+    const u = pub.publicUrl;
+    return { previewUrl: u, attachmentPath: null, receiptsPublicUrl: u };
+  }
+  const blob = URL.createObjectURL(file);
+  return {
+    previewUrl: blob,
+    attachmentPath: null,
+    receiptsPublicUrl: null,
+    revoke: () => URL.revokeObjectURL(blob),
+    pendingFile: file,
+  };
+}
+
 type ReceiptOcrResult = {
   vendor_name: string;
   total_amount: number;
@@ -30,6 +123,13 @@ type ReceiptOcrResult = {
 };
 
 type FieldConfidence = "high" | "medium" | "low";
+
+function minFieldConfidence(a: FieldConfidence, b?: FieldConfidence): FieldConfidence {
+  const rank: Record<FieldConfidence, number> = { low: 0, medium: 1, high: 2 };
+  if (!b) return a;
+  return rank[a] <= rank[b] ? a : b;
+}
+
 type OcrSource = "cloud" | "local" | "manual" | "none";
 type OcrDebugInfo = {
   source: OcrSource;
@@ -248,7 +348,7 @@ function parseAmountProduction(
   const generic = pickLikelyAmount(text);
   if (generic > 0)
     return { amount: generic, confidence: "medium", matchedRules: ["fallback:largest"] };
-  return { amount: 0.01, confidence: "low", matchedRules: ["fallback:min-amount"] };
+  return { amount: 0, confidence: "low", matchedRules: ["fallback:none"] };
 }
 
 async function runLocalBrowserOcr(file: File): Promise<ReceiptOcrResult | null> {
@@ -267,10 +367,11 @@ async function runLocalBrowserOcr(file: File): Promise<ReceiptOcrResult | null> 
     const known = detectKnownVendor(text);
     const parsedAmount = parseAmountProduction(text, known ?? pickLikelyVendor(text));
     const parsedDate = parseDateFromText(text);
+    const today = new Date().toISOString().slice(0, 10);
     return {
       vendor_name: known ?? pickLikelyVendor(text),
       total_amount: parsedAmount.amount,
-      purchase_date: parsedDate ?? new Date().toISOString().slice(0, 10),
+      purchase_date: clampPurchaseDate(parsedDate ?? "") ?? today,
       items: [],
       ocr_status: "ok",
       ocr_reason: "local_browser_ocr",
@@ -314,7 +415,8 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
   const [dragOver, setDragOver] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [step, setStep] = React.useState<"upload" | "edit">("upload");
-  const [uploadedUrls, setUploadedUrls] = React.useState<string[]>([]);
+  const [attachmentSlots, setAttachmentSlots] = React.useState<QuickExpenseAttachmentSlot[]>([]);
+  const [attachmentLightbox, setAttachmentLightbox] = React.useState<string | null>(null);
   const [vendorName, setVendorName] = React.useState("");
   const [amount, setAmount] = React.useState("");
   const [date, setDate] = React.useState(new Date().toISOString().slice(0, 10));
@@ -338,6 +440,11 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
   const [debugOpen, setDebugOpen] = React.useState(false);
   const [debugData, setDebugData] = React.useState<OcrDebugInfo | null>(null);
   const [duplicateConfirmed, setDuplicateConfirmed] = React.useState(false);
+  const [ocrSuggestions, setOcrSuggestions] = React.useState<{
+    vendor: string;
+    amount: string;
+    date: string;
+  } | null>(null);
   const [duplicateCandidate, setDuplicateCandidate] = React.useState<{
     id: string;
     vendor: string;
@@ -418,10 +525,15 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
 
   const enterFallbackEdit = React.useCallback(
     (msg?: string) => {
+      setAttachmentSlots((prev) => {
+        for (const s of prev) s.revoke?.();
+        return [];
+      });
       setDate(new Date().toISOString().slice(0, 10));
       setVendorName("Unknown");
       setAmount("");
       setCategory("Other");
+      setOcrSuggestions(null);
       setStep("edit");
       if (msg) {
         setError(msg);
@@ -441,7 +553,11 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
     setDragOver(false);
     setError(null);
     setStep("upload");
-    setUploadedUrls([]);
+    setAttachmentSlots((prev) => {
+      for (const s of prev) s.revoke?.();
+      return [];
+    });
+    setAttachmentLightbox(null);
     setVendorName("");
     setAmount("");
     setDate(new Date().toISOString().slice(0, 10));
@@ -458,6 +574,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
     setDebugOpen(false);
     setDuplicateConfirmed(false);
     setDuplicateCandidate(null);
+    setOcrSuggestions(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }, []);
 
@@ -540,22 +657,15 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
       if (qualityWarning) {
         toast({ title: "Image quality warning", description: qualityWarning, variant: "default" });
       }
-      const urls: string[] = [];
-      for (const file of list) {
-        const timestamp = Date.now();
-        const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_") || "receipt.jpg";
-        const path = `receipts/${timestamp}-${safeName}`;
-        const { error: uploadErr } = await supabase.storage.from("receipts").upload(path, file, {
-          contentType: file.type || "image/jpeg",
-          upsert: true,
-        });
-        if (uploadErr) {
-          continue;
-        }
-        const { data: urlData } = supabase.storage.from("receipts").getPublicUrl(path);
-        if (urlData.publicUrl) urls.push(urlData.publicUrl);
+      setAttachmentSlots((prev) => {
+        for (const s of prev) s.revoke?.();
+        return [];
+      });
+      const slots: QuickExpenseAttachmentSlot[] = [];
+      for (let fi = 0; fi < list.length; fi++) {
+        slots.push(await uploadReceiptToStorage(supabase, list[fi]!, String(fi)));
       }
-      setUploadedUrls(urls);
+      setAttachmentSlots(slots);
 
       const ocrResults: Array<{ result: ReceiptOcrResult; source: OcrSource }> = [];
       for (const file of list) {
@@ -598,13 +708,17 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
         pickLikelyVendor(mergedText);
       let finalVendor = sanitizeVendorCandidate(bestKnownVendor || "Unknown");
       const amountFromRules = parseAmountProduction(mergedText, finalVendor);
-      let finalAmount = amountFromRules.amount;
       const dateFromRules = parseDateFromText(mergedText);
-      const finalDate =
-        dateFromRules ??
-        ocrResults.find((r) => r.result.purchase_date)?.result.purchase_date ??
-        new Date().toISOString().slice(0, 10);
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const purchaseFromOcr =
+        ocrResults.find((r) => r.result.purchase_date)?.result.purchase_date ?? "";
+      const clampedPurchase =
+        clampPurchaseDate((dateFromRules ?? "").slice(0, 10)) ||
+        clampPurchaseDate(purchaseFromOcr.slice(0, 10)) ||
+        null;
+      const finalDateSuggestion = clampedPurchase ?? todayStr;
 
+      let hintBoostAmount: number | null = null;
       // Learn from prior user corrections for same OCR vendor token.
       try {
         const raw = window.localStorage.getItem(OCR_LEARN_KEY);
@@ -617,14 +731,21 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
           const alias = learned.vendorAliases?.[key];
           if (alias) finalVendor = sanitizeVendorCandidate(alias);
           const hinted = Number(learned.amountHints?.[key] ?? 0);
-          if (finalAmount <= 0.01 && hinted > 0) finalAmount = hinted;
+          if (amountFromRules.amount <= 0 && hinted > 0) hintBoostAmount = hinted;
         }
       } catch {
         // ignore
       }
 
-      // Always return an amount > 0 for stable flow.
-      if (!(finalAmount > 0)) finalAmount = 0.01;
+      let sanitizedAmount =
+        sanitizeNumericAmount(amountFromRules.amount) ??
+        (hintBoostAmount != null ? sanitizeNumericAmount(hintBoostAmount) : null);
+      if (sanitizedAmount == null) {
+        const apiCandidates = ocrResults
+          .map((r) => sanitizeNumericAmount(Number(r.result.total_amount)))
+          .filter((n): n is number => n != null);
+        if (apiCandidates.length) sanitizedAmount = Math.max(...apiCandidates);
+      }
 
       const source: OcrSource = ocrResults.some((r) => r.source === "local")
         ? "local"
@@ -640,22 +761,46 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
       const initialItems = dedupeItems([...fromRawRules, ...fromItemNames]);
       const finalItems = initialItems.length ? initialItems : ["Materials"];
       const mappedCategory = inferCategory(finalVendor, itemNames);
-      const vendorConfidence: FieldConfidence = finalVendor !== "Unknown" ? "high" : "low";
-      const amountConfidence = amountFromRules.confidence;
-      const dateConfidence: FieldConfidence = dateFromRules ? "high" : "medium";
+      let vendorConfidence: FieldConfidence =
+        finalVendor !== "Unknown" && finalVendor !== "Needs Review" ? "high" : "low";
+      let amountConfidence = amountFromRules.confidence;
+      let dateConfidence: FieldConfidence = clampedPurchase ? "medium" : "low";
 
-      setDate(finalDate);
-      setVendorName(finalVendor);
-      setAmount(String(finalAmount));
+      for (const r of ocrResults) {
+        const oc = r.result.confidence;
+        if (oc?.vendor) vendorConfidence = minFieldConfidence(vendorConfidence, oc.vendor);
+        if (oc?.amount) amountConfidence = minFieldConfidence(amountConfidence, oc.amount);
+        if (oc?.date) dateConfidence = minFieldConfidence(dateConfidence, oc.date);
+      }
+      if (clampedPurchase && dateConfidence === "low") {
+        dateConfidence = "medium";
+      }
+
+      const autoFillVendor =
+        vendorConfidence === "high" && finalVendor !== "Needs Review" && finalVendor !== "Unknown";
+      const autoFillAmount = amountConfidence === "high" && sanitizedAmount != null;
+      const autoFillDate = dateConfidence === "high" && clampedPurchase != null;
+
+      setDate(autoFillDate ? clampedPurchase : todayStr);
+      setVendorName(autoFillVendor ? finalVendor : "");
+      setAmount(autoFillAmount ? String(sanitizedAmount) : "");
       setCategory(mappedCategory);
       setFieldConfidence({
         vendor: vendorConfidence,
         amount: amountConfidence,
         date: dateConfidence,
       });
-      setDetectedSnapshot({ vendor: finalVendor, amount: finalAmount });
+      setDetectedSnapshot({
+        vendor: finalVendor,
+        amount: sanitizedAmount ?? hintBoostAmount ?? 0,
+      });
       setRecognizedItems(finalItems);
       setOcrSource(source);
+      setOcrSuggestions({
+        vendor: finalVendor,
+        amount: sanitizedAmount != null ? String(sanitizedAmount) : "",
+        date: finalDateSuggestion,
+      });
       setStep("edit");
       setDebugData({
         source,
@@ -666,16 +811,21 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
           confidence: r.result.confidence,
         })),
         rawText: mergedText,
-        parsed: { vendor: finalVendor, amount: finalAmount, date: finalDate },
+        parsed: {
+          vendor: finalVendor,
+          amount: sanitizedAmount ?? 0,
+          date: finalDateSuggestion,
+        },
         parsedItems: finalItems,
         matchedRules: amountFromRules.matchedRules,
         confidence: { vendor: vendorConfidence, amount: amountConfidence, date: dateConfidence },
       });
 
-      if (source !== "cloud" || amountConfidence === "low" || vendorConfidence === "low") {
+      if (vendorConfidence !== "high" || amountConfidence !== "high" || dateConfidence !== "high") {
         toast({
-          title: "OCR needs manual confirmation",
-          description: "Please quickly verify highlighted fields before saving.",
+          title: "OCR suggestions",
+          description:
+            "Only high-confidence fields were auto-filled. Review yellow hints and the suggestion box before saving.",
           variant: "default",
         });
       }
@@ -723,11 +873,26 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
     setSaving(true);
     setError(null);
     try {
+      let slotsToSave = attachmentSlots;
+      if (supabase) {
+        slotsToSave = await Promise.all(
+          attachmentSlots.map(async (s, i) => {
+            if (s.pendingFile && !s.attachmentPath && !s.receiptsPublicUrl) {
+              const u = await uploadReceiptToStorage(supabase, s.pendingFile, `save-${i}`);
+              return { ...u, pendingFile: undefined };
+            }
+            return s;
+          })
+        );
+      }
+      const firstPublic = slotsToSave.find((s) => s.receiptsPublicUrl)?.receiptsPublicUrl ?? "";
+      const hasStoragePath = slotsToSave.some((s) => s.attachmentPath);
+
       const created = await createQuickExpense({
         date: date || new Date().toISOString().slice(0, 10),
         vendorName: vendorName.trim() || "Unknown",
         totalAmount,
-        receiptUrl: uploadedUrls[0] ?? "",
+        receiptUrl: firstPublic,
         category,
         notes: (() => {
           const userNotes = notes.trim();
@@ -738,26 +903,30 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
         })(),
         projectId: projectId || null,
       });
-      const extra = uploadedUrls.slice(1);
-      for (const url of extra) {
-        await addExpenseAttachment(created.id, {
-          id: crypto.randomUUID(),
-          fileName: "receipt",
-          mimeType: "image/jpeg",
-          size: 0,
-          url,
-          createdAt: new Date().toISOString(),
-        });
+      for (const s of slotsToSave) {
+        if (s.attachmentPath) {
+          await addExpenseAttachment(created.id, {
+            id: crypto.randomUUID(),
+            fileName: "receipt",
+            mimeType: "image/jpeg",
+            size: 0,
+            url: s.attachmentPath,
+            createdAt: new Date().toISOString(),
+          });
+        }
       }
       toast({
         title: "Expense saved",
         description: `${vendorName.trim() || "Unknown"} — $${totalAmount.toLocaleString()}`,
         variant: "success",
       });
-      if (uploadedUrls.length === 0) {
+      if (slotsToSave.length === 0 || (!firstPublic && !hasStoragePath)) {
         toast({
-          title: "Saved without attachment",
-          description: "Receipt upload failed, but expense was saved for manual follow-up.",
+          title: "Saved without usable receipt attachment",
+          description:
+            slotsToSave.length === 0
+              ? "No receipt files were linked to this expense."
+              : "Images could not be stored in Supabase (check buckets/policies). Add receipts from the expense detail page if needed.",
           variant: "default",
         });
       }
@@ -896,6 +1065,27 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                 ) : null}
                 {step === "edit" ? (
                   <div className="space-y-3">
+                    {ocrSuggestions &&
+                    (fieldConfidence.vendor !== "high" ||
+                      fieldConfidence.amount !== "high" ||
+                      fieldConfidence.date !== "high") ? (
+                      <div className="rounded-sm border border-amber-500/45 bg-amber-500/[0.07] px-3 py-2 text-xs text-amber-950 dark:text-amber-100">
+                        <p className="font-medium text-amber-900 dark:text-amber-50">
+                          OCR suggestions (verify before save)
+                        </p>
+                        <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-amber-900/90 dark:text-amber-100/90">
+                          {fieldConfidence.vendor !== "high" && ocrSuggestions.vendor ? (
+                            <li>Vendor: {ocrSuggestions.vendor}</li>
+                          ) : null}
+                          {fieldConfidence.amount !== "high" && ocrSuggestions.amount ? (
+                            <li>Amount: {ocrSuggestions.amount}</li>
+                          ) : null}
+                          {fieldConfidence.date !== "high" && ocrSuggestions.date ? (
+                            <li>Date: {ocrSuggestions.date}</li>
+                          ) : null}
+                        </ul>
+                      </div>
+                    ) : null}
                     <div>
                       <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                         Vendor
@@ -904,11 +1094,17 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                         ref={vendorInputRef}
                         value={vendorName}
                         onChange={(e) => setVendorName(e.target.value)}
-                        className={`mt-1 h-9 ${fieldConfidence.vendor === "low" ? "border-destructive" : ""}`}
+                        className={`mt-1 h-9 ${fieldConfidence.vendor !== "high" ? "border-amber-500/55" : ""}`}
                         disabled={saving}
                       />
                       <p className="mt-1 text-[11px] text-muted-foreground">
                         Confidence: {fieldConfidence.vendor}
+                        {fieldConfidence.vendor !== "high" && ocrSuggestions?.vendor ? (
+                          <span className="text-amber-700 dark:text-amber-300">
+                            {" "}
+                            · suggested: {ocrSuggestions.vendor}
+                          </span>
+                        ) : null}
                       </p>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
@@ -923,11 +1119,17 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                           step="0.01"
                           value={amount}
                           onChange={(e) => setAmount(e.target.value)}
-                          className={`mt-1 h-9 ${fieldConfidence.amount === "low" ? "border-destructive" : ""}`}
+                          className={`mt-1 h-9 ${fieldConfidence.amount !== "high" ? "border-amber-500/55" : ""}`}
                           disabled={saving}
                         />
                         <p className="mt-1 text-[11px] text-muted-foreground">
                           Confidence: {fieldConfidence.amount}
+                          {fieldConfidence.amount !== "high" && ocrSuggestions?.amount ? (
+                            <span className="text-amber-700 dark:text-amber-300">
+                              {" "}
+                              · suggested: {ocrSuggestions.amount}
+                            </span>
+                          ) : null}
                         </p>
                       </div>
                       <div>
@@ -939,11 +1141,17 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                           type="date"
                           value={date}
                           onChange={(e) => setDate(e.target.value)}
-                          className={`mt-1 h-9 ${fieldConfidence.date === "low" ? "border-destructive" : ""}`}
+                          className={`mt-1 h-9 ${fieldConfidence.date !== "high" ? "border-amber-500/55" : ""}`}
                           disabled={saving}
                         />
                         <p className="mt-1 text-[11px] text-muted-foreground">
                           Confidence: {fieldConfidence.date}
+                          {fieldConfidence.date !== "high" && ocrSuggestions?.date ? (
+                            <span className="text-amber-700 dark:text-amber-300">
+                              {" "}
+                              · suggested: {ocrSuggestions.date}
+                            </span>
+                          ) : null}
                         </p>
                       </div>
                     </div>
@@ -1082,8 +1290,49 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                         Attachments
                       </label>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {uploadedUrls.length} file(s) uploaded and attached.
+                        {attachmentSlots.length} file(s) ready
+                        {attachmentSlots.some(
+                          (s) => s.pendingFile && !s.attachmentPath && !s.receiptsPublicUrl
+                        )
+                          ? " — storage upload failed (local preview only; will retry on save)"
+                          : ""}
                       </p>
+                      {attachmentSlots.length > 0 ? (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {attachmentSlots.map((s, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              className="relative overflow-hidden rounded-sm border border-border/60 focus:outline-none focus:ring-1 focus:ring-ring"
+                              onClick={() => setAttachmentLightbox(s.previewUrl)}
+                              disabled={saving}
+                              aria-label={`View attachment ${idx + 1}`}
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element -- preview URL is blob/signed */}
+                              <img
+                                src={s.previewUrl}
+                                alt=""
+                                className="h-14 w-14 object-cover"
+                                loading="lazy"
+                              />
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                      {attachmentSlots.length > 0 ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="mt-2 h-7 px-2 text-xs"
+                          disabled={saving}
+                          onClick={() =>
+                            setAttachmentLightbox(attachmentSlots[0]?.previewUrl ?? null)
+                          }
+                        >
+                          View attachment
+                        </Button>
+                      ) : null}
                     </div>
                     <div className="flex justify-end gap-2 pt-2">
                       {duplicateCandidate ? (
@@ -1140,7 +1389,8 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                   </div>
                 ) : null}
                 <p className="mt-2 text-xs text-muted-foreground">
-                  OCR fills vendor, amount, and date automatically. You can edit before save.
+                  High-confidence OCR values are applied automatically; others appear as amber
+                  hints. You can edit everything before save.
                 </p>
                 {process.env.NODE_ENV !== "production" && ocrSource !== "none" ? (
                   <div className="flex items-center justify-between gap-2">
@@ -1173,6 +1423,24 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Processing...
               </p>
+            ) : null}
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={!!attachmentLightbox}
+        onOpenChange={(open) => {
+          if (!open) setAttachmentLightbox(null);
+        }}
+      >
+        <DialogContent className="max-w-lg border-border/60 p-0 gap-0 overflow-hidden">
+          <DialogHeader className="border-b border-border/60 px-4 py-2">
+            <DialogTitle className="text-sm font-medium">Receipt preview</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[80vh] overflow-auto p-4">
+            {attachmentLightbox ? (
+              /* eslint-disable-next-line @next/next/no-img-element -- dynamic preview URL */
+              <img src={attachmentLightbox} alt="" className="max-h-[70vh] w-full object-contain" />
             ) : null}
           </div>
         </DialogContent>

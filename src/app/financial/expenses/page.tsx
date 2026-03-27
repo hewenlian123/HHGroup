@@ -96,6 +96,27 @@ function getReceiptItems(expense: Expense): ReceiptItem[] {
   });
 }
 
+async function resolveReceiptPreviewUrls(
+  items: ReceiptItem[],
+  supabase: ReturnType<typeof createBrowserClient> | null
+): Promise<ReceiptItem[]> {
+  if (!supabase) return items;
+  const next: ReceiptItem[] = [];
+  for (const item of items) {
+    const u = item.url;
+    if (!u || /^https?:\/\//i.test(u) || u.startsWith("blob:")) {
+      next.push(item);
+      continue;
+    }
+    const { data, error } = await supabase.storage
+      .from("expense-attachments")
+      .createSignedUrl(u, 3600);
+    if (!error && data?.signedUrl) next.push({ ...item, url: data.signedUrl });
+    else next.push(item);
+  }
+  return next;
+}
+
 function normalizedVendorLabel(vendor: string): string {
   const v = (vendor ?? "").trim();
   if (!v || /^unknown$/i.test(v) || /^smokevendor[-_]/i.test(v)) return "Needs Review";
@@ -285,6 +306,16 @@ function ExpensesPageInner() {
     const list = await getExpenses();
     setExpenses(list);
   }, []);
+
+  const openReceiptPreview = React.useCallback(
+    async (row: Expense) => {
+      const raw = getReceiptItems(row);
+      const items = await resolveReceiptPreviewUrls(raw, supabase);
+      setReceiptZoom(1);
+      setReceiptPreview({ items, index: 0, expenseId: row.id });
+    },
+    [supabase]
+  );
 
   const handleExpenseSave = React.useCallback(
     (patch: ExpenseReviewSavePatch) => {
@@ -778,11 +809,7 @@ function ExpensesPageInner() {
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8"
-                              onClick={() => {
-                                const items = getReceiptItems(row);
-                                setReceiptZoom(1);
-                                setReceiptPreview({ items, index: 0, expenseId: row.id });
-                              }}
+                              onClick={() => void openReceiptPreview(row)}
                               aria-label="View receipt"
                               title="View receipt"
                             >
@@ -817,11 +844,7 @@ function ExpensesPageInner() {
                                 className="h-8 w-8"
                                 title="View receipt"
                                 aria-label="View receipt"
-                                onClick={() => {
-                                  const items = getReceiptItems(row);
-                                  setReceiptZoom(1);
-                                  setReceiptPreview({ items, index: 0, expenseId: row.id });
-                                }}
+                                onClick={() => void openReceiptPreview(row)}
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
