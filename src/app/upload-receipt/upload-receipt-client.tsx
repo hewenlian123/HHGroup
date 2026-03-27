@@ -6,8 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import {
+  type FieldConfidence,
+  mergeReceiptOcrResults,
+  runReceiptOcrForImageFile,
+} from "@/lib/receipt-ocr-client";
 
 type Option = { id: string; name: string };
+
+const WORKER_OCR_LEARN_KEY = "hh.worker-receipt-ocr-learn";
 
 const EXPENSE_OPTIONS: { value: string; zh: string; en: string }[] = [
   { value: "Building Materials", zh: "建筑材料", en: "Building Materials" },
@@ -17,6 +24,32 @@ const EXPENSE_OPTIONS: { value: string; zh: string; en: string }[] = [
   { value: "Supplies", zh: "日常用品", en: "Supplies" },
   { value: "Other", zh: "其他", en: "Other" },
 ];
+
+/** Map Quick Expense–style category labels to worker expense type values. */
+function mapQuickCategoryToWorkerExpenseType(cat: string): string {
+  switch (cat) {
+    case "Materials":
+      return "Building Materials";
+    case "Vehicle":
+      return "Transportation";
+    case "Meals":
+      return "Food";
+    default:
+      return "Other";
+  }
+}
+
+function inferWorkerReceiptCategory(vendor: string, itemNames: string[]): string {
+  const haystack = `${vendor} ${itemNames.join(" ")}`.toLowerCase();
+  if (/home depot|lowe'?s|lowes/.test(haystack)) return "Materials";
+  if (/gas|fuel|shell|chevron|exxon|mobil|bp/.test(haystack)) return "Vehicle";
+  if (/restaurant|cafe|coffee|diner|bbq|burger|pizza/.test(haystack)) return "Meals";
+  return "Other";
+}
+
+function normalizeVendor(v: string): string {
+  return (v || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
 
 function Label({ zh, en }: { zh: string; en: string }) {
   return (
@@ -44,6 +77,21 @@ export function UploadReceiptClient() {
   const [submitting, setSubmitting] = React.useState(false);
   const [message, setMessage] = React.useState<string | null>(null);
   const [done, setDone] = React.useState(false);
+  const [ocrBusy, setOcrBusy] = React.useState(false);
+  const [ocrFieldConfidence, setOcrFieldConfidence] = React.useState<{
+    vendor: FieldConfidence;
+    amount: FieldConfidence;
+    date: FieldConfidence;
+  } | null>(null);
+  const [ocrSuggestions, setOcrSuggestions] = React.useState<{
+    vendor: string;
+    amount: string;
+    date: string;
+  } | null>(null);
+  const [ocrDetectedSnapshot, setOcrDetectedSnapshot] = React.useState<{
+    vendor: string;
+    amount: number;
+  } | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   const loadOptions = React.useCallback(async () => {
@@ -77,11 +125,48 @@ export function UploadReceiptClient() {
     const f = e.target.files?.[0] ?? null;
     setFile(f);
     setMessage(null);
-    // Update preview URL
+    setOcrFieldConfidence(null);
+    setOcrSuggestions(null);
+    setOcrDetectedSnapshot(null);
     setPreviewUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev);
       return f ? URL.createObjectURL(f) : null;
     });
+    if (!f) return;
+    if (!f.type.startsWith("image/")) {
+      return;
+    }
+    void (async () => {
+      setOcrBusy(true);
+      try {
+        const one = await runReceiptOcrForImageFile(f, { localTimeoutMs: 8000 });
+        const merged = mergeReceiptOcrResults([one], {
+          learnStorageKey: WORKER_OCR_LEARN_KEY,
+          inferCategory: inferWorkerReceiptCategory,
+        });
+        setVendor(merged.autoFillVendor ? merged.finalVendor : "");
+        setAmount(
+          merged.autoFillAmount && merged.sanitizedAmount != null
+            ? String(merged.sanitizedAmount)
+            : ""
+        );
+        setReceiptDate(merged.autoFillDate && merged.clampedPurchase ? merged.clampedPurchase : "");
+        if (merged.mappedCategory !== "Other") {
+          setExpenseType(mapQuickCategoryToWorkerExpenseType(merged.mappedCategory));
+        }
+        setOcrFieldConfidence({
+          vendor: merged.vendorConfidence,
+          amount: merged.amountConfidence,
+          date: merged.dateConfidence,
+        });
+        setOcrSuggestions(merged.ocrSuggestions);
+        setOcrDetectedSnapshot(merged.detectedSnapshot);
+      } catch {
+        setMessage("收据识别失败，请手动填写 / OCR failed; please fill in manually");
+      } finally {
+        setOcrBusy(false);
+      }
+    })();
   };
 
   const resetForm = () => {
@@ -100,6 +185,10 @@ export function UploadReceiptClient() {
     });
     setPreviewOpen(false);
     setMessage(null);
+    setOcrBusy(false);
+    setOcrFieldConfidence(null);
+    setOcrSuggestions(null);
+    setOcrDetectedSnapshot(null);
     if (inputRef.current) inputRef.current.value = "";
   };
 
@@ -165,6 +254,35 @@ export function UploadReceiptClient() {
       // Debug: submit success
       // eslint-disable-next-line no-console
       console.log("[UploadReceipt] submit success", { id: data.id });
+      try {
+        if (ocrDetectedSnapshot) {
+          const vendorTrim = vendor.trim();
+          const changedVendor =
+            normalizeVendor(vendorTrim) !== normalizeVendor(ocrDetectedSnapshot.vendor);
+          const changedAmount = Math.abs(num - ocrDetectedSnapshot.amount) >= 0.01;
+          if (changedVendor || changedAmount) {
+            const raw = window.localStorage.getItem(WORKER_OCR_LEARN_KEY);
+            const learned = raw
+              ? (JSON.parse(raw) as {
+                  vendorAliases?: Record<string, string>;
+                  amountHints?: Record<string, number>;
+                })
+              : {};
+            const key = normalizeVendor(ocrDetectedSnapshot.vendor);
+            if (changedVendor) {
+              learned.vendorAliases = learned.vendorAliases ?? {};
+              learned.vendorAliases[key] = vendorTrim || ocrDetectedSnapshot.vendor;
+            }
+            if (changedAmount) {
+              learned.amountHints = learned.amountHints ?? {};
+              learned.amountHints[key] = num;
+            }
+            window.localStorage.setItem(WORKER_OCR_LEARN_KEY, JSON.stringify(learned));
+          }
+        }
+      } catch {
+        // ignore
+      }
       setDone(true);
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "出错 / Something went wrong");
@@ -261,7 +379,9 @@ export function UploadReceiptClient() {
             type="date"
             value={receiptDate}
             onChange={(e) => setReceiptDate(e.target.value)}
-            className="h-12 text-base rounded-lg px-4"
+            className={`h-12 text-base rounded-lg px-4 ${
+              ocrFieldConfidence && ocrFieldConfidence.date !== "high" ? "border-amber-500/55" : ""
+            }`}
           />
         </div>
 
@@ -271,7 +391,11 @@ export function UploadReceiptClient() {
             value={vendor}
             onChange={(e) => setVendor(e.target.value)}
             placeholder="商家名称"
-            className="h-12 text-base rounded-lg px-4"
+            className={`h-12 text-base rounded-lg px-4 ${
+              ocrFieldConfidence && ocrFieldConfidence.vendor !== "high"
+                ? "border-amber-500/55"
+                : ""
+            }`}
           />
         </div>
 
@@ -285,7 +409,11 @@ export function UploadReceiptClient() {
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="0.00"
-            className="h-12 text-base rounded-lg px-4"
+            className={`h-12 text-base rounded-lg px-4 ${
+              ocrFieldConfidence && ocrFieldConfidence.amount !== "high"
+                ? "border-amber-500/55"
+                : ""
+            }`}
             required
           />
         </div>
@@ -316,6 +444,33 @@ export function UploadReceiptClient() {
             )}
           </button>
 
+          {ocrBusy ? (
+            <p className="mt-2 text-sm text-muted-foreground">识别中… / Recognizing receipt…</p>
+          ) : null}
+
+          {ocrSuggestions &&
+          ocrFieldConfidence &&
+          (ocrFieldConfidence.vendor !== "high" ||
+            ocrFieldConfidence.amount !== "high" ||
+            ocrFieldConfidence.date !== "high") ? (
+            <div className="mt-2 rounded-sm border border-amber-500/45 bg-amber-500/[0.07] px-3 py-2 text-xs text-amber-950 dark:text-amber-100">
+              <p className="font-medium text-amber-900 dark:text-amber-50">
+                OCR 建议核对 · Please verify OCR
+              </p>
+              <ul className="mt-1.5 list-disc space-y-0.5 pl-4">
+                {ocrFieldConfidence.vendor !== "high" && ocrSuggestions.vendor ? (
+                  <li>商家 Vendor: {ocrSuggestions.vendor}</li>
+                ) : null}
+                {ocrFieldConfidence.amount !== "high" && ocrSuggestions.amount ? (
+                  <li>金额 Amount: {ocrSuggestions.amount}</li>
+                ) : null}
+                {ocrFieldConfidence.date !== "high" && ocrSuggestions.date ? (
+                  <li>日期 Date: {ocrSuggestions.date}</li>
+                ) : null}
+              </ul>
+            </div>
+          ) : null}
+
           {previewUrl ? (
             <div className="mt-3 space-y-2">
               <div className="flex items-center gap-3">
@@ -343,6 +498,8 @@ export function UploadReceiptClient() {
                   className="h-8 flex-1"
                   onClick={() => {
                     setFile(null);
+                    setOcrFieldConfidence(null);
+                    setOcrSuggestions(null);
                     setPreviewUrl((prev) => {
                       if (prev) URL.revokeObjectURL(prev);
                       return null;
@@ -385,7 +542,7 @@ export function UploadReceiptClient() {
         <Button
           type="submit"
           className="mt-2 w-full min-h-12 text-base font-medium sm:min-h-10"
-          disabled={uploading || submitting}
+          disabled={uploading || submitting || ocrBusy}
         >
           {uploading ? "上传中…" : submitting ? "提交中…" : "提交报销 / Submit Receipt"}
         </Button>
