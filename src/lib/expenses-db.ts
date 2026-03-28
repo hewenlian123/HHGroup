@@ -1124,7 +1124,7 @@ export async function addExpenseAttachment(
   att: ExpenseAttachment
 ): Promise<Expense | null> {
   const c = client();
-  await c.from("attachments").insert({
+  const { error } = await c.from("attachments").insert({
     entity_type: "expense",
     entity_id: expenseId,
     file_name: att.fileName,
@@ -1132,6 +1132,7 @@ export async function addExpenseAttachment(
     mime_type: att.mimeType,
     size_bytes: att.size,
   });
+  if (error) throw new Error(error.message ?? "Failed to save attachment record.");
   return getExpenseById(expenseId);
 }
 

@@ -20,6 +20,12 @@ export type ReceiptOcrResult = {
 
 export type FieldConfidence = "high" | "medium" | "low";
 export type OcrSource = "cloud" | "local" | "manual" | "none";
+export type AmountRuleDiagnostic = {
+  kind: "accepted" | "rejected" | "meta";
+  value?: string;
+  reason: string;
+  line?: string;
+};
 
 function minFieldConfidence(a: FieldConfidence, b?: FieldConfidence): FieldConfidence {
   const rank: Record<FieldConfidence, number> = { low: 0, medium: 1, high: 2 };
@@ -142,14 +148,19 @@ function pickLikelyAmount(text: string): number {
 }
 
 function parseDateFromText(text: string): string | null {
-  const m1 = text.match(/\b(\d{4})[-/](\d{1,2})[-/](\d{1,2})\b/);
+  const lines = text.split(/\r?\n/).map((l) => l.trim());
+  const labeled = lines.find((line) =>
+    /\b(date|purchase|purchased|sale|transaction|invoice)\b/i.test(line)
+  );
+  const hay = labeled || text;
+  const m1 = hay.match(/\b(\d{4})[-/](\d{1,2})[-/](\d{1,2})\b/);
   if (m1) {
     const y = m1[1];
     const mo = m1[2].padStart(2, "0");
     const d = m1[3].padStart(2, "0");
     return `${y}-${mo}-${d}`;
   }
-  const m2 = text.match(/\b(\d{1,2})\/(\d{1,2})\/(\d{4})\b/);
+  const m2 = hay.match(/\b(\d{1,2})[/-](\d{1,2})[/-](\d{4})\b/);
   if (m2) {
     const a = Number(m2[1]);
     const b = Number(m2[2]);
@@ -180,10 +191,10 @@ export function sanitizeVendorCandidate(v: string): string {
   const t = (v ?? "").trim();
   if (!t) return "Needs Review";
   if (t.length < 3) return "Needs Review";
-  if (!/[a-zA-Z]/.test(t)) return "Needs Review";
-  const alphaCount = (t.match(/[a-zA-Z]/g) ?? []).length;
+  if (!/[A-Za-z\u4e00-\u9fff]/.test(t)) return "Needs Review";
+  const alphaCount = (t.match(/[A-Za-z\u4e00-\u9fff]/g) ?? []).length;
   if (alphaCount / t.length < 0.6) return "Needs Review";
-  if (/^[^a-zA-Z0-9]{1,8}$/.test(t)) return "Needs Review";
+  if (/^[^A-Za-z0-9\u4e00-\u9fff]{1,8}$/.test(t)) return "Needs Review";
   return t;
 }
 
@@ -215,6 +226,9 @@ function parseVendorSpecificAmount(text: string, vendor: string): number {
       const n = Number(normalized);
       const isYearLike = /^\d{4}$/.test(normalized) && n >= 1900 && n <= 2100;
       if (isYearLike) continue;
+      const hasDollar = raw.includes("$");
+      const hasDecimal = normalized.includes(".");
+      if (!hasDollar && !hasDecimal && n >= 1000) continue;
       if (Number.isFinite(n) && n > 0) candidates.push(n);
     }
   }
@@ -224,12 +238,18 @@ function parseVendorSpecificAmount(text: string, vendor: string): number {
 function parseAmountProduction(
   text: string,
   vendor: string
-): { amount: number; confidence: FieldConfidence; matchedRules: string[] } {
+): {
+  amount: number;
+  confidence: FieldConfidence;
+  matchedRules: string[];
+  diagnostics: AmountRuleDiagnostic[];
+} {
   const lines = text
     .split(/\r?\n/)
     .map((l) => l.trim())
     .filter(Boolean);
   const matchedRules: string[] = [];
+  const diagnostics: AmountRuleDiagnostic[] = [];
   const strictPatterns = [/\btotal\b/i, /\bamount\b/i, /\bbalance due\b/i, /\bfuel total\b/i];
   const labeled: number[] = [];
   for (const line of lines) {
@@ -238,24 +258,72 @@ function parseAmountProduction(
     matchedRules.push(`label:${line}`);
     const nums = line.match(/\$?\s*\d{1,4}(?:,\d{3})*(?:\.\d{2})?/g) ?? [];
     for (const raw of nums) {
-      const n = Number(raw.replace(/[$,\s]/g, ""));
-      if (Number.isFinite(n) && n > 0) labeled.push(n);
+      const normalized = raw.replace(/[$,\s]/g, "");
+      const n = Number(normalized);
+      const isYearLike = /^\d{4}$/.test(normalized) && n >= 1900 && n <= 2100;
+      if (isYearLike) {
+        diagnostics.push({ kind: "rejected", value: raw.trim(), reason: "year-like", line });
+        continue;
+      }
+      const hasDollar = raw.includes("$");
+      const hasDecimal = normalized.includes(".");
+      // OCR often emits IDs as 4-digit integers in total lines (e.g. 9681).
+      if (!hasDollar && !hasDecimal && n >= 1000) {
+        diagnostics.push({
+          kind: "rejected",
+          value: raw.trim(),
+          reason: "id-like integer without decimal/currency",
+          line,
+        });
+        continue;
+      }
+      if (Number.isFinite(n) && n > 0) {
+        labeled.push(n);
+        diagnostics.push({
+          kind: "accepted",
+          value: raw.trim(),
+          reason: "strict label match",
+          line,
+        });
+      }
     }
   }
   const vendorSpecific = parseVendorSpecificAmount(text, vendor);
-  if (vendorSpecific > 0) matchedRules.push(`vendor-specific:${vendor}`);
+  if (vendorSpecific > 0) {
+    matchedRules.push(`vendor-specific:${vendor}`);
+    diagnostics.push({
+      kind: "meta",
+      reason: `vendor-specific rule matched: ${vendor}`,
+    });
+  }
   const labeledBest = labeled.length ? Math.max(...labeled) : 0;
   if (Math.max(labeledBest, vendorSpecific) > 0) {
+    diagnostics.push({
+      kind: "meta",
+      reason: `selected amount: ${Math.max(labeledBest, vendorSpecific)}`,
+    });
     return {
       amount: Math.max(labeledBest, vendorSpecific),
       confidence: "high",
       matchedRules: matchedRules.length ? matchedRules : ["regex:strict"],
+      diagnostics,
     };
   }
   const generic = pickLikelyAmount(text);
-  if (generic > 0)
-    return { amount: generic, confidence: "medium", matchedRules: ["fallback:largest"] };
-  return { amount: 0, confidence: "low", matchedRules: ["fallback:none"] };
+  if (generic > 0) {
+    diagnostics.push({
+      kind: "meta",
+      reason: `fallback largest-number selected: ${generic}`,
+    });
+    return {
+      amount: generic,
+      confidence: "medium",
+      matchedRules: ["fallback:largest"],
+      diagnostics,
+    };
+  }
+  diagnostics.push({ kind: "meta", reason: "no amount candidate found" });
+  return { amount: 0, confidence: "low", matchedRules: ["fallback:none"], diagnostics };
 }
 
 async function runLocalBrowserOcr(file: File): Promise<ReceiptOcrResult | null> {
@@ -357,6 +425,7 @@ export type MergedReceiptOcr = {
   mappedCategory: string;
   source: OcrSource;
   matchedRules: string[];
+  amountDiagnostics: AmountRuleDiagnostic[];
   detectedSnapshot: { vendor: string; amount: number };
   ocrSuggestions: { vendor: string; amount: string; date: string };
 };
@@ -473,6 +542,7 @@ export function mergeReceiptOcrResults(
     mappedCategory,
     source,
     matchedRules: amountFromRules.matchedRules,
+    amountDiagnostics: amountFromRules.diagnostics,
     detectedSnapshot: {
       vendor: finalVendor,
       amount: sanitizedAmount ?? hintBoostAmount ?? 0,
