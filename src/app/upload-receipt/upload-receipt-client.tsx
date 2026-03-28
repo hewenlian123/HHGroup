@@ -2,12 +2,15 @@
 
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
+import { AmountDiagnosticsPanel } from "@/components/ocr/amount-diagnostics-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
+  type AmountRuleDiagnostic,
   type FieldConfidence,
+  type OcrSource,
   mergeReceiptOcrResults,
   runReceiptOcrForImageFile,
 } from "@/lib/receipt-ocr-client";
@@ -92,6 +95,11 @@ export function UploadReceiptClient() {
     vendor: string;
     amount: number;
   } | null>(null);
+  const [ocrSource, setOcrSource] = React.useState<OcrSource>("none");
+  const [ocrMatchedRules, setOcrMatchedRules] = React.useState<string[]>([]);
+  const [ocrAmountDiagnostics, setOcrAmountDiagnostics] = React.useState<AmountRuleDiagnostic[]>(
+    []
+  );
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   const loadOptions = React.useCallback(async () => {
@@ -128,6 +136,9 @@ export function UploadReceiptClient() {
     setOcrFieldConfidence(null);
     setOcrSuggestions(null);
     setOcrDetectedSnapshot(null);
+    setOcrSource("none");
+    setOcrMatchedRules([]);
+    setOcrAmountDiagnostics([]);
     setPreviewUrl((prev) => {
       if (prev) URL.revokeObjectURL(prev);
       return f ? URL.createObjectURL(f) : null;
@@ -161,6 +172,9 @@ export function UploadReceiptClient() {
         });
         setOcrSuggestions(merged.ocrSuggestions);
         setOcrDetectedSnapshot(merged.detectedSnapshot);
+        setOcrSource(merged.source);
+        setOcrMatchedRules(merged.matchedRules);
+        setOcrAmountDiagnostics(merged.amountDiagnostics);
       } catch {
         setMessage("收据识别失败，请手动填写 / OCR failed; please fill in manually");
       } finally {
@@ -189,6 +203,9 @@ export function UploadReceiptClient() {
     setOcrFieldConfidence(null);
     setOcrSuggestions(null);
     setOcrDetectedSnapshot(null);
+    setOcrSource("none");
+    setOcrMatchedRules([]);
+    setOcrAmountDiagnostics([]);
     if (inputRef.current) inputRef.current.value = "";
   };
 
@@ -471,6 +488,19 @@ export function UploadReceiptClient() {
             </div>
           ) : null}
 
+          {process.env.NODE_ENV !== "production" && ocrMatchedRules.length > 0 ? (
+            <details className="mt-2 rounded-sm border border-border/60 px-3 py-2 text-xs">
+              <summary className="cursor-pointer text-muted-foreground">
+                OCR Debug ({ocrSource}) - amount diagnostics
+              </summary>
+              <AmountDiagnosticsPanel
+                className="mt-2"
+                diagnostics={ocrAmountDiagnostics}
+                matchedRules={ocrMatchedRules}
+              />
+            </details>
+          ) : null}
+
           {previewUrl ? (
             <div className="mt-3 space-y-2">
               <div className="flex items-center gap-3">
@@ -500,6 +530,10 @@ export function UploadReceiptClient() {
                     setFile(null);
                     setOcrFieldConfidence(null);
                     setOcrSuggestions(null);
+                    setOcrDetectedSnapshot(null);
+                    setOcrSource("none");
+                    setOcrMatchedRules([]);
+                    setOcrAmountDiagnostics([]);
                     setPreviewUrl((prev) => {
                       if (prev) URL.revokeObjectURL(prev);
                       return null;

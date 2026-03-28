@@ -13,7 +13,9 @@ import {
 import { createBrowserClient } from "@/lib/supabase";
 import { Camera, Loader2, Upload } from "lucide-react";
 import { useToast } from "@/components/toast/toast-provider";
+import { AmountDiagnosticsPanel } from "@/components/ocr/amount-diagnostics-panel";
 import {
+  type AmountRuleDiagnostic,
   type FieldConfidence,
   type OcrSource,
   type ReceiptOcrResult,
@@ -27,6 +29,7 @@ type QuickExpenseAttachmentSlot = {
   previewUrl: string;
   attachmentPath: string | null;
   receiptsPublicUrl: string | null;
+  uploadError?: string;
   revoke?: () => void;
   pendingFile?: File;
 };
@@ -36,6 +39,36 @@ async function uploadReceiptToStorage(
   file: File,
   keySuffix: string
 ): Promise<QuickExpenseAttachmentSlot> {
+  // Prefer server upload to avoid browser-side bucket policy/session issues.
+  try {
+    const fd = new FormData();
+    fd.set("file", file);
+    const res = await fetch("/api/quick-expense/upload-attachment", {
+      method: "POST",
+      body: fd,
+    });
+    if (res.ok) {
+      const payload = (await res.json()) as {
+        ok: boolean;
+        path?: string;
+        signed_url?: string;
+        public_url?: string;
+      };
+      if (payload.ok && payload.path) {
+        const fallbackBlob =
+          !payload.signed_url && !payload.public_url ? URL.createObjectURL(file) : null;
+        return {
+          previewUrl: payload.signed_url || payload.public_url || fallbackBlob || "",
+          attachmentPath: payload.path,
+          receiptsPublicUrl: payload.public_url ?? null,
+          revoke: fallbackBlob ? () => URL.revokeObjectURL(fallbackBlob) : undefined,
+        };
+      }
+    }
+  } catch {
+    // fall through to legacy browser upload path
+  }
+
   const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_") || "receipt.jpg";
   const expPath = `quick-expense/${Date.now()}-${keySuffix}-${safeName}`;
   const { error: expErr } = await supabase.storage
@@ -80,6 +113,7 @@ async function uploadReceiptToStorage(
     receiptsPublicUrl: null,
     revoke: () => URL.revokeObjectURL(blob),
     pendingFile: file,
+    uploadError: "Upload to Supabase Storage failed (bucket/policy/session).",
   };
 }
 
@@ -91,6 +125,7 @@ type OcrDebugInfo = {
   parsed: { vendor: string; amount: number; date: string };
   parsedItems: string[];
   matchedRules: string[];
+  amountDiagnostics: AmountRuleDiagnostic[];
   confidence: { vendor: FieldConfidence; amount: FieldConfidence; date: FieldConfidence };
 };
 
@@ -442,6 +477,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
         },
         parsedItems: merged.finalItems,
         matchedRules: merged.matchedRules,
+        amountDiagnostics: merged.amountDiagnostics,
         confidence: {
           vendor: merged.vendorConfidence,
           amount: merged.amountConfidence,
@@ -516,6 +552,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
             return s;
           })
         );
+        setAttachmentSlots(slotsToSave);
       }
       const firstPublic = slotsToSave.find((s) => s.receiptsPublicUrl)?.receiptsPublicUrl ?? "";
       const hasStoragePath = slotsToSave.some((s) => s.attachmentPath);
@@ -624,7 +661,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-md border-border/60 sm:max-w-md">
+        <DialogContent className="h-[100dvh] w-full max-w-none overflow-y-auto rounded-none border-border/60 sm:h-auto sm:max-h-[92vh] sm:max-w-md sm:rounded-sm">
           <DialogHeader className="border-b border-border/60 pb-3">
             <DialogTitle className="text-base font-medium">Quick Expense Upload</DialogTitle>
           </DialogHeader>
@@ -929,6 +966,11 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                           ? " — storage upload failed (local preview only; will retry on save)"
                           : ""}
                       </p>
+                      {attachmentSlots.some((s) => s.uploadError) ? (
+                        <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300">
+                          {attachmentSlots.find((s) => s.uploadError)?.uploadError}
+                        </p>
+                      ) : null}
                       {attachmentSlots.length > 0 ? (
                         <div className="mt-2 flex flex-wrap gap-2">
                           {attachmentSlots.map((s, idx) => (
@@ -1119,6 +1161,15 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
               <pre className="max-h-28 overflow-auto rounded-sm border border-border/60 p-2 text-xs">
                 {JSON.stringify(debugData?.matchedRules ?? [], null, 2)}
               </pre>
+            </div>
+            <div>
+              <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Amount Diagnostics
+              </div>
+              <AmountDiagnosticsPanel
+                diagnostics={debugData?.amountDiagnostics ?? []}
+                matchedRules={debugData?.matchedRules ?? []}
+              />
             </div>
             <div>
               <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
