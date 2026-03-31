@@ -13,6 +13,7 @@ import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { addSystemLog } from "@/lib/system-log-store";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import postgres from "postgres";
 
 export const dynamic = "force-dynamic";
 
@@ -139,7 +140,51 @@ async function checkTable(
 ): Promise<GuardianCheck> {
   try {
     const { error } = await c.from(table).select("id").limit(1);
-    if (error) return { name: displayName, ok: false, error: error.message };
+    if (error) {
+      const msg = error.message ?? "Query failed";
+      const isSchemaCacheMissingTable =
+        /could not find the table .* in the schema cache/i.test(msg) ||
+        /schema cache/i.test(msg) ||
+        error.code === "PGRST205";
+
+      if (isSchemaCacheMissingTable) {
+        const url = process.env.SUPABASE_DATABASE_URL ?? process.env.DATABASE_URL;
+        if (url) {
+          try {
+            const sql = postgres(url, { max: 1, connect_timeout: 10 });
+            const rows = await sql<{ reg: string | null }[]>`
+              select to_regclass('public.${sql(table)}') as reg
+            `;
+            await sql.end();
+            const exists = Boolean(rows?.[0]?.reg);
+            return {
+              name: displayName,
+              ok: false,
+              error: exists
+                ? `Schema cache stale: '${table}' exists in Postgres but PostgREST can't see it yet. Reload Supabase schema cache (Dashboard → Project Settings → API → Reload) and refresh.`
+                : `Missing table '${table}'. Run migrations (Supabase → migrations/db push) then refresh.`,
+            };
+          } catch {
+            return {
+              name: displayName,
+              ok: false,
+              error:
+                `${msg} ` +
+                `If this table exists, reload Supabase schema cache (Dashboard → Project Settings → API).`,
+            };
+          }
+        }
+        return {
+          name: displayName,
+          ok: false,
+          error:
+            `${msg} ` +
+            `Set SUPABASE_DATABASE_URL to let System Heal distinguish missing migrations vs stale schema cache.`,
+        };
+      }
+
+      return { name: displayName, ok: false, error: msg };
+    }
     return { name: displayName, ok: true };
   } catch (e) {
     return {

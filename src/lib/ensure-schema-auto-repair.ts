@@ -56,6 +56,47 @@ const AUTO_REPAIR_DDL: string[] = [
    SELECT w.id, w.name
    FROM public.workers w
    WHERE NOT EXISTS (SELECT 1 FROM public.labor_workers lw WHERE lw.id = w.id)`,
+
+  // 7. worker_receipts table + extensions used by Receipt Upload flow
+  `CREATE TABLE IF NOT EXISTS public.worker_receipts (
+  id uuid primary key default gen_random_uuid(),
+  worker_id uuid not null references public.workers(id) on delete cascade,
+  project_id uuid references public.projects(id) on delete set null,
+  amount numeric not null default 0,
+  receipt_url text,
+  status text not null default 'Pending',
+  rejection_reason text null,
+  reimbursement_id uuid null,
+  created_at timestamptz not null default now()
+)`,
+  `CREATE INDEX IF NOT EXISTS idx_worker_receipts_worker_id ON public.worker_receipts (worker_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_worker_receipts_project_id ON public.worker_receipts (project_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_worker_receipts_status ON public.worker_receipts (status)`,
+  `CREATE INDEX IF NOT EXISTS idx_worker_receipts_created_at ON public.worker_receipts (created_at)`,
+  `ALTER TABLE public.worker_receipts ADD COLUMN IF NOT EXISTS worker_name text`,
+  `ALTER TABLE public.worker_receipts ADD COLUMN IF NOT EXISTS expense_type text DEFAULT 'Other'`,
+  `ALTER TABLE public.worker_receipts ADD COLUMN IF NOT EXISTS notes text`,
+  `ALTER TABLE public.worker_receipts ADD COLUMN IF NOT EXISTS vendor text`,
+  `ALTER TABLE public.worker_receipts ADD COLUMN IF NOT EXISTS description text`,
+  `ALTER TABLE public.worker_receipts ADD COLUMN IF NOT EXISTS receipt_date date`,
+  // Allow inserts without worker_id when only worker_name is provided (public upload)
+  `ALTER TABLE public.worker_receipts ALTER COLUMN worker_id DROP NOT NULL`,
+  `CREATE INDEX IF NOT EXISTS idx_worker_receipts_expense_type ON public.worker_receipts (expense_type)`,
+
+  // Storage bucket + policies (best effort). Will no-op if storage schema unavailable.
+  `INSERT INTO storage.buckets (id, name, public)
+   VALUES ('worker-receipts', 'worker-receipts', true)
+   ON CONFLICT (id) DO NOTHING`,
+  `DROP POLICY IF EXISTS "worker_receipts_public_read" ON storage.objects`,
+  `CREATE POLICY "worker_receipts_public_read"
+   ON storage.objects FOR SELECT
+   TO anon, authenticated
+   USING (bucket_id = 'worker-receipts')`,
+  `DROP POLICY IF EXISTS "worker_receipts_anon_insert" ON storage.objects`,
+  `CREATE POLICY "worker_receipts_anon_insert"
+   ON storage.objects FOR INSERT
+   TO anon, authenticated
+   WITH CHECK (bucket_id = 'worker-receipts')`,
 ];
 
 export type SchemaAutoRepairResult = {
