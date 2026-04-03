@@ -61,13 +61,6 @@ export async function PATCH(
             ? String(body.notes).trim() || null
             : null
           : undefined;
-    const receipt_url =
-      body.receipt_url !== undefined
-        ? body.receipt_url === null || body.receipt_url === ""
-          ? null
-          : String(body.receipt_url).trim() || null
-        : undefined;
-
     const amountFinal = amount !== undefined ? amount : existing.amount;
     const paidTotal = await getSumPaidForCommission(commissionId);
     const nextTotal = paidTotal - existing.amount + amountFinal;
@@ -83,7 +76,6 @@ export async function PATCH(
       ...(payment_date !== undefined ? { payment_date } : {}),
       ...(payment_method !== undefined ? { payment_method } : {}),
       ...(note !== undefined ? { note } : {}),
-      ...(receipt_url !== undefined ? { receipt_url } : {}),
     });
     if (!record)
       return NextResponse.json({ ok: false, message: "Failed to update payment" }, { status: 500 });

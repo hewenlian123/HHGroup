@@ -1,5 +1,5 @@
 /**
- * Client-side commission payment receipt PDF (jsPDF). Black & white, print-friendly.
+ * Client-side commission payment receipt PDF (jsPDF). A4, black & white, print-friendly.
  */
 
 export type CommissionReceiptPdfInput = {
@@ -7,17 +7,26 @@ export type CommissionReceiptPdfInput = {
   paymentDate: string;
   personName: string;
   projectName: string;
+  role: string;
   commissionAmount: number;
   paymentAmount: number;
   paymentMethod: string;
   notes: string | null;
 };
 
-const COMPANY = "HH Construction";
+const COMPANY_LINE1 = "HH Construction";
+const COMPANY_LINE2 = "Hawaii, USA";
 
-function receiptNoFromPaymentId(paymentId: string): string {
-  const compact = paymentId.replace(/-/g, "").toUpperCase();
-  return `RCP-${compact.slice(0, 12)}`;
+function compactId(paymentId: string): string {
+  return paymentId.replace(/-/g, "").toUpperCase();
+}
+
+export function commissionReceiptNo(paymentId: string): string {
+  return `RCPT-${compactId(paymentId).slice(0, 8)}`;
+}
+
+export function commissionReferenceNo(paymentId: string): string {
+  return `#${compactId(paymentId).slice(0, 8)}`;
 }
 
 function money(n: number): string {
@@ -28,91 +37,114 @@ export async function generateCommissionReceiptPdf(
   input: CommissionReceiptPdfInput
 ): Promise<Blob> {
   const { jsPDF } = await import("jspdf");
-  const doc = new jsPDF({ unit: "mm", format: "letter" });
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
-  const left = 22;
-  const right = pageW - 22;
-  let y = 18;
+  const left = 24;
+  const right = pageW - 24;
+  let y = 22;
 
-  // Simple monogram mark (no raster logo asset).
-  doc.setDrawColor(0);
-  doc.setLineWidth(0.35);
-  doc.rect(left, y - 2, 11, 11);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(7);
-  doc.text("HH", left + 2.2, y + 5.2);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(17);
   doc.setTextColor(0, 0, 0);
-  doc.text(COMPANY, left + 14, y + 5);
-
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.text(COMPANY_LINE1, left, y);
+  y += 7;
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.text("Commission Payment Receipt", left + 14, y + 10);
+  doc.setFontSize(10);
+  doc.text(COMPANY_LINE2, left, y);
+  y += 14;
 
-  y += 22;
-  doc.setDrawColor(40);
-  doc.setLineWidth(0.2);
-  doc.line(left, y, right, y);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.text("COMMISSION PAYMENT RECEIPT", left, y);
+  y += 8;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text(`Receipt No: ${commissionReceiptNo(input.paymentId)}`, left, y);
+  y += 6;
+  doc.text(`Date: ${input.paymentDate || "—"}`, left, y);
   y += 10;
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.text("RECEIPT", left, y);
-  y += 9;
+  doc.setDrawColor(60);
+  doc.setLineWidth(0.3);
+  doc.line(left, y, right, y);
+  y += 8;
 
-  const rows: [string, string][] = [
-    ["Receipt No.", receiptNoFromPaymentId(input.paymentId)],
-    ["Date", input.paymentDate || "—"],
-    ["Payee", input.personName?.trim() || "—"],
-    ["Project", input.projectName?.trim() || "—"],
-    ["Commission amount", `$${money(input.commissionAmount)}`],
-    ["Payment amount", `$${money(input.paymentAmount)}`],
-    ["Payment method", input.paymentMethod?.trim() || "—"],
+  const block: [string, string][] = [
+    ["Project:", input.projectName?.trim() || "—"],
+    ["Person:", input.personName?.trim() || "—"],
+    ["Role:", input.role?.trim() || "—"],
   ];
-
   doc.setFontSize(10);
-  const labelW = 48;
-  for (const [label, value] of rows) {
+  const lw = 38;
+  for (const [label, val] of block) {
     doc.setFont("helvetica", "bold");
     doc.text(label, left, y);
     doc.setFont("helvetica", "normal");
-    const lines = doc.splitTextToSize(value, right - left - labelW - 6);
-    doc.text(lines, left + labelW, y);
-    y += Math.max(7, lines.length * 5);
+    const lines = doc.splitTextToSize(val, right - left - lw - 4);
+    doc.text(lines, left + lw, y);
+    y += Math.max(6, lines.length * 5);
   }
-
-  doc.setFont("helvetica", "bold");
-  doc.text("Notes", left, y + 2);
-  y += 7;
-  doc.setFont("helvetica", "normal");
-  const noteText = input.notes?.trim() ? input.notes.trim() : "—";
-  const noteLines = doc.splitTextToSize(noteText, right - left);
-  doc.text(noteLines, left, y);
-  y += noteLines.length * 5 + 14;
-
-  doc.setDrawColor(40);
+  y += 4;
   doc.line(left, y, right, y);
   y += 8;
-  doc.setFontSize(8);
-  doc.setTextColor(80);
-  doc.text("This document confirms a commission payment record. Retain for your records.", left, y);
+
+  const amounts: [string, string][] = [
+    ["Commission Amount:", `$${money(input.commissionAmount)}`],
+    ["Payment Amount:", `$${money(input.paymentAmount)}`],
+    ["Payment Method:", input.paymentMethod?.trim() || "—"],
+    ["Reference No:", commissionReferenceNo(input.paymentId)],
+    ["Notes:", input.notes?.trim() ? input.notes.trim() : "—"],
+  ];
+  for (const [label, val] of amounts) {
+    doc.setFont("helvetica", "bold");
+    doc.text(label, left, y);
+    doc.setFont("helvetica", "normal");
+    const lines = doc.splitTextToSize(val, right - left - lw - 4);
+    doc.text(lines, left + lw, y);
+    y += Math.max(6, lines.length * 5);
+  }
+
+  y += 6;
+  doc.line(left, y, right, y);
+  y += 10;
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "italic");
+  doc.text("Thank you for your work.", left, y);
 
   return doc.output("blob");
 }
 
-/**
- * Open PDF in a new tab so the user can print or save (browser PDF viewer).
- */
-export function openCommissionReceiptPdfInNewTab(blob: Blob): void {
+export function downloadPdfBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
-  const opened = window.open(url, "_blank", "noopener,noreferrer");
-  if (!opened) {
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `commission-receipt-${Date.now()}.pdf`;
-    a.rel = "noopener noreferrer";
-    a.click();
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.rel = "noopener noreferrer";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+/** Open PDF blob in a new tab and trigger print (user can also save from viewer). */
+export function printPdfBlob(blob: Blob): void {
+  const url = URL.createObjectURL(blob);
+  const w = window.open(url, "_blank", "noopener,noreferrer");
+  if (w) {
+    const tryPrint = () => {
+      try {
+        w.focus();
+        w.print();
+      } catch {
+        /* ignore */
+      }
+    };
+    w.addEventListener("load", () => setTimeout(tryPrint, 400));
+    setTimeout(tryPrint, 800);
   }
-  setTimeout(() => URL.revokeObjectURL(url), 180_000);
+  setTimeout(() => URL.revokeObjectURL(url), 300_000);
+}
+
+export function printAndDownloadCommissionReceipt(blob: Blob, paymentId: string): void {
+  const name = `${commissionReceiptNo(paymentId)}.pdf`;
+  downloadPdfBlob(blob, name);
+  printPdfBlob(blob);
 }

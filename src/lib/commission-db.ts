@@ -3,6 +3,7 @@
  * paid_amount is always SUM(commission_payments.amount); never stored on the commission row.
  */
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient, humanizeSupabaseRequestError } from "@/lib/supabase";
 
 export type CommissionRole = "Designer" | "Sales" | "Referral" | "Agent" | "Other";
@@ -47,6 +48,11 @@ export type CommissionWithPaid = ProjectCommission & {
 
 const TABLE_COMMISSIONS = "commissions";
 const TABLE_PAYMENTS = "commission_payments";
+/** Legacy module (some DBs still hold rows here until backfill runs). */
+const LEGACY_COMMISSIONS = "project_commissions";
+const LEGACY_PAYMENTS = "commission_payment_records";
+const LEGACY_COMMISSION_COLS =
+  "id, project_id, person_name, role, calculation_mode, rate, base_amount, commission_amount, notes, created_at";
 
 const COMMISSION_COLS =
   "id, project_id, person_id, person, role, calculation_mode, rate, base_amount, commission_amount, notes, created_at";
@@ -116,6 +122,60 @@ function toPaymentRow(r: Record<string, unknown>): CommissionPayment {
   };
 }
 
+function toPaymentRowFromLegacyRecord(r: Record<string, unknown>): CommissionPayment {
+  const notes = r.notes != null ? String(r.notes).trim() : "";
+  const ref = r.reference_no != null ? String(r.reference_no).trim() : "";
+  let note: string | null = null;
+  if (ref && notes) note = `${notes}\nRef: ${ref}`;
+  else if (ref) note = `Ref: ${ref}`;
+  else if (notes) note = notes;
+  return {
+    id: String(r.id ?? ""),
+    commission_id: String(r.commission_id ?? ""),
+    amount: Number(r.amount) || 0,
+    payment_date: String(r.payment_date ?? "").slice(0, 10),
+    payment_method: String(r.payment_method ?? "Other"),
+    note,
+    receipt_url: null,
+    created_at: String(r.created_at ?? ""),
+  };
+}
+
+async function fetchLegacyCommissions(
+  c: SupabaseClient,
+  projectId?: string
+): Promise<ProjectCommission[]> {
+  let q = c
+    .from(LEGACY_COMMISSIONS)
+    .select(LEGACY_COMMISSION_COLS)
+    .order("created_at", { ascending: false });
+  if (projectId) q = q.eq("project_id", projectId);
+  const { data, error } = await q;
+  if (error) return [];
+  return (data ?? []).map((r) => toCommission(r as Record<string, unknown>));
+}
+
+/** Canonical rows from `commissions`; legacy-only rows from `project_commissions` (same id not duplicated). */
+async function loadCommissionsMerged(projectId?: string): Promise<{ merged: ProjectCommission[] }> {
+  const c = client();
+  let q = c
+    .from(TABLE_COMMISSIONS)
+    .select(COMMISSION_COLS)
+    .order("created_at", { ascending: false });
+  if (projectId) q = q.eq("project_id", projectId);
+  const { data: rows, error } = await q;
+  if (error) throw new Error(humanizeSupabaseRequestError(error));
+  const canonical = (rows ?? []).map((r) => toCommission(r as Record<string, unknown>));
+  const canonicalIds = new Set(canonical.map((x) => x.id));
+  const legacy = await fetchLegacyCommissions(c, projectId);
+  const extra = legacy.filter((x) => x.id && !canonicalIds.has(x.id));
+  const merged = [...canonical, ...extra];
+  if (!projectId) {
+    merged.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+  }
+  return { merged };
+}
+
 export async function getSumPaidForCommission(commissionId: string): Promise<number> {
   const c = client();
   const { data: rows, error } = await c
@@ -123,18 +183,22 @@ export async function getSumPaidForCommission(commissionId: string): Promise<num
     .select("amount")
     .eq("commission_id", commissionId);
   if (error) throw new Error(humanizeSupabaseRequestError(error));
-  return (rows ?? []).reduce((s, p) => s + (Number((p as { amount: number }).amount) || 0), 0);
+  const fromNew = (rows ?? []).reduce(
+    (s, p) => s + (Number((p as { amount: number }).amount) || 0),
+    0
+  );
+  if (fromNew > 0) return fromNew;
+  const { data: leg, error: legErr } = await c
+    .from(LEGACY_PAYMENTS)
+    .select("amount")
+    .eq("commission_id", commissionId);
+  if (legErr) return 0;
+  return (leg ?? []).reduce((s, p) => s + (Number((p as { amount: number }).amount) || 0), 0);
 }
 
 export async function getCommissionsByProject(projectId: string): Promise<ProjectCommission[]> {
-  const c = client();
-  const { data: rows, error } = await c
-    .from(TABLE_COMMISSIONS)
-    .select(COMMISSION_COLS)
-    .eq("project_id", projectId)
-    .order("created_at", { ascending: false });
-  if (error) throw new Error(humanizeSupabaseRequestError(error));
-  return (rows ?? []).map((r) => toCommission(r as Record<string, unknown>));
+  const { merged } = await loadCommissionsMerged(projectId);
+  return merged;
 }
 
 export async function attachPaidTotalsToCommissions(
@@ -163,12 +227,27 @@ export async function attachPaidTotalsToCommissions(
     });
   }
   const paidByCommission = new Map<string, number>();
+  const hasNewPaymentRow = new Set<string>();
   for (const p of payments ?? []) {
     const id = (p as { commission_id: string }).commission_id;
     if (id == null) continue;
+    hasNewPaymentRow.add(id);
     const amt = Number((p as { amount: number }).amount) || 0;
     paidByCommission.set(id, (paidByCommission.get(id) ?? 0) + amt);
   }
+
+  const { data: legacyPay } = await c
+    .from(LEGACY_PAYMENTS)
+    .select("commission_id, amount")
+    .in("commission_id", ids);
+  for (const p of legacyPay ?? []) {
+    const id = (p as { commission_id: string }).commission_id;
+    if (id == null) continue;
+    if (hasNewPaymentRow.has(id)) continue;
+    const amt = Number((p as { amount: number }).amount) || 0;
+    paidByCommission.set(id, (paidByCommission.get(id) ?? 0) + amt);
+  }
+
   return commissions.map((com) => {
     const paidRaw = paidByCommission.get(com.id) ?? 0;
     return {
@@ -183,8 +262,8 @@ export async function attachPaidTotalsToCommissions(
 export async function getCommissionsWithPaidByProject(
   projectId: string
 ): Promise<CommissionWithPaid[]> {
-  const commissions = await getCommissionsByProject(projectId);
-  return attachPaidTotalsToCommissions(commissions);
+  const { merged } = await loadCommissionsMerged(projectId);
+  return attachPaidTotalsToCommissions(merged);
 }
 
 export async function createCommission(
@@ -285,8 +364,14 @@ export async function getCommissionById(id: string): Promise<ProjectCommission |
     .eq("id", id)
     .maybeSingle();
   if (error) throw new Error(humanizeSupabaseRequestError(error));
-  if (!row) return null;
-  return toCommission(row as Record<string, unknown>);
+  if (row) return toCommission(row as Record<string, unknown>);
+  const { data: leg, error: legErr } = await c
+    .from(LEGACY_COMMISSIONS)
+    .select(LEGACY_COMMISSION_COLS)
+    .eq("id", id)
+    .maybeSingle();
+  if (legErr || !leg) return null;
+  return toCommission(leg as Record<string, unknown>);
 }
 
 export async function deleteCommission(id: string): Promise<void> {
@@ -305,7 +390,15 @@ export async function getPaymentRecordsByCommissionId(
     .eq("commission_id", commissionId)
     .order("payment_date", { ascending: false });
   if (error) throw new Error(humanizeSupabaseRequestError(error));
-  return (rows ?? []).map((r) => toPaymentRow(r as Record<string, unknown>));
+  const fromNew = (rows ?? []).map((r) => toPaymentRow(r as Record<string, unknown>));
+  if (fromNew.length > 0) return fromNew;
+  const { data: leg, error: legErr } = await c
+    .from(LEGACY_PAYMENTS)
+    .select("*")
+    .eq("commission_id", commissionId)
+    .order("payment_date", { ascending: false });
+  if (legErr) return [];
+  return (leg ?? []).map((r) => toPaymentRowFromLegacyRecord(r as Record<string, unknown>));
 }
 
 export async function getPaymentRecordById(id: string): Promise<CommissionPayment | null> {
@@ -316,8 +409,14 @@ export async function getPaymentRecordById(id: string): Promise<CommissionPaymen
     .eq("id", id)
     .maybeSingle();
   if (error) return null;
-  if (!row) return null;
-  return toPaymentRow(row as Record<string, unknown>);
+  if (row) return toPaymentRow(row as Record<string, unknown>);
+  const { data: leg, error: legErr } = await c
+    .from(LEGACY_PAYMENTS)
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (legErr || !leg) return null;
+  return toPaymentRowFromLegacyRecord(leg as Record<string, unknown>);
 }
 
 export async function updatePaymentRecord(
@@ -388,14 +487,8 @@ export async function createPaymentRecord(data: {
 }
 
 export async function getAllCommissionsWithPayments(): Promise<CommissionWithPaid[]> {
-  const c = client();
-  const { data: rows, error } = await c
-    .from(TABLE_COMMISSIONS)
-    .select(COMMISSION_COLS)
-    .order("created_at", { ascending: false });
-  if (error) throw new Error(humanizeSupabaseRequestError(error));
-  const commissions = (rows ?? []).map((r) => toCommission(r as Record<string, unknown>));
-  return attachPaidTotalsToCommissions(commissions);
+  const { merged } = await loadCommissionsMerged();
+  return attachPaidTotalsToCommissions(merged);
 }
 
 export async function getCommissionSummary(): Promise<{
@@ -405,35 +498,59 @@ export async function getCommissionSummary(): Promise<{
   thisMonthPaid: number;
 }> {
   const c = client();
-  const { data: commRows, error: cErr } = await c
-    .from(TABLE_COMMISSIONS)
-    .select("commission_amount");
-  if (cErr) throw new Error(humanizeSupabaseRequestError(cErr));
-  const totalCommission = (commRows ?? []).reduce(
-    (s, r) => s + (Number((r as { commission_amount: number }).commission_amount) || 0),
-    0
-  );
+  const { merged } = await loadCommissionsMerged();
+  const totalCommission = merged.reduce((s, r) => s + r.commission_amount, 0);
+  const ids = merged.map((m) => m.id);
+  if (ids.length === 0) {
+    return {
+      totalCommission: 0,
+      paidCommission: 0,
+      outstandingCommission: 0,
+      thisMonthPaid: 0,
+    };
+  }
 
   const { data: payRows, error: pErr } = await c
     .from(TABLE_PAYMENTS)
-    .select("amount, payment_date");
+    .select("amount, payment_date, commission_id")
+    .in("commission_id", ids);
   if (pErr) throw new Error(humanizeSupabaseRequestError(pErr));
-  const paidCommission = (payRows ?? []).reduce(
-    (s, p) => s + (Number((p as { amount: number }).amount) || 0),
-    0
-  );
-  const outstandingCommission = Math.max(0, totalCommission - paidCommission);
+
+  const hasNewPaymentRow = new Set<string>();
+  for (const p of payRows ?? []) {
+    const cid = (p as { commission_id: string }).commission_id;
+    if (cid) hasNewPaymentRow.add(cid);
+  }
+
+  const { data: legPayRows } = await c
+    .from(LEGACY_PAYMENTS)
+    .select("amount, payment_date, commission_id")
+    .in("commission_id", ids);
 
   const startOfMonth = new Date();
   startOfMonth.setDate(1);
   startOfMonth.setHours(0, 0, 0, 0);
   const monthStart = startOfMonth.toISOString().slice(0, 10);
-  const thisMonthPaid = (payRows ?? []).reduce((s, p) => {
+
+  let paidCommission = 0;
+  let thisMonthPaid = 0;
+  for (const p of payRows ?? []) {
     const row = p as { amount: number; payment_date: string | null };
+    const amt = Number(row.amount) || 0;
+    paidCommission += amt;
     const d = row.payment_date ? String(row.payment_date).slice(0, 10) : "";
-    if (d >= monthStart) return s + (Number(row.amount) || 0);
-    return s;
-  }, 0);
+    if (d >= monthStart) thisMonthPaid += amt;
+  }
+  for (const p of legPayRows ?? []) {
+    const row = p as { amount: number; payment_date: string | null; commission_id: string };
+    if (hasNewPaymentRow.has(row.commission_id)) continue;
+    const amt = Number(row.amount) || 0;
+    paidCommission += amt;
+    const d = row.payment_date ? String(row.payment_date).slice(0, 10) : "";
+    if (d >= monthStart) thisMonthPaid += amt;
+  }
+
+  const outstandingCommission = Math.max(0, totalCommission - paidCommission);
 
   return {
     totalCommission,

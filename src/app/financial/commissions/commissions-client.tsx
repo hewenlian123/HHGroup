@@ -5,14 +5,14 @@ import { useRouter } from "next/navigation";
 import {
   ChevronDown,
   ChevronRight,
+  Eye,
   FileText,
-  FileX2,
   Loader2,
   Paperclip,
   Pencil,
-  Printer,
   Search,
   Trash2,
+  Upload,
 } from "lucide-react";
 import { syncRouterAndClients } from "@/lib/sync-router-client";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -35,7 +36,7 @@ import type {
 } from "@/lib/data";
 import {
   generateCommissionReceiptPdf,
-  openCommissionReceiptPdfInNewTab,
+  printAndDownloadCommissionReceipt,
 } from "@/lib/commission-payment-receipt-pdf";
 
 const PAYMENT_METHODS = ["Check", "Bank Transfer", "Cash", "Zelle", "Other"] as const;
@@ -45,13 +46,29 @@ const COMMISSION_ROLES = ["Designer", "Sales", "Referral", "Agent", "Other"] as 
 const fmtUsd = (n: number) =>
   n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-function isCommissionReceiptImageUrl(url: string): boolean {
-  try {
-    const path = new URL(url).pathname.toLowerCase();
-    return /\.(jpe?g|png|webp|gif)(\?|$)/.test(path);
-  } catch {
-    return false;
-  }
+async function postCommissionReceiptWithProgress(
+  uploadUrl: string,
+  formData: FormData,
+  onProgress: (pct: number) => void
+): Promise<{ ok?: boolean; record?: CommissionPaymentRecord; message?: string; status: number }> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", uploadUrl);
+    xhr.upload.onprogress = (ev) => {
+      if (ev.lengthComputable) onProgress(Math.round((100 * ev.loaded) / ev.total));
+    };
+    xhr.onload = () => {
+      let data: { ok?: boolean; record?: CommissionPaymentRecord; message?: string } = {};
+      try {
+        data = JSON.parse(xhr.responseText) as typeof data;
+      } catch {
+        data = { message: xhr.responseText || "Invalid response" };
+      }
+      resolve({ ...data, status: xhr.status });
+    };
+    xhr.onerror = () => reject(new Error("Network error"));
+    xhr.send(formData);
+  });
 }
 
 const COMMISSION_PAGE_BG = "bg-[#F8F7F4]";
@@ -60,6 +77,11 @@ const COMMISSION_MODAL =
 const COMMISSION_LABEL = "mb-1.5 block text-[12px] font-medium text-[#6B7280]";
 const COMMISSION_FIELD =
   "h-10 rounded-lg border border-[#E5E7EB] bg-white text-[14px] focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black";
+
+const RECEIPT_UPLOAD_MODAL =
+  "max-w-[480px] w-full gap-0 rounded-[14px] border-[0.5px] border-[#E5E7EB] bg-white p-8 shadow-[0_8px_30px_rgba(0,0,0,0.12)] sm:max-w-[480px]";
+const RECEIPT_PREVIEW_MODAL =
+  "max-w-[640px] w-full gap-0 rounded-[14px] border-[0.5px] border-[#E5E7EB] bg-white p-0 shadow-[0_8px_30px_rgba(0,0,0,0.12)] sm:max-w-[640px]";
 
 function PaymentStatusPill({ status }: { status: CommissionPaymentStatus }) {
   const map = {
@@ -149,23 +171,37 @@ export function CommissionsClient({
   const [paymentDeleteSubmitting, setPaymentDeleteSubmitting] = React.useState(false);
   const [commissionDeleteTarget, setCommissionDeleteTarget] = React.useState<Row | null>(null);
   const [commissionDeleteSubmitting, setCommissionDeleteSubmitting] = React.useState(false);
+  /** Commission summary PDF modal (`/commission/[id]/pdf`). */
+  const [commissionPdfOpenId, setCommissionPdfOpenId] = React.useState<string | null>(null);
+  /** Single payment receipt PDF (`/commission-payment/[payment_id]/pdf`). */
+  const [paymentReceiptPdfOpenId, setPaymentReceiptPdfOpenId] = React.useState<string | null>(null);
 
-  const receiptFileRef = React.useRef<HTMLInputElement>(null);
-  const receiptUploadTargetRef = React.useRef<{
-    projectId: string;
-    commissionId: string;
-    paymentId: string;
+  const receiptUploadInputRef = React.useRef<HTMLInputElement>(null);
+  const [receiptUploadModal, setReceiptUploadModal] = React.useState<{
+    parent: Row;
+    payment: CommissionPaymentRecord;
   } | null>(null);
-  const [receiptUploadingPaymentId, setReceiptUploadingPaymentId] = React.useState<string | null>(
-    null
-  );
-  const [receiptPrintingPaymentId, setReceiptPrintingPaymentId] = React.useState<string | null>(
-    null
-  );
+  const [receiptUploadProgress, setReceiptUploadProgress] = React.useState(0);
+  const [receiptUploadDragging, setReceiptUploadDragging] = React.useState(false);
+  const [receiptUploadError, setReceiptUploadError] = React.useState<string | null>(null);
+  const [receiptUploadSubmitting, setReceiptUploadSubmitting] = React.useState(false);
+  const [receiptPreview, setReceiptPreview] = React.useState<{
+    parent: Row;
+    payment: CommissionPaymentRecord;
+    url: string;
+    fileName: string;
+    isPdf: boolean;
+  } | null>(null);
+  /** Resolving validated signed URL from /receipt/view-url (must match commission-receipts path). */
+  const [receiptViewLoading, setReceiptViewLoading] = React.useState<{
+    parent: Row;
+    payment: CommissionPaymentRecord;
+  } | null>(null);
+  const [receiptPreviewDownloading, setReceiptPreviewDownloading] = React.useState(false);
+  const [receiptPrinting, setReceiptPrinting] = React.useState(false);
   const [receiptDeletingPaymentId, setReceiptDeletingPaymentId] = React.useState<string | null>(
     null
   );
-  const [receiptPreviewUrl, setReceiptPreviewUrl] = React.useState<string | null>(null);
 
   const personOptions = React.useMemo(() => {
     const names = new Set<string>();
@@ -335,90 +371,162 @@ export function CommissionsClient({
     setPaymentDeleteTarget({ parent, record });
   };
 
-  const triggerReceiptUpload = (
-    projectId: string,
-    commissionId: string,
-    paymentId: string,
+  const resetReceiptUploadModal = React.useCallback(() => {
+    setReceiptUploadModal(null);
+    setReceiptUploadProgress(0);
+    setReceiptUploadDragging(false);
+    setReceiptUploadError(null);
+    setReceiptUploadSubmitting(false);
+    if (receiptUploadInputRef.current) receiptUploadInputRef.current.value = "";
+  }, []);
+
+  const openReceiptUploadModal = (
+    parent: Row,
+    payment: CommissionPaymentRecord,
     e: React.MouseEvent
   ) => {
     e.stopPropagation();
-    receiptUploadTargetRef.current = { projectId, commissionId, paymentId };
-    receiptFileRef.current?.click();
+    setReceiptUploadError(null);
+    setReceiptUploadProgress(0);
+    setReceiptUploadDragging(false);
+    setReceiptUploadSubmitting(false);
+    setReceiptUploadModal({ parent, payment });
   };
 
-  const handleReceiptFileChange = async (ev: React.ChangeEvent<HTMLInputElement>) => {
-    const file = ev.target.files?.[0];
-    const target = receiptUploadTargetRef.current;
-    ev.target.value = "";
-    receiptUploadTargetRef.current = null;
-    if (!file || !target) return;
+  const receiptAcceptMime = React.useMemo(
+    () => ["image/jpeg", "image/png", "application/pdf"] as const,
+    []
+  );
 
-    setReceiptUploadingPaymentId(target.paymentId);
+  const isAllowedReceiptFile = (file: File) => {
+    const t = file.type.toLowerCase();
+    if (receiptAcceptMime.includes(t as (typeof receiptAcceptMime)[number])) return true;
+    const n = file.name.toLowerCase();
+    return /\.(jpe?g|png|pdf)$/.test(n);
+  };
+
+  const submitReceiptFile = async (file: File) => {
+    if (!receiptUploadModal) return;
+    if (!isAllowedReceiptFile(file)) {
+      setReceiptUploadError("Please choose a JPG, PNG, or PDF file.");
+      return;
+    }
+    const { parent, payment } = receiptUploadModal;
+    setReceiptUploadError(null);
+    setReceiptUploadSubmitting(true);
+    setReceiptUploadProgress(0);
+    const fd = new FormData();
+    fd.append("file", file);
+    const uploadUrl = `/api/projects/${parent.project_id}/commissions/${parent.id}/payments/${payment.id}/receipt`;
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await fetch(
-        `/api/projects/${target.projectId}/commissions/${target.commissionId}/payments/${target.paymentId}/receipt`,
-        { method: "POST", body: fd }
-      );
-      const data = (await res.json()) as {
-        ok?: boolean;
-        message?: string;
-        record?: CommissionPaymentRecord;
-      };
-      if (!res.ok || data.ok === false) throw new Error(data.message ?? "Failed to upload receipt");
+      const data = await postCommissionReceiptWithProgress(uploadUrl, fd, setReceiptUploadProgress);
+      if (data.status >= 400 || data.ok === false) {
+        throw new Error(data.message ?? "Failed to upload receipt");
+      }
       if (data.record) {
         setPaymentsByCommission((prev) => {
-          const list = prev[target.commissionId];
+          const list = prev[parent.id];
           if (!list) return prev;
           return {
             ...prev,
-            [target.commissionId]: list.map((x) =>
-              x.id === data.record!.id ? { ...x, ...data.record } : x
-            ),
+            [parent.id]: list.map((x) => (x.id === data.record!.id ? { ...x, ...data.record } : x)),
           };
         });
       }
+      resetReceiptUploadModal();
       startTransition(() => {
         void syncRouterAndClients(router);
       });
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to upload receipt");
+      setReceiptUploadError(err instanceof Error ? err.message : "Failed to upload receipt");
     } finally {
-      setReceiptUploadingPaymentId(null);
+      setReceiptUploadSubmitting(false);
     }
   };
 
-  const openReceiptView = (url: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (isCommissionReceiptImageUrl(url)) setReceiptPreviewUrl(url);
-    else window.open(url, "_blank", "noopener,noreferrer");
+  const onReceiptUploadInputChange = (ev: React.ChangeEvent<HTMLInputElement>) => {
+    const file = ev.target.files?.[0];
+    ev.target.value = "";
+    if (file) void submitReceiptFile(file);
   };
 
-  const printCommissionPaymentReceipt = async (
-    parent: Row,
-    p: CommissionPaymentRecord,
-    e: React.MouseEvent
-  ) => {
+  const openReceiptPreview = (parent: Row, p: CommissionPaymentRecord, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!p.receipt_url) return;
-    setReceiptPrintingPaymentId(p.id);
+    setReceiptPreview(null);
+    setReceiptViewLoading({ parent, payment: p });
+    void (async () => {
+      try {
+        const res = await fetch(
+          `/api/projects/${parent.project_id}/commissions/${parent.id}/payments/${p.id}/receipt/view-url`,
+          { cache: "no-store" }
+        );
+        const data = (await res.json()) as {
+          ok?: boolean;
+          url?: string;
+          fileName?: string;
+          isPdf?: boolean;
+          message?: string;
+        };
+        if (!res.ok || data.ok === false || !data.url) {
+          throw new Error(data.message ?? "Could not load receipt preview.");
+        }
+        setReceiptPreview({
+          parent,
+          payment: p,
+          url: data.url,
+          fileName: data.fileName ?? "receipt",
+          isPdf: !!data.isPdf,
+        });
+      } catch (err) {
+        alert(err instanceof Error ? err.message : "Could not load receipt.");
+      } finally {
+        setReceiptViewLoading(null);
+      }
+    })();
+  };
+
+  const handlePreviewDownload = async () => {
+    if (!receiptPreview) return;
+    setReceiptPreviewDownloading(true);
+    try {
+      const res = await fetch(receiptPreview.url, { mode: "cors" });
+      if (!res.ok) throw new Error("Could not download file");
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = receiptPreview.fileName;
+      a.rel = "noopener noreferrer";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
+    } catch {
+      window.open(receiptPreview.url, "_blank", "noopener,noreferrer");
+    } finally {
+      setReceiptPreviewDownloading(false);
+    }
+  };
+
+  const handlePreviewPrintReceipt = async () => {
+    if (!receiptPreview) return;
+    const { parent, payment } = receiptPreview;
+    setReceiptPrinting(true);
     try {
       const blob = await generateCommissionReceiptPdf({
-        paymentId: p.id,
-        paymentDate: p.payment_date || "—",
+        paymentId: payment.id,
+        paymentDate: payment.payment_date || "—",
         personName: parent.person_name ?? "",
         projectName: parent.project_name ?? "",
+        role: parent.role ?? "",
         commissionAmount: parent.commission_amount,
-        paymentAmount: p.amount,
-        paymentMethod: p.payment_method ?? "",
-        notes: p.note,
+        paymentAmount: payment.amount,
+        paymentMethod: payment.payment_method ?? "",
+        notes: payment.note,
       });
-      openCommissionReceiptPdfInNewTab(blob);
+      printAndDownloadCommissionReceipt(blob, payment.id);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to generate receipt PDF");
     } finally {
-      setReceiptPrintingPaymentId(null);
+      setReceiptPrinting(false);
     }
   };
 
@@ -457,6 +565,7 @@ export function CommissionsClient({
           };
         });
       }
+      setReceiptPreview((prev) => (prev?.payment.id === p.id ? null : prev));
       startTransition(() => {
         void syncRouterAndClients(router);
       });
@@ -813,6 +922,18 @@ export function CommissionsClient({
                           <button
                             type="button"
                             className="text-[14px] font-medium text-[#6B7280] hover:text-[#111827] hover:underline"
+                            data-testid={`financial-commission-view-pdf-${r.id}`}
+                            aria-label="View commission summary PDF"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCommissionPdfOpenId(r.id);
+                            }}
+                          >
+                            View
+                          </button>
+                          <button
+                            type="button"
+                            className="text-[14px] font-medium text-[#6B7280] hover:text-[#111827] hover:underline"
                             data-testid={`financial-commission-edit-${r.id}`}
                             onClick={() => openEditModal(r)}
                           >
@@ -887,35 +1008,25 @@ export function CommissionsClient({
                                               <>
                                                 <button
                                                   type="button"
-                                                  className="rounded-md p-1.5 text-blue-600 hover:bg-white hover:text-blue-700"
+                                                  disabled={receiptViewLoading?.payment.id === p.id}
+                                                  className="rounded-md p-1.5 text-blue-600 hover:bg-white hover:text-blue-700 disabled:opacity-50"
                                                   data-testid={`financial-payment-receipt-view-${p.id}`}
                                                   aria-label="View uploaded receipt"
-                                                  onClick={(e) =>
-                                                    openReceiptView(p.receipt_url!, e)
-                                                  }
+                                                  onClick={(e) => openReceiptPreview(r, p, e)}
                                                 >
-                                                  <FileText className="h-4 w-4" />
-                                                </button>
-                                                <button
-                                                  type="button"
-                                                  disabled={receiptPrintingPaymentId === p.id}
-                                                  className="rounded-md p-1.5 text-[#6B7280] hover:bg-white hover:text-[#111827] disabled:opacity-50"
-                                                  data-testid={`financial-payment-receipt-print-${p.id}`}
-                                                  aria-label="Print commission receipt PDF"
-                                                  onClick={(e) =>
-                                                    void printCommissionPaymentReceipt(r, p, e)
-                                                  }
-                                                >
-                                                  {receiptPrintingPaymentId === p.id ? (
-                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                  {receiptViewLoading?.payment.id === p.id ? (
+                                                    <Loader2
+                                                      className="h-4 w-4 animate-spin"
+                                                      aria-hidden
+                                                    />
                                                   ) : (
-                                                    <Printer className="h-4 w-4" />
+                                                    <FileText className="h-4 w-4" />
                                                   )}
                                                 </button>
                                                 <button
                                                   type="button"
                                                   disabled={receiptDeletingPaymentId === p.id}
-                                                  className="rounded-md p-1.5 text-[#6B7280] hover:bg-white hover:text-red-600 disabled:opacity-50"
+                                                  className="rounded-md p-1.5 text-red-600 hover:bg-white hover:text-red-700 disabled:opacity-50"
                                                   data-testid={`financial-payment-receipt-remove-${p.id}`}
                                                   aria-label="Remove uploaded receipt"
                                                   onClick={(e) =>
@@ -925,28 +1036,33 @@ export function CommissionsClient({
                                                   {receiptDeletingPaymentId === p.id ? (
                                                     <Loader2 className="h-4 w-4 animate-spin" />
                                                   ) : (
-                                                    <FileX2 className="h-4 w-4" />
+                                                    <Trash2 className="h-4 w-4" />
                                                   )}
                                                 </button>
                                               </>
                                             ) : (
                                               <button
                                                 type="button"
-                                                disabled={receiptUploadingPaymentId === p.id}
-                                                className="rounded-md p-1.5 text-[#6B7280] hover:bg-white hover:text-[#111827] disabled:opacity-50"
+                                                className="rounded-md p-1.5 text-[#9CA3AF] hover:bg-white hover:text-[#6B7280]"
                                                 data-testid={`financial-payment-receipt-upload-${p.id}`}
                                                 aria-label="Upload receipt"
-                                                onClick={(e) =>
-                                                  triggerReceiptUpload(r.project_id, r.id, p.id, e)
-                                                }
+                                                onClick={(e) => openReceiptUploadModal(r, p, e)}
                                               >
-                                                {receiptUploadingPaymentId === p.id ? (
-                                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                                ) : (
-                                                  <Paperclip className="h-4 w-4" />
-                                                )}
+                                                <Paperclip className="h-4 w-4" />
                                               </button>
                                             )}
+                                            <button
+                                              type="button"
+                                              className="rounded-md p-1.5 text-[#6B7280] hover:bg-white hover:text-[#111827]"
+                                              data-testid={`financial-payment-view-pdf-${p.id}`}
+                                              aria-label="View payment receipt PDF"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setPaymentReceiptPdfOpenId(p.id);
+                                              }}
+                                            >
+                                              <Eye className="h-4 w-4" />
+                                            </button>
                                             <button
                                               type="button"
                                               className="rounded-md p-1.5 text-[#6B7280] hover:bg-white hover:text-[#111827]"
@@ -1329,30 +1445,320 @@ export function CommissionsClient({
         </DialogContent>
       </Dialog>
 
-      <input
-        ref={receiptFileRef}
-        type="file"
-        accept="image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf"
-        className="sr-only"
-        tabIndex={-1}
-        aria-hidden
-        onChange={handleReceiptFileChange}
-      />
-
       <Dialog
-        open={receiptPreviewUrl != null}
+        open={receiptUploadModal != null}
         onOpenChange={(open) => {
-          if (!open) setReceiptPreviewUrl(null);
+          if (!open) resetReceiptUploadModal();
         }}
       >
-        <DialogContent className="max-w-[min(90vw,720px)] gap-3 border-0 p-4 shadow-[0_8px_30px_rgba(0,0,0,0.08)] sm:max-w-[min(90vw,720px)]">
-          <DialogHeader>
-            <DialogTitle className="text-base font-semibold text-[#111827]">Receipt</DialogTitle>
-          </DialogHeader>
-          {receiptPreviewUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- user-uploaded receipt URL from Storage
-            <img src={receiptPreviewUrl} alt="" className="max-h-[70vh] w-full object-contain" />
+        <DialogContent className={RECEIPT_UPLOAD_MODAL}>
+          {receiptUploadModal ? (
+            <>
+              <DialogHeader className="space-y-2 text-left">
+                <DialogTitle className="text-lg font-semibold text-[#111827]">
+                  Upload Receipt
+                </DialogTitle>
+                <DialogDescription className="text-[13px] text-[#6B7280]">
+                  {receiptUploadModal.payment.payment_date || "—"} · $
+                  {fmtUsd(receiptUploadModal.payment.amount)}
+                </DialogDescription>
+              </DialogHeader>
+              <input
+                ref={receiptUploadInputRef}
+                type="file"
+                accept="image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf"
+                className="sr-only"
+                tabIndex={-1}
+                aria-hidden
+                onChange={onReceiptUploadInputChange}
+              />
+              <div
+                role="button"
+                tabIndex={0}
+                className={cn(
+                  "mt-4 flex cursor-pointer flex-col items-center justify-center rounded-[10px] border-2 border-dashed px-6 py-10 transition-colors outline-none",
+                  receiptUploadDragging
+                    ? "border-[#2563EB] bg-[#EFF6FF]"
+                    : "border-[#D1D5DB] bg-[#F9FAFB]",
+                  receiptUploadSubmitting && "pointer-events-none opacity-70"
+                )}
+                onClick={() => !receiptUploadSubmitting && receiptUploadInputRef.current?.click()}
+                onKeyDown={(ev) => {
+                  if (receiptUploadSubmitting) return;
+                  if (ev.key === "Enter" || ev.key === " ") {
+                    ev.preventDefault();
+                    receiptUploadInputRef.current?.click();
+                  }
+                }}
+                onDragEnter={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setReceiptUploadDragging(true);
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setReceiptUploadDragging(true);
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setReceiptUploadDragging(false);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setReceiptUploadDragging(false);
+                  if (receiptUploadSubmitting) return;
+                  const f = e.dataTransfer.files?.[0];
+                  if (f) void submitReceiptFile(f);
+                }}
+              >
+                <Upload className="mb-3 h-8 w-8 text-[#9CA3AF]" aria-hidden />
+                <p className="text-center text-[14px] font-medium text-[#374151]">
+                  Drag &amp; drop or click to upload
+                </p>
+                <p className="mt-1 text-center text-[12px] text-[#9CA3AF]">JPG, PNG, or PDF</p>
+              </div>
+              {receiptUploadSubmitting ? (
+                <div className="mt-4 space-y-2">
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
+                    <div
+                      className="h-full rounded-full bg-[#2563EB] transition-[width] duration-150"
+                      style={{ width: `${Math.max(0, Math.min(100, receiptUploadProgress))}%` }}
+                    />
+                  </div>
+                  <p className="text-center text-[12px] text-[#6B7280]">Uploading…</p>
+                </div>
+              ) : null}
+              {receiptUploadError ? (
+                <p className="mt-3 text-[13px] text-red-600" role="alert">
+                  {receiptUploadError}
+                </p>
+              ) : null}
+              <DialogFooter className="mt-6 border-t border-[#F0EDE8] bg-transparent pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-10 rounded-lg border-[#E5E7EB] bg-white text-[14px] font-medium text-[#6B7280] hover:bg-[#F9FAFB]"
+                  disabled={receiptUploadSubmitting}
+                  onClick={() => resetReceiptUploadModal()}
+                >
+                  Cancel
+                </Button>
+              </DialogFooter>
+            </>
           ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={receiptPreview != null || receiptViewLoading != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setReceiptPreview(null);
+            setReceiptViewLoading(null);
+          }
+        }}
+      >
+        <DialogContent className={RECEIPT_PREVIEW_MODAL}>
+          {receiptViewLoading && !receiptPreview ? (
+            <>
+              <DialogHeader className="px-6 pt-2 text-left">
+                <DialogTitle className="text-base font-semibold text-[#111827]">
+                  Receipt
+                </DialogTitle>
+                <DialogDescription className="text-[13px] text-[#6B7280]">
+                  Loading from storage…
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex min-h-[200px] items-center justify-center px-6 py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-[#9CA3AF]" aria-hidden />
+              </div>
+            </>
+          ) : receiptPreview ? (
+            <>
+              <div className="flex items-start justify-between gap-3 border-b border-[#E5E7EB] px-6 py-4 pr-14">
+                <DialogTitle className="line-clamp-2 flex-1 text-left text-base font-semibold text-[#111827]">
+                  {receiptPreview.fileName}
+                </DialogTitle>
+              </div>
+              <div className="px-6 py-4">
+                {receiptPreview.isPdf ? (
+                  <iframe
+                    key={receiptPreview.url}
+                    title="Receipt PDF"
+                    src={receiptPreview.url}
+                    className="h-[480px] w-full rounded-sm border border-[#E5E7EB] bg-[#F9FAFB]"
+                  />
+                ) : (
+                  <div className="flex max-h-[480px] w-full justify-center overflow-auto">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- signed Storage URL from view-url API */}
+                    <img
+                      key={receiptPreview.url}
+                      src={receiptPreview.url}
+                      alt=""
+                      className="max-h-[480px] w-auto max-w-full object-contain"
+                    />
+                  </div>
+                )}
+              </div>
+              <DialogFooter className="border-t border-[#E5E7EB] px-6 py-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-9 rounded-lg border-[#E5E7EB] bg-white text-[13px] font-medium text-[#6B7280] hover:bg-[#F9FAFB]"
+                  disabled={receiptPreviewDownloading}
+                  onClick={() => void handlePreviewDownload()}
+                >
+                  {receiptPreviewDownloading ? "Downloading…" : "Download"}
+                </Button>
+                <Button
+                  type="button"
+                  className="h-9 rounded-lg bg-[#2563EB] text-[13px] font-medium text-white hover:bg-[#1D4ED8]"
+                  disabled={receiptPrinting}
+                  onClick={() => void handlePreviewPrintReceipt()}
+                >
+                  {receiptPrinting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                      Preparing…
+                    </>
+                  ) : (
+                    "Print Receipt"
+                  )}
+                </Button>
+              </DialogFooter>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={commissionPdfOpenId != null}
+        onOpenChange={(open) => {
+          if (!open) setCommissionPdfOpenId(null);
+        }}
+      >
+        <DialogContent className="flex max-h-[90vh] max-w-[920px] flex-col gap-0 overflow-hidden p-0 sm:max-w-[920px]">
+          <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border/60 px-4 py-3 pr-14">
+            <DialogTitle className="text-left text-base font-semibold text-[#111827]">
+              Commission summary
+            </DialogTitle>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" className="h-8" asChild>
+                <a
+                  href={
+                    commissionPdfOpenId ? `/commission/${commissionPdfOpenId}/pdf?download=1` : "#"
+                  }
+                  download
+                >
+                  Download PDF
+                </a>
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8"
+                onClick={() => {
+                  const el = document.getElementById(
+                    "commission-summary-pdf-frame"
+                  ) as HTMLIFrameElement | null;
+                  try {
+                    el?.contentWindow?.focus();
+                    el?.contentWindow?.print();
+                  } catch {
+                    if (commissionPdfOpenId) {
+                      window.open(
+                        `/commission/${commissionPdfOpenId}/pdf`,
+                        "_blank",
+                        "noopener,noreferrer"
+                      );
+                    }
+                  }
+                }}
+              >
+                Print PDF
+              </Button>
+            </div>
+          </div>
+          <div className="min-h-0 flex-1 p-3">
+            {commissionPdfOpenId ? (
+              <iframe
+                id="commission-summary-pdf-frame"
+                key={commissionPdfOpenId}
+                title="Commission summary PDF"
+                src={`/commission/${commissionPdfOpenId}/pdf`}
+                className="h-[min(72vh,640px)] w-full rounded-sm border border-border/60 bg-white"
+              />
+            ) : null}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={paymentReceiptPdfOpenId != null}
+        onOpenChange={(open) => {
+          if (!open) setPaymentReceiptPdfOpenId(null);
+        }}
+      >
+        <DialogContent className="flex max-h-[90vh] max-w-[920px] flex-col gap-0 overflow-hidden p-0 sm:max-w-[920px]">
+          <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border/60 px-4 py-3 pr-14">
+            <DialogTitle className="text-left text-base font-semibold text-[#111827]">
+              Payment Receipt
+            </DialogTitle>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" className="h-8" asChild>
+                <a
+                  href={
+                    paymentReceiptPdfOpenId
+                      ? `/commission-payment/${paymentReceiptPdfOpenId}/pdf?download=1`
+                      : "#"
+                  }
+                  download
+                >
+                  Download PDF
+                </a>
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8"
+                onClick={() => {
+                  const el = document.getElementById(
+                    "commission-payment-pdf-frame"
+                  ) as HTMLIFrameElement | null;
+                  try {
+                    el?.contentWindow?.focus();
+                    el?.contentWindow?.print();
+                  } catch {
+                    if (paymentReceiptPdfOpenId) {
+                      window.open(
+                        `/commission-payment/${paymentReceiptPdfOpenId}/pdf`,
+                        "_blank",
+                        "noopener,noreferrer"
+                      );
+                    }
+                  }
+                }}
+              >
+                Print PDF
+              </Button>
+            </div>
+          </div>
+          <div className="min-h-0 flex-1 p-3">
+            {paymentReceiptPdfOpenId ? (
+              <iframe
+                id="commission-payment-pdf-frame"
+                key={paymentReceiptPdfOpenId}
+                title="Payment Receipt PDF"
+                src={`/commission-payment/${paymentReceiptPdfOpenId}/pdf`}
+                className="h-[min(72vh,640px)] w-full rounded-sm border border-border/60 bg-white"
+              />
+            ) : null}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
