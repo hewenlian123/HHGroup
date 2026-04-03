@@ -116,6 +116,24 @@ jobs:
           print("SUPABASE_DB_URL format looks valid.")
           PY
 
+      # Production may still list migration versions from filenames we renamed for
+      # check-migration-order (e.g. 202604081200 → 202604271510). Those rows must be
+      # cleared before db push or the CLI errors: "Remote migration version … not found in local".
+      - name: Repair migration history (renamed version IDs)
+        if: ${{ env.SUPABASE_DB_URL != '' }}
+        run: |
+          set +e
+          supabase migration repair --status reverted --yes \
+            202603260000 202603290000 202603310000 202604020000 \
+            202604081200 202604081300 202604081400 202604081500 202604081600 \
+            202604111000 202604181000 \
+            --db-url "$SUPABASE_DB_URL"
+          rc=$?
+          set -e
+          if [ "$rc" -ne 0 ]; then
+            echo "::notice::migration repair exited $rc (often OK if versions were already reverted or DB is fresh)."
+          fi
+
       - name: Push Supabase migrations (production)
         if: ${{ env.SUPABASE_DB_URL != '' }}
         run: supabase db push --db-url "$SUPABASE_DB_URL"
