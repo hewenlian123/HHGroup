@@ -184,8 +184,36 @@ export async function ensureE2EPreservedSeed(supabase: SupabaseClient): Promise<
     await supabase.from("labor_entries").delete().eq("id", lid);
 
     // Shapes mirror `insertLaborEntryShaped` (api/test/financial-workflows) — schemas differ by migration.
-    // Try no-project rows first: some PostgREST schemas omit `project_id`; balance API still counts `cost_amount`.
+    // Older DBs: project_am_id + day_rate + total (see 202603082100_daily_labor_log_schema.sql).
+    // Newer DBs: project_id + work_date + hours + cost_amount (+ optional morning/afternoon, status).
     const laborAttempts: RecordUpsert[] = [
+      {
+        id: lid,
+        worker_id: wid,
+        work_date: workDate,
+        project_am_id: pid,
+        project_pm_id: null,
+        day_rate: 200,
+        ot_amount: 0,
+        total: 200,
+      },
+      {
+        id: lid,
+        worker_id: wid,
+        work_date: workDate,
+        project_am_id: pid,
+        day_rate: 200,
+        ot_amount: 0,
+        total: 200,
+      },
+      {
+        id: lid,
+        worker_id: wid,
+        project_id: pid,
+        work_date: workDate,
+        hours: 8,
+        notes,
+      },
       {
         id: lid,
         worker_id: wid,
@@ -264,38 +292,6 @@ export async function ensureE2EPreservedSeed(supabase: SupabaseClient): Promise<
         hours: 8,
         cost_amount: 200,
         status: "pending",
-        notes,
-      },
-      {
-        id: lid,
-        worker_id: wid,
-        work_date: workDate,
-        project_am_id: pid,
-        day_rate: 200,
-        ot_amount: 0,
-        total: 200,
-        status: "Draft",
-        notes,
-      },
-      {
-        id: lid,
-        worker_id: wid,
-        work_date: workDate,
-        project_am_id: pid,
-        day_rate: 200,
-        ot_amount: 0,
-        total: 200,
-        notes,
-      },
-      {
-        id: lid,
-        worker_id: wid,
-        date: workDate,
-        am_project_id: pid,
-        half_day_rate: 100,
-        ot_amount: 0,
-        total: 200,
-        status: "draft",
         notes,
       },
     ];

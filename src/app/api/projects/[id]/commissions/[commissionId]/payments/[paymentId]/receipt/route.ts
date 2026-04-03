@@ -1,11 +1,16 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { getCommissionById, getPaymentRecordById, updatePaymentRecord } from "@/lib/data";
+import {
+  parseCommissionReceiptStorageUrl,
+  isStoragePathForCommissionReceipt,
+} from "@/lib/commission-receipt-storage";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 import { uuidNormalizedEqual } from "@/lib/uuid-normalize";
 
-const BUCKET = "commission-payment-receipts";
-const PUBLIC_PATH_MARKER = `/object/public/${BUCKET}/`;
+/** New uploads use this bucket (legacy reads still accepted in parse helper). */
+const BUCKET = "commission-receipts";
+
 const MAX_BYTES = 15 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "application/pdf"]);
 
@@ -16,17 +21,8 @@ function extFromMime(mime: string): string {
   return "bin";
 }
 
-/** Storage object path (within bucket) from a public object URL, or null if not our bucket. */
-function objectPathFromPublicReceiptUrl(url: string): string | null {
-  try {
-    const pathname = new URL(url.trim()).pathname;
-    const i = pathname.indexOf(PUBLIC_PATH_MARKER);
-    if (i === -1) return null;
-    return decodeURIComponent(pathname.slice(i + PUBLIC_PATH_MARKER.length));
-  } catch {
-    return null;
-  }
-}
+/** Signed URL lifetime stored in DB (renew via View modal or re-upload). */
+const RECEIPT_SIGNED_URL_TTL_SEC = 60 * 60 * 24 * 365; // 365 days
 
 /**
  * Upload jpg/png/pdf receipt for a commission payment; stores file in Storage and sets receipt_url.
@@ -96,15 +92,27 @@ export async function POST(
           ok: false,
           message:
             upErr.message ||
-            "Upload failed. Ensure bucket 'commission-payment-receipts' exists and policies allow access.",
+            "Upload failed. Ensure Storage bucket 'commission-receipts' exists and policies allow access.",
         },
         { status: 500 }
       );
     }
-    const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
-    const publicUrl = pub.publicUrl;
+    const { data: signed, error: signErr } = await supabase.storage
+      .from(BUCKET)
+      .createSignedUrl(path, RECEIPT_SIGNED_URL_TTL_SEC);
+    if (signErr || !signed?.signedUrl) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            signErr?.message ??
+            "Could not create signed URL for receipt. Check Storage bucket and policies.",
+        },
+        { status: 500 }
+      );
+    }
 
-    const record = await updatePaymentRecord(paymentId, { receipt_url: publicUrl });
+    const record = await updatePaymentRecord(paymentId, { receipt_url: signed.signedUrl });
     if (!record)
       return NextResponse.json(
         { ok: false, message: "Failed to save receipt URL." },
@@ -161,10 +169,10 @@ export async function DELETE(
 
     const url = existing.receipt_url?.trim();
     if (url) {
-      const objectPath = objectPathFromPublicReceiptUrl(url);
-      if (objectPath?.startsWith(`commission-payments/${paymentId}/`)) {
-        const { error: rmErr } = await supabase.storage.from(BUCKET).remove([objectPath]);
-        if (rmErr) console.error("[commission payment receipt DELETE] storage:", rmErr.message);
+      const parsed = parseCommissionReceiptStorageUrl(url);
+      if (parsed && isStoragePathForCommissionReceipt(paymentId, parsed.path)) {
+        const { error: rmErr } = await supabase.storage.from(parsed.bucket).remove([parsed.path]);
+        if (rmErr) console.error("[commission receipt DELETE] storage:", rmErr.message);
       }
     }
 

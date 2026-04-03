@@ -32,10 +32,17 @@ export async function GET(
     return NextResponse.json({ ok: true, records });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to load payments";
-    const status = /fetch failed|Database connection failed|ENOTFOUND|ECONNREFUSED/i.test(message)
-      ? 503
-      : 500;
-    return NextResponse.json({ ok: false, message }, { status });
+    const connFail = /fetch failed|Database connection failed|ENOTFOUND|ECONNREFUSED/i.test(
+      message
+    );
+    const schemaMissing = /schema cache|Could not find the table|relation .+ does not exist/i.test(
+      message
+    );
+    const status = connFail || schemaMissing ? 503 : 500;
+    const hint = schemaMissing
+      ? " Run Supabase migrations (e.g. `npx supabase db push` / `db reset --local`) or POST /api/ensure-schema with SUPABASE_DATABASE_URL set, then retry."
+      : "";
+    return NextResponse.json({ ok: false, message: message + hint }, { status });
   }
 }
 

@@ -112,8 +112,107 @@ const AUTO_REPAIR_DDL: string[] = [
 )`,
   `ALTER TABLE public.attachments DROP CONSTRAINT IF EXISTS attachments_entity_type_check`,
 
-  // 9. commission_payments optional receipt attachment (older DBs without full migrations)
+  // 9. commissions + commission_payments (app + PostgREST expect these names; fixes "table not in schema cache")
+  `CREATE TABLE IF NOT EXISTS public.commissions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id uuid NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
+  person text NOT NULL,
+  role text,
+  calculation_mode text DEFAULT 'manual',
+  rate numeric DEFAULT 0,
+  base_amount numeric DEFAULT 0,
+  commission_amount numeric DEFAULT 0,
+  notes text,
+  created_at timestamptz DEFAULT now()
+)`,
+  `ALTER TABLE public.commissions ADD COLUMN IF NOT EXISTS person_id uuid`,
+  `CREATE TABLE IF NOT EXISTS public.commission_payments (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  commission_id uuid NOT NULL REFERENCES public.commissions(id) ON DELETE CASCADE,
+  amount numeric NOT NULL,
+  payment_method text,
+  payment_date date,
+  note text,
+  created_at timestamptz DEFAULT now()
+)`,
+  `CREATE INDEX IF NOT EXISTS idx_commissions_project_id ON public.commissions (project_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_commission_payments_commission_id ON public.commission_payments (commission_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_commission_payments_payment_date ON public.commission_payments (payment_date)`,
   `ALTER TABLE public.commission_payments ADD COLUMN IF NOT EXISTS receipt_url text`,
+  `ALTER TABLE public.commissions ENABLE ROW LEVEL SECURITY`,
+  `ALTER TABLE public.commission_payments ENABLE ROW LEVEL SECURITY`,
+  `DROP POLICY IF EXISTS commissions_all_anon ON public.commissions`,
+  `CREATE POLICY commissions_all_anon ON public.commissions
+   FOR ALL TO anon, authenticated USING (true) WITH CHECK (true)`,
+  `DROP POLICY IF EXISTS commission_payments_all_anon ON public.commission_payments`,
+  `CREATE POLICY commission_payments_all_anon ON public.commission_payments
+   FOR ALL TO anon, authenticated USING (true) WITH CHECK (true)`,
+  `NOTIFY pgrst, 'reload schema'`,
+
+  // 9b. Backfill commissions / commission_payments from legacy project_commissions / commission_payment_records
+  `DO $_$
+BEGIN
+  IF to_regclass('public.project_commissions') IS NOT NULL
+     AND to_regclass('public.commissions') IS NOT NULL THEN
+    INSERT INTO public.commissions (
+      id, project_id, person, role, calculation_mode, rate, base_amount, commission_amount, notes, created_at
+    )
+    SELECT
+      pc.id,
+      pc.project_id,
+      COALESCE(NULLIF(btrim(pc.person_name), ''), ''),
+      pc.role,
+      lower(pc.calculation_mode::text),
+      pc.rate,
+      pc.base_amount,
+      pc.commission_amount,
+      pc.notes,
+      pc.created_at
+    FROM public.project_commissions pc
+    WHERE NOT EXISTS (SELECT 1 FROM public.commissions c WHERE c.id = pc.id);
+  END IF;
+  IF to_regclass('public.commission_payment_records') IS NOT NULL
+     AND to_regclass('public.commission_payments') IS NOT NULL THEN
+    INSERT INTO public.commission_payments (
+      id, commission_id, amount, payment_method, payment_date, note, created_at
+    )
+    SELECT
+      pr.id,
+      pr.commission_id,
+      pr.amount,
+      pr.payment_method,
+      pr.payment_date,
+      CASE
+        WHEN pr.reference_no IS NOT NULL AND btrim(COALESCE(pr.reference_no, '')) <> '' THEN
+          CASE
+            WHEN pr.notes IS NOT NULL AND btrim(pr.notes) <> '' THEN pr.notes || chr(10) || 'Ref: ' || pr.reference_no
+            ELSE 'Ref: ' || pr.reference_no
+          END
+        ELSE pr.notes
+      END,
+      pr.created_at
+    FROM public.commission_payment_records pr
+    WHERE NOT EXISTS (SELECT 1 FROM public.commission_payments p WHERE p.id = pr.id)
+      AND EXISTS (SELECT 1 FROM public.commissions c WHERE c.id = pr.commission_id);
+  END IF;
+END
+$_$`,
+  `NOTIFY pgrst, 'reload schema'`,
+
+  // 10. commission-receipts bucket (private; app uses signed URLs in receipt_url)
+  `INSERT INTO storage.buckets (id, name, public)
+   VALUES ('commission-receipts', 'commission-receipts', false)
+   ON CONFLICT (id) DO UPDATE SET public = false, name = EXCLUDED.name`,
+  `DROP POLICY IF EXISTS "commission_receipts_public_read" ON storage.objects`,
+  `CREATE POLICY "commission_receipts_public_read"
+   ON storage.objects FOR SELECT
+   TO anon, authenticated
+   USING (bucket_id = 'commission-receipts')`,
+  `DROP POLICY IF EXISTS "commission_receipts_anon_insert" ON storage.objects`,
+  `CREATE POLICY "commission_receipts_anon_insert"
+   ON storage.objects FOR INSERT
+   TO anon, authenticated
+   WITH CHECK (bucket_id = 'commission-receipts')`,
 ];
 
 export type SchemaAutoRepairResult = {
