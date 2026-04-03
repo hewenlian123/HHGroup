@@ -380,7 +380,7 @@ function DailyEntriesPageInner() {
         </div>
       </FilterBar>
       {selectedIds.size > 0 ? (
-        <div className="flex flex-wrap items-center gap-2 border-b border-[#EBEBE9] py-2 dark:border-border/60">
+        <div className="flex flex-wrap items-center gap-2 border-b border-[#E5E7EB] py-2 dark:border-border/60">
           <span className="text-xs text-muted-foreground">{selectedIds.size} selected</span>
           <Button variant="outline" size="sm" onClick={handleBulkSubmit} disabled={!!bulkAction}>
             {bulkAction === "submit" ? "…" : "Submit"}
@@ -402,14 +402,14 @@ function DailyEntriesPageInner() {
         </div>
       ) : null}
       {message ? (
-        <div className="rounded-lg border border-[#EBEBE9] bg-background px-3 py-2 text-sm text-muted-foreground dark:border-border">
+        <div className="rounded-lg border border-[#E5E7EB] bg-background px-3 py-2 text-sm text-muted-foreground dark:border-border">
           {message}
         </div>
       ) : null}
-      <div className="overflow-x-auto border-t border-[#EBEBE9] dark:border-border/60">
+      <div className="overflow-x-auto border-t border-[#E5E7EB] dark:border-border/60">
         <table className="w-full text-sm border-collapse">
           <thead>
-            <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
+            <tr className="border-b border-[#E5E7EB] bg-white dark:border-border/60 dark:bg-muted/30">
               <th className="w-8 px-1">
                 <input
                   type="checkbox"
@@ -474,7 +474,7 @@ function DailyEntriesPageInner() {
                   <tr
                     key={row.id}
                     className={cn(
-                      "border-b border-[#EBEBE9]/80 dark:border-border/40",
+                      "border-b border-[#E5E7EB]/80 dark:border-border/40",
                       !rowLocked && listTableRowClassName
                     )}
                     onClick={() => {

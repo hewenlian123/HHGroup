@@ -34,7 +34,7 @@ type DataIntegrityResult = {
 
 function StatusDot({ ok }: { ok: boolean }) {
   return (
-    <span className={`inline-block h-2 w-2 rounded-full ${ok ? "bg-emerald-500" : "bg-red-500"}`} />
+    <span className={`inline-block h-2 w-2 rounded-full ${ok ? "bg-[#166534]" : "bg-red-500"}`} />
   );
 }
 
@@ -42,7 +42,9 @@ function StatusLabel({ ok }: { ok: boolean }) {
   return (
     <span
       className={`flex items-center gap-2 ${
-        ok ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
+        ok
+          ? "text-hh-profit-positive dark:text-hh-profit-positive"
+          : "text-red-600 dark:text-red-400"
       }`}
     >
       <StatusDot ok={ok} />
@@ -201,50 +203,61 @@ export default function SystemHealthPage() {
       ) : error ? (
         <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
       ) : (
-        <div className="table-responsive">
-          <table className="w-full min-w-[360px] sm:min-w-0 border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-border/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
-                <th className="py-2 pr-6 font-medium">Module</th>
-                <th className="py-2 pr-6 font-medium">Status</th>
-                <th className="py-2 font-medium">Detail</th>
-              </tr>
-            </thead>
-            <tbody>
-              {!result?.checks?.length ? (
-                <tr>
-                  <td colSpan={3} className="py-6 text-center text-muted-foreground">
-                    <span className="block">Module status could not be loaded.</span>
-                    <span className="block mt-1 text-xs">
-                      Ensure <code className="rounded bg-muted px-1">/api/system/guardian</code> is
-                      available, then{" "}
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="h-7 rounded-sm inline-flex"
-                        onClick={() => fetchGuardian(true)}
-                      >
-                        Refresh Now
-                      </Button>
-                    </span>
-                  </td>
+        <div className="airtable-table-wrap airtable-table-wrap--ruled">
+          <div className="airtable-table-scroll">
+            <table className="w-full min-w-[360px] text-sm sm:min-w-0">
+              <thead>
+                <tr className="text-left">
+                  <th className="h-8 px-3 py-0 pr-6 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                    Module
+                  </th>
+                  <th className="h-8 px-3 py-0 pr-6 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                    Status
+                  </th>
+                  <th className="h-8 px-3 py-0 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                    Detail
+                  </th>
                 </tr>
-              ) : (
-                result?.checks.map((ch) => (
-                  <tr key={ch.name} className="border-b border-border/30">
-                    <td className="py-2.5 pr-6 font-medium">{ch.name}</td>
-                    <td className="py-2.5 pr-6">
-                      <StatusLabel ok={ch.ok} />
-                    </td>
-                    <td className="py-2.5 text-xs text-muted-foreground">
-                      {ch.ok ? "—" : (ch.error ?? "Check failed")}
+              </thead>
+              <tbody>
+                {!result?.checks?.length ? (
+                  <tr>
+                    <td colSpan={3} className="py-6 text-center text-muted-foreground">
+                      <span className="block">Module status could not be loaded.</span>
+                      <span className="block mt-1 text-xs">
+                        Ensure <code className="rounded bg-muted px-1">/api/system/guardian</code>{" "}
+                        is available, then{" "}
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 rounded-sm inline-flex"
+                          onClick={() => fetchGuardian(true)}
+                        >
+                          Refresh Now
+                        </Button>
+                      </span>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  result?.checks.map((ch) => (
+                    <tr
+                      key={ch.name}
+                      className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
+                    >
+                      <td className="py-2.5 pr-6 font-medium">{ch.name}</td>
+                      <td className="py-2.5 pr-6">
+                        <StatusLabel ok={ch.ok} />
+                      </td>
+                      <td className="py-2.5 text-xs text-muted-foreground">
+                        {ch.ok ? "—" : (ch.error ?? "Check failed")}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -256,140 +269,148 @@ export default function SystemHealthPage() {
         ) : integrity?.errors?.length ? (
           <p className="text-sm text-red-600 dark:text-red-400">{integrity.errors.join("; ")}</p>
         ) : (
-          <div className="table-responsive">
-            <table className="w-full min-w-[360px] sm:min-w-0 border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-border/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
-                  <th className="py-2 pr-6 font-medium">Check</th>
-                  <th className="py-2 pr-6 font-medium">Status</th>
-                  <th className="py-2 font-medium">Detail</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-b border-border/30">
-                  <td className="py-2.5 pr-6 font-medium">Orphaned tasks</td>
-                  <td className="py-2.5 pr-6">
-                    <StatusLabel ok={!(integrity?.orphanedTasks.count ?? 0)} />
-                  </td>
-                  <td className="py-2.5 text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
-                    {(integrity?.orphanedTasks.count ?? 0) > 0 ? (
-                      <>
-                        <span>
-                          {integrity?.orphanedTasks.count ?? 0} task(s) with missing project
-                        </span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="rounded-sm h-7"
-                          onClick={() => runCleanup("orphaned")}
-                          disabled={cleanupBusy !== null}
-                        >
-                          {cleanupBusy === "orphaned" ? "Cleaning…" : "Clean up"}
-                        </Button>
-                      </>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                </tr>
-                <tr className="border-b border-border/30">
-                  <td className="py-2.5 pr-6 font-medium">Ghost tasks</td>
-                  <td className="py-2.5 pr-6">
-                    <StatusLabel ok={!(integrity?.ghostTasks.count ?? 0)} />
-                  </td>
-                  <td className="py-2.5 text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
-                    {(integrity?.ghostTasks.count ?? 0) > 0 ? (
-                      <>
-                        <span>{integrity?.ghostTasks.count ?? 0} task(s) with no title</span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="rounded-sm h-7"
-                          onClick={() => runCleanup("ghost")}
-                          disabled={cleanupBusy !== null}
-                        >
-                          {cleanupBusy === "ghost" ? "Cleaning…" : "Clean up"}
-                        </Button>
-                      </>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                </tr>
-                <tr className="border-b border-border/30">
-                  <td className="py-2.5 pr-6 font-medium">Duplicate tasks</td>
-                  <td className="py-2.5 pr-6">
-                    <StatusLabel ok={!(integrity?.duplicateTasks.count ?? 0)} />
-                  </td>
-                  <td className="py-2.5 text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
-                    {(integrity?.duplicateTasks.count ?? 0) > 0 ? (
-                      <>
-                        <span>
-                          {integrity?.duplicateTasks.count ?? 0} duplicate(s) in same project
-                        </span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="rounded-sm h-7"
-                          onClick={() => runCleanup("duplicate")}
-                          disabled={cleanupBusy !== null}
-                        >
-                          {cleanupBusy === "duplicate" ? "Cleaning…" : "Clean up"}
-                        </Button>
-                      </>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                </tr>
-                <tr className="border-b border-border/30">
-                  <td className="py-2.5 pr-6 font-medium">Overdue not completed</td>
-                  <td className="py-2.5 pr-6">
-                    <StatusLabel ok={(integrity?.overdueNotCompleted.count ?? 0) === 0} />
-                  </td>
-                  <td className="py-2.5 text-xs text-muted-foreground">
-                    {(integrity?.overdueNotCompleted.count ?? 0) > 0
-                      ? `${integrity?.overdueNotCompleted.count} task(s) past due`
-                      : "—"}
-                  </td>
-                </tr>
-                <tr className="border-b border-border/30">
-                  <td className="py-2.5 pr-6 font-medium">Stale test data</td>
-                  <td className="py-2.5 pr-6">
-                    <StatusLabel
-                      ok={
-                        (integrity?.staleTestData.tasks.count ?? 0) +
-                          (integrity?.staleTestData.projects.count ?? 0) ===
-                        0
-                      }
-                    />
-                  </td>
-                  <td className="py-2.5 text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
-                    {(integrity?.staleTestData.tasks.count ?? 0) +
-                      (integrity?.staleTestData.projects.count ?? 0) >
-                    0 ? (
-                      <>
-                        <span>
-                          {integrity?.staleTestData.tasks.count ?? 0} task(s),{" "}
-                          {integrity?.staleTestData.projects.count ?? 0} project(s)
-                        </span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="rounded-sm h-7"
-                          onClick={() => runCleanup("stale")}
-                          disabled={cleanupBusy !== null}
-                        >
-                          {cleanupBusy === "stale" ? "Cleaning…" : "Clean up"}
-                        </Button>
-                      </>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <div className="airtable-table-wrap airtable-table-wrap--ruled">
+            <div className="airtable-table-scroll">
+              <table className="w-full min-w-[360px] text-sm sm:min-w-0">
+                <thead>
+                  <tr className="text-left">
+                    <th className="h-8 px-3 py-0 pr-6 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                      Check
+                    </th>
+                    <th className="h-8 px-3 py-0 pr-6 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                      Status
+                    </th>
+                    <th className="h-8 px-3 py-0 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                      Detail
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30">
+                    <td className="py-2.5 pr-6 font-medium">Orphaned tasks</td>
+                    <td className="py-2.5 pr-6">
+                      <StatusLabel ok={!(integrity?.orphanedTasks.count ?? 0)} />
+                    </td>
+                    <td className="py-2.5 text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                      {(integrity?.orphanedTasks.count ?? 0) > 0 ? (
+                        <>
+                          <span>
+                            {integrity?.orphanedTasks.count ?? 0} task(s) with missing project
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="rounded-sm h-7"
+                            onClick={() => runCleanup("orphaned")}
+                            disabled={cleanupBusy !== null}
+                          >
+                            {cleanupBusy === "orphaned" ? "Cleaning…" : "Clean up"}
+                          </Button>
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                  </tr>
+                  <tr className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30">
+                    <td className="py-2.5 pr-6 font-medium">Ghost tasks</td>
+                    <td className="py-2.5 pr-6">
+                      <StatusLabel ok={!(integrity?.ghostTasks.count ?? 0)} />
+                    </td>
+                    <td className="py-2.5 text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                      {(integrity?.ghostTasks.count ?? 0) > 0 ? (
+                        <>
+                          <span>{integrity?.ghostTasks.count ?? 0} task(s) with no title</span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="rounded-sm h-7"
+                            onClick={() => runCleanup("ghost")}
+                            disabled={cleanupBusy !== null}
+                          >
+                            {cleanupBusy === "ghost" ? "Cleaning…" : "Clean up"}
+                          </Button>
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                  </tr>
+                  <tr className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30">
+                    <td className="py-2.5 pr-6 font-medium">Duplicate tasks</td>
+                    <td className="py-2.5 pr-6">
+                      <StatusLabel ok={!(integrity?.duplicateTasks.count ?? 0)} />
+                    </td>
+                    <td className="py-2.5 text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                      {(integrity?.duplicateTasks.count ?? 0) > 0 ? (
+                        <>
+                          <span>
+                            {integrity?.duplicateTasks.count ?? 0} duplicate(s) in same project
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="rounded-sm h-7"
+                            onClick={() => runCleanup("duplicate")}
+                            disabled={cleanupBusy !== null}
+                          >
+                            {cleanupBusy === "duplicate" ? "Cleaning…" : "Clean up"}
+                          </Button>
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                  </tr>
+                  <tr className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30">
+                    <td className="py-2.5 pr-6 font-medium">Overdue not completed</td>
+                    <td className="py-2.5 pr-6">
+                      <StatusLabel ok={(integrity?.overdueNotCompleted.count ?? 0) === 0} />
+                    </td>
+                    <td className="py-2.5 text-xs text-muted-foreground">
+                      {(integrity?.overdueNotCompleted.count ?? 0) > 0
+                        ? `${integrity?.overdueNotCompleted.count} task(s) past due`
+                        : "—"}
+                    </td>
+                  </tr>
+                  <tr className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30">
+                    <td className="py-2.5 pr-6 font-medium">Stale test data</td>
+                    <td className="py-2.5 pr-6">
+                      <StatusLabel
+                        ok={
+                          (integrity?.staleTestData.tasks.count ?? 0) +
+                            (integrity?.staleTestData.projects.count ?? 0) ===
+                          0
+                        }
+                      />
+                    </td>
+                    <td className="py-2.5 text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                      {(integrity?.staleTestData.tasks.count ?? 0) +
+                        (integrity?.staleTestData.projects.count ?? 0) >
+                      0 ? (
+                        <>
+                          <span>
+                            {integrity?.staleTestData.tasks.count ?? 0} task(s),{" "}
+                            {integrity?.staleTestData.projects.count ?? 0} project(s)
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="rounded-sm h-7"
+                            onClick={() => runCleanup("stale")}
+                            disabled={cleanupBusy !== null}
+                          >
+                            {cleanupBusy === "stale" ? "Cleaning…" : "Clean up"}
+                          </Button>
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

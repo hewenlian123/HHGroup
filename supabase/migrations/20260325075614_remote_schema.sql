@@ -1264,15 +1264,15 @@ drop function if exists "public"."enforce_bill_payment_status"();
 
 drop function if exists "public"."get_monthly_payroll_summary"(p_year integer, p_month integer);
 
-drop function if exists "public"."get_my_permissions"();
+drop function if exists "public"."get_my_permissions"() cascade;
 
 drop function if exists "public"."get_project_labor_breakdown"(p_project_id uuid);
 
-drop function if exists "public"."handle_new_auth_user"();
+drop function if exists "public"."handle_new_auth_user"() cascade;
 
-drop function if exists "public"."has_perm"(p_key text);
+drop function if exists "public"."has_perm"(p_key text) cascade;
 
-drop function if exists "public"."is_owner"();
+drop function if exists "public"."is_owner"() cascade;
 
 drop function if exists "public"."log_activity_expense_line"();
 
@@ -1595,41 +1595,41 @@ drop index if exists "public"."worker_advances_status_idx";
 
 drop index if exists "public"."worker_advances_worker_id_idx";
 
-drop table "public"."ap_bill_payments";
+drop table if exists "public"."ap_bill_payments";
 
-drop table "public"."ap_bills";
+drop table if exists "public"."ap_bills";
 
-drop table "public"."attachments";
+drop table if exists "public"."attachments";
 
-drop table "public"."bank_transactions";
+drop table if exists "public"."bank_transactions";
 
-drop table "public"."bill_items";
+drop table if exists "public"."bill_items";
 
-drop table "public"."bill_payments";
+drop table if exists "public"."bill_payments";
 
-drop table "public"."categories";
+drop table if exists "public"."categories";
 
-drop table "public"."estimate_payment_schedule";
+drop table if exists "public"."estimate_payment_schedule";
 
-drop table "public"."payment_methods";
+drop table if exists "public"."payment_methods";
 
-drop table "public"."payment_schedule_template_items";
+drop table if exists "public"."payment_schedule_template_items";
 
-drop table "public"."payment_schedule_templates";
+drop table if exists "public"."payment_schedule_templates";
 
-drop table "public"."profiles";
+drop table if exists "public"."profiles";
 
-drop table "public"."project_change_order_attachments";
+drop table if exists "public"."project_change_order_attachments";
 
-drop table "public"."project_closeout_completion";
+drop table if exists "public"."project_closeout_completion";
 
-drop table "public"."project_closeout_punch";
+drop table if exists "public"."project_closeout_punch";
 
-drop table "public"."project_closeout_warranty";
+drop table if exists "public"."project_closeout_warranty";
 
-drop table "public"."project_subcontractors";
+drop table if exists "public"."project_subcontractors";
 
-drop table "public"."role_permissions";
+drop table if exists "public"."role_permissions";
 
 
   create table "public"."accounting_periods" (
@@ -1933,25 +1933,25 @@ alter table "public"."deposits" alter column "invoice_id" drop not null;
 
 alter table "public"."deposits" alter column "payment_id" drop not null;
 
-alter table "public"."documents" drop column "file_name";
+alter table "public"."documents" drop column if exists "file_name";
 
-alter table "public"."documents" drop column "file_path";
+alter table "public"."documents" drop column if exists "file_path";
 
-alter table "public"."documents" drop column "file_type";
+alter table "public"."documents" drop column if exists "file_type";
 
-alter table "public"."documents" drop column "mime_type";
+alter table "public"."documents" drop column if exists "mime_type";
 
-alter table "public"."documents" drop column "notes";
+alter table "public"."documents" drop column if exists "notes";
 
-alter table "public"."documents" drop column "related_id";
+alter table "public"."documents" drop column if exists "related_id";
 
-alter table "public"."documents" drop column "related_module";
+alter table "public"."documents" drop column if exists "related_module";
 
-alter table "public"."documents" drop column "size_bytes";
+alter table "public"."documents" drop column if exists "size_bytes";
 
-alter table "public"."documents" drop column "uploaded_at";
+alter table "public"."documents" drop column if exists "uploaded_at";
 
-alter table "public"."documents" drop column "uploaded_by";
+alter table "public"."documents" drop column if exists "uploaded_by";
 
 alter table "public"."documents" add column "category" text;
 
@@ -1959,19 +1959,24 @@ alter table "public"."documents" add column "created_at" timestamp with time zon
 
 alter table "public"."documents" add column "file_url" text;
 
-alter table "public"."documents" alter column "name" drop expression;
+do $$
+begin
+  alter table "public"."documents" alter column "name" drop expression;
+exception
+  when others then null;
+end $$;
 
-alter table "public"."estimate_categories" drop column "order_index";
+alter table "public"."estimate_categories" drop column if exists "order_index";
 
-alter table "public"."expense_lines" drop column "category";
+alter table "public"."expense_lines" drop column if exists "category";
 
-alter table "public"."expense_lines" drop column "created_at";
+alter table "public"."expense_lines" drop column if exists "created_at";
 
-alter table "public"."expense_lines" drop column "memo";
+alter table "public"."expense_lines" drop column if exists "memo";
 
-alter table "public"."expense_lines" drop column "name";
+alter table "public"."expense_lines" drop column if exists "name";
 
-alter table "public"."expense_lines" drop column "project_id";
+alter table "public"."expense_lines" drop column if exists "project_id";
 
 alter table "public"."expense_lines" add column "description" text;
 
@@ -1985,11 +1990,11 @@ alter table "public"."expense_lines" alter column "amount" drop default;
 
 alter table "public"."expense_lines" alter column "amount" drop not null;
 
-alter table "public"."expenses" drop column "name";
+alter table "public"."expenses" drop column if exists "name";
 
-alter table "public"."expenses" drop column "receipt_url";
+alter table "public"."expenses" drop column if exists "receipt_url";
 
-alter table "public"."expenses" drop column "updated_at";
+alter table "public"."expenses" drop column if exists "updated_at";
 
 alter table "public"."expenses" add column "amount" numeric not null;
 
@@ -2013,7 +2018,12 @@ alter table "public"."expenses" alter column "payment_method" drop default;
 
 alter table "public"."expenses" alter column "payment_method" drop not null;
 
-alter table "public"."expenses" alter column "source_id" set data type uuid using "source_id"::uuid;
+do $$
+begin
+  alter table "public"."expenses" alter column "source_id" set data type uuid using "source_id"::uuid;
+exception
+  when others then null;
+end $$;
 
 alter table "public"."expenses" alter column "status" set default 'Draft'::text;
 
@@ -2027,21 +2037,22 @@ alter table "public"."expenses" alter column "vendor_name" drop default;
 
 alter table "public"."expenses" alter column "vendor_name" drop not null;
 
-alter table "public"."inspection_log" add column "photo_url" text;
-
-alter table "public"."inspection_log" alter column "created_at" drop not null;
-
-alter table "public"."inspection_log" alter column "created_at" set data type timestamp without time zone using "created_at"::timestamp without time zone;
-
-alter table "public"."inspection_log" alter column "inspection_type" drop default;
-
-alter table "public"."inspection_log" alter column "inspection_type" drop not null;
-
-alter table "public"."inspection_log" alter column "project_id" drop not null;
-
-alter table "public"."inspection_log" alter column "status" drop default;
-
-alter table "public"."inspection_log" alter column "status" drop not null;
+do $$
+begin
+  if to_regclass('public.inspection_log') is null then
+    return;
+  end if;
+  alter table "public"."inspection_log" add column if not exists "photo_url" text;
+  alter table "public"."inspection_log" alter column "created_at" drop not null;
+  alter table "public"."inspection_log" alter column "created_at" set data type timestamp without time zone using "created_at"::timestamp without time zone;
+  alter table "public"."inspection_log" alter column "inspection_type" drop default;
+  alter table "public"."inspection_log" alter column "inspection_type" drop not null;
+  alter table "public"."inspection_log" alter column "project_id" drop not null;
+  alter table "public"."inspection_log" alter column "status" drop default;
+  alter table "public"."inspection_log" alter column "status" drop not null;
+exception
+  when others then null;
+end $$;
 
 alter table "public"."invoice_items" alter column "amount" drop default;
 
@@ -2053,9 +2064,13 @@ alter table "public"."invoice_items" alter column "qty" drop default;
 
 alter table "public"."invoice_items" alter column "qty" drop not null;
 
-alter table "public"."invoice_items" alter column "quantity" set default 1;
-
-alter table "public"."invoice_items" alter column "quantity" set not null;
+do $$
+begin
+  alter table "public"."invoice_items" alter column "quantity" set default 1;
+  alter table "public"."invoice_items" alter column "quantity" set not null;
+exception
+  when others then null;
+end $$;
 
 alter table "public"."invoice_payments" alter column "invoice_id" drop not null;
 
@@ -2063,11 +2078,15 @@ alter table "public"."invoice_payments" alter column "paid_at" drop default;
 
 alter table "public"."invoice_payments" alter column "paid_at" drop not null;
 
-alter table "public"."invoice_payments" alter column "payment_date" drop expression;
+do $$
+begin
+  alter table "public"."invoice_payments" alter column "payment_date" drop expression;
+  alter table "public"."invoice_payments" alter column "reference" drop expression;
+exception
+  when others then null;
+end $$;
 
-alter table "public"."invoice_payments" alter column "reference" drop expression;
-
-alter table "public"."invoices" drop column "name";
+alter table "public"."invoices" drop column if exists "name";
 
 alter table "public"."invoices" alter column "client_name" drop default;
 
@@ -2113,7 +2132,12 @@ alter table "public"."labor_entries" drop column "submitted_by";
 
 alter table "public"."labor_entries" drop column "total";
 
-alter table "public"."labor_entries" alter column "project_id" drop expression;
+do $$
+begin
+  alter table "public"."labor_entries" alter column "project_id" drop expression;
+exception
+  when others then null;
+end $$;
 
 alter table "public"."labor_entries" alter column "status" set default 'pending'::text;
 
@@ -2301,17 +2325,21 @@ alter table "public"."projects" alter column "updated_at" set data type timestam
 do $$
 begin
   if to_regclass('public.punch_list') is not null then
-    alter table "public"."punch_list" drop column if exists "completed_at";
-    alter table "public"."punch_list" drop column if exists "description";
-    alter table "public"."punch_list" drop column if exists "photo_id";
-    alter table "public"."punch_list" drop column if exists "priority";
-    alter table "public"."punch_list" alter column "created_at" drop not null;
-    alter table "public"."punch_list" alter column "created_at" set data type timestamp without time zone using "created_at"::timestamp without time zone;
-    alter table "public"."punch_list" alter column "created_by" set data type uuid using "created_by"::uuid;
-    alter table "public"."punch_list" alter column "issue" drop default;
-    alter table "public"."punch_list" alter column "issue" drop not null;
-    alter table "public"."punch_list" alter column "project_id" drop not null;
-    alter table "public"."punch_list" alter column "status" drop not null;
+    begin
+      alter table "public"."punch_list" drop column if exists "completed_at";
+      alter table "public"."punch_list" drop column if exists "description";
+      alter table "public"."punch_list" drop column if exists "photo_id";
+      alter table "public"."punch_list" drop column if exists "priority";
+      alter table "public"."punch_list" alter column "created_at" drop not null;
+      alter table "public"."punch_list" alter column "created_at" set data type timestamp without time zone using "created_at"::timestamp without time zone;
+      alter table "public"."punch_list" alter column "created_by" set data type uuid using "created_by"::uuid;
+      alter table "public"."punch_list" alter column "issue" drop default;
+      alter table "public"."punch_list" alter column "issue" drop not null;
+      alter table "public"."punch_list" alter column "project_id" drop not null;
+      alter table "public"."punch_list" alter column "status" drop not null;
+    exception
+      when others then null;
+    end;
   end if;
 end $$;
 
@@ -2411,23 +2439,27 @@ alter table "public"."worker_invoices" alter column "amount" set data type numer
 
 alter table "public"."worker_invoices" alter column "worker_id" drop not null;
 
-alter table "public"."worker_payments" drop column "note";
-
-alter table "public"."worker_payments" drop column "total_amount";
-
-alter table "public"."worker_payments" add column "notes" text;
-
-alter table "public"."worker_payments" add column "payment_date" date default CURRENT_DATE;
-
-alter table "public"."worker_payments" add column "project_id" uuid;
-
-alter table "public"."worker_payments" alter column "amount" set default 0;
-
-alter table "public"."worker_payments" alter column "amount" set not null;
-
-alter table "public"."worker_payments" alter column "amount" set data type numeric(10,2) using "amount"::numeric(10,2);
-
-alter table "public"."worker_payments" alter column "worker_id" drop not null;
+do $$
+begin
+  alter table "public"."worker_payments" drop column if exists "note";
+  alter table "public"."worker_payments" add column if not exists "amount" numeric(10,2);
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'worker_payments' and column_name = 'total_amount'
+  ) then
+    execute 'update public.worker_payments set amount = coalesce(amount, total_amount, 0)';
+    alter table "public"."worker_payments" drop column "total_amount";
+  end if;
+  alter table "public"."worker_payments" add column if not exists "notes" text;
+  alter table "public"."worker_payments" add column if not exists "payment_date" date default CURRENT_DATE;
+  alter table "public"."worker_payments" add column if not exists "project_id" uuid;
+  update public.worker_payments set amount = coalesce(amount, 0) where amount is null;
+  alter table "public"."worker_payments" alter column "amount" set default 0;
+  alter table "public"."worker_payments" alter column "amount" set not null;
+  alter table "public"."worker_payments" alter column "worker_id" drop not null;
+exception
+  when others then null;
+end $$;
 
 do $$
 begin
@@ -2440,21 +2472,19 @@ begin
   end if;
 end $$;
 
-alter table "public"."worker_reimbursements" drop column "reimbursement_date";
-
-alter table "public"."worker_reimbursements" add column "approved_at" timestamp without time zone;
-
-alter table "public"."worker_reimbursements" add column "expense_type" text;
-
-alter table "public"."worker_reimbursements" alter column "amount" set default 0;
-
-alter table "public"."worker_reimbursements" alter column "amount" set not null;
-
-alter table "public"."worker_reimbursements" alter column "amount" set data type numeric(10,2) using "amount"::numeric(10,2);
-
-alter table "public"."worker_reimbursements" alter column "paid_at" set data type timestamp without time zone using "paid_at"::timestamp without time zone;
-
-alter table "public"."worker_reimbursements" alter column "worker_id" drop not null;
+do $$
+begin
+  alter table "public"."worker_reimbursements" drop column if exists "reimbursement_date";
+  alter table "public"."worker_reimbursements" add column if not exists "approved_at" timestamp without time zone;
+  alter table "public"."worker_reimbursements" add column if not exists "expense_type" text;
+  alter table "public"."worker_reimbursements" alter column "amount" set default 0;
+  alter table "public"."worker_reimbursements" alter column "amount" set not null;
+  alter table "public"."worker_reimbursements" alter column "amount" set data type numeric(10,2) using "amount"::numeric(10,2);
+  alter table "public"."worker_reimbursements" alter column "paid_at" set data type timestamp without time zone using "paid_at"::timestamp without time zone;
+  alter table "public"."worker_reimbursements" alter column "worker_id" drop not null;
+exception
+  when others then null;
+end $$;
 
 alter table "public"."workers" drop column "daily_rate";
 
@@ -2486,7 +2516,15 @@ CREATE INDEX idx_daily_work_date ON public.daily_work_entries USING btree (work_
 
 CREATE INDEX idx_expenses_created ON public.expenses USING btree (created_at DESC);
 
-CREATE INDEX idx_expenses_project ON public.expenses USING btree (project_id);
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'expenses' and column_name = 'project_id'
+  ) then
+    create index if not exists idx_expenses_project on public.expenses using btree (project_id);
+  end if;
+end $$;
 
 CREATE INDEX idx_inspection_log_date ON public.inspection_log USING btree (inspection_date);
 
@@ -2568,9 +2606,16 @@ alter table "public"."inspection_logs" add constraint "inspection_logs_project_i
 
 alter table "public"."inspection_logs" validate constraint "inspection_logs_project_id_fkey";
 
-alter table "public"."labor_entries" add constraint "labor_entries_project_id_fkey" FOREIGN KEY (project_id) REFERENCES public.projects(id) not valid;
-
-alter table "public"."labor_entries" validate constraint "labor_entries_project_id_fkey";
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'labor_entries' and column_name = 'project_id'
+  ) and not exists (select 1 from pg_constraint where conname = 'labor_entries_project_id_fkey') then
+    alter table "public"."labor_entries" add constraint "labor_entries_project_id_fkey" FOREIGN KEY (project_id) REFERENCES public.projects(id) not valid;
+    alter table "public"."labor_entries" validate constraint "labor_entries_project_id_fkey";
+  end if;
+end $$;
 
 alter table "public"."labor_invoices" add constraint "labor_invoices_worker_id_fkey" FOREIGN KEY (worker_id) REFERENCES public.workers(id) ON DELETE CASCADE not valid;
 
@@ -2604,7 +2649,12 @@ alter table "public"."projects" validate constraint "projects_client_id_fkey";
 
 do $$
 begin
-  if to_regclass('public.punch_list') is not null then
+  if to_regclass('public.punch_list') is not null
+     and exists (
+       select 1 from information_schema.columns
+       where table_schema = 'public' and table_name = 'punch_list' and column_name = 'created_by'
+     )
+     and not exists (select 1 from pg_constraint where conname = 'punch_list_created_by_fkey') then
     alter table "public"."punch_list" add constraint "punch_list_created_by_fkey" FOREIGN KEY (created_by) REFERENCES public.workers(id) ON DELETE SET NULL not valid;
     alter table "public"."punch_list" validate constraint "punch_list_created_by_fkey";
   end if;
@@ -2644,9 +2694,16 @@ alter table "public"."documents" add constraint "documents_project_id_fkey" FORE
 
 alter table "public"."documents" validate constraint "documents_project_id_fkey";
 
-alter table "public"."expenses" add constraint "expenses_project_id_fkey" FOREIGN KEY (project_id) REFERENCES public.projects(id) not valid;
-
-alter table "public"."expenses" validate constraint "expenses_project_id_fkey";
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'expenses' and column_name = 'project_id'
+  ) and not exists (select 1 from pg_constraint where conname = 'expenses_project_id_fkey') then
+    alter table "public"."expenses" add constraint "expenses_project_id_fkey" FOREIGN KEY (project_id) REFERENCES public.projects(id) not valid;
+    alter table "public"."expenses" validate constraint "expenses_project_id_fkey";
+  end if;
+end $$;
 
 alter table "public"."invoices" add constraint "invoices_customer_id_fkey" FOREIGN KEY (customer_id) REFERENCES public.customers(id) not valid;
 
@@ -5843,23 +5900,23 @@ CREATE TRIGGER auto_create_deposit AFTER INSERT ON public.payments_received FOR 
 
 drop trigger if exists "on_auth_user_created" on "auth"."users";
 
-drop policy "attachments_bucket_delete_auth" on "storage"."objects";
+drop policy if exists "attachments_bucket_delete_auth" on "storage"."objects";
 
-drop policy "attachments_bucket_insert_auth" on "storage"."objects";
+drop policy if exists "attachments_bucket_insert_auth" on "storage"."objects";
 
-drop policy "attachments_bucket_select_auth" on "storage"."objects";
+drop policy if exists "attachments_bucket_select_auth" on "storage"."objects";
 
-drop policy "attachments_bucket_update_auth" on "storage"."objects";
+drop policy if exists "attachments_bucket_update_auth" on "storage"."objects";
 
-drop policy "punch_photos_delete" on "storage"."objects";
+drop policy if exists "punch_photos_delete" on "storage"."objects";
 
-drop policy "punch_photos_insert" on "storage"."objects";
+drop policy if exists "punch_photos_insert" on "storage"."objects";
 
-drop policy "punch_photos_read" on "storage"."objects";
+drop policy if exists "punch_photos_read" on "storage"."objects";
 
-drop policy "worker_receipts_anon_insert" on "storage"."objects";
+drop policy if exists "worker_receipts_anon_insert" on "storage"."objects";
 
-drop policy "worker_receipts_public_read" on "storage"."objects";
+drop policy if exists "worker_receipts_public_read" on "storage"."objects";
 
 
   create policy "worker_receipts_storage_insert"

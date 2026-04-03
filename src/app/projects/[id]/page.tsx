@@ -7,7 +7,7 @@ import {
   getExpenseLinesByProject,
   getLaborEntriesWithJoins,
   getDocumentsByProject,
-  getCommissionsByProject,
+  getCommissionsWithPaidByProject,
   getSelectionsByProject,
   getMaterialCatalog,
   getPunchListByProject,
@@ -145,7 +145,14 @@ export default async function ProjectDetailPage({
     safe(() => getExpenseLinesByProject(id, 500), []),
     safe(() => getLaborEntriesWithJoins({ project_id: id }), []),
     safe(() => getDocumentsByProject(id), []),
-    safe(() => getCommissionsByProject(id), []),
+    (async () => {
+      try {
+        return await getCommissionsWithPaidByProject(id);
+      } catch (e) {
+        logServerPageDataError(`projects/${id}/commissions`, e);
+        return [];
+      }
+    })(),
     safe(() => getSelectionsByProject(id), []),
     safe(() => getMaterialCatalog(), []),
     safe(() => getPunchListByProject(id), []),

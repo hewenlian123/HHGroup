@@ -29,7 +29,7 @@ const ToastContext = React.createContext<ToastContextValue | null>(null);
 function variantClasses(v: ToastVariant) {
   switch (v) {
     case "success":
-      return "border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-50";
+      return "border-[#DCFCE7] bg-[#DCFCE7] text-[#166534] dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-50";
     case "error":
       return "border-red-200 bg-red-50 text-red-950 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-50";
     default:

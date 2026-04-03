@@ -121,73 +121,99 @@ export default async function ProjectLaborPage({ params }: Props) {
 
       {/* Section 1: By Worker */}
       <SectionHeader label="By Worker" />
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Worker
-              </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
-                Days
-              </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
-                Total Earned
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {workerRows.length === 0 ? (
-              <tr className="border-b border-border/40">
-                <td colSpan={3} className="py-6 px-3 text-center text-muted-foreground text-xs">
-                  No labor entries.
-                </td>
+      <div className="airtable-table-wrap airtable-table-wrap--ruled">
+        <div className="airtable-table-scroll">
+          <table className="w-full text-sm">
+            <thead>
+              <tr>
+                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  Worker
+                </th>
+                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                  Days
+                </th>
+                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                  Total Earned
+                </th>
               </tr>
-            ) : (
-              workerRows.map((r) => (
-                <tr key={r.worker_id} className="border-b border-border/40">
-                  <td className="py-1.5 px-3">{r.worker_name}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums">{r.days}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.total)}</td>
+            </thead>
+            <tbody>
+              {workerRows.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={3}
+                    className="h-11 min-h-[44px] px-3 py-0 text-center text-xs text-muted-foreground"
+                  >
+                    No labor entries.
+                  </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                workerRows.map((r) => (
+                  <tr
+                    key={r.worker_id}
+                    className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
+                  >
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
+                      {r.worker_name}
+                    </td>
+                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                      {r.days}
+                    </td>
+                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                      ${fmtUsd(r.total)}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
       <Divider />
 
       {/* Section 2: By Cost Code */}
       <SectionHeader label="By Cost Code" />
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Cost Code
-              </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
-                Total
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {costCodeRows.length === 0 ? (
-              <tr className="border-b border-border/40">
-                <td colSpan={2} className="py-6 px-3 text-center text-muted-foreground text-xs">
-                  No cost code breakdown.
-                </td>
+      <div className="airtable-table-wrap airtable-table-wrap--ruled">
+        <div className="airtable-table-scroll">
+          <table className="w-full text-sm">
+            <thead>
+              <tr>
+                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  Cost Code
+                </th>
+                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                  Total
+                </th>
               </tr>
-            ) : (
-              costCodeRows.map((r) => (
-                <tr key={r.cost_code} className="border-b border-border/40">
-                  <td className="py-1.5 px-3">{r.cost_code}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.total)}</td>
+            </thead>
+            <tbody>
+              {costCodeRows.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={2}
+                    className="h-11 min-h-[44px] px-3 py-0 text-center text-xs text-muted-foreground"
+                  >
+                    No cost code breakdown.
+                  </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                costCodeRows.map((r) => (
+                  <tr
+                    key={r.cost_code}
+                    className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
+                  >
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
+                      {r.cost_code}
+                    </td>
+                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                      ${fmtUsd(r.total)}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </PageLayout>
   );

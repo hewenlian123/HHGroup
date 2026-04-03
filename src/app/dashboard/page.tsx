@@ -176,7 +176,6 @@ export default async function DashboardPage({
       label: "Total Profit",
       value: `$${stats.totalProfit.toLocaleString()}`,
       icon: TrendingUp,
-      emphasis: true,
     },
   ];
 

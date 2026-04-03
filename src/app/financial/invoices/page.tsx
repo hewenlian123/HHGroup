@@ -246,7 +246,7 @@ function InvoicesPageInner() {
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
+                <TableRow className="hover:bg-transparent">
                   <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
                     Invoice #
                   </TableHead>
@@ -282,7 +282,7 @@ function InvoicesPageInner() {
                     key={inv.id}
                     className={cn(
                       listTableRowClassName,
-                      "group border-b border-[#EBEBE9]/80 dark:border-border/30"
+                      "group border-b border-[#E5E7EB]/80 dark:border-border/30"
                     )}
                     onClick={() => router.push(`/financial/invoices/${inv.id}`)}
                   >
@@ -323,7 +323,7 @@ function InvoicesPageInner() {
                     </TableCell>
                     <TableCell
                       className={cn(
-                        "text-right tabular-nums text-emerald-600/90 dark:text-emerald-400/90",
+                        "text-right tabular-nums text-hh-profit-positive dark:text-hh-profit-positive",
                         listTableAmountCellClassName
                       )}
                     >

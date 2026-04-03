@@ -229,7 +229,7 @@ export default function MaterialCatalogPage() {
       }
     >
       <div className="max-w-5xl space-y-3">
-        <div className="border border-border/60 rounded-sm overflow-hidden">
+        <div className="airtable-table-wrap airtable-table-wrap--ruled">
           {loading ? (
             <div className="py-10 text-center text-sm text-muted-foreground">Loading…</div>
           ) : error && materials.length === 0 ? (
@@ -239,95 +239,97 @@ export default function MaterialCatalogPage() {
               No materials yet. Add one to get started.
             </div>
           ) : (
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="border-b border-border/60">
-                  <th className="w-12 py-2 px-2 sm:px-3" aria-label="Photo" />
-                  <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground">
-                    Category
-                  </th>
-                  <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground">
-                    Material name
-                  </th>
-                  <th className="hidden sm:table-cell text-left py-2 px-3 font-medium text-muted-foreground">
-                    Supplier
-                  </th>
-                  <th className="text-right py-2 px-2 sm:px-3 font-medium text-muted-foreground">
-                    Cost
-                  </th>
-                  <th className="text-right py-2 px-2 sm:px-3 font-medium text-muted-foreground w-[140px]">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {materials.map((m) => (
-                  <tr
-                    key={m.id}
-                    className="border-b border-border/60 last:border-b-0 hover:bg-muted/40 transition-colors"
-                  >
-                    <td className="py-2 px-2 sm:px-3">
-                      {m.photo_url ? (
-                        <a
-                          href={photoUrl(m.photo_url)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="block w-10 h-10 rounded-sm border border-border/60 overflow-hidden bg-muted/30"
-                        >
-                          <img
-                            src={photoUrl(m.photo_url)}
-                            alt=""
-                            className="w-full h-full object-cover"
-                          />
-                        </a>
-                      ) : (
-                        <span
-                          className="block w-10 h-10 rounded-sm border border-border/60 bg-muted/30"
-                          aria-hidden
-                        />
-                      )}
-                    </td>
-                    <td className="py-2 px-2 sm:px-3 text-muted-foreground">
-                      <button
-                        type="button"
-                        onClick={() => handleEdit(m)}
-                        className="text-left w-full bg-transparent p-0 font-inherit text-inherit cursor-pointer hover:underline"
-                      >
-                        {m.category || "—"}
-                      </button>
-                    </td>
-                    <td className="py-2 px-2 sm:px-3 font-medium">
-                      <button
-                        type="button"
-                        onClick={() => handleEdit(m)}
-                        className="text-left w-full bg-transparent p-0 font-inherit text-inherit cursor-pointer hover:underline"
-                      >
-                        {m.material_name || "—"}
-                      </button>
-                    </td>
-                    <td className="hidden sm:table-cell py-2 px-3 text-muted-foreground">
-                      {m.supplier ?? "—"}
-                    </td>
-                    <td className="py-2 px-2 sm:px-3 text-right tabular-nums text-muted-foreground">
-                      {m.cost != null
-                        ? `$${Number(m.cost).toLocaleString("en-US", { minimumFractionDigits: 2 })}`
-                        : "—"}
-                    </td>
-                    <td className="py-2 px-2 sm:px-3 text-right align-middle">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="rounded-sm h-8 px-2"
-                        onClick={() => handleEdit(m)}
-                      >
-                        Edit
-                      </Button>
-                    </td>
+            <div className="airtable-table-scroll">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr>
+                    <th className="h-8 w-12 px-2 sm:px-3" aria-label="Photo" />
+                    <th className="h-8 px-2 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
+                      Category
+                    </th>
+                    <th className="h-8 px-2 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
+                      Material name
+                    </th>
+                    <th className="hidden h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:table-cell">
+                      Supplier
+                    </th>
+                    <th className="h-8 px-2 text-right align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
+                      Cost
+                    </th>
+                    <th className="h-8 w-[140px] px-2 text-right align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
+                      Actions
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {materials.map((m) => (
+                    <tr
+                      key={m.id}
+                      className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
+                    >
+                      <td className="h-11 min-h-[44px] px-2 py-0 align-middle sm:px-3">
+                        {m.photo_url ? (
+                          <a
+                            href={photoUrl(m.photo_url)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block w-10 h-10 rounded-sm border border-border/60 overflow-hidden bg-muted/30"
+                          >
+                            <img
+                              src={photoUrl(m.photo_url)}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
+                          </a>
+                        ) : (
+                          <span
+                            className="block w-10 h-10 rounded-sm border border-border/60 bg-muted/30"
+                            aria-hidden
+                          />
+                        )}
+                      </td>
+                      <td className="h-11 min-h-[44px] px-2 py-0 align-middle text-[13px] text-muted-foreground sm:px-3">
+                        <button
+                          type="button"
+                          onClick={() => handleEdit(m)}
+                          className="w-full cursor-pointer bg-transparent p-0 text-left font-inherit text-inherit hover:underline"
+                        >
+                          {m.category || "—"}
+                        </button>
+                      </td>
+                      <td className="h-11 min-h-[44px] px-2 py-0 align-middle text-[13px] font-medium sm:px-3">
+                        <button
+                          type="button"
+                          onClick={() => handleEdit(m)}
+                          className="w-full cursor-pointer bg-transparent p-0 text-left font-inherit text-inherit hover:underline"
+                        >
+                          {m.material_name || "—"}
+                        </button>
+                      </td>
+                      <td className="hidden h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] text-muted-foreground sm:table-cell">
+                        {m.supplier ?? "—"}
+                      </td>
+                      <td className="h-11 min-h-[44px] px-2 py-0 text-right align-middle font-mono text-[13px] tabular-nums text-muted-foreground sm:px-3">
+                        {m.cost != null
+                          ? `$${Number(m.cost).toLocaleString("en-US", { minimumFractionDigits: 2 })}`
+                          : "—"}
+                      </td>
+                      <td className="h-11 min-h-[44px] px-2 py-0 text-right align-middle text-[13px] sm:px-3">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="rounded-sm h-8 px-2"
+                          onClick={() => handleEdit(m)}
+                        >
+                          Edit
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>

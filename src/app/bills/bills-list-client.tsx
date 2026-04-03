@@ -137,7 +137,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
       const d = daysUntil(bill.due_date);
       if (d != null && d < 0) return { label: "Overdue", variant: "danger" };
       if (d != null && d <= 7) return { label: "Due Soon", variant: "warning" };
-      return { label: "Pending", variant: "muted" };
+      return { label: "Pending", variant: "warning" };
     },
     []
   );
@@ -145,12 +145,12 @@ export function BillsListClient({ bills, summary, projects }: Props) {
   return (
     <div className="flex flex-col gap-6 text-foreground [font-family:var(--font-inter),var(--font-geist-sans),sans-serif]">
       <Card className="overflow-hidden p-0">
-        <div className="grid divide-y divide-[#EBEBE9] sm:grid-cols-2 sm:divide-y-0 md:grid-cols-4 md:divide-x dark:divide-border/60">
+        <div className="grid divide-y divide-[#E5E7EB] sm:grid-cols-2 sm:divide-y-0 md:grid-cols-4 md:divide-x dark:divide-border/60">
           <div className="p-4">
             <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
               Outstanding
             </p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-[#2D2D2D] dark:text-foreground">
+            <p className="mt-1 text-lg font-semibold tabular-nums text-[#111827] dark:text-foreground">
               {fmtUsd(summary.totalOutstanding)}
             </p>
           </div>
@@ -158,7 +158,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
             <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
               Overdue
             </p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-[#2D2D2D] dark:text-foreground">
+            <p className="mt-1 text-lg font-semibold tabular-nums text-[#111827] dark:text-foreground">
               {fmtUsd(summary.overdueAmount)}
             </p>
           </div>
@@ -166,7 +166,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
             <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
               Due This Week
             </p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-[#2D2D2D] dark:text-foreground">
+            <p className="mt-1 text-lg font-semibold tabular-nums text-[#111827] dark:text-foreground">
               {fmtUsd(summary.dueThisWeekAmount)}
             </p>
           </div>
@@ -174,7 +174,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
             <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
               Paid This Month
             </p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+            <p className="mt-1 text-lg font-semibold tabular-nums text-hh-profit-positive dark:text-hh-profit-positive">
               {fmtUsd(summary.paidThisMonthAmount)}
             </p>
           </div>
@@ -294,7 +294,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                 <div key={bill.id} className="group relative">
                   <Link
                     href={`/bills/${bill.id}`}
-                    className="block rounded-sm border border-[#EBEBE9] bg-background p-4 transition-colors hover:bg-[#F7F7F5] active:bg-[#F7F7F5]/80 dark:border-border/60 dark:hover:bg-muted/30"
+                    className="block rounded-sm border border-[#E5E7EB] bg-background p-4 transition-colors hover:bg-[#F9FAFB] active:bg-[#F9FAFB]/80 dark:border-border/60 dark:hover:bg-muted/30"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1 pr-8">
@@ -328,108 +328,123 @@ export function BillsListClient({ bills, summary, projects }: Props) {
             })}
           </div>
           {/* Desktop/tablet: table */}
-          <div className="table-responsive hidden md:block">
-            <table className="min-w-[640px] w-full border-collapse text-sm md:min-w-0">
-              <thead>
-                <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
-                  <th className="table-head-label py-3 px-3 text-left">Vendor</th>
-                  <th className="table-head-label py-3 px-3 text-left">Project</th>
-                  <th className="table-head-label py-3 px-3 text-right tabular-nums">Amount</th>
-                  <th className="table-head-label py-3 px-3 text-left">Due Date</th>
-                  <th className="table-head-label py-3 px-3 text-left">Status</th>
-                  <th className="w-10 px-1" />
-                </tr>
-              </thead>
-              <tbody>
-                {localBills.map((bill) => (
-                  <tr
-                    key={bill.id}
-                    className={cn(
-                      listTableRowClassName,
-                      "h-12 border-b border-[#EBEBE9]/80 last:border-b-0 dark:border-border/40"
-                    )}
-                    onClick={() => router.push(`/bills/${bill.id}`)}
-                  >
-                    <td className="py-0 px-3 align-middle">
-                      <span
+          <div className="hidden md:block airtable-table-wrap airtable-table-wrap--ruled">
+            <div className="airtable-table-scroll">
+              <table className="min-w-[640px] w-full text-[13px] md:min-w-0">
+                <thead>
+                  <tr>
+                    <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                      Vendor
+                    </th>
+                    <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                      Project
+                    </th>
+                    <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                      Amount
+                    </th>
+                    <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                      Due Date
+                    </th>
+                    <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                      Status
+                    </th>
+                    <th className="h-8 w-10 px-1" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {localBills.map((bill) => (
+                    <tr
+                      key={bill.id}
+                      className={cn(
+                        listTableRowClassName,
+                        "transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
+                      )}
+                      onClick={() => router.push(`/bills/${bill.id}`)}
+                    >
+                      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">
+                        <span
+                          className={cn(
+                            "block max-w-[220px] truncate font-medium text-foreground hover:underline",
+                            listTablePrimaryCellClassName
+                          )}
+                        >
+                          {bill.vendor_name}
+                        </span>
+                      </td>
+                      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] text-muted-foreground">
+                        <span className="block max-w-[240px] truncate">
+                          {bill.project_name ?? "—"}
+                        </span>
+                      </td>
+                      <td
                         className={cn(
-                          "block max-w-[220px] truncate font-medium text-foreground hover:underline",
-                          listTablePrimaryCellClassName
+                          "h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums whitespace-nowrap",
+                          listTableAmountCellClassName
                         )}
                       >
-                        {bill.vendor_name}
-                      </span>
-                    </td>
-                    <td className="py-0 px-3 align-middle text-muted-foreground">
-                      <span className="block max-w-[240px] truncate">
-                        {bill.project_name ?? "—"}
-                      </span>
-                    </td>
-                    <td
-                      className={cn(
-                        "py-0 px-3 text-right align-middle tabular-nums whitespace-nowrap",
-                        listTableAmountCellClassName
-                      )}
-                    >
-                      {fmtUsd(bill.amount)}
-                    </td>
-                    <td className="py-0 px-3 align-middle text-muted-foreground tabular-nums whitespace-nowrap">
-                      {formatDate(bill.due_date)}
-                    </td>
-                    <td className="py-0 px-3 align-middle">
-                      {(() => {
-                        const s = statusPill(bill);
-                        return <StatusBadge label={s.label} variant={s.variant} />;
-                      })()}
-                    </td>
-                    <td className="py-0 px-1 align-middle" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-end gap-2">
-                        {bill.status === "Draft" && bill.paid_amount <= 0 ? (
-                          <DeleteRowAction onDelete={() => handleDeleteDraft(bill.id)} />
-                        ) : null}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="min-w-[140px]">
-                            <DropdownMenuItem asChild>
-                              <Link href={`/bills/${bill.id}`}>Open</Link>
-                            </DropdownMenuItem>
-                            {bill.status !== "Paid" && bill.status !== "Void" && (
-                              <DropdownMenuItem asChild>
-                                <Link href={`/bills/${bill.id}?addPayment=1`}>Add payment</Link>
-                              </DropdownMenuItem>
-                            )}
-                            {bill.status !== "Void" && (
-                              <DropdownMenuItem asChild>
-                                <Link href={`/bills/${bill.id}/edit`}>Edit</Link>
-                              </DropdownMenuItem>
-                            )}
-                            {bill.status !== "Void" && (
-                              <DropdownMenuItem
-                                className="text-muted-foreground"
-                                onSelect={(e) => {
-                                  e.preventDefault();
-                                  setVoidConfirmId(bill.id);
-                                }}
+                        {fmtUsd(bill.amount)}
+                      </td>
+                      <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] tabular-nums whitespace-nowrap text-muted-foreground">
+                        {formatDate(bill.due_date)}
+                      </td>
+                      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">
+                        {(() => {
+                          const s = statusPill(bill);
+                          return <StatusBadge label={s.label} variant={s.variant} />;
+                        })()}
+                      </td>
+                      <td
+                        className="h-11 min-h-[44px] px-1 py-0 align-middle text-[13px]"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex items-center justify-end gap-2">
+                          {bill.status === "Draft" && bill.paid_amount <= 0 ? (
+                            <DeleteRowAction onDelete={() => handleDeleteDraft(bill.id)} />
+                          ) : null}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
                               >
-                                Void
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="min-w-[140px]">
+                              <DropdownMenuItem asChild>
+                                <Link href={`/bills/${bill.id}`}>Open</Link>
                               </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                              {bill.status !== "Paid" && bill.status !== "Void" && (
+                                <DropdownMenuItem asChild>
+                                  <Link href={`/bills/${bill.id}?addPayment=1`}>Add payment</Link>
+                                </DropdownMenuItem>
+                              )}
+                              {bill.status !== "Void" && (
+                                <DropdownMenuItem asChild>
+                                  <Link href={`/bills/${bill.id}/edit`}>Edit</Link>
+                                </DropdownMenuItem>
+                              )}
+                              {bill.status !== "Void" && (
+                                <DropdownMenuItem
+                                  className="text-muted-foreground"
+                                  onSelect={(e) => {
+                                    e.preventDefault();
+                                    setVoidConfirmId(bill.id);
+                                  }}
+                                >
+                                  Void
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </>
       )}

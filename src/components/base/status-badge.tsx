@@ -4,12 +4,13 @@ import { cn } from "@/lib/utils";
 
 export type StatusBadgeVariant = "default" | "success" | "warning" | "danger" | "muted";
 
-const dotColors: Record<StatusBadgeVariant, string> = {
-  default: "bg-[#111111]",
-  success: "bg-green-500",
-  warning: "bg-amber-500",
-  danger: "bg-red-500",
-  muted: "bg-gray-400",
+/** Filled pills (no outline): success = green, warning = amber, danger = red, muted/default = gray */
+const variantPillClass: Record<StatusBadgeVariant, string> = {
+  default: "hh-pill-neutral",
+  success: "hh-pill-success",
+  warning: "hh-pill-warning",
+  danger: "hh-pill-danger",
+  muted: "hh-pill-neutral",
 };
 
 export interface StatusBadgeProps {
@@ -18,19 +19,6 @@ export interface StatusBadgeProps {
   className?: string;
 }
 
-/** Minimal status: dot + text. No pill background or heavy styling. */
 export function StatusBadge({ label, variant = "default", className }: StatusBadgeProps) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 text-xs text-[#111111]",
-        variant === "muted" && "text-[#6B7280]",
-        variant === "danger" && "text-red-600 dark:text-red-400",
-        className
-      )}
-    >
-      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", dotColors[variant])} aria-hidden />
-      {label}
-    </span>
-  );
+  return <span className={cn(variantPillClass[variant], className)}>{label}</span>;
 }

@@ -165,33 +165,33 @@ export default function LaborCostAllocationPage() {
         ) : null}
         <SectionHeader label="Summary" />
         <div className="grid grid-cols-3 gap-x-8 gap-y-2 py-3">
-          <div className="flex justify-between items-baseline border-b border-[#EBEBE9] pb-1.5 dark:border-border/40">
+          <div className="flex justify-between items-baseline border-b border-[#E5E7EB] pb-1.5 dark:border-border/40">
             <span className="text-sm text-muted-foreground">Revenue</span>
             <span className="tabular-nums text-right font-medium">${fmtUsd(revenue)}</span>
           </div>
-          <div className="flex justify-between items-baseline border-b border-[#EBEBE9] pb-1.5 dark:border-border/40">
+          <div className="flex justify-between items-baseline border-b border-[#E5E7EB] pb-1.5 dark:border-border/40">
             <span className="text-sm text-muted-foreground">Profit</span>
             <span
               className={cn(
                 "tabular-nums text-right font-medium",
                 profitPositive
-                  ? "text-emerald-600 dark:text-emerald-400"
+                  ? "text-hh-profit-positive dark:text-hh-profit-positive"
                   : "text-red-600 dark:text-red-400"
               )}
             >
               {profit >= 0 ? "" : "−"}${fmtUsd(Math.abs(profit))}
             </span>
           </div>
-          <div className="flex justify-between items-baseline border-b border-[#EBEBE9] pb-1.5 dark:border-border/40">
+          <div className="flex justify-between items-baseline border-b border-[#E5E7EB] pb-1.5 dark:border-border/40">
             <span className="text-sm text-muted-foreground">Margin %</span>
             <span className="tabular-nums text-right font-medium">{fmtPct(marginPct)}</span>
           </div>
         </div>
         <SectionHeader label="Cost by code" />
-        <div className="overflow-x-auto border-t border-[#EBEBE9] dark:border-border/60">
+        <div className="overflow-x-auto border-t border-[#E5E7EB] dark:border-border/60">
           <table className="w-full text-sm border-collapse">
             <thead>
-              <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
+              <tr className="border-b border-[#E5E7EB] bg-white dark:border-border/60 dark:bg-muted/30">
                 <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Cost Code
                 </th>
@@ -211,7 +211,7 @@ export default function LaborCostAllocationPage() {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.code} className="border-b border-[#EBEBE9]/80 dark:border-border/40">
+                <tr key={r.code} className="border-b border-[#E5E7EB]/80 dark:border-border/40">
                   <td className="py-1.5 px-3">
                     <span className="font-medium tabular-nums">{r.code}</span>
                     <span className="text-muted-foreground ml-2">{r.name}</span>
@@ -237,7 +237,7 @@ export default function LaborCostAllocationPage() {
                       "py-1.5 px-3 text-right tabular-nums font-medium",
                       listTableAmountCellClassName,
                       r.actual > r.budget && "text-red-600 dark:text-red-400",
-                      r.actual <= r.budget && "text-emerald-600 dark:text-emerald-400"
+                      r.actual <= r.budget && "text-hh-profit-positive dark:text-hh-profit-positive"
                     )}
                   >
                     {r.variance >= 0 ? "" : "−"}${fmtUsd(Math.abs(r.variance))}
@@ -254,7 +254,7 @@ export default function LaborCostAllocationPage() {
               ))}
             </tbody>
             <tfoot>
-              <tr className="border-t border-[#EBEBE9] font-medium dark:border-border/60">
+              <tr className="border-t border-[#E5E7EB] font-medium dark:border-border/60">
                 <td className="py-2 px-3">Total</td>
                 <td className="py-2 px-3 text-right tabular-nums">${fmtUsd(totals.budget)}</td>
                 <td className="py-2 px-3 text-right tabular-nums">${fmtUsd(totals.actual)}</td>
@@ -262,7 +262,7 @@ export default function LaborCostAllocationPage() {
                   className={cn(
                     "py-2 px-3 text-right tabular-nums",
                     overBudget && "text-red-600 dark:text-red-400",
-                    !overBudget && "text-emerald-600 dark:text-emerald-400"
+                    !overBudget && "text-hh-profit-positive dark:text-hh-profit-positive"
                   )}
                 >
                   {totalVariance >= 0 ? "" : "−"}${fmtUsd(Math.abs(totalVariance))}

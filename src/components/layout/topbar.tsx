@@ -130,6 +130,13 @@ export function Topbar({
     () => buildBreadcrumbs(pathname ?? "", breadcrumbOverrides),
     [pathname, breadcrumbOverrides]
   );
+  /** Compact trail: last two segments (项目名 › 页面名). */
+  const breadcrumbLine = React.useMemo(() => {
+    if (breadcrumbs.length >= 2) {
+      return `${breadcrumbs[breadcrumbs.length - 2]} › ${breadcrumbs[breadcrumbs.length - 1]}`;
+    }
+    return breadcrumbs[0] ?? "Dashboard";
+  }, [breadcrumbs]);
   const { systemHealth } = useSystemHealth();
 
   React.useEffect(() => {
@@ -159,7 +166,7 @@ export function Topbar({
   return (
     <header
       className={cn(
-        "sticky top-0 z-40 flex h-14 sm:h-16 shrink-0 items-center border-b border-[#EBEBE9] bg-[#F7F7F5] px-3 sm:px-4 lg:px-6 dark:border-border dark:bg-background",
+        "sticky top-0 z-40 flex h-11 shrink-0 items-center border-b border-[#E5E7EB] [border-bottom-width:0.5px] bg-white px-3 sm:px-4 lg:px-8 dark:border-border dark:bg-background",
         "flex-row gap-3 sm:gap-4"
       )}
     >
@@ -185,67 +192,25 @@ export function Topbar({
           <PanelLeft className="h-5 w-5" />
         </Button>
 
-        {/* HH GROUP / Breadcrumbs — hidden on mobile, visible tablet+ */}
-        <nav className="hidden min-w-0 items-center gap-1 text-sm sm:flex" aria-label="Breadcrumb">
-          <span className="shrink-0 text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400">
-            {orgName.replace(/\s+/g, " ").toUpperCase()}
-          </span>
-          {breadcrumbs.length > 0 && (
-            <>
-              <svg
-                className="h-[10px] w-[10px] shrink-0 opacity-30 text-[#9ca3af] dark:text-muted-foreground"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                strokeLinecap="round"
-                aria-hidden
-              >
-                <path d="M9 18l6-6-6-6" />
-              </svg>
-              <div className="flex min-w-0 items-center gap-1">
-                {breadcrumbs.map((label, i) => (
-                  <React.Fragment key={`${pathname}-${i}-${label}`}>
-                    {i > 0 && (
-                      <svg
-                        className="h-[10px] w-[10px] shrink-0 opacity-30 text-[#9ca3af] dark:text-muted-foreground"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth={2}
-                        strokeLinecap="round"
-                        aria-hidden
-                      >
-                        <path d="M9 18l6-6-6-6" />
-                      </svg>
-                    )}
-                    <span
-                      className={cn(
-                        "truncate text-sm",
-                        i === breadcrumbs.length - 1
-                          ? "font-semibold text-[#2D2D2D] dark:text-foreground"
-                          : "font-medium text-gray-500 dark:text-muted-foreground"
-                      )}
-                    >
-                      {label}
-                    </span>
-                  </React.Fragment>
-                ))}
-              </div>
-            </>
-          )}
+        {/* Breadcrumbs — hidden on mobile, visible tablet+ */}
+        <nav
+          className="hidden min-w-0 text-[13px] sm:block"
+          aria-label="Breadcrumb"
+          title={breadcrumbs.join(" › ")}
+        >
+          <span className="truncate text-[#111827] dark:text-foreground">{breadcrumbLine}</span>
         </nav>
       </div>
 
       {/* Global Search — 320px desktop, shrunk on tablet/mobile */}
       <div className="flex min-w-0 shrink items-center gap-2">
         <label
-          className="relative w-[120px] sm:w-[200px] md:w-[260px] lg:w-[320px]"
+          className="relative hidden min-w-0 sm:block sm:w-[200px] md:w-[240px]"
           htmlFor="topbar-search"
         >
           <span className="sr-only">Search</span>
           <Search
-            className="absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 shrink-0 text-gray-500 dark:text-muted-foreground"
+            className="absolute left-2.5 top-1/2 h-[15px] w-[15px] -translate-y-1/2 shrink-0 text-[#9CA3AF] dark:text-muted-foreground"
             strokeWidth={1.75}
             aria-hidden
           />
@@ -254,8 +219,8 @@ export function Topbar({
             type="search"
             placeholder="Search projects, workers, invoices..."
             className={cn(
-              "h-9 w-full rounded-lg border border-[#EBEBE9] bg-white pl-9 pr-3 text-sm text-[#2D2D2D] shadow-sm dark:border-border dark:bg-card dark:text-foreground placeholder:text-gray-400 dark:placeholder:text-muted-foreground",
-              "outline-none transition-all duration-150 focus:border-[#2D2D2D]/20 focus:ring-2 focus:ring-[#2D2D2D]/10 dark:focus:ring-ring/30",
+              "h-[30px] w-full rounded-lg border-[0.5px] border-[#E5E7EB] bg-white pl-8 pr-2.5 text-[13px] text-[#374151] shadow-none dark:border-border dark:bg-card dark:text-foreground placeholder:text-[#9CA3AF] dark:placeholder:text-muted-foreground",
+              "outline-none transition-colors duration-150 focus:border-[#111827] focus:ring-2 focus:ring-[#111827]/10 dark:focus:ring-ring/30",
               "min-w-0 max-sm:placeholder:opacity-0"
             )}
           />
@@ -264,7 +229,7 @@ export function Topbar({
           <Button
             variant="ghost"
             size="icon"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#EBEBE9] bg-white shadow-sm transition-all duration-150 hover:bg-white hover:shadow-md dark:border-border dark:bg-card dark:hover:bg-muted"
+            className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg border-[0.5px] border-[#E5E7EB] bg-white shadow-none transition-colors duration-150 hover:bg-[#F5F7FA] dark:border-border dark:bg-card dark:hover:bg-muted"
             aria-label="Notifications"
           >
             <Bell className="h-4 w-4 text-[#6b7280] dark:text-muted-foreground" />
@@ -279,12 +244,13 @@ export function Topbar({
       </div>
 
       <div className="flex shrink-0 items-center gap-1">
-        {/* + New — black background, white text, grouped dropdown */}
+        {/* + New — outline, matches page primary actions */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
-              className="h-9 min-h-[44px] rounded-md bg-[#111] px-3.5 py-2.5 text-sm font-medium text-white hover:bg-[#333] hover:text-white sm:min-h-0"
+              variant="outline"
               size="sm"
+              className="h-9 min-h-[44px] rounded-md border-[0.5px] border-[#E5E7EB] bg-white px-3.5 py-2.5 text-sm font-medium text-[#111827] shadow-none hover:bg-[#F5F7FA] hover:text-[#111827] sm:min-h-0 dark:border-border dark:bg-card dark:text-foreground dark:hover:bg-muted"
             >
               <Plus className="mr-2 h-4 w-4" />
               New

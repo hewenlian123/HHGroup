@@ -185,9 +185,7 @@ export function WorkersListClient({
               </span>
               <span
                 className={
-                  r.status === "Active"
-                    ? "text-green-600 dark:text-green-400"
-                    : "text-muted-foreground"
+                  r.status === "Active" ? "hh-pill-success" : "text-muted-foreground text-sm"
                 }
               >
                 {r.status}
@@ -282,9 +280,7 @@ export function WorkersListClient({
                 <td className="px-3 py-1.5">
                   <span
                     className={
-                      r.status === "Active"
-                        ? "text-green-600 dark:text-green-400"
-                        : "text-muted-foreground"
+                      r.status === "Active" ? "hh-pill-success" : "text-muted-foreground text-sm"
                     }
                   >
                     {r.status}

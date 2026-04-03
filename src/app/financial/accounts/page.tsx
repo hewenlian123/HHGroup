@@ -241,7 +241,7 @@ function AccountsPageInner() {
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="border-b border-[#EBEBE9] bg-[#F7F7F5] hover:bg-transparent dark:border-border/60 dark:bg-muted/30">
+                <TableRow className="hover:bg-transparent">
                   <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
                     Account Name
                   </TableHead>
@@ -260,7 +260,7 @@ function AccountsPageInner() {
                     key={row.id}
                     className={cn(
                       listTableRowClassName,
-                      "group border-b border-[#EBEBE9]/80 dark:border-border/30"
+                      "group border-b border-[#E5E7EB]/80 dark:border-border/30"
                     )}
                     onClick={() => openEdit(row)}
                   >

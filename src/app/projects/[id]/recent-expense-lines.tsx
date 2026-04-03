@@ -26,57 +26,80 @@ export function RecentExpenseLines({ rows }: { rows: RecentExpenseLineRow[] }) {
 
   return (
     <>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-zinc-200/60 dark:border-border bg-muted/10">
-              <th className="py-2 px-4 text-left table-head-label">Date</th>
-              <th className="py-2 px-4 text-left table-head-label">Vendor</th>
-              <th className="py-2 px-4 text-left table-head-label">Category</th>
-              <th className="py-2 px-4 text-left table-head-label">Memo</th>
-              <th className="py-2 px-4 text-right table-head-label">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
-              <tr className="border-b border-zinc-100/50 dark:border-border/30">
-                <td colSpan={5} className="py-10 px-4 text-center text-muted-foreground">
-                  No expense lines.
-                </td>
+      <div className="airtable-table-wrap airtable-table-wrap--ruled">
+        <div className="airtable-table-scroll">
+          <table className="w-full text-sm">
+            <thead>
+              <tr>
+                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  Date
+                </th>
+                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  Vendor
+                </th>
+                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  Category
+                </th>
+                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  Memo
+                </th>
+                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                  Amount
+                </th>
               </tr>
-            ) : (
-              rows.map((row) => (
-                <tr
-                  key={row.id}
-                  className="table-row-compact border-b border-zinc-100/50 dark:border-border/30 hover:bg-muted/20 transition-colors cursor-pointer"
-                  onClick={() => openRow(row)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      openRow(row);
-                    }
-                  }}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`Open expense line ${row.vendorName}`}
-                >
-                  <td className="py-2 px-4 tabular-nums text-foreground">{row.date}</td>
-                  <td className="py-2 px-4 font-medium text-foreground">{row.vendorName}</td>
-                  <td className="py-2 px-4 text-muted-foreground">{row.category}</td>
-                  <td className="py-2 px-4 text-muted-foreground">{row.memo ?? "—"}</td>
+            </thead>
+            <tbody>
+              {rows.length === 0 ? (
+                <tr>
                   <td
-                    className={cn(
-                      "py-2 px-4 num font-medium",
-                      row.amount > 0 ? "text-red-600/90 dark:text-red-400/90" : "text-foreground"
-                    )}
+                    colSpan={5}
+                    className="h-11 min-h-[44px] px-3 py-0 text-center text-muted-foreground"
                   >
-                    −${Math.abs(row.amount).toLocaleString()}
+                    No expense lines.
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                rows.map((row) => (
+                  <tr
+                    key={row.id}
+                    className="cursor-pointer transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
+                    onClick={() => openRow(row)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        openRow(row);
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Open expense line ${row.vendorName}`}
+                  >
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] tabular-nums text-foreground">
+                      {row.date}
+                    </td>
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium text-foreground">
+                      {row.vendorName}
+                    </td>
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] text-muted-foreground">
+                      {row.category}
+                    </td>
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] text-muted-foreground">
+                      {row.memo ?? "—"}
+                    </td>
+                    <td
+                      className={cn(
+                        "h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] font-medium tabular-nums",
+                        row.amount > 0 ? "text-red-600/90 dark:text-red-400/90" : "text-foreground"
+                      )}
+                    >
+                      −${Math.abs(row.amount).toLocaleString()}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <Sheet open={open} onOpenChange={setOpen}>

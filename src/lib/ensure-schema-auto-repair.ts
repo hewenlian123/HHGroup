@@ -18,6 +18,7 @@ const AUTO_REPAIR_DDL: string[] = [
 )`,
 
   // 2. expenses table columns
+  `ALTER TABLE public.expenses DROP CONSTRAINT IF EXISTS expenses_status_check`,
   `ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS vendor text`,
   `ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS vendor_name text`,
   `ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS payment_method text`,
@@ -97,6 +98,22 @@ const AUTO_REPAIR_DDL: string[] = [
    ON storage.objects FOR INSERT
    TO anon, authenticated
    WITH CHECK (bucket_id = 'worker-receipts')`,
+
+  // 8. attachments: table + relax entity_type so Quick Expense can insert entity_type = 'expense'
+  `CREATE TABLE IF NOT EXISTS public.attachments (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  entity_type text not null,
+  entity_id uuid not null,
+  file_name text not null,
+  file_path text not null,
+  mime_type text null,
+  size_bytes bigint null
+)`,
+  `ALTER TABLE public.attachments DROP CONSTRAINT IF EXISTS attachments_entity_type_check`,
+
+  // 9. commission_payments optional receipt attachment (older DBs without full migrations)
+  `ALTER TABLE public.commission_payments ADD COLUMN IF NOT EXISTS receipt_url text`,
 ];
 
 export type SchemaAutoRepairResult = {

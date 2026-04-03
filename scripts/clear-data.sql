@@ -5,8 +5,8 @@
 -- After running, verify in Table Editor that project_tasks, punch_list, workers, projects show 0 rows.
 
 -- Child tables first, then parents. CASCADE truncates dependent tables.
-TRUNCATE TABLE commission_payment_records CASCADE;
-TRUNCATE TABLE project_commissions CASCADE;
+TRUNCATE TABLE commission_payments CASCADE;
+TRUNCATE TABLE commissions CASCADE;
 TRUNCATE TABLE expense_lines CASCADE;
 TRUNCATE TABLE expenses CASCADE;
 TRUNCATE TABLE labor_entries CASCADE;

@@ -297,7 +297,7 @@ export function ExpensesClient() {
       key: "expense_date",
       header: "Date",
       render: (row) => (
-        <span className="tabular-nums text-foreground">
+        <span className="font-mono tabular-nums text-foreground">
           {(row.expense_date ?? row.created_at ?? "").slice(0, 10) || "—"}
         </span>
       ),
@@ -329,7 +329,7 @@ export function ExpensesClient() {
       align: "right",
       className: "tabular-nums",
       render: (row) => (
-        <span className="tabular-nums font-medium text-red-600">
+        <span className="font-mono tabular-nums font-medium text-red-600">
           −{money(safeNumber(row.total))}
         </span>
       ),
@@ -340,7 +340,9 @@ export function ExpensesClient() {
       align: "right",
       className: "tabular-nums",
       render: (row) => (
-        <span className="tabular-nums text-muted-foreground">{safeNumber(row.line_count)}</span>
+        <span className="font-mono tabular-nums text-muted-foreground">
+          {safeNumber(row.line_count)}
+        </span>
       ),
     },
     {
@@ -393,7 +395,7 @@ export function ExpensesClient() {
       />
 
       {error ? (
-        <div className="rounded-lg border border-[#EBEBE9] bg-white px-4 py-3 text-sm text-gray-600 shadow-sm dark:border-border dark:bg-card dark:text-muted-foreground">
+        <div className="rounded-lg border border-[#E5E7EB] bg-white px-4 py-3 text-sm text-gray-600 shadow-sm dark:border-border dark:bg-card dark:text-muted-foreground">
           {error}
         </div>
       ) : null}
@@ -459,7 +461,7 @@ export function ExpensesClient() {
               emptyText="No data yet."
               onRowClick={(r) => router.push(`/financial/expenses/${r.id}`)}
               primaryColumnKey="vendor_name"
-              amountColumnKeys={["total"]}
+              amountColumnKeys={["total", "line_count"]}
             />
             {hasMore && data.length > 0 && (
               <div className="border-t border-border/60 p-3 flex justify-center">

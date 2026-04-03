@@ -31,7 +31,7 @@ const STATUS_STYLES: Record<string, string> = {
   planned: "bg-muted text-muted-foreground",
   scheduled: "bg-muted text-muted-foreground",
   in_progress: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
-  done: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300",
+  done: "bg-[#DCFCE7] text-[#166534] dark:bg-green-950 dark:text-green-300",
   delayed: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
 };
 
@@ -120,7 +120,7 @@ function ScheduleCalendarGrid({
           →
         </button>
       </div>
-      <div className="grid grid-cols-7 gap-px border border-[#EBEBE9] rounded-sm overflow-hidden bg-[#EBEBE9] dark:border-border/60 dark:bg-border/40">
+      <div className="grid grid-cols-7 gap-px border border-[#E5E7EB] rounded-sm overflow-hidden bg-[#E5E7EB] dark:border-border/60 dark:bg-border/40">
         {weekDays.map((w) => (
           <div
             key={w}
@@ -134,7 +134,7 @@ function ScheduleCalendarGrid({
             key={i}
             className={cn(
               "min-h-[72px] bg-background p-1.5 text-left",
-              c.day == null && "bg-[#F7F7F5]/80 dark:bg-muted/20"
+              c.day == null && "bg-[#F3F4F6] dark:bg-muted/20"
             )}
           >
             {c.day != null && (
@@ -160,7 +160,7 @@ function ScheduleCalendarGrid({
   );
 }
 
-const ScheduleListRow = React.memo(function ScheduleListRow({
+const ScheduleTableRow = React.memo(function ScheduleTableRow({
   item,
   statusStyle,
   statusLabel,
@@ -170,13 +170,17 @@ const ScheduleListRow = React.memo(function ScheduleListRow({
   statusLabel: (s: string) => string;
 }) {
   return (
-    <li className="py-2.5 px-3 border-b border-[#EBEBE9]/80 last:border-b-0 hover:bg-[#F7F7F5] transition-colors dark:border-border/40 dark:hover:bg-muted/30">
-      <div className="font-medium text-foreground">{item.title || "—"}</div>
-      <div className="text-sm text-muted-foreground mt-0.5">{item.project_name ?? "—"}</div>
-      <div className="flex flex-wrap items-center gap-2 mt-1.5 text-sm">
-        <span className="tabular-nums text-muted-foreground">
-          {formatDateRange(item.start_date, item.end_date)}
-        </span>
+    <tr className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30">
+      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium text-foreground">
+        {item.title || "—"}
+      </td>
+      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] text-muted-foreground">
+        {item.project_name ?? "—"}
+      </td>
+      <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] tabular-nums text-muted-foreground">
+        {formatDateRange(item.start_date, item.end_date)}
+      </td>
+      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">
         <span
           className={cn(
             "inline-flex rounded-sm px-1.5 py-0.5 text-xs font-medium",
@@ -185,8 +189,8 @@ const ScheduleListRow = React.memo(function ScheduleListRow({
         >
           {statusLabel(item.status)}
         </span>
-      </div>
-    </li>
+      </td>
+    </tr>
   );
 });
 
@@ -300,7 +304,7 @@ export default function SchedulePage() {
     >
       <div className="max-w-5xl space-y-3">
         {/* View switch: List | Calendar */}
-        <div className="flex items-center gap-1 p-0.5 rounded-sm border border-[#EBEBE9] bg-background w-fit dark:border-border/60">
+        <div className="flex items-center gap-1 p-0.5 rounded-sm border border-[#E5E7EB] bg-background w-fit dark:border-border/60">
           <button
             type="button"
             onClick={() => setViewMode("list")}
@@ -329,7 +333,7 @@ export default function SchedulePage() {
 
         {/* List view — compact list */}
         {viewMode === "list" && (
-          <div className="overflow-hidden border border-[#EBEBE9] bg-background dark:border-border/60">
+          <div className="airtable-table-wrap airtable-table-wrap--ruled bg-background">
             {loading ? (
               <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>
             ) : error ? (
@@ -342,23 +346,43 @@ export default function SchedulePage() {
                 </Button>
               </div>
             ) : (
-              <ul className="divide-y divide-[#EBEBE9] dark:divide-border/60">
-                {schedule.map((s) => (
-                  <ScheduleListRow
-                    key={s.id}
-                    item={s}
-                    statusStyle={statusStyle}
-                    statusLabel={statusLabel}
-                  />
-                ))}
-              </ul>
+              <div className="airtable-table-scroll">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr>
+                      <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                        Title
+                      </th>
+                      <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                        Project
+                      </th>
+                      <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                        Dates
+                      </th>
+                      <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                        Status
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {schedule.map((s) => (
+                      <ScheduleTableRow
+                        key={s.id}
+                        item={s}
+                        statusStyle={statusStyle}
+                        statusLabel={statusLabel}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         )}
 
         {/* Calendar view — placeholder */}
         {viewMode === "calendar" && (
-          <div className="overflow-hidden border border-[#EBEBE9] bg-background dark:border-border/60">
+          <div className="overflow-hidden border border-[#E5E7EB] bg-background dark:border-border/60">
             {loading ? (
               <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>
             ) : error ? (
@@ -373,7 +397,7 @@ export default function SchedulePage() {
             ) : (
               <>
                 {/* Mobile: simplified list (event title + date only) */}
-                <div className="lg:hidden divide-y divide-[#EBEBE9] dark:divide-border/60">
+                <div className="lg:hidden divide-y divide-[#E5E7EB] dark:divide-border/60">
                   {schedule.map((s) => (
                     <div key={s.id} className="py-3 px-3 sm:px-4">
                       <div className="font-medium text-foreground">{s.title || "—"}</div>

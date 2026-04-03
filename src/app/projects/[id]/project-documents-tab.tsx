@@ -144,69 +144,76 @@ export function ProjectDocumentsTab({ projectId, documents }: Props) {
           .
         </p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr className="border-b border-border/60">
-                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  File
-                </th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Type
-                </th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Uploaded
-                </th>
-                <th className="w-32 px-1" />
-              </tr>
-            </thead>
-            <tbody>
-              {documents.map((doc) => (
-                <tr key={doc.id} className="border-b border-border/40">
-                  <td
-                    className="py-1.5 px-3 font-medium truncate max-w-[240px]"
-                    title={doc.file_name}
-                  >
-                    {doc.file_name}
-                  </td>
-                  <td className="py-1.5 px-3 text-muted-foreground">{doc.file_type}</td>
-                  <td className="py-1.5 px-3 text-muted-foreground">
-                    {formatDate(doc.uploaded_at)}
-                  </td>
-                  <td className="py-1.5 px-1">
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={() => handlePreview(doc)}
-                        disabled={loadingPreview}
-                      >
-                        Preview
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={() => handleDownload(doc)}
-                      >
-                        Download
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs text-red-600"
-                        onClick={() => handleDelete(doc)}
-                        disabled={deletingId === doc.id}
-                      >
-                        {deletingId === doc.id ? "Deleting…" : "Delete"}
-                      </Button>
-                    </div>
-                  </td>
+        <div className="airtable-table-wrap airtable-table-wrap--ruled">
+          <div className="airtable-table-scroll">
+            <table className="w-full text-sm">
+              <thead>
+                <tr>
+                  <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                    File
+                  </th>
+                  <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                    Type
+                  </th>
+                  <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                    Uploaded
+                  </th>
+                  <th className="h-8 w-32 px-1" />
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {documents.map((doc) => (
+                  <tr
+                    key={doc.id}
+                    className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
+                  >
+                    <td
+                      className="h-11 min-h-[44px] max-w-[240px] truncate px-3 py-0 align-middle text-[13px] font-medium"
+                      title={doc.file_name}
+                    >
+                      {doc.file_name}
+                    </td>
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] text-muted-foreground">
+                      {doc.file_type}
+                    </td>
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] tabular-nums text-muted-foreground">
+                      {formatDate(doc.uploaded_at)}
+                    </td>
+                    <td className="h-11 min-h-[44px] px-1 py-0 align-middle text-[13px]">
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => handlePreview(doc)}
+                          disabled={loadingPreview}
+                        >
+                          Preview
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => handleDownload(doc)}
+                        >
+                          Download
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs text-red-600"
+                          onClick={() => handleDelete(doc)}
+                          disabled={deletingId === doc.id}
+                        >
+                          {deletingId === doc.id ? "Deleting…" : "Delete"}
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

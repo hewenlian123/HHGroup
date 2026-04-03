@@ -251,36 +251,36 @@ export function Sidebar({
   const isActive = (href: string) =>
     pathname === href || (href !== "/dashboard" && pathname.startsWith(href + "/"));
 
-  /** Projects / Estimates–aligned nav row */
+  /** Notion-style nav row: 13px, py-1.5 px-2, rounded-md */
   const navRowClass = (active: boolean) =>
     cn(
-      "group relative flex items-center rounded-lg transition-all duration-150",
+      "group relative flex items-center rounded-md text-[13px] transition-colors duration-150",
       collapsed
-        ? "min-h-[44px] justify-center px-2 py-2.5 sm:min-h-0"
-        : "min-h-[44px] gap-3 px-4 py-2.5 text-sm sm:min-h-0",
+        ? "min-h-[44px] justify-center px-2 py-1.5 sm:min-h-0"
+        : "min-h-0 gap-2.5 px-2 py-1.5 sm:min-h-0",
       active
-        ? "bg-white font-semibold text-[#2D2D2D] shadow-sm dark:bg-card dark:text-foreground"
-        : "font-medium text-[#2D2D2D] hover:bg-white hover:shadow-sm dark:text-foreground/90 dark:hover:bg-muted"
+        ? "bg-[#EEF3FA] font-medium text-[#111827] dark:bg-muted dark:text-foreground"
+        : "font-normal text-[#111827] hover:bg-[#F5F7FA] dark:text-foreground/90 dark:hover:bg-muted/60"
     );
 
   const navIconClass = (active: boolean, extra?: string) =>
     cn(
-      "h-[18px] w-[18px] shrink-0 text-gray-500 transition-colors duration-150 group-hover:text-[#2D2D2D]",
-      active && "text-[#2D2D2D]",
+      "h-[16px] w-[16px] shrink-0 text-[#9CA3AF] transition-colors duration-150 group-hover:text-[#111827]",
+      active && "text-[#111827]",
       extra
     );
 
   return (
     <aside
       className={cn(
-        "flex h-full shrink-0 flex-col border-r border-[#EBEBE9] bg-[#F7F7F5] dark:border-border dark:bg-background",
-        collapsed ? "w-[72px]" : "w-[240px]",
+        "flex h-full shrink-0 flex-col border-r border-[#E5E7EB] [border-right-width:0.5px] bg-white dark:border-border dark:bg-background",
+        collapsed ? "w-[72px]" : "w-[210px]",
         className
       )}
     >
       <div
         className={cn(
-          "flex h-12 items-center gap-2 border-b border-[#EBEBE9] dark:border-border",
+          "flex h-12 items-center gap-2 border-b border-[#E5E7EB] [border-bottom-width:0.5px] dark:border-border",
           collapsed ? "px-3" : "px-3"
         )}
       >
@@ -292,10 +292,10 @@ export function Sidebar({
         </Avatar>
         {!collapsed && (
           <div className="min-w-0">
-            <p className="truncate text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400">
+            <p className="truncate text-[10px] font-medium uppercase tracking-[0.08em] text-[#9CA3AF]">
               HH Unified
             </p>
-            <p className="truncate text-sm font-semibold text-[#2D2D2D] dark:text-foreground">
+            <p className="truncate text-[13px] font-semibold text-[#111827] dark:text-foreground">
               {orgName}
             </p>
           </div>
@@ -351,7 +351,7 @@ export function Sidebar({
                 <button
                   type="button"
                   onClick={() => setSectionOpen(section.key, !isOpen)}
-                  className="flex w-full items-center gap-2 rounded-lg px-4 py-3 text-left text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 transition-all duration-150 hover:bg-white/70 hover:shadow-sm dark:text-muted-foreground dark:hover:bg-muted/60"
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-[10px] font-medium uppercase tracking-[0.08em] text-[#9CA3AF] transition-colors duration-150 hover:bg-[#F5F7FA] dark:text-muted-foreground dark:hover:bg-muted/60"
                   aria-expanded={isOpen}
                 >
                   {isOpen ? (
@@ -445,18 +445,18 @@ export function Sidebar({
 
       {/* User footer */}
       {!collapsed && (
-        <div className="border-t border-[#EBEBE9] dark:border-border px-4 py-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#EBEBE9] bg-white dark:border-border dark:bg-card">
-              <span className="text-[10px] font-semibold text-gray-500 dark:text-muted-foreground">
+        <div className="border-t border-[#E5E7EB] [border-top-width:0.5px] dark:border-border px-3 py-3">
+          <div className="flex items-center gap-2.5">
+            <Avatar className="h-8 w-8 shrink-0 rounded-md">
+              <AvatarFallback className="rounded-md bg-[#F5F7FA] text-[11px] font-medium text-[#6B7280]">
                 U
-              </span>
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-[#2D2D2D] dark:text-foreground">
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[13px] font-medium leading-tight text-[#111827] dark:text-foreground">
                 User
               </p>
-              <p className="text-[10px] uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              <p className="truncate text-[11px] text-[#9CA3AF] dark:text-muted-foreground">
                 Admin
               </p>
             </div>
@@ -465,13 +465,13 @@ export function Sidebar({
       )}
 
       {/* Collapse button at bottom */}
-      <div className="border-t border-[#EBEBE9] dark:border-border p-2">
+      <div className="border-t border-[#E5E7EB] [border-top-width:0.5px] dark:border-border p-2">
         <button
           type="button"
           onClick={onToggleCollapsed}
           className={cn(
-            "flex w-full items-center rounded-lg text-sm font-medium text-gray-500 transition-all duration-150 hover:bg-white hover:text-[#2D2D2D] hover:shadow-sm dark:text-muted-foreground dark:hover:bg-muted dark:hover:text-foreground",
-            collapsed ? "min-h-[44px] justify-center px-2 py-2 sm:min-h-8" : "gap-3 px-4 py-2.5"
+            "flex w-full items-center rounded-md text-[13px] font-medium text-[#9CA3AF] transition-colors duration-150 hover:bg-[#F5F7FA] hover:text-[#111827] dark:text-muted-foreground dark:hover:bg-muted dark:hover:text-foreground",
+            collapsed ? "min-h-[44px] justify-center px-2 py-2 sm:min-h-8" : "gap-2 px-2 py-1.5"
           )}
           aria-label="Collapse sidebar"
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}

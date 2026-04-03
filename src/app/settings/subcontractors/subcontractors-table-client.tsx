@@ -170,7 +170,9 @@ export function SubcontractorsTableClient({
                   <td className="py-1.5 px-3">
                     <span
                       className={
-                        r.active ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
+                        r.active
+                          ? "text-hh-profit-positive dark:text-hh-profit-positive"
+                          : "text-muted-foreground"
                       }
                     >
                       {r.active ? "Active" : "Inactive"}

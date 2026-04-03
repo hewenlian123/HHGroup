@@ -35,6 +35,7 @@
     "test:e2e:quick-expense": "CI= playwright test tests/quick-expense-upload.spec.ts --project=chromium",
     "test:e2e:payment-receipt": "E2E_ALLOW_PAYMENT_MUTATIONS=1 playwright test tests/worker-payment-receipt.spec.ts",
     "test:e2e:payment-full-flow": "E2E_ALLOW_PAYMENT_MUTATIONS=1 playwright test tests/worker-payment-full-flow.spec.ts",
+    "test:e2e:commission-full-flow": "CI= playwright test tests/commissions-full-flow.spec.ts --project=chromium --reporter=line,html",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:ui-mutations": "E2E_ALLOW_PAYMENT_MUTATIONS=1 playwright test --ui",
     "test:e2e:install": "playwright install",

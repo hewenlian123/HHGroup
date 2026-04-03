@@ -64,7 +64,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <SystemHealthProvider>
           <LaborAddEntryProvider>
             <SystemHealthPoller />
-            <div className="app-shell flex h-screen overflow-hidden bg-warm-grey">
+            <div className="app-shell flex h-screen overflow-hidden bg-[#F8F7F4] dark:bg-background">
               {/* Tablet/Desktop (640px+): sidebar fixed left, collapsible. */}
               <Sidebar
                 className="hidden sm:flex shrink-0 transition-[width] duration-200"
@@ -75,7 +75,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
                 <SheetContent
                   side="left"
-                  className="w-[240px] max-w-[85vw] p-0 transition-transform duration-200 data-[state=open]:slide-in-from-left data-[state=closed]:slide-out-to-left"
+                  className="w-[210px] max-w-[85vw] border-r border-[#E5E7EB] [border-right-width:0.5px] bg-white p-0 shadow-none transition-transform duration-200 data-[state=open]:slide-in-from-left data-[state=closed]:slide-out-to-left"
                 >
                   <Sidebar
                     className="h-full w-full border-none"
@@ -90,7 +90,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 />
                 <main
                   className={cn(
-                    "flex-1 overflow-y-auto overflow-x-hidden bg-warm-grey pb-14 sm:pb-0"
+                    "flex-1 overflow-y-auto overflow-x-hidden bg-[#F8F7F4] pb-14 sm:pb-0"
                   )}
                 >
                   {children}

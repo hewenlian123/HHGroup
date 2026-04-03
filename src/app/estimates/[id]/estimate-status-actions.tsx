@@ -36,7 +36,7 @@ export function EstimateStatusActions({
           <Button
             type="submit"
             size="sm"
-            className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white"
+            className="rounded-lg bg-[#111827] text-white hover:bg-[#111827]/90"
           >
             Approve
           </Button>

@@ -132,6 +132,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       "id, worker_id, project_id, work_date, cost_amount, status",
       "id, worker_id, project_id, work_date, cost_amount",
       "id, worker_id, project_id, work_date",
+      // No project_* columns (sparse migrations / denormalized project not exposed to PostgREST).
+      "id, worker_id, work_date, cost_amount, total, status, worker_payment_id, morning, afternoon, hours, notes",
+      "id, worker_id, work_date, cost_amount, status, worker_payment_id, morning, afternoon, hours, notes",
+      "id, worker_id, work_date, cost_amount, status, worker_payment_id, morning, afternoon",
+      "id, worker_id, work_date, cost_amount, status, worker_payment_id",
+      "id, worker_id, work_date, cost_amount, status",
+      "id, worker_id, work_date, cost_amount",
     ]) {
       laborRes = await queryWorker(c, "labor_entries", cols, "work_date");
       if (!laborRes.error || !isMissingColumn(laborRes.error)) {

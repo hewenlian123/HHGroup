@@ -132,7 +132,7 @@ export default function NewLaborInvoiceClient() {
           title="New Labor Invoice"
           description="Create a worker invoice/receipt record."
         />
-        <section className="border-b border-[#EBEBE9] py-12 text-center text-muted-foreground dark:border-border">
+        <section className="border-b border-[#E5E7EB] py-12 text-center text-muted-foreground dark:border-border">
           Loading…
         </section>
       </div>
@@ -147,7 +147,7 @@ export default function NewLaborInvoiceClient() {
           {error}
         </p>
       ) : null}
-      <section className="border-b border-[#EBEBE9] pb-6 dark:border-border">
+      <section className="border-b border-[#E5E7EB] pb-6 dark:border-border">
         <div className="grid gap-4">
           <div className="grid gap-1.5">
             <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
@@ -193,7 +193,7 @@ export default function NewLaborInvoiceClient() {
             <textarea
               value={memo}
               onChange={(e) => setMemo(e.target.value)}
-              className="min-h-[88px] rounded-sm border border-[#EBEBE9] bg-background px-3 py-2 text-sm dark:border-border"
+              className="min-h-[88px] rounded-sm border border-[#E5E7EB] bg-background px-3 py-2 text-sm dark:border-border"
             />
           </div>
         </div>

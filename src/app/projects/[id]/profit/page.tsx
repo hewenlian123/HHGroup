@@ -221,169 +221,212 @@ export default async function ProjectProfitPage({ params }: Props) {
         <span className="text-lg font-medium tabular-nums">${fmtUsd(forecastFinalCost)}</span>
         <span className="text-sm text-muted-foreground">Forecast Profit</span>
         <span
-          className={`text-lg font-medium tabular-nums ${forecastProfit < 0 ? "text-destructive" : forecastProfit > 0 ? "text-green-600 dark:text-green-400" : ""}`}
+          className={`text-lg font-medium tabular-nums ${forecastProfit < 0 ? "text-destructive" : forecastProfit > 0 ? "text-hh-profit-positive dark:text-hh-profit-positive" : ""}`}
         >
           ${fmtUsd(forecastProfit)}
         </span>
         <span className="text-sm text-muted-foreground">Forecast Margin %</span>
         <span
-          className={`text-lg font-medium tabular-nums ${forecastProfit < 0 ? "text-destructive" : forecastProfit > 0 ? "text-green-600 dark:text-green-400" : ""}`}
+          className={`text-lg font-medium tabular-nums ${forecastProfit < 0 ? "text-destructive" : forecastProfit > 0 ? "text-hh-profit-positive dark:text-hh-profit-positive" : ""}`}
         >
           {forecastMarginPct.toFixed(1)}%
         </span>
       </div>
       <Divider />
       <SectionHeader label="Forecast by Cost Code" />
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Cost Code
-              </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
-                Budget
-              </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
-                Actual
-              </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
-                Remaining
-              </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
-                Forecast
-              </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
-                Variance
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {forecastByCostCodeRows.length === 0 ? (
-              <tr className="border-b border-border/40">
-                <td colSpan={6} className="py-6 px-3 text-center text-muted-foreground text-xs">
-                  No budget items.
-                </td>
+      <div className="airtable-table-wrap airtable-table-wrap--ruled">
+        <div className="airtable-table-scroll">
+          <table className="w-full text-sm">
+            <thead>
+              <tr>
+                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  Cost Code
+                </th>
+                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                  Budget
+                </th>
+                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                  Actual
+                </th>
+                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                  Remaining
+                </th>
+                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                  Forecast
+                </th>
+                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                  Variance
+                </th>
               </tr>
-            ) : (
-              forecastByCostCodeRows.map((r) => {
-                const variancePositive = r.variance > 0;
-                const varianceClass = variancePositive
-                  ? "text-destructive"
-                  : "text-green-600 dark:text-green-400";
-                return (
-                  <tr key={r.costCode} className="border-b border-border/40">
-                    <td className="py-1.5 px-3">{r.costCode}</td>
-                    <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.budget)}</td>
-                    <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.actual)}</td>
-                    <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.remaining)}</td>
-                    <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.forecast)}</td>
-                    <td className={`py-1.5 px-3 text-right tabular-nums ${varianceClass}`}>
-                      ${fmtUsd(r.variance)}
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {forecastByCostCodeRows.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="h-11 min-h-[44px] px-3 py-0 text-center text-xs text-muted-foreground"
+                  >
+                    No budget items.
+                  </td>
+                </tr>
+              ) : (
+                forecastByCostCodeRows.map((r) => {
+                  const variancePositive = r.variance > 0;
+                  const varianceClass = variancePositive
+                    ? "text-destructive"
+                    : "text-hh-profit-positive dark:text-hh-profit-positive";
+                  return (
+                    <tr
+                      key={r.costCode}
+                      className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
+                    >
+                      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
+                        {r.costCode}
+                      </td>
+                      <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                        ${fmtUsd(r.budget)}
+                      </td>
+                      <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                        ${fmtUsd(r.actual)}
+                      </td>
+                      <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                        ${fmtUsd(r.remaining)}
+                      </td>
+                      <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                        ${fmtUsd(r.forecast)}
+                      </td>
+                      <td
+                        className={`h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums ${varianceClass}`}
+                      >
+                        ${fmtUsd(r.variance)}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
       <Divider />
       <SectionHeader label="Cost breakdown" />
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Category
-              </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
-                Budget
-              </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
-                Actual
-              </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
-                Variance
-              </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
-                Impact on Profit
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.category} className="border-b border-border/40">
-                <td className="py-1.5 px-3">{r.category}</td>
-                <td className="py-1.5 px-3 text-right tabular-nums">
-                  {r.budget != null ? `$${fmtUsd(r.budget)}` : "—"}
-                </td>
-                <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.actual)}</td>
-                <td className="py-1.5 px-3 text-right tabular-nums">
-                  {r.variance != null ? `$${fmtUsd(r.variance)}` : "—"}
-                </td>
-                <td
-                  className={`py-1.5 px-3 text-right tabular-nums ${r.impactOnProfit <= 0 ? "text-destructive" : ""}`}
-                >
-                  ${fmtUsd(r.impactOnProfit)}
-                </td>
+      <div className="airtable-table-wrap airtable-table-wrap--ruled">
+        <div className="airtable-table-scroll">
+          <table className="w-full text-sm">
+            <thead>
+              <tr>
+                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  Category
+                </th>
+                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                  Budget
+                </th>
+                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                  Actual
+                </th>
+                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                  Variance
+                </th>
+                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                  Impact on Profit
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr
+                  key={r.category}
+                  className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
+                >
+                  <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
+                    {r.category}
+                  </td>
+                  <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                    {r.budget != null ? `$${fmtUsd(r.budget)}` : "—"}
+                  </td>
+                  <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                    ${fmtUsd(r.actual)}
+                  </td>
+                  <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                    {r.variance != null ? `$${fmtUsd(r.variance)}` : "—"}
+                  </td>
+                  <td
+                    className={`h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums ${r.impactOnProfit <= 0 ? "text-destructive" : ""}`}
+                  >
+                    ${fmtUsd(r.impactOnProfit)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
       <Divider />
       <SectionHeader label="Subcontracts" />
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Subcontractor
-              </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
-                Revised Contract
-              </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
-                Paid
-              </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
-                Exposure
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {subcontractRows.length === 0 ? (
-              <tr className="border-b border-border/40">
-                <td colSpan={4} className="py-6 px-3 text-center text-muted-foreground text-xs">
-                  No subcontracts.
-                </td>
+      <div className="airtable-table-wrap airtable-table-wrap--ruled">
+        <div className="airtable-table-scroll">
+          <table className="w-full text-sm">
+            <thead>
+              <tr>
+                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  Subcontractor
+                </th>
+                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                  Revised Contract
+                </th>
+                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                  Paid
+                </th>
+                <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                  Exposure
+                </th>
               </tr>
-            ) : (
-              subcontractRows.map((s) => {
-                const exposurePositive = s.exposure > 0;
-                const paidInFull = s.paid >= s.revised;
-                const rowClass = paidInFull
-                  ? "bg-green-500/10 dark:bg-green-500/10"
-                  : exposurePositive
-                    ? "bg-orange-500/10 dark:bg-orange-500/10"
-                    : "";
-                return (
-                  <tr key={s.id} className={`border-b border-border/40 ${rowClass}`}>
-                    <td className="py-1.5 px-3">{s.subcontractor_name}</td>
-                    <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(s.revised)}</td>
-                    <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(s.paid)}</td>
-                    <td
-                      className={`py-1.5 px-3 text-right tabular-nums ${exposurePositive ? "text-orange-600 dark:text-orange-400" : paidInFull ? "text-green-600 dark:text-green-400" : ""}`}
+            </thead>
+            <tbody>
+              {subcontractRows.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={4}
+                    className="h-11 min-h-[44px] px-3 py-0 text-center text-xs text-muted-foreground"
+                  >
+                    No subcontracts.
+                  </td>
+                </tr>
+              ) : (
+                subcontractRows.map((s) => {
+                  const exposurePositive = s.exposure > 0;
+                  const paidInFull = s.paid >= s.revised;
+                  const rowClass = paidInFull
+                    ? "bg-[#166534]/10 dark:bg-[#166534]/10"
+                    : exposurePositive
+                      ? "bg-orange-500/10 dark:bg-orange-500/10"
+                      : "";
+                  return (
+                    <tr
+                      key={s.id}
+                      className={`transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30 ${rowClass}`}
                     >
-                      ${fmtUsd(s.exposure)}
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+                      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
+                        {s.subcontractor_name}
+                      </td>
+                      <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                        ${fmtUsd(s.revised)}
+                      </td>
+                      <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                        ${fmtUsd(s.paid)}
+                      </td>
+                      <td
+                        className={`h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums ${exposurePositive ? "text-orange-600 dark:text-orange-400" : paidInFull ? "text-hh-profit-positive dark:text-hh-profit-positive" : ""}`}
+                      >
+                        ${fmtUsd(s.exposure)}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </PageLayout>
   );

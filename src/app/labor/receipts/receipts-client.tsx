@@ -24,7 +24,7 @@ function fmtUsd(n: number) {
 
 function statusDot(status: string) {
   const s = status.toLowerCase();
-  if (s === "approved") return "bg-emerald-500/80";
+  if (s === "approved") return "bg-[#166534]/80";
   if (s === "rejected") return "bg-red-500/70";
   if (s === "paid") return "bg-blue-500/70";
   return "bg-amber-500/70";

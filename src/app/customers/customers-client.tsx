@@ -303,89 +303,91 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
             </Button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-border/60 bg-muted/40">
-                  <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
-                    Name
-                  </th>
-                  <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
-                    Email
-                  </th>
-                  <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
-                    Phone
-                  </th>
-                  <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
-                    Address
-                  </th>
-                  <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
-                    Created
-                  </th>
-                  <th className="px-2 py-2 w-8 text-right text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((c) => (
-                  <tr
-                    key={c.id}
-                    className="border-b border-border/40 last:border-b-0 hover:bg-muted/40"
-                  >
-                    <td className="px-3 py-2 font-medium">
-                      <Link
-                        href={`/customers/${c.id}`}
-                        className="text-foreground hover:underline underline-offset-2"
-                      >
-                        {c.name}
-                      </Link>
-                    </td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground">{c.email ?? "—"}</td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground">{c.phone ?? "—"}</td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground">
-                      {truncateText(c.address, 36)}
-                    </td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground">
-                      {c.created_at ? new Date(c.created_at).toLocaleDateString() : "—"}
-                    </td>
-                    <td className="px-2 py-2 text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 rounded-sm"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="min-w-[160px]">
-                          <DropdownMenuItem
-                            onSelect={(e) => {
-                              e.preventDefault();
-                              openEdit(c);
-                            }}
-                          >
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onSelect={(e) => {
-                              e.preventDefault();
-                              confirmDelete(c);
-                            }}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            Delete…
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
+          <div className="airtable-table-wrap airtable-table-wrap--ruled">
+            <div className="airtable-table-scroll">
+              <table className="min-w-[720px] text-sm">
+                <thead>
+                  <tr>
+                    <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                      Name
+                    </th>
+                    <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                      Email
+                    </th>
+                    <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                      Phone
+                    </th>
+                    <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                      Address
+                    </th>
+                    <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                      Created
+                    </th>
+                    <th className="h-8 w-8 px-2 text-right text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                      Actions
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {filtered.map((c) => (
+                    <tr
+                      key={c.id}
+                      className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
+                    >
+                      <td className="min-h-[44px] px-3 py-2 align-middle font-medium">
+                        <Link
+                          href={`/customers/${c.id}`}
+                          className="text-foreground hover:underline underline-offset-2"
+                        >
+                          {c.name}
+                        </Link>
+                      </td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground">{c.email ?? "—"}</td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground">{c.phone ?? "—"}</td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground">
+                        {truncateText(c.address, 36)}
+                      </td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground">
+                        {c.created_at ? new Date(c.created_at).toLocaleDateString() : "—"}
+                      </td>
+                      <td className="px-2 py-2 text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 rounded-sm"
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="min-w-[160px]">
+                            <DropdownMenuItem
+                              onSelect={(e) => {
+                                e.preventDefault();
+                                openEdit(c);
+                              }}
+                            >
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onSelect={(e) => {
+                                e.preventDefault();
+                                confirmDelete(c);
+                              }}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              Delete…
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

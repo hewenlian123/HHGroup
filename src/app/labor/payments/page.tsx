@@ -182,98 +182,115 @@ export default function WorkerPaymentsPage() {
         </div>
       </div>
 
-      <div className="table-responsive border-b border-border/60">
-        <table className="w-full min-w-[560px] text-sm border-collapse md:min-w-0">
-          <thead>
-            <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Worker
-              </th>
-              <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Project
-              </th>
-              <th
-                className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums cursor-pointer select-none"
-                onClick={() => toggleSort("amount")}
-              >
-                Amount
-              </th>
-              <th
-                className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer select-none"
-                onClick={() => toggleSort("method")}
-              >
-                Payment method
-              </th>
-              <th
-                className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer select-none"
-                onClick={() => toggleSort("paymentDate")}
-              >
-                Payment date
-              </th>
-              <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Notes
-              </th>
-              <th className="w-40" />
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr className="border-b border-border/40">
-                <td colSpan={7} className="py-6 px-4 text-center text-muted-foreground text-xs">
-                  Loading…
-                </td>
+      <div className="airtable-table-wrap airtable-table-wrap--ruled">
+        <div className="airtable-table-scroll">
+          <table className="w-full min-w-[560px] text-sm md:min-w-0">
+            <thead>
+              <tr>
+                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  Worker
+                </th>
+                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  Project
+                </th>
+                <th
+                  className="h-8 cursor-pointer select-none px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums"
+                  onClick={() => toggleSort("amount")}
+                >
+                  Amount
+                </th>
+                <th
+                  className="h-8 cursor-pointer select-none px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]"
+                  onClick={() => toggleSort("method")}
+                >
+                  Payment method
+                </th>
+                <th
+                  className="h-8 cursor-pointer select-none px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]"
+                  onClick={() => toggleSort("paymentDate")}
+                >
+                  Payment date
+                </th>
+                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  Notes
+                </th>
+                <th className="h-8 w-40 px-3" />
               </tr>
-            ) : filtered.length === 0 ? (
-              <tr className="border-b border-border/40">
-                <td colSpan={7} className="py-6 px-4 text-center text-muted-foreground text-xs">
-                  No payments yet.
-                </td>
-              </tr>
-            ) : (
-              paged.map((r) => (
-                <tr key={r.id} className="border-b border-border/40 hover:bg-muted/10">
-                  <td className="py-2 px-4">{workerNameById.get(r.workerId) ?? r.workerId}</td>
-                  <td className="py-2 px-4 text-muted-foreground">
-                    {r.projectId ? (projectNameById.get(r.projectId) ?? r.projectId) : "—"}
-                  </td>
-                  <td className="py-2 px-4 text-right tabular-nums font-medium">
-                    {fmtUsd(r.amount)}
-                  </td>
-                  <td className="py-2 px-4">{r.paymentMethod ?? "—"}</td>
-                  <td className="py-2 px-4 tabular-nums text-muted-foreground">{r.paymentDate}</td>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
                   <td
-                    className="py-2 px-4 text-muted-foreground max-w-[240px] truncate"
-                    title={r.notes ?? undefined}
+                    colSpan={7}
+                    className="h-11 min-h-[44px] px-3 py-0 text-center text-xs text-muted-foreground"
                   >
-                    {r.notes ?? "—"}
-                  </td>
-                  <td className="py-2 px-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        type="button"
-                        className="text-sm text-muted-foreground hover:text-foreground"
-                        onClick={() => setReceiptPreviewId(r.id)}
-                      >
-                        View Receipt
-                      </button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 text-red-600"
-                        onClick={() => handleDelete(r.id)}
-                      >
-                        Delete
-                      </Button>
-                    </div>
+                    Loading…
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={7}
+                    className="h-11 min-h-[44px] px-3 py-0 text-center text-xs text-muted-foreground"
+                  >
+                    No payments yet.
+                  </td>
+                </tr>
+              ) : (
+                paged.map((r) => (
+                  <tr
+                    key={r.id}
+                    className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
+                  >
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
+                      {workerNameById.get(r.workerId) ?? r.workerId}
+                    </td>
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] text-muted-foreground">
+                      {r.projectId ? (projectNameById.get(r.projectId) ?? r.projectId) : "—"}
+                    </td>
+                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] font-medium tabular-nums">
+                      {fmtUsd(r.amount)}
+                    </td>
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">
+                      {r.paymentMethod ?? "—"}
+                    </td>
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] tabular-nums text-muted-foreground">
+                      {r.paymentDate}
+                    </td>
+                    <td
+                      className="h-11 min-h-[44px] max-w-[240px] truncate px-3 py-0 align-middle text-[13px] text-muted-foreground"
+                      title={r.notes ?? undefined}
+                    >
+                      {r.notes ?? "—"}
+                    </td>
+                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle text-[13px]">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          className="text-sm text-muted-foreground hover:text-foreground"
+                          onClick={() => setReceiptPreviewId(r.id)}
+                        >
+                          View Receipt
+                        </button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 text-red-600"
+                          onClick={() => handleDelete(r.id)}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      <div className="flex items-center justify-between pt-3 text-sm text-muted-foreground">
+      <div className="flex items-center justify-between border-t border-border/60 pt-3 text-sm text-muted-foreground">
         <span className="tabular-nums">
           {filtered.length === 0
             ? "0"

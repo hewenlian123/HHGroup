@@ -24,11 +24,11 @@ export function PageHeader({
       )}
     >
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-[#2D2D2D] dark:text-foreground">
+        <h1 className="text-xl font-semibold tracking-tight text-[#111827] dark:text-foreground">
           {title}
         </h1>
         {subtext && (
-          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-gray-500 dark:text-muted-foreground">
+          <p className="mt-0.5 max-w-2xl text-xs text-[#9CA3AF] dark:text-muted-foreground">
             {subtext}
           </p>
         )}

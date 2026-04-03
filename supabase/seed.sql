@@ -627,8 +627,16 @@ BEGIN
     EXECUTE $d$DELETE FROM public.expense_lines WHERE expense_id = '44444444-4444-4444-4444-444444444441'::uuid$d$;
     EXECUTE $d$DELETE FROM public.expenses WHERE id = '44444444-4444-4444-4444-444444444441'::uuid$d$;
     IF pg_temp.hh_e2e_col('expenses', 'status') THEN
-      EXECUTE $d$INSERT INTO public.expenses (id, expense_date, vendor_name, payment_method, reference_no, total, line_count, status)
-      VALUES ('44444444-4444-4444-4444-444444444441'::uuid, CURRENT_DATE, '[E2E] Seed expense', 'Cash', 'SEED-E1', 99.5, 1, 'approved')$d$;
+      IF pg_temp.hh_e2e_col('expenses', 'amount') THEN
+        EXECUTE $d$INSERT INTO public.expenses (id, expense_date, vendor_name, payment_method, reference_no, total, line_count, status, amount)
+        VALUES ('44444444-4444-4444-4444-444444444441'::uuid, CURRENT_DATE, '[E2E] Seed expense', 'Cash', 'SEED-E1', 99.5, 1, 'approved', 99.5)$d$;
+      ELSE
+        EXECUTE $d$INSERT INTO public.expenses (id, expense_date, vendor_name, payment_method, reference_no, total, line_count, status)
+        VALUES ('44444444-4444-4444-4444-444444444441'::uuid, CURRENT_DATE, '[E2E] Seed expense', 'Cash', 'SEED-E1', 99.5, 1, 'approved')$d$;
+      END IF;
+    ELSIF pg_temp.hh_e2e_col('expenses', 'amount') THEN
+      EXECUTE $d$INSERT INTO public.expenses (id, expense_date, vendor_name, payment_method, reference_no, total, line_count, amount)
+      VALUES ('44444444-4444-4444-4444-444444444441'::uuid, CURRENT_DATE, '[E2E] Seed expense', 'Cash', 'SEED-E1', 99.5, 1, 99.5)$d$;
     ELSE
       EXECUTE $d$INSERT INTO public.expenses (id, expense_date, vendor_name, payment_method, reference_no, total, line_count)
       VALUES ('44444444-4444-4444-4444-444444444441'::uuid, CURRENT_DATE, '[E2E] Seed expense', 'Cash', 'SEED-E1', 99.5, 1)$d$;

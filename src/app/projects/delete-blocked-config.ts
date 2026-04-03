@@ -28,7 +28,7 @@ export const DELETE_BLOCKED_RELATED_CONFIG: {
   { key: "subcontract_bills", label: "Subcontract bills" },
   { key: "documents", label: "Documents" },
   { key: "deposits", label: "Deposits" },
-  { key: "project_commissions", label: "Commissions" },
+  { key: "commissions", label: "Commissions" },
   { key: "payments_received", label: "Payments received" },
 ];
 

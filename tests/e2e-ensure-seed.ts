@@ -6,6 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import {
   E2E_PRESERVED_CUSTOMER_ID,
+  E2E_PRESERVED_LABOR_ENTRY_ID,
   E2E_PRESERVED_PROJECT_ID,
   E2E_PRESERVED_WORKER_ID,
 } from "./e2e-cleanup-db";
@@ -163,4 +164,164 @@ export async function ensureE2EPreservedSeed(supabase: SupabaseClient): Promise<
     },
   ];
   await upsertFirstSuccess(supabase, "projects", projectVariants, "id");
+
+  // Unpaid labor for [E2E] Seed Worker so /labor/workers/:id/balance enables "Pay Worker" (globalSetup-only DBs
+  // often lack rows that full supabase/seed.sql would insert).
+  const { error: laborProbeErr } = await supabase.from("labor_entries").select("id").limit(1);
+  if (laborProbeErr && isMissingTableError(laborProbeErr.message)) {
+    /* optional table */
+  } else if (laborProbeErr) {
+    throw new Error(`E2E seed labor_entries probe: ${laborProbeErr.message}`);
+  } else {
+    const y = new Date();
+    y.setUTCDate(y.getUTCDate() - 1);
+    const workDate = y.toISOString().slice(0, 10);
+    const notes = "[E2E] SEED preserved unpaid labor";
+    const wid = E2E_PRESERVED_WORKER_ID;
+    const pid = E2E_PRESERVED_PROJECT_ID;
+    const lid = E2E_PRESERVED_LABOR_ENTRY_ID;
+
+    await supabase.from("labor_entries").delete().eq("id", lid);
+
+    // Shapes mirror `insertLaborEntryShaped` (api/test/financial-workflows) — schemas differ by migration.
+    // Try no-project rows first: some PostgREST schemas omit `project_id`; balance API still counts `cost_amount`.
+    const laborAttempts: RecordUpsert[] = [
+      {
+        id: lid,
+        worker_id: wid,
+        work_date: workDate,
+        hours: 8,
+        cost_amount: 200,
+        status: "Draft",
+        worker_payment_id: null,
+        notes,
+      },
+      {
+        id: lid,
+        worker_id: wid,
+        work_date: workDate,
+        hours: 8,
+        cost_amount: 200,
+        status: "Draft",
+        notes,
+      },
+      {
+        id: lid,
+        worker_id: wid,
+        work_date: workDate,
+        cost_amount: 200,
+        status: "Draft",
+        notes,
+      },
+      {
+        id: lid,
+        worker_id: wid,
+        entry_date: workDate,
+        hours: 8,
+        cost_amount: 200,
+        status: "Draft",
+        notes,
+      },
+      {
+        id: lid,
+        worker_id: wid,
+        project_id: pid,
+        work_date: workDate,
+        hours: 8,
+        cost_amount: 200,
+        status: "Draft",
+        worker_payment_id: null,
+        morning: true,
+        afternoon: true,
+        notes,
+      },
+      {
+        id: lid,
+        worker_id: wid,
+        project_id: pid,
+        work_date: workDate,
+        hours: 8,
+        cost_amount: 200,
+        status: "Draft",
+        morning: true,
+        afternoon: true,
+        notes,
+      },
+      {
+        id: lid,
+        worker_id: wid,
+        project_id: pid,
+        work_date: workDate,
+        hours: 8,
+        cost_amount: 200,
+        notes,
+      },
+      {
+        id: lid,
+        worker_id: wid,
+        project_id: pid,
+        work_date: workDate,
+        hours: 8,
+        cost_amount: 200,
+        status: "pending",
+        notes,
+      },
+      {
+        id: lid,
+        worker_id: wid,
+        work_date: workDate,
+        project_am_id: pid,
+        day_rate: 200,
+        ot_amount: 0,
+        total: 200,
+        status: "Draft",
+        notes,
+      },
+      {
+        id: lid,
+        worker_id: wid,
+        work_date: workDate,
+        project_am_id: pid,
+        day_rate: 200,
+        ot_amount: 0,
+        total: 200,
+        notes,
+      },
+      {
+        id: lid,
+        worker_id: wid,
+        date: workDate,
+        am_project_id: pid,
+        half_day_rate: 100,
+        ot_amount: 0,
+        total: 200,
+        status: "draft",
+        notes,
+      },
+    ];
+
+    let laborLastErr = "";
+    let laborOk = false;
+    for (const payload of laborAttempts) {
+      const { error } = await supabase
+        .from("labor_entries")
+        .insert(payload)
+        .select("id")
+        .maybeSingle();
+      if (!error) {
+        laborOk = true;
+        break;
+      }
+      laborLastErr = error.message ?? "";
+      const retry = missingColumnOrSchemaCache(laborLastErr) || isForeignKeyError(laborLastErr);
+      if (!retry) {
+        throw new Error(`E2E seed labor_entries: ${laborLastErr}`);
+      }
+    }
+    if (!laborOk) {
+      throw new Error(
+        `E2E seed labor_entries: no insert shape matched this DB. Last error: ${laborLastErr || "(none)"}`
+      );
+    }
+  }
 }

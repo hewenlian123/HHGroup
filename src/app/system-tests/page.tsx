@@ -43,7 +43,7 @@ const FULL_SYSTEM_OPTIONS: { id: string; label: string }[] = [
 function StatusBadge({ status }: { status: TestRow["status"] }) {
   if (status === "passed")
     return (
-      <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+      <span className="inline-flex items-center gap-1 text-hh-profit-positive dark:text-hh-profit-positive">
         ● Passed
       </span>
     );
@@ -246,7 +246,7 @@ export default function SystemTestsPage() {
                       <span
                         className={
                           row.ok
-                            ? "inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400"
+                            ? "inline-flex items-center gap-1 text-hh-profit-positive dark:text-hh-profit-positive"
                             : "inline-flex items-center gap-1 text-red-600 dark:text-red-400"
                         }
                       >

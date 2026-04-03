@@ -223,7 +223,7 @@ export default async function SubcontractorDetailPage({ params }: Props) {
                 const exposurePositive = c.exposure > 0;
                 const paidInFull = c.paid >= c.revised;
                 const rowClass = paidInFull
-                  ? "bg-green-500/10 dark:bg-green-500/10"
+                  ? "bg-[#166534]/10 dark:bg-[#166534]/10"
                   : exposurePositive
                     ? "bg-orange-500/10 dark:bg-orange-500/10"
                     : "";
@@ -238,7 +238,7 @@ export default async function SubcontractorDetailPage({ params }: Props) {
                     <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(c.revised)}</td>
                     <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(c.paid)}</td>
                     <td
-                      className={`py-1.5 px-3 text-right tabular-nums ${exposurePositive ? "text-orange-600 dark:text-orange-400" : paidInFull ? "text-green-600 dark:text-green-400" : ""}`}
+                      className={`py-1.5 px-3 text-right tabular-nums ${exposurePositive ? "text-orange-600 dark:text-orange-400" : paidInFull ? "text-hh-profit-positive dark:text-hh-profit-positive" : ""}`}
                     >
                       ${fmtUsd(c.exposure)}
                     </td>

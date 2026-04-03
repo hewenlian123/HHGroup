@@ -202,7 +202,7 @@ export default function SettingsListsPage() {
         description="Manage your custom categories, vendors, and payment methods."
       />
 
-      <div className="flex flex-wrap gap-2 border-b border-[#EBEBE9] pb-2 dark:border-border">
+      <div className="flex flex-wrap gap-2 border-b border-[#E5E7EB] pb-2 dark:border-border">
         {(["categories", "vendors", "paymentMethods"] as const).map((t) => (
           <button
             key={t}
@@ -211,8 +211,8 @@ export default function SettingsListsPage() {
             className={cn(
               "rounded-sm border px-3 py-1.5 text-sm font-medium capitalize transition-colors",
               tab === t
-                ? "border-[#2D2D2D]/25 bg-[#F7F7F5] text-[#2D2D2D] dark:border-border dark:bg-muted/40 dark:text-foreground"
-                : "border-[#EBEBE9] bg-background text-muted-foreground hover:bg-[#F7F7F5]/60 dark:border-border"
+                ? "border-[#111827]/25 bg-[#F9FAFB] text-[#111827] dark:border-border dark:bg-muted/40 dark:text-foreground"
+                : "border-[#E5E7EB] bg-background text-muted-foreground hover:bg-[#F9FAFB]/60 dark:border-border"
             )}
           >
             {t === "categories"
@@ -224,7 +224,7 @@ export default function SettingsListsPage() {
         ))}
       </div>
 
-      <section className="border-b border-[#EBEBE9] pb-6 dark:border-border">
+      <section className="border-b border-[#E5E7EB] pb-6 dark:border-border">
         <h2 className="mb-4 text-base font-semibold text-foreground">{sectionTitle}</h2>
         <div className="mb-4 flex flex-wrap gap-3">
           <Input
@@ -249,10 +249,10 @@ export default function SettingsListsPage() {
             className="ml-auto max-w-[200px] rounded-sm"
           />
         </div>
-        <div className="overflow-hidden rounded-sm border border-[#EBEBE9] dark:border-border">
+        <div className="overflow-hidden rounded-sm border border-[#E5E7EB] dark:border-border">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border dark:bg-muted/30">
+              <tr className="border-b border-[#E5E7EB] bg-white dark:border-border dark:bg-muted/30">
                 <th className="text-left py-3 px-4 font-medium text-muted-foreground">Name</th>
                 <th className="text-right py-3 px-4 font-medium text-muted-foreground w-24">
                   Used
@@ -267,7 +267,7 @@ export default function SettingsListsPage() {
               {state.filtered.map((row) => (
                 <tr
                   key={row.name}
-                  className="border-b border-[#EBEBE9]/80 transition-colors hover:bg-[#F7F7F5] dark:border-border/40 dark:hover:bg-muted/20"
+                  className="border-b border-[#E5E7EB]/80 transition-colors hover:bg-[#F9FAFB] dark:border-border/40 dark:hover:bg-muted/20"
                 >
                   <td className="py-2.5 px-4">
                     {state.renameFor === row.name ? (
@@ -292,7 +292,7 @@ export default function SettingsListsPage() {
                           onClick={handleRenameSave}
                           aria-label="Save"
                         >
-                          <Check className="h-4 w-4 text-emerald-600" />
+                          <Check className="h-4 w-4 text-[#166534]" />
                         </Button>
                         <Button
                           size="icon"
@@ -319,7 +319,7 @@ export default function SettingsListsPage() {
                       <span
                         className={cn(
                           "h-1.5 w-1.5 shrink-0 rounded-full",
-                          row.disabled ? "bg-amber-500/90" : "bg-emerald-500/90"
+                          row.disabled ? "bg-amber-500/90" : "bg-[#166534]/90"
                         )}
                       />
                       {row.disabled ? "Disabled" : "Active"}

@@ -68,7 +68,8 @@ export default async function CompanyFinancialDashboardPage() {
             <span
               className={cn(
                 "kpi-metric-value mt-0.5 block",
-                m.positiveGood !== undefined && (m.value >= 0 ? "text-green-600" : "text-red-600")
+                m.positiveGood !== undefined &&
+                  (m.value >= 0 ? "text-hh-profit-positive" : "text-red-600")
               )}
             >
               {m.value >= 0 ? "" : "−"}${fmtUsd(Math.abs(m.value))}

@@ -74,7 +74,7 @@ const StatusBadge = React.memo(function StatusBadge({ status }: { status: string
   const label = STATUS_LABEL[n] ?? status;
   const style =
     n === "completed"
-      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+      ? "bg-[#DCFCE7] text-[#166534] dark:bg-emerald-950 dark:text-emerald-300"
       : n === "assigned"
         ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300"
         : "bg-[#f3f4f6] text-[#6b7280]";

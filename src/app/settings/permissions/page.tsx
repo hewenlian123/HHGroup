@@ -135,7 +135,7 @@ export default function SettingsPermissionsPage() {
         }
       />
       {message ? (
-        <div className="rounded-lg border border-[#EBEBE9] bg-background px-3 py-2 text-sm text-muted-foreground dark:border-border">
+        <div className="rounded-lg border border-[#E5E7EB] bg-background px-3 py-2 text-sm text-muted-foreground dark:border-border">
           {message}
         </div>
       ) : null}
@@ -157,12 +157,12 @@ export default function SettingsPermissionsPage() {
         </div>
       </FilterBar>
 
-      <Card className="border-[#EBEBE9] p-5 dark:border-border">
+      <Card className="border-[#E5E7EB] p-5 dark:border-border">
         <div className="space-y-4">
           {PERMISSION_GROUPS.map((group) => (
             <div
               key={group.title}
-              className="rounded-sm border border-[#EBEBE9] p-3 dark:border-border/60"
+              className="rounded-sm border border-[#E5E7EB] p-3 dark:border-border/60"
             >
               <p className="mb-2 text-sm font-semibold text-foreground">{group.title}</p>
               <div className="grid gap-2 md:grid-cols-2">

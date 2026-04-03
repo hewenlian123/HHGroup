@@ -8,6 +8,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export const E2E_PRESERVED_PROJECT_ID = "11111111-1111-1111-1111-111111111111";
 export const E2E_PRESERVED_WORKER_ID = "22222222-2222-2222-2222-222222222222";
 export const E2E_PRESERVED_CUSTOMER_ID = "33333333-3333-3333-3333-333333333333";
+/** Fixed labor row for worker-payment E2E (unpaid, same project as seed). */
+export const E2E_PRESERVED_LABOR_ENTRY_ID = "66666666-6666-6666-6666-666666666661";
 
 /**
  * ILIKE substrings for messy Playwright data.
@@ -201,6 +203,52 @@ export async function cleanupTestData(supabase: SupabaseClient): Promise<Cleanup
     const { error } = await supabase.from("documents").delete().in("id", uDoc);
     if (error) warnings.push(`documents: ${error.message}`);
     else bump("documents", uDoc.length);
+  }
+
+  const commissionIds: string[] = [];
+  for (const p of E2E_TEST_SUBSTRINGS) {
+    const { data } = await supabase.from("commissions").select("id").ilike("person_name", p);
+    for (const row of data ?? []) {
+      const r = row as { id: string };
+      commissionIds.push(r.id);
+    }
+    const { data: notesData } = await supabase.from("commissions").select("id").ilike("notes", p);
+    for (const row of notesData ?? []) {
+      const r = row as { id: string };
+      commissionIds.push(r.id);
+    }
+  }
+  const { data: commissionNameE2e } = await supabase
+    .from("commissions")
+    .select("id")
+    .ilike("person_name", "%[E2E]%");
+  for (const row of commissionNameE2e ?? []) {
+    const r = row as { id: string };
+    commissionIds.push(r.id);
+  }
+  const { data: commissionNotesE2e } = await supabase
+    .from("commissions")
+    .select("id")
+    .ilike("notes", "%[E2E]%");
+  for (const row of commissionNotesE2e ?? []) {
+    const r = row as { id: string };
+    commissionIds.push(r.id);
+  }
+  const uCommission = uniqueIds(commissionIds);
+  if (uCommission.length > 0) {
+    const { data: paymentRows } = await supabase
+      .from("commission_payments")
+      .select("id")
+      .in("commission_id", uCommission);
+    const paymentIds = (paymentRows ?? []).map((r: { id: string }) => r.id);
+    if (paymentIds.length > 0) {
+      const { error } = await supabase.from("commission_payments").delete().in("id", paymentIds);
+      if (error) warnings.push(`commission_payments: ${error.message}`);
+      else bump("commission_payments", paymentIds.length);
+    }
+    const { error } = await supabase.from("commissions").delete().in("id", uCommission);
+    if (error) warnings.push(`commissions: ${error.message}`);
+    else bump("commissions", uCommission.length);
   }
 
   const projectIds = await collectProjectIdsForCleanup(supabase);

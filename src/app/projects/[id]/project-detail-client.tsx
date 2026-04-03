@@ -337,7 +337,7 @@ export function ProjectDetailClient({ id }: { id: string }) {
         <span
           className={cn(
             "tabular-nums font-medium",
-            safeNumber(row.balance) > 0 ? "text-amber-600" : "text-emerald-600"
+            safeNumber(row.balance) > 0 ? "text-amber-600" : "text-hh-profit-positive"
           )}
         >
           {money(Math.max(0, safeNumber(row.balance)))}

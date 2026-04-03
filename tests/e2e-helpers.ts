@@ -120,7 +120,7 @@ export async function tryCreateDraftInvoiceNavigateToDetail(
 }
 
 /**
- * Desktop `/projects`: {@link ProjectsListClient} uses All / Active / Closed toggles (not a status column).
+ * Desktop `/projects`: {@link ProjectsListClient} uses a status filter select (`aria-label="Filter projects by status"`).
  * Asserts list loaded and the Active view filter applies without error.
  */
 export async function openFirstProjectStatusSelect(page: Page): Promise<void> {
@@ -153,9 +153,9 @@ export async function openFirstProjectStatusSelect(page: Page): Promise<void> {
   const firstRow = page.locator("table tbody tr").first();
   await expect(firstRow).toBeVisible({ timeout: 30_000 });
 
-  const activeBtn = page.getByRole("button", { name: /^Active \(\d+\)$/ });
-  await expect(activeBtn).toBeVisible({ timeout: 15_000 });
-  await activeBtn.click();
+  const statusSelect = page.getByLabel("Filter projects by status");
+  await expect(statusSelect).toBeVisible({ timeout: 15_000 });
+  await statusSelect.selectOption("active");
 
   if (
     await page

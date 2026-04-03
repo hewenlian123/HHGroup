@@ -177,7 +177,7 @@ export function FinancialClient() {
             <Card key={label}>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
-                <div className="rounded-lg border border-[#EBEBE9] bg-[#F7F7F5] p-2 dark:border-border dark:bg-muted">
+                <div className="rounded-lg border border-[#E5E7EB] bg-white p-2 dark:border-border dark:bg-muted">
                   <Icon className="h-4 w-4 text-gray-500 dark:text-muted-foreground" />
                 </div>
               </CardHeader>
@@ -246,7 +246,7 @@ export function FinancialClient() {
                     recentUnreconciled.map((tx) => (
                       <TableRow
                         key={tx.id}
-                        className="border-b border-[#EBEBE9] dark:border-border/60"
+                        className="border-b border-[#E5E7EB] dark:border-border/60"
                       >
                         <TableCell className="tabular-nums">{tx.txn_date}</TableCell>
                         <TableCell>{tx.description}</TableCell>
@@ -254,7 +254,7 @@ export function FinancialClient() {
                           className={cn(
                             "text-right tabular-nums font-medium",
                             tx.amount >= 0
-                              ? "text-emerald-600/90 dark:text-emerald-400/90"
+                              ? "text-hh-profit-positive dark:text-hh-profit-positive"
                               : "text-red-600/90 dark:text-red-400/90"
                           )}
                         >

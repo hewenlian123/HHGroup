@@ -384,7 +384,7 @@ export default function InvoiceDetailPage() {
         </div>
       </div>
 
-      <section className="border-b border-[#EBEBE9] pb-6 dark:border-border">
+      <section className="border-b border-[#E5E7EB] pb-6 dark:border-border">
         <h2 className="mb-3 text-sm font-semibold text-foreground">Client / Project</h2>
         <p className="text-sm text-muted-foreground">
           <span className="font-medium text-foreground">{invoice.clientName}</span>
@@ -415,12 +415,12 @@ export default function InvoiceDetailPage() {
         <p className="mt-1 text-xs text-muted-foreground">Issue: {invoice.issueDate}</p>
       </section>
 
-      <div className="overflow-hidden rounded-sm border border-[#EBEBE9] dark:border-border">
+      <div className="overflow-hidden rounded-sm border border-[#E5E7EB] dark:border-border">
         <h2 className="p-4 pb-2 text-sm font-semibold text-foreground">Line items</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
+              <tr className="border-b border-[#E5E7EB] bg-white dark:border-border/60 dark:bg-muted/30">
                 <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
                   Description
                 </th>
@@ -439,7 +439,7 @@ export default function InvoiceDetailPage() {
               {invoice.lineItems.map((line, idx) => (
                 <tr
                   key={idx}
-                  className="border-b border-[#EBEBE9]/80 transition-colors hover:bg-[#F7F7F5] dark:border-border/40 dark:hover:bg-muted/20"
+                  className="border-b border-[#E5E7EB]/80 transition-colors hover:bg-[#F9FAFB] dark:border-border/40 dark:hover:bg-muted/20"
                 >
                   <td className="py-3 px-4 text-foreground">{line.description}</td>
                   <td className="py-3 px-4 text-right tabular-nums text-muted-foreground">
@@ -458,7 +458,7 @@ export default function InvoiceDetailPage() {
         </div>
       </div>
 
-      <section className="border-b border-[#EBEBE9] pb-6 dark:border-border">
+      <section className="border-b border-[#E5E7EB] pb-6 dark:border-border">
         <h2 className="mb-3 text-sm font-semibold text-foreground">Totals</h2>
         <div className="space-y-1 text-sm">
           <div className="flex justify-between">
@@ -473,11 +473,11 @@ export default function InvoiceDetailPage() {
               <span className="tabular-nums">${invoice.taxAmount.toLocaleString()}</span>
             </div>
           )}
-          <div className="flex justify-between border-t border-[#EBEBE9] pt-2 font-medium dark:border-border">
+          <div className="flex justify-between border-t border-[#E5E7EB] pt-2 font-medium dark:border-border">
             <span>Total</span>
             <span className="tabular-nums">${invoice.total.toLocaleString()}</span>
           </div>
-          <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
+          <div className="flex justify-between text-hh-profit-positive dark:text-hh-profit-positive">
             <span>Paid</span>
             <span className="tabular-nums">${invoice.paidTotal.toLocaleString()}</span>
           </div>
@@ -488,7 +488,7 @@ export default function InvoiceDetailPage() {
         </div>
       </section>
 
-      <div className="overflow-hidden rounded-sm border border-[#EBEBE9] dark:border-border">
+      <div className="overflow-hidden rounded-sm border border-[#E5E7EB] dark:border-border">
         <h2 className="p-4 pb-2 text-sm font-semibold text-foreground">Payments history</h2>
         {payments.length === 0 ? (
           <p className="text-sm text-muted-foreground px-4 pb-4">No payments recorded.</p>
@@ -496,7 +496,7 @@ export default function InvoiceDetailPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
+                <tr className="border-b border-[#E5E7EB] bg-white dark:border-border/60 dark:bg-muted/30">
                   <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
                     Date
                   </th>
@@ -518,10 +518,10 @@ export default function InvoiceDetailPage() {
                 {payments.map((p) => (
                   <tr
                     key={p.id}
-                    className="border-b border-[#EBEBE9]/80 transition-colors hover:bg-[#F7F7F5] dark:border-border/40 dark:hover:bg-muted/20"
+                    className="border-b border-[#E5E7EB]/80 transition-colors hover:bg-[#F9FAFB] dark:border-border/40 dark:hover:bg-muted/20"
                   >
                     <td className="py-3 px-4 tabular-nums">{p.date}</td>
-                    <td className="py-3 px-4 text-right tabular-nums font-medium text-emerald-600/90 dark:text-emerald-400/90">
+                    <td className="py-3 px-4 text-right tabular-nums font-medium text-hh-profit-positive dark:text-hh-profit-positive">
                       ${p.amount.toLocaleString()}
                     </td>
                     <td className="py-3 px-4 text-muted-foreground">{p.method}</td>
@@ -546,7 +546,7 @@ export default function InvoiceDetailPage() {
         )}
       </div>
 
-      <div className="overflow-hidden rounded-sm border border-[#EBEBE9] dark:border-border">
+      <div className="overflow-hidden rounded-sm border border-[#E5E7EB] dark:border-border">
         <h2 className="p-4 pb-2 text-sm font-semibold text-foreground">Payments</h2>
         {paymentsReceived.length === 0 ? (
           <p className="text-sm text-muted-foreground px-4 pb-4">No payments received yet.</p>
@@ -554,7 +554,7 @@ export default function InvoiceDetailPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
+                <tr className="border-b border-[#E5E7EB] bg-white dark:border-border/60 dark:bg-muted/30">
                   <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
                     Date
                   </th>
@@ -576,10 +576,10 @@ export default function InvoiceDetailPage() {
                 {paymentsReceived.map((p) => (
                   <tr
                     key={p.id}
-                    className="border-b border-[#EBEBE9]/80 transition-colors hover:bg-[#F7F7F5] dark:border-border/40 dark:hover:bg-muted/20"
+                    className="border-b border-[#E5E7EB]/80 transition-colors hover:bg-[#F9FAFB] dark:border-border/40 dark:hover:bg-muted/20"
                   >
                     <td className="py-3 px-4 tabular-nums">{p.payment_date}</td>
-                    <td className="py-3 px-4 text-right tabular-nums font-medium text-emerald-600/90 dark:text-emerald-400/90">
+                    <td className="py-3 px-4 text-right tabular-nums font-medium text-hh-profit-positive dark:text-hh-profit-positive">
                       ${p.amount.toLocaleString()}
                     </td>
                     <td className="py-3 px-4 text-muted-foreground">{p.payment_method ?? "—"}</td>
@@ -598,7 +598,7 @@ export default function InvoiceDetailPage() {
         )}
       </div>
 
-      <div className="overflow-hidden rounded-sm border border-[#EBEBE9] dark:border-border">
+      <div className="overflow-hidden rounded-sm border border-[#E5E7EB] dark:border-border">
         <h2 className="p-4 pb-2 text-sm font-semibold text-foreground">Deposits</h2>
         {deposits.length === 0 ? (
           <p className="text-sm text-muted-foreground px-4 pb-4">
@@ -608,7 +608,7 @@ export default function InvoiceDetailPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
+                <tr className="border-b border-[#E5E7EB] bg-white dark:border-border/60 dark:bg-muted/30">
                   <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
                     Deposit Date
                   </th>
@@ -627,12 +627,12 @@ export default function InvoiceDetailPage() {
                 {deposits.map((d) => (
                   <tr
                     key={d.id}
-                    className="border-b border-[#EBEBE9]/80 transition-colors hover:bg-[#F7F7F5] dark:border-border/40 dark:hover:bg-muted/20"
+                    className="border-b border-[#E5E7EB]/80 transition-colors hover:bg-[#F9FAFB] dark:border-border/40 dark:hover:bg-muted/20"
                   >
                     <td className="py-3 px-4 tabular-nums">
                       {(d as { date?: string }).date ?? "—"}
                     </td>
-                    <td className="py-3 px-4 text-right tabular-nums font-medium text-emerald-600/90 dark:text-emerald-400/90">
+                    <td className="py-3 px-4 text-right tabular-nums font-medium text-hh-profit-positive dark:text-hh-profit-positive">
                       ${d.amount.toLocaleString()}
                     </td>
                     <td className="py-3 px-4 text-muted-foreground">—</td>
@@ -653,7 +653,7 @@ export default function InvoiceDetailPage() {
           onClick={() => setShowPaymentModal(false)}
         >
           <div
-            className="mx-4 w-full max-w-md rounded-sm border border-[#EBEBE9] bg-background p-6 dark:border-border"
+            className="mx-4 w-full max-w-md rounded-sm border border-[#E5E7EB] bg-background p-6 dark:border-border"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="mb-4 text-base font-semibold text-foreground">Record Payment</h3>

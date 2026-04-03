@@ -252,7 +252,12 @@ export function ProjectCloseoutTab({
   return (
     <div className="max-w-4xl space-y-8">
       {message && (
-        <p className={cn("text-sm", message.startsWith("PDF") ? "text-green-600" : "text-red-600")}>
+        <p
+          className={cn(
+            "text-sm",
+            message.startsWith("PDF") ? "text-hh-profit-positive" : "text-red-600"
+          )}
+        >
           {message}
         </p>
       )}
@@ -299,53 +304,60 @@ export function ProjectCloseoutTab({
                 + Add item
               </Button>
             </div>
-            <table className="w-full text-sm border-collapse mt-2">
-              <thead>
-                <tr className="border-b border-border/60">
-                  <th className="text-left py-2 px-2 text-xs font-medium text-muted-foreground">
-                    Item
-                  </th>
-                  <th className="text-left py-2 px-2 text-xs font-medium text-muted-foreground w-24">
-                    Status
-                  </th>
-                  <th className="w-16 no-print" />
-                </tr>
-              </thead>
-              <tbody>
-                {punchForm.items.map((row, idx) => (
-                  <tr key={idx} className="border-b border-border/60">
-                    <td className="py-1.5 px-2">
-                      <Input
-                        value={row.item}
-                        onChange={(e) => updatePunchItem(idx, "item", e.target.value)}
-                        className="h-9 rounded-sm border-border/60 text-sm"
-                      />
-                    </td>
-                    <td className="py-1.5 px-2">
-                      <select
-                        value={row.status}
-                        onChange={(e) => updatePunchItem(idx, "status", e.target.value)}
-                        className="h-9 rounded-sm border border-border/60 text-sm bg-background w-full"
+            <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
+              <div className="airtable-table-scroll">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr>
+                      <th className="h-8 px-2 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                        Item
+                      </th>
+                      <th className="h-8 w-24 px-2 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                        Status
+                      </th>
+                      <th className="h-8 w-16 no-print" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {punchForm.items.map((row, idx) => (
+                      <tr
+                        key={idx}
+                        className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
                       >
-                        <option value="pending">Pending</option>
-                        <option value="done">Done</option>
-                      </select>
-                    </td>
-                    <td className="py-1.5 px-2 no-print">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive h-9"
-                        onClick={() => removePunchItem(idx)}
-                      >
-                        Remove
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                        <td className="min-h-[44px] px-2 py-1.5 align-middle">
+                          <Input
+                            value={row.item}
+                            onChange={(e) => updatePunchItem(idx, "item", e.target.value)}
+                            className="h-9 rounded-sm border-border/60 text-sm"
+                          />
+                        </td>
+                        <td className="min-h-[44px] px-2 py-1.5 align-middle">
+                          <select
+                            value={row.status}
+                            onChange={(e) => updatePunchItem(idx, "status", e.target.value)}
+                            className="h-9 w-full rounded-sm border border-border/60 bg-background text-sm"
+                          >
+                            <option value="pending">Pending</option>
+                            <option value="done">Done</option>
+                          </select>
+                        </td>
+                        <td className="min-h-[44px] px-2 py-1.5 align-middle no-print">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-9 text-destructive"
+                            onClick={() => removePunchItem(idx)}
+                          >
+                            Remove
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground">Notes</label>

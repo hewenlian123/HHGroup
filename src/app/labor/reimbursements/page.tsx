@@ -510,13 +510,13 @@ export default function WorkerReimbursementsPage() {
         </div>
       </FilterBar>
       {message ? (
-        <div className="rounded-lg border border-[#EBEBE9] bg-background px-3 py-2 text-sm text-muted-foreground dark:border-border">
+        <div className="rounded-lg border border-[#E5E7EB] bg-background px-3 py-2 text-sm text-muted-foreground dark:border-border">
           {message}
         </div>
       ) : null}
 
       {showForm && (
-        <div className="border-b border-[#EBEBE9] pb-4 dark:border-border/60">
+        <div className="border-b border-[#E5E7EB] pb-4 dark:border-border/60">
           <h2 className="text-sm font-semibold text-foreground mb-3">
             {editingId ? "Edit Reimbursement" : "New Reimbursement"}
           </h2>
@@ -644,7 +644,7 @@ export default function WorkerReimbursementsPage() {
           paged.map((r) => (
             <div
               key={r.id}
-              className="rounded-sm border border-[#EBEBE9] p-3 space-y-2 dark:border-border/60"
+              className="rounded-sm border border-[#E5E7EB] p-3 space-y-2 dark:border-border/60"
             >
               <div className="flex justify-between items-start gap-2">
                 <div className="flex items-center gap-2 min-w-0">
@@ -678,10 +678,10 @@ export default function WorkerReimbursementsPage() {
       </div>
 
       {/* Desktop: table */}
-      <div className="table-responsive hidden border-b border-[#EBEBE9] md:block dark:border-border/60">
+      <div className="table-responsive hidden border-b border-[#E5E7EB] md:block dark:border-border/60">
         <table className="w-full min-w-[640px] text-sm border-collapse table-row-compact md:min-w-0">
           <thead>
-            <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
+            <tr className="border-b border-[#E5E7EB] bg-white dark:border-border/60 dark:bg-muted/30">
               <th className="w-10 py-2 px-2 text-center">
                 <input
                   type="checkbox"
@@ -739,7 +739,7 @@ export default function WorkerReimbursementsPage() {
                   key={r.id}
                   className={cn(
                     listTableRowClassName,
-                    "group border-b border-[#EBEBE9]/80 dark:border-border/40"
+                    "group border-b border-[#E5E7EB]/80 dark:border-border/40"
                   )}
                   onClick={() => handleEdit(r)}
                 >
@@ -839,7 +839,7 @@ export default function WorkerReimbursementsPage() {
             <DialogTitle>Receipt</DialogTitle>
           </DialogHeader>
           {viewReceiptUrl && (
-            <div className="flex-1 min-h-0 overflow-auto flex items-center justify-center bg-background border-t border-[#EBEBE9] dark:border-border/60">
+            <div className="flex-1 min-h-0 overflow-auto flex items-center justify-center bg-background border-t border-[#E5E7EB] dark:border-border/60">
               {isPdfReceipt ? (
                 <iframe
                   src={viewReceiptUrl}

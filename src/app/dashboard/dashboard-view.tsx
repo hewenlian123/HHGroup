@@ -39,7 +39,6 @@ type KpiItem = {
   label: string;
   value: string;
   icon?: LucideIcon;
-  emphasis?: boolean;
 };
 
 type UpcomingTask = { id: string; title: string; meta: string; due: string };
@@ -83,17 +82,12 @@ function fmtPct(n: number): string {
 
 function getHealthStatus(marginPct: number): {
   label: string;
-  variant: "success" | "warning" | "muted";
-  className?: string;
+  variant: "success" | "warning" | "danger" | "muted";
 } {
   if (marginPct > 25) return { label: "Excellent", variant: "success" };
   if (marginPct >= 15) return { label: "Good", variant: "success" };
   if (marginPct >= 5) return { label: "Warning", variant: "warning" };
-  return {
-    label: "Risk",
-    variant: "muted",
-    className: "text-red-600 dark:text-red-400 [&>span:first-child]:!bg-red-500",
-  };
+  return { label: "Risk", variant: "danger" };
 }
 
 export function DashboardView(props: DashboardViewProps): React.ReactNode {
@@ -119,8 +113,8 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
   } = props;
 
   return (
-    <div className="min-h-full bg-warm-grey dark:bg-background">
-      <div className="max-w-6xl mx-auto px-6 py-6 space-y-6">
+    <div className="min-h-full bg-[#F8F7F4] dark:bg-background">
+      <div className="page-container page-stack space-y-6">
         {dataLoadWarning ? (
           <p className="border-b border-border/60 pb-3 text-sm text-muted-foreground" role="status">
             {dataLoadWarning}
@@ -129,14 +123,14 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
         {/* Section 1 — Page header */}
         <header className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-[#2D2D2D] dark:text-foreground">
+            <h1 className="text-xl font-semibold tracking-tight text-[#111827] dark:text-foreground">
               Dashboard
             </h1>
-            <p className="text-sm text-gray-500 dark:text-muted-foreground mt-0.5">
+            <p className="mt-0.5 text-xs text-[#9CA3AF] dark:text-muted-foreground">
               Company overview
             </p>
           </div>
-          <span className="text-[10px] uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground border border-[#EBEBE9] dark:border-border rounded-lg bg-white px-2.5 py-1 shadow-sm shrink-0">
+          <span className="shrink-0 rounded-lg border-[0.5px] border-[#E5E7EB] bg-white px-2.5 py-1 text-[10px] uppercase tracking-[0.08em] text-[#9CA3AF] dark:border-border">
             {new Date().toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
@@ -145,27 +139,17 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
           </span>
         </header>
 
-        {/* Section 2 — KPI strip */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          <div className="relative bg-white dark:bg-card rounded-lg shadow-sm px-4 py-3 transition-shadow hover:shadow-md overflow-hidden">
-            <div
-              className="absolute top-0 left-0 right-0 h-[2px] rounded-b bg-gray-200 dark:bg-gray-600"
-              aria-hidden
-            />
-            <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-muted-foreground">
-              Active Projects
-            </p>
-            <p className="text-base font-medium mt-0.5 tabular-nums text-[#2D2D2D] dark:text-foreground">
+        {/* Section 2 — KPI strip (4-col, 10px gap) */}
+        <div className="grid grid-cols-2 gap-[10px] lg:grid-cols-4">
+          <div className="kpi-metric relative overflow-hidden">
+            <p className="kpi-metric-label">Active Projects</p>
+            <p className="kpi-metric-value mt-0.5 tabular-nums text-[#111827] dark:text-foreground">
               {stats.activeProjects}
             </p>
             <p className="text-[10px] text-gray-400 dark:text-muted-foreground mt-0.5">
               in portfolio
             </p>
-            <svg
-              viewBox="0 0 80 20"
-              className="mt-2 w-full h-5 text-gray-400 dark:text-gray-500"
-              aria-hidden
-            >
+            <svg viewBox="0 0 80 20" className="mt-2 h-5 w-full text-[#9CA3AF]" aria-hidden>
               <polyline
                 fill="none"
                 stroke="currentColor"
@@ -176,25 +160,15 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
               />
             </svg>
           </div>
-          <div className="relative bg-white dark:bg-card rounded-lg shadow-sm px-4 py-3 transition-shadow hover:shadow-md overflow-hidden">
-            <div
-              className="absolute top-0 left-0 right-0 h-[2px] rounded-b bg-amber-500 dark:bg-amber-500"
-              aria-hidden
-            />
-            <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-muted-foreground">
-              Outstanding Invoices
-            </p>
-            <p className="text-base font-medium mt-0.5 tabular-nums text-[#2D2D2D] dark:text-foreground">
+          <div className="kpi-metric relative overflow-hidden">
+            <p className="kpi-metric-label">Outstanding Invoices</p>
+            <p className="kpi-metric-value mt-0.5 tabular-nums text-[#111827] dark:text-foreground">
               ${fmtUsd(overdueInvoices.reduce((sum, i) => sum + (i.balanceDue ?? 0), 0))}
             </p>
             <p className="text-[10px] text-gray-400 dark:text-muted-foreground mt-0.5">
               {overdueInvoices.length} pending
             </p>
-            <svg
-              viewBox="0 0 80 20"
-              className="mt-2 w-full h-5 text-gray-400 dark:text-gray-500"
-              aria-hidden
-            >
+            <svg viewBox="0 0 80 20" className="mt-2 h-5 w-full text-[#9CA3AF]" aria-hidden>
               <polyline
                 fill="none"
                 stroke="currentColor"
@@ -205,25 +179,15 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
               />
             </svg>
           </div>
-          <div className="relative bg-white dark:bg-card rounded-lg shadow-sm px-4 py-3 transition-shadow hover:shadow-md overflow-hidden">
-            <div
-              className="absolute top-0 left-0 right-0 h-[2px] rounded-b bg-amber-500 dark:bg-amber-500"
-              aria-hidden
-            />
-            <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-muted-foreground">
-              Bills Due
-            </p>
-            <p className="text-base font-medium mt-0.5 tabular-nums text-[#2D2D2D] dark:text-foreground">
+          <div className="kpi-metric relative overflow-hidden">
+            <p className="kpi-metric-label">Bills Due</p>
+            <p className="kpi-metric-value mt-0.5 tabular-nums text-[#111827] dark:text-foreground">
               {apBillsSummary.dueThisWeekCount} · ${fmtUsd(apBillsSummary.dueThisWeekAmount)}
             </p>
             <p className="text-[10px] text-gray-400 dark:text-muted-foreground mt-0.5">
               Due this week
             </p>
-            <svg
-              viewBox="0 0 80 20"
-              className="mt-2 w-full h-5 text-gray-400 dark:text-gray-500"
-              aria-hidden
-            >
+            <svg viewBox="0 0 80 20" className="mt-2 h-5 w-full text-[#9CA3AF]" aria-hidden>
               <polyline
                 fill="none"
                 stroke="currentColor"
@@ -234,25 +198,15 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
               />
             </svg>
           </div>
-          <div className="relative bg-white dark:bg-card rounded-lg shadow-sm px-4 py-3 transition-shadow hover:shadow-md overflow-hidden">
-            <div
-              className="absolute top-0 left-0 right-0 h-[2px] rounded-b bg-gray-200 dark:bg-gray-600"
-              aria-hidden
-            />
-            <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-muted-foreground">
-              Labor Cost (This Month)
-            </p>
-            <p className="text-base font-medium mt-0.5 tabular-nums text-[#2D2D2D] dark:text-foreground">
+          <div className="kpi-metric relative overflow-hidden">
+            <p className="kpi-metric-label">Labor Cost (This Month)</p>
+            <p className="kpi-metric-value mt-0.5 tabular-nums text-[#111827] dark:text-foreground">
               ${fmtUsd(laborCostThisWeek)}
             </p>
             <p className="text-[10px] text-gray-400 dark:text-muted-foreground mt-0.5">
               This month
             </p>
-            <svg
-              viewBox="0 0 80 20"
-              className="mt-2 w-full h-5 text-gray-400 dark:text-gray-500"
-              aria-hidden
-            >
+            <svg viewBox="0 0 80 20" className="mt-2 h-5 w-full text-[#9CA3AF]" aria-hidden>
               <polyline
                 fill="none"
                 stroke="currentColor"
@@ -263,24 +217,13 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
               />
             </svg>
           </div>
-          <div className="relative bg-white dark:bg-card rounded-lg shadow-sm px-4 py-3 transition-shadow hover:shadow-md overflow-hidden">
-            <div
-              className={cn(
-                "absolute top-0 left-0 right-0 h-[2px] rounded-b",
-                projectProfitSummary >= 0
-                  ? "bg-green-600 dark:bg-green-600"
-                  : "bg-gray-200 dark:bg-gray-600"
-              )}
-              aria-hidden
-            />
-            <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-muted-foreground">
-              Profit
-            </p>
+          <div className="kpi-metric relative overflow-hidden">
+            <p className="kpi-metric-label">Profit</p>
             <p
               className={cn(
-                "text-base font-medium mt-0.5 tabular-nums",
+                "kpi-metric-value mt-0.5 tabular-nums",
                 projectProfitSummary >= 0
-                  ? "text-green-600 dark:text-green-500"
+                  ? "text-hh-profit-positive dark:text-hh-profit-positive"
                   : "text-red-600 dark:text-red-400"
               )}
             >
@@ -290,16 +233,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
             <p className="text-[10px] text-gray-400 dark:text-muted-foreground mt-0.5">
               This month
             </p>
-            <svg
-              viewBox="0 0 80 20"
-              className={cn(
-                "mt-2 w-full h-5",
-                projectProfitSummary >= 0
-                  ? "text-green-600 dark:text-green-500"
-                  : "text-gray-400 dark:text-gray-500"
-              )}
-              aria-hidden
-            >
+            <svg viewBox="0 0 80 20" className="mt-2 h-5 w-full text-[#9CA3AF]" aria-hidden>
               <polyline
                 fill="none"
                 stroke="currentColor"
@@ -313,7 +247,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
         </div>
 
         {debugEnabled ? (
-          <div className="rounded-xl bg-white shadow-sm px-4 py-3 text-xs text-gray-500">
+          <div className="rounded-card bg-white shadow-summary-card px-4 py-3 text-xs text-gray-500">
             Supabase URL configured: {supabaseUrl ? "YES" : "NO"} ({maskTail(supabaseUrl)}) | Anon
             key configured: {supabaseAnonKey ? "YES" : "NO"} ({maskTail(supabaseAnonKey)})
           </div>
@@ -323,15 +257,15 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left column (span 2): Recent Projects, Recent Activity */}
           <div className="space-y-6 lg:col-span-2">
-            <section className="bg-white dark:bg-card rounded-lg shadow-sm overflow-hidden transition-shadow hover:shadow-md">
-              <div className="px-4 py-3 border-b border-[#EBEBE9] dark:border-border">
+            <section className="bg-white dark:bg-card rounded-card shadow-summary-card overflow-hidden">
+              <div className="px-4 py-3 border-b border-[#E5E7EB] dark:border-border">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-medium tracking-tight text-[#2D2D2D] dark:text-foreground">
+                  <h2 className="text-xl font-medium tracking-tight text-[#111827] dark:text-foreground">
                     Recent Projects
                   </h2>
                   <Link
                     href="/projects"
-                    className="text-sm text-gray-500 dark:text-muted-foreground hover:text-[#2D2D2D] dark:hover:text-foreground transition"
+                    className="text-sm text-gray-500 dark:text-muted-foreground hover:text-[#111827] dark:hover:text-foreground transition"
                   >
                     View all
                   </Link>
@@ -341,10 +275,10 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                 </p>
               </div>
               <div className="table-responsive">
-                <table className="w-full min-w-[520px] text-sm md:min-w-0">
+                <table className="w-full min-w-[720px] text-sm md:min-w-0">
                   <thead>
-                    <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border dark:bg-muted/50">
-                      <th className="py-2.5 px-4 text-left text-xs uppercase tracking-wide text-gray-500 dark:text-muted-foreground">
+                    <tr className="border-b border-[#E5E7EB] bg-white dark:border-border dark:bg-muted/50">
+                      <th className="min-w-[200px] py-2.5 px-4 text-left text-xs uppercase tracking-wide text-gray-500 dark:text-muted-foreground">
                         Project
                       </th>
                       <th className="py-2.5 px-4 text-right text-xs uppercase tracking-wide text-gray-500 dark:text-muted-foreground tabular-nums">
@@ -396,17 +330,18 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                         return (
                           <tr
                             key={p.id}
-                            className="h-10 border-b border-[#EBEBE9] dark:border-border/60 transition-colors hover:bg-[#F7F7F5] dark:hover:bg-muted/20"
+                            className="h-10 border-b border-[#E5E7EB] dark:border-border/60 transition-colors hover:bg-[#F9FAFB] dark:hover:bg-muted/20"
                           >
-                            <td className="py-2 px-4">
-                              <div>
+                            <td className="max-w-[min(280px,40vw)] py-2 px-4">
+                              <div className="min-w-[180px]">
                                 <Link
                                   href={`/projects/${p.id}`}
-                                  className="font-medium text-[#2D2D2D] dark:text-foreground hover:underline"
+                                  className="block truncate font-medium whitespace-nowrap text-[#111827] dark:text-foreground hover:underline"
+                                  title={p.name}
                                 >
                                   {p.name}
                                 </Link>
-                                <p className="text-[10px] text-gray-400 dark:text-muted-foreground mt-0.5">
+                                <p className="text-[10px] text-gray-400 dark:text-muted-foreground mt-0.5 whitespace-nowrap">
                                   {risk === "HIGH" ? "At risk" : "Active"}
                                 </p>
                               </div>
@@ -420,7 +355,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                             <td
                               className={cn(
                                 "py-2 px-4 text-right tabular-nums font-medium",
-                                p.profit >= 0 ? "text-green-600" : "text-red-600"
+                                p.profit >= 0 ? "text-hh-profit-positive" : "text-red-600"
                               )}
                             >
                               {p.profit >= 0 ? "" : "−"}${fmtUsd(Math.abs(p.profit))}
@@ -446,11 +381,8 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                                   {riskBadge.label}
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-400 text-xs px-2 py-0.5">
-                                  <span
-                                    className="h-1 w-1 rounded-full bg-green-500 dark:bg-green-400"
-                                    aria-hidden
-                                  />
+                                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#DCFCE7] text-[#166534] text-xs px-2 py-0.5 font-medium">
+                                  <span className="h-1 w-1 rounded-full bg-[#166534]" aria-hidden />
                                   {riskBadge.label}
                                 </span>
                               )}
@@ -481,11 +413,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                               </div>
                             </td>
                             <td className="py-2 px-4">
-                              <StatusBadge
-                                label={status.label}
-                                variant={status.variant}
-                                className={status.className}
-                              />
+                              <StatusBadge label={status.label} variant={status.variant} />
                             </td>
                           </tr>
                         );
@@ -496,15 +424,15 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
               </div>
             </section>
 
-            <section className="bg-white dark:bg-card rounded-lg shadow-sm overflow-hidden transition-shadow hover:shadow-md">
-              <div className="px-4 py-3 border-b border-[#EBEBE9] dark:border-border">
+            <section className="bg-white dark:bg-card rounded-card shadow-summary-card overflow-hidden">
+              <div className="px-4 py-3 border-b border-[#E5E7EB] dark:border-border">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-medium tracking-tight text-[#2D2D2D] dark:text-foreground">
+                  <h2 className="text-xl font-medium tracking-tight text-[#111827] dark:text-foreground">
                     Recent Activity
                   </h2>
                   <Link
                     href="/financial/invoices"
-                    className="text-sm text-gray-500 dark:text-muted-foreground hover:text-[#2D2D2D] dark:hover:text-foreground transition"
+                    className="text-sm text-gray-500 dark:text-muted-foreground hover:text-[#111827] dark:hover:text-foreground transition"
                   >
                     View all
                   </Link>
@@ -522,10 +450,10 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                   recentActivity.map((tx) => (
                     <div
                       key={tx.id}
-                      className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-[#F7F7F5] dark:hover:bg-muted/20"
+                      className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-[#F9FAFB] dark:hover:bg-muted/20"
                     >
                       <div
-                        className="h-[30px] w-[30px] shrink-0 rounded-lg bg-gray-50 dark:bg-muted border border-[#EBEBE9] dark:border-border flex items-center justify-center"
+                        className="h-[30px] w-[30px] shrink-0 rounded-lg bg-gray-50 dark:bg-muted border border-[#E5E7EB] dark:border-border flex items-center justify-center"
                         aria-hidden
                       >
                         <svg
@@ -548,7 +476,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="truncate text-sm font-medium text-[#2D2D2D] dark:text-foreground">
+                          <span className="truncate text-sm font-medium text-[#111827] dark:text-foreground">
                             {tx.projectName}
                           </span>
                           <span className="bg-gray-100 dark:bg-muted text-gray-500 dark:text-muted-foreground text-[9px] px-1.5 py-0.5 rounded-full capitalize shrink-0">
@@ -573,7 +501,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                           className={cn(
                             "text-sm tabular-nums font-medium",
                             tx.amount < 0 && "text-red-600 dark:text-red-400",
-                            tx.amount >= 0 && "text-green-700 dark:text-green-400"
+                            tx.amount >= 0 && "text-hh-profit-positive dark:text-hh-profit-positive"
                           )}
                         >
                           {tx.amount >= 0 ? "" : "−"}${Math.abs(tx.amount).toLocaleString()}
@@ -588,9 +516,9 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
 
           {/* Right column: Financial Summary, Bills Due */}
           <div className="space-y-6">
-            <section className="bg-white dark:bg-card rounded-lg shadow-sm overflow-hidden transition-shadow hover:shadow-md">
-              <div className="px-4 py-3 border-b border-[#EBEBE9] dark:border-border">
-                <h2 className="text-xl font-medium tracking-tight text-[#2D2D2D] dark:text-foreground">
+            <section className="bg-white dark:bg-card rounded-card shadow-summary-card overflow-hidden">
+              <div className="px-4 py-3 border-b border-[#E5E7EB] dark:border-border">
+                <h2 className="text-xl font-medium tracking-tight text-[#111827] dark:text-foreground">
                   Financial Summary
                 </h2>
                 <p className="text-xs text-gray-500 dark:text-muted-foreground mt-0.5">
@@ -604,19 +532,14 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                       key={k.key}
                       className={cn(
                         "flex items-center justify-between py-2.5",
-                        i < kpis.length - 1 && "border-b border-[#EBEBE9] dark:border-border/60"
+                        i < kpis.length - 1 && "border-b border-[#E5E7EB] dark:border-border/60"
                       )}
                     >
                       <span className="text-xs text-gray-500 dark:text-muted-foreground flex items-center gap-1.5">
                         {k.icon ? <k.icon className="h-3.5 w-3.5 opacity-60" /> : null}
                         {k.label}
                       </span>
-                      <span
-                        className={cn(
-                          "text-sm font-medium tabular-nums",
-                          k.emphasis && "text-[#2D2D2D] dark:text-foreground"
-                        )}
-                      >
+                      <span className="text-sm font-medium tabular-nums text-[#111827] dark:text-foreground">
                         {k.value}
                       </span>
                     </div>
@@ -625,7 +548,9 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                 <div className="rounded-lg bg-gray-50 dark:bg-muted/50 px-3 py-3 mt-3">
                   <div className="flex items-center justify-between text-xs text-gray-500 dark:text-muted-foreground">
                     <span>Budget usage</span>
-                    <span className="tabular-nums">{budgetUsagePct.toFixed(0)}%</span>
+                    <span className="tabular-nums font-medium text-[#111827] dark:text-foreground">
+                      {budgetUsagePct.toFixed(0)}%
+                    </span>
                   </div>
                   <div className="mt-2 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700">
                     <div
@@ -635,7 +560,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                   </div>
                   <div className="mt-2 flex items-center justify-between text-[10px] text-gray-400 dark:text-muted-foreground">
                     <span>$0</span>
-                    <span className="tabular-nums">
+                    <span className="tabular-nums font-medium text-[#111827] dark:text-foreground">
                       {budgetUsagePct > 0
                         ? `$${Math.round(stats.totalSpent / (budgetUsagePct / 100) / 1000)}K`
                         : "—"}
@@ -643,7 +568,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                   </div>
                   <div className="mt-2 flex items-center justify-between text-xs text-gray-500 dark:text-muted-foreground">
                     <span>Total spent</span>
-                    <span className="tabular-nums font-medium text-[#2D2D2D] dark:text-foreground">
+                    <span className="tabular-nums font-medium text-[#111827] dark:text-foreground">
                       ${stats.totalSpent.toLocaleString()}
                     </span>
                   </div>
@@ -651,10 +576,8 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                     <span>Total profit</span>
                     <span
                       className={cn(
-                        "tabular-nums font-medium",
-                        profitPositive
-                          ? "text-green-600 dark:text-green-400"
-                          : "text-red-600 dark:text-red-400"
+                        "tabular-nums font-medium text-[#111827] dark:text-foreground",
+                        !profitPositive && "text-red-600 dark:text-red-400"
                       )}
                     >
                       {profitPositive ? "" : "−"}${stats.totalProfit.toLocaleString()}
@@ -664,15 +587,15 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
               </div>
             </section>
 
-            <section className="bg-white dark:bg-card rounded-lg shadow-sm overflow-hidden transition-shadow hover:shadow-md">
-              <div className="px-4 py-3 border-b border-[#EBEBE9] dark:border-border">
+            <section className="bg-white dark:bg-card rounded-card shadow-summary-card overflow-hidden">
+              <div className="px-4 py-3 border-b border-[#E5E7EB] dark:border-border">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-medium tracking-tight text-[#2D2D2D] dark:text-foreground">
+                  <h2 className="text-xl font-medium tracking-tight text-[#111827] dark:text-foreground">
                     Bills Due
                   </h2>
                   <Link
                     href="/bills"
-                    className="text-sm text-gray-500 dark:text-muted-foreground hover:text-[#2D2D2D] dark:hover:text-foreground transition"
+                    className="text-sm text-gray-500 dark:text-muted-foreground hover:text-[#111827] dark:hover:text-foreground transition"
                   >
                     View all
                   </Link>
@@ -682,26 +605,33 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                 </p>
               </div>
               <div className="p-4">
-                <div className="flex justify-between text-sm py-2.5 border-b border-[#EBEBE9] dark:border-border/60">
+                <div className="flex justify-between text-sm py-2.5 border-b border-[#E5E7EB] dark:border-border/60">
                   <span className="text-gray-500 dark:text-muted-foreground">Outstanding</span>
-                  <span className="tabular-nums font-medium text-amber-600 dark:text-amber-400">
+                  <span className="tabular-nums font-medium text-[#111827] dark:text-foreground">
                     ${fmtUsd(apBillsSummary.totalOutstanding)}
                   </span>
                 </div>
-                <div className="flex justify-between text-sm py-2.5 border-b border-[#EBEBE9] dark:border-border/60">
+                <div className="flex justify-between text-sm py-2.5 border-b border-[#E5E7EB] dark:border-border/60">
                   <span className="text-gray-500 dark:text-muted-foreground">Overdue</span>
-                  <span className="tabular-nums text-[#2D2D2D] dark:text-foreground">
+                  <span
+                    className={cn(
+                      "tabular-nums font-medium",
+                      apBillsSummary.overdueCount > 0 || apBillsSummary.overdueAmount > 0.005
+                        ? "text-red-600 dark:text-red-400"
+                        : "text-[#111827] dark:text-foreground"
+                    )}
+                  >
                     {apBillsSummary.overdueCount} bills · ${fmtUsd(apBillsSummary.overdueAmount)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm py-2.5">
                   <span className="text-gray-500 dark:text-muted-foreground">Due this week</span>
-                  <span className="tabular-nums text-[#2D2D2D] dark:text-foreground">
+                  <span className="tabular-nums text-[#111827] dark:text-foreground">
                     {apBillsSummary.dueThisWeekCount} bills · $
                     {fmtUsd(apBillsSummary.dueThisWeekAmount)}
                   </span>
                 </div>
-                <div className="pt-3 border-t border-[#EBEBE9] dark:border-border">
+                <div className="pt-3 border-t border-[#E5E7EB] dark:border-border">
                   <Link
                     href="/bills/new"
                     className="inline-flex items-center justify-center rounded-full h-9 px-4 bg-black text-white text-sm font-medium transition hover:scale-[1.02]"
@@ -716,15 +646,15 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
 
         {/* Additional sections: Outstanding Subcontracts, Upcoming Tasks, Overdue Invoices */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <section className="bg-white dark:bg-card rounded-lg shadow-sm overflow-hidden transition-shadow hover:shadow-md lg:col-span-2">
-            <div className="px-4 py-3 border-b border-[#EBEBE9] dark:border-border">
+          <section className="bg-white dark:bg-card rounded-card shadow-summary-card overflow-hidden lg:col-span-2">
+            <div className="px-4 py-3 border-b border-[#E5E7EB] dark:border-border">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-medium tracking-tight text-[#2D2D2D] dark:text-foreground">
+                <h2 className="text-xl font-medium tracking-tight text-[#111827] dark:text-foreground">
                   Outstanding Subcontracts
                 </h2>
                 <Link
                   href="/subcontractors"
-                  className="text-sm text-gray-500 hover:text-[#2D2D2D] transition"
+                  className="text-sm text-gray-500 hover:text-[#111827] transition"
                 >
                   View all
                 </Link>
@@ -734,7 +664,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
             <div className="table-responsive">
               <table className="w-full min-w-[400px] text-sm md:min-w-0">
                 <thead>
-                  <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5]">
+                  <tr className="border-b border-[#E5E7EB] bg-white">
                     <th className="py-2.5 px-4 text-left text-xs uppercase tracking-wide text-gray-500">
                       Subcontractor
                     </th>
@@ -755,14 +685,14 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                     </tr>
                   ) : (
                     outstandingSubcontracts.map((r) => (
-                      <tr key={r.id} className="h-10 border-b transition-colors hover:bg-[#F7F7F5]">
-                        <td className="py-2 px-4 font-medium text-[#2D2D2D]">
+                      <tr key={r.id} className="h-10 border-b transition-colors hover:bg-[#F9FAFB]">
+                        <td className="py-2 px-4 font-medium text-[#111827]">
                           {r.subcontractor_name}
                         </td>
                         <td className="py-2 px-4 text-gray-500">
                           <Link
                             href={`/projects/${r.project_id}/subcontracts`}
-                            className="hover:text-[#2D2D2D]"
+                            className="hover:text-[#111827]"
                           >
                             {r.project_name}
                           </Link>
@@ -778,15 +708,15 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
             </div>
           </section>
 
-          <section className="bg-white dark:bg-card rounded-lg shadow-sm overflow-hidden transition-shadow hover:shadow-md">
-            <div className="px-4 py-3 border-b border-[#EBEBE9] dark:border-border">
+          <section className="bg-white dark:bg-card rounded-card shadow-summary-card overflow-hidden">
+            <div className="px-4 py-3 border-b border-[#E5E7EB] dark:border-border">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-medium tracking-tight text-[#2D2D2D] dark:text-foreground">
+                <h2 className="text-xl font-medium tracking-tight text-[#111827] dark:text-foreground">
                   Overdue Invoices
                 </h2>
                 <Link
                   href="/financial/invoices"
-                  className="text-sm text-gray-500 hover:text-[#2D2D2D] transition"
+                  className="text-sm text-gray-500 hover:text-[#111827] transition"
                 >
                   View all
                 </Link>
@@ -798,7 +728,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
             <div className="table-responsive">
               <table className="w-full min-w-[400px] text-sm md:min-w-0">
                 <thead>
-                  <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5]">
+                  <tr className="border-b border-[#E5E7EB] bg-white">
                     <th className="py-2.5 px-4 text-left text-xs uppercase tracking-wide text-gray-500">
                       Project
                     </th>
@@ -824,12 +754,12 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                     overdueInvoices.map((row) => (
                       <tr
                         key={row.id}
-                        className="h-10 border-b transition-colors hover:bg-[#F7F7F5]"
+                        className="h-10 border-b transition-colors hover:bg-[#F9FAFB]"
                       >
                         <td className="py-2 px-4">
                           <Link
                             href={`/financial/invoices/${row.id}`}
-                            className="font-medium text-[#2D2D2D] hover:underline"
+                            className="font-medium text-[#111827] hover:underline"
                           >
                             {row.projectName || row.projectId || "—"}
                           </Link>
@@ -851,9 +781,9 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
         </div>
 
         {upcomingTasks.length > 0 ? (
-          <section className="bg-white dark:bg-card rounded-lg shadow-sm overflow-hidden transition-shadow hover:shadow-md">
-            <div className="px-4 py-3 border-b border-[#EBEBE9] dark:border-border">
-              <h2 className="text-xl font-medium tracking-tight text-[#2D2D2D] dark:text-foreground">
+          <section className="bg-white dark:bg-card rounded-card shadow-summary-card overflow-hidden">
+            <div className="px-4 py-3 border-b border-[#E5E7EB] dark:border-border">
+              <h2 className="text-xl font-medium tracking-tight text-[#111827] dark:text-foreground">
                 Upcoming Tasks
               </h2>
               <p className="text-xs text-gray-500 dark:text-muted-foreground mt-0.5">
@@ -877,7 +807,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                 return (
                   <div
                     key={t.id}
-                    className="flex items-start justify-between gap-4 px-4 py-3 transition-colors hover:bg-[#F7F7F5] dark:hover:bg-muted/20"
+                    className="flex items-start justify-between gap-4 px-4 py-3 transition-colors hover:bg-[#F9FAFB] dark:hover:bg-muted/20"
                   >
                     <div className="flex items-start gap-2 min-w-0 flex-1">
                       <span
@@ -888,7 +818,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                         aria-hidden
                       />
                       <div className="min-w-0">
-                        <div className="truncate text-sm font-medium text-[#2D2D2D] dark:text-foreground">
+                        <div className="truncate text-sm font-medium text-[#111827] dark:text-foreground">
                           {t.title}
                         </div>
                         <div className="truncate text-xs text-gray-500 dark:text-muted-foreground">

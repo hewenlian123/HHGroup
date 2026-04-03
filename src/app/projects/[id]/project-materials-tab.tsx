@@ -141,7 +141,12 @@ export function ProjectMaterialsTab({
   return (
     <div className="space-y-4">
       {message && (
-        <p className={cn("text-sm", message.includes("saved") ? "text-green-600" : "text-red-600")}>
+        <p
+          className={cn(
+            "text-sm",
+            message.includes("saved") ? "text-hh-profit-positive" : "text-red-600"
+          )}
+        >
           {message}
         </p>
       )}
@@ -167,86 +172,92 @@ export function ProjectMaterialsTab({
         </div>
       </div>
 
-      <div className="border border-border/60 rounded-sm overflow-hidden">
+      <div className="airtable-table-wrap airtable-table-wrap--ruled">
         {rows.length === 0 ? (
           <div className="py-10 text-center text-sm text-muted-foreground">
             No selections yet. Add one from the catalog.
           </div>
         ) : (
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr className="border-b border-border/60">
-                <th className="w-10 py-2 px-2" aria-label="Photo" />
-                <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground">
-                  Item
-                </th>
-                <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground">
-                  Category
-                </th>
-                <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground">
-                  Material
-                </th>
-                <th className="hidden sm:table-cell text-left py-2 px-3 font-medium text-muted-foreground">
-                  Supplier
-                </th>
-                <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground">
-                  Status
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr
-                  key={row.id}
-                  className="border-b border-border/60 last:border-b-0 hover:bg-muted/40 transition-colors"
-                >
-                  <td className="py-2 px-2 sm:px-3">
-                    {row.material_photo_url ? (
-                      <a
-                        href={photoUrl(row.material_photo_url)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block w-9 h-9 rounded-sm border border-border/60 overflow-hidden bg-muted/30"
-                      >
-                        <img
-                          src={photoUrl(row.material_photo_url)}
-                          alt=""
-                          className="w-full h-full object-cover"
-                        />
-                      </a>
-                    ) : (
-                      <span
-                        className="block w-9 h-9 rounded-sm border border-border/60 bg-muted/30"
-                        aria-hidden
-                      />
-                    )}
-                  </td>
-                  <td className="py-2 px-2 sm:px-3 font-medium">{row.item || "—"}</td>
-                  <td className="py-2 px-2 sm:px-3 text-muted-foreground">{row.category || "—"}</td>
-                  <td className="py-2 px-2 sm:px-3 text-muted-foreground">
-                    {row.material_name || "—"}
-                  </td>
-                  <td className="hidden sm:table-cell py-2 px-3 text-muted-foreground">
-                    {row.supplier ?? "—"}
-                  </td>
-                  <td className="py-2 px-2 sm:px-3">
-                    <span
-                      className={cn(
-                        "inline-flex rounded-sm px-1.5 py-0.5 text-xs font-medium",
-                        row.status === "Ordered" &&
-                          "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300",
-                        row.status === "Selected" &&
-                          "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
-                        row.status === "Pending" && "bg-muted text-muted-foreground"
-                      )}
-                    >
-                      {row.status}
-                    </span>
-                  </td>
+          <div className="airtable-table-scroll">
+            <table className="w-full text-sm">
+              <thead>
+                <tr>
+                  <th className="h-8 w-10 px-2" aria-label="Photo" />
+                  <th className="h-8 px-2 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
+                    Item
+                  </th>
+                  <th className="h-8 px-2 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
+                    Category
+                  </th>
+                  <th className="h-8 px-2 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
+                    Material
+                  </th>
+                  <th className="hidden h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:table-cell">
+                    Supplier
+                  </th>
+                  <th className="h-8 px-2 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
+                    Status
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr
+                    key={row.id}
+                    className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
+                  >
+                    <td className="h-11 min-h-[44px] px-2 py-0 align-middle sm:px-3">
+                      {row.material_photo_url ? (
+                        <a
+                          href={photoUrl(row.material_photo_url)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block w-9 h-9 rounded-sm border border-border/60 overflow-hidden bg-muted/30"
+                        >
+                          <img
+                            src={photoUrl(row.material_photo_url)}
+                            alt=""
+                            className="w-full h-full object-cover"
+                          />
+                        </a>
+                      ) : (
+                        <span
+                          className="block w-9 h-9 rounded-sm border border-border/60 bg-muted/30"
+                          aria-hidden
+                        />
+                      )}
+                    </td>
+                    <td className="h-11 min-h-[44px] px-2 py-0 align-middle text-[13px] font-medium sm:px-3">
+                      {row.item || "—"}
+                    </td>
+                    <td className="h-11 min-h-[44px] px-2 py-0 align-middle text-[13px] text-muted-foreground sm:px-3">
+                      {row.category || "—"}
+                    </td>
+                    <td className="h-11 min-h-[44px] px-2 py-0 align-middle text-[13px] text-muted-foreground sm:px-3">
+                      {row.material_name || "—"}
+                    </td>
+                    <td className="hidden h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] text-muted-foreground sm:table-cell">
+                      {row.supplier ?? "—"}
+                    </td>
+                    <td className="h-11 min-h-[44px] px-2 py-0 align-middle text-[13px] sm:px-3">
+                      <span
+                        className={cn(
+                          "inline-flex rounded-sm px-1.5 py-0.5 text-xs font-medium",
+                          row.status === "Ordered" &&
+                            "bg-[#DCFCE7] text-[#166534] dark:bg-green-950 dark:text-green-300",
+                          row.status === "Selected" &&
+                            "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
+                          row.status === "Pending" && "bg-muted text-muted-foreground"
+                        )}
+                      >
+                        {row.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 

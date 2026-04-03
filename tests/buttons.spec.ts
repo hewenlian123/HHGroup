@@ -91,10 +91,10 @@ test.describe("Projects page buttons", () => {
     await expect(page.getByTestId("projects-page-heading")).toBeVisible({ timeout: 60_000 });
     const dataRow = page.locator("table tbody tr").first();
     await expectVisibleOrSkip(dataRow, "No project rows.", 55_000);
-    // Row <tr onClick> can be flaky before hydration; row actions menu calls onNavigate directly.
-    await dataRow.getByRole("button", { name: /^Actions for / }).click();
-    await page.getByRole("menuitem", { name: "View" }).click();
-    await expect(page).toHaveURL(/\/projects\/[^/?#]+/, { timeout: 25_000 });
+    await Promise.all([
+      page.waitForURL(/\/projects\/[^/?#]+/, { timeout: 25_000 }),
+      dataRow.getByRole("button", { name: /^View$/ }).click(),
+    ]);
   });
 });
 

@@ -27,3 +27,20 @@ export function getSupabaseClient(): SupabaseClient | null {
   if (!key) return null;
   return createBrowserClient(url, key);
 }
+
+/** User-facing message when PostgREST / fetch fails (offline Supabase, bad URL, TLS, etc.). */
+export function humanizeSupabaseRequestError(err: unknown): string {
+  const raw =
+    err && typeof err === "object" && typeof (err as { message?: unknown }).message === "string"
+      ? String((err as { message: string }).message)
+      : err instanceof Error
+        ? err.message
+        : String(err);
+  if (/fetch failed/i.test(raw)) {
+    return "Database connection failed (fetch failed). Check NEXT_PUBLIC_SUPABASE_URL, keys, VPN/firewall, and that Supabase is reachable.";
+  }
+  if (/ECONNREFUSED|ENOTFOUND|ECONNRESET|certificate|SSL|TLS/i.test(raw)) {
+    return "Database connection failed. Check NEXT_PUBLIC_SUPABASE_URL and network access.";
+  }
+  return raw.trim() || "Request failed.";
+}
