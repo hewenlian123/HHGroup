@@ -27,7 +27,7 @@ import { Pencil, Trash2 } from "lucide-react";
 function sessionBadgeClass(session: LaborSession): string {
   if (session === "morning") return "bg-amber-50 text-amber-800 ring-1 ring-amber-200/60";
   if (session === "afternoon") return "bg-blue-50 text-blue-800 ring-1 ring-blue-200/60";
-  return "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/60";
+  return "bg-[#DCFCE7] text-[#166534] ring-1 ring-[#DCFCE7]";
 }
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -417,7 +417,7 @@ export default function LaborPageClient() {
             </Select>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-3 border-t border-[#EBEBE9] pt-3 dark:border-border">
+        <div className="flex flex-wrap items-center gap-3 border-t border-[#E5E7EB] pt-3 dark:border-border">
           <Button
             size="sm"
             className="rounded-sm h-9"
@@ -426,15 +426,15 @@ export default function LaborPageClient() {
           >
             + Add Entry
           </Button>
-          <div className="flex h-9 shrink-0 overflow-hidden rounded-lg border border-[#EBEBE9] shadow-sm dark:border-border">
+          <div className="flex h-9 shrink-0 overflow-hidden rounded-lg border border-[#E5E7EB] shadow-sm dark:border-border">
             <button
               type="button"
               onClick={() => setView("list")}
               className={cn(
                 "h-full px-3 text-xs font-medium transition-all duration-150",
                 view === "list"
-                  ? "bg-[#2D2D2D] text-white dark:bg-foreground dark:text-background"
-                  : "bg-white text-gray-500 hover:bg-[#F7F7F5] hover:text-[#2D2D2D] dark:bg-card dark:hover:bg-muted"
+                  ? "bg-[#111827] text-white dark:bg-foreground dark:text-background"
+                  : "bg-white text-gray-500 hover:bg-[#F9FAFB] hover:text-[#111827] dark:bg-card dark:hover:bg-muted"
               )}
             >
               List View
@@ -443,10 +443,10 @@ export default function LaborPageClient() {
               type="button"
               onClick={() => setView("calendar")}
               className={cn(
-                "h-full border-l border-[#EBEBE9] px-3 text-xs font-medium transition-all duration-150 dark:border-border",
+                "h-full border-l border-[#E5E7EB] px-3 text-xs font-medium transition-all duration-150 dark:border-border",
                 view === "calendar"
-                  ? "bg-[#2D2D2D] text-white dark:bg-foreground dark:text-background"
-                  : "bg-white text-gray-500 hover:bg-[#F7F7F5] hover:text-[#2D2D2D] dark:bg-card dark:hover:bg-muted"
+                  ? "bg-[#111827] text-white dark:bg-foreground dark:text-background"
+                  : "bg-white text-gray-500 hover:bg-[#F9FAFB] hover:text-[#111827] dark:bg-card dark:hover:bg-muted"
               )}
             >
               Calendar View
@@ -463,9 +463,9 @@ export default function LaborPageClient() {
         <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
           Monthly Summary · {formatMonthLabel(selectedMonth)}
         </p>
-        <div className="overflow-hidden rounded-lg border border-[#EBEBE9] bg-white shadow-sm dark:border-border dark:bg-card dark:shadow-none">
+        <div className="overflow-hidden rounded-lg border border-[#E5E7EB] bg-white shadow-sm dark:border-border dark:bg-card dark:shadow-none">
           <div className="grid grid-cols-1 sm:grid-cols-3">
-            <div className="border-b border-[#EBEBE9] px-3 py-2.5 sm:border-b-0 sm:border-r sm:border-[#EBEBE9] dark:border-border">
+            <div className="border-b border-[#E5E7EB] px-3 py-2.5 sm:border-b-0 sm:border-r sm:border-[#E5E7EB] dark:border-border">
               <p className="text-[11px] text-muted-foreground/70 uppercase tracking-widest">
                 Total Labor Cost
               </p>
@@ -477,7 +477,7 @@ export default function LaborPageClient() {
                 })}
               </p>
             </div>
-            <div className="border-b border-[#EBEBE9] px-3 py-2.5 sm:border-b-0 sm:border-r sm:border-[#EBEBE9] dark:border-border">
+            <div className="border-b border-[#E5E7EB] px-3 py-2.5 sm:border-b-0 sm:border-r sm:border-[#E5E7EB] dark:border-border">
               <p className="text-[11px] text-muted-foreground/70 uppercase tracking-widest">
                 Work Days
               </p>
@@ -502,11 +502,11 @@ export default function LaborPageClient() {
             <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
               PROJECT LABOR COST
             </p>
-            <div className="overflow-hidden rounded-lg border border-[#EBEBE9] bg-white shadow-sm dark:border-border dark:bg-card dark:shadow-none">
+            <div className="overflow-hidden rounded-lg border border-[#E5E7EB] bg-white shadow-sm dark:border-border dark:bg-card dark:shadow-none">
               {projectLaborCost.map(({ id, name, total }) => (
                 <div
                   key={id}
-                  className="flex items-center justify-between gap-3 border-b border-[#EBEBE9] px-2.5 py-2.5 last:border-b-0 hover:bg-[#F7F7F5] dark:border-border dark:hover:bg-muted/40"
+                  className="flex items-center justify-between gap-3 border-b border-[#E5E7EB] px-2.5 py-2.5 last:border-b-0 hover:bg-[#F9FAFB] dark:border-border dark:hover:bg-muted/40"
                 >
                   <span className="text-sm font-medium text-foreground truncate">{name}</span>
                   <span className="text-sm tabular-nums font-medium text-foreground shrink-0">
@@ -564,7 +564,7 @@ export default function LaborPageClient() {
                           <span
                             className={cn(
                               "ml-auto text-sm font-semibold tabular-nums shrink-0",
-                              isHighCost ? "text-amber-700" : "text-emerald-700"
+                              isHighCost ? "text-amber-700" : "text-hh-profit-positive"
                             )}
                           >
                             $

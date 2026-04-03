@@ -23,8 +23,8 @@ export function PageHeader({
     <header className={cn("flex flex-col gap-1", className)}>
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight text-[#111111]">{title}</h1>
-          {description ? <p className="mt-0.5 text-xs text-[#6B7280]">{description}</p> : null}
+          <h1 className="text-xl font-semibold tracking-tight text-[#111827]">{title}</h1>
+          {description ? <p className="mt-0.5 text-xs text-[#9CA3AF]">{description}</p> : null}
         </div>
         {rightContent}
       </div>
@@ -77,17 +77,20 @@ export function PageLayout({
   actionBar,
   children,
   className,
+  divider = true,
 }: {
   header: ReactNode;
   actionBar?: ReactNode;
   children: ReactNode;
   className?: string;
+  /** When false, skip the horizontal rule under the header (e.g. custom hero + tabs). */
+  divider?: boolean;
 }) {
   return (
-    <div className={cn("page-container page-stack flex flex-col py-3 sm:py-4 lg:py-6", className)}>
+    <div className={cn("page-container page-stack flex flex-col", className)}>
       {header}
       {actionBar}
-      <Divider />
+      {divider ? <Divider /> : null}
       <MainContent>{children}</MainContent>
     </div>
   );

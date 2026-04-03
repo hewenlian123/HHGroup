@@ -631,126 +631,139 @@ export default function TasksPage() {
                 ))}
               </div>
               {/* Desktop: table */}
-              <table className="hidden w-full text-sm border-collapse table-fixed sm:table-auto md:table">
-                <thead>
-                  <tr className="border-b border-border/60">
-                    <th className="w-9 text-left py-2 px-2 sm:px-3" aria-label="Done" />
-                    <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground">
-                      Task
-                    </th>
-                    <th className="hidden sm:table-cell text-left py-2 px-3 font-medium text-muted-foreground">
-                      Project
-                    </th>
-                    <th className="hidden md:table-cell text-left py-2 px-3 font-medium text-muted-foreground">
-                      Assigned
-                    </th>
-                    <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground">
-                      Due
-                    </th>
-                    <th className="text-left py-2 px-2 sm:px-3 font-medium text-muted-foreground">
-                      Priority
-                    </th>
-                    <th className="w-9 text-right py-2 px-2 sm:px-3" aria-label="Actions" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((t) => (
-                    <tr
-                      key={t.id}
-                      onClick={() => openDrawer(t)}
-                      className="border-b border-border/60 last:border-b-0 hover:bg-muted/40 cursor-pointer transition-colors"
-                    >
-                      <td className="py-2 px-2 sm:px-3" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          type="button"
-                          onClick={(e) => handleToggleDone(e, t)}
-                          className="rounded border-border/60 text-[#111111] focus:outline-none focus:ring-2 focus:ring-ring"
-                          aria-label={t.status === "done" ? "Mark not done" : "Mark done"}
+              <div className="hidden md:block airtable-table-wrap airtable-table-wrap--ruled">
+                <div className="airtable-table-scroll">
+                  <table className="w-full table-fixed text-sm sm:table-auto">
+                    <thead>
+                      <tr>
+                        <th
+                          className="h-8 w-9 px-2 text-left align-middle sm:px-3"
+                          aria-label="Done"
+                        />
+                        <th className="h-8 px-2 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
+                          Task
+                        </th>
+                        <th className="hidden h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:table-cell">
+                          Project
+                        </th>
+                        <th className="hidden h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] md:table-cell">
+                          Assigned
+                        </th>
+                        <th className="h-8 px-2 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
+                          Due
+                        </th>
+                        <th className="h-8 px-2 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
+                          Priority
+                        </th>
+                        <th
+                          className="h-8 w-9 px-2 text-right align-middle sm:px-3"
+                          aria-label="Actions"
+                        />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.map((t) => (
+                        <tr
+                          key={t.id}
+                          onClick={() => openDrawer(t)}
+                          className="cursor-pointer transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
                         >
-                          <span
-                            className={cn(
-                              "inline-flex h-4 w-4 items-center justify-center rounded-sm border",
-                              t.status === "done"
-                                ? "border-[#111111] bg-[#111111] text-white"
-                                : "border-border"
-                            )}
+                          <td
+                            className="h-11 min-h-[44px] px-2 py-0 align-middle sm:px-3"
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            {t.status === "done" ? "✓" : null}
-                          </span>
-                        </button>
-                      </td>
-                      <td className="py-2 px-2 sm:px-3">
-                        <span
-                          className={cn(
-                            "font-medium",
-                            t.status === "done" && "text-muted-foreground line-through"
-                          )}
-                        >
-                          {t.title || "—"}
-                        </span>
-                      </td>
-                      <td className="hidden sm:table-cell py-2 px-3 text-muted-foreground">
-                        {t.project_name ?? "—"}
-                      </td>
-                      <td className="hidden md:table-cell py-2 px-3 text-muted-foreground">
-                        {t.worker_name ?? "—"}
-                      </td>
-                      <td className="py-2 px-2 sm:px-3 text-muted-foreground tabular-nums">
-                        {t.due_date ? new Date(t.due_date).toLocaleDateString() : "—"}
-                      </td>
-                      <td className="py-2 px-2 sm:px-3">
-                        <span
-                          className={cn(
-                            "inline-flex rounded-sm px-1.5 py-0.5 text-xs font-medium",
-                            t.priority === "high" &&
-                              "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
-                            t.priority === "medium" &&
-                              "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
-                            t.priority === "low" && "bg-muted text-muted-foreground"
-                          )}
-                        >
-                          {PRIORITY_LABEL[t.priority] ?? t.priority}
-                        </span>
-                      </td>
-                      <td
-                        className="py-2 px-2 sm:px-3 text-right"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 rounded-sm"
-                              aria-label="Task actions"
-                              disabled={submitting}
+                            <button
+                              type="button"
+                              onClick={(e) => handleToggleDone(e, t)}
+                              className="rounded border-border/60 text-[#111111] focus:outline-none focus:ring-2 focus:ring-ring"
+                              aria-label={t.status === "done" ? "Mark not done" : "Mark done"}
                             >
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            align="end"
-                            className="min-w-[160px] rounded-md border border-border/60 bg-popover text-xs shadow-[var(--shadow-popover)]"
+                              <span
+                                className={cn(
+                                  "inline-flex h-4 w-4 items-center justify-center rounded-sm border",
+                                  t.status === "done"
+                                    ? "border-[#111111] bg-[#111111] text-white"
+                                    : "border-border"
+                                )}
+                              >
+                                {t.status === "done" ? "✓" : null}
+                              </span>
+                            </button>
+                          </td>
+                          <td className="h-11 min-h-[44px] px-2 py-0 align-middle text-[13px] sm:px-3">
+                            <span
+                              className={cn(
+                                "font-medium",
+                                t.status === "done" && "text-muted-foreground line-through"
+                              )}
+                            >
+                              {t.title || "—"}
+                            </span>
+                          </td>
+                          <td className="hidden h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] text-muted-foreground sm:table-cell">
+                            {t.project_name ?? "—"}
+                          </td>
+                          <td className="hidden h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] text-muted-foreground md:table-cell">
+                            {t.worker_name ?? "—"}
+                          </td>
+                          <td className="h-11 min-h-[44px] px-2 py-0 align-middle font-mono text-[13px] tabular-nums text-muted-foreground sm:px-3">
+                            {t.due_date ? new Date(t.due_date).toLocaleDateString() : "—"}
+                          </td>
+                          <td className="h-11 min-h-[44px] px-2 py-0 align-middle text-[13px] sm:px-3">
+                            <span
+                              className={cn(
+                                "inline-flex rounded-sm px-1.5 py-0.5 text-xs font-medium",
+                                t.priority === "high" &&
+                                  "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
+                                t.priority === "medium" &&
+                                  "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+                                t.priority === "low" && "bg-muted text-muted-foreground"
+                              )}
+                            >
+                              {PRIORITY_LABEL[t.priority] ?? t.priority}
+                            </span>
+                          </td>
+                          <td
+                            className="h-11 min-h-[44px] px-2 py-0 text-right align-middle sm:px-3"
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            <DropdownMenuItem
-                              onSelect={() => openDrawer(t)}
-                              className="cursor-pointer"
-                            >
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onSelect={() => handleDeleteTaskById(t.id)}
-                              className="cursor-pointer text-destructive focus:text-destructive"
-                            >
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 rounded-sm"
+                                  aria-label="Task actions"
+                                  disabled={submitting}
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent
+                                align="end"
+                                className="min-w-[160px] rounded-md border border-border/60 bg-popover text-xs shadow-[var(--shadow-popover)]"
+                              >
+                                <DropdownMenuItem
+                                  onSelect={() => openDrawer(t)}
+                                  className="cursor-pointer"
+                                >
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onSelect={() => handleDeleteTaskById(t.id)}
+                                  className="cursor-pointer text-destructive focus:text-destructive"
+                                >
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </>
           )}
         </div>

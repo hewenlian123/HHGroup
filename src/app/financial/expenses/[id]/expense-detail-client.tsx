@@ -535,7 +535,7 @@ export function ExpenseDetailClient({ id }: { id: string }) {
         </div>
       ) : null}
       {message ? (
-        <div className="rounded-[12px] border border-[#E5E7EB] bg-white px-4 py-3 text-sm text-emerald-700">
+        <div className="rounded-[12px] border border-[#E5E7EB] bg-white px-4 py-3 text-sm text-[#166534]">
           {message}
         </div>
       ) : null}

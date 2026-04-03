@@ -261,12 +261,12 @@ export default function LaborWorkersPage() {
       </FilterBar>
 
       {message ? (
-        <p className="border-b border-[#EBEBE9] pb-3 text-sm text-muted-foreground dark:border-border">
+        <p className="border-b border-[#E5E7EB] pb-3 text-sm text-muted-foreground dark:border-border">
           {message}
         </p>
       ) : null}
       {editorOpen ? (
-        <section className="border-b border-[#EBEBE9] pb-4 dark:border-border">
+        <section className="border-b border-[#E5E7EB] pb-4 dark:border-border">
           <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">Name</p>
@@ -326,7 +326,7 @@ export default function LaborWorkersPage() {
               </Select>
             </div>
           </div>
-          <div className="mt-4 flex flex-col-reverse items-stretch justify-end gap-2 border-t border-[#EBEBE9] pt-3 sm:flex-row sm:items-center dark:border-border">
+          <div className="mt-4 flex flex-col-reverse items-stretch justify-end gap-2 border-t border-[#E5E7EB] pt-3 sm:flex-row sm:items-center dark:border-border">
             <Button
               variant="outline"
               size="sm"
@@ -348,23 +348,38 @@ export default function LaborWorkersPage() {
         </section>
       ) : null}
 
-      <div className="overflow-hidden rounded-sm border border-[#EBEBE9] dark:border-border">
-        <div className="table-responsive">
+      <div className="airtable-table-wrap airtable-table-wrap--ruled">
+        <div className="airtable-table-scroll">
           <table className="w-full min-w-[520px] text-sm md:min-w-0">
             <thead>
-              <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
-                <th className="table-head-label px-4 py-3 text-left">Name</th>
-                <th className="table-head-label px-4 py-3 text-left">Role</th>
-                <th className="table-head-label px-4 py-3 text-left">Phone</th>
-                <th className="table-head-label px-4 py-3 text-right">Half-day Rate</th>
-                <th className="table-head-label px-4 py-3 text-left">Status</th>
-                <th className="table-head-label px-4 py-3 text-right">Actions</th>
+              <tr>
+                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  Name
+                </th>
+                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  Role
+                </th>
+                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  Phone
+                </th>
+                <th className="h-8 px-3 text-right align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  Half-day Rate
+                </th>
+                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  Status
+                </th>
+                <th className="h-8 px-3 text-right align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td className="py-8 px-4 text-center text-muted-foreground" colSpan={6}>
+                  <td
+                    className="h-11 min-h-[44px] px-3 py-0 text-center text-muted-foreground"
+                    colSpan={6}
+                  >
                     Loading workers...
                   </td>
                 </tr>
@@ -373,19 +388,25 @@ export default function LaborWorkersPage() {
                 return (
                   <tr
                     key={w.id}
-                    className="group table-row-compact cursor-pointer border-b border-[#EBEBE9]/80 transition-colors hover:bg-[#F7F7F5] dark:border-border/40 dark:hover:bg-muted/20"
+                    className="group cursor-pointer transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
                     onClick={() => openEdit(w)}
                   >
-                    <td className="py-3 px-4 font-medium text-foreground">{w.name || "—"}</td>
-                    <td className="py-3 px-4 text-muted-foreground">{w.role || "—"}</td>
-                    <td className="py-3 px-4 text-muted-foreground">{w.phone || "—"}</td>
-                    <td className="py-3 px-4 text-right tabular-nums">
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium text-foreground">
+                      {w.name || "—"}
+                    </td>
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] text-muted-foreground">
+                      {w.role || "—"}
+                    </td>
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] text-muted-foreground">
+                      {w.phone || "—"}
+                    </td>
+                    <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
                       ${Number(w.half_day_rate ?? 0).toLocaleString()}
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">
                       <StatusBadge status={w.status === "active" ? "active" : "inactive"} />
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">
                       <div className="flex items-center justify-end gap-2">
                         <Button
                           variant="outline"
@@ -418,7 +439,10 @@ export default function LaborWorkersPage() {
               })}
               {!loading && filtered.length === 0 ? (
                 <tr>
-                  <td className="py-8 px-4 text-center text-muted-foreground" colSpan={6}>
+                  <td
+                    className="h-11 min-h-[44px] px-3 py-0 text-center text-muted-foreground"
+                    colSpan={6}
+                  >
                     No workers found.
                   </td>
                 </tr>

@@ -134,7 +134,7 @@ function PaymentsReceivedPageInner() {
                       {row.project_name ?? "—"}
                     </TableCell>
                     <TableCell className="text-muted-foreground">{row.invoice_no ?? "—"}</TableCell>
-                    <TableCell className="text-right tabular-nums font-medium text-emerald-600/90 dark:text-emerald-400/90">
+                    <TableCell className="text-right tabular-nums font-medium text-hh-profit-positive dark:text-hh-profit-positive">
                       {money(row.amount)}
                     </TableCell>
                     <TableCell className="text-muted-foreground">

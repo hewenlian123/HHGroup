@@ -103,7 +103,7 @@ export function CreatableSelect({
         onBlur={handleBlur}
         placeholder={value ? undefined : placeholder}
         className={cn(
-          "flex h-10 min-h-[44px] w-full rounded-lg border border-[#EBEBE9] bg-white px-3 py-2 text-sm text-[#2D2D2D] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2D2D2D]/10 dark:border-border dark:bg-card dark:text-foreground dark:focus-visible:ring-ring/30 lg:min-h-10",
+          "flex h-10 min-h-[44px] w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#111827]/10 dark:border-border dark:bg-card dark:text-foreground dark:focus-visible:ring-ring/30 lg:min-h-10",
           label ? "mt-1" : ""
         )}
         aria-autocomplete="list"
@@ -111,7 +111,7 @@ export function CreatableSelect({
       {isOpen && (
         <ul
           role="listbox"
-          className="absolute z-[100] mt-1 max-h-56 w-full overflow-auto rounded-xl border border-[#EBEBE9] bg-white py-2 shadow-lg dark:border-border dark:bg-popover dark:shadow-md"
+          className="absolute z-[100] mt-1 max-h-56 w-full overflow-auto rounded-xl border border-[#E5E7EB] bg-white py-2 shadow-lg dark:border-border dark:bg-popover dark:shadow-md"
         >
           {filtered.map((opt) => (
             <li

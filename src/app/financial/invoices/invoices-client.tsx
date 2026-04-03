@@ -4,8 +4,8 @@ import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/page-header";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -20,12 +20,14 @@ import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import {
   Dialog,
   DialogContent,
+  DialogDestructiveStrip,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { Pagination } from "@/components/ui/pagination";
+import { FILTER_CONTROL_CLASS } from "@/lib/native-field-classes";
 
 type InvoiceStatus = "Draft" | "Sent" | "Partially Paid" | "Paid" | "Void";
 
@@ -197,7 +199,7 @@ export function InvoicesClient() {
         key: "paidTotal",
         header: "Paid",
         align: "right",
-        className: "tabular-nums text-emerald-600/90 dark:text-emerald-400/90",
+        className: "tabular-nums text-hh-profit-positive dark:text-hh-profit-positive",
         render: (row) => money(safeNumber(row.paidTotal)),
       },
       {
@@ -247,7 +249,7 @@ export function InvoicesClient() {
   }, [busyId, refresh, router]);
 
   return (
-    <div className="page-container page-stack py-6">
+    <div className="page-container page-stack">
       <PageHeader
         title="Invoices"
         subtitle="Create and manage invoices. Record payments and track AR."
@@ -264,22 +266,31 @@ export function InvoicesClient() {
       <FilterBar>
         <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1 sm:col-span-2 lg:col-span-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-[#9CA3AF] dark:text-muted-foreground">
               Search
             </p>
-            <Input
-              placeholder="Invoice #, client, project…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+            <div className="relative w-full max-w-[240px]">
+              <Search
+                className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9CA3AF]"
+                strokeWidth={1.75}
+                aria-hidden
+              />
+              <Input
+                placeholder="Invoice #, client, project…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className={cn(FILTER_CONTROL_CLASS, "pl-9")}
+              />
+            </div>
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-[#9CA3AF] dark:text-muted-foreground">
               Status
             </p>
             <Select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as "" | InvoiceStatus)}
+              className={FILTER_CONTROL_CLASS}
             >
               {STATUS_OPTIONS.map((o) => (
                 <option key={o.value || "all"} value={o.value}>
@@ -289,10 +300,14 @@ export function InvoicesClient() {
             </Select>
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-[#9CA3AF] dark:text-muted-foreground">
               Project
             </p>
-            <Select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)}>
+            <Select
+              value={projectFilter}
+              onChange={(e) => setProjectFilter(e.target.value)}
+              className={FILTER_CONTROL_CLASS}
+            >
               <option value="">All projects</option>
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -310,14 +325,14 @@ export function InvoicesClient() {
         </div>
       ) : null}
 
-      <Card className="overflow-hidden p-0">
-        {loading ? (
-          <div className="p-4 space-y-2">
-            {Array.from({ length: 8 }).map((_, idx) => (
-              <Skeleton key={idx} className="h-12 w-full" />
-            ))}
-          </div>
-        ) : (
+      {loading ? (
+        <div className="space-y-2 p-4">
+          {Array.from({ length: 8 }).map((_, idx) => (
+            <Skeleton key={idx} className="h-12 w-full" />
+          ))}
+        </div>
+      ) : (
+        <>
           <DataTable<InvoiceRow>
             columns={columns}
             data={invoices}
@@ -327,49 +342,57 @@ export function InvoicesClient() {
             primaryColumnKey="invoice_no"
             amountColumnKeys={["total", "paidTotal", "balanceDue"]}
           />
-        )}
-        <Pagination
-          page={page}
-          pageSize={pageSize}
-          total={total}
-          onPageChange={setPage}
-          className="px-4"
-        />
-      </Card>
+          <Pagination
+            page={page}
+            pageSize={pageSize}
+            total={total}
+            onPageChange={setPage}
+            className="pt-4"
+          />
+        </>
+      )}
 
       <Dialog open={!!voidConfirmId} onOpenChange={(open) => !open && setVoidConfirmId(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-base font-semibold">Void invoice</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            This cannot be undone. The invoice will be marked as Void.
-          </p>
-          <DialogFooter className="gap-2 pt-3 border-t border-border/60">
-            <Button variant="ghost" size="sm" onClick={() => setVoidConfirmId(null)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              disabled={!!busyId}
-              onClick={async () => {
-                if (!voidConfirmId || !supabase) return;
-                setBusyId(voidConfirmId);
-                setError(null);
-                const { error: updateError } = await supabase
-                  .from("invoices")
-                  .update({ status: "Void" })
-                  .eq("id", voidConfirmId);
-                if (updateError) setError(updateError.message);
-                await refresh();
-                setBusyId(null);
-                setVoidConfirmId(null);
-              }}
-            >
-              Void
-            </Button>
-          </DialogFooter>
+        <DialogContent className="max-w-[360px] gap-0 overflow-hidden p-0 sm:max-w-[360px]">
+          <DialogDestructiveStrip />
+          <div className="space-y-4 px-8 pb-8 pt-6">
+            <DialogHeader className="space-y-1 text-left">
+              <DialogTitle>Void invoice</DialogTitle>
+            </DialogHeader>
+            <p className="text-xs text-[#9CA3AF]">
+              This cannot be undone. The invoice will be marked as Void.
+            </p>
+            <DialogFooter className="mt-0 border-0 bg-transparent p-0 pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-[0.5px] border-[#E5E7EB] bg-white"
+                onClick={() => setVoidConfirmId(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                disabled={!!busyId}
+                onClick={async () => {
+                  if (!voidConfirmId || !supabase) return;
+                  setBusyId(voidConfirmId);
+                  setError(null);
+                  const { error: updateError } = await supabase
+                    .from("invoices")
+                    .update({ status: "Void" })
+                    .eq("id", voidConfirmId);
+                  if (updateError) setError(updateError.message);
+                  await refresh();
+                  setBusyId(null);
+                  setVoidConfirmId(null);
+                }}
+              >
+                Void
+              </Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

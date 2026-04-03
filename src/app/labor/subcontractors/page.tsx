@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { FilterBar } from "@/components/filter-bar";
 import { StatusBadge } from "@/components/status-badge";
+import { TableShell, tableRawTdClass, tableRawThClass } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
 type SubcontractorRow = {
   id: string;
@@ -274,7 +276,7 @@ export default function SubcontractorsPage() {
   return (
     <div className="page-container page-stack py-6">
       <PageHeader
-        title="Vendors"
+        title="Subcontractors"
         subtitle="Master data: company info, compliance, and attachments. (Contracts & billing are under Subcontractors.)"
         actions={
           <Button className="rounded-lg" onClick={openCreate} disabled={submitting || !!deletingId}>
@@ -305,13 +307,13 @@ export default function SubcontractorsPage() {
       </FilterBar>
 
       {message ? (
-        <p className="border-b border-[#EBEBE9] pb-3 text-sm text-muted-foreground dark:border-border">
+        <p className="border-b border-[#E5E7EB] pb-3 text-sm text-muted-foreground dark:border-border">
           {message}
         </p>
       ) : null}
 
       {editorOpen ? (
-        <section className="border-b border-[#EBEBE9] pb-4 dark:border-border">
+        <section className="border-b border-[#E5E7EB] pb-4 dark:border-border">
           <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">Display Name</p>
@@ -477,7 +479,7 @@ export default function SubcontractorsPage() {
               />
             </div>
           </div>
-          <div className="mt-4 flex flex-col-reverse justify-end gap-2 border-t border-[#EBEBE9] pt-3 sm:flex-row sm:items-center dark:border-border">
+          <div className="mt-4 flex flex-col-reverse justify-end gap-2 border-t border-[#E5E7EB] pt-3 sm:flex-row sm:items-center dark:border-border">
             <Button
               variant="outline"
               size="sm"
@@ -498,25 +500,28 @@ export default function SubcontractorsPage() {
         </section>
       ) : null}
 
-      <div className="overflow-hidden rounded-sm border border-[#EBEBE9] dark:border-border">
+      <TableShell>
         <div className="table-responsive">
-          <table className="w-full min-w-[640px] text-sm md:min-w-0">
+          <table className="w-full min-w-[640px] border-collapse text-[13px] md:min-w-0">
             <thead>
-              <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
-                <th className="table-head-label px-4 py-3 text-left">Name</th>
-                <th className="table-head-label px-4 py-3 text-left">Contact</th>
-                <th className="table-head-label px-4 py-3 text-left">Phone</th>
-                <th className="table-head-label px-4 py-3 text-left">Email</th>
-                <th className="table-head-label px-4 py-3 text-left">W9</th>
-                <th className="table-head-label px-4 py-3 text-left">Insurance</th>
-                <th className="table-head-label px-4 py-3 text-left">Status</th>
-                <th className="table-head-label px-4 py-3 text-right">Actions</th>
+              <tr>
+                <th className={tableRawThClass}>Name</th>
+                <th className={tableRawThClass}>Contact</th>
+                <th className={tableRawThClass}>Phone</th>
+                <th className={tableRawThClass}>Email</th>
+                <th className={tableRawThClass}>W9</th>
+                <th className={tableRawThClass}>Insurance</th>
+                <th className={tableRawThClass}>Status</th>
+                <th className={cn(tableRawThClass, "text-right")}>Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="[&_tr:last-child>td]:border-b-0">
               {loading ? (
                 <tr>
-                  <td className="px-4 py-8 text-center text-muted-foreground" colSpan={8}>
+                  <td
+                    className={cn(tableRawTdClass, "py-8 text-center text-muted-foreground")}
+                    colSpan={8}
+                  >
                     Loading subcontractors...
                   </td>
                 </tr>
@@ -524,26 +529,32 @@ export default function SubcontractorsPage() {
               {filtered.map((row) => (
                 <tr
                   key={row.id}
-                  className="group border-b border-[#EBEBE9]/80 transition-colors hover:bg-[#F7F7F5] dark:border-border/40 dark:hover:bg-muted/20"
+                  className="group transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/20"
                 >
-                  <td className="px-4 py-3 font-medium text-foreground">
+                  <td className={cn(tableRawTdClass, "font-medium text-foreground")}>
                     <Link href={`/labor/subcontractors/${row.id}`} className="hover:underline">
                       {row.display_name}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">{row.contact_name || "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{row.phone || "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{row.email || "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">
+                  <td className={cn(tableRawTdClass, "text-muted-foreground")}>
+                    {row.contact_name || "—"}
+                  </td>
+                  <td className={cn(tableRawTdClass, "text-muted-foreground")}>
+                    {row.phone || "—"}
+                  </td>
+                  <td className={cn(tableRawTdClass, "text-muted-foreground")}>
+                    {row.email || "—"}
+                  </td>
+                  <td className={cn(tableRawTdClass, "text-muted-foreground")}>
                     {row.w9_on_file ? "On file" : "Missing"}
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">
+                  <td className={cn(tableRawTdClass, "text-muted-foreground")}>
                     {row.insurance_expiration || "—"}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className={tableRawTdClass}>
                     <StatusBadge status={row.status} />
                   </td>
-                  <td className="px-4 py-3">
+                  <td className={tableRawTdClass}>
                     <div className="flex items-center justify-end gap-2">
                       <Button
                         variant="outline"
@@ -569,7 +580,10 @@ export default function SubcontractorsPage() {
               ))}
               {!loading && filtered.length === 0 ? (
                 <tr>
-                  <td className="px-4 py-8 text-center text-muted-foreground" colSpan={8}>
+                  <td
+                    className={cn(tableRawTdClass, "py-8 text-center text-muted-foreground")}
+                    colSpan={8}
+                  >
                     No subcontractors yet.
                   </td>
                 </tr>
@@ -577,7 +591,7 @@ export default function SubcontractorsPage() {
             </tbody>
           </table>
         </div>
-      </div>
+      </TableShell>
     </div>
   );
 }

@@ -12,7 +12,8 @@ import { flushSync } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, MoreHorizontal } from "lucide-react";
-import { PageLayout, PageHeader, Divider, SectionHeader, StatusBadge } from "@/components/base";
+import { PageLayout, Divider, SectionHeader } from "@/components/base";
+import { cn } from "@/lib/utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +36,39 @@ import { InvoiceStatusBadge } from "@/components/invoice-status-badge";
 import { archiveProjectAction, deleteProjectAction, updateProjectAction } from "../actions";
 import { EditProjectModal, type ProjectEditSavePatch } from "./edit-project-modal";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
+
+function normalizeDetailStatus(
+  status: string
+): "active" | "completed" | "pending" | "on_hold" | "other" {
+  const v = (status ?? "").toLowerCase().trim().replace(/\s+/g, "_");
+  if (v === "active") return "active";
+  if (v === "completed") return "completed";
+  if (v === "pending") return "pending";
+  if (v === "on_hold" || v === "on-hold" || v.includes("hold")) return "on_hold";
+  return "other";
+}
+
+function ProjectDetailStatusPill({ status }: { status: string }) {
+  const n = normalizeDetailStatus(status);
+  const map = {
+    active: { pill: "hh-pill-success", label: "Active" },
+    completed: { pill: "hh-pill-success", label: "Completed" },
+    pending: { pill: "hh-pill-warning", label: "Pending" },
+    on_hold: { pill: "hh-pill-neutral", label: "On Hold" },
+    other: {
+      pill: "hh-pill-neutral",
+      label:
+        status && status.trim()
+          ? status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()
+          : "—",
+    },
+  } as const;
+  const c = map[n];
+  return <span className={cn(c.pill, "text-[12px] leading-tight")}>{c.label}</span>;
+}
+
+const TAB_PANEL =
+  "mt-4 rounded-lg bg-white p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.06)] text-[14px] leading-normal";
 
 type TabKey =
   | "overview"
@@ -75,7 +109,7 @@ export interface ProjectDetailTabsClientProps {
   projectInvoices: import("@/lib/data").InvoiceWithDerived[];
   laborEntries: import("@/lib/daily-labor-db").LaborEntryWithJoins[];
   documents: import("@/lib/data").DocumentRow[];
-  commissions: import("@/lib/data").ProjectCommission[];
+  commissions: import("@/lib/data").CommissionWithPaid[];
   materialSelections: import("@/lib/data").ProjectMaterialSelectionWithMaterial[];
   materialCatalog: import("@/lib/data").MaterialCatalogRow[];
   punchItems: import("@/lib/punch-list-db").PunchListItemWithJoins[];
@@ -193,123 +227,155 @@ export function ProjectDetailTabsClient({
     [projectId, toast]
   );
 
-  const subtitle = [
-    `Budget $${(displayProject.budget ?? financialSummary?.budget ?? 0).toLocaleString()}`,
-    `Spent $${(financialSummary?.spent ?? canonicalProfit.actualCost).toLocaleString()}`,
-    `Profit ${canonicalProfit.profit >= 0 ? "" : "−"}$${Math.abs(
-      canonicalProfit.profit
-    ).toLocaleString()}`,
-    `Margin ${(canonicalProfit.margin * 100).toFixed(1)}%`,
-  ].join(" · ");
+  const budgetVal = displayProject.budget ?? financialSummary?.budget ?? 0;
+  const spentVal = financialSummary?.spent ?? canonicalProfit.actualCost;
+  const profitVal = canonicalProfit.profit;
+  const marginPct = canonicalProfit.margin * 100;
 
   return (
     <PageLayout
+      divider={false}
+      className="bg-[#F8F7F4] py-6"
       header={
-        <PageHeader
-          title={
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2">
-                <Link
-                  href="/projects"
-                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-                >
-                  <ArrowLeft className="h-3.5 w-3.5" />
-                  Projects
-                </Link>
+        <div className="space-y-4">
+          <Link
+            href="/projects"
+            className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[#6B7280] hover:text-[#111827]"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Projects
+          </Link>
+          <div className="rounded-lg bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.06)] sm:p-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0 space-y-2">
+                <div className="flex flex-wrap items-center gap-3">
+                  <h1 className="text-xl font-bold tracking-tight text-[#111827] sm:text-2xl">
+                    {displayProject.name}
+                  </h1>
+                  <ProjectDetailStatusPill status={displayProject.status} />
+                </div>
+                {(displayProject.client || displayProject.address) && (
+                  <p className="text-[14px] text-[#6B7280]">
+                    {[displayProject.client, displayProject.address].filter(Boolean).join(" · ")}
+                  </p>
+                )}
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-[24px] font-semibold tracking-tight text-foreground">
-                  {displayProject.name}
-                </h1>
-                <StatusBadge
-                  label={
-                    displayProject.status.charAt(0).toUpperCase() + displayProject.status.slice(1)
-                  }
-                  variant={
-                    displayProject.status === "active"
-                      ? "success"
-                      : displayProject.status === "pending"
-                        ? "warning"
-                        : "muted"
-                  }
-                />
-                <span className="text-[13px] text-muted-foreground">{subtitle}</span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 rounded-lg border-[#E5E7EB] text-[13px] text-[#6B7280]"
+                    aria-label="Project actions"
+                  >
+                    <MoreHorizontal className="mr-1 h-4 w-4" />
+                    More
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-[180px]">
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      setEditModalOpen(true);
+                    }}
+                  >
+                    Edit project
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={async (e) => {
+                      e.preventDefault();
+                      const res = await archiveProjectAction(projectId);
+                      if (res?.error) {
+                        toast({
+                          title: "Archive failed",
+                          description: res.error,
+                          variant: "error",
+                        });
+                      } else {
+                        toast({ title: "Project archived" });
+                        void syncRouterAndClients(router);
+                      }
+                    }}
+                  >
+                    Archive project
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onSelect={async (e) => {
+                      e.preventDefault();
+                      if (
+                        !window.confirm(
+                          `Delete project "${displayProject.name}"? This cannot be undone.`
+                        )
+                      )
+                        return;
+                      const res = await deleteProjectAction(projectId);
+                      if (res?.blocked) {
+                        toast({
+                          title: "Cannot delete project",
+                          description:
+                            "This project has related records. Please archive instead or remove related data.",
+                          variant: "error",
+                        });
+                      } else if (res?.error) {
+                        toast({
+                          title: "Delete failed",
+                          description: res.error,
+                          variant: "error",
+                        });
+                      }
+                    }}
+                  >
+                    Delete project…
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            <div className="mt-6 border-t border-[#E5E7EB] pt-6">
+              <div className="rounded-lg border-[0.5px] border-[#E5E7EB] bg-white p-4 sm:p-5">
+                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
+                      Budget
+                    </p>
+                    <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-[#111827]">
+                      ${budgetVal.toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
+                      Spent
+                    </p>
+                    <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-[#111827]">
+                      ${spentVal.toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
+                      Profit
+                    </p>
+                    <p
+                      className={cn(
+                        "mt-1 font-mono text-2xl font-bold tabular-nums",
+                        profitVal >= 0 ? "text-hh-profit-positive" : "text-red-600"
+                      )}
+                    >
+                      {profitVal >= 0 ? "" : "−"}${Math.abs(profitVal).toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
+                      Margin
+                    </p>
+                    <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-[#111827]">
+                      {marginPct.toFixed(1)}%
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
-          }
-          actions={
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 rounded-sm"
-                  aria-label="Project actions"
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-[180px]">
-                <DropdownMenuItem
-                  onSelect={(e) => {
-                    e.preventDefault();
-                    setEditModalOpen(true);
-                  }}
-                >
-                  Edit project
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={async (e) => {
-                    e.preventDefault();
-                    const res = await archiveProjectAction(projectId);
-                    if (res?.error) {
-                      toast({
-                        title: "Archive failed",
-                        description: res.error,
-                        variant: "error",
-                      });
-                    } else {
-                      toast({ title: "Project archived" });
-                      void syncRouterAndClients(router);
-                    }
-                  }}
-                >
-                  Archive project
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="text-destructive focus:text-destructive"
-                  onSelect={async (e) => {
-                    e.preventDefault();
-                    if (
-                      !window.confirm(
-                        `Delete project "${displayProject.name}"? This cannot be undone.`
-                      )
-                    )
-                      return;
-                    const res = await deleteProjectAction(projectId);
-                    if (res?.blocked) {
-                      toast({
-                        title: "Cannot delete project",
-                        description:
-                          "This project has related records. Please archive instead or remove related data.",
-                        variant: "error",
-                      });
-                    } else if (res?.error) {
-                      toast({
-                        title: "Delete failed",
-                        description: res.error,
-                        variant: "error",
-                      });
-                    }
-                    // On success, deleteProjectAction will redirect server-side.
-                  }}
-                >
-                  Delete project…
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          }
-        />
+          </div>
+        </div>
       }
     >
       <EditProjectModal
@@ -324,8 +390,8 @@ export function ProjectDetailTabsClient({
         }}
         onSave={handleProjectSave}
       />
-      <div className="bg-[#F9FAFB] -mx-4 -mb-4 px-4 pb-6 sm:-mx-6 sm:px-6">
-        <div className="bg-white rounded-sm px-4 py-3 sm:px-5 sm:py-4 space-y-4">
+      <div className="-mx-4 -mb-4 px-4 pb-8 sm:-mx-6 sm:px-6">
+        <div className="space-y-4">
           <Tabs
             value={tab}
             onValueChange={(v) => {
@@ -333,8 +399,8 @@ export function ProjectDetailTabsClient({
             }}
             className="w-full"
           >
-            <div className="flex items-center justify-between gap-2 border-b border-border/60">
-              <TabsList className="h-9 flex-1 justify-start rounded-none border-0 bg-transparent p-0 gap-0 min-h-0 overflow-x-auto whitespace-nowrap">
+            <div className="flex items-center justify-between gap-2 border-b-2 border-[#E5E7EB] pb-0">
+              <TabsList className="h-10 min-h-0 flex-1 justify-start gap-0 overflow-x-auto whitespace-nowrap rounded-none border-0 bg-transparent p-0">
                 {(
                   [
                     { key: "overview" as const, label: "Overview" },
@@ -347,7 +413,7 @@ export function ProjectDetailTabsClient({
                   <TabsTrigger
                     key={t.key}
                     value={t.key}
-                    className="rounded-none border-b-2 border-transparent px-3 py-2 text-xs sm:text-sm text-muted-foreground data-[state=active]:border-foreground data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                    className="rounded-none border-b-2 border-transparent px-3 py-2.5 text-[13px] font-medium text-[#6B7280] data-[state=active]:border-[#111827] data-[state=active]:text-[#111827] data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:text-[14px]"
                   >
                     {t.label}
                   </TabsTrigger>
@@ -378,7 +444,7 @@ export function ProjectDetailTabsClient({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 px-2 text-xs text-muted-foreground"
+                    className="h-9 shrink-0 px-2 text-[13px] text-[#6B7280] hover:text-[#111827]"
                   >
                     More ▾
                   </Button>
@@ -413,7 +479,7 @@ export function ProjectDetailTabsClient({
               </DropdownMenu>
             </div>
 
-            <TabsContent value="overview" className="mt-4 space-y-4">
+            <TabsContent value="overview" className={cn(TAB_PANEL, "space-y-4")}>
               {/* Metrics strip */}
               {financialSummary && (
                 <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 xl:grid-cols-6">
@@ -474,7 +540,12 @@ export function ProjectDetailTabsClient({
                     <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-[0.08em]">
                       Profit
                     </span>
-                    <span className="mt-1 text-[18px] leading-tight font-medium tabular-nums">
+                    <span
+                      className={cn(
+                        "mt-1 text-[18px] font-medium leading-tight tabular-nums",
+                        canonicalProfit.profit >= 0 ? "text-hh-profit-positive" : "text-red-600"
+                      )}
+                    >
                       {canonicalProfit.profit >= 0 ? "" : "−"}$
                       {Math.abs(canonicalProfit.profit).toLocaleString("en-US", {
                         maximumFractionDigits: 0,
@@ -533,7 +604,12 @@ export function ProjectDetailTabsClient({
                   </div>
                   <div className="flex items-center justify-between gap-3 py-2">
                     <span className="text-[#9CA3AF]">Profit</span>
-                    <span className="tabular-nums text-right text-[#111827]">
+                    <span
+                      className={cn(
+                        "text-right tabular-nums",
+                        canonicalProfit.profit >= 0 ? "text-hh-profit-positive" : "text-red-600"
+                      )}
+                    >
                       {canonicalProfit.profit >= 0 ? "" : "−"}$
                       {Math.abs(canonicalProfit.profit).toLocaleString("en-US", {
                         maximumFractionDigits: 0,
@@ -605,7 +681,7 @@ export function ProjectDetailTabsClient({
               </div>
             </TabsContent>
 
-            <TabsContent value="tasks" className="mt-4">
+            <TabsContent value="tasks" className={TAB_PANEL}>
               <ProjectTasksTab
                 projectId={projectId}
                 tasks={tasks}
@@ -619,7 +695,7 @@ export function ProjectDetailTabsClient({
               />
             </TabsContent>
 
-            <TabsContent value="schedule" className="mt-4">
+            <TabsContent value="schedule" className={TAB_PANEL}>
               <SectionHeader
                 label="Schedule"
                 className="text-[11px] tracking-[0.08em] text-[#9CA3AF] font-medium"
@@ -631,29 +707,48 @@ export function ProjectDetailTabsClient({
                 </p>
               ) : (
                 <>
-                  <div className="border border-border/60 rounded-sm overflow-hidden mt-2">
-                    <table className="w-full text-sm border-collapse">
-                      <thead>
-                        <tr className="border-b border-border/60 bg-muted/10">
-                          <th className="text-left py-2 px-3 font-medium">Title</th>
-                          <th className="text-left py-2 px-3 font-medium">Start</th>
-                          <th className="text-left py-2 px-3 font-medium">End</th>
-                          <th className="text-left py-2 px-3 font-medium">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {scheduleItems.map((s) => (
-                          <tr key={s.id} className="border-b border-border/30">
-                            <td className="py-2 px-3">{s.title}</td>
-                            <td className="py-2 px-3 tabular-nums">{s.start_date ?? "—"}</td>
-                            <td className="py-2 px-3 tabular-nums">{s.end_date ?? "—"}</td>
-                            <td className="py-2 px-3 capitalize">
-                              {(s.status ?? "scheduled").replace(/_/g, " ")}
-                            </td>
+                  <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
+                    <div className="airtable-table-scroll">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr>
+                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                              Title
+                            </th>
+                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                              Start
+                            </th>
+                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                              End
+                            </th>
+                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                              Status
+                            </th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {scheduleItems.map((s) => (
+                            <tr
+                              key={s.id}
+                              className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
+                            >
+                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
+                                {s.title}
+                              </td>
+                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] tabular-nums">
+                                {s.start_date ?? "—"}
+                              </td>
+                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] tabular-nums">
+                                {s.end_date ?? "—"}
+                              </td>
+                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] capitalize">
+                                {(s.status ?? "scheduled").replace(/_/g, " ")}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                   <div className="mt-3">
                     <Link
@@ -667,7 +762,7 @@ export function ProjectDetailTabsClient({
               )}
             </TabsContent>
 
-            <TabsContent value="financial" className="mt-4">
+            <TabsContent value="financial" className={TAB_PANEL}>
               <SectionHeader
                 label="Financial"
                 className="text-[11px] tracking-[0.08em] text-[#9CA3AF] font-medium"
@@ -681,44 +776,59 @@ export function ProjectDetailTabsClient({
               {projectInvoices.length === 0 ? (
                 <p className="py-6 text-sm text-muted-foreground">No invoices for this project.</p>
               ) : (
-                <div className="border border-border/60 rounded-sm overflow-hidden mt-3">
-                  <table className="w-full text-sm border-collapse">
-                    <thead>
-                      <tr className="border-b border-border/60 bg-muted/10">
-                        <th className="text-left py-2 px-3 font-medium">Invoice</th>
-                        <th className="text-left py-2 px-3 font-medium">Issue date</th>
-                        <th className="text-left py-2 px-3 font-medium">Status</th>
-                        <th className="text-right py-2 px-3 font-medium">Total</th>
-                        <th className="text-right py-2 px-3 font-medium">Balance</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {projectInvoices.map((inv) => (
-                        <tr key={inv.id} className="border-b border-border/30">
-                          <td className="py-2 px-3">
-                            <Link
-                              href={`/financial/invoices/${inv.id}`}
-                              className="font-medium text-foreground hover:underline"
-                            >
-                              {inv.invoiceNo}
-                            </Link>
-                          </td>
-                          <td className="py-2 px-3 tabular-nums">
-                            {inv.issueDate?.slice(0, 10) ?? "—"}
-                          </td>
-                          <td className="py-2 px-3">
-                            <InvoiceStatusBadge status={inv.computedStatus} />
-                          </td>
-                          <td className="py-2 px-3 text-right tabular-nums">
-                            ${inv.total.toLocaleString()}
-                          </td>
-                          <td className="py-2 px-3 text-right tabular-nums">
-                            ${inv.balanceDue.toLocaleString()}
-                          </td>
+                <div className="airtable-table-wrap airtable-table-wrap--ruled mt-3">
+                  <div className="airtable-table-scroll">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr>
+                          <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                            Invoice
+                          </th>
+                          <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                            Issue date
+                          </th>
+                          <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                            Status
+                          </th>
+                          <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                            Total
+                          </th>
+                          <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                            Balance
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {projectInvoices.map((inv) => (
+                          <tr
+                            key={inv.id}
+                            className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
+                          >
+                            <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">
+                              <Link
+                                href={`/financial/invoices/${inv.id}`}
+                                className="font-medium text-foreground hover:underline"
+                              >
+                                {inv.invoiceNo}
+                              </Link>
+                            </td>
+                            <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] tabular-nums">
+                              {inv.issueDate?.slice(0, 10) ?? "—"}
+                            </td>
+                            <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">
+                              <InvoiceStatusBadge status={inv.computedStatus} />
+                            </td>
+                            <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                              ${inv.total.toLocaleString()}
+                            </td>
+                            <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                              ${inv.balanceDue.toLocaleString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
               <div className="mt-3">
@@ -731,11 +841,11 @@ export function ProjectDetailTabsClient({
               </div>
             </TabsContent>
 
-            <TabsContent value="documents" className="mt-4">
+            <TabsContent value="documents" className={TAB_PANEL}>
               <ProjectDocumentsTab projectId={projectId} documents={documents} />
             </TabsContent>
 
-            <TabsContent value="expenses" className="mt-4">
+            <TabsContent value="expenses" className={TAB_PANEL}>
               <SectionHeader
                 label="Expenses"
                 className="text-[11px] tracking-[0.08em] text-muted-foreground font-medium"
@@ -753,7 +863,7 @@ export function ProjectDetailTabsClient({
                 </Link>
               </div>
             </TabsContent>
-            <TabsContent value="budget" className="mt-4">
+            <TabsContent value="budget" className={TAB_PANEL}>
               <SectionHeader
                 label="Budget"
                 className="text-[11px] tracking-[0.08em] text-muted-foreground font-medium"
@@ -764,29 +874,40 @@ export function ProjectDetailTabsClient({
                   No budget items for this project.
                 </p>
               ) : (
-                <div className="border border-border/60 rounded-sm overflow-hidden mt-2">
-                  <table className="w-full text-sm border-collapse">
-                    <thead>
-                      <tr className="border-b border-border/60 bg-muted/10">
-                        <th className="text-left py-2 px-3 font-medium">Cost code</th>
-                        <th className="text-right py-2 px-3 font-medium">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {budgetItems.map((b) => (
-                        <tr key={b.id} className="border-b border-border/30">
-                          <td className="py-2 px-3">{b.costCode ?? "—"}</td>
-                          <td className="py-2 px-3 text-right tabular-nums">
-                            ${Number(b.total || 0).toLocaleString()}
-                          </td>
+                <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
+                  <div className="airtable-table-scroll">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr>
+                          <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                            Cost code
+                          </th>
+                          <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                            Total
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {budgetItems.map((b) => (
+                          <tr
+                            key={b.id}
+                            className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
+                          >
+                            <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
+                              {b.costCode ?? "—"}
+                            </td>
+                            <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                              ${Number(b.total || 0).toLocaleString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
             </TabsContent>
-            <TabsContent value="activity" className="mt-4">
+            <TabsContent value="activity" className={TAB_PANEL}>
               <SectionHeader
                 label="Activity"
                 className="text-[11px] tracking-[0.08em] text-muted-foreground font-medium"
@@ -808,7 +929,7 @@ export function ProjectDetailTabsClient({
                 </ul>
               )}
             </TabsContent>
-            <TabsContent value="change-orders" className="mt-4">
+            <TabsContent value="change-orders" className={TAB_PANEL}>
               <SectionHeader
                 label="Change Orders"
                 className="text-[11px] tracking-[0.08em] text-muted-foreground font-medium"
@@ -819,31 +940,46 @@ export function ProjectDetailTabsClient({
                   No change orders for this project.
                 </p>
               ) : (
-                <div className="border border-border/60 rounded-sm overflow-hidden mt-2">
-                  <table className="w-full text-sm border-collapse">
-                    <thead>
-                      <tr className="border-b border-border/60 bg-muted/10">
-                        <th className="text-left py-2 px-3 font-medium">Number</th>
-                        <th className="text-left py-2 px-3 font-medium">Status</th>
-                        <th className="text-right py-2 px-3 font-medium">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {changeOrders.map((co) => (
-                        <tr key={co.id} className="border-b border-border/30">
-                          <td className="py-2 px-3">{co.number ?? "—"}</td>
-                          <td className="py-2 px-3">{co.status ?? "—"}</td>
-                          <td className="py-2 px-3 text-right tabular-nums">
-                            ${Number(co.total ?? co.amount ?? 0).toLocaleString()}
-                          </td>
+                <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
+                  <div className="airtable-table-scroll">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr>
+                          <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                            Number
+                          </th>
+                          <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                            Status
+                          </th>
+                          <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                            Amount
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {changeOrders.map((co) => (
+                          <tr
+                            key={co.id}
+                            className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
+                          >
+                            <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
+                              {co.number ?? "—"}
+                            </td>
+                            <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">
+                              {co.status ?? "—"}
+                            </td>
+                            <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                              ${Number(co.total ?? co.amount ?? 0).toLocaleString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
             </TabsContent>
-            <TabsContent value="materials" className="mt-4">
+            <TabsContent value="materials" className={TAB_PANEL}>
               <ProjectMaterialsTab
                 projectId={projectId}
                 projectName={displayProject.name}
@@ -859,7 +995,7 @@ export function ProjectDetailTabsClient({
                 }
               />
             </TabsContent>
-            <TabsContent value="closeout" className="mt-4">
+            <TabsContent value="closeout" className={TAB_PANEL}>
               <ProjectCloseoutTab
                 projectId={projectId}
                 projectName={displayProject.name}
@@ -873,19 +1009,21 @@ export function ProjectDetailTabsClient({
                 }
               />
             </TabsContent>
-            <TabsContent value="commission" className="mt-4">
-              <ProjectCommissionTab
-                projectId={projectId}
-                commissions={commissions}
-                onRefresh={() =>
-                  syncClientsThenRefreshInBackground(router, "project-commission-mutated")
-                }
-              />
+            <TabsContent value="commission" className={cn(TAB_PANEL, "p-0 overflow-hidden sm:p-0")}>
+              <div className="rounded-lg bg-[#F8F7F4] p-4 sm:p-5">
+                <ProjectCommissionTab
+                  projectId={projectId}
+                  commissions={commissions}
+                  onRefresh={() =>
+                    syncClientsThenRefreshInBackground(router, "project-commission-mutated")
+                  }
+                />
+              </div>
             </TabsContent>
-            <TabsContent value="punch-list" className="mt-4">
+            <TabsContent value="punch-list" className={TAB_PANEL}>
               <ProjectPunchListTab projectId={projectId} punchItems={punchItems} />
             </TabsContent>
-            <TabsContent value="subcontracts" className="mt-4">
+            <TabsContent value="subcontracts" className={TAB_PANEL}>
               <SectionHeader
                 label="Subcontracts"
                 className="text-[11px] tracking-[0.08em] text-muted-foreground font-medium"
@@ -896,29 +1034,40 @@ export function ProjectDetailTabsClient({
                   No subcontracts for this project.
                 </p>
               ) : (
-                <div className="border border-border/60 rounded-sm overflow-hidden mt-2">
-                  <table className="w-full text-sm border-collapse">
-                    <thead>
-                      <tr className="border-b border-border/60 bg-muted/10">
-                        <th className="text-left py-2 px-3 font-medium">Subcontractor</th>
-                        <th className="text-right py-2 px-3 font-medium">Contract amount</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {subcontracts.map((s) => (
-                        <tr key={s.id} className="border-b border-border/30">
-                          <td className="py-2 px-3">{s.subcontractor_name ?? "—"}</td>
-                          <td className="py-2 px-3 text-right tabular-nums">
-                            ${Number(s.contract_amount ?? 0).toLocaleString()}
-                          </td>
+                <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
+                  <div className="airtable-table-scroll">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr>
+                          <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                            Subcontractor
+                          </th>
+                          <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                            Contract amount
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {subcontracts.map((s) => (
+                          <tr
+                            key={s.id}
+                            className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
+                          >
+                            <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
+                              {s.subcontractor_name ?? "—"}
+                            </td>
+                            <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                              ${Number(s.contract_amount ?? 0).toLocaleString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
             </TabsContent>
-            <TabsContent value="bills" className="mt-4">
+            <TabsContent value="bills" className={TAB_PANEL}>
               <SectionHeader
                 label="Bills (AP)"
                 className="text-[11px] tracking-[0.08em] text-muted-foreground font-medium"
@@ -927,31 +1076,46 @@ export function ProjectDetailTabsClient({
               {bills.length === 0 ? (
                 <p className="py-6 text-sm text-muted-foreground">No bills for this project.</p>
               ) : (
-                <div className="border border-border/60 rounded-sm overflow-hidden mt-2">
-                  <table className="w-full text-sm border-collapse">
-                    <thead>
-                      <tr className="border-b border-border/60 bg-muted/10">
-                        <th className="text-left py-2 px-3 font-medium">Vendor</th>
-                        <th className="text-left py-2 px-3 font-medium">Bill no</th>
-                        <th className="text-right py-2 px-3 font-medium">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {bills.map((b) => (
-                        <tr key={b.id} className="border-b border-border/30">
-                          <td className="py-2 px-3">{b.vendor_name ?? "—"}</td>
-                          <td className="py-2 px-3">{b.bill_no ?? "—"}</td>
-                          <td className="py-2 px-3 text-right tabular-nums">
-                            ${Number(b.amount ?? 0).toLocaleString()}
-                          </td>
+                <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
+                  <div className="airtable-table-scroll">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr>
+                          <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                            Vendor
+                          </th>
+                          <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                            Bill no
+                          </th>
+                          <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                            Amount
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {bills.map((b) => (
+                          <tr
+                            key={b.id}
+                            className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
+                          >
+                            <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
+                              {b.vendor_name ?? "—"}
+                            </td>
+                            <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] tabular-nums">
+                              {b.bill_no ?? "—"}
+                            </td>
+                            <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                              ${Number(b.amount ?? 0).toLocaleString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
             </TabsContent>
-            <TabsContent value="labor" className="mt-4">
+            <TabsContent value="labor" className={TAB_PANEL}>
               <SectionHeader
                 label="Labor"
                 className="text-[11px] tracking-[0.08em] text-muted-foreground font-medium"
@@ -963,27 +1127,42 @@ export function ProjectDetailTabsClient({
                 </p>
               ) : (
                 <>
-                  <div className="border border-border/60 rounded-sm overflow-hidden mt-2">
-                    <table className="w-full text-sm border-collapse">
-                      <thead>
-                        <tr className="border-b border-border/60 bg-muted/10">
-                          <th className="text-left py-2 px-3 font-medium">Worker</th>
-                          <th className="text-left py-2 px-3 font-medium">Date</th>
-                          <th className="text-right py-2 px-3 font-medium">Cost</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {laborEntries.slice(0, 20).map((e) => (
-                          <tr key={e.id} className="border-b border-border/30">
-                            <td className="py-2 px-3">{e.worker_name ?? "—"}</td>
-                            <td className="py-2 px-3">{e.work_date?.slice(0, 10)}</td>
-                            <td className="py-2 px-3 text-right tabular-nums">
-                              ${Number(e.cost_amount ?? 0).toLocaleString()}
-                            </td>
+                  <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
+                    <div className="airtable-table-scroll">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr>
+                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                              Worker
+                            </th>
+                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                              Date
+                            </th>
+                            <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                              Cost
+                            </th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {laborEntries.slice(0, 20).map((e) => (
+                            <tr
+                              key={e.id}
+                              className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
+                            >
+                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
+                                {e.worker_name ?? "—"}
+                              </td>
+                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] tabular-nums">
+                                {e.work_date?.slice(0, 10)}
+                              </td>
+                              <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                                ${Number(e.cost_amount ?? 0).toLocaleString()}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                   <div className="mt-3">
                     <Link

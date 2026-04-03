@@ -1,16 +1,9 @@
-import { Manrope } from "next/font/google";
 import { getProjects } from "@/lib/data";
 import { getCanonicalProjectProfitBatch } from "@/lib/profit-engine";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { ProjectsListClient, type ProjectsListRow } from "./projects-list-client";
 
 export const dynamic = "force-dynamic";
-
-const manrope = Manrope({
-  subsets: ["latin"],
-  weight: ["600", "700", "800"],
-  display: "swap",
-});
 
 export default async function ProjectsPage() {
   let projects: Awaited<ReturnType<typeof getProjects>> = [];
@@ -43,6 +36,7 @@ export default async function ProjectsPage() {
       name: p.name,
       clientName: p.client ?? null,
       status: p.status,
+      budget: p.budget ?? 0,
       revenue,
       laborCost,
       profit,
@@ -51,14 +45,8 @@ export default async function ProjectsPage() {
   });
 
   return (
-    <div className="min-h-full bg-warm-grey dark:bg-background">
-      <div className="mx-auto max-w-[1440px] px-6 py-12 sm:px-10 sm:py-14 lg:px-12 lg:py-16">
-        <ProjectsListClient
-          rows={rows}
-          titleFontClassName={manrope.className}
-          dataLoadWarning={dataLoadWarning}
-        />
-      </div>
+    <div className="min-h-full bg-[#F8F7F4]">
+      <ProjectsListClient rows={rows} dataLoadWarning={dataLoadWarning} />
     </div>
   );
 }

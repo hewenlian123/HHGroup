@@ -83,7 +83,7 @@ export default async function FinanceOverviewPage() {
                 className={`text-xl font-semibold tabular-nums ${
                   label === "Profit"
                     ? value >= 0
-                      ? "text-green-600 dark:text-green-400"
+                      ? "text-hh-profit-positive dark:text-hh-profit-positive"
                       : "text-red-600 dark:text-red-400"
                     : "text-foreground"
                 }`}
@@ -115,40 +115,47 @@ export default async function FinanceOverviewPage() {
         {recent.length === 0 ? (
           <p className="py-6 text-sm text-muted-foreground">No recent activity.</p>
         ) : (
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-border/60">
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Type
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Description
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Project
-                </th>
-                <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider tabular-nums text-muted-foreground">
-                  Amount
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Date
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {recent.map((tx) => (
-                <tr key={`${tx.type}-${tx.id}`} className="border-b border-border/40">
-                  <td className="px-3 py-1.5 text-muted-foreground capitalize">{tx.type}</td>
-                  <td className="px-3 py-1.5">{tx.description}</td>
-                  <td className="px-3 py-1.5 text-muted-foreground">{tx.projectName ?? "—"}</td>
-                  <td className="px-3 py-1.5 text-right tabular-nums">{fmtUsd(tx.amount)}</td>
-                  <td className="px-3 py-1.5 text-muted-foreground">
-                    {tx.date ? new Date(tx.date).toLocaleDateString() : "—"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="airtable-table-wrap airtable-table-wrap--ruled">
+            <div className="airtable-table-scroll">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr>
+                    <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                      Type
+                    </th>
+                    <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                      Description
+                    </th>
+                    <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                      Project
+                    </th>
+                    <th className="h-8 px-3 text-right text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                      Amount
+                    </th>
+                    <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                      Date
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recent.map((tx) => (
+                    <tr
+                      key={`${tx.type}-${tx.id}`}
+                      className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
+                    >
+                      <td className="px-3 py-1.5 text-muted-foreground capitalize">{tx.type}</td>
+                      <td className="px-3 py-1.5">{tx.description}</td>
+                      <td className="px-3 py-1.5 text-muted-foreground">{tx.projectName ?? "—"}</td>
+                      <td className="px-3 py-1.5 text-right tabular-nums">{fmtUsd(tx.amount)}</td>
+                      <td className="px-3 py-1.5 text-muted-foreground">
+                        {tx.date ? new Date(tx.date).toLocaleDateString() : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         )}
       </section>
     </PageLayout>

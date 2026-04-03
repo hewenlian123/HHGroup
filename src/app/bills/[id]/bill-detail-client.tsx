@@ -127,7 +127,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
         <span className="text-muted-foreground">Total amount</span>
         <span className="tabular-nums font-medium">{fmtUsd(bill.amount)}</span>
         <span className="text-muted-foreground">Paid amount</span>
-        <span className="tabular-nums text-emerald-600 dark:text-emerald-400">
+        <span className="tabular-nums text-hh-profit-positive dark:text-hh-profit-positive">
           {fmtUsd(bill.paid_amount)}
         </span>
         <span className="text-muted-foreground">Balance</span>

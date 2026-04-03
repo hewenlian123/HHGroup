@@ -78,20 +78,16 @@ export function DataTable<T>({
     <>
       {/* Desktop/Tablet: table */}
       <div className="table-responsive relative hidden w-full md:block">
-        <Table
-          className={cn(
-            "min-w-[480px] md:min-w-0 border-0",
-            onRowClick &&
-              "border-separate border-spacing-y-1.5 border-spacing-x-0 [&_tbody_tr]:border-b-0",
-            className
-          )}
-        >
+        <Table className={cn("min-w-[480px] md:min-w-0 border-0", className)}>
           <TableHeader>
-            <TableRow className={cn("hover:bg-transparent border-b-0", headerClassName)}>
+            <TableRow className={cn("hover:bg-transparent", headerClassName)}>
               {columns.map((col) => (
                 <TableHead
                   key={col.key}
-                  className={cn(col.align === "right" && "text-right", col.className)}
+                  className={cn(
+                    col.align === "right" && "text-right font-mono tabular-nums",
+                    col.className
+                  )}
                 >
                   {col.header}
                 </TableHead>
@@ -152,8 +148,8 @@ export function DataTable<T>({
                   className={cn(
                     onRowClick
                       ? listTableRowClassName
-                      : "border-b border-zinc-100/50 transition-colors duration-100 hover:bg-muted/20 dark:border-border/30",
-                    zebra && index % 2 === 1 && !onRowClick && "bg-muted/10",
+                      : "border-0 transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30",
+                    zebra && index % 2 === 1 && !onRowClick && "bg-[#FAFAFA]/80 dark:bg-muted/10",
                     rowClassName
                   )}
                 >
@@ -166,12 +162,8 @@ export function DataTable<T>({
                           : undefined
                       }
                       className={cn(
-                        col.align === "right" && "text-right",
+                        col.align === "right" && "text-right font-mono tabular-nums",
                         onRowClick && col.key === primaryColumnKey && listTablePrimaryCellClassName,
-                        onRowClick && col.key === columns[0]?.key && "first:rounded-l-xl",
-                        onRowClick &&
-                          col.key === columns[columns.length - 1]?.key &&
-                          "last:rounded-r-xl",
                         cellClassName,
                         col.className,
                         onRowClick &&

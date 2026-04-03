@@ -36,7 +36,7 @@ const STATUS_OPTIONS = [
 ];
 
 const STATUS_STYLES: Record<string, string> = {
-  passed: "bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300",
+  passed: "bg-[#DCFCE7] text-[#166534] dark:bg-green-950 dark:text-green-300",
   failed: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
   pending: "bg-muted text-muted-foreground",
 };
@@ -191,7 +191,7 @@ export default function InspectionLogPage() {
       }
     >
       <div className="max-w-5xl space-y-3">
-        <div className="overflow-hidden border border-[#EBEBE9] dark:border-border/60">
+        <div className="airtable-table-wrap airtable-table-wrap--ruled">
           {loading ? (
             <div className="py-10 text-center text-sm text-muted-foreground">Loading…</div>
           ) : error ? (
@@ -201,70 +201,72 @@ export default function InspectionLogPage() {
               No inspections yet.
             </div>
           ) : (
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
-                  <th className="text-left py-2 px-2 sm:px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Date
-                  </th>
-                  <th className="text-left py-2 px-2 sm:px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Project
-                  </th>
-                  <th className="text-left py-2 px-2 sm:px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Inspection Type
-                  </th>
-                  <th className="hidden md:table-cell text-left py-2 px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Inspector
-                  </th>
-                  <th className="text-left py-2 px-2 sm:px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Status
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {entries.map((row) => (
-                  <tr
-                    key={row.id}
-                    onClick={() => openDrawer(row)}
-                    className={cn(
-                      listTableRowClassName,
-                      "border-b border-[#EBEBE9]/80 last:border-b-0 dark:border-border/40"
-                    )}
-                  >
-                    <td className="py-2 px-2 sm:px-3 text-muted-foreground tabular-nums">
-                      {row.inspection_date
-                        ? new Date(row.inspection_date).toLocaleDateString()
-                        : "—"}
-                    </td>
-                    <td className="py-2 px-2 sm:px-3 text-muted-foreground">
-                      {row.project_name ?? "—"}
-                    </td>
-                    <td
+            <div className="airtable-table-scroll">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr>
+                    <th className="h-8 px-2 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
+                      Date
+                    </th>
+                    <th className="h-8 px-2 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
+                      Project
+                    </th>
+                    <th className="h-8 px-2 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
+                      Inspection Type
+                    </th>
+                    <th className="hidden h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] md:table-cell">
+                      Inspector
+                    </th>
+                    <th className="h-8 px-2 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
+                      Status
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {entries.map((row) => (
+                    <tr
+                      key={row.id}
+                      onClick={() => openDrawer(row)}
                       className={cn(
-                        "py-2 px-2 sm:px-3 font-medium",
-                        listTablePrimaryCellClassName,
-                        "hover:underline"
+                        listTableRowClassName,
+                        "transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
                       )}
                     >
-                      {row.inspection_type || "—"}
-                    </td>
-                    <td className="hidden md:table-cell py-2 px-3 text-muted-foreground">
-                      {row.inspector ?? "—"}
-                    </td>
-                    <td className="py-2 px-2 sm:px-3">
-                      <span
+                      <td className="py-2 px-2 sm:px-3 text-muted-foreground tabular-nums">
+                        {row.inspection_date
+                          ? new Date(row.inspection_date).toLocaleDateString()
+                          : "—"}
+                      </td>
+                      <td className="py-2 px-2 sm:px-3 text-muted-foreground">
+                        {row.project_name ?? "—"}
+                      </td>
+                      <td
                         className={cn(
-                          "inline-flex rounded-sm px-1.5 py-0.5 text-xs font-medium capitalize",
-                          STATUS_STYLES[row.status] ?? STATUS_STYLES.pending
+                          "py-2 px-2 sm:px-3 font-medium",
+                          listTablePrimaryCellClassName,
+                          "hover:underline"
                         )}
                       >
-                        {row.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                        {row.inspection_type || "—"}
+                      </td>
+                      <td className="hidden md:table-cell py-2 px-3 text-muted-foreground">
+                        {row.inspector ?? "—"}
+                      </td>
+                      <td className="py-2 px-2 sm:px-3">
+                        <span
+                          className={cn(
+                            "inline-flex rounded-sm px-1.5 py-0.5 text-xs font-medium capitalize",
+                            STATUS_STYLES[row.status] ?? STATUS_STYLES.pending
+                          )}
+                        >
+                          {row.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </div>

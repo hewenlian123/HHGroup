@@ -64,48 +64,61 @@ export default function SystemLogsPage() {
 
       {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
 
-      <div className="table-responsive border-b border-border/60">
-        <table className="w-full text-sm min-w-[360px] sm:min-w-0">
-          <thead>
-            <tr className="border-b border-border/60 text-left text-muted-foreground">
-              <th className="py-2 pr-4 font-medium w-[90px]">Time</th>
-              <th className="py-2 pr-4 font-medium w-[140px]">Module</th>
-              <th className="py-2 pr-4 font-medium w-[80px]">Type</th>
-              <th className="py-2 font-medium">Message</th>
-            </tr>
-          </thead>
-          <tbody>
-            {logs.length === 0 && !loading ? (
-              <tr>
-                <td colSpan={4} className="py-8 text-center text-muted-foreground">
-                  No log entries yet. Server console output will appear here after instrumentation
-                  captures it.
-                </td>
+      <div className="airtable-table-wrap airtable-table-wrap--ruled">
+        <div className="airtable-table-scroll">
+          <table className="w-full min-w-[360px] text-sm sm:min-w-0">
+            <thead>
+              <tr className="text-left">
+                <th className="h-8 w-[90px] px-3 py-0 pr-4 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  Time
+                </th>
+                <th className="h-8 w-[140px] px-3 py-0 pr-4 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  Module
+                </th>
+                <th className="h-8 w-[80px] px-3 py-0 pr-4 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  Type
+                </th>
+                <th className="h-8 px-3 py-0 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                  Message
+                </th>
               </tr>
-            ) : (
-              logs.map((entry, i) => (
-                <tr key={`${entry.time}-${i}`} className="border-b border-border/30">
-                  <td className="py-2 pr-4 tabular-nums text-muted-foreground">{entry.time}</td>
-                  <td className="py-2 pr-4">{entry.module}</td>
-                  <td className="py-2 pr-4">
-                    <span
-                      className={
-                        entry.type === "Error"
-                          ? "text-red-600 dark:text-red-400"
-                          : entry.type === "Warning"
-                            ? "text-amber-600 dark:text-amber-400"
-                            : "text-muted-foreground"
-                      }
-                    >
-                      {entry.type}
-                    </span>
+            </thead>
+            <tbody>
+              {logs.length === 0 && !loading ? (
+                <tr>
+                  <td colSpan={4} className="py-8 text-center text-muted-foreground">
+                    No log entries yet. Server console output will appear here after instrumentation
+                    captures it.
                   </td>
-                  <td className="py-2 text-muted-foreground break-words">{entry.message}</td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                logs.map((entry, i) => (
+                  <tr
+                    key={`${entry.time}-${i}`}
+                    className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
+                  >
+                    <td className="py-2 pr-4 tabular-nums text-muted-foreground">{entry.time}</td>
+                    <td className="py-2 pr-4">{entry.module}</td>
+                    <td className="py-2 pr-4">
+                      <span
+                        className={
+                          entry.type === "Error"
+                            ? "text-red-600 dark:text-red-400"
+                            : entry.type === "Warning"
+                              ? "text-amber-600 dark:text-amber-400"
+                              : "text-muted-foreground"
+                        }
+                      >
+                        {entry.type}
+                      </span>
+                    </td>
+                    <td className="py-2 text-muted-foreground break-words">{entry.message}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

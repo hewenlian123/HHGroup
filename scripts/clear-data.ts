@@ -34,8 +34,8 @@ function parseEnv(content: string) {
 
 /** Tables in dependency order (children before parents). */
 const TRUNCATE_TABLES = [
-  "commission_payment_records",
-  "project_commissions",
+  "commission_payments",
+  "commissions",
   "expense_lines",
   "expenses",
   "labor_entries",

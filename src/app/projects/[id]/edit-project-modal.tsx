@@ -10,10 +10,16 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import type { Project } from "@/lib/data";
 import { Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const MODAL =
+  "max-w-[480px] w-full gap-0 border-0 p-8 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-xl sm:rounded-xl sm:max-w-[480px]";
+const LBL = "mb-1.5 block text-[12px] font-medium text-[#6B7280]";
+const FIELD =
+  "h-10 rounded-lg border border-[#E5E7EB] bg-white text-[14px] focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black";
 
 type CustomerOption = { id: string; name: string };
 
@@ -105,28 +111,32 @@ export function EditProjectModal({ open, onOpenChange, project, onSave }: Props)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md border-border/60 rounded-md p-5">
-        <DialogHeader>
-          <DialogTitle className="text-base font-semibold">Edit project</DialogTitle>
+      <DialogContent className={MODAL}>
+        <DialogHeader className="text-left">
+          <DialogTitle className="text-xl font-bold text-[#111827]">Edit project</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="grid gap-3">
-          <div className="space-y-1">
-            <Label htmlFor="edit-project-name">Project name</Label>
+        <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
+          <div>
+            <label htmlFor="edit-project-name" className={LBL}>
+              Project name
+            </label>
             <Input
               id="edit-project-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="h-9 text-sm"
+              className={FIELD}
               disabled={saving}
             />
           </div>
-          <div className="space-y-1">
-            <Label htmlFor="edit-project-customer">Customer</Label>
+          <div>
+            <label htmlFor="edit-project-customer" className={LBL}>
+              Customer
+            </label>
             <select
               id="edit-project-customer"
               value={customerId ?? ""}
               onChange={(e) => setCustomerId(e.target.value || null)}
-              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+              className={cn("w-full px-3", FIELD)}
               disabled={saving || customersLoading}
             >
               <option value="">No customer</option>
@@ -137,18 +147,22 @@ export function EditProjectModal({ open, onOpenChange, project, onSave }: Props)
               ))}
             </select>
           </div>
-          <div className="space-y-1">
-            <Label htmlFor="edit-project-address">Address</Label>
+          <div>
+            <label htmlFor="edit-project-address" className={LBL}>
+              Address
+            </label>
             <Input
               id="edit-project-address"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              className="h-9 text-sm"
+              className={FIELD}
               disabled={saving}
             />
           </div>
-          <div className="space-y-1">
-            <Label htmlFor="edit-project-budget">Budget</Label>
+          <div>
+            <label htmlFor="edit-project-budget" className={LBL}>
+              Budget
+            </label>
             <Input
               id="edit-project-budget"
               type="number"
@@ -156,25 +170,30 @@ export function EditProjectModal({ open, onOpenChange, project, onSave }: Props)
               step="1"
               value={budget}
               onChange={(e) => setBudget(e.target.value)}
-              className="h-9 text-sm tabular-nums"
+              className={cn(FIELD, "tabular-nums")}
               disabled={saving}
             />
           </div>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
-          <DialogFooter>
+          <DialogFooter className="mt-6 border-t border-[#F0EDE8] bg-transparent pt-4">
             <Button
               type="button"
-              variant="ghost"
-              size="sm"
+              variant="outline"
+              className="h-10 rounded-lg border-[#E5E7EB] bg-white text-[14px] font-medium text-[#6B7280] hover:bg-[#F9FAFB]"
               onClick={() => onOpenChange(false)}
               disabled={saving}
             >
               Cancel
             </Button>
-            <Button type="submit" size="sm" disabled={saving} aria-busy={saving}>
+            <Button
+              type="submit"
+              className="h-10 rounded-lg bg-[#111827] text-[14px] font-medium text-white hover:bg-black/90"
+              disabled={saving}
+              aria-busy={saving}
+            >
               {saving ? (
                 <>
-                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden />
                   Saving…
                 </>
               ) : (

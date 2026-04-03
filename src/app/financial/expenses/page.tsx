@@ -643,7 +643,7 @@ function ExpensesPageInner() {
                         className={`text-[11px] rounded-sm border px-1.5 py-0.5 ${
                           status === "needs_review"
                             ? "border-red-500/40 text-red-600 dark:text-red-400"
-                            : "border-emerald-500/40 text-emerald-700 dark:text-emerald-400"
+                            : "border-[#166534]/40 text-hh-profit-positive dark:text-hh-profit-positive"
                         }`}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -796,7 +796,7 @@ function ExpensesPageInner() {
                             className={`rounded-sm border px-2 py-0.5 text-xs ${
                               status === "needs_review"
                                 ? "border-red-500/40 text-red-600 dark:text-red-400"
-                                : "border-emerald-500/40 text-emerald-700 dark:text-emerald-400"
+                                : "border-[#166534]/40 text-hh-profit-positive dark:text-hh-profit-positive"
                             }`}
                             onClick={() => void toggleStatus(row)}
                           >

@@ -275,7 +275,7 @@ export default function LaborInvoicesListClient() {
         </div>
       </FilterBar>
       {message ? (
-        <div className="rounded-lg border border-[#EBEBE9] dark:border-border bg-background px-3 py-2 text-sm text-muted-foreground">
+        <div className="rounded-lg border border-[#E5E7EB] dark:border-border bg-background px-3 py-2 text-sm text-muted-foreground">
           {message}
         </div>
       ) : null}
@@ -288,7 +288,7 @@ export default function LaborInvoicesListClient() {
         <div className="table-responsive">
           <table className="w-full min-w-[560px] text-sm md:min-w-0">
             <thead>
-              <tr className="border-b border-[#EBEBE9] dark:border-border/60 bg-[#F7F7F5] dark:bg-muted/30">
+              <tr className="border-b border-[#E5E7EB] dark:border-border/60 bg-white dark:bg-muted/30">
                 <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
                   Invoice #
                 </th>
@@ -328,7 +328,7 @@ export default function LaborInvoicesListClient() {
                       key={row.id}
                       className={cn(
                         listTableRowClassName,
-                        "border-b border-[#EBEBE9]/80 dark:border-border/30"
+                        "border-b border-[#E5E7EB]/80 dark:border-border/30"
                       )}
                       onClick={() => router.push(`/labor/invoices/${row.id}`)}
                     >

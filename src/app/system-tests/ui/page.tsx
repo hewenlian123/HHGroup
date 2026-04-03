@@ -33,7 +33,7 @@ function StatusDot({ ok, running }: { ok: boolean | null; running: boolean }) {
     return <span className="inline-block h-2 w-2 rounded-full bg-amber-400 animate-pulse" />;
   if (ok === null) return <span className="inline-block h-2 w-2 rounded-full bg-border" />;
   return (
-    <span className={`inline-block h-2 w-2 rounded-full ${ok ? "bg-emerald-500" : "bg-red-500"}`} />
+    <span className={`inline-block h-2 w-2 rounded-full ${ok ? "bg-[#166534]" : "bg-red-500"}`} />
   );
 }
 
@@ -98,7 +98,9 @@ export default function UiTestsPage() {
             {tests.length > 0 && (
               <>
                 {" · "}
-                <span className="text-emerald-600 dark:text-emerald-400">{passed} passed</span>
+                <span className="text-hh-profit-positive dark:text-hh-profit-positive">
+                  {passed} passed
+                </span>
                 {failed > 0 && (
                   <>
                     {" · "}
@@ -168,7 +170,7 @@ export default function UiTestsPage() {
                           <span
                             className={`flex items-center gap-2 ${
                               row.ok
-                                ? "text-emerald-600 dark:text-emerald-400"
+                                ? "text-hh-profit-positive dark:text-hh-profit-positive"
                                 : "text-red-600 dark:text-red-400"
                             }`}
                           >

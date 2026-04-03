@@ -338,7 +338,7 @@ export default function LaborPaymentsClient() {
       </FilterBar>
 
       <Card className="overflow-hidden p-0">
-        <div className="grid divide-y divide-[#EBEBE9] sm:grid-cols-3 sm:divide-y-0 sm:divide-x dark:divide-border/60">
+        <div className="grid divide-y divide-[#E5E7EB] sm:grid-cols-3 sm:divide-y-0 sm:divide-x dark:divide-border/60">
           <div className="p-5">
             <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
               Total Due
@@ -346,7 +346,7 @@ export default function LaborPaymentsClient() {
             {loading ? (
               <Skeleton className="mt-2 h-7 w-24" />
             ) : (
-              <p className="text-lg font-semibold tabular-nums mt-1 text-[#2D2D2D] dark:text-foreground">
+              <p className="text-lg font-semibold tabular-nums mt-1 text-[#111827] dark:text-foreground">
                 {new Intl.NumberFormat("en-US", {
                   style: "currency",
                   currency: "USD",
@@ -362,7 +362,7 @@ export default function LaborPaymentsClient() {
             {loading ? (
               <Skeleton className="mt-2 h-7 w-24" />
             ) : (
-              <p className="text-lg font-semibold tabular-nums mt-1 text-[#2D2D2D] dark:text-foreground">
+              <p className="text-lg font-semibold tabular-nums mt-1 text-[#111827] dark:text-foreground">
                 {new Intl.NumberFormat("en-US", {
                   style: "currency",
                   currency: "USD",
@@ -378,7 +378,7 @@ export default function LaborPaymentsClient() {
             {loading ? (
               <Skeleton className="mt-2 h-7 w-24" />
             ) : (
-              <p className="text-lg font-semibold tabular-nums mt-1 text-[#2D2D2D] dark:text-foreground">
+              <p className="text-lg font-semibold tabular-nums mt-1 text-[#111827] dark:text-foreground">
                 {new Intl.NumberFormat("en-US", {
                   style: "currency",
                   currency: "USD",
@@ -391,32 +391,32 @@ export default function LaborPaymentsClient() {
       </Card>
 
       {message ? (
-        <div className="rounded-lg border border-[#EBEBE9] dark:border-border bg-background px-3 py-2 text-sm text-muted-foreground">
+        <div className="rounded-lg border border-[#E5E7EB] dark:border-border bg-background px-3 py-2 text-sm text-muted-foreground">
           {message}
         </div>
       ) : null}
 
-      <Card className="overflow-hidden p-0">
-        <div className="table-responsive">
+      <div className="airtable-table-wrap airtable-table-wrap--ruled">
+        <div className="airtable-table-scroll">
           <table className="w-full min-w-[520px] text-sm md:min-w-0">
             <thead>
-              <tr className="border-b border-[#EBEBE9] dark:border-border/60 bg-[#F7F7F5] dark:bg-muted/30">
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+              <tr>
+                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
                   Worker
                 </th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                <th className="h-8 px-3 text-right align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
                   Confirmed Total
                 </th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                <th className="h-8 px-3 text-right align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
                   Paid Total
                 </th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                <th className="h-8 px-3 text-right align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
                   Balance
                 </th>
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
                   Status
                 </th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                <th className="h-8 px-3 text-right align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
                   Actions
                 </th>
               </tr>
@@ -425,22 +425,25 @@ export default function LaborPaymentsClient() {
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i}>
-                    <td colSpan={6}>
-                      <Skeleton className="h-12 w-full" />
+                    <td className="h-11 min-h-[44px] px-3 py-0" colSpan={6}>
+                      <Skeleton className="h-10 w-full" />
                     </td>
                   </tr>
                 ))
               ) : rows.length === 0 ? (
                 <tr>
-                  <td className="py-8 px-4 text-center text-muted-foreground" colSpan={6}>
+                  <td
+                    className="h-11 min-h-[44px] px-3 py-0 text-center text-muted-foreground"
+                    colSpan={6}
+                  >
                     No data yet.
                   </td>
                 </tr>
               ) : (
                 rows.map((row) => (
                   <React.Fragment key={row.workerId}>
-                    <tr className="border-b border-[#EBEBE9]/80 dark:border-border/30 hover:bg-[#F7F7F5] dark:hover:bg-muted/30">
-                      <td className="py-3 px-4 font-medium text-foreground">
+                    <tr className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30">
+                      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium text-foreground">
                         <button
                           type="button"
                           className="hover:underline text-left"
@@ -453,39 +456,37 @@ export default function LaborPaymentsClient() {
                           {row.workerName}
                         </button>
                       </td>
-                      <td className="py-3 px-4 text-right tabular-nums">
+                      <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
                         {new Intl.NumberFormat("en-US", {
                           style: "currency",
                           currency: "USD",
                           maximumFractionDigits: 2,
                         }).format(row.confirmedTotal)}
                       </td>
-                      <td className="py-3 px-4 text-right tabular-nums">
+                      <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
                         {new Intl.NumberFormat("en-US", {
                           style: "currency",
                           currency: "USD",
                           maximumFractionDigits: 2,
                         }).format(row.paidTotal)}
                       </td>
-                      <td className="py-3 px-4 text-right tabular-nums">
+                      <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
                         {new Intl.NumberFormat("en-US", {
                           style: "currency",
                           currency: "USD",
                           maximumFractionDigits: 2,
                         }).format(row.balance)}
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">
                         <span
                           className={
-                            row.balance > 0
-                              ? "inline-flex rounded-full px-2 py-0.5 text-xs bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
-                              : "inline-flex rounded-full px-2 py-0.5 text-xs bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                            row.balance > 0 ? "hh-pill-warning text-xs" : "hh-pill-success text-xs"
                           }
                         >
                           {row.balance > 0 ? "Outstanding" : "Paid"}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-right">
+                      <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle text-[13px]">
                         <RowActionsMenu
                           appearance="list"
                           ariaLabel={`Actions for ${row.workerName}`}
@@ -507,10 +508,13 @@ export default function LaborPaymentsClient() {
                       </td>
                     </tr>
                     {expandedWorkerId === row.workerId ? (
-                      <tr className="border-b border-[#EBEBE9]/80 dark:border-border/30 bg-[#F7F7F5]/50 dark:bg-muted/20">
-                        <td className="py-3 px-4 text-xs text-muted-foreground" colSpan={6}>
+                      <tr className="bg-[#F9FAFB] dark:bg-muted/20">
+                        <td
+                          className="min-h-[44px] px-3 py-3 text-xs text-muted-foreground"
+                          colSpan={6}
+                        >
                           <div className="space-y-3">
-                            <div className="border-b border-[#EBEBE9] dark:border-border pb-3">
+                            <div className="border-b border-[#E5E7EB] dark:border-border pb-3">
                               <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">
                                 Pay Run Source
                               </p>
@@ -525,7 +529,7 @@ export default function LaborPaymentsClient() {
                                     }).format(row.confirmedDailyTotal)}
                                   </span>
                                 </div>
-                                <div className="flex justify-between gap-4 font-medium text-foreground pt-1 border-t border-[#EBEBE9] dark:border-border">
+                                <div className="flex justify-between gap-4 font-medium text-foreground pt-1 border-t border-[#E5E7EB] dark:border-border">
                                   <span>Confirmed total</span>
                                   <span className="tabular-nums">
                                     {new Intl.NumberFormat("en-US", {
@@ -582,7 +586,7 @@ export default function LaborPaymentsClient() {
             </tbody>
           </table>
         </div>
-      </Card>
+      </div>
 
       {modalWorkerId ? (
         <div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm p-4 flex items-center justify-center">

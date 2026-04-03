@@ -244,13 +244,13 @@ export default function CategoriesPage() {
       </FilterBar>
 
       {message ? (
-        <div className="rounded-lg border border-[#EBEBE9] bg-background px-3 py-2 text-sm text-muted-foreground dark:border-border">
+        <div className="rounded-lg border border-[#E5E7EB] bg-background px-3 py-2 text-sm text-muted-foreground dark:border-border">
           {message}
         </div>
       ) : null}
 
       {editorOpen ? (
-        <Card className="border-[#EBEBE9] p-4 dark:border-border">
+        <Card className="border-[#E5E7EB] p-4 dark:border-border">
           <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-1">
               <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
@@ -338,7 +338,7 @@ export default function CategoriesPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30">
+              <tr className="border-b border-[#E5E7EB] bg-white dark:border-border/60 dark:bg-muted/30">
                 <th className="table-head-label px-4 py-3 text-left">Name</th>
                 <th className="table-head-label px-4 py-3 text-left">Type</th>
                 <th className="table-head-label px-4 py-3 text-left">Description</th>
@@ -359,7 +359,7 @@ export default function CategoriesPage() {
                   key={row.id}
                   className={cn(
                     listTableRowClassName,
-                    "group border-b border-[#EBEBE9]/80 dark:border-border/30"
+                    "group border-b border-[#E5E7EB]/80 dark:border-border/30"
                   )}
                   onClick={() => openEdit(row)}
                 >

@@ -9,7 +9,7 @@ export interface SelectProps extends React.ComponentPropsWithoutRef<"select"> {}
 const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
   ({ className, children, ...props }, ref) => {
     return (
-      <select ref={ref} className={nativeSelectClassName(className)} {...props}>
+      <select ref={ref} className={cn(nativeSelectClassName(), className)} {...props}>
         {children}
       </select>
     );

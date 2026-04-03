@@ -4,11 +4,12 @@ import localFont from "next/font/local";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { ensureConstructionSchema } from "@/lib/ensure-construction-schema";
+import { DevUnregisterServiceWorker } from "@/components/dev-unregister-service-worker";
 
 const AppShell = dynamic(() => import("@/components/layout/app-shell").then((m) => m.AppShell), {
   ssr: false,
   loading: () => (
-    <div className="min-h-screen bg-warm-grey flex items-center justify-center text-sm text-muted-foreground">
+    <div className="min-h-screen bg-[#F8F7F4] flex items-center justify-center text-sm text-muted-foreground">
       Loading…
     </div>
   ),
@@ -61,6 +62,7 @@ export default async function RootLayout(
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} antialiased`}>
+        {process.env.NODE_ENV === "development" ? <DevUnregisterServiceWorker /> : null}
         <AppShell>{props.children}</AppShell>
       </body>
     </html>

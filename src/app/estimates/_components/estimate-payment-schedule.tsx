@@ -84,7 +84,9 @@ export function EstimatePaymentSchedule(props: {
             <span
               className={cn(
                 "font-semibold tabular-nums",
-                totalsMatch ? "text-emerald-600 dark:text-emerald-500" : "text-foreground"
+                totalsMatch
+                  ? "text-hh-profit-positive dark:text-hh-profit-positive"
+                  : "text-foreground"
               )}
             >
               ${fmt(totalScheduled)}
@@ -95,7 +97,9 @@ export function EstimatePaymentSchedule(props: {
             <span
               className={cn(
                 "font-semibold tabular-nums",
-                remaining === 0 ? "text-emerald-600 dark:text-emerald-500" : "text-foreground"
+                remaining === 0
+                  ? "text-hh-profit-positive dark:text-hh-profit-positive"
+                  : "text-foreground"
               )}
             >
               ${fmt(remaining)}

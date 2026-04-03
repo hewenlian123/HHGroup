@@ -260,7 +260,7 @@ export function CommitmentsSection({
                           "inline-block text-xs font-medium px-2 py-1 rounded",
                           row.status === "Open"
                             ? "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-400"
-                            : "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400"
+                            : "bg-[#DCFCE7] text-[#166534] dark:bg-emerald-900/40 dark:text-emerald-400"
                         )}
                       >
                         {row.status}

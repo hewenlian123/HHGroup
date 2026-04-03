@@ -588,6 +588,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
         title: "Expense saved",
         description: `${vendorName.trim() || "Unknown"} — $${totalAmount.toLocaleString()}`,
         variant: "success",
+        durationMs: 14_000,
       });
       if (slotsToSave.length === 0 || (!firstPublic && !hasStoragePath)) {
         toast({
@@ -597,6 +598,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
               ? "No receipt files were linked to this expense."
               : "Images could not be stored in Supabase (check buckets/policies). Add receipts from the expense detail page if needed.",
           variant: "default",
+          durationMs: 14_000,
         });
       }
       try {
@@ -756,10 +758,14 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                       </div>
                     ) : null}
                     <div>
-                      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      <label
+                        htmlFor="quick-expense-vendor"
+                        className="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+                      >
                         Vendor
                       </label>
                       <Input
+                        id="quick-expense-vendor"
                         ref={vendorInputRef}
                         value={vendorName}
                         onChange={(e) => setVendorName(e.target.value)}

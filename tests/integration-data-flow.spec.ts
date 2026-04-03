@@ -42,9 +42,10 @@ test.describe("Integration: data linked across modules", () => {
     }
     const row = page.locator("table tbody tr").first();
     await expectVisibleOrSkip(row, "No projects table / still loading.", LOAD_MS);
-    await row.getByRole("button", { name: /^Actions for / }).click();
-    await page.getByRole("menuitem", { name: "View" }).click();
-    await expect(page).toHaveURL(/\/projects\/[^/?#]+/, { timeout: 25_000 });
+    await Promise.all([
+      page.waitForURL(/\/projects\/[^/?#]+/, { timeout: 25_000 }),
+      row.getByRole("button", { name: /^View$/ }).click(),
+    ]);
     await expect(page.locator("body")).not.toContainText(
       /Application error|Internal Server Error/i
     );

@@ -101,66 +101,72 @@ export function ProjectTasksTab({
           + New Task
         </Button>
       </div>
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div className="airtable-table-wrap airtable-table-wrap--ruled">
         {tasks.length === 0 ? (
-          <div className="py-8 text-center text-sm text-gray-500">
+          <div className="py-8 text-center text-sm text-muted-foreground">
             No tasks yet. Add one to get started.
           </div>
         ) : (
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="w-10 py-2.5 px-3 text-left" />
-                <th className="text-left py-2.5 px-3 text-xs font-medium uppercase tracking-wide text-gray-500">
-                  Title
-                </th>
-                <th className="text-left py-2.5 px-3 text-xs font-medium uppercase tracking-wide text-gray-500">
-                  Assigned
-                </th>
-                <th className="text-left py-2.5 px-3 text-xs font-medium uppercase tracking-wide text-gray-500">
-                  Due date
-                </th>
-                <th className="text-left py-2.5 px-3 text-xs font-medium uppercase tracking-wide text-gray-500">
-                  Priority
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {tasks.map((t) => (
-                <tr
-                  key={t.id}
-                  className="border-b border-gray-200 last:border-b-0 hover:bg-gray-50/80 transition-colors"
-                >
-                  <td className="py-2 px-3">
-                    <input
-                      type="checkbox"
-                      checked={t.status === "done"}
-                      disabled={togglingId === t.id}
-                      onChange={() => handleToggleDone(t)}
-                      className="h-4 w-4 rounded border-gray-300"
-                    />
-                  </td>
-                  <td className="py-2 px-3 font-medium text-gray-900">{t.title || "—"}</td>
-                  <td className="py-2 px-3 text-gray-600">{t.worker_name ?? "—"}</td>
-                  <td className="py-2 px-3 text-gray-600">
-                    {t.due_date ? new Date(t.due_date).toLocaleDateString() : "—"}
-                  </td>
-                  <td className="py-2 px-3">
-                    <span
-                      className={cn(
-                        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
-                        t.priority === "high" && "bg-red-100 text-red-800",
-                        t.priority === "medium" && "bg-amber-100 text-amber-800",
-                        t.priority === "low" && "bg-gray-100 text-gray-600"
-                      )}
-                    >
-                      {PRIORITY_LABEL[t.priority] ?? t.priority}
-                    </span>
-                  </td>
+          <div className="airtable-table-scroll">
+            <table className="w-full text-sm">
+              <thead>
+                <tr>
+                  <th className="h-8 w-10 px-3 text-left align-middle" />
+                  <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                    Title
+                  </th>
+                  <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                    Assigned
+                  </th>
+                  <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                    Due date
+                  </th>
+                  <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                    Priority
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {tasks.map((t) => (
+                  <tr
+                    key={t.id}
+                    className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
+                  >
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle">
+                      <input
+                        type="checkbox"
+                        checked={t.status === "done"}
+                        disabled={togglingId === t.id}
+                        onChange={() => handleToggleDone(t)}
+                        className="h-4 w-4 rounded border-border"
+                      />
+                    </td>
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium text-foreground">
+                      {t.title || "—"}
+                    </td>
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] text-muted-foreground">
+                      {t.worker_name ?? "—"}
+                    </td>
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] tabular-nums text-muted-foreground">
+                      {t.due_date ? new Date(t.due_date).toLocaleDateString() : "—"}
+                    </td>
+                    <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">
+                      <span
+                        className={cn(
+                          "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+                          t.priority === "high" && "bg-red-100 text-red-800",
+                          t.priority === "medium" && "bg-amber-100 text-amber-800",
+                          t.priority === "low" && "bg-gray-100 text-gray-600"
+                        )}
+                      >
+                        {PRIORITY_LABEL[t.priority] ?? t.priority}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 

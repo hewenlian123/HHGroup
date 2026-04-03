@@ -112,7 +112,7 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
             <span>Total</span>
             <span className="tabular-nums">${invoice.total.toLocaleString()}</span>
           </div>
-          <div className="flex justify-between text-emerald-700">
+          <div className="flex justify-between text-[#166534]">
             <span>Paid</span>
             <span className="tabular-nums">${invoice.paidTotal.toLocaleString()}</span>
           </div>

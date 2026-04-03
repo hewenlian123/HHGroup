@@ -44,7 +44,7 @@ export default async function FinancialPage() {
 
       <section>
         <h2 className="mb-4 text-lg font-semibold text-foreground">CASH OVERVIEW</h2>
-        <div className="grid gap-4 border-b border-[#EBEBE9] pb-6 sm:grid-cols-2 lg:grid-cols-5 dark:border-border">
+        <div className="grid gap-4 border-b border-[#E5E7EB] pb-6 sm:grid-cols-2 lg:grid-cols-5 dark:border-border">
           {kpis.map(({ label, value, icon: Icon }) => (
             <div key={label}>
               <div className="flex items-center justify-between gap-2">
@@ -77,10 +77,10 @@ export default async function FinancialPage() {
           <h3 className="mb-3 text-sm font-semibold text-foreground">
             Recent Unreconciled Transactions
           </h3>
-          <div className="overflow-x-auto rounded-sm border border-[#EBEBE9] dark:border-border">
+          <div className="overflow-x-auto rounded-sm border border-[#E5E7EB] dark:border-border">
             <Table>
               <TableHeader>
-                <TableRow className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border dark:bg-muted/30">
+                <TableRow className="hover:bg-transparent">
                   <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
                     Date
                   </TableHead>
@@ -103,7 +103,7 @@ export default async function FinancialPage() {
                   cash.recentUnreconciled.map((tx) => (
                     <TableRow
                       key={tx.id}
-                      className="border-b border-[#EBEBE9]/80 transition-colors hover:bg-[#F7F7F5] dark:border-border/40 dark:hover:bg-muted/20"
+                      className="border-b border-[#E5E7EB]/80 transition-colors hover:bg-[#F9FAFB] dark:border-border/40 dark:hover:bg-muted/20"
                     >
                       <TableCell className="tabular-nums">{tx.date}</TableCell>
                       <TableCell>{tx.description}</TableCell>
@@ -111,7 +111,7 @@ export default async function FinancialPage() {
                         className={cn(
                           "text-right font-medium tabular-nums",
                           tx.amount >= 0
-                            ? "text-emerald-600/90 dark:text-emerald-400/90"
+                            ? "text-hh-profit-positive dark:text-hh-profit-positive"
                             : "text-red-600/90 dark:text-red-400/90"
                         )}
                       >

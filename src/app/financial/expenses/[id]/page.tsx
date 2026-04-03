@@ -295,9 +295,9 @@ export default function ExpenseDetailPage() {
         </Link>
       </div>
 
-      <section className="border-b border-[#EBEBE9] pb-6 dark:border-border">
+      <section className="border-b border-[#E5E7EB] pb-6 dark:border-border">
         {toastMessage && (
-          <p className="mb-4 text-sm text-emerald-600 dark:text-emerald-400">{toastMessage}</p>
+          <p className="mb-4 text-sm text-[#111827] dark:text-foreground">{toastMessage}</p>
         )}
         <form data-expense-header-form className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -440,7 +440,7 @@ export default function ExpenseDetailPage() {
           {expense.attachments.map((att) => (
             <li
               key={att.id}
-              className="flex items-center gap-3 border border-[#EBEBE9] p-3 dark:border-border"
+              className="flex items-center gap-3 border border-[#E5E7EB] p-3 dark:border-border"
             >
               <button
                 type="button"
@@ -494,7 +494,7 @@ export default function ExpenseDetailPage() {
       </section>
 
       <section>
-        <div className="overflow-hidden rounded-sm border border-[#EBEBE9] p-6 dark:border-border">
+        <div className="overflow-hidden rounded-sm border border-[#E5E7EB] p-6 dark:border-border">
           <SplitLinesEditor
             lines={expense.lines.map((l) => ({
               id: l.id,
@@ -528,7 +528,7 @@ export default function ExpenseDetailPage() {
         </div>
 
         <div className="mt-4 flex flex-col gap-4 sm:flex-row">
-          <div className="min-w-[200px] border border-[#EBEBE9] bg-background px-4 py-3 dark:border-border">
+          <div className="min-w-[200px] border border-[#E5E7EB] bg-background px-4 py-3 dark:border-border">
             <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Lines total
             </p>
@@ -536,7 +536,7 @@ export default function ExpenseDetailPage() {
               ${total.toLocaleString()}
             </p>
           </div>
-          <div className="flex-1 border border-[#EBEBE9] bg-background px-4 py-3 dark:border-border">
+          <div className="flex-1 border border-[#E5E7EB] bg-background px-4 py-3 dark:border-border">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
               Per project
             </p>

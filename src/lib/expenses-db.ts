@@ -516,6 +516,11 @@ export async function createExpense(payload: {
   return { ...exp, linkedBankTxId: linkedBankTxId ?? undefined };
 }
 
+function isStatusConstraintError(err: { message?: string } | null): boolean {
+  const m = (err?.message ?? "").toLowerCase();
+  return /check constraint|status|invalid input value for enum|violates check/i.test(m);
+}
+
 /** Create a single expense from Quick Expense flow: one line, receipt_url, status needs_review.
  * Persists to real Supabase: expenses and expense_lines tables. No mock. */
 export async function createQuickExpense(payload: {
@@ -542,6 +547,8 @@ export async function createQuickExpense(payload: {
     notes: notes || null,
     reference_no: null,
     total,
+    /** Some schemas use NOT NULL `amount` on expenses (legacy); mirror `total` for quick create. */
+    amount: total,
     line_count: 1,
     receipt_url: receiptUrl || null,
     status: "needs_review",
@@ -551,8 +558,45 @@ export async function createQuickExpense(payload: {
     .insert({ ...insertRow, payment_method: "Other" })
     .select("id")
     .single();
+  if (
+    result.error &&
+    isStatusConstraintError(result.error) &&
+    insertRow.status === "needs_review"
+  ) {
+    result = await c
+      .from("expenses")
+      .insert({ ...insertRow, status: "pending", payment_method: "Other" })
+      .select("id")
+      .single();
+  }
+  if (result.error && isStatusConstraintError(result.error)) {
+    result = await c
+      .from("expenses")
+      .insert({ ...insertRow, status: "draft", payment_method: "Other" })
+      .select("id")
+      .single();
+  }
+  if (result.error && isStatusConstraintError(result.error)) {
+    const { status: _omitStatus, ...insertWithoutStatus } = insertRow;
+    result = await c
+      .from("expenses")
+      .insert({ ...insertWithoutStatus, payment_method: "Other" })
+      .select("id")
+      .single();
+  }
   if (result.error && isMissingColumn(result.error)) {
     result = await c.from("expenses").insert(insertRow).select("id").single();
+  }
+  if (
+    result.error &&
+    isStatusConstraintError(result.error) &&
+    insertRow.status === "needs_review"
+  ) {
+    result = await c
+      .from("expenses")
+      .insert({ ...insertRow, status: "pending" })
+      .select("id")
+      .single();
   }
   if (result.error && isMissingColumn(result.error)) {
     const insertRowLegacy: Record<string, unknown> = {
@@ -561,6 +605,7 @@ export async function createQuickExpense(payload: {
       notes: notes || null,
       reference_no: null,
       total,
+      amount: total,
       line_count: 1,
     };
     result = await c.from("expenses").insert(insertRowLegacy).select("id").single();
@@ -613,11 +658,6 @@ export async function createQuickExpense(payload: {
 
 const WORKER_REIMBURSEMENT_SOURCE = "worker_reimbursement";
 const REIMBURSEMENT_CATEGORY = "reimbursement";
-
-function isStatusConstraintError(err: { message?: string } | null): boolean {
-  const m = (err?.message ?? "").toLowerCase();
-  return /check constraint|status|invalid input value for enum|violates check/i.test(m);
-}
 
 /** Create an expense + one line for a paid worker reimbursement. Prevents duplicates by reference_no or source/source_id.
  * Stores reimbursement.project_id and reimbursement.worker_id on the expense so the list can show project and worker. */

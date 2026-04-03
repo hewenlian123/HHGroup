@@ -59,7 +59,7 @@ export default async function ARPage() {
 
       <section>
         <h2 className="mb-4 text-lg font-semibold text-foreground">AR Overview</h2>
-        <div className="grid gap-4 border-b border-[#EBEBE9] pb-6 sm:grid-cols-3 dark:border-border">
+        <div className="grid gap-4 border-b border-[#E5E7EB] pb-6 sm:grid-cols-3 dark:border-border">
           {kpis.map(({ label, value, icon: Icon }) => (
             <div key={label}>
               <div className="flex items-center justify-between gap-2">
@@ -74,7 +74,7 @@ export default async function ARPage() {
                   label === "Overdue AR" && value > 0 && "text-amber-600 dark:text-amber-400",
                   label === "Paid This Month" &&
                     value > 0 &&
-                    "text-emerald-600 dark:text-emerald-400"
+                    "text-hh-profit-positive dark:text-hh-profit-positive"
                 )}
               >
                 ${value.toLocaleString()}
@@ -87,7 +87,7 @@ export default async function ARPage() {
       <section>
         <h2 className="mb-4 text-lg font-semibold text-foreground">Outstanding by aging</h2>
         {sortedBuckets.length === 0 ? (
-          <p className="border-b border-[#EBEBE9] py-8 text-center text-sm text-muted-foreground dark:border-border">
+          <p className="border-b border-[#E5E7EB] py-8 text-center text-sm text-muted-foreground dark:border-border">
             No outstanding invoices.
           </p>
         ) : (
@@ -95,90 +95,85 @@ export default async function ARPage() {
             {sortedBuckets.map((bucket) => (
               <div
                 key={bucket}
-                className="overflow-hidden rounded-sm border border-[#EBEBE9] dark:border-border"
+                className="overflow-hidden rounded-sm border border-[#E5E7EB] dark:border-border"
               >
-                <h3 className="border-b border-[#EBEBE9] bg-[#F7F7F5] px-4 py-3 text-sm font-semibold text-foreground dark:border-border dark:bg-muted/30">
+                <h3 className="border-b border-[#E5E7EB] bg-white px-4 py-3 text-sm font-semibold text-foreground dark:border-border dark:bg-muted/30">
                   {bucket} days overdue
                 </h3>
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border dark:bg-muted/20">
-                        <TableHead className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                          Invoice #
-                        </TableHead>
-                        <TableHead className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                          Project
-                        </TableHead>
-                        <TableHead className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                          Client
-                        </TableHead>
-                        <TableHead className="text-right text-xs font-medium uppercase tracking-wider text-muted-foreground tabular-nums">
-                          Invoice Total
-                        </TableHead>
-                        <TableHead className="text-right text-xs font-medium uppercase tracking-wider text-muted-foreground tabular-nums">
-                          Paid
-                        </TableHead>
-                        <TableHead className="text-xs font-medium uppercase tracking-wider text-muted-foreground tabular-nums">
-                          Due
-                        </TableHead>
-                        <TableHead className="text-right text-xs font-medium uppercase tracking-wider text-muted-foreground tabular-nums">
-                          Balance
-                        </TableHead>
-                        <TableHead className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                          Status
-                        </TableHead>
-                        <TableHead className="text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                          Actions
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {byBucket[bucket].map((inv) => (
-                        <TableRow
-                          key={inv.id}
-                          className="border-b border-[#EBEBE9]/80 transition-colors hover:bg-[#F7F7F5] dark:border-border/40 dark:hover:bg-muted/20"
-                        >
-                          <TableCell className="font-medium">
-                            <Link
-                              href={`/financial/invoices/${inv.id}`}
-                              className="text-primary hover:underline"
-                            >
-                              {inv.invoiceNo}
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                        Invoice #
+                      </TableHead>
+                      <TableHead className="text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                        Project
+                      </TableHead>
+                      <TableHead className="text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                        Client
+                      </TableHead>
+                      <TableHead className="text-right font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                        Invoice Total
+                      </TableHead>
+                      <TableHead className="text-right font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                        Paid
+                      </TableHead>
+                      <TableHead className="font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                        Due
+                      </TableHead>
+                      <TableHead className="text-right font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                        Balance
+                      </TableHead>
+                      <TableHead className="text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                        Status
+                      </TableHead>
+                      <TableHead className="text-right text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                        Actions
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {byBucket[bucket].map((inv) => (
+                      <TableRow key={inv.id}>
+                        <TableCell className="font-medium">
+                          <Link
+                            href={`/financial/invoices/${inv.id}`}
+                            className="text-primary hover:underline"
+                          >
+                            {inv.invoiceNo}
+                          </Link>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {projectNameById.get(inv.projectId) ?? inv.projectId}
+                        </TableCell>
+                        <TableCell className="text-foreground">{inv.clientName}</TableCell>
+                        <TableCell className="text-right font-mono tabular-nums">
+                          ${inv.total.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right font-mono tabular-nums text-hh-profit-positive dark:text-hh-profit-positive">
+                          ${inv.paidTotal.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="font-mono tabular-nums text-muted-foreground">
+                          {inv.dueDate}
+                        </TableCell>
+                        <TableCell className="text-right font-mono font-medium tabular-nums">
+                          ${inv.balanceDue.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {inv.computedStatus}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button asChild variant="outline" size="sm" className="h-8 rounded-sm">
+                            <Link href={`/financial/invoices/${inv.id}?recordPayment=1`}>
+                              <CreditCard className="mr-1 h-4 w-4" />
+                              Collect
                             </Link>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {projectNameById.get(inv.projectId) ?? inv.projectId}
-                          </TableCell>
-                          <TableCell className="text-foreground">{inv.clientName}</TableCell>
-                          <TableCell className="text-right tabular-nums">
-                            ${inv.total.toLocaleString()}
-                          </TableCell>
-                          <TableCell className="text-right tabular-nums text-emerald-600/90 dark:text-emerald-400/90">
-                            ${inv.paidTotal.toLocaleString()}
-                          </TableCell>
-                          <TableCell className="tabular-nums text-muted-foreground">
-                            {inv.dueDate}
-                          </TableCell>
-                          <TableCell className="text-right font-medium tabular-nums">
-                            ${inv.balanceDue.toLocaleString()}
-                          </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {inv.computedStatus}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button asChild variant="outline" size="sm" className="h-8 rounded-sm">
-                              <Link href={`/financial/invoices/${inv.id}?recordPayment=1`}>
-                                <CreditCard className="mr-1 h-4 w-4" />
-                                Collect
-                              </Link>
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             ))}
           </div>

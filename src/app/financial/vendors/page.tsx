@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { FilterBar } from "@/components/filter-bar";
 import { Select } from "@/components/ui/select";
 import { StatusBadge } from "@/components/status-badge";
+import { TableShell, tableRawTdClass, tableRawThClass } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
 type VendorRow = {
   id: string;
@@ -247,13 +249,13 @@ export default function VendorsPage() {
       </FilterBar>
 
       {message ? (
-        <p className="border-b border-[#EBEBE9] pb-3 text-sm text-muted-foreground dark:border-border">
+        <p className="border-b border-[#E5E7EB] pb-3 text-sm text-muted-foreground dark:border-border">
           {message}
         </p>
       ) : null}
 
       {editorOpen ? (
-        <section className="border-b border-[#EBEBE9] pb-4 dark:border-border">
+        <section className="border-b border-[#E5E7EB] pb-4 dark:border-border">
           <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">Name</p>
@@ -316,7 +318,7 @@ export default function VendorsPage() {
               </Select>
             </div>
           </div>
-          <div className="mt-4 flex flex-col-reverse justify-end gap-2 border-t border-[#EBEBE9] pt-3 sm:flex-row sm:items-center dark:border-border">
+          <div className="mt-4 flex flex-col-reverse justify-end gap-2 border-t border-[#E5E7EB] pt-3 sm:flex-row sm:items-center dark:border-border">
             <Button
               variant="outline"
               size="sm"
@@ -342,23 +344,26 @@ export default function VendorsPage() {
         </section>
       ) : null}
 
-      <div className="overflow-hidden rounded-sm border border-[#EBEBE9] dark:border-border">
+      <TableShell>
         <div className="table-responsive">
-          <table className="w-full min-w-[560px] text-sm md:min-w-0">
+          <table className="w-full min-w-[560px] border-collapse text-[13px] md:min-w-0">
             <thead>
-              <tr className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border dark:bg-muted/50">
-                <th className="table-head-label px-4 py-3 text-left">Name</th>
-                <th className="table-head-label px-4 py-3 text-left">Contact</th>
-                <th className="table-head-label px-4 py-3 text-left">Phone</th>
-                <th className="table-head-label px-4 py-3 text-left">Email</th>
-                <th className="table-head-label px-4 py-3 text-left">Status</th>
-                <th className="table-head-label px-4 py-3 text-right">Actions</th>
+              <tr>
+                <th className={tableRawThClass}>Name</th>
+                <th className={tableRawThClass}>Contact</th>
+                <th className={tableRawThClass}>Phone</th>
+                <th className={tableRawThClass}>Email</th>
+                <th className={tableRawThClass}>Status</th>
+                <th className={cn(tableRawThClass, "text-right")}>Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="[&_tr:last-child>td]:border-b-0">
               {loading ? (
                 <tr>
-                  <td className="px-4 py-8 text-center text-muted-foreground" colSpan={6}>
+                  <td
+                    className={cn(tableRawTdClass, "py-8 text-center text-muted-foreground")}
+                    colSpan={6}
+                  >
                     Loading vendors...
                   </td>
                 </tr>
@@ -366,16 +371,22 @@ export default function VendorsPage() {
               {filtered.map((row) => (
                 <tr
                   key={row.id}
-                  className="group border-b border-[#EBEBE9]/80 transition-colors hover:bg-[#F7F7F5] dark:border-border/60 dark:hover:bg-muted/20"
+                  className="group transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/20"
                 >
-                  <td className="px-4 py-3 font-medium text-foreground">{row.name}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{row.contact_name || "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{row.phone || "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{row.email || "—"}</td>
-                  <td className="px-4 py-3">
+                  <td className={cn(tableRawTdClass, "font-medium text-foreground")}>{row.name}</td>
+                  <td className={cn(tableRawTdClass, "text-muted-foreground")}>
+                    {row.contact_name || "—"}
+                  </td>
+                  <td className={cn(tableRawTdClass, "text-muted-foreground")}>
+                    {row.phone || "—"}
+                  </td>
+                  <td className={cn(tableRawTdClass, "text-muted-foreground")}>
+                    {row.email || "—"}
+                  </td>
+                  <td className={tableRawTdClass}>
                     <StatusBadge status={row.status} />
                   </td>
-                  <td className="px-4 py-3">
+                  <td className={tableRawTdClass}>
                     <div className="flex items-center justify-end gap-2">
                       <Button
                         variant="outline"
@@ -400,7 +411,10 @@ export default function VendorsPage() {
               ))}
               {!loading && filtered.length === 0 ? (
                 <tr>
-                  <td className="px-4 py-8 text-center text-muted-foreground" colSpan={6}>
+                  <td
+                    className={cn(tableRawTdClass, "py-8 text-center text-muted-foreground")}
+                    colSpan={6}
+                  >
                     No vendors yet.
                   </td>
                 </tr>
@@ -408,7 +422,7 @@ export default function VendorsPage() {
             </tbody>
           </table>
         </div>
-      </div>
+      </TableShell>
     </div>
   );
 }

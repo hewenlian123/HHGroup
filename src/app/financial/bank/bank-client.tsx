@@ -855,10 +855,10 @@ export default function BankReconcileClient() {
             />
           </div>
           {importMessage ? (
-            <p className="text-sm text-emerald-600 dark:text-emerald-400 mb-2">{importMessage}</p>
+            <p className="mb-2 text-sm text-[#111827] dark:text-foreground">{importMessage}</p>
           ) : null}
           {toastMessage ? (
-            <p className="text-sm text-emerald-600 dark:text-emerald-400 mb-2">{toastMessage}</p>
+            <p className="mb-2 text-sm text-[#111827] dark:text-foreground">{toastMessage}</p>
           ) : null}
 
           <div className="flex gap-2 mb-3">
@@ -895,7 +895,7 @@ export default function BankReconcileClient() {
           <div className="overflow-x-auto rounded-xl border border-zinc-200/60 dark:border-border">
             <Table>
               <TableHeader>
-                <TableRow className="border-b border-zinc-200/40 dark:border-border/60 bg-muted/30">
+                <TableRow className="hover:bg-transparent">
                   <TableHead className="w-10 text-center">
                     <span className="sr-only">Select</span>
                   </TableHead>
@@ -953,7 +953,7 @@ export default function BankReconcileClient() {
                         className={cn(
                           "text-right tabular-nums font-medium",
                           tx.amount >= 0
-                            ? "text-emerald-600/90 dark:text-emerald-400/90"
+                            ? "text-hh-profit-positive dark:text-hh-profit-positive"
                             : "text-red-600/90 dark:text-red-400/90"
                         )}
                       >
@@ -964,7 +964,9 @@ export default function BankReconcileClient() {
                         <span
                           className={cn(
                             "text-xs font-medium",
-                            tx.status === "reconciled" ? "text-emerald-600" : "text-amber-600"
+                            tx.status === "reconciled"
+                              ? "text-hh-profit-positive"
+                              : "text-amber-600"
                           )}
                         >
                           {tx.status}
@@ -1072,7 +1074,7 @@ export default function BankReconcileClient() {
                     selectedTxFromList?.reconcileType === "Expense" &&
                       "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-400",
                     selectedTxFromList?.reconcileType === "Income" &&
-                      "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-400",
+                      "bg-[#DCFCE7] text-[#166534] dark:bg-emerald-900/40 dark:text-emerald-400",
                     selectedTxFromList?.reconcileType === "Transfer" &&
                       "bg-zinc-100 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-300"
                   )}

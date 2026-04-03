@@ -69,14 +69,14 @@ test.describe("Delete surface catalog (read-only)", () => {
     await page.keyboard.press("Escape");
   });
 
-  test("projects: overflow menu has Delete", async ({ page }) => {
+  test("projects: row has Delete control", async ({ page }) => {
     await page.goto(`${BASE}/projects`);
     await page.waitForLoadState("domcontentloaded");
     await skipIfSupabaseMissing(page);
     const row = page.locator("table tbody tr").first();
     await expectVisibleOrSkip(row, "No project rows.", LIST_LOAD_MS);
-    await clickFirstRowOverflowMenu(page);
-    await expectDeleteMenuItemThenClose(page);
+    const del = row.getByRole("button", { name: /^Delete / });
+    await expect(del.first()).toBeVisible({ timeout: 5000 });
   });
 
   test("tasks (desktop table): overflow has Delete", async ({ page }) => {

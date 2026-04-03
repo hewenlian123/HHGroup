@@ -394,7 +394,7 @@ export default function BankReconcilePage() {
         <div
           ref={bankListRef}
           tabIndex={0}
-          className="overflow-hidden border border-[#EBEBE9] p-4 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:border-border"
+          className="overflow-hidden border border-[#E5E7EB] p-4 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:border-border"
           onKeyDown={handleBankListKeyDown}
         >
           <div className="mb-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
@@ -424,10 +424,10 @@ export default function BankReconcilePage() {
             />
           </div>
           {importMessage && (
-            <p className="text-sm text-emerald-600 dark:text-emerald-400 mb-2">{importMessage}</p>
+            <p className="mb-2 text-sm text-[#111827] dark:text-foreground">{importMessage}</p>
           )}
           {toastMessage && (
-            <p className="text-sm text-emerald-600 dark:text-emerald-400 mb-2">{toastMessage}</p>
+            <p className="mb-2 text-sm text-[#111827] dark:text-foreground">{toastMessage}</p>
           )}
           <div className="mb-3 flex flex-wrap gap-2">
             {(["unmatched", "reconciled", "all"] as const).map((t) => (
@@ -438,8 +438,8 @@ export default function BankReconcilePage() {
                 className={cn(
                   "rounded-sm border px-3 py-1.5 text-sm font-medium capitalize transition-colors",
                   tab === t
-                    ? "border-[#2D2D2D]/25 bg-[#F7F7F5] text-[#2D2D2D] dark:border-border dark:bg-muted/40 dark:text-foreground"
-                    : "border-[#EBEBE9] bg-background text-muted-foreground hover:bg-[#F7F7F5]/60 dark:border-border"
+                    ? "border-[#111827]/25 bg-[#F9FAFB] text-[#111827] dark:border-border dark:bg-muted/40 dark:text-foreground"
+                    : "border-[#E5E7EB] bg-background text-muted-foreground hover:bg-[#F9FAFB]/60 dark:border-border"
                 )}
               >
                 {t}
@@ -458,10 +458,10 @@ export default function BankReconcilePage() {
               </Button>
             )}
           </div>
-          <div className="overflow-x-auto rounded-sm border border-[#EBEBE9] dark:border-border">
+          <div className="overflow-x-auto rounded-sm border border-[#E5E7EB] dark:border-border">
             <Table>
               <TableHeader>
-                <TableRow className="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border dark:bg-muted/30">
+                <TableRow className="hover:bg-transparent">
                   <TableHead className="w-10 text-center">
                     <span className="sr-only">Select</span>
                   </TableHead>
@@ -484,8 +484,8 @@ export default function BankReconcilePage() {
                   <TableRow
                     key={tx.id}
                     className={cn(
-                      "cursor-pointer border-b border-[#EBEBE9]/80 transition-colors hover:bg-[#F7F7F5] dark:border-border/40 dark:hover:bg-muted/20",
-                      selectedIds.has(tx.id) && "bg-[#F7F7F5] dark:bg-muted/30"
+                      "cursor-pointer border-b border-[#E5E7EB]/80 transition-colors hover:bg-[#F9FAFB] dark:border-border/40 dark:hover:bg-muted/20",
+                      selectedIds.has(tx.id) && "bg-[#F9FAFB] dark:bg-muted/30"
                     )}
                     onClick={() => setSelectedIds(new Set([tx.id]))}
                   >
@@ -506,7 +506,7 @@ export default function BankReconcilePage() {
                       className={cn(
                         "text-right tabular-nums font-medium",
                         tx.amount >= 0
-                          ? "text-emerald-600/90 dark:text-emerald-400/90"
+                          ? "text-hh-profit-positive dark:text-hh-profit-positive"
                           : "text-red-600/90 dark:text-red-400/90"
                       )}
                     >
@@ -516,7 +516,7 @@ export default function BankReconcilePage() {
                       <span
                         className={cn(
                           "text-xs font-medium",
-                          tx.status === "reconciled" ? "text-emerald-600" : "text-amber-600"
+                          tx.status === "reconciled" ? "text-hh-profit-positive" : "text-amber-600"
                         )}
                       >
                         {tx.status}
@@ -531,7 +531,7 @@ export default function BankReconcilePage() {
 
         {/* Right: Reconcile panel */}
         <div
-          className="overflow-hidden border border-[#EBEBE9] p-6 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:border-border"
+          className="overflow-hidden border border-[#E5E7EB] p-6 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:border-border"
           onKeyDown={handlePanelKeyDown}
           tabIndex={0}
         >
@@ -622,7 +622,7 @@ export default function BankReconcilePage() {
                     className={cn(
                       "h-1.5 w-1.5 shrink-0 rounded-full",
                       reconcileType === "Expense" && "bg-red-500/80",
-                      reconcileType === "Income" && "bg-emerald-500/80",
+                      reconcileType === "Income" && "bg-[#166534]/80",
                       reconcileType === "Transfer" && "bg-foreground/40"
                     )}
                   />
@@ -674,7 +674,7 @@ export default function BankReconcilePage() {
                 {reconcileType === "Expense" && (
                   <>
                     {suggestions.length > 0 && (
-                      <div className="mt-4 border border-[#EBEBE9] p-4 dark:border-border">
+                      <div className="mt-4 border border-[#E5E7EB] p-4 dark:border-border">
                         <h3 className="mb-3 text-sm font-semibold text-foreground">
                           Match Existing Expense
                         </h3>
@@ -685,7 +685,7 @@ export default function BankReconcilePage() {
                           {suggestions.map((s) => (
                             <div
                               key={s.expense.id}
-                              className="flex flex-wrap items-center gap-2 border border-[#EBEBE9] p-2 text-sm dark:border-border"
+                              className="flex flex-wrap items-center gap-2 border border-[#E5E7EB] p-2 text-sm dark:border-border"
                             >
                               <span className="tabular-nums text-muted-foreground w-20">
                                 {s.expense.date}

@@ -6,9 +6,9 @@
   .text-balance {
     text-wrap: balance;
   }
-  /* Responsive padding: mobile 12px, tablet 16px, desktop 24px */
+  /* Main content: 32px horizontal, 28px top (desktop); tighter on small screens */
   .page-container {
-    @apply mx-auto w-full max-w-6xl px-3 sm:px-4 lg:px-6;
+    @apply mx-auto w-full max-w-6xl px-3 pb-6 pt-5 sm:px-4 sm:pt-6 lg:px-8 lg:pb-8 lg:pt-7;
   }
   .page-stack {
     @apply flex flex-col gap-6;
@@ -17,26 +17,67 @@
     @apply flex flex-col gap-3;
   }
   .table-head-label {
-    @apply text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400;
+    @apply text-xs font-medium uppercase tracking-wide text-[#6B7280];
   }
   .table-row-compact {
     @apply h-10;
   }
+  /** Default data tables: comfortable row height */
+  .table-row-relaxed td,
+  .table-row-relaxed th {
+    @apply py-4;
+  }
   .num {
-    @apply text-right tabular-nums;
+    @apply text-right font-mono tabular-nums;
   }
   .date-text {
-    @apply tabular-nums text-gray-500;
+    @apply tabular-nums text-[#6B7280];
   }
-  /* Compact KPI metric cell */
+  /* Summary / KPI cards (4-col grid, 10px gap) */
   .kpi-metric {
-    @apply rounded-lg border border-[#EBEBE9] bg-white px-4 py-3 shadow-sm;
+    @apply rounded-[10px] border-[0.5px] border-[#E5E7EB] bg-white px-4 py-[14px];
   }
   .kpi-metric-label {
-    @apply text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400;
+    @apply text-[11px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF];
   }
   .kpi-metric-value {
-    @apply text-base font-semibold text-[#2D2D2D];
+    @apply text-xl font-semibold text-[#111827];
+  }
+  /** Filter bar: native inputs / selects */
+  .filter-field {
+    @apply h-9 min-h-9 w-full rounded-lg border-[0.5px] border-[#E5E7EB] bg-white px-3 text-[13px] text-[#374151] shadow-none outline-none transition-colors placeholder:text-[#9CA3AF];
+    @apply focus-visible:border-[#111827] focus-visible:ring-2 focus-visible:ring-[#111827]/10;
+  }
+  /** Positive profit / margin figures (deep green, not tailwind green-600) */
+  .text-hh-profit-positive {
+    color: #166534;
+  }
+  .dark .text-hh-profit-positive {
+    color: #166534;
+  }
+  /* Unified status pills */
+  .hh-pill-success {
+    @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
+    background-color: #dcfce7;
+    color: #166534;
+  }
+  .hh-pill-warning {
+    @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
+    background-color: #fef9c3;
+    color: #854d0e;
+  }
+  .hh-pill-neutral {
+    @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
+    background-color: #f3f4f6;
+    color: #6b7280;
+  }
+  .hh-pill-danger {
+    @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
+    background-color: #fee2e2;
+    color: #991b1b;
+  }
+  .hh-modal-shell {
+    @apply w-full max-w-[480px] rounded-[14px] border-[0.5px] border-[#E5E7EB] bg-white p-8 shadow-modal;
   }
   /* Add-on: touch-friendly forms only when <1024px; desktop unchanged */
   .form-mobile-friendly input,
@@ -81,38 +122,76 @@
     touch-action: pan-x;
   }
   .ui-divider {
-    @apply border-b border-[#EBEBE9];
+    @apply border-b border-[#E5E7EB] [border-bottom-width:0.5px];
   }
   .ui-section {
     @apply py-2;
   }
   .ui-section-label {
-    @apply text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-400;
+    @apply text-xs font-semibold uppercase tracking-wide text-[#6B7280];
+  }
+}
+
+@layer components {
+  /**
+   * Native <table> — Airtable-style outer frame + vertical rules + header tint.
+   * <div class="airtable-table-wrap airtable-table-wrap--ruled"><div class="airtable-table-scroll"><table>…
+   * Do not use --ruled together with tableRawThClass / tableRawTdClass (borders would double).
+   */
+  .airtable-table-wrap {
+    @apply relative w-full overflow-hidden rounded-[10px] border-[0.5px] border-solid border-[#E5E7EB] bg-white dark:border-border;
+  }
+  .airtable-table-scroll {
+    @apply max-w-full overflow-x-auto;
+  }
+  .airtable-table-wrap--ruled > .airtable-table-scroll > table {
+    @apply w-full border-collapse;
+  }
+  .airtable-table-wrap--ruled > .airtable-table-scroll > table th,
+  .airtable-table-wrap--ruled > .airtable-table-scroll > table td {
+    border-bottom: 0.5px solid #e5e7eb;
+    border-right: 0.5px solid #e5e7eb;
+  }
+  .dark .airtable-table-wrap--ruled > .airtable-table-scroll > table th,
+  .dark .airtable-table-wrap--ruled > .airtable-table-scroll > table td {
+    border-color: hsl(var(--border));
+  }
+  .airtable-table-wrap--ruled > .airtable-table-scroll > table th:last-child,
+  .airtable-table-wrap--ruled > .airtable-table-scroll > table td:last-child {
+    border-right-width: 0;
+  }
+  .airtable-table-wrap--ruled > .airtable-table-scroll > table thead th {
+    @apply bg-[#F9FAFB];
+  }
+  .airtable-table-wrap--ruled > .airtable-table-scroll > table tbody tr:last-child > th,
+  .airtable-table-wrap--ruled > .airtable-table-scroll > table tbody tr:last-child > td {
+    border-bottom-width: 0;
   }
 }
 
 @layer base {
   :root {
-    /* ---- Color tokens (HSL) ---- */
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
+    /* ---- HH Group color tokens (HSL components for hsl()) ---- */
+    /* Page canvas #F8F7F4 */
+    --background: 48 23% 96%;
+    --foreground: 220 39% 11%;
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
+    --card-foreground: 220 39% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
+    --popover-foreground: 220 39% 11%;
+    --primary: 220 39% 11%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 220 17% 20%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 220 14% 96%;
+    --accent-foreground: 220 39% 11%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 220 39% 11%;
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
@@ -132,10 +211,10 @@
     --space-12: 3rem; /* 48 */
 
     /* ---- Radius tokens ---- */
-    --radius: 0.5rem; /* global base radius (Linear-style) */
+    --radius: 0.5rem; /* 8px — buttons, inputs */
     --radius-sm: 0.25rem;
     --radius-md: 0.375rem;
-    --radius-lg: 0.5rem;
+    --radius-lg: 0.75rem; /* 12px — cards, modals */
     --radius-xl: 0.75rem;
 
     /* ---- Typography tokens ---- */
@@ -188,7 +267,7 @@
 
 @layer base {
   body {
-    @apply bg-[#F7F7F8] text-[#111111] overflow-x-hidden;
+    @apply bg-background text-foreground overflow-x-hidden text-sm antialiased;
     font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);

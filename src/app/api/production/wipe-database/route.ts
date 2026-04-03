@@ -2,7 +2,7 @@
  * POST /api/production/wipe-database
  *
  * 1. Deletes ALL rows from main tables in dependency-safe order (no DROP, schema unchanged).
- *    Tables: commission_payment_records, project_commissions, expense_lines, expenses,
+ *    Tables: commission_payments, commissions, expense_lines, expenses,
  *    labor_entries, worker_receipts, worker_reimbursements, worker_payments,
  *    invoice_payments, invoice_items, deposits, payments_received, invoices,
  *    site_photos, project_budget_items, project_change_order_items, project_change_order_attachments,

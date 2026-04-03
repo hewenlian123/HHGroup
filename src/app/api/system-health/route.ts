@@ -20,7 +20,7 @@ const MODULES: { name: string; table: string }[] = [
   { name: "Worker Payments", table: "worker_payments" },
   { name: "Invoices", table: "invoices" },
   { name: "Customers", table: "customers" },
-  { name: "Commission Payments", table: "project_commissions" },
+  { name: "Commission Payments", table: "commissions" },
   { name: "Payments Received", table: "payments_received" },
   { name: "Deposits", table: "deposits" },
   { name: "Bills", table: "bills" },

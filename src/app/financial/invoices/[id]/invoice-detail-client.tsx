@@ -672,7 +672,7 @@ export default function InvoiceDetailClient() {
             <span>Total</span>
             <span className="tabular-nums">{money(safeNumber(invoice.total))}</span>
           </div>
-          <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
+          <div className="flex justify-between text-hh-profit-positive dark:text-hh-profit-positive">
             <span>Paid</span>
             <span className="tabular-nums">{money(safeNumber(invoice.paidTotal))}</span>
           </div>
@@ -727,7 +727,7 @@ export default function InvoiceDetailClient() {
                       className={cn(
                         "py-3 px-4 text-right tabular-nums font-medium",
                         p.status === "Posted"
-                          ? "text-emerald-600/90 dark:text-emerald-400/90"
+                          ? "text-hh-profit-positive dark:text-hh-profit-positive"
                           : "text-muted-foreground line-through"
                       )}
                     >
@@ -740,7 +740,7 @@ export default function InvoiceDetailClient() {
                         className={cn(
                           "text-xs font-medium px-2 py-1 rounded",
                           p.status === "Posted"
-                            ? "bg-emerald-50 text-emerald-700"
+                            ? "bg-[#DCFCE7] text-[#166534]"
                             : "bg-zinc-100 text-zinc-700"
                         )}
                       >

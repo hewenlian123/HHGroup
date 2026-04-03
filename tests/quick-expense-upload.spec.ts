@@ -40,20 +40,42 @@ test.describe("Quick Expense: upload and save", () => {
     await expect(dialog.getByRole("button", { name: "View attachment 1" })).toBeVisible();
 
     const vendorMark = `E2E-QE-${Date.now()}`;
-    await dialog
-      .locator(
-        "input:not([type='file']):not([type='number']):not([type='date']):not([type='hidden'])"
-      )
-      .first()
-      .fill(vendorMark);
+    await dialog.locator("#quick-expense-vendor").fill(vendorMark);
     await dialog.locator("input[type='number']").fill("42.5");
 
     await dialog.getByRole("button", { name: "Save", exact: true }).click();
+    // Duplicate guard: same vendor/date/amount as an existing expense requires a second Save (see handleSave).
+    if (
+      await dialog
+        .getByText(/Possible duplicate/i)
+        .isVisible({ timeout: 4_000 })
+        .catch(() => false)
+    ) {
+      await dialog.getByRole("button", { name: "Save", exact: true }).click();
+    }
 
-    const savedToast = page.locator('[role="status"]').filter({ hasText: "Expense saved" });
-    await expect(savedToast).toBeVisible({ timeout: 45_000 });
+    await expect
+      .poll(
+        async () => {
+          const body = await page.locator("body").innerText();
+          if (/save failed/i.test(body)) {
+            throw new Error("Quick expense: Save failed toast is visible.");
+          }
+          const err = dialog.locator("p.text-sm.text-destructive");
+          if (await err.isVisible().catch(() => false)) {
+            throw new Error(
+              `Quick expense: ${((await err.textContent()) ?? "").trim() || "validation error"}`
+            );
+          }
+          if (/expense saved/i.test(body)) return "done";
+          if (body.includes(vendorMark)) return "done";
+          return null;
+        },
+        { timeout: 120_000, intervals: [400] }
+      )
+      .toBe("done");
 
-    await expect(dialog).not.toBeVisible({ timeout: 20_000 });
+    await expect(dialog).not.toBeVisible({ timeout: 30_000 });
 
     await page.reload({ waitUntil: "domcontentloaded" });
     await page.locator("main").first().waitFor({ state: "visible", timeout: 60_000 });

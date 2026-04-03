@@ -5,8 +5,7 @@ import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Search } from "lucide-react";
-import { RowActionsMenu } from "@/components/base/row-actions-menu";
+import { Plus, Search, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -17,12 +16,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { TableShell, tableRawTdClass, tableRawThClass } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import {
-  listTableAmountCellClassName,
-  listTablePrimaryCellClassName,
-  listTableRowClassName,
-} from "@/lib/list-table-interaction";
 import {
   deleteProjectAction,
   getProjectUsageAction,
@@ -43,36 +38,74 @@ export type ProjectsListRow = {
   name: string;
   clientName: string | null;
   status: string;
+  budget: number;
   revenue: number;
   laborCost: number;
   profit: number;
   updatedAt: string;
 };
 
+const PAGE_BG = "bg-[#F8F7F4]";
+const FIELD =
+  "h-10 rounded-lg border-[0.5px] border-[#E5E7EB] bg-white text-[14px] focus-visible:border-[#111827] focus-visible:ring-2 focus-visible:ring-[#111827]/15";
+const MODAL =
+  "max-w-[480px] w-full gap-0 border-[0.5px] border-[#E5E7EB] p-8 shadow-modal rounded-modal sm:max-w-[480px]";
+
 function fmtUsd0(n: number): string {
   return `$${Math.round(n).toLocaleString("en-US")}`;
 }
 
 function profitClass(n: number): string {
-  if (n > 0.005) return "text-green-600 dark:text-green-500";
-  if (n < -0.005) return "text-red-500 dark:text-red-500";
-  return "text-graphite/50";
+  if (n > 0.005) return "text-[#166534]";
+  if (n < -0.005) return "text-red-600";
+  return "text-[#6B7280]";
+}
+
+export type ProjectListStatusFilter = "all" | "active" | "completed" | "pending" | "on_hold";
+
+function normalizeProjectStatus(
+  status: string
+): "active" | "completed" | "pending" | "on_hold" | "other" {
+  const v = (status ?? "").toLowerCase().trim().replace(/\s+/g, "_");
+  if (v === "active") return "active";
+  if (v === "completed") return "completed";
+  if (v === "pending") return "pending";
+  if (v === "on_hold" || v === "on-hold" || v.includes("hold")) return "on_hold";
+  return "other";
+}
+
+function ProjectListStatusPill({ status }: { status: string }) {
+  const n = normalizeProjectStatus(status);
+  const map = {
+    active: { pill: "hh-pill-success", label: "Active" },
+    completed: { pill: "hh-pill-success", label: "Completed" },
+    pending: { pill: "hh-pill-warning", label: "Pending" },
+    on_hold: { pill: "hh-pill-neutral", label: "On Hold" },
+    other: {
+      pill: "hh-pill-neutral",
+      label:
+        status && status.trim()
+          ? status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()
+          : "—",
+    },
+  } as const;
+  const c = map[n];
+  return <span className={cn(c.pill, "text-[12px] leading-tight")}>{c.label}</span>;
 }
 
 export function ProjectsListClient({
   rows,
-  titleFontClassName,
   dataLoadWarning = null,
 }: {
   rows: ProjectsListRow[];
-  titleFontClassName: string;
   dataLoadWarning?: string | null;
 }) {
   const router = useRouter();
   const { toast } = useToast();
   const [localRows, setLocalRows] = React.useState<ProjectsListRow[]>(rows);
   React.useEffect(() => setLocalRows(rows), [rows]);
-  const [view, setView] = React.useState<"all" | "active" | "closed">("all");
+  const [statusFilter, setStatusFilter] = React.useState<ProjectListStatusFilter>("all");
+  const [sortBy, setSortBy] = React.useState<"updated" | "name" | "revenue" | "profit">("updated");
   const [query, setQuery] = React.useState("");
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
   const [deleteBlockedOpen, setDeleteBlockedOpen] = React.useState(false);
@@ -89,23 +122,41 @@ export function ProjectsListClient({
     [router]
   );
 
+  const summary = React.useMemo(() => {
+    const total = localRows.length;
+    const active = localRows.filter((r) => normalizeProjectStatus(r.status) === "active").length;
+    const completed = localRows.filter(
+      (r) => normalizeProjectStatus(r.status) === "completed"
+    ).length;
+    const totalBudget = localRows.reduce((s, r) => s + (Number(r.budget) || 0), 0);
+    return { total, active, completed, totalBudget };
+  }, [localRows]);
+
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();
-    return localRows
-      .filter((r) => {
-        if (view === "active") return r.status === "active";
-        if (view === "closed") return r.status === "completed";
-        return true;
-      })
-      .filter((r) => {
-        if (!q) return true;
-        return (
-          r.name.toLowerCase().includes(q) ||
-          r.id.toLowerCase().includes(q) ||
-          (r.clientName ?? "").toLowerCase().includes(q)
-        );
-      });
-  }, [query, localRows, view]);
+    let list = localRows.filter((r) => {
+      const n = normalizeProjectStatus(r.status);
+      if (statusFilter === "all") return true;
+      if (statusFilter === "on_hold") return n === "on_hold";
+      return n === statusFilter;
+    });
+    list = list.filter((r) => {
+      if (!q) return true;
+      return (
+        r.name.toLowerCase().includes(q) ||
+        r.id.toLowerCase().includes(q) ||
+        (r.clientName ?? "").toLowerCase().includes(q)
+      );
+    });
+    const sorted = [...list];
+    sorted.sort((a, b) => {
+      if (sortBy === "name") return a.name.localeCompare(b.name);
+      if (sortBy === "revenue") return b.revenue - a.revenue;
+      if (sortBy === "profit") return b.profit - a.profit;
+      return (b.updatedAt || "").localeCompare(a.updatedAt || "");
+    });
+    return sorted;
+  }, [query, localRows, statusFilter, sortBy]);
 
   const handleNavigate = React.useCallback(
     (id: string) => {
@@ -151,122 +202,131 @@ export function ProjectsListClient({
   );
 
   return (
-    <div className="font-sans text-graphite antialiased">
+    <div className={cn("page-container page-stack py-8 text-[14px] leading-normal", PAGE_BG)}>
       {dataLoadWarning ? (
-        <p
-          className="mb-6 border-b border-border/60 pb-3 text-sm text-muted-foreground"
-          role="status"
-        >
+        <p className="border-b border-[#E5E7EB] pb-3 text-sm text-[#6B7280]" role="status">
           {dataLoadWarning}
         </p>
       ) : null}
-      {/* Title + actions */}
-      <div className="mb-10 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-        <div className="space-y-3">
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
           <h1
             data-testid="projects-page-heading"
-            className={cn(
-              titleFontClassName,
-              "text-4xl font-extrabold leading-none tracking-[-0.03em] text-graphite sm:text-[52px]"
-            )}
+            className="text-2xl font-bold tracking-tight text-[#111827]"
           >
             Projects
           </h1>
-          <p className="text-base font-light tracking-tight text-graphite/55 sm:text-lg">
-            Revenue, labor cost, and profit — click a row to open a project.
+          <p className="mt-1 max-w-xl text-[14px] text-[#6B7280]">
+            Revenue, labor cost, and profit — click a row or View to open a project.
           </p>
         </div>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-          <div className="inline-flex rounded-xl border border-border-soft bg-white p-0.5 shadow-sm">
-            {(["all", "active", "closed"] as const).map((v) => (
-              <button
-                key={v}
-                type="button"
-                onClick={() => setView(v)}
-                className={cn(
-                  "rounded-[10px] px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors",
-                  view === v ? "bg-warm-grey text-graphite" : "text-graphite/45 hover:text-graphite"
-                )}
-              >
-                {v === "all"
-                  ? `All (${localRows.length})`
-                  : v === "active"
-                    ? `Active (${localRows.filter((r) => r.status === "active").length})`
-                    : `Closed (${localRows.filter((r) => r.status === "completed").length})`}
-              </button>
-            ))}
-          </div>
-          <div className="relative min-w-[200px] max-w-sm flex-1">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-graphite/40" />
-            <Input
-              data-testid="projects-list-search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search projects…"
-              className="h-10 rounded-xl border-border-soft bg-white pl-10 text-sm text-graphite placeholder:text-graphite/40 focus-visible:ring-1 focus-visible:ring-graphite/20 focus-visible:border-graphite/30"
-            />
-          </div>
-          <Button
-            asChild
-            className="h-11 rounded-xl bg-graphite px-6 text-sm font-bold text-white shadow-sm hover:bg-graphite/90"
+        <Button
+          asChild
+          variant="outline"
+          className="h-10 shrink-0 rounded-md border-[0.5px] border-[#E5E7EB] bg-white px-4 text-[14px] font-medium text-[#111827] shadow-none hover:bg-[#F5F7FA]"
+        >
+          <Link href="/projects/new">
+            <Plus className="mr-2 h-4 w-4" />
+            New Project
+          </Link>
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-[10px] sm:grid-cols-2 lg:grid-cols-4">
+        {(
+          [
+            ["TOTAL PROJECTS", summary.total],
+            ["ACTIVE", summary.active],
+            ["COMPLETED", summary.completed],
+            ["TOTAL BUDGET", summary.totalBudget],
+          ] as const
+        ).map(([label, value]) => (
+          <div
+            key={label}
+            className="rounded-[10px] border-[0.5px] border-solid border-[#E5E7EB] bg-white px-4 py-[14px]"
           >
-            <Link href="/projects/new">
-              <Plus className="mr-2 h-[18px] w-[18px]" />
-              New Project
-            </Link>
-          </Button>
+            <p className="kpi-metric-label">{label}</p>
+            <p className="kpi-metric-value mt-0.5 font-mono tabular-nums text-[#111827]">
+              {label === "TOTAL BUDGET" ? fmtUsd0(value as number) : (value as number)}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
+        <div className="relative min-w-[200px] flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9CA3AF]" />
+          <Input
+            data-testid="projects-list-search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search projects…"
+            className={cn("pl-9", FIELD)}
+            aria-label="Search projects"
+          />
         </div>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as ProjectListStatusFilter)}
+          className={cn("min-w-[160px] px-3", FIELD)}
+          aria-label="Filter projects by status"
+        >
+          <option value="all">All statuses</option>
+          <option value="active">Active</option>
+          <option value="completed">Completed</option>
+          <option value="pending">Pending</option>
+          <option value="on_hold">On hold</option>
+        </select>
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+          className={cn("min-w-[180px] px-3", FIELD)}
+          aria-label="Sort projects"
+        >
+          <option value="updated">Sort: Updated (newest)</option>
+          <option value="name">Sort: Name (A–Z)</option>
+          <option value="revenue">Sort: Revenue (high)</option>
+          <option value="profit">Sort: Profit (high)</option>
+        </select>
       </div>
 
       {filtered.length === 0 ? (
-        <div className="rounded-3xl border border-border-soft/60 bg-white px-10 py-16 text-center shadow-paper-card dark:border-border dark:bg-card dark:shadow-none">
-          <p className="text-sm font-medium text-graphite/60">
+        <div className="rounded-lg bg-white px-8 py-14 text-center shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+          <p className="text-[14px] font-medium text-[#6B7280]">
             {dataLoadWarning
               ? "Could not load projects."
-              : query.trim() || view !== "all"
+              : query.trim() || statusFilter !== "all"
                 ? "No projects match your filter."
                 : "No projects yet."}
           </p>
-          {!query.trim() && view === "all" ? (
+          {!query.trim() && statusFilter === "all" ? (
             <Button
               asChild
-              className="mt-6 rounded-xl bg-graphite px-6 text-white"
-              variant="default"
+              variant="outline"
+              className="mt-6 h-10 rounded-md border-[0.5px] border-[#E5E7EB] bg-white px-4 text-[#111827] shadow-none hover:bg-[#F5F7FA]"
             >
               <Link href="/projects/new">New Project</Link>
             </Button>
           ) : null}
         </div>
       ) : (
-        <div className="overflow-hidden rounded-3xl border border-border-soft/60 bg-white shadow-paper-card dark:border-border dark:bg-card dark:shadow-none">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] border-separate border-spacing-y-1.5 border-spacing-x-0 text-left">
+        <TableShell>
+          <div className="airtable-table-scroll">
+            <table className="w-full min-w-[880px] border-collapse text-[13px]">
               <thead>
-                <tr className="border-b border-border-soft bg-warm-grey/30 dark:border-border dark:bg-muted/40">
-                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-graphite/55">
-                    Project
-                  </th>
-                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-graphite/55">
-                    Client
-                  </th>
-                  <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-[0.2em] text-graphite/55">
-                    Revenue
-                  </th>
-                  <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-[0.2em] text-graphite/55">
-                    Labor
-                  </th>
-                  <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-[0.2em] text-graphite/55">
-                    Profit
-                  </th>
-                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-[0.2em] text-graphite/55">
-                    Updated
-                  </th>
-                  <th className="px-6 py-4 text-right text-[10px] font-black uppercase tracking-[0.2em] text-graphite/55">
-                    Actions
-                  </th>
+                <tr>
+                  <th className={tableRawThClass}>Project</th>
+                  <th className={tableRawThClass}>Client</th>
+                  <th className={tableRawThClass}>Status</th>
+                  <th className={cn(tableRawThClass, "text-right tabular-nums")}>Revenue</th>
+                  <th className={cn(tableRawThClass, "text-right tabular-nums")}>Labor</th>
+                  <th className={cn(tableRawThClass, "text-right tabular-nums")}>Profit</th>
+                  <th className={tableRawThClass}>Updated</th>
+                  <th className={cn(tableRawThClass, "text-right")}>Actions</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="[&_tr:last-child>td]:border-b-0">
                 {filtered.map((r) => (
                   <tr
                     key={r.id}
@@ -280,67 +340,73 @@ export function ProjectsListClient({
                     tabIndex={0}
                     role="link"
                     aria-label={`Open project ${r.name}`}
-                    className={cn(listTableRowClassName, "focus-visible:ring-graphite/10")}
+                    className="cursor-pointer transition-colors hover:bg-[#F5F7FA]"
                   >
-                    <td
-                      className={cn(
-                        "first:rounded-l-xl px-6 py-4 text-sm font-semibold tracking-tight text-graphite",
-                        listTablePrimaryCellClassName
-                      )}
-                    >
-                      {r.name}
-                    </td>
-                    <td className="px-6 py-4 text-sm font-semibold text-graphite">
-                      {r.clientName ?? "—"}
+                    <td className={cn(tableRawTdClass, "font-medium text-[#111827]")}>{r.name}</td>
+                    <td className={tableRawTdClass}>{r.clientName ?? "—"}</td>
+                    <td className={tableRawTdClass}>
+                      <ProjectListStatusPill status={r.status} />
                     </td>
                     <td
                       className={cn(
-                        "px-6 py-4 text-right text-base font-extrabold tabular-nums text-graphite/85",
-                        listTableAmountCellClassName
+                        tableRawTdClass,
+                        "text-right font-mono tabular-nums text-[#111827]"
                       )}
                     >
                       {fmtUsd0(r.revenue)}
                     </td>
                     <td
                       className={cn(
-                        "px-6 py-4 text-right text-sm font-semibold tabular-nums text-graphite/70",
-                        listTableAmountCellClassName
+                        tableRawTdClass,
+                        "text-right font-mono tabular-nums text-[#6B7280]"
                       )}
                     >
                       {fmtUsd0(r.laborCost)}
                     </td>
                     <td
                       className={cn(
-                        "px-6 py-4 text-right text-base font-extrabold tabular-nums transition-colors duration-200",
-                        listTableAmountCellClassName,
+                        tableRawTdClass,
+                        "text-right font-mono text-base font-semibold tabular-nums",
                         profitClass(r.profit)
                       )}
                     >
                       {fmtUsd0(r.profit)}
                     </td>
-                    <td className="px-6 py-4 text-sm font-medium italic text-graphite/50">
+                    <td className={cn(tableRawTdClass, "font-mono text-[13px] text-[#6B7280]")}>
                       {r.updatedAt}
                     </td>
                     <td
-                      className="last:rounded-r-xl px-6 py-4 text-right"
+                      className={cn(tableRawTdClass, "text-right")}
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <div className="flex justify-end">
-                        <RowActionsMenu
-                          appearance="list"
-                          ariaLabel={`Actions for ${r.name}`}
-                          className="text-graphite/50 hover:text-graphite dark:text-muted-foreground"
-                          actions={[
-                            { label: "View", onClick: () => handleNavigate(r.id) },
-                            { label: "Edit", onClick: () => router.push(`/projects/${r.id}/edit`) },
-                            {
-                              label: "Delete",
-                              onClick: () => void handleDelete(r.id, r.name),
-                              destructive: true,
-                              disabled: deletingId === r.id,
-                            },
-                          ]}
-                        />
+                      <div
+                        className="inline-flex flex-wrap items-center justify-end gap-3"
+                        role="group"
+                        aria-label={`Actions for ${r.name}`}
+                      >
+                        <button
+                          type="button"
+                          className="text-[14px] font-medium text-[#111827] hover:underline"
+                          onClick={() => handleNavigate(r.id)}
+                        >
+                          View
+                        </button>
+                        <button
+                          type="button"
+                          className="text-[14px] font-medium text-[#6B7280] hover:text-[#111827] hover:underline"
+                          onClick={() => router.push(`/projects/${r.id}/edit`)}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-md p-1.5 text-red-600 hover:bg-red-50 disabled:opacity-50"
+                          aria-label={`Delete ${r.name}`}
+                          disabled={deletingId === r.id}
+                          onClick={() => void handleDelete(r.id, r.name)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -348,26 +414,22 @@ export function ProjectsListClient({
               </tbody>
             </table>
           </div>
-        </div>
+        </TableShell>
       )}
 
-      <div className="mt-16 flex justify-center sm:mt-20">
-        <div className="h-1 w-12 rounded-full bg-border-soft" aria-hidden />
-      </div>
-
       <Dialog open={deleteBlockedOpen} onOpenChange={setDeleteBlockedOpen}>
-        <DialogContent className="max-w-md rounded-xl border-border-soft p-5">
-          <DialogHeader>
-            <DialogTitle className="text-base font-semibold text-graphite">
+        <DialogContent className={MODAL}>
+          <DialogHeader className="text-left">
+            <DialogTitle className="text-xl font-bold text-[#111827]">
               Cannot delete project
             </DialogTitle>
-            <DialogDescription className="text-sm text-graphite/55">
+            <DialogDescription className="text-[13px] leading-relaxed text-[#6B7280]">
               This project has related records. Remove or reassign them first, or archive the
               project.
             </DialogDescription>
           </DialogHeader>
           {deleteBlockedCounts && deleteBlockedProjectId != null && (
-            <ul className="space-y-2 text-sm text-graphite">
+            <ul className="max-h-[40vh] space-y-2 overflow-y-auto text-[14px] text-[#374151]">
               {DELETE_BLOCKED_RELATED_CONFIG.map(({ key }) => {
                 const n = deleteBlockedCounts[key] ?? 0;
                 if (n <= 0) return null;
@@ -379,7 +441,7 @@ export function ProjectsListClient({
                 return (
                   <li
                     key={key}
-                    className="flex items-center justify-between gap-3 border-b border-border-soft pb-2 last:border-0 last:pb-0"
+                    className="flex items-center justify-between gap-3 border-b border-[#E8E4DD] pb-2 last:border-0 last:pb-0"
                   >
                     <span>
                       {label} ({n})
@@ -388,7 +450,7 @@ export function ProjectsListClient({
                       <Button
                         variant="outline"
                         size="sm"
-                        className="shrink-0 rounded-lg border-border-soft"
+                        className="h-9 shrink-0 rounded-lg border-[#E5E7EB] text-[13px]"
                         asChild
                       >
                         <Link href={href} onClick={() => setDeleteBlockedOpen(false)}>
@@ -406,7 +468,7 @@ export function ProjectsListClient({
                 .map(([key, n]) => (
                   <li
                     key={key}
-                    className="flex items-center justify-between gap-3 border-b border-border-soft pb-2 last:border-0 last:pb-0"
+                    className="flex items-center justify-between gap-3 border-b border-[#E8E4DD] pb-2 last:border-0 last:pb-0"
                   >
                     <span>
                       {getLabelForKey(key)} ({n})
@@ -415,10 +477,10 @@ export function ProjectsListClient({
                 ))}
             </ul>
           )}
-          <DialogFooter className="flex-wrap gap-2 border-t border-border-soft pt-3">
+          <DialogFooter className="mt-4 flex-wrap gap-2 border-t border-[#F0EDE8] bg-transparent pt-4">
             <Button
-              variant="ghost"
-              size="sm"
+              variant="outline"
+              className="h-10 rounded-lg border-[#E5E7EB] bg-white text-[14px] font-medium text-[#6B7280]"
               onClick={() => setDeleteBlockedOpen(false)}
               disabled={forceDeleteInProgress}
             >
@@ -427,9 +489,8 @@ export function ProjectsListClient({
             {deleteBlockedProjectId != null && deleteBlockedCounts && (
               <>
                 <Button
-                  variant="secondary"
-                  size="sm"
-                  className="rounded-lg"
+                  variant="outline"
+                  className="h-10 rounded-lg border-[#E5E7EB] text-[14px] font-medium"
                   onClick={async () => {
                     if (!deleteBlockedProjectId) return;
                     const result = await archiveProjectAction(deleteBlockedProjectId);
@@ -446,8 +507,7 @@ export function ProjectsListClient({
                   Archive project
                 </Button>
                 <Button
-                  variant="destructive"
-                  size="sm"
+                  className="h-10 rounded-lg bg-red-600 text-[14px] font-medium text-white hover:bg-red-700"
                   disabled={forceDeleteInProgress}
                   onClick={async () => {
                     if (!deleteBlockedProjectId || !deleteBlockedCounts) return;

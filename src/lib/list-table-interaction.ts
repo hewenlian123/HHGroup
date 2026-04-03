@@ -1,10 +1,10 @@
 import { cn } from "@/lib/utils";
 
-/** Unified list/table row: hover lift + warm bg (Linear-style). */
+/** Clickable data row — Airtable-style flat hover (no lift). */
 export const listTableRowClassName = cn(
-  "group cursor-pointer rounded-xl border-b-0 transition-all duration-200 ease-out",
-  "hover:-translate-y-px hover:bg-[#F7F7F5] hover:shadow-[0_2px_8px_rgba(0,0,0,0.03)]",
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-graphite/10 dark:focus-visible:ring-border/60",
+  "group cursor-pointer border-0 transition-colors duration-150",
+  "hover:bg-[#F5F7FA]",
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#111827]/10 dark:focus-visible:ring-border/60",
   "dark:hover:bg-muted/40"
 );
 
@@ -14,7 +14,7 @@ export const listTablePrimaryCellClassName =
 
 /** Currency / numeric emphasis columns (beats per-column color on hover). */
 export const listTableAmountCellClassName = cn(
-  "transition-colors duration-200 group-hover:!text-[#2D2D2D] dark:group-hover:!text-foreground"
+  "transition-colors duration-200 group-hover:!text-[#111827] dark:group-hover:!text-foreground"
 );
 
 /** Row actions trigger: always visible (keyboard, screen readers, E2E); hover still styles the control. */
@@ -26,16 +26,16 @@ export const listRowActionsTriggerClassName = cn(
 );
 
 export const listRowActionsContentClassName = cn(
-  "min-w-[160px] border border-[#EBEBE9] bg-white p-0 py-2 shadow-lg rounded-xl",
+  "min-w-[160px] border-[0.5px] border-[#E5E7EB] bg-white p-0 py-2 shadow-lg rounded-card",
   "dark:border-border dark:bg-popover dark:text-popover-foreground"
 );
 
 export const listRowActionsItemClassName = cn(
   "cursor-pointer rounded-none px-4 py-2 text-sm",
-  "focus:bg-[#F7F7F5] hover:bg-[#F7F7F5]",
+  "focus:bg-[#F9FAFB] hover:bg-[#F9FAFB]",
   "dark:focus:bg-muted/60 dark:hover:bg-muted/60"
 );
 
 export const listRowActionsDestructiveClassName = cn(
-  "text-red-500 focus:text-red-500 dark:text-red-400 dark:focus:text-red-400"
+  "text-[#DC2626] focus:text-[#DC2626] hover:bg-[#DC2626] hover:text-white dark:text-red-400 dark:focus:text-red-400"
 );

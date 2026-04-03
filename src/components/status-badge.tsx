@@ -1,88 +1,39 @@
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-const statusMap: Record<
-  string,
-  {
-    label: string;
-    variant: "default" | "secondary" | "destructive" | "outline";
-    statusClassName?: string;
-  }
-> = {
-  active: {
-    label: "Active",
-    variant: "outline",
-    statusClassName: "bg-gray-100 text-gray-700 border-gray-200",
-  },
-  inactive: {
-    label: "Inactive",
-    variant: "outline",
-    statusClassName: "bg-gray-50 text-gray-600 border-gray-200",
-  },
-  pending: {
-    label: "Pending",
-    variant: "outline",
-    statusClassName: "bg-amber-50 text-amber-700 border-amber-200",
-  },
-  completed: {
-    label: "Completed",
-    variant: "outline",
-    statusClassName: "bg-gray-100 text-gray-700 border-gray-200",
-  },
-  paid: {
-    label: "Paid",
-    variant: "outline",
-    statusClassName: "bg-green-50 text-green-700 border-green-200",
-  },
-  Loss: {
-    label: "Loss",
-    variant: "outline",
-    statusClassName: "bg-red-50 text-red-700 border-red-200",
-  },
-  "Over budget": {
-    label: "Over budget",
-    variant: "outline",
-    statusClassName: "bg-red-50 text-red-700 border-red-200",
-  },
-  "At risk": {
-    label: "At risk",
-    variant: "outline",
-    statusClassName: "bg-amber-50 text-amber-700 border-amber-200",
-  },
-  "On track": {
-    label: "On track",
-    variant: "outline",
-    statusClassName: "bg-green-50 text-green-700 border-green-200",
-  },
-  "Negative Cash": {
-    label: "Negative Cash",
-    variant: "outline",
-    statusClassName: "bg-red-50 text-red-700 border-red-200",
-  },
-  "Low Runway": {
-    label: "Low Runway",
-    variant: "outline",
-    statusClassName: "bg-amber-50 text-amber-700 border-amber-200",
-  },
-  Healthy: {
-    label: "Healthy",
-    variant: "outline",
-    statusClassName: "bg-green-50 text-green-700 border-green-200",
-  },
+/** Normalize API / DB status strings for lookup (case-insensitive, spaces). */
+function normStatus(s: string): string {
+  return (s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+const statusMap: Record<string, { label: string; pillClass: string }> = {
+  active: { label: "Active", pillClass: "hh-pill-success" },
+  pending: { label: "Pending", pillClass: "hh-pill-warning" },
+  completed: { label: "Completed", pillClass: "hh-pill-success" },
+  "on hold": { label: "On Hold", pillClass: "hh-pill-neutral" },
+  inactive: { label: "Inactive", pillClass: "hh-pill-neutral" },
+  paid: { label: "Paid", pillClass: "hh-pill-success" },
+  loss: { label: "Loss", pillClass: "hh-pill-danger" },
+  "over budget": { label: "Over budget", pillClass: "hh-pill-danger" },
+  "at risk": { label: "At risk", pillClass: "hh-pill-warning" },
+  "on track": { label: "On track", pillClass: "hh-pill-success" },
+  "negative cash": { label: "Negative Cash", pillClass: "hh-pill-danger" },
+  "low runway": { label: "Low Runway", pillClass: "hh-pill-warning" },
+  healthy: { label: "Healthy", pillClass: "hh-pill-success" },
 };
 
-export function StatusBadge({ status, className }: { status: string; className?: string }) {
-  const config = statusMap[status] ?? { label: status, variant: "secondary" as const };
-  return (
-    <Badge
-      variant={config.variant}
-      className={cn(
-        "text-xs font-medium px-2 py-0.5 rounded-full",
-        config.statusClassName,
-        className
-      )}
-    >
-      {config.label}
-    </Badge>
-  );
+export function StatusBadge({
+  status,
+  className,
+}: {
+  status: string | null | undefined;
+  className?: string;
+}) {
+  const raw = status ?? "";
+  const key = normStatus(raw);
+  const config =
+    statusMap[key] ??
+    (raw.trim()
+      ? { label: raw.trim(), pillClass: "hh-pill-neutral" as const }
+      : { label: "—", pillClass: "hh-pill-neutral" as const });
+  return <span className={cn(config.pillClass, className)}>{config.label}</span>;
 }

@@ -19,9 +19,23 @@ const config: Config = {
         touch: "44px",
       },
       colors: {
-        graphite: "#2D2D2D",
-        "warm-grey": "#F7F7F5",
-        "border-soft": "#EBEBE9",
+        /** HH Group design system (2026) */
+        hh: {
+          page: "#F8F7F4",
+          surface: "#FFFFFF",
+          ink: "#111827",
+          muted: "#6B7280",
+          border: "#E5E7EB",
+          "row-hover": "#F9FAFB",
+          primary: "#111827",
+          link: "#2563EB",
+          danger: "#DC2626",
+          "secondary-border": "#D1D5DB",
+          "secondary-text": "#374151",
+        },
+        graphite: "#111827",
+        "warm-grey": "#F8F7F4",
+        "border-soft": "#E5E7EB",
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         card: {
@@ -67,9 +81,18 @@ const config: Config = {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        card: "12px",
+        modal: "14px",
+      },
+      fontSize: {
+        /** Body 14px, labels 12px */
+        body: ["0.875rem", { lineHeight: "1.45" }],
+        label: ["0.75rem", { lineHeight: "1.35" }],
       },
       boxShadow: {
         "paper-card": "0 1px 3px rgba(0,0,0,0.05), 0 10px 40px -10px rgba(0,0,0,0.03)",
+        modal: "0 12px 40px rgba(17, 24, 39, 0.08), 0 2px 12px rgba(17, 24, 39, 0.04)",
+        "summary-card": "0 1px 4px rgba(0,0,0,0.06)",
       },
     },
   },

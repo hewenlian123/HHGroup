@@ -496,7 +496,7 @@ export default function SitePhotosPage() {
                 className={`group relative text-left rounded-sm border overflow-hidden transition-colors focus-within:ring-2 focus-within:ring-ring ${
                   editMode && selectedIds.has(p.id)
                     ? "border-foreground/80 ring-1 ring-foreground/20"
-                    : "border-[#EBEBE9] hover:bg-[#F7F7F5] dark:border-border/60 dark:hover:bg-muted/30"
+                    : "border-[#E5E7EB] hover:bg-[#F9FAFB] dark:border-border/60 dark:hover:bg-muted/30"
                 }`}
               >
                 <div
@@ -528,7 +528,7 @@ export default function SitePhotosPage() {
                   }}
                   className="block w-full text-left cursor-pointer focus:outline-none"
                 >
-                  <div className="aspect-square bg-[#F7F7F5]/80 relative dark:bg-muted/30">
+                  <div className="aspect-square bg-[#F3F4F6] relative dark:bg-muted/30">
                     {editMode && (
                       <div
                         role="button"
@@ -854,7 +854,7 @@ export default function SitePhotosPage() {
       >
         {selectedPhoto && (
           <div className="space-y-4">
-            <div className="rounded-sm border border-[#EBEBE9] overflow-hidden bg-background min-h-[8rem] flex items-center justify-center dark:border-border/60">
+            <div className="rounded-sm border border-[#E5E7EB] overflow-hidden bg-background min-h-[8rem] flex items-center justify-center dark:border-border/60">
               {failedPhotoIds.has(selectedPhoto.id) ? (
                 <span className="text-sm text-muted-foreground">Photo unavailable</span>
               ) : (
@@ -932,7 +932,7 @@ export default function SitePhotosPage() {
           onClick={() => setUploadOpen(false)}
         >
           <div
-            className="bg-background border border-[#EBEBE9] rounded-sm p-4 w-full max-w-sm space-y-3 dark:border-border/60"
+            className="bg-background border border-[#E5E7EB] rounded-sm p-4 w-full max-w-sm space-y-3 dark:border-border/60"
             onClick={(e) => e.stopPropagation()}
           >
             <p className="text-sm font-medium">Upload Photo</p>

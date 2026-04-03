@@ -259,7 +259,7 @@ export async function GET(request: Request): Promise<NextResponse<GuardianResult
       c ? checkTable(c, "invoices", "Invoices") : Promise.resolve(notConfigured("Invoices")),
       c ? checkTable(c, "customers", "Customers") : Promise.resolve(notConfigured("Customers")),
       c
-        ? checkTable(c, "project_commissions", "Commission Payments")
+        ? checkTable(c, "commissions", "Commission Payments")
         : Promise.resolve(notConfigured("Commission Payments")),
       c
         ? checkTable(c, "payments_received", "Payments Received")

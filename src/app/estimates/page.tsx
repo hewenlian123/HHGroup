@@ -36,6 +36,11 @@ export default async function EstimatesListPage({
         ? "Estimate was created but could not set status to Approved."
         : null;
 
+  const totalEstimates = list.length;
+  const draftCount = list.filter((e) => e.status === "Draft").length;
+  const sentCount = list.filter((e) => e.status === "Sent").length;
+  const totalValue = list.reduce((sum, e) => sum + (Number(e.total) || 0), 0);
+
   return (
     <div className="page-container page-stack py-6">
       <PageHeader
@@ -53,7 +58,7 @@ export default async function EstimatesListPage({
               asChild
               variant="ghost"
               size="sm"
-              className="rounded-sm text-foreground hover:bg-[#F7F7F5] dark:hover:bg-muted/30"
+              className="rounded-sm text-foreground hover:bg-[#F9FAFB] dark:hover:bg-muted/30"
             >
               <Link href="/estimates/new">
                 <Plus className="mr-2 h-4 w-4" />
@@ -77,6 +82,32 @@ export default async function EstimatesListPage({
           {errorMessage}
         </p>
       )}
+      {list.length > 0 ? (
+        <div className="grid grid-cols-2 gap-[10px] lg:grid-cols-4">
+          <div className="rounded-[10px] border-[0.5px] border-solid border-[#E5E7EB] bg-white px-4 py-[14px] dark:border-border">
+            <p className="kpi-metric-label">Total Estimates</p>
+            <p className="kpi-metric-value mt-0.5 tabular-nums">{totalEstimates}</p>
+          </div>
+          <div className="rounded-[10px] border-[0.5px] border-solid border-[#E5E7EB] bg-white px-4 py-[14px] dark:border-border">
+            <p className="kpi-metric-label">Draft</p>
+            <p className="kpi-metric-value mt-0.5 tabular-nums">{draftCount}</p>
+          </div>
+          <div className="rounded-[10px] border-[0.5px] border-solid border-[#E5E7EB] bg-white px-4 py-[14px] dark:border-border">
+            <p className="kpi-metric-label">Sent</p>
+            <p className="kpi-metric-value mt-0.5 tabular-nums">{sentCount}</p>
+          </div>
+          <div className="rounded-[10px] border-[0.5px] border-solid border-[#E5E7EB] bg-white px-4 py-[14px] dark:border-border">
+            <p className="kpi-metric-label">Total Value</p>
+            <p className="kpi-metric-value mt-0.5 tabular-nums">
+              $
+              {totalValue.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </p>
+          </div>
+        </div>
+      ) : null}
       {list.length === 0 ? (
         <EmptyState
           title={loadWarning ? "Could not load estimates" : "No estimates yet"}
@@ -93,40 +124,24 @@ export default async function EstimatesListPage({
           }
         />
       ) : (
-        <div className="overflow-hidden rounded-sm border border-[#EBEBE9] dark:border-border">
-          <Table>
-            <TableHeader>
-              <TableRow className="border-b border-[#EBEBE9] bg-[#F7F7F5] hover:bg-transparent dark:border-border dark:bg-muted/30">
-                <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                  Estimate #
-                </TableHead>
-                <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                  Client
-                </TableHead>
-                <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                  Project
-                </TableHead>
-                <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                  Status
-                </TableHead>
-                <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium text-right tabular-nums">
-                  Total
-                </TableHead>
-                <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                  Updated
-                </TableHead>
-                <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium w-0">
-                  Actions
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {list.map((row) => (
-                <EstimateListRow key={row.id} row={row} deleteAction={deleteEstimateAction} />
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow className="hover:bg-transparent">
+              <TableHead>Estimate #</TableHead>
+              <TableHead>Client</TableHead>
+              <TableHead>Project</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right tabular-nums">Total</TableHead>
+              <TableHead>Updated</TableHead>
+              <TableHead className="w-0">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {list.map((row) => (
+              <EstimateListRow key={row.id} row={row} deleteAction={deleteEstimateAction} />
+            ))}
+          </TableBody>
+        </Table>
       )}
     </div>
   );

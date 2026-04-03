@@ -9,8 +9,8 @@ export type WipeResult = { deleted: Record<string, number>; errors: string[] };
 
 /** Tables to wipe in dependency order (children before parents). Uses 'id' for match-all unless noted. */
 const WIPE_ORDER: { table: string; keyColumn?: string }[] = [
-  { table: "commission_payment_records" },
-  { table: "project_commissions" },
+  { table: "commission_payments" },
+  { table: "commissions" },
   { table: "expense_lines" },
   { table: "expenses" },
   { table: "labor_entries" },

@@ -15,6 +15,7 @@ import {
   E2E_PRESERVED_PROJECT_ID,
   E2E_PRESERVED_WORKER_ID,
 } from "./e2e-cleanup-db";
+import { runSchemaAutoRepair } from "../src/lib/ensure-schema-auto-repair";
 import { ensureE2EPreservedSeed } from "./e2e-ensure-seed";
 
 export default async function globalSetup(_config: FullConfig): Promise<void> {
@@ -35,6 +36,13 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
     throw new Error(
       "[global-setup] E2E seed required: set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (recommended) or NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local — or set E2E_SKIP_DB_SEED=1 to skip."
     );
+  }
+
+  const repair = await runSchemaAutoRepair();
+  if (repair.hasDatabaseUrl) {
+    console.log("[global-setup] schema auto-repair:", repair.message);
+  } else {
+    console.log("[global-setup] schema auto-repair skipped:", repair.message);
   }
 
   const supabase = createClient(url, key);

@@ -103,67 +103,74 @@ export default async function SubcontractorsPage() {
           }
         />
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr className="border-b border-border/60">
-                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Subcontractor
-                </th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Insurance
-                </th>
-                <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
-                  Total Contracts
-                </th>
-                <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
-                  Approved
-                </th>
-                <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
-                  Paid
-                </th>
-                <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
-                  Outstanding
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.id} className="border-b border-border/40">
-                  <td className="py-1.5 px-3">
-                    <Link
-                      href={`/subcontractors/${r.id}`}
-                      className="hover:text-foreground hover:underline"
-                    >
-                      {r.name}
-                    </Link>
-                  </td>
-                  <td className="py-1.5 px-3">
-                    {r.insurance_expiration_date ? (
-                      r.insurance_alert ? (
-                        <StatusBadge
-                          label={`Expires ${r.insurance_expiration_date}`}
-                          variant="warning"
-                        />
-                      ) : (
-                        <span className="text-muted-foreground text-xs">
-                          {r.insurance_expiration_date}
-                        </span>
-                      )
-                    ) : (
-                      <span className="text-muted-foreground text-xs">—</span>
-                    )}
-                  </td>
-                  <td className="py-1.5 px-3 text-right tabular-nums">
-                    ${fmtUsd(r.totalContracts)}
-                  </td>
-                  <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.approved)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.paid)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.outstanding)}</td>
+        <div className="airtable-table-wrap airtable-table-wrap--ruled">
+          <div className="airtable-table-scroll">
+            <table className="w-full text-sm">
+              <thead>
+                <tr>
+                  <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                    Subcontractor
+                  </th>
+                  <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                    Insurance
+                  </th>
+                  <th className="h-8 px-3 text-right text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                    Total Contracts
+                  </th>
+                  <th className="h-8 px-3 text-right text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                    Approved
+                  </th>
+                  <th className="h-8 px-3 text-right text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                    Paid
+                  </th>
+                  <th className="h-8 px-3 text-right text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                    Outstanding
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr
+                    key={r.id}
+                    className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
+                  >
+                    <td className="py-1.5 px-3">
+                      <Link
+                        href={`/subcontractors/${r.id}`}
+                        className="hover:text-foreground hover:underline"
+                      >
+                        {r.name}
+                      </Link>
+                    </td>
+                    <td className="py-1.5 px-3">
+                      {r.insurance_expiration_date ? (
+                        r.insurance_alert ? (
+                          <StatusBadge
+                            label={`Expires ${r.insurance_expiration_date}`}
+                            variant="warning"
+                          />
+                        ) : (
+                          <span className="text-muted-foreground text-xs">
+                            {r.insurance_expiration_date}
+                          </span>
+                        )
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
+                    </td>
+                    <td className="py-1.5 px-3 text-right tabular-nums">
+                      ${fmtUsd(r.totalContracts)}
+                    </td>
+                    <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.approved)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.paid)}</td>
+                    <td className="py-1.5 px-3 text-right tabular-nums">
+                      ${fmtUsd(r.outstanding)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </PageLayout>

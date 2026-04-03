@@ -188,7 +188,7 @@ export function ProjectCashFlowChart({
           <span className="text-muted-foreground">Expense</span>
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block w-3 h-0.5 rounded-full bg-emerald-500" />
+          <span className="inline-block h-0.5 w-3 rounded-full bg-[#166534]" />
           <span className="text-muted-foreground">Net Cash</span>
         </span>
       </div>

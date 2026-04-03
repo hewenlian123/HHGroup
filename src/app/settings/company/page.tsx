@@ -512,7 +512,7 @@ export default function SettingsCompanyPage() {
         </div>
       ) : null}
 
-      <section className="border-b border-[#EBEBE9] pb-8 dark:border-border">
+      <section className="border-b border-[#E5E7EB] pb-8 dark:border-border">
         <SectionHeader
           title="Branding"
           subtitle="Upload logo for sidebar, topbar, and future PDF output."
@@ -522,7 +522,7 @@ export default function SettingsCompanyPage() {
             htmlFor="logo-upload"
             onDragOver={(e) => e.preventDefault()}
             onDrop={onDrop}
-            className="flex min-h-28 cursor-pointer items-center gap-3 rounded-sm border border-dashed border-[#EBEBE9] bg-background px-4 py-3 text-sm text-muted-foreground hover:bg-[#F7F7F5]/80 dark:border-border dark:hover:bg-muted/20"
+            className="flex min-h-28 cursor-pointer items-center gap-3 rounded-sm border border-dashed border-[#E5E7EB] bg-background px-4 py-3 text-sm text-muted-foreground hover:bg-[#F9FAFB]/80 dark:border-border dark:hover:bg-muted/20"
           >
             {profile?.logo_url && !logoLoadError ? (
               // eslint-disable-next-line @next/next/no-img-element -- Supabase public URL; avoids next/image remote host config errors
@@ -535,7 +535,7 @@ export default function SettingsCompanyPage() {
                 onError={() => setLogoLoadError(true)}
               />
             ) : (
-              <div className="flex h-12 w-12 items-center justify-center rounded-sm bg-[#F7F7F5] dark:bg-muted/40">
+              <div className="flex h-12 w-12 items-center justify-center rounded-sm bg-[#F3F4F6] dark:bg-muted/40">
                 <ImageIcon className="h-5 w-5" />
               </div>
             )}
@@ -698,13 +698,13 @@ export default function SettingsCompanyPage() {
             value={form.default_terms}
             onChange={(e) => updateField("default_terms", e.target.value)}
             placeholder="Default Terms"
-            className="min-h-20 rounded-sm border border-[#EBEBE9] bg-background px-3 py-2 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring dark:border-border"
+            className="min-h-20 rounded-sm border border-[#E5E7EB] bg-background px-3 py-2 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring dark:border-border"
           />
           <textarea
             value={form.invoice_footer}
             onChange={(e) => updateField("invoice_footer", e.target.value)}
             placeholder="Invoice Footer"
-            className="min-h-20 rounded-sm border border-[#EBEBE9] bg-background px-3 py-2 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring dark:border-border"
+            className="min-h-20 rounded-sm border border-[#E5E7EB] bg-background px-3 py-2 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring dark:border-border"
           />
           <textarea
             value={form.notes}
@@ -712,7 +712,7 @@ export default function SettingsCompanyPage() {
             placeholder="Notes"
             data-testid="company-input-notes"
             aria-label="Notes"
-            className="min-h-24 rounded-sm border border-[#EBEBE9] bg-background px-3 py-2 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring dark:border-border"
+            className="min-h-24 rounded-sm border border-[#E5E7EB] bg-background px-3 py-2 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring dark:border-border"
           />
         </div>
         <div className="mt-4 flex justify-end">

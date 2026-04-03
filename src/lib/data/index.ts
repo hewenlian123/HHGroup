@@ -31,7 +31,6 @@ import * as inspectionLogDb from "../inspection-log-db";
 import * as materialCatalogDb from "../material-catalog-db";
 import * as materialSelectionsDb from "../material-selections-db";
 import * as projectCloseoutDb from "../project-closeout-db";
-import * as commissionDb from "../commission-db";
 import * as apBillsDb from "../ap-bills-db";
 import { getCanonicalProjectProfit, getCanonicalProjectProfitBatch } from "../profit-engine";
 import type { EstimateListItem, EstimateItemRow } from "../estimates-db";
@@ -176,22 +175,31 @@ export type {
 } from "../project-closeout-db";
 export type {
   ProjectCommission,
+  CommissionPayment,
   CommissionPaymentRecord,
   CommissionWithPaid,
-  CommissionStatus,
+  CommissionPaymentStatus,
   CalculationMode,
   CommissionRole,
 } from "../commission-db";
+export { deriveCommissionPaymentStatus } from "../commission-db";
 export {
   getCommissionsByProject,
+  getCommissionsWithPaidByProject,
+  attachPaidTotalsToCommissions,
   getAllCommissionsWithPayments,
   getCommissionSummary,
+  summarizeCommissions,
   createCommission,
   updateCommission,
   deleteCommission,
   getCommissionById,
   getPaymentRecordsByCommissionId,
+  getPaymentRecordById,
+  getSumPaidForCommission,
   createPaymentRecord,
+  updatePaymentRecord,
+  deletePaymentRecord,
 } from "../commission-db";
 export type {
   ApBillRow,

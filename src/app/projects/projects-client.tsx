@@ -5,7 +5,6 @@ import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus, Search } from "lucide-react";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FilterBar } from "@/components/filter-bar";
@@ -223,7 +222,7 @@ export function ProjectsClient() {
         <span
           className={cn(
             "tabular-nums font-semibold",
-            row.profit < 0 ? "text-red-600" : "text-emerald-600"
+            row.profit < 0 ? "text-red-600" : "text-[#166534]"
           )}
         >
           {row.profit < 0 ? "−" : ""}
@@ -266,13 +265,18 @@ export function ProjectsClient() {
     <div className="page-container page-stack">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-[#2D2D2D] dark:text-foreground sm:text-3xl">
+          <h1 className="text-2xl font-semibold tracking-tight text-[#111827] dark:text-foreground sm:text-3xl">
             Projects
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">Manage all construction projects.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:flex-shrink-0">
-          <Button asChild size="sm">
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="border-[0.5px] border-[#E5E7EB] bg-white text-[#111827] shadow-none hover:bg-[#F5F7FA] dark:border-border dark:bg-card"
+          >
             <Link href="/projects/new">
               <Plus className="h-4 w-4" />
               New Project
@@ -285,83 +289,71 @@ export function ProjectsClient() {
       </header>
 
       {error ? (
-        <div className="rounded-lg border border-[#EBEBE9] bg-background px-4 py-3 text-sm text-muted-foreground dark:border-border">
+        <div className="rounded-lg border border-[#E5E7EB] bg-background px-4 py-3 text-sm text-muted-foreground dark:border-border">
           {error}
         </div>
       ) : null}
 
-      <Card className="overflow-hidden border-[#EBEBE9] p-0 dark:border-border">
-        <div className="grid divide-y divide-[#EBEBE9] sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-5 lg:divide-x dark:divide-border/60">
-          <div className="p-4">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
-              Total Projects
+      <div className="grid grid-cols-2 gap-[10px] sm:grid-cols-2 lg:grid-cols-5">
+        <div className="rounded-[10px] border-[0.5px] border-solid border-[#E5E7EB] bg-white px-4 py-[14px] dark:border-border">
+          <p className="kpi-metric-label">Total Projects</p>
+          {loading ? (
+            <Skeleton className="mt-2 h-7 w-16" />
+          ) : (
+            <p className="kpi-metric-value mt-0.5 tabular-nums text-[#111827] dark:text-foreground">
+              {summary.total}
             </p>
-            {loading ? (
-              <Skeleton className="mt-2 h-7 w-16" />
-            ) : (
-              <p className="mt-1 text-xl font-semibold tabular-nums text-[#2D2D2D] dark:text-foreground">
-                {summary.total}
-              </p>
-            )}
-          </div>
-          <div className="p-4">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
-              Active
-            </p>
-            {loading ? (
-              <Skeleton className="mt-2 h-7 w-16" />
-            ) : (
-              <p className="mt-1 text-xl font-semibold tabular-nums text-[#2D2D2D] dark:text-foreground">
-                {summary.active}
-              </p>
-            )}
-          </div>
-          <div className="p-4">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
-              Completed
-            </p>
-            {loading ? (
-              <Skeleton className="mt-2 h-7 w-16" />
-            ) : (
-              <p className="mt-1 text-xl font-semibold tabular-nums text-[#2D2D2D] dark:text-foreground">
-                {summary.completed}
-              </p>
-            )}
-          </div>
-          <div className="p-4">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
-              Total Budget
-            </p>
-            {loading ? (
-              <Skeleton className="mt-2 h-7 w-28" />
-            ) : (
-              <p className="mt-1 text-xl font-semibold tabular-nums text-[#2D2D2D] dark:text-foreground">
-                {money(summary.totalBudget)}
-              </p>
-            )}
-          </div>
-          <div className="p-4 sm:col-span-2 lg:col-span-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
-              Total Profit
-            </p>
-            {loading ? (
-              <Skeleton className="mt-2 h-7 w-28" />
-            ) : (
-              <p
-                className={cn(
-                  "mt-1 text-xl font-semibold tabular-nums",
-                  summary.totalProfit < 0
-                    ? "text-red-600 dark:text-red-400"
-                    : "text-emerald-600 dark:text-emerald-400"
-                )}
-              >
-                {summary.totalProfit < 0 ? "−" : ""}
-                {money(Math.abs(summary.totalProfit))}
-              </p>
-            )}
-          </div>
+          )}
         </div>
-      </Card>
+        <div className="rounded-[10px] border-[0.5px] border-solid border-[#E5E7EB] bg-white px-4 py-[14px] dark:border-border">
+          <p className="kpi-metric-label">Active</p>
+          {loading ? (
+            <Skeleton className="mt-2 h-7 w-16" />
+          ) : (
+            <p className="kpi-metric-value mt-0.5 tabular-nums text-[#111827] dark:text-foreground">
+              {summary.active}
+            </p>
+          )}
+        </div>
+        <div className="rounded-[10px] border-[0.5px] border-solid border-[#E5E7EB] bg-white px-4 py-[14px] dark:border-border">
+          <p className="kpi-metric-label">Completed</p>
+          {loading ? (
+            <Skeleton className="mt-2 h-7 w-16" />
+          ) : (
+            <p className="kpi-metric-value mt-0.5 tabular-nums text-[#111827] dark:text-foreground">
+              {summary.completed}
+            </p>
+          )}
+        </div>
+        <div className="rounded-[10px] border-[0.5px] border-solid border-[#E5E7EB] bg-white px-4 py-[14px] dark:border-border">
+          <p className="kpi-metric-label">Total Budget</p>
+          {loading ? (
+            <Skeleton className="mt-2 h-7 w-28" />
+          ) : (
+            <p className="kpi-metric-value mt-0.5 tabular-nums text-[#111827] dark:text-foreground">
+              {money(summary.totalBudget)}
+            </p>
+          )}
+        </div>
+        <div className="rounded-[10px] border-[0.5px] border-solid border-[#E5E7EB] bg-white px-4 py-[14px] sm:col-span-2 lg:col-span-1 dark:border-border">
+          <p className="kpi-metric-label">Total Profit</p>
+          {loading ? (
+            <Skeleton className="mt-2 h-7 w-28" />
+          ) : (
+            <p
+              className={cn(
+                "kpi-metric-value mt-0.5 tabular-nums",
+                summary.totalProfit < 0
+                  ? "text-red-600 dark:text-red-400"
+                  : "text-[#166534] dark:text-[#166534]"
+              )}
+            >
+              {summary.totalProfit < 0 ? "−" : ""}
+              {money(Math.abs(summary.totalProfit))}
+            </p>
+          )}
+        </div>
+      </div>
 
       <FilterBar className="flex-col items-stretch sm:items-stretch">
         <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -400,31 +392,29 @@ export function ProjectsClient() {
       </FilterBar>
 
       <div>
-        <Card className="overflow-hidden border-[#EBEBE9] p-0 dark:border-border">
-          {loading ? (
-            <div className="space-y-2 p-5">
-              {Array.from({ length: 8 }).map((_, idx) => (
-                <Skeleton key={idx} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : dataWithDerived.length === 0 ? (
-            <div className="flex min-h-[200px] flex-col items-center justify-center gap-2 py-14 text-center">
-              <p className="text-sm font-medium text-foreground">No projects yet</p>
-              <p className="text-xs text-muted-foreground">Create a project to get started.</p>
-            </div>
-          ) : (
-            <DataTable<RowWithDerived>
-              columns={columns}
-              data={dataWithDerived}
-              keyExtractor={(r) => r.id}
-              emptyText="No projects yet"
-              headerClassName="border-b border-[#EBEBE9] bg-[#F7F7F5] dark:border-border/60 dark:bg-muted/30"
-              onRowClick={(r) => router.push(`/projects/${r.id}`)}
-              primaryColumnKey="name"
-              amountColumnKeys={["budget", "actualCost", "profit", "marginPct"]}
-            />
-          )}
-        </Card>
+        {loading ? (
+          <div className="space-y-2 p-5">
+            {Array.from({ length: 8 }).map((_, idx) => (
+              <Skeleton key={idx} className="h-12 w-full" />
+            ))}
+          </div>
+        ) : dataWithDerived.length === 0 ? (
+          <div className="flex min-h-[200px] flex-col items-center justify-center gap-2 py-14 text-center">
+            <p className="text-sm font-medium text-foreground">No projects yet</p>
+            <p className="text-xs text-muted-foreground">Create a project to get started.</p>
+          </div>
+        ) : (
+          <DataTable<RowWithDerived>
+            columns={columns}
+            data={dataWithDerived}
+            keyExtractor={(r) => r.id}
+            emptyText="No projects yet"
+            headerClassName="hover:bg-transparent"
+            onRowClick={(r) => router.push(`/projects/${r.id}`)}
+            primaryColumnKey="name"
+            amountColumnKeys={["budget", "actualCost", "profit", "marginPct"]}
+          />
+        )}
         <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} />
       </div>
     </div>
