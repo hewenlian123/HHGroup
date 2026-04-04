@@ -38,6 +38,7 @@ import {
   generateCommissionReceiptPdf,
   printAndDownloadCommissionReceipt,
 } from "@/lib/commission-payment-receipt-pdf";
+import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 
 const PAYMENT_METHODS = ["Check", "Bank Transfer", "Cash", "Zelle", "Other"] as const;
 
@@ -80,9 +81,6 @@ const COMMISSION_FIELD =
 
 const RECEIPT_UPLOAD_MODAL =
   "max-w-[480px] w-full gap-0 rounded-[14px] border-[0.5px] border-[#E5E7EB] bg-white p-8 shadow-[0_8px_30px_rgba(0,0,0,0.12)] sm:max-w-[480px]";
-const RECEIPT_PREVIEW_MODAL =
-  "max-w-[640px] w-full gap-0 rounded-[14px] border-[0.5px] border-[#E5E7EB] bg-white p-0 shadow-[0_8px_30px_rgba(0,0,0,0.12)] sm:max-w-[640px]";
-
 function PaymentStatusPill({ status }: { status: CommissionPaymentStatus }) {
   const map = {
     unpaid: { bg: "bg-[#F3F4F6]", text: "text-[#6B7280]", label: "Unpaid" },
@@ -199,6 +197,9 @@ export function CommissionsClient({
   } | null>(null);
   const [receiptPreviewDownloading, setReceiptPreviewDownloading] = React.useState(false);
   const [receiptPrinting, setReceiptPrinting] = React.useState(false);
+  const receiptPreviewRef = React.useRef(receiptPreview);
+  receiptPreviewRef.current = receiptPreview;
+  const { openPreview, patchPreview, closePreview } = useAttachmentPreview();
   const [receiptDeletingPaymentId, setReceiptDeletingPaymentId] = React.useState<string | null>(
     null
   );
@@ -450,11 +451,91 @@ export function CommissionsClient({
     if (file) void submitReceiptFile(file);
   };
 
+  const handlePreviewDownload = React.useCallback(async () => {
+    const r = receiptPreviewRef.current;
+    if (!r) return;
+    setReceiptPreviewDownloading(true);
+    try {
+      const res = await fetch(r.url, { mode: "cors" });
+      if (!res.ok) throw new Error("Could not download file");
+      const blob = await res.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = r.fileName;
+      a.rel = "noopener noreferrer";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
+    } catch {
+      window.open(r.url, "_blank", "noopener,noreferrer");
+    } finally {
+      setReceiptPreviewDownloading(false);
+    }
+  }, []);
+
+  const handlePreviewPrintReceipt = React.useCallback(async () => {
+    const r = receiptPreviewRef.current;
+    if (!r) return;
+    const { parent, payment } = r;
+    setReceiptPrinting(true);
+    try {
+      const blob = await generateCommissionReceiptPdf({
+        paymentId: payment.id,
+        paymentDate: payment.payment_date || "—",
+        personName: parent.person_name ?? "",
+        projectName: parent.project_name ?? "",
+        role: parent.role ?? "",
+        commissionAmount: parent.commission_amount,
+        paymentAmount: payment.amount,
+        paymentMethod: payment.payment_method ?? "",
+        notes: payment.note,
+      });
+      printAndDownloadCommissionReceipt(blob, payment.id);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to generate receipt PDF");
+    } finally {
+      setReceiptPrinting(false);
+    }
+  }, []);
+
+  const commissionPrintFooter = React.useCallback(
+    (printing: boolean) => (
+      <Button
+        type="button"
+        className="h-8 rounded-lg bg-[#2563EB] text-[13px] font-medium text-white hover:bg-[#1D4ED8]"
+        disabled={printing}
+        onClick={() => void handlePreviewPrintReceipt()}
+      >
+        {printing ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+            Preparing…
+          </>
+        ) : (
+          "Print Receipt"
+        )}
+      </Button>
+    ),
+    [handlePreviewPrintReceipt]
+  );
+
   const openReceiptPreview = (parent: Row, p: CommissionPaymentRecord, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!p.receipt_url) return;
     setReceiptPreview(null);
     setReceiptViewLoading({ parent, payment: p });
+    openPreview({
+      url: "",
+      fileName: "Receipt",
+      fileType: "image",
+      isLoading: true,
+      onClosed: () => {
+        setReceiptPreview(null);
+        setReceiptViewLoading(null);
+      },
+      onDownload: () => void handlePreviewDownload(),
+      downloadBusy: receiptPreviewDownloading,
+      extraFooter: commissionPrintFooter(receiptPrinting),
+    });
     void (async () => {
       try {
         const res = await fetch(
@@ -478,57 +559,31 @@ export function CommissionsClient({
           fileName: data.fileName ?? "receipt",
           isPdf: !!data.isPdf,
         });
+        patchPreview({
+          url: data.url,
+          fileName: data.fileName ?? "receipt",
+          fileType: data.isPdf ? "pdf" : "image",
+          isLoading: false,
+          onDownload: () => void handlePreviewDownload(),
+          extraFooter: commissionPrintFooter(receiptPrinting),
+        });
       } catch (err) {
         alert(err instanceof Error ? err.message : "Could not load receipt.");
+        closePreview();
       } finally {
         setReceiptViewLoading(null);
       }
     })();
   };
 
-  const handlePreviewDownload = async () => {
-    if (!receiptPreview) return;
-    setReceiptPreviewDownloading(true);
-    try {
-      const res = await fetch(receiptPreview.url, { mode: "cors" });
-      if (!res.ok) throw new Error("Could not download file");
-      const blob = await res.blob();
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = receiptPreview.fileName;
-      a.rel = "noopener noreferrer";
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
-    } catch {
-      window.open(receiptPreview.url, "_blank", "noopener,noreferrer");
-    } finally {
-      setReceiptPreviewDownloading(false);
-    }
-  };
+  React.useEffect(() => {
+    patchPreview({ downloadBusy: receiptPreviewDownloading });
+  }, [receiptPreviewDownloading, patchPreview]);
 
-  const handlePreviewPrintReceipt = async () => {
+  React.useEffect(() => {
     if (!receiptPreview) return;
-    const { parent, payment } = receiptPreview;
-    setReceiptPrinting(true);
-    try {
-      const blob = await generateCommissionReceiptPdf({
-        paymentId: payment.id,
-        paymentDate: payment.payment_date || "—",
-        personName: parent.person_name ?? "",
-        projectName: parent.project_name ?? "",
-        role: parent.role ?? "",
-        commissionAmount: parent.commission_amount,
-        paymentAmount: payment.amount,
-        paymentMethod: payment.payment_method ?? "",
-        notes: payment.note,
-      });
-      printAndDownloadCommissionReceipt(blob, payment.id);
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to generate receipt PDF");
-    } finally {
-      setReceiptPrinting(false);
-    }
-  };
+    patchPreview({ extraFooter: commissionPrintFooter(receiptPrinting) });
+  }, [receiptPrinting, receiptPreview, commissionPrintFooter, patchPreview]);
 
   const deleteCommissionPaymentReceipt = async (
     parent: Row,
@@ -1545,88 +1600,6 @@ export function CommissionsClient({
                   onClick={() => resetReceiptUploadModal()}
                 >
                   Cancel
-                </Button>
-              </DialogFooter>
-            </>
-          ) : null}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={receiptPreview != null || receiptViewLoading != null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setReceiptPreview(null);
-            setReceiptViewLoading(null);
-          }
-        }}
-      >
-        <DialogContent className={RECEIPT_PREVIEW_MODAL}>
-          {receiptViewLoading && !receiptPreview ? (
-            <>
-              <DialogHeader className="px-6 pt-2 text-left">
-                <DialogTitle className="text-base font-semibold text-[#111827]">
-                  Receipt
-                </DialogTitle>
-                <DialogDescription className="text-[13px] text-[#6B7280]">
-                  Loading from storage…
-                </DialogDescription>
-              </DialogHeader>
-              <div className="flex min-h-[200px] items-center justify-center px-6 py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-[#9CA3AF]" aria-hidden />
-              </div>
-            </>
-          ) : receiptPreview ? (
-            <>
-              <div className="flex items-start justify-between gap-3 border-b border-[#E5E7EB] px-6 py-4 pr-14">
-                <DialogTitle className="line-clamp-2 flex-1 text-left text-base font-semibold text-[#111827]">
-                  {receiptPreview.fileName}
-                </DialogTitle>
-              </div>
-              <div className="px-6 py-4">
-                {receiptPreview.isPdf ? (
-                  <iframe
-                    key={receiptPreview.url}
-                    title="Receipt PDF"
-                    src={receiptPreview.url}
-                    className="h-[480px] w-full rounded-sm border border-[#E5E7EB] bg-[#F9FAFB]"
-                  />
-                ) : (
-                  <div className="flex max-h-[480px] w-full justify-center overflow-auto">
-                    {/* eslint-disable-next-line @next/next/no-img-element -- signed Storage URL from view-url API */}
-                    <img
-                      key={receiptPreview.url}
-                      src={receiptPreview.url}
-                      alt=""
-                      className="max-h-[480px] w-auto max-w-full object-contain"
-                    />
-                  </div>
-                )}
-              </div>
-              <DialogFooter className="border-t border-[#E5E7EB] px-6 py-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-9 rounded-lg border-[#E5E7EB] bg-white text-[13px] font-medium text-[#6B7280] hover:bg-[#F9FAFB]"
-                  disabled={receiptPreviewDownloading}
-                  onClick={() => void handlePreviewDownload()}
-                >
-                  {receiptPreviewDownloading ? "Downloading…" : "Download"}
-                </Button>
-                <Button
-                  type="button"
-                  className="h-9 rounded-lg bg-[#2563EB] text-[13px] font-medium text-white hover:bg-[#1D4ED8]"
-                  disabled={receiptPrinting}
-                  onClick={() => void handlePreviewPrintReceipt()}
-                >
-                  {receiptPrinting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                      Preparing…
-                    </>
-                  ) : (
-                    "Print Receipt"
-                  )}
                 </Button>
               </DialogFooter>
             </>

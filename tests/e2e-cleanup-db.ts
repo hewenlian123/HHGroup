@@ -265,5 +265,62 @@ export async function cleanupTestData(supabase: SupabaseClient): Promise<Cleanup
     else bump("customers", customerIds.length);
   }
 
+  /** Playwright expenses / receipt-queue specs (vendor_name prefixes). */
+  const e2eExpenseVendorPrefixes = [
+    "E2E-QE-%",
+    "E2E-RQ-%",
+    "E2E-PV-%",
+    "E2E-UP-%",
+    "E2E-QP-%",
+    "E2E-HD-%",
+    "E2E-ED-%",
+  ];
+  const e2eExpenseIdSet = new Set<string>();
+  for (const pattern of e2eExpenseVendorPrefixes) {
+    const { data: byVendorName } = await supabase
+      .from("expenses")
+      .select("id")
+      .ilike("vendor_name", pattern);
+    for (const row of byVendorName ?? []) e2eExpenseIdSet.add((row as { id: string }).id);
+    const { data: byVendor } = await supabase
+      .from("expenses")
+      .select("id")
+      .ilike("vendor", pattern);
+    for (const row of byVendor ?? []) e2eExpenseIdSet.add((row as { id: string }).id);
+  }
+  const e2eExpenseIds = Array.from(e2eExpenseIdSet).filter(Boolean);
+  if (e2eExpenseIds.length > 0) {
+    const { data: attRows } = await supabase
+      .from("attachments")
+      .select("id")
+      .eq("entity_type", "expense")
+      .in("entity_id", e2eExpenseIds);
+    const attIds = (attRows ?? []).map((r: { id: string }) => r.id);
+    if (attIds.length > 0) {
+      const { error: aErr } = await supabase.from("attachments").delete().in("id", attIds);
+      if (aErr) warnings.push(`attachments (e2e vendor expenses): ${aErr.message}`);
+      else bump("attachments", attIds.length);
+    }
+    const { error: unlinkErr } = await supabase
+      .from("bank_transactions")
+      .update({ linked_expense_id: null })
+      .in("linked_expense_id", e2eExpenseIds);
+    if (unlinkErr) warnings.push(`bank_transactions unlink e2e expenses: ${unlinkErr.message}`);
+    const { data: lineRows } = await supabase
+      .from("expense_lines")
+      .select("id")
+      .in("expense_id", e2eExpenseIds);
+    const lineDelCount = (lineRows ?? []).length;
+    const { error: lineErr } = await supabase
+      .from("expense_lines")
+      .delete()
+      .in("expense_id", e2eExpenseIds);
+    if (lineErr) warnings.push(`expense_lines (e2e vendor expenses): ${lineErr.message}`);
+    else if (lineDelCount > 0) bump("expense_lines", lineDelCount);
+    const { error: expErr } = await supabase.from("expenses").delete().in("id", e2eExpenseIds);
+    if (expErr) warnings.push(`expenses (e2e vendor cleanup): ${expErr.message}`);
+    else bump("expenses", e2eExpenseIds.length);
+  }
+
   return { deleted, warnings };
 }

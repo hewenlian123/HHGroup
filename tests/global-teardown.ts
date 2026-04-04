@@ -9,7 +9,8 @@ import { resolve } from "node:path";
 import { cleanupTestData } from "./e2e-cleanup-db";
 
 export default async function globalTeardown(_config: FullConfig): Promise<void> {
-  loadDotenv({ path: resolve(process.cwd(), ".env.local") });
+  loadDotenv({ path: resolve(process.cwd(), ".env") });
+  loadDotenv({ path: resolve(process.cwd(), ".env.local"), override: true });
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;

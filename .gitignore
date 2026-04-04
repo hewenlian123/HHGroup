@@ -21,6 +21,7 @@ node_modules
 /coverage
 /playwright-report/
 /test-results/
+.local-artifacts/
 tests/.auth/
 
 # next.js

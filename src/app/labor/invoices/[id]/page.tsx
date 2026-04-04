@@ -534,7 +534,10 @@ export default function LaborInvoiceDetailPage() {
       <AttachmentPreviewDialog
         attachment={previewAttachment}
         open={previewOpen}
-        onOpenChange={setPreviewOpen}
+        onOpenChange={(v) => {
+          setPreviewOpen(v);
+          if (!v) setPreviewAttachment(null);
+        }}
       />
     </div>
   );

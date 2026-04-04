@@ -23,6 +23,7 @@ import {
   type WorkerReimbursementStatus,
 } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -67,7 +68,7 @@ export default function WorkerReimbursementsPage() {
     description: "",
     status: "pending" as WorkerReimbursementStatus,
   });
-  const [viewReceiptUrl, setViewReceiptUrl] = React.useState<string | null>(null);
+  const { openPreview } = useAttachmentPreview();
   const [payModal, setPayModal] = React.useState<{ id: string; amount: number } | null>(null);
   const [payAmount, setPayAmount] = React.useState("");
   const [payMethod, setPayMethod] = React.useState("");
@@ -392,8 +393,6 @@ export default function WorkerReimbursementsPage() {
     }
   };
 
-  const isPdfReceipt = viewReceiptUrl != null && viewReceiptUrl.toLowerCase().endsWith(".pdf");
-
   const workerName = (r: WorkerReimbursement) =>
     r.workerName ?? workerById.get(r.workerId) ?? r.workerId;
   const projectName = (r: WorkerReimbursement) =>
@@ -422,7 +421,12 @@ export default function WorkerReimbursementsPage() {
                   {isBusy ? "…" : "Mark as Paid"}
                 </DropdownMenuItem>
                 {r.receiptUrl && (
-                  <DropdownMenuItem onSelect={() => setViewReceiptUrl(r.receiptUrl)}>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      const u = r.receiptUrl;
+                      if (u) openPreview({ url: u, fileName: "Receipt" });
+                    }}
+                  >
                     View Receipt
                   </DropdownMenuItem>
                 )}
@@ -785,8 +789,11 @@ export default function WorkerReimbursementsPage() {
                     {r.receiptUrl ? (
                       <button
                         type="button"
-                        onClick={() => setViewReceiptUrl(r.receiptUrl)}
-                        className="text-primary hover:underline text-xs"
+                        onClick={() => {
+                          const u = r.receiptUrl;
+                          if (u) openPreview({ url: u, fileName: "Receipt" });
+                        }}
+                        className="cursor-pointer text-xs text-primary transition-transform hover:scale-105 hover:underline"
                       >
                         View
                       </button>
@@ -831,32 +838,6 @@ export default function WorkerReimbursementsPage() {
           </Button>
         </div>
       </div>
-
-      {/* Receipt preview modal */}
-      <Dialog open={!!viewReceiptUrl} onOpenChange={(open) => !open && setViewReceiptUrl(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] p-2 flex flex-col">
-          <DialogHeader className="sr-only">
-            <DialogTitle>Receipt</DialogTitle>
-          </DialogHeader>
-          {viewReceiptUrl && (
-            <div className="flex-1 min-h-0 overflow-auto flex items-center justify-center bg-background border-t border-[#E5E7EB] dark:border-border/60">
-              {isPdfReceipt ? (
-                <iframe
-                  src={viewReceiptUrl}
-                  title="Receipt"
-                  className="w-full min-h-[70vh] border-0 rounded-sm"
-                />
-              ) : (
-                <img
-                  src={viewReceiptUrl}
-                  alt="Receipt"
-                  className="max-w-full max-h-[85vh] object-contain"
-                />
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
 
       {/* Create Worker Payment (batch) modal */}
       <Dialog

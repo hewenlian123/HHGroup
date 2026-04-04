@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreatableSelect } from "@/components/ui/creatable-select";
 import { SplitLinesEditor, type SplitLineRow } from "@/components/split-lines-editor";
-import { AttachmentPreviewDialog } from "@/components/attachment-preview-dialog";
+import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import { createBrowserClient } from "@/lib/supabase";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
@@ -47,15 +47,6 @@ type AttachmentRow = {
   file_path: string;
   mime_type: string | null;
   size_bytes: number | null;
-};
-
-type PreviewAttachment = {
-  id: string;
-  fileName: string;
-  mimeType: string;
-  url: string;
-  size: number;
-  createdAt: string;
 };
 
 function safeNumber(n: number | null | undefined): number {
@@ -115,8 +106,7 @@ export function ExpenseDetailClient({ id }: { id: string }) {
     disabled: Set<string>;
   }>({ options: [], disabled: new Set() });
   const [attachments, setAttachments] = React.useState<AttachmentRow[]>([]);
-  const [previewAttachment, setPreviewAttachment] = React.useState<PreviewAttachment | null>(null);
-  const [previewOpen, setPreviewOpen] = React.useState(false);
+  const { openPreview } = useAttachmentPreview();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const refresh = React.useCallback(async () => {
@@ -458,22 +448,31 @@ export function ExpenseDetailClient({ id }: { id: string }) {
 
   const openAttachment = async (row: AttachmentRow) => {
     if (!supabase) return;
-    const { data, error: signError } = await supabase.storage
-      .from("attachments")
-      .createSignedUrl(row.file_path, 60);
-    if (signError || !data?.signedUrl) {
-      setError(signError?.message || "Unable to open attachment.");
+    const idx = attachments.findIndex((a) => a.id === row.id);
+    const signed = await Promise.all(
+      attachments.map((a) => supabase.storage.from("attachments").createSignedUrl(a.file_path, 60))
+    );
+    const files = attachments.map((a, i) => {
+      const url = signed[i].data?.signedUrl ?? "";
+      const mime = (a.mime_type ?? "").toLowerCase();
+      const isPdf = mime === "application/pdf";
+      const isImage = mime.startsWith("image/");
+      return {
+        url,
+        fileName: a.file_name ?? "File",
+        fileType: (isPdf ? "pdf" : "image") as "pdf" | "image",
+        unsupported: Boolean(url) && !isPdf && !isImage,
+      };
+    });
+    if (!files.some((f) => f.url)) {
+      setError(signed[0]?.error?.message || "Unable to open attachment.");
       return;
     }
-    setPreviewAttachment({
-      id: row.id,
-      fileName: row.file_name,
-      mimeType: row.mime_type ?? "",
-      url: data.signedUrl,
-      size: safeNumber(row.size_bytes),
-      createdAt: (row.created_at ?? "").slice(0, 10),
+    openPreview({
+      files,
+      initialIndex: Math.max(0, idx),
+      onClosed: () => {},
     });
-    setPreviewOpen(true);
   };
 
   const deleteAttachment = async (row: AttachmentRow) => {
@@ -789,21 +788,6 @@ export function ExpenseDetailClient({ id }: { id: string }) {
           </div>
         </div>
       </Card>
-
-      {previewAttachment ? (
-        <AttachmentPreviewDialog
-          open={previewOpen}
-          onOpenChange={setPreviewOpen}
-          attachment={{
-            id: previewAttachment.id,
-            fileName: previewAttachment.fileName,
-            mimeType: previewAttachment.mimeType,
-            url: previewAttachment.url,
-            size: previewAttachment.size,
-            createdAt: previewAttachment.createdAt,
-          }}
-        />
-      ) : null}
     </div>
   );
 }

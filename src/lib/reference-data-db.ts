@@ -27,6 +27,8 @@ const DEFAULT_CATEGORIES = [
   "Equipment",
   "Permit",
   "Fuel",
+  "Vehicle",
+  "Meals",
   "Office",
   "Subcontractor",
   "Other",
@@ -97,8 +99,22 @@ export async function addExpenseCategory(name: string): Promise<string> {
       .ilike("name", trimmed);
     return trimmed;
   }
-  await c.from("categories").insert({ name: trimmed, type: "expense", status: "active" });
-  return trimmed;
+  const ins = await c
+    .from("categories")
+    .insert({ name: trimmed, type: "expense", status: "active" });
+  if (!ins.error) return trimmed;
+  const msg = ins.error.message ?? "";
+  if (/duplicate|unique|violates unique/i.test(msg)) {
+    const { data: row } = await c
+      .from("categories")
+      .select("name")
+      .eq("type", "expense")
+      .ilike("name", trimmed)
+      .maybeSingle();
+    if (row) return (row as { name: string }).name;
+  }
+  console.warn("[addExpenseCategory]", msg);
+  return "";
 }
 
 export async function getCategoryUsageCount(name: string): Promise<number> {
