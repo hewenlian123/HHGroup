@@ -42,6 +42,8 @@ export type Expense = {
   cardName?: string | null;
   /** Payment source account (from Accounts module). */
   accountId?: string | null;
+  /** Optional header-level project (expense_lines may also carry project per line). */
+  headerProjectId?: string | null;
 };
 
 type ExpenseRow = {
@@ -59,6 +61,7 @@ type ExpenseRow = {
   worker_id?: string | null;
   card_name?: string | null;
   account_id?: string | null;
+  project_id?: string | null;
 };
 
 type ExpenseLineRow = {
@@ -119,9 +122,16 @@ async function getAttachments(expenseId: string): Promise<ExpenseAttachment[]> {
 }
 
 function toExpenseLine(r: ExpenseLineRow): ExpenseLine {
+  const raw = r as ExpenseLineRow & { projectId?: string | null };
+  const pid =
+    r.project_id != null && r.project_id !== ""
+      ? r.project_id
+      : raw.projectId != null && raw.projectId !== ""
+        ? raw.projectId
+        : null;
   return {
     id: r.id,
-    projectId: r.project_id ?? null,
+    projectId: pid,
     category: r.category ?? "Other",
     costCode: r.cost_code ?? undefined,
     memo: r.memo ?? undefined,
@@ -153,15 +163,19 @@ async function toExpense(
     workerId: row.worker_id ?? undefined,
     cardName: row.card_name ?? undefined,
     accountId: row.account_id ?? undefined,
+    headerProjectId:
+      row.project_id != null && String(row.project_id).trim() !== ""
+        ? String(row.project_id)
+        : undefined,
   };
 }
 
 /** Select columns: base + optional receipt_url, status, worker_id. */
 const EXPENSE_COLS_FULL =
-  "id,expense_date,vendor,vendor_name,notes,payment_method,reference_no,total,line_count,receipt_url,status,worker_id,card_name,account_id";
+  "id,expense_date,vendor,vendor_name,notes,payment_method,reference_no,total,line_count,receipt_url,status,worker_id,card_name,account_id,project_id";
 /** Fallback when payment_method column does not exist (e.g. account_id-only schema). */
 const EXPENSE_COLS_FULL_NO_PAYMENT_METHOD =
-  "id,expense_date,vendor,vendor_name,notes,reference_no,total,line_count,receipt_url,status,worker_id,card_name,account_id";
+  "id,expense_date,vendor,vendor_name,notes,reference_no,total,line_count,receipt_url,status,worker_id,card_name,account_id,project_id";
 /** Legacy: table may have only vendor (no vendor_name). No payment_method so works when column is missing. */
 const EXPENSE_COLS_LEGACY = "id,expense_date,vendor,notes,reference_no,total,line_count";
 /** Minimal: no reference_no, no payment_method (for schemas that only have core columns). */
@@ -464,13 +478,20 @@ export async function createExpense(payload: {
           amount: Number(l.amount) || 0,
         }));
         // Strip unknown columns one at a time until insert succeeds (schema cache may lag)
+        const stripLineKeys = (
+          rows: typeof lineInserts,
+          keys: ("cost_code" | "memo" | "category" | "project_id")[]
+        ) =>
+          rows.map((row) => {
+            const copy = { ...row };
+            for (const k of keys) delete copy[k];
+            return copy;
+          });
         const lineAttempts: Record<string, unknown>[][] = [
           lineInserts,
-          lineInserts.map(({ cost_code: _c, memo: _m, ...rest }) => rest),
-          lineInserts.map(({ cost_code: _c, memo: _m, category: _cat, ...rest }) => rest),
-          lineInserts.map(
-            ({ cost_code: _c, memo: _m, category: _cat, project_id: _p, ...rest }) => rest
-          ),
+          stripLineKeys(lineInserts, ["cost_code", "memo"]),
+          stripLineKeys(lineInserts, ["cost_code", "memo", "category"]),
+          stripLineKeys(lineInserts, ["cost_code", "memo", "category", "project_id"]),
         ];
         let lineInsErr: { message?: string } | null = null;
         for (const attempt of lineAttempts) {
@@ -539,7 +560,8 @@ export async function createQuickExpense(payload: {
   const receiptUrl = payload.receiptUrl || "";
   const category = (payload.category ?? "Other").trim() || "Other";
   const notes = (payload.notes ?? "").trim();
-  const projectId = payload.projectId ?? null;
+  const rawPid = payload.projectId;
+  const projectId = rawPid != null && String(rawPid).trim() !== "" ? String(rawPid).trim() : null;
 
   const insertRow: Record<string, unknown> = {
     expense_date: date,
@@ -577,7 +599,8 @@ export async function createQuickExpense(payload: {
       .single();
   }
   if (result.error && isStatusConstraintError(result.error)) {
-    const { status: _omitStatus, ...insertWithoutStatus } = insertRow;
+    const insertWithoutStatus = { ...insertRow };
+    delete insertWithoutStatus.status;
     result = await c
       .from("expenses")
       .insert({ ...insertWithoutStatus, payment_method: "Other" })
@@ -615,33 +638,18 @@ export async function createQuickExpense(payload: {
   const expenseId = (expRow as { id: string } | null)?.id;
   if (!expenseId) throw new Error("Failed to create quick expense: no id.");
 
+  const lineBase = (): Record<string, unknown> => ({
+    expense_id: expenseId,
+    amount: total,
+    ...(projectId ? { project_id: projectId } : {}),
+  });
+
   const lineAttempts: Record<string, unknown>[] = [
-    {
-      expense_id: expenseId,
-      project_id: projectId,
-      category,
-      memo: notes || null,
-      amount: total,
-    },
-    {
-      expense_id: expenseId,
-      project_id: projectId,
-      category,
-      amount: total,
-    },
-    {
-      expense_id: expenseId,
-      category,
-      amount: total,
-    },
-    {
-      expense_id: expenseId,
-      amount: total,
-    },
-    {
-      expense_id: expenseId,
-    },
+    { ...lineBase(), category, memo: notes || null },
+    { ...lineBase(), category },
+    { ...lineBase() },
   ];
+
   let lineErr: { message?: string } | null = null;
   for (const attempt of lineAttempts) {
     const { error } = await c.from("expense_lines").insert(attempt);
@@ -650,6 +658,16 @@ export async function createQuickExpense(payload: {
     if (!isMissingColumn(lineErr)) break;
   }
   if (lineErr) throw new Error(lineErr.message ?? "Failed to create expense line.");
+
+  if (projectId) {
+    const { error: hdrErr } = await c
+      .from("expenses")
+      .update({ project_id: projectId })
+      .eq("id", expenseId);
+    if (hdrErr && !isMissingColumn(hdrErr)) {
+      console.warn("[createQuickExpense] expenses.project_id update:", hdrErr.message);
+    }
+  }
 
   const exp = await getExpenseById(expenseId);
   if (!exp) throw new Error("Failed to load created expense.");
@@ -1036,6 +1054,19 @@ export async function updateExpenseForReview(
           .eq("id", (firstLine as { id: string }).id)
           .eq("expense_id", expenseId);
       }
+    }
+  }
+  if (patch.projectId !== undefined) {
+    const hdr =
+      patch.projectId != null && String(patch.projectId).trim() !== ""
+        ? String(patch.projectId).trim()
+        : null;
+    const { error: hdrErr } = await c
+      .from("expenses")
+      .update({ project_id: hdr })
+      .eq("id", expenseId);
+    if (hdrErr && !isMissingColumn(hdrErr)) {
+      console.warn("[updateExpenseForReview] expenses.project_id update:", hdrErr.message);
     }
   }
   return getExpenseById(expenseId);

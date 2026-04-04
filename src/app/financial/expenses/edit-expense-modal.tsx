@@ -59,7 +59,7 @@ export function EditExpenseModal({
     if (expense) {
       setVendorName(expense.vendorName ?? "");
       setAmount(String(getExpenseTotal(expense)));
-      setProjectId(expense.lines[0]?.projectId ?? null);
+      setProjectId(expense.lines[0]?.projectId ?? expense.headerProjectId ?? null);
       setWorkerId(expense.workerId ?? null);
       setCategory(expense.lines[0]?.category ?? "Other");
       setNotes(expense.notes ?? "");

@@ -61,15 +61,29 @@ function mergeExpenseReviewPatch(e: Expense, p: ExpenseReviewSavePatch): Expense
     status: p.status,
     workerId: p.workerId,
     lines: nextLines,
+    headerProjectId: p.projectId,
   };
 }
 
 function projectLabel(expense: Expense, projectNameById: Map<string, string>): string {
-  const ids = Array.from(new Set(expense.lines.map((l) => l.projectId)));
-  if (ids.length === 0) return "—";
-  if (ids.length === 1) {
-    const id = ids[0];
-    return id == null ? "Overhead" : (projectNameById.get(id) ?? id);
+  const lineIds = expense.lines.map((l) => l.projectId ?? null);
+  const headerRaw = expense.headerProjectId ?? null;
+  const headerId =
+    headerRaw != null && String(headerRaw).trim() !== "" ? String(headerRaw).trim() : null;
+
+  const distinct = new Set<string>();
+  for (const id of lineIds) {
+    if (id != null && String(id).trim() !== "") distinct.add(String(id));
+  }
+  if (headerId) distinct.add(headerId);
+
+  if (distinct.size === 0) {
+    if (expense.lines.length === 0) return "—";
+    return "Overhead";
+  }
+  if (distinct.size === 1) {
+    const id = [...distinct][0]!;
+    return projectNameById.get(id) ?? id;
   }
   return "Multiple";
 }
@@ -263,7 +277,11 @@ function ExpensesPageInner() {
       );
     }
     if (projectFilter)
-      list = list.filter((e) => e.lines.some((l) => l.projectId === projectFilter));
+      list = list.filter(
+        (e) =>
+          e.lines.some((l) => l.projectId === projectFilter) ||
+          (e.headerProjectId != null && e.headerProjectId === projectFilter)
+      );
     if (categoryFilter)
       list = list.filter((e) => e.lines.some((l) => l.category === categoryFilter));
     if (statusFilter) list = list.filter((e) => (e.status ?? "pending") === statusFilter);
