@@ -17,6 +17,8 @@ import * as workerPaymentsDb from "../worker-payments-db";
 import * as workerAdvancesDb from "../worker-advances-db";
 import * as commitmentsDb from "../commitments-db";
 import * as refDataDb from "../reference-data-db";
+import * as paymentAccountsDb from "../payment-accounts-db";
+import type { PaymentAccountRow, PaymentAccountType } from "../payment-accounts-db";
 import * as subcontractorsDb from "../subcontractors-db";
 import * as subcontractsDb from "../subcontracts-db";
 import * as subcontractBillsDb from "../subcontract-bills-db";
@@ -1698,6 +1700,19 @@ export async function isPaymentMethodDisabled(name: string): Promise<boolean> {
   return refDataDb.isPaymentMethodDisabled(name);
 }
 
+export type { PaymentAccountRow, PaymentAccountType } from "../payment-accounts-db";
+
+export async function getPaymentAccounts(): Promise<PaymentAccountRow[]> {
+  return paymentAccountsDb.getPaymentAccounts();
+}
+
+export async function addPaymentAccount(
+  name: string,
+  type: PaymentAccountType
+): Promise<PaymentAccountRow | null> {
+  return paymentAccountsDb.addPaymentAccount(name, type);
+}
+
 export async function getExpenses(): Promise<Expense[]> {
   return expensesDb.getExpenses();
 }
@@ -1773,10 +1788,13 @@ export async function createQuickExpense(payload: {
   date: string;
   vendorName: string;
   totalAmount: number;
-  receiptUrl: string;
+  receiptUrl?: string | null;
   category?: string;
   notes?: string;
   projectId?: string | null;
+  paymentAccountId?: string | null;
+  sourceType?: "company" | "receipt_upload" | "reimbursement";
+  initialStatus?: NonNullable<Expense["status"]>;
 }): Promise<Expense> {
   return expensesDb.createQuickExpense(payload);
 }
@@ -1799,6 +1817,7 @@ export async function updateExpense(
     notes: resolvedPatch.notes,
     cardName: resolvedPatch.cardName,
     accountId: resolvedPatch.accountId,
+    paymentAccountId: resolvedPatch.paymentAccountId,
   });
 }
 
@@ -1811,7 +1830,7 @@ export async function updateExpenseReceiptUrl(
 
 export async function updateExpenseStatus(
   expenseId: string,
-  status: "pending" | "needs_review" | "approved" | "reimbursed"
+  status: NonNullable<Expense["status"]>
 ): Promise<Expense | null> {
   return expensesDb.updateExpenseStatus(expenseId, status);
 }
@@ -1819,13 +1838,16 @@ export async function updateExpenseStatus(
 export async function updateExpenseForReview(
   expenseId: string,
   patch: Partial<{
+    date: string;
     vendorName: string;
     notes: string;
-    status: "pending" | "needs_review" | "approved" | "reimbursed";
+    status: NonNullable<Expense["status"]>;
     workerId: string | null;
     projectId: string | null;
     category: string;
     amount: number;
+    sourceType: Expense["sourceType"];
+    paymentAccountId: string | null;
   }>
 ): Promise<Expense | null> {
   return expensesDb.updateExpenseForReview(expenseId, patch);
@@ -1872,6 +1894,13 @@ export async function addExpenseAttachment(
   attachment: import("../expenses-db").ExpenseAttachment
 ): Promise<Expense | null> {
   return expensesDb.addExpenseAttachment(expenseId, attachment);
+}
+
+export async function insertExpenseAttachmentRecord(
+  expenseId: string,
+  payload: { storagePath: string; fileType: "image" | "pdf" }
+): Promise<Expense | null> {
+  return expensesDb.insertExpenseAttachmentRecord(expenseId, payload);
 }
 
 export async function deleteExpenseAttachment(

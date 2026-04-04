@@ -1,19 +1,12 @@
 "use client";
 
+import "./expenses-ui-theme.css";
 import * as React from "react";
 import { flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   getExpenses,
   getExpenseCategories,
@@ -25,14 +18,20 @@ import {
   type Expense,
 } from "@/lib/data";
 import { createBrowserClient } from "@/lib/supabase";
-import { Check, Eye, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Check, Paperclip, Pencil, Plus, Trash2, Upload, X } from "lucide-react";
 import { Pagination } from "@/components/ui/pagination";
 import { useSearchParams } from "next/navigation";
-import { ExpenseReceiptPreviewDialog } from "./expense-receipt-preview-dialog";
+import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import { QuickExpenseModal } from "./quick-expense-modal";
+import { UploadReceiptsQueueModal } from "./upload-receipts-queue-modal";
 import { EditExpenseModal, type ExpenseReviewSavePatch } from "./edit-expense-modal";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { useToast } from "@/components/toast/toast-provider";
+import { ExpenseCategorySelect } from "@/components/expense-category-select";
+import {
+  persistLastExpensePaymentAccountId,
+  rememberExpenseVendorPaymentAccount,
+} from "@/lib/expense-payment-preferences";
 
 type ProjectRow = { id: string; name: string | null; status?: string | null };
 type WorkerRow = { id: string; name: string };
@@ -56,10 +55,14 @@ function mergeExpenseReviewPatch(e: Expense, p: ExpenseReviewSavePatch): Expense
         ];
   return {
     ...e,
+    date: p.date !== undefined ? p.date : e.date,
     vendorName: p.vendorName,
     notes: p.notes ?? e.notes,
     status: p.status,
     workerId: p.workerId,
+    sourceType: p.sourceType !== undefined ? p.sourceType : e.sourceType,
+    paymentAccountId: p.paymentAccountId,
+    paymentAccountName: p.paymentAccountName,
     lines: nextLines,
     headerProjectId: p.projectId,
   };
@@ -105,6 +108,13 @@ function getReceiptItems(expense: Expense): ReceiptItem[] {
   });
 }
 
+function receiptItemLooksPdf(item: ReceiptItem | undefined): boolean {
+  if (!item?.url && !item?.fileName) return false;
+  const name = (item.fileName ?? "").toLowerCase();
+  const u = (item.url ?? "").toLowerCase();
+  return name.endsWith(".pdf") || u.endsWith(".pdf") || u.includes("application/pdf");
+}
+
 async function resolveReceiptPreviewUrls(
   items: ReceiptItem[],
   supabase: ReturnType<typeof createBrowserClient> | null
@@ -112,23 +122,120 @@ async function resolveReceiptPreviewUrls(
   if (!supabase) return items;
   const next: ReceiptItem[] = [];
   for (const item of items) {
-    const u = item.url;
-    if (!u || /^https?:\/\//i.test(u) || u.startsWith("blob:")) {
+    const raw = (item.url ?? "").trim();
+    if (!raw || /^https?:\/\//i.test(raw) || raw.startsWith("blob:")) {
       next.push(item);
       continue;
     }
-    const { data, error } = await supabase.storage
-      .from("expense-attachments")
-      .createSignedUrl(u, 3600);
-    if (!error && data?.signedUrl) next.push({ ...item, url: data.signedUrl });
-    else next.push(item);
+    const path = raw.replace(/^\/+/, "");
+    let urlOut: string | null = null;
+    const tryBucket = async (bucket: string) => {
+      const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 3600);
+      if (!error && data?.signedUrl) return data.signedUrl;
+      return null;
+    };
+    urlOut = await tryBucket("expense-attachments");
+    if (!urlOut) urlOut = await tryBucket("receipts");
+    if (!urlOut && path) {
+      const { data: pub } = supabase.storage.from("receipts").getPublicUrl(path);
+      if (pub?.publicUrl) urlOut = pub.publicUrl;
+    }
+    next.push(urlOut ? { ...item, url: urlOut } : item);
   }
   return next;
+}
+
+function ExpenseAttachmentTrigger({ row, onPreview }: { row: Expense; onPreview: () => void }) {
+  const items = React.useMemo(() => getReceiptItems(row), [row]);
+
+  if (items.length === 0) {
+    return <span className="text-[#6B7280]/50">—</span>;
+  }
+
+  const label = items.length > 1 ? `${items.length} files` : "Attachment";
+
+  return (
+    <button
+      type="button"
+      className="inline-flex max-w-full cursor-pointer items-center gap-1.5 text-[11px] text-[#6B7280] hover:underline"
+      onClick={(e) => {
+        e.stopPropagation();
+        onPreview();
+      }}
+      aria-label={`View ${items.length > 1 ? `${items.length} attachments` : "attachment"}`}
+      title="Preview attachment"
+    >
+      <Paperclip className="h-3.5 w-3.5 shrink-0 text-[#9CA3AF]" strokeWidth={1.75} />
+      <span className="min-w-0 truncate">{label}</span>
+    </button>
+  );
+}
+
+/** Dot + label colors for minimal status row (no pill background). */
+function expenseStatusDotTextClass(status: string | undefined): { dot: string; text: string } {
+  const v = (status ?? "pending").toLowerCase();
+  if (v === "needs_review") {
+    return { dot: "bg-[#D97706]", text: "text-[#B45309]" };
+  }
+  if (v === "pending") {
+    return { dot: "bg-[#9CA3AF]", text: "text-[#6B7280]" };
+  }
+  if (
+    v === "reviewed" ||
+    v === "approved" ||
+    v === "paid" ||
+    v === "reimbursed" ||
+    v === "reimbursable"
+  ) {
+    return { dot: "bg-[#059669]", text: "text-[#059669]" };
+  }
+  return { dot: "bg-[#9CA3AF]", text: "text-[#6B7280]" };
 }
 
 function normalizedVendorLabel(vendor: string): string {
   const v = (vendor ?? "").trim();
   if (!v || /^unknown$/i.test(v) || /^smokevendor[-_]/i.test(v)) return "Needs Review";
+  return v;
+}
+
+function sourceTypeLabel(t: Expense["sourceType"]): string {
+  if (t === "reimbursement") return "Reimbursement";
+  if (t === "receipt_upload") return "Receipt";
+  return "Company";
+}
+
+function primaryCategory(e: Expense): string {
+  const c = e.lines[0]?.category;
+  return c && c.trim() !== "" ? c : "—";
+}
+
+function primaryProjectId(e: Expense): string {
+  const fromLine = e.lines[0]?.projectId;
+  const h = e.headerProjectId;
+  const id = (fromLine != null && String(fromLine).trim() !== "" ? fromLine : h) ?? "";
+  return id ? String(id) : "";
+}
+
+function expenseHasReceipt(e: Expense): boolean {
+  return getReceiptItems(e).length > 0;
+}
+
+const INLINE_EDIT_FIELDS = ["vendor", "amount", "date", "project", "category", "source"] as const;
+type InlineEditField = (typeof INLINE_EDIT_FIELDS)[number];
+
+function isUnreviewedStatus(s: string | undefined): boolean {
+  const v = (s ?? "pending").toLowerCase();
+  return v === "pending" || v === "needs_review";
+}
+
+function statusDisplayLabel(s: string | undefined): string {
+  const v = (s ?? "pending").toLowerCase();
+  if (v === "needs_review") return "Needs review";
+  if (v === "pending") return "Pending";
+  if (v === "reviewed") return "Reviewed";
+  if (v === "reimbursable") return "Reimbursable";
+  if (v === "paid") return "Paid";
+  if (v === "approved" || v === "reimbursed") return "Closed";
   return v;
 }
 
@@ -147,7 +254,7 @@ function extractExpenseTags(expense: Expense): string[] {
 
 export default function ExpensesPage() {
   return (
-    <React.Suspense fallback={<div className="page-container py-6" />}>
+    <React.Suspense fallback={<div className="expenses-ui min-h-[50vh] w-full bg-[#FAFAF9]" />}>
       <ExpensesPageInner />
     </React.Suspense>
   );
@@ -175,8 +282,34 @@ function ExpensesPageInner() {
   const [categoryFilter, setCategoryFilter] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState("");
   const [dateRangeFilter, setDateRangeFilter] = React.useState<"all" | "week" | "month">("all");
+  const [sourceTypeFilter, setSourceTypeFilter] = React.useState("");
   const [editingVendorId, setEditingVendorId] = React.useState<string | null>(null);
   const [vendorDraft, setVendorDraft] = React.useState("");
+  const [editingAmountId, setEditingAmountId] = React.useState<string | null>(null);
+  const [amountDraft, setAmountDraft] = React.useState("");
+  const [editingDateId, setEditingDateId] = React.useState<string | null>(null);
+  const [dateDraft, setDateDraft] = React.useState("");
+  const [activeExpenseId, setActiveExpenseId] = React.useState<string | null>(null);
+  const [editingProjectId, setEditingProjectId] = React.useState<string | null>(null);
+  const [projectDraft, setProjectDraft] = React.useState("");
+  const [editingCategoryId, setEditingCategoryId] = React.useState<string | null>(null);
+  const [categoryDraft, setCategoryDraft] = React.useState("");
+  const [editingSourceId, setEditingSourceId] = React.useState<string | null>(null);
+  const [sourceTypeDraft, setSourceTypeDraft] =
+    React.useState<NonNullable<Expense["sourceType"]>>("company");
+  const rowElsRef = React.useRef<Record<string, HTMLLIElement | null>>({});
+  const listView: "all" | "unreviewed" =
+    searchParams.get("view") === "unreviewed" ? "unreviewed" : "all";
+  const setListView = React.useCallback(
+    (next: "all" | "unreviewed") => {
+      const sp = new URLSearchParams(searchParams.toString());
+      if (next === "unreviewed") sp.set("view", "unreviewed");
+      else sp.delete("view");
+      sp.set("page", "1");
+      router.push(`/financial/expenses?${sp.toString()}`, { scroll: false });
+    },
+    [router, searchParams]
+  );
   const appliedProjectIdFromUrl = React.useRef(false);
   React.useEffect(() => {
     if (appliedProjectIdFromUrl.current) return;
@@ -192,6 +325,7 @@ function ExpensesPageInner() {
     expenseId?: string;
   } | null>(null);
   const [quickExpenseOpen, setQuickExpenseOpen] = React.useState(false);
+  const [uploadReceiptsOpen, setUploadReceiptsOpen] = React.useState(false);
   const receiptReplaceRef = React.useRef<HTMLInputElement>(null);
   const [receiptReplacing, setReceiptReplacing] = React.useState(false);
   const [editExpense, setEditExpense] = React.useState<Expense | null>(null);
@@ -259,22 +393,45 @@ function ExpensesPageInner() {
       .filter((e) => (e.date ?? "").startsWith(ym))
       .reduce((s, e) => s + getExpenseTotal(e), 0);
     const allTotal = expenses.reduce((s, e) => s + getExpenseTotal(e), 0);
-    const needsReview = expenses.filter((e) => (e.status ?? "pending") === "needs_review").length;
-    return { monthTotal, allTotal, needsReview };
+    const unreviewed = expenses.filter((e) => isUnreviewedStatus(e.status)).length;
+    const reimbursementCount = expenses.filter((e) => e.sourceType === "reimbursement").length;
+    const catTotals = new Map<string, number>();
+    for (const e of expenses) {
+      for (const l of e.lines) {
+        const c = (l.category ?? "Other").trim() || "Other";
+        catTotals.set(c, (catTotals.get(c) ?? 0) + l.amount);
+      }
+    }
+    let topCategory = "—";
+    let topCatAmount = 0;
+    for (const [c, a] of catTotals) {
+      if (a > topCatAmount) {
+        topCatAmount = a;
+        topCategory = c;
+      }
+    }
+    return { monthTotal, allTotal, unreviewed, reimbursementCount, topCategory };
   }, [expenses]);
 
   const filtered = React.useMemo(() => {
     let list = expenses;
     if (search.trim()) {
       const q = search.toLowerCase();
-      list = list.filter(
-        (e) =>
-          normalizedVendorLabel(e.vendorName).toLowerCase().includes(q) ||
-          e.referenceNo?.toLowerCase().includes(q) ||
-          e.lines.some((l) => (l.memo ?? "").toLowerCase().includes(q)) ||
-          extractExpenseTags(e).some((t) => t.toLowerCase().includes(q)) ||
-          getExpenseTotal(e).toFixed(2).includes(q.replace(/[$,]/g, ""))
-      );
+      list = list.filter((e) => {
+        const vendorQ = normalizedVendorLabel(e.vendorName).toLowerCase().includes(q);
+        const refQ = e.referenceNo?.toLowerCase().includes(q);
+        const memoQ = e.lines.some((l) => (l.memo ?? "").toLowerCase().includes(q));
+        const tagQ = extractExpenseTags(e).some((t) => t.toLowerCase().includes(q));
+        const amtQ = getExpenseTotal(e).toFixed(2).includes(q.replace(/[$,]/g, ""));
+        const notesQ = (e.notes ?? "").toLowerCase().includes(q);
+        const pid = e.headerProjectId ?? e.lines[0]?.projectId ?? "";
+        const projQ = pid ? (projectNameById.get(pid) ?? "").toLowerCase().includes(q) : false;
+        const workerQ = e.workerId
+          ? (workerNameById.get(e.workerId) ?? "").toLowerCase().includes(q)
+          : false;
+        const catQ = e.lines.some((l) => (l.category ?? "").toLowerCase().includes(q));
+        return vendorQ || refQ || memoQ || tagQ || amtQ || notesQ || projQ || workerQ || catQ;
+      });
     }
     if (projectFilter)
       list = list.filter(
@@ -284,7 +441,14 @@ function ExpensesPageInner() {
       );
     if (categoryFilter)
       list = list.filter((e) => e.lines.some((l) => l.category === categoryFilter));
-    if (statusFilter) list = list.filter((e) => (e.status ?? "pending") === statusFilter);
+    if (statusFilter && listView !== "unreviewed") {
+      list = list.filter((e) => (e.status ?? "pending") === statusFilter);
+    }
+    if (listView === "unreviewed") {
+      list = list.filter((e) => isUnreviewedStatus(e.status));
+    }
+    if (sourceTypeFilter)
+      list = list.filter((e) => (e.sourceType ?? "company") === sourceTypeFilter);
     if (dateRangeFilter !== "all") {
       const now = new Date();
       const start = new Date(now);
@@ -295,8 +459,32 @@ function ExpensesPageInner() {
         return Number.isFinite(d.getTime()) && d >= start && d <= now;
       });
     }
+    if (listView === "unreviewed") {
+      list = [...list].sort((a, b) => {
+        const ha = expenseHasReceipt(a) ? 1 : 0;
+        const hb = expenseHasReceipt(b) ? 1 : 0;
+        if (ha !== hb) return hb - ha;
+        const ta = getExpenseTotal(a);
+        const tb = getExpenseTotal(b);
+        if (ta !== tb) return tb - ta;
+        const da = (a.date ?? "").slice(0, 10);
+        const db = (b.date ?? "").slice(0, 10);
+        return db.localeCompare(da);
+      });
+    }
     return list;
-  }, [expenses, search, projectFilter, categoryFilter, statusFilter, dateRangeFilter]);
+  }, [
+    expenses,
+    search,
+    projectFilter,
+    categoryFilter,
+    statusFilter,
+    dateRangeFilter,
+    sourceTypeFilter,
+    projectNameById,
+    workerNameById,
+    listView,
+  ]);
 
   const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
   const pageSize = 20;
@@ -307,6 +495,39 @@ function ExpensesPageInner() {
     const start = (curPage - 1) * pageSize;
     return filtered.slice(start, start + pageSize);
   }, [curPage, filtered]);
+
+  const pageRowsRef = React.useRef(pageRows);
+  pageRowsRef.current = pageRows;
+
+  const pageRowIdsKey = React.useMemo(() => pageRows.map((r) => r.id).join("|"), [pageRows]);
+
+  const clearInlineEdits = React.useCallback(() => {
+    setEditingVendorId(null);
+    setEditingAmountId(null);
+    setEditingDateId(null);
+    setEditingProjectId(null);
+    setEditingCategoryId(null);
+    setEditingSourceId(null);
+  }, []);
+
+  React.useEffect(() => {
+    if (listView !== "unreviewed") {
+      setActiveExpenseId(null);
+      clearInlineEdits();
+      return;
+    }
+    setActiveExpenseId((cur) => {
+      const ids = pageRowIdsKey ? pageRowIdsKey.split("|").filter(Boolean) : [];
+      if (cur && ids.includes(cur)) return cur;
+      return ids[0] ?? null;
+    });
+  }, [listView, pageRowIdsKey, clearInlineEdits]);
+
+  React.useEffect(() => {
+    if (!activeExpenseId || listView !== "unreviewed") return;
+    const el = rowElsRef.current[activeExpenseId];
+    el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [activeExpenseId, listView, pageRowIdsKey]);
 
   const setPage = (nextPage: number) => {
     const sp = new URLSearchParams(searchParams);
@@ -328,6 +549,70 @@ function ExpensesPageInner() {
     [supabase]
   );
 
+  const receiptPreviewRef = React.useRef(receiptPreview);
+  receiptPreviewRef.current = receiptPreview;
+  const {
+    openPreview,
+    closePreview,
+    patchPreview,
+    isOpen: attachmentPreviewOpen,
+  } = useAttachmentPreview();
+
+  React.useEffect(() => {
+    if (!receiptPreview) {
+      closePreview();
+      return;
+    }
+    openPreview({
+      files: receiptPreview.items.map((it) => ({
+        url: it.url ?? "",
+        fileName: it.fileName ?? "Receipt",
+        fileType: (receiptItemLooksPdf(it) ? "pdf" : "image") as "pdf" | "image",
+      })),
+      initialIndex: receiptPreview.index,
+      onIndexChange: (i: number) => setReceiptPreview((p) => (p ? { ...p, index: i } : p)),
+      showReplace: Boolean(receiptPreview.expenseId && supabase),
+      replaceInputRef: receiptReplaceRef,
+      replaceBusy: receiptReplacing,
+      onReplaceClick: () => receiptReplaceRef.current?.click(),
+      onReplaceInputChange: async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        const rp = receiptPreviewRef.current;
+        if (!file || !rp?.expenseId || !supabase) return;
+        setReceiptReplacing(true);
+        try {
+          const path = `receipts/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+          const { error } = await supabase.storage.from("receipts").upload(path, file, {
+            contentType: file.type || "application/octet-stream",
+            upsert: true,
+          });
+          if (error) throw error;
+          const { data } = supabase.storage.from("receipts").getPublicUrl(path);
+          await updateExpenseReceiptUrl(rp.expenseId, data.publicUrl);
+          setReceiptPreview((p) =>
+            p
+              ? {
+                  ...p,
+                  items: p.items.map((it, idx) =>
+                    idx === p.index ? { ...it, url: data.publicUrl } : it
+                  ),
+                }
+              : null
+          );
+          void refresh();
+        } finally {
+          setReceiptReplacing(false);
+          e.target.value = "";
+        }
+      },
+      onClosed: () => setReceiptPreview(null),
+    });
+  }, [receiptPreview, supabase, closePreview, openPreview, refresh]);
+
+  React.useEffect(() => {
+    patchPreview({ replaceBusy: receiptReplacing });
+  }, [receiptReplacing, patchPreview]);
+
   const handleExpenseSave = React.useCallback(
     (patch: ExpenseReviewSavePatch) => {
       const prevList = expensesRef.current;
@@ -342,6 +627,7 @@ function ExpensesPageInner() {
       void (async () => {
         try {
           const next = await updateExpenseForReview(patch.expenseId, {
+            date: patch.date,
             vendorName: patch.vendorName,
             amount: patch.amount,
             projectId: patch.projectId,
@@ -349,6 +635,8 @@ function ExpensesPageInner() {
             category: patch.category,
             notes: patch.notes,
             status: patch.status,
+            sourceType: patch.sourceType,
+            paymentAccountId: patch.paymentAccountId,
           });
           if (!next) {
             flushSync(() => setExpenses(prevList));
@@ -362,6 +650,11 @@ function ExpensesPageInner() {
           flushSync(() =>
             setExpenses((prev) => prev.map((e) => (e.id === patch.expenseId ? next : e)))
           );
+          const pa = next.paymentAccountId?.trim();
+          if (pa && (next.vendorName ?? "").trim()) {
+            rememberExpenseVendorPaymentAccount(next.vendorName!.trim(), pa);
+            persistLastExpensePaymentAccountId(pa);
+          }
           toast({ title: "Expense updated", variant: "success" });
         } catch (e) {
           flushSync(() => setExpenses(prevList));
@@ -396,7 +689,7 @@ function ExpensesPageInner() {
     router.push("/financial/expenses/new");
   };
 
-  const handleDelete = async (expense: Expense) => {
+  const handleDelete = React.useCallback(async (expense: Expense) => {
     if (typeof window === "undefined" || !window.confirm("Delete this expense?")) return;
     const prev = expensesRef.current;
     setDeletingExpenseId(expense.id);
@@ -411,16 +704,15 @@ function ExpensesPageInner() {
     } finally {
       setDeletingExpenseId(null);
     }
-  };
+  }, []);
 
   const handleVendorInlineSave = async (expenseId: string) => {
-    const nextVendor = vendorDraft.trim();
-    if (!nextVendor) return;
+    const nextVendor = vendorDraft.trim() || "Unknown";
     const prev = expensesRef.current;
     setExpenses((list) =>
       list.map((e) => (e.id === expenseId ? { ...e, vendorName: nextVendor } : e))
     );
-    setEditingVendorId(null);
+    clearInlineEdits();
     try {
       const next = await updateExpenseForReview(expenseId, { vendorName: nextVendor });
       if (!next) throw new Error("Failed");
@@ -431,9 +723,479 @@ function ExpensesPageInner() {
     }
   };
 
+  const handleAmountInlineSave = async (expenseId: string) => {
+    const num = parseFloat(amountDraft.replace(/,/g, ""));
+    if (Number.isNaN(num) || num < 0) {
+      toast({ title: "Invalid amount", variant: "error" });
+      return;
+    }
+    const prev = expensesRef.current;
+    setExpenses((list) =>
+      list.map((e) => {
+        if (e.id !== expenseId) return e;
+        if (e.lines.length === 0) {
+          return {
+            ...e,
+            lines: [{ id: `tmp-${expenseId}`, projectId: null, category: "Other", amount: num }],
+          };
+        }
+        return {
+          ...e,
+          lines: e.lines.map((line, i) => (i === 0 ? { ...line, amount: num } : line)),
+        };
+      })
+    );
+    clearInlineEdits();
+    try {
+      const next = await updateExpenseForReview(expenseId, { amount: num });
+      if (!next) throw new Error("Failed");
+      setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
+    } catch {
+      setExpenses(prev);
+      toast({ title: "Amount update failed", variant: "error" });
+    }
+  };
+
+  const handleDateInlineSave = async (expenseId: string) => {
+    const d = dateDraft.trim().slice(0, 10);
+    if (!d) return;
+    const prev = expensesRef.current;
+    setExpenses((list) => list.map((e) => (e.id === expenseId ? { ...e, date: d } : e)));
+    clearInlineEdits();
+    try {
+      const next = await updateExpenseForReview(expenseId, { date: d });
+      if (!next) throw new Error("Failed");
+      setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
+    } catch {
+      setExpenses(prev);
+      toast({ title: "Date update failed", variant: "error" });
+    }
+  };
+
+  const handleProjectInlineSave = async (expenseId: string) => {
+    const raw = projectDraft.trim();
+    const pid = raw === "" ? null : raw;
+    const prev = expensesRef.current;
+    setExpenses((list) =>
+      list.map((e) => {
+        if (e.id !== expenseId) return e;
+        if (e.lines.length === 0) {
+          return {
+            ...e,
+            headerProjectId: pid,
+            lines: [{ id: `tmp-${expenseId}`, projectId: pid, category: "Other", amount: 0 }],
+          };
+        }
+        return {
+          ...e,
+          headerProjectId: pid,
+          lines: e.lines.map((line, i) => (i === 0 ? { ...line, projectId: pid } : line)),
+        };
+      })
+    );
+    clearInlineEdits();
+    try {
+      const next = await updateExpenseForReview(expenseId, { projectId: pid });
+      if (!next) throw new Error("Failed");
+      setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
+    } catch {
+      setExpenses(prev);
+      toast({ title: "Project update failed", variant: "error" });
+    }
+  };
+
+  const handleCategoryInlineSave = async (expenseId: string) => {
+    const cat = categoryDraft.trim() || "Other";
+    const prev = expensesRef.current;
+    setExpenses((list) =>
+      list.map((e) => {
+        if (e.id !== expenseId) return e;
+        if (e.lines.length === 0) {
+          return {
+            ...e,
+            lines: [{ id: `tmp-${expenseId}`, projectId: null, category: cat, amount: 0 }],
+          };
+        }
+        return {
+          ...e,
+          lines: e.lines.map((line, i) => (i === 0 ? { ...line, category: cat } : line)),
+        };
+      })
+    );
+    clearInlineEdits();
+    try {
+      const next = await updateExpenseForReview(expenseId, { category: cat });
+      if (!next) throw new Error("Failed");
+      setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
+    } catch {
+      setExpenses(prev);
+      toast({ title: "Category update failed", variant: "error" });
+    }
+  };
+
+  const handleSourceInlineSave = async (expenseId: string) => {
+    const prev = expensesRef.current;
+    setExpenses((list) =>
+      list.map((e) => (e.id === expenseId ? { ...e, sourceType: sourceTypeDraft } : e))
+    );
+    clearInlineEdits();
+    try {
+      const next = await updateExpenseForReview(expenseId, { sourceType: sourceTypeDraft });
+      if (!next) throw new Error("Failed");
+      setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
+    } catch {
+      setExpenses(prev);
+      toast({ title: "Source update failed", variant: "error" });
+    }
+  };
+
+  const persistInlineField = React.useCallback(
+    async (expenseId: string, field: InlineEditField): Promise<boolean> => {
+      switch (field) {
+        case "vendor": {
+          const nextVendor = vendorDraft.trim() || "Unknown";
+          const prev = expensesRef.current;
+          setExpenses((list) =>
+            list.map((e) => (e.id === expenseId ? { ...e, vendorName: nextVendor } : e))
+          );
+          try {
+            const next = await updateExpenseForReview(expenseId, { vendorName: nextVendor });
+            if (!next) throw new Error("Failed");
+            setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
+            return true;
+          } catch {
+            setExpenses(prev);
+            toast({ title: "Vendor update failed", variant: "error" });
+            return false;
+          }
+        }
+        case "amount": {
+          const num = parseFloat(amountDraft.replace(/,/g, ""));
+          if (Number.isNaN(num) || num < 0) {
+            toast({ title: "Invalid amount", variant: "error" });
+            return false;
+          }
+          const prev = expensesRef.current;
+          setExpenses((list) =>
+            list.map((e) => {
+              if (e.id !== expenseId) return e;
+              if (e.lines.length === 0) {
+                return {
+                  ...e,
+                  lines: [
+                    { id: `tmp-${expenseId}`, projectId: null, category: "Other", amount: num },
+                  ],
+                };
+              }
+              return {
+                ...e,
+                lines: e.lines.map((line, i) => (i === 0 ? { ...line, amount: num } : line)),
+              };
+            })
+          );
+          try {
+            const next = await updateExpenseForReview(expenseId, { amount: num });
+            if (!next) throw new Error("Failed");
+            setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
+            return true;
+          } catch {
+            setExpenses(prev);
+            toast({ title: "Amount update failed", variant: "error" });
+            return false;
+          }
+        }
+        case "date": {
+          const d = dateDraft.trim().slice(0, 10);
+          if (!d) return false;
+          const prev = expensesRef.current;
+          setExpenses((list) => list.map((e) => (e.id === expenseId ? { ...e, date: d } : e)));
+          try {
+            const next = await updateExpenseForReview(expenseId, { date: d });
+            if (!next) throw new Error("Failed");
+            setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
+            return true;
+          } catch {
+            setExpenses(prev);
+            toast({ title: "Date update failed", variant: "error" });
+            return false;
+          }
+        }
+        case "project": {
+          const raw = projectDraft.trim();
+          const pid = raw === "" ? null : raw;
+          const prev = expensesRef.current;
+          setExpenses((list) =>
+            list.map((e) => {
+              if (e.id !== expenseId) return e;
+              if (e.lines.length === 0) {
+                return {
+                  ...e,
+                  headerProjectId: pid,
+                  lines: [{ id: `tmp-${expenseId}`, projectId: pid, category: "Other", amount: 0 }],
+                };
+              }
+              return {
+                ...e,
+                headerProjectId: pid,
+                lines: e.lines.map((line, i) => (i === 0 ? { ...line, projectId: pid } : line)),
+              };
+            })
+          );
+          try {
+            const next = await updateExpenseForReview(expenseId, { projectId: pid });
+            if (!next) throw new Error("Failed");
+            setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
+            return true;
+          } catch {
+            setExpenses(prev);
+            toast({ title: "Project update failed", variant: "error" });
+            return false;
+          }
+        }
+        case "category": {
+          const cat = categoryDraft.trim() || "Other";
+          const prev = expensesRef.current;
+          setExpenses((list) =>
+            list.map((e) => {
+              if (e.id !== expenseId) return e;
+              if (e.lines.length === 0) {
+                return {
+                  ...e,
+                  lines: [{ id: `tmp-${expenseId}`, projectId: null, category: cat, amount: 0 }],
+                };
+              }
+              return {
+                ...e,
+                lines: e.lines.map((line, i) => (i === 0 ? { ...line, category: cat } : line)),
+              };
+            })
+          );
+          try {
+            const next = await updateExpenseForReview(expenseId, { category: cat });
+            if (!next) throw new Error("Failed");
+            setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
+            return true;
+          } catch {
+            setExpenses(prev);
+            toast({ title: "Category update failed", variant: "error" });
+            return false;
+          }
+        }
+        case "source": {
+          const prev = expensesRef.current;
+          setExpenses((list) =>
+            list.map((e) => (e.id === expenseId ? { ...e, sourceType: sourceTypeDraft } : e))
+          );
+          try {
+            const next = await updateExpenseForReview(expenseId, { sourceType: sourceTypeDraft });
+            if (!next) throw new Error("Failed");
+            setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
+            return true;
+          } catch {
+            setExpenses(prev);
+            toast({ title: "Source update failed", variant: "error" });
+            return false;
+          }
+        }
+        default:
+          return false;
+      }
+    },
+    [vendorDraft, amountDraft, dateDraft, projectDraft, categoryDraft, sourceTypeDraft, toast]
+  );
+
+  const openInlineField = React.useCallback(
+    (expenseId: string, field: InlineEditField) => {
+      const row = expensesRef.current.find((e) => e.id === expenseId);
+      if (!row) return;
+      clearInlineEdits();
+      switch (field) {
+        case "vendor":
+          setEditingVendorId(expenseId);
+          setVendorDraft((row.vendorName ?? "").trim());
+          break;
+        case "amount":
+          setEditingAmountId(expenseId);
+          setAmountDraft(
+            getExpenseTotal(row).toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })
+          );
+          break;
+        case "date":
+          setEditingDateId(expenseId);
+          setDateDraft((row.date ?? "").slice(0, 10));
+          break;
+        case "project":
+          setEditingProjectId(expenseId);
+          setProjectDraft(primaryProjectId(row));
+          break;
+        case "category": {
+          const c = primaryCategory(row);
+          setEditingCategoryId(expenseId);
+          setCategoryDraft(c === "—" ? "Other" : c);
+          break;
+        }
+        case "source":
+          setEditingSourceId(expenseId);
+          setSourceTypeDraft(row.sourceType ?? "company");
+          break;
+      }
+    },
+    [clearInlineEdits]
+  );
+
+  const advanceInlineField = React.useCallback(
+    (expenseId: string, field: InlineEditField, dir: 1 | -1) => {
+      const ix = INLINE_EDIT_FIELDS.indexOf(field);
+      const nextIx = (ix + dir + INLINE_EDIT_FIELDS.length) % INLINE_EDIT_FIELDS.length;
+      openInlineField(expenseId, INLINE_EDIT_FIELDS[nextIx]);
+    },
+    [openInlineField]
+  );
+
+  const markExpenseReviewed = React.useCallback(
+    async (expenseId: string): Promise<boolean> => {
+      const prev = expensesRef.current;
+      setExpenses((list) =>
+        list.map((e) => (e.id === expenseId ? { ...e, status: "reviewed" as const } : e))
+      );
+      try {
+        const saved = await updateExpenseForReview(expenseId, { status: "reviewed" });
+        if (!saved) throw new Error("Failed");
+        const persisted = (saved.status ?? "pending") === "reviewed";
+        if (persisted) {
+          setExpenses((list) => list.map((e) => (e.id === expenseId ? saved : e)));
+          return true;
+        }
+        setExpenses(prev);
+        toast({
+          title: "Could not mark reviewed",
+          description: "Status may not be supported in this environment.",
+          variant: "default",
+        });
+        return false;
+      } catch {
+        setExpenses(prev);
+        toast({ title: "Status update failed", variant: "error" });
+        return false;
+      }
+    },
+    [toast]
+  );
+
+  const handleInlineEnter = React.useCallback(
+    async (row: Expense, field: InlineEditField, opts: { markReviewed: boolean }) => {
+      const ok = await persistInlineField(row.id, field);
+      if (!ok) return;
+      if (!opts.markReviewed) {
+        clearInlineEdits();
+        return;
+      }
+      clearInlineEdits();
+      const rows = pageRowsRef.current;
+      const idx = rows.findIndex((r) => r.id === row.id);
+      const nextRow = rows[idx + 1];
+      if (isUnreviewedStatus(row.status)) {
+        const stOk = await markExpenseReviewed(row.id);
+        if (!stOk) return;
+      }
+      if (listView === "unreviewed") {
+        if (nextRow) {
+          setActiveExpenseId(nextRow.id);
+          openInlineField(nextRow.id, "vendor");
+        } else {
+          setActiveExpenseId(null);
+        }
+      }
+    },
+    [persistInlineField, clearInlineEdits, markExpenseReviewed, listView, openInlineField]
+  );
+
+  const inlineEditing =
+    Boolean(editingVendorId) ||
+    Boolean(editingAmountId) ||
+    Boolean(editingDateId) ||
+    Boolean(editingProjectId) ||
+    Boolean(editingCategoryId) ||
+    Boolean(editingSourceId);
+
+  const kbRef = React.useRef({
+    listView,
+    attachmentPreviewOpen,
+    editModalOpen,
+    quickExpenseOpen,
+    uploadReceiptsOpen,
+    pageRows,
+    activeExpenseId,
+    inlineEditing,
+  });
+  kbRef.current = {
+    listView,
+    attachmentPreviewOpen,
+    editModalOpen,
+    quickExpenseOpen,
+    uploadReceiptsOpen,
+    pageRows,
+    activeExpenseId,
+    inlineEditing,
+  };
+
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const k = kbRef.current;
+      if (k.listView !== "unreviewed") return;
+      if (
+        k.attachmentPreviewOpen ||
+        k.editModalOpen ||
+        k.quickExpenseOpen ||
+        k.uploadReceiptsOpen
+      ) {
+        return;
+      }
+      const t = e.target as HTMLElement | null;
+      const inEditable = !!t?.closest("input, textarea, select");
+
+      if (e.key === "Escape" && k.inlineEditing) {
+        e.preventDefault();
+        clearInlineEdits();
+        return;
+      }
+
+      if ((e.key === "d" || e.key === "D") && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        if (inEditable) return;
+        e.preventDefault();
+        const row = k.pageRows.find((r) => r.id === k.activeExpenseId);
+        if (row && typeof window !== "undefined" && window.confirm("Delete this expense?")) {
+          void handleDelete(row);
+        }
+        return;
+      }
+
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        if (inEditable) clearInlineEdits();
+        const idx = k.pageRows.findIndex((r) => r.id === k.activeExpenseId);
+        if (e.key === "ArrowDown") {
+          const n =
+            idx < 0 ? Math.min(0, k.pageRows.length - 1) : Math.min(idx + 1, k.pageRows.length - 1);
+          const r = k.pageRows[n];
+          if (r) setActiveExpenseId(r.id);
+        } else {
+          const n = idx < 0 ? 0 : Math.max(idx - 1, 0);
+          const r = k.pageRows[n];
+          if (r) setActiveExpenseId(r.id);
+        }
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [clearInlineEdits, handleDelete]);
+
   const toggleStatus = async (expense: Expense) => {
     const current = expense.status ?? "pending";
-    const next = current === "needs_review" ? "approved" : "needs_review";
+    const next = isUnreviewedStatus(current) ? "reviewed" : "needs_review";
     const prev = expensesRef.current;
     setExpenses((list) => list.map((e) => (e.id === expense.id ? { ...e, status: next } : e)));
     try {
@@ -456,71 +1218,162 @@ function ExpensesPageInner() {
     }
   };
 
+  const onInlineKeyDown = React.useCallback(
+    (row: Expense, field: InlineEditField) => (e: React.KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        clearInlineEdits();
+        return;
+      }
+      if (e.key === "Tab") {
+        e.preventDefault();
+        void (async () => {
+          const ok = await persistInlineField(row.id, field);
+          if (ok) advanceInlineField(row.id, field, e.shiftKey ? -1 : 1);
+        })();
+        return;
+      }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        void handleInlineEnter(row, field, {
+          markReviewed: listView === "unreviewed" && !e.shiftKey,
+        });
+      }
+    },
+    [clearInlineEdits, persistInlineField, advanceInlineField, handleInlineEnter, listView]
+  );
+
+  const hasNarrowingFilters =
+    Boolean(search.trim()) ||
+    Boolean(projectFilter) ||
+    Boolean(categoryFilter) ||
+    Boolean(listView === "all" && statusFilter) ||
+    Boolean(sourceTypeFilter) ||
+    dateRangeFilter !== "all";
+
+  const showEmptyOnboardingCtas =
+    listView === "all" && !hasNarrowingFilters && expenses.length === 0;
+
   return (
-    <div className="page-container page-stack px-8 py-8">
-      <PageHeader
-        title="Expenses"
-        description="Track and manage company expenses"
-        actions={
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="touch"
-              className="min-h-[44px]"
-              onClick={() => setQuickExpenseOpen(true)}
-            >
-              Quick Expense
-            </Button>
-            <Button onClick={handleNew} size="touch" className="min-h-[44px]">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Expense
-            </Button>
-          </div>
-        }
-      />
-
-      <section className="border border-border/60">
-        <div className="grid sm:grid-cols-3">
-          <div className="px-5 py-5">
-            <div className="text-xs uppercase tracking-wider text-muted-foreground">This Month</div>
-            <div className="mt-1 text-2xl font-semibold tabular-nums text-foreground">
-              ${summary.monthTotal.toLocaleString()}
+    <div className="expenses-ui w-full">
+      <div className="expenses-ui-content mx-auto flex max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6">
+        <PageHeader
+          className="[&_h1]:text-[#111827] [&_p]:text-[#6B7280]"
+          title="Expenses"
+          description="Spend, receipts, reimbursements"
+          actions={
+            <div className="flex flex-wrap items-center justify-end gap-1.5">
+              <Button
+                variant="outline"
+                size="sm"
+                className="exp-btn-secondary h-8 rounded-sm"
+                onClick={() => setUploadReceiptsOpen(true)}
+              >
+                <Upload className="mr-1 h-3.5 w-3.5" />
+                Upload
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="exp-btn-secondary h-8 rounded-sm"
+                aria-label="Quick expense"
+                onClick={() => setQuickExpenseOpen(true)}
+              >
+                Quick
+              </Button>
+              <Button onClick={handleNew} size="sm" className="exp-btn-primary h-8 rounded-sm">
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                New
+              </Button>
             </div>
-          </div>
-          <div className="px-5 py-5 sm:border-l sm:border-border/60">
-            <div className="text-xs uppercase tracking-wider text-muted-foreground">
-              Total Expenses
-            </div>
-            <div className="mt-1 text-2xl font-semibold tabular-nums text-foreground">
-              ${summary.allTotal.toLocaleString()}
-            </div>
-          </div>
-          <div className="px-5 py-5 sm:border-l sm:border-border/60">
-            <div className="text-xs uppercase tracking-wider text-muted-foreground">
-              Needs Review
-            </div>
-            <div className="mt-1 text-2xl font-semibold tabular-nums text-foreground">
-              {summary.needsReview.toLocaleString()}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="space-y-4">
-        <Input
-          placeholder="Search expenses..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="h-10"
+          }
         />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="space-y-1">
+
+        <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 border-b border-[#E5E7EB] pb-3 text-xs text-[#6B7280]">
+          <span>
+            Month{" "}
+            <span className="ml-1 font-medium tabular-nums text-[#111827]">
+              ${summary.monthTotal.toLocaleString()}
+            </span>
+          </span>
+          <span>
+            Total{" "}
+            <span className="ml-1 font-medium tabular-nums text-[#111827]">
+              ${summary.allTotal.toLocaleString()}
+            </span>
+          </span>
+          <span>
+            Unreviewed{" "}
+            <span className="ml-1 font-medium tabular-nums text-[#111827]">
+              {summary.unreviewed}
+            </span>
+          </span>
+          <span>
+            Reimb.{" "}
+            <span className="ml-1 font-medium tabular-nums text-[#111827]">
+              {summary.reimbursementCount}
+            </span>
+          </span>
+          <span className="min-w-0">
+            Top cat.{" "}
+            <span className="ml-1 font-medium text-[#111827]" title={summary.topCategory}>
+              {summary.topCategory}
+            </span>
+          </span>
+        </div>
+
+        <div className="flex w-full flex-col gap-1 border-b border-[#E5E7EB] pb-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant={listView === "all" ? "default" : "outline"}
+              size="sm"
+              className={
+                listView === "all"
+                  ? "exp-btn-primary h-8 rounded-sm"
+                  : "exp-btn-secondary h-8 rounded-sm"
+              }
+              onClick={() => setListView("all")}
+            >
+              All
+            </Button>
+            <Button
+              type="button"
+              variant={listView === "unreviewed" ? "default" : "outline"}
+              size="sm"
+              className={
+                listView === "unreviewed"
+                  ? "exp-btn-primary h-8 rounded-sm"
+                  : "exp-btn-secondary h-8 rounded-sm"
+              }
+              onClick={() => setListView("unreviewed")}
+            >
+              Unreviewed ({summary.unreviewed})
+            </Button>
+          </div>
+          {listView === "unreviewed" ? (
+            <p className="text-[11px] text-[#6B7280]">
+              Enter: save, mark reviewed, next row · Shift+Enter: save only · Tab: next field · ↑↓:
+              row · D: delete · Esc: cancel
+            </p>
+          ) : null}
+        </div>
+
+        <div className="space-y-2 pt-0">
+          <Input
+            placeholder="Search…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-8 rounded-sm border-[#E5E7EB] bg-white text-sm text-[#111827] placeholder:text-[#9CA3AF]"
+          />
+          <div className="flex flex-wrap gap-2">
             <select
-              className="flex min-h-[44px] h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm md:min-h-0"
+              className="h-8 min-w-[8rem] rounded-sm border border-[#E5E7EB] bg-white px-2 text-xs text-[#111827]"
               value={projectFilter}
               onChange={(e) => setProjectFilter(e.target.value)}
             >
-              <option value="">All projects</option>
+              <option value="">Project</option>
               {safeProjects.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name ?? p.id}
@@ -528,423 +1381,516 @@ function ExpensesPageInner() {
               ))}
             </select>
             {projectsError ? (
-              <p className="text-xs text-amber-600 dark:text-amber-400">{projectsError}</p>
+              <span className="self-center text-[11px] text-amber-600 dark:text-amber-400">
+                {projectsError}
+              </span>
             ) : null}
+            <select
+              className="h-8 min-w-[7rem] rounded-sm border border-[#E5E7EB] bg-white px-2 text-xs text-[#111827]"
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+            >
+              <option value="">Category</option>
+              {categoriesList.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+            <select
+              className="h-8 min-w-[6.5rem] rounded-sm border border-[#E5E7EB] bg-white px-2 text-xs text-[#111827] disabled:cursor-not-allowed disabled:opacity-50"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              disabled={listView === "unreviewed"}
+              title={
+                listView === "unreviewed" ? "Status filter applies in All view only" : undefined
+              }
+            >
+              <option value="">Status</option>
+              <option value="pending">Pending</option>
+              <option value="needs_review">Needs review</option>
+              <option value="reviewed">Reviewed</option>
+              <option value="reimbursable">Reimbursable</option>
+              <option value="approved">Approved</option>
+              <option value="paid">Paid</option>
+              <option value="reimbursed">Reimbursed</option>
+            </select>
+            <select
+              className="h-8 min-w-[6.5rem] rounded-sm border border-[#E5E7EB] bg-white px-2 text-xs text-[#111827]"
+              value={sourceTypeFilter}
+              onChange={(e) => setSourceTypeFilter(e.target.value)}
+            >
+              <option value="">Source</option>
+              <option value="company">Company</option>
+              <option value="receipt_upload">Receipt</option>
+              <option value="reimbursement">Reimbursement</option>
+            </select>
+            <select
+              className="h-8 min-w-[6rem] rounded-sm border border-[#E5E7EB] bg-white px-2 text-xs text-[#111827]"
+              value={dateRangeFilter}
+              onChange={(e) =>
+                setDateRangeFilter((e.target.value as "all" | "week" | "month") ?? "all")
+              }
+            >
+              <option value="all">All dates</option>
+              <option value="week">7 days</option>
+              <option value="month">Month</option>
+            </select>
           </div>
-          <select
-            className="flex min-h-[44px] h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm md:min-h-0"
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-          >
-            <option value="">All categories</option>
-            {categoriesList.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-          <select
-            className="flex min-h-[44px] h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm md:min-h-0"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="">All status</option>
-            <option value="needs_review">Needs Review</option>
-            <option value="approved">Completed / Verified</option>
-            <option value="reimbursed">Completed / Verified</option>
-            <option value="paid">Completed / Verified</option>
-          </select>
-          <select
-            className="flex min-h-[44px] h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm md:min-h-0"
-            value={dateRangeFilter}
-            onChange={(e) =>
-              setDateRangeFilter((e.target.value as "all" | "week" | "month") ?? "all")
-            }
-          >
-            <option value="all">All dates</option>
-            <option value="week">This week</option>
-            <option value="month">This month</option>
-          </select>
         </div>
-      </section>
 
-      <section>
-        {total === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="mb-3 flex h-10 w-10 items-center justify-center text-muted-foreground">
-              <Plus className="h-5 w-5" />
+        <section className="mt-4">
+          {total === 0 ? (
+            <div className="border-b border-[#E5E7EB] py-12 text-center">
+              <p className="text-sm font-medium text-[#111827]">
+                {listView === "unreviewed"
+                  ? hasNarrowingFilters
+                    ? "No unreviewed matches"
+                    : expenses.length === 0
+                      ? "No expenses yet"
+                      : "You're all caught up"
+                  : hasNarrowingFilters
+                    ? "No matches"
+                    : "No expenses yet"}
+              </p>
+              <p className="mt-1 text-xs text-[#6B7280]">
+                {listView === "unreviewed"
+                  ? hasNarrowingFilters
+                    ? "Try clearing filters or switch to All."
+                    : expenses.length === 0
+                      ? "Add an expense to get started."
+                      : "No pending or needs-review items right now."
+                  : hasNarrowingFilters
+                    ? "Adjust filters or search."
+                    : "Add an expense to get started."}
+              </p>
+              {showEmptyOnboardingCtas ? (
+                <div className="mt-4 flex flex-wrap justify-center gap-2">
+                  <Button
+                    size="sm"
+                    className="exp-btn-primary h-8 rounded-sm"
+                    onClick={() => setQuickExpenseOpen(true)}
+                  >
+                    Quick expense
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="exp-btn-secondary h-8 rounded-sm"
+                    onClick={() => setUploadReceiptsOpen(true)}
+                  >
+                    <Upload className="mr-1.5 h-3.5 w-3.5" />
+                    Upload
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="exp-btn-secondary h-8 rounded-sm"
+                    onClick={handleNew}
+                  >
+                    New expense
+                  </Button>
+                </div>
+              ) : listView === "unreviewed" && !hasNarrowingFilters && expenses.length > 0 ? (
+                <div className="mt-4">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="exp-btn-secondary h-8 rounded-sm"
+                    onClick={() => setListView("all")}
+                  >
+                    View all expenses
+                  </Button>
+                </div>
+              ) : null}
             </div>
-            <p className="text-sm font-medium text-foreground">
-              {search.trim() ||
-              projectFilter ||
-              categoryFilter ||
-              statusFilter ||
-              dateRangeFilter !== "all"
-                ? "No expenses match filters"
-                : "No expenses yet"}
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {search.trim() ||
-              projectFilter ||
-              categoryFilter ||
-              statusFilter ||
-              dateRangeFilter !== "all"
-                ? "Try adjusting the filters."
-                : "Create your first expense to start tracking project costs."}
-            </p>
-            {search.trim() ||
-            projectFilter ||
-            categoryFilter ||
-            statusFilter ||
-            dateRangeFilter !== "all" ? null : (
-              <div className="mt-5 flex items-center gap-2">
-                <Button size="sm" className="h-8" onClick={handleNew}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Expense
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-8"
-                  onClick={() => setQuickExpenseOpen(true)}
-                >
-                  Quick Upload
-                </Button>
-              </div>
-            )}
-          </div>
-        ) : (
-          <>
-            {/* Mobile: card layout */}
-            <div className="flex flex-col gap-3 md:hidden">
+          ) : (
+            <ul className="exp-divide">
               {pageRows.map((row) => {
                 const rowTotal = getExpenseTotal(row);
-                const workerName = row.workerId ? (workerNameById.get(row.workerId) ?? "—") : "—";
                 const projLabel = projectLabel(row, projectNameById);
                 const status = row.status ?? "pending";
+                const statusStyle = expenseStatusDotTextClass(status);
+                const catLabel = primaryCategory(row);
                 return (
-                  <button
+                  <li
                     key={row.id}
-                    type="button"
-                    onClick={() => {
-                      setEditExpense(row);
-                      setEditModalOpen(true);
+                    ref={(el) => {
+                      rowElsRef.current[row.id] = el;
                     }}
-                    className="flex min-h-[44px] w-full touch-manipulation flex-col items-stretch gap-1 rounded-sm border border-border/60 bg-background p-4 text-left transition-colors active:bg-muted/30"
+                    className={`group exp-row relative py-3.5 pl-0 pr-16 transition-colors ${
+                      listView === "unreviewed" && activeExpenseId === row.id
+                        ? "bg-[#F9FAFB] ring-1 ring-inset ring-[#E5E7EB]"
+                        : ""
+                    }`}
+                    onClick={() => {
+                      if (listView === "unreviewed") setActiveExpenseId(row.id);
+                    }}
                   >
-                    <span className="font-medium text-foreground truncate">
-                      {normalizedVendorLabel(row.vendorName)}
-                    </span>
-                    <span className="text-sm text-muted-foreground truncate">
-                      {row.date} · {workerName}
-                    </span>
-                    <span className="text-xs text-muted-foreground truncate">
-                      {extractExpenseTags(row).join(" · ") || (row.notes ?? "—")}
-                    </span>
-                    <span className="text-sm text-muted-foreground truncate">{projLabel}</span>
-                    <div className="mt-1 flex items-center justify-between gap-2">
-                      <span className="text-xs text-red-600 font-medium tabular-nums dark:text-red-400">
-                        −$
-                        {rowTotal.toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
-                      </span>
-                      <button
-                        className={`text-[11px] rounded-sm border px-1.5 py-0.5 ${
-                          status === "needs_review"
-                            ? "border-red-500/40 text-red-600 dark:text-red-400"
-                            : "border-[#166534]/40 text-hh-profit-positive dark:text-hh-profit-positive"
-                        }`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void toggleStatus(row);
-                        }}
-                      >
-                        {status === "needs_review" ? "Needs Review" : "Completed"}
-                      </button>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="hidden overflow-x-auto border-b border-border/60 md:block">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-b border-border/60 hover:bg-transparent">
-                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
-                      Date
-                    </TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
-                      Worker
-                    </TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
-                      Vendor
-                    </TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
-                      Items / Description
-                    </TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
-                      Project
-                    </TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">
-                      Amount
-                    </TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
-                      Status
-                    </TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
-                      Receipt
-                    </TableHead>
-                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right">
-                      Actions
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {pageRows.map((row) => {
-                    const rowTotal = getExpenseTotal(row);
-                    const workerName = row.workerId
-                      ? (workerNameById.get(row.workerId) ?? "—")
-                      : "—";
-                    const projLabel = projectLabel(row, projectNameById);
-                    const status = row.status ?? "pending";
-                    return (
-                      <TableRow
-                        key={row.id}
-                        className="border-b border-border/30 cursor-pointer hover:bg-muted/30"
-                        onClick={() => {
-                          setEditExpense(row);
-                          setEditModalOpen(true);
-                        }}
-                      >
-                        <TableCell className="tabular-nums text-foreground">{row.date}</TableCell>
-                        <TableCell className="text-muted-foreground">{workerName}</TableCell>
-                        <TableCell className="text-foreground">
+                    <div className="min-w-0">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
                           {editingVendorId === row.id ? (
-                            <div className="flex items-center gap-1">
+                            <div
+                              className="flex max-w-md items-center gap-1"
+                              data-inline-field
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <Input
-                                className="h-8"
+                                className="h-7 rounded-sm border-[#E5E7EB] text-sm text-[#111827]"
                                 value={vendorDraft}
                                 autoFocus
                                 onChange={(e) => setVendorDraft(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") void handleVendorInlineSave(row.id);
-                                  if (e.key === "Escape") setEditingVendorId(null);
-                                }}
+                                onKeyDown={onInlineKeyDown(row, "vendor")}
                               />
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8"
-                                aria-label="Confirm vendor"
-                                title="Confirm vendor"
+                                className="exp-icon-btn h-7 w-7 shrink-0"
+                                aria-label="Save vendor"
                                 onMouseDown={(e) => e.preventDefault()}
                                 onClick={() => void handleVendorInlineSave(row.id)}
                               >
-                                <Check className="h-4 w-4" />
+                                <Check className="h-3.5 w-3.5" />
                               </Button>
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8"
-                                aria-label="Cancel vendor edit"
-                                title="Cancel vendor edit"
+                                className="exp-icon-btn h-7 w-7 shrink-0"
+                                aria-label="Cancel"
                                 onMouseDown={(e) => e.preventDefault()}
-                                onClick={() => setEditingVendorId(null)}
+                                onClick={() => clearInlineEdits()}
                               >
-                                <X className="h-4 w-4" />
+                                <X className="h-3.5 w-3.5" />
                               </Button>
                             </div>
                           ) : (
                             <button
-                              className="hover:underline"
+                              type="button"
+                              className="truncate text-left text-sm font-semibold text-[#111827] hover:underline"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setEditingVendorId(row.id);
-                                setVendorDraft(normalizedVendorLabel(row.vendorName));
+                                setActiveExpenseId(row.id);
+                                openInlineField(row.id, "vendor");
                               }}
                             >
                               {normalizedVendorLabel(row.vendorName)}
                             </button>
                           )}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground text-sm">
-                          <div className="flex flex-wrap gap-1">
-                            {extractExpenseTags(row).length > 0 ? (
-                              extractExpenseTags(row).map((t) => (
-                                <span
-                                  key={`${row.id}-${t}`}
-                                  className="rounded-sm border border-border/60 px-1.5 py-0.5 text-xs"
-                                >
-                                  {t}
-                                </span>
-                              ))
-                            ) : (
-                              <span className="text-muted-foreground">—</span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground text-sm">{projLabel}</TableCell>
-                        <TableCell
-                          className="text-right tabular-nums font-medium text-red-600/90 dark:text-red-400/90"
-                          title={`Total: $${rowTotal.toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}`}
-                        >
-                          −$
-                          {rowTotal.toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}
-                        </TableCell>
-                        <TableCell
-                          className="text-muted-foreground text-sm"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <button
-                            className={`rounded-sm border px-2 py-0.5 text-xs ${
-                              status === "needs_review"
-                                ? "border-red-500/40 text-red-600 dark:text-red-400"
-                                : "border-[#166534]/40 text-hh-profit-positive dark:text-hh-profit-positive"
-                            }`}
-                            onClick={() => void toggleStatus(row)}
-                          >
-                            {status === "needs_review" ? "Needs Review" : "Completed"}
-                          </button>
-                        </TableCell>
-                        <TableCell onClick={(e) => e.stopPropagation()}>
-                          {getReceiptItems(row).length > 0 ? (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => void openReceiptPreview(row)}
-                              aria-label="View receipt"
-                              title="View receipt"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div
-                            className="flex items-center justify-end gap-1"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              title="Edit"
-                              aria-label="Edit"
-                              onClick={() => {
-                                setEditExpense(row);
-                                setEditModalOpen(true);
-                              }}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            {getReceiptItems(row).length > 0 ? (
+                        </div>
+                        <div className="shrink-0 text-right" onClick={(e) => e.stopPropagation()}>
+                          {editingAmountId === row.id ? (
+                            <div className="flex items-center justify-end gap-1" data-inline-field>
+                              <Input
+                                className="h-7 w-24 rounded-sm border-[#E5E7EB] text-right text-sm tabular-nums text-[#111827]"
+                                value={amountDraft}
+                                autoFocus
+                                inputMode="decimal"
+                                onChange={(e) => setAmountDraft(e.target.value)}
+                                onKeyDown={onInlineKeyDown(row, "amount")}
+                              />
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8"
-                                title="View receipt"
-                                aria-label="View receipt"
-                                onClick={() => void openReceiptPreview(row)}
+                                className="exp-icon-btn h-7 w-7"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => void handleAmountInlineSave(row.id)}
                               >
-                                <Eye className="h-4 w-4" />
+                                <Check className="h-3.5 w-3.5" />
                               </Button>
-                            ) : null}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-destructive"
-                              onClick={() => handleDelete(row)}
-                              disabled={deletingExpenseId === row.id}
-                              aria-label="Delete"
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              className="text-base font-semibold tabular-nums tracking-tight text-[#B91C1C] hover:underline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveExpenseId(row.id);
+                                openInlineField(row.id, "amount");
+                              }}
                             >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          </>
-        )}
-      </section>
+                              −$
+                              {rowTotal.toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="mt-0.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                        <div
+                          className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 text-[11px] leading-relaxed text-[#6B7280]"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {editingCategoryId === row.id ? (
+                            <span data-inline-field className="inline-flex items-center gap-1">
+                              <ExpenseCategorySelect
+                                className="h-7 max-w-[9rem] rounded-sm border border-[#E5E7EB] bg-white px-1.5 text-xs text-[#111827]"
+                                value={categoryDraft}
+                                autoFocus
+                                onValueChange={setCategoryDraft}
+                                onCategoriesUpdated={setCategoriesList}
+                                onKeyDown={onInlineKeyDown(row, "category")}
+                              />
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="exp-icon-btn h-7 w-7"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => void handleCategoryInlineSave(row.id)}
+                              >
+                                <Check className="h-3.5 w-3.5" />
+                              </Button>
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              className="hover:text-[#111827] hover:underline"
+                              onClick={() => {
+                                setActiveExpenseId(row.id);
+                                openInlineField(row.id, "category");
+                              }}
+                            >
+                              {catLabel}
+                            </button>
+                          )}
+                          <span className="text-[#E5E7EB]" aria-hidden>
+                            ·
+                          </span>
+                          {editingProjectId === row.id ? (
+                            <span
+                              data-inline-field
+                              className="inline-flex min-w-0 items-center gap-1"
+                            >
+                              <select
+                                className="h-7 max-w-[10rem] rounded-sm border border-[#E5E7EB] bg-white px-1.5 text-xs text-[#111827]"
+                                value={projectDraft}
+                                autoFocus
+                                onChange={(e) => setProjectDraft(e.target.value)}
+                                onKeyDown={onInlineKeyDown(row, "project")}
+                              >
+                                <option value="">Overhead</option>
+                                {safeProjects.map((p) => (
+                                  <option key={p.id} value={p.id}>
+                                    {p.name ?? p.id}
+                                  </option>
+                                ))}
+                              </select>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="exp-icon-btn h-7 w-7 shrink-0"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => void handleProjectInlineSave(row.id)}
+                              >
+                                <Check className="h-3.5 w-3.5" />
+                              </Button>
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              className="min-w-0 max-w-[10rem] truncate hover:text-[#111827] hover:underline"
+                              onClick={() => {
+                                setActiveExpenseId(row.id);
+                                openInlineField(row.id, "project");
+                              }}
+                            >
+                              {projLabel}
+                            </button>
+                          )}
+                          <span className="text-[#E5E7EB]" aria-hidden>
+                            ·
+                          </span>
+                          {editingDateId === row.id ? (
+                            <span className="inline-flex items-center gap-1" data-inline-field>
+                              <Input
+                                type="date"
+                                className="h-7 w-[9.5rem] rounded-sm border-[#E5E7EB] text-xs text-[#111827]"
+                                value={dateDraft}
+                                autoFocus
+                                onChange={(e) => setDateDraft(e.target.value)}
+                                onKeyDown={onInlineKeyDown(row, "date")}
+                              />
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="exp-icon-btn h-7 w-7"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => void handleDateInlineSave(row.id)}
+                              >
+                                <Check className="h-3.5 w-3.5" />
+                              </Button>
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              className="hover:text-[#111827] hover:underline"
+                              onClick={() => {
+                                setActiveExpenseId(row.id);
+                                openInlineField(row.id, "date");
+                              }}
+                            >
+                              {row.date || "—"}
+                            </button>
+                          )}
+                          <span className="text-[#E5E7EB]" aria-hidden>
+                            ·
+                          </span>
+                          <span className="inline-flex min-w-0 max-w-[8rem] items-center gap-1">
+                            <span className="sr-only">Payment </span>
+                            <span
+                              className="truncate"
+                              title={
+                                row.paymentAccountName
+                                  ? `Payment: ${row.paymentAccountName}`
+                                  : "Payment: —"
+                              }
+                            >
+                              {row.paymentAccountName ?? "—"}
+                            </span>
+                          </span>
+                          <span className="text-[#E5E7EB]" aria-hidden>
+                            ·
+                          </span>
+                          {editingSourceId === row.id ? (
+                            <span data-inline-field className="inline-flex items-center gap-1">
+                              <select
+                                className="h-7 rounded-sm border border-[#E5E7EB] bg-white px-1.5 text-xs text-[#111827]"
+                                value={sourceTypeDraft}
+                                autoFocus
+                                onChange={(e) =>
+                                  setSourceTypeDraft(
+                                    e.target.value as NonNullable<Expense["sourceType"]>
+                                  )
+                                }
+                                onKeyDown={onInlineKeyDown(row, "source")}
+                              >
+                                <option value="company">Company</option>
+                                <option value="receipt_upload">Receipt</option>
+                                <option value="reimbursement">Reimbursement</option>
+                              </select>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="exp-icon-btn h-7 w-7"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => void handleSourceInlineSave(row.id)}
+                              >
+                                <Check className="h-3.5 w-3.5" />
+                              </Button>
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              className="hover:text-[#111827] hover:underline"
+                              onClick={() => {
+                                setActiveExpenseId(row.id);
+                                openInlineField(row.id, "source");
+                              }}
+                            >
+                              {sourceTypeLabel(row.sourceType)}
+                            </button>
+                          )}
+                        </div>
+                        <div
+                          className="flex shrink-0 items-center gap-2 text-[11px]"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <ExpenseAttachmentTrigger
+                            row={row}
+                            onPreview={() => void openReceiptPreview(row)}
+                          />
+                          <button
+                            type="button"
+                            className={`inline-flex cursor-pointer items-center gap-1.5 text-[11px] font-medium ${statusStyle.text}`}
+                            onClick={() => void toggleStatus(row)}
+                            title={
+                              listView === "unreviewed" ? "Mark reviewed" : "Toggle review status"
+                            }
+                          >
+                            <span
+                              className={`h-1.5 w-1.5 shrink-0 rounded-full ${statusStyle.dot}`}
+                              aria-hidden
+                            />
+                            {statusDisplayLabel(status)}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="absolute bottom-0 right-0 top-0 flex items-center gap-0.5 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="exp-icon-btn h-7 w-7"
+                        title="Edit"
+                        aria-label="Edit"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditExpense(row);
+                          setEditModalOpen(true);
+                        }}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="exp-icon-danger h-7 w-7"
+                        aria-label="Delete"
+                        disabled={deletingExpenseId === row.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleDelete(row);
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
 
-      {total > 0 ? (
-        <Pagination page={curPage} pageSize={pageSize} total={total} onPageChange={setPage} />
-      ) : null}
+        {total > 0 ? (
+          <Pagination
+            page={curPage}
+            pageSize={pageSize}
+            total={total}
+            onPageChange={setPage}
+            className="text-[#6B7280] [&_.text-muted-foreground]:text-[#6B7280] [&_button]:exp-btn-secondary"
+          />
+        ) : null}
 
-      <ExpenseReceiptPreviewDialog
-        open={!!receiptPreview}
-        onOpenChange={(next) => {
-          if (!next) setReceiptPreview(null);
-        }}
-        items={receiptPreview?.items ?? []}
-        index={receiptPreview?.index ?? 0}
-        onIndexChange={(i) => setReceiptPreview((p) => (p ? { ...p, index: i } : p))}
-        expenseId={receiptPreview?.expenseId && supabase ? receiptPreview.expenseId : undefined}
-        replaceInputRef={receiptReplaceRef}
-        receiptReplacing={receiptReplacing}
-        onReplaceInputChange={async (e) => {
-          const file = e.target.files?.[0];
-          if (!file || !receiptPreview?.expenseId || !supabase) return;
-          setReceiptReplacing(true);
-          try {
-            const path = `receipts/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
-            const { error } = await supabase.storage.from("receipts").upload(path, file, {
-              contentType: file.type || "application/octet-stream",
-              upsert: true,
-            });
-            if (error) throw error;
-            const { data } = supabase.storage.from("receipts").getPublicUrl(path);
-            await updateExpenseReceiptUrl(receiptPreview.expenseId, data.publicUrl);
-            setReceiptPreview((p) =>
-              p
-                ? {
-                    ...p,
-                    items: p.items.map((it, idx) =>
-                      idx === p.index ? { ...it, url: data.publicUrl } : it
-                    ),
-                  }
-                : null
-            );
-            refresh();
-          } finally {
-            setReceiptReplacing(false);
-            e.target.value = "";
-          }
-        }}
-        onReplaceButtonClick={() => receiptReplaceRef.current?.click()}
-      />
-
-      <QuickExpenseModal
-        open={quickExpenseOpen}
-        onOpenChange={setQuickExpenseOpen}
-        onSuccess={refresh}
-        projects={safeProjects}
-        expenses={expenses}
-      />
-      <EditExpenseModal
-        expense={editExpense}
-        open={editModalOpen}
-        onOpenChange={setEditModalOpen}
-        projects={safeProjects}
-        workers={workers}
-        categories={categoriesList}
-        onSave={handleExpenseSave}
-      />
+        <QuickExpenseModal
+          open={quickExpenseOpen}
+          onOpenChange={setQuickExpenseOpen}
+          onSuccess={refresh}
+          projects={safeProjects}
+          expenses={expenses}
+        />
+        <UploadReceiptsQueueModal
+          open={uploadReceiptsOpen}
+          onOpenChange={setUploadReceiptsOpen}
+          onSuccess={refresh}
+        />
+        <EditExpenseModal
+          expense={editExpense}
+          open={editModalOpen}
+          onOpenChange={setEditModalOpen}
+          projects={safeProjects}
+          workers={workers}
+          supabase={supabase}
+          onExpenseAttachmentsUpdated={(next) => {
+            setExpenses((prev) => prev.map((e) => (e.id === next.id ? next : e)));
+            setEditExpense(next);
+          }}
+          onSave={handleExpenseSave}
+        />
+      </div>
     </div>
   );
 }

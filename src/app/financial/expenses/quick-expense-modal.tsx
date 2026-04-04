@@ -4,15 +4,26 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import {
   addExpenseAttachment,
   createQuickExpense,
   getExpenseTotal,
+  getPaymentAccounts,
   type Expense,
+  type PaymentAccountRow,
 } from "@/lib/data";
+import {
+  pickDefaultPaymentAccountId,
+  persistLastExpensePaymentAccountId,
+  rememberExpenseVendorPaymentAccount,
+} from "@/lib/expense-payment-preferences";
 import { createBrowserClient } from "@/lib/supabase";
-import { Camera, Loader2, Upload } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { ChevronDown, Loader2, Paperclip } from "lucide-react";
 import { useToast } from "@/components/toast/toast-provider";
+import { ExpenseCategorySelect } from "@/components/expense-category-select";
+import { PaymentAccountSelect } from "@/components/payment-account-select";
 import { AmountDiagnosticsPanel } from "@/components/ocr/amount-diagnostics-panel";
 import {
   type AmountRuleDiagnostic,
@@ -22,108 +33,12 @@ import {
   mergeReceiptOcrResults,
   runReceiptOcrForImageFile,
 } from "@/lib/receipt-ocr-client";
+import {
+  uploadReceiptToStorage,
+  type ExpenseReceiptUploadSlot,
+} from "@/lib/expense-receipt-upload-browser";
 
-type BrowserSupabase = NonNullable<ReturnType<typeof createBrowserClient>>;
-
-type QuickExpenseAttachmentSlot = {
-  previewUrl: string;
-  attachmentPath: string | null;
-  receiptsPublicUrl: string | null;
-  uploadError?: string;
-  revoke?: () => void;
-  pendingFile?: File;
-};
-
-async function uploadReceiptToStorage(
-  supabase: BrowserSupabase,
-  file: File,
-  keySuffix: string
-): Promise<QuickExpenseAttachmentSlot> {
-  let serverUploadMessage: string | null = null;
-  // Prefer server upload (service role) to avoid browser-side bucket policy/session issues.
-  try {
-    const fd = new FormData();
-    fd.set("file", file);
-    const res = await fetch("/api/quick-expense/upload-attachment", {
-      method: "POST",
-      body: fd,
-    });
-    let payload: {
-      ok?: boolean;
-      path?: string;
-      signed_url?: string | null;
-      public_url?: string | null;
-      message?: string;
-    } = {};
-    try {
-      payload = (await res.json()) as typeof payload;
-    } catch {
-      /* non-JSON response */
-    }
-    if (res.ok && payload.ok && payload.path) {
-      const fallbackBlob =
-        !payload.signed_url && !payload.public_url ? URL.createObjectURL(file) : null;
-      return {
-        previewUrl: payload.signed_url || payload.public_url || fallbackBlob || "",
-        attachmentPath: payload.path,
-        receiptsPublicUrl: payload.public_url ?? null,
-        revoke: fallbackBlob ? () => URL.revokeObjectURL(fallbackBlob) : undefined,
-      };
-    }
-    const m = typeof payload.message === "string" ? payload.message.trim() : "";
-    if (m) serverUploadMessage = m;
-  } catch {
-    // fall through to legacy browser upload path
-  }
-
-  const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_") || "receipt.jpg";
-  const expPath = `quick-expense/${Date.now()}-${keySuffix}-${safeName}`;
-  const { error: expErr } = await supabase.storage
-    .from("expense-attachments")
-    .upload(expPath, file, {
-      contentType: file.type || "image/jpeg",
-      upsert: true,
-    });
-  if (!expErr) {
-    const { data: signed } = await supabase.storage
-      .from("expense-attachments")
-      .createSignedUrl(expPath, 60 * 60 * 6);
-    if (signed?.signedUrl) {
-      return {
-        previewUrl: signed.signedUrl,
-        attachmentPath: expPath,
-        receiptsPublicUrl: null,
-      };
-    }
-    const blob = URL.createObjectURL(file);
-    return {
-      previewUrl: blob,
-      attachmentPath: expPath,
-      receiptsPublicUrl: null,
-      revoke: () => URL.revokeObjectURL(blob),
-    };
-  }
-  const rPath = `receipts/${Date.now()}-${keySuffix}-${safeName}`;
-  const { error: recErr } = await supabase.storage.from("receipts").upload(rPath, file, {
-    contentType: file.type || "image/jpeg",
-    upsert: true,
-  });
-  if (!recErr) {
-    const { data: pub } = supabase.storage.from("receipts").getPublicUrl(rPath);
-    const u = pub.publicUrl;
-    return { previewUrl: u, attachmentPath: null, receiptsPublicUrl: u };
-  }
-  const blob = URL.createObjectURL(file);
-  const detail = serverUploadMessage ? ` Server: ${serverUploadMessage}` : "";
-  return {
-    previewUrl: blob,
-    attachmentPath: null,
-    receiptsPublicUrl: null,
-    revoke: () => URL.revokeObjectURL(blob),
-    pendingFile: file,
-    uploadError: `Upload to Supabase Storage failed (bucket/policy/session).${detail}`,
-  };
-}
+type QuickExpenseAttachmentSlot = ExpenseReceiptUploadSlot;
 
 type OcrDebugInfo = {
   source: OcrSource;
@@ -184,11 +99,24 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [processing, setProcessing] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
-  const [dragOver, setDragOver] = React.useState(false);
+  const [moreOpen, setMoreOpen] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [step, setStep] = React.useState<"upload" | "edit">("upload");
   const [attachmentSlots, setAttachmentSlots] = React.useState<QuickExpenseAttachmentSlot[]>([]);
-  const [attachmentLightbox, setAttachmentLightbox] = React.useState<string | null>(null);
+  const { openPreview } = useAttachmentPreview();
+
+  const openAttachmentSlotsAt = React.useCallback(
+    (initialIndex: number) => {
+      if (attachmentSlots.length === 0) return;
+      const files = attachmentSlots.map((s) => ({
+        url: s.previewUrl,
+        fileName: s.pendingFile?.name ?? "Receipt",
+        fileType: (s.pendingFile?.type === "application/pdf" ? "pdf" : "image") as "pdf" | "image",
+      }));
+      const ix = Math.max(0, Math.min(initialIndex, files.length - 1));
+      openPreview(files, ix);
+    },
+    [attachmentSlots, openPreview]
+  );
   const [vendorName, setVendorName] = React.useState("");
   const [amount, setAmount] = React.useState("");
   const [date, setDate] = React.useState(new Date().toISOString().slice(0, 10));
@@ -196,6 +124,9 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
   const [notes, setNotes] = React.useState("");
   const [projectSearch, setProjectSearch] = React.useState("");
   const [projectId, setProjectId] = React.useState<string>("");
+  const [paymentAccountId, setPaymentAccountId] = React.useState("");
+  const [paymentAccountRows, setPaymentAccountRows] = React.useState<PaymentAccountRow[]>([]);
+  const paymentChoiceTouchedRef = React.useRef(false);
   const [ocrSource, setOcrSource] = React.useState<OcrSource>("none");
   const [recognizedItems, setRecognizedItems] = React.useState<string[]>([]);
   const [itemDraft, setItemDraft] = React.useState("");
@@ -223,7 +154,6 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
     date: string;
     amount: number;
   } | null>(null);
-  const categories = ["Other", "Materials", "Vehicle", "Meals"];
   const LAST_PROJECT_KEY = "hh.quick-expense-last-project-id";
   const OCR_LEARN_KEY = "hh.quick-expense-ocr-learn";
   const OCR_HISTORY_KEY = "hh.quick-expense-ocr-history";
@@ -306,7 +236,6 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
       setAmount("");
       setCategory("Other");
       setOcrSuggestions(null);
-      setStep("edit");
       if (msg) {
         setError(msg);
         toast({
@@ -322,14 +251,12 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
   const resetState = React.useCallback(() => {
     setProcessing(false);
     setSaving(false);
-    setDragOver(false);
+    setMoreOpen(false);
     setError(null);
-    setStep("upload");
     setAttachmentSlots((prev) => {
       for (const s of prev) s.revoke?.();
       return [];
     });
-    setAttachmentLightbox(null);
     setVendorName("");
     setAmount("");
     setDate(new Date().toISOString().slice(0, 10));
@@ -337,6 +264,9 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
     setNotes("");
     setProjectSearch("");
     setProjectId("");
+    setPaymentAccountId("");
+    setPaymentAccountRows([]);
+    paymentChoiceTouchedRef.current = false;
     setOcrSource("none");
     setFieldConfidence({ vendor: "low", amount: "low", date: "low" });
     setDetectedSnapshot(null);
@@ -353,6 +283,40 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
   React.useEffect(() => {
     if (!open) resetState();
   }, [open, resetState]);
+
+  const onPaymentAccountChange = React.useCallback((id: string) => {
+    paymentChoiceTouchedRef.current = true;
+    setPaymentAccountId(id);
+    persistLastExpensePaymentAccountId(id);
+  }, []);
+
+  React.useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    paymentChoiceTouchedRef.current = false;
+    void getPaymentAccounts()
+      .then((rows) => {
+        if (cancelled) return;
+        setPaymentAccountRows(rows);
+        setPaymentAccountId(pickDefaultPaymentAccountId(rows, ""));
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPaymentAccountRows([]);
+          setPaymentAccountId("");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
+  React.useEffect(() => {
+    if (!open || paymentAccountRows.length === 0) return;
+    if (paymentChoiceTouchedRef.current) return;
+    const id = pickDefaultPaymentAccountId(paymentAccountRows, vendorName);
+    if (id) setPaymentAccountId(id);
+  }, [vendorName, open, paymentAccountRows]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -391,7 +355,6 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
   }, [projectSearch, projects]);
 
   React.useEffect(() => {
-    if (step !== "edit") return;
     if (projectId) return;
     try {
       const last = window.localStorage.getItem(LAST_PROJECT_KEY) ?? "";
@@ -400,19 +363,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
     } catch {
       // ignore
     }
-  }, [step, projectId, projects, suggestedProjectId]);
-
-  React.useEffect(() => {
-    if (step !== "edit") return;
-    const score = (v: FieldConfidence) => (v === "low" ? 0 : v === "medium" ? 1 : 2);
-    const ranked = [
-      { key: "amount", score: score(fieldConfidence.amount), ref: amountInputRef.current },
-      { key: "vendor", score: score(fieldConfidence.vendor), ref: vendorInputRef.current },
-      { key: "date", score: score(fieldConfidence.date), ref: dateInputRef.current },
-    ].sort((a, b) => a.score - b.score);
-    const target = ranked[0]?.ref;
-    if (target) setTimeout(() => target.focus(), 0);
-  }, [step, fieldConfidence]);
+  }, [projectId, projects, suggestedProjectId]);
 
   const handleFiles = async (files: FileList | File[] | null) => {
     if (!files || files.length === 0) return;
@@ -468,7 +419,6 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
       setRecognizedItems(merged.finalItems);
       setOcrSource(merged.source);
       setOcrSuggestions(merged.ocrSuggestions);
-      setStep("edit");
       setDebugData({
         source: merged.source,
         fallbackTriggered: merged.source !== "cloud",
@@ -515,7 +465,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (saveAndNew?: boolean) => {
     if (saving || processing) return;
     const totalAmount = Number(amount);
     if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
@@ -569,7 +519,8 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
         date: date || new Date().toISOString().slice(0, 10),
         vendorName: vendorName.trim() || "Unknown",
         totalAmount,
-        receiptUrl: firstPublic,
+        receiptUrl: firstPublic || undefined,
+        sourceType: slotsToSave.length > 0 ? "receipt_upload" : "company",
         category,
         notes: (() => {
           const userNotes = notes.trim();
@@ -579,6 +530,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
           return userNotes ? `${userNotes}\n${itemsPart}` : itemsPart;
         })(),
         projectId: projectId || null,
+        paymentAccountId: paymentAccountId.trim() || null,
       });
       for (const s of slotsToSave) {
         if (s.attachmentPath) {
@@ -598,13 +550,16 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
         variant: "success",
         durationMs: 14_000,
       });
-      if (slotsToSave.length === 0 || (!firstPublic && !hasStoragePath)) {
+      if (
+        slotsToSave.length > 0 &&
+        !firstPublic &&
+        !hasStoragePath &&
+        slotsToSave.some((s) => s.uploadError || s.pendingFile)
+      ) {
         toast({
-          title: "Saved without usable receipt attachment",
+          title: "Receipt not stored in cloud",
           description:
-            slotsToSave.length === 0
-              ? "No receipt files were linked to this expense."
-              : "Images could not be stored in Supabase (check buckets/policies). Add receipts from the expense detail page if needed.",
+            "Images could not be stored in Supabase (check buckets/policies). Add receipts from the expense detail page if needed.",
           variant: "default",
           durationMs: 14_000,
         });
@@ -657,8 +612,46 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
       } catch {
         // ignore
       }
+      const paSaved = paymentAccountId.trim();
+      if (paSaved) {
+        persistLastExpensePaymentAccountId(paSaved);
+        rememberExpenseVendorPaymentAccount(vendorName.trim() || "Unknown", paSaved);
+      }
       await onSuccess();
-      onOpenChange(false);
+      if (saveAndNew) {
+        setVendorName("");
+        setAmount("");
+        setDate(new Date().toISOString().slice(0, 10));
+        setCategory("Other");
+        paymentChoiceTouchedRef.current = false;
+        setPaymentAccountId(
+          paymentAccountRows.length > 0 ? pickDefaultPaymentAccountId(paymentAccountRows, "") : ""
+        );
+        if (paymentAccountRows.length === 0) {
+          void getPaymentAccounts().then((rows) => {
+            setPaymentAccountRows(rows);
+            setPaymentAccountId(pickDefaultPaymentAccountId(rows, ""));
+          });
+        }
+        setNotes("");
+        setRecognizedItems([]);
+        setItemDraft("");
+        setOcrSuggestions(null);
+        setFieldConfidence({ vendor: "low", amount: "low", date: "low" });
+        setDetectedSnapshot(null);
+        setDuplicateConfirmed(false);
+        setDuplicateCandidate(null);
+        setDebugData(null);
+        setAttachmentSlots((prev) => {
+          for (const s of prev) s.revoke?.();
+          return [];
+        });
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        setError(null);
+        window.setTimeout(() => amountInputRef.current?.focus(), 0);
+      } else {
+        onOpenChange(false);
+      }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to save expense.";
       setError(msg);
@@ -671,182 +664,292 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="h-[100dvh] w-full max-w-none overflow-y-auto rounded-none border-border/60 sm:h-auto sm:max-h-[92vh] sm:max-w-md sm:rounded-sm">
-          <DialogHeader className="border-b border-border/60 pb-3">
-            <DialogTitle className="text-base font-medium">Quick Expense Upload</DialogTitle>
+        <DialogContent
+          className="flex max-h-[min(92dvh,640px)] w-[calc(100vw-1.5rem)] max-w-md flex-col gap-0 overflow-hidden rounded-sm border-border/60 p-0 sm:w-full"
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              e.stopPropagation();
+              onOpenChange(false);
+            } else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+              const tag = (e.target as HTMLElement).tagName?.toLowerCase();
+              if (tag !== "textarea") {
+                e.preventDefault();
+                void handleSave(true);
+              }
+            }
+          }}
+        >
+          <DialogHeader className="shrink-0 space-y-0 border-b border-border/60 px-4 py-2.5">
+            <DialogTitle className="text-sm font-medium">Quick expense</DialogTitle>
+            <p className="text-[11px] text-muted-foreground">
+              Save · Cmd/Ctrl+Enter = save &amp; new · Esc
+            </p>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          <form
+            className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pb-3 pt-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleSave(false);
+            }}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,application/pdf"
+              capture="environment"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                void handleFiles(e.target.files);
+              }}
+            />
             {!supabase ? (
-              <p className="text-sm text-amber-600 dark:text-amber-400">
-                Supabase is not configured. Configure NEXT_PUBLIC_SUPABASE_URL and
-                NEXT_PUBLIC_SUPABASE_ANON_KEY to upload receipts and save expenses to your database.
+              <p className="mb-2 shrink-0 text-xs text-amber-600 dark:text-amber-400">
+                Supabase not configured — cannot save or scan receipts.
               </p>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
-                  Receipt Photo
-                </p>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => {
-                    void handleFiles(e.target.files);
-                  }}
-                />
-                {step === "upload" ? (
-                  <div
-                    className={`rounded border border-dashed p-4 transition-colors ${
-                      dragOver ? "border-primary" : "border-border/60"
-                    }`}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      setDragOver(true);
-                    }}
-                    onDragLeave={() => setDragOver(false)}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      setDragOver(false);
-                      void handleFiles(e.dataTransfer.files);
-                    }}
-                  >
-                    <p className="text-sm text-muted-foreground mb-3">
-                      Drag and drop receipt images here, or use buttons below.
-                    </p>
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-12 flex-1 text-base sm:h-11"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={processing}
-                      >
-                        <Camera className="mr-2 h-5 w-5" />
-                        Take Photo
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-12 flex-1 text-base sm:h-11"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={processing}
-                      >
-                        <Upload className="mr-2 h-5 w-5" />
-                        Upload File(s)
-                      </Button>
-                    </div>
+            ) : null}
+
+            <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+              <div className="min-h-0 max-h-[min(50vh,360px)] shrink-0 space-y-2 overflow-y-auto md:max-h-none md:overflow-visible">
+                {ocrSuggestions &&
+                (fieldConfidence.vendor !== "high" ||
+                  fieldConfidence.amount !== "high" ||
+                  fieldConfidence.date !== "high") ? (
+                  <div className="rounded-sm border border-amber-500/40 bg-amber-500/[0.06] px-2.5 py-1.5 text-[11px] text-amber-950 dark:text-amber-100">
+                    <p className="font-medium text-amber-900 dark:text-amber-50">Verify OCR</p>
+                    <ul className="mt-1 list-disc space-y-0.5 pl-3.5 text-amber-900/90 dark:text-amber-100/90">
+                      {fieldConfidence.vendor !== "high" && ocrSuggestions.vendor ? (
+                        <li>Vendor: {ocrSuggestions.vendor}</li>
+                      ) : null}
+                      {fieldConfidence.amount !== "high" && ocrSuggestions.amount ? (
+                        <li>Amount: {ocrSuggestions.amount}</li>
+                      ) : null}
+                      {fieldConfidence.date !== "high" && ocrSuggestions.date ? (
+                        <li>Date: {ocrSuggestions.date}</li>
+                      ) : null}
+                    </ul>
                   </div>
                 ) : null}
-                {step === "edit" ? (
-                  <div className="space-y-3">
-                    {ocrSuggestions &&
-                    (fieldConfidence.vendor !== "high" ||
-                      fieldConfidence.amount !== "high" ||
-                      fieldConfidence.date !== "high") ? (
-                      <div className="rounded-sm border border-amber-500/45 bg-amber-500/[0.07] px-3 py-2 text-xs text-amber-950 dark:text-amber-100">
-                        <p className="font-medium text-amber-900 dark:text-amber-50">
-                          OCR suggestions (verify before save)
-                        </p>
-                        <ul className="mt-1.5 list-disc space-y-0.5 pl-4 text-amber-900/90 dark:text-amber-100/90">
-                          {fieldConfidence.vendor !== "high" && ocrSuggestions.vendor ? (
-                            <li>Vendor: {ocrSuggestions.vendor}</li>
-                          ) : null}
-                          {fieldConfidence.amount !== "high" && ocrSuggestions.amount ? (
-                            <li>Amount: {ocrSuggestions.amount}</li>
-                          ) : null}
-                          {fieldConfidence.date !== "high" && ocrSuggestions.date ? (
-                            <li>Date: {ocrSuggestions.date}</li>
-                          ) : null}
-                        </ul>
-                      </div>
-                    ) : null}
-                    <div>
-                      <label
-                        htmlFor="quick-expense-vendor"
-                        className="text-xs font-medium text-muted-foreground uppercase tracking-wider"
-                      >
-                        Vendor
-                      </label>
-                      <Input
-                        id="quick-expense-vendor"
-                        ref={vendorInputRef}
-                        value={vendorName}
-                        onChange={(e) => setVendorName(e.target.value)}
-                        className={`mt-1 h-9 ${fieldConfidence.vendor !== "high" ? "border-amber-500/55" : ""}`}
-                        disabled={saving}
-                      />
-                      <p className="mt-1 text-[11px] text-muted-foreground">
-                        Confidence: {fieldConfidence.vendor}
-                        {fieldConfidence.vendor !== "high" && ocrSuggestions?.vendor ? (
-                          <span className="text-amber-700 dark:text-amber-300">
-                            {" "}
-                            · suggested: {ocrSuggestions.vendor}
-                          </span>
-                        ) : null}
+
+                <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                  <div className="min-w-0">
+                    <label className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      Amount
+                    </label>
+                    <Input
+                      ref={amountInputRef}
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      inputMode="decimal"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      className={cn(
+                        "mt-0.5 h-9 tabular-nums",
+                        fieldConfidence.amount !== "high" && "border-amber-500/50"
+                      )}
+                      disabled={saving || !supabase}
+                      autoFocus
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <label
+                      htmlFor="quick-expense-vendor"
+                      className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+                    >
+                      Vendor
+                    </label>
+                    <Input
+                      id="quick-expense-vendor"
+                      ref={vendorInputRef}
+                      value={vendorName}
+                      onChange={(e) => setVendorName(e.target.value)}
+                      className={cn(
+                        "mt-0.5 h-9",
+                        fieldConfidence.vendor !== "high" && "border-amber-500/50"
+                      )}
+                      disabled={saving || !supabase}
+                    />
+                  </div>
+
+                  <div className="min-w-0">
+                    <label className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      Project
+                    </label>
+                    <Input
+                      value={projectSearch}
+                      onChange={(e) => setProjectSearch(e.target.value)}
+                      className="mt-0.5 h-8 text-xs"
+                      placeholder="Search…"
+                      disabled={saving}
+                    />
+                    <select
+                      value={projectId}
+                      onChange={(e) => setProjectId(e.target.value)}
+                      className="mt-1 h-8 w-full rounded border border-input bg-transparent px-2 text-xs"
+                      disabled={saving}
+                    >
+                      <option value="">No project</option>
+                      {projectOptions.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name ?? p.id}
+                        </option>
+                      ))}
+                    </select>
+                    {projectId && projectId === suggestedProjectId ? (
+                      <p className="mt-0.5 text-[10px] text-muted-foreground">
+                        Suggested from recent.
                       </p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          Amount
-                        </label>
-                        <Input
-                          ref={amountInputRef}
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={amount}
-                          onChange={(e) => setAmount(e.target.value)}
-                          className={`mt-1 h-9 ${fieldConfidence.amount !== "high" ? "border-amber-500/55" : ""}`}
-                          disabled={saving}
-                        />
-                        <p className="mt-1 text-[11px] text-muted-foreground">
-                          Confidence: {fieldConfidence.amount}
-                          {fieldConfidence.amount !== "high" && ocrSuggestions?.amount ? (
-                            <span className="text-amber-700 dark:text-amber-300">
-                              {" "}
-                              · suggested: {ocrSuggestions.amount}
-                            </span>
-                          ) : null}
-                        </p>
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          Date
-                        </label>
-                        <Input
-                          ref={dateInputRef}
-                          type="date"
-                          value={date}
-                          onChange={(e) => setDate(e.target.value)}
-                          className={`mt-1 h-9 ${fieldConfidence.date !== "high" ? "border-amber-500/55" : ""}`}
-                          disabled={saving}
-                        />
-                        <p className="mt-1 text-[11px] text-muted-foreground">
-                          Confidence: {fieldConfidence.date}
-                          {fieldConfidence.date !== "high" && ocrSuggestions?.date ? (
-                            <span className="text-amber-700 dark:text-amber-300">
-                              {" "}
-                              · suggested: {ocrSuggestions.date}
-                            </span>
-                          ) : null}
-                        </p>
-                      </div>
-                    </div>
+                    ) : null}
+                  </div>
+                  <div className="min-w-0">
+                    <label className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      Payment
+                    </label>
+                    <PaymentAccountSelect
+                      value={paymentAccountId}
+                      onValueChange={onPaymentAccountChange}
+                      disabled={saving}
+                      className="mt-0.5 h-8 w-full rounded border border-input bg-transparent px-2 text-xs"
+                    />
+                  </div>
+
+                  <div className="min-w-0">
+                    <label className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      Category
+                    </label>
+                    <ExpenseCategorySelect
+                      value={category}
+                      onValueChange={setCategory}
+                      disabled={saving}
+                      className="mt-0.5 h-8 w-full rounded border border-input bg-transparent px-2 text-xs"
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <label className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      Date
+                    </label>
+                    <Input
+                      ref={dateInputRef}
+                      type="date"
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                      className={cn(
+                        "mt-0.5 h-9",
+                        fieldConfidence.date !== "high" && "border-amber-500/50"
+                      )}
+                      disabled={saving || !supabase}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {supabase ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 gap-1.5"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={processing || saving}
+                    >
+                      <Paperclip className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                      Add receipt
+                    </Button>
+                  ) : null}
+                  {processing ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                      Scanning…
+                    </span>
+                  ) : null}
+                  {attachmentSlots.length > 0 ? (
+                    <button
+                      type="button"
+                      className="text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                      onClick={() => openAttachmentSlotsAt(0)}
+                      disabled={saving}
+                    >
+                      {attachmentSlots.length} attached — view
+                    </button>
+                  ) : null}
+                </div>
+
+                {duplicateCandidate ? (
+                  <div className="flex flex-wrap items-center gap-2 rounded-sm border border-amber-500/35 px-2 py-1.5 text-[11px] text-amber-800 dark:text-amber-200">
+                    <span className="min-w-0">
+                      Possible duplicate · {duplicateCandidate.vendor} · {duplicateCandidate.date} ·
+                      ${duplicateCandidate.amount.toLocaleString()}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 shrink-0 px-2 text-[11px]"
+                      asChild
+                    >
+                      <a
+                        href={`/financial/expenses/${duplicateCandidate.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Open
+                      </a>
+                    </Button>
+                  </div>
+                ) : null}
+
+                <div className="flex justify-end gap-2 pt-0.5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8"
+                    onClick={() => void handleSave(true)}
+                    disabled={saving || !supabase}
+                  >
+                    Save &amp; new
+                  </Button>
+                  <Button type="submit" size="sm" className="h-8" disabled={saving || !supabase}>
+                    {saving ? (
+                      <>
+                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
+                        Saving…
+                      </>
+                    ) : (
+                      "Save"
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="mt-1 min-h-0 shrink border-t border-border/60 pt-1.5">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between gap-2 rounded-sm py-1 text-left text-[11px] text-muted-foreground hover:text-foreground"
+                  onClick={() => setMoreOpen((v) => !v)}
+                  aria-expanded={moreOpen}
+                >
+                  <span>Items, notes, attachments</span>
+                  <ChevronDown
+                    className={cn(
+                      "h-4 w-4 shrink-0 transition-transform",
+                      moreOpen && "rotate-180"
+                    )}
+                    aria-hidden
+                  />
+                </button>
+                {moreOpen ? (
+                  <div className="max-h-[min(36vh,220px)] space-y-3 overflow-y-auto border-t border-border/40 py-2">
                     <div>
-                      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      <label className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                         Items
                       </label>
-                      <div className="mt-2 flex flex-wrap gap-1.5">
+                      <div className="mt-1 flex flex-wrap gap-1">
                         {dedupeItems(recognizedItems).map((item) => (
                           <span
                             key={item}
-                            className="inline-flex items-center gap-1 rounded-sm border border-border/60 px-2 py-1 text-xs"
+                            className="inline-flex items-center gap-1 rounded-sm border border-border/60 px-1.5 py-0.5 text-[11px]"
                           >
                             {item}
                             <button
@@ -865,11 +968,11 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                           </span>
                         ))}
                       </div>
-                      <div className="mt-2 flex items-center gap-2">
+                      <div className="mt-1.5 flex items-center gap-1.5">
                         <Input
                           value={itemDraft}
                           onChange={(e) => setItemDraft(e.target.value)}
-                          className="h-9"
+                          className="h-8 text-xs"
                           placeholder="Add item"
                           disabled={saving}
                         />
@@ -877,7 +980,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                           type="button"
                           variant="outline"
                           size="sm"
-                          className="h-9"
+                          className="h-8 shrink-0"
                           disabled={saving}
                           onClick={() => {
                             const next = titleCase(itemDraft);
@@ -889,95 +992,46 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                           Add
                         </Button>
                       </div>
-                      <div className="mt-2">
-                        <select
-                          className="h-9 w-full rounded border border-input bg-transparent px-2 text-sm"
-                          value=""
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            if (!v) return;
-                            setRecognizedItems((prev) => dedupeItems([...prev, v]));
-                          }}
-                          disabled={saving}
-                        >
-                          <option value="">Add from common items...</option>
-                          {ITEM_CATALOG.map((opt) => (
-                            <option key={opt} value={opt}>
-                              {opt}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        Project (Optional)
-                      </label>
-                      <Input
-                        value={projectSearch}
-                        onChange={(e) => setProjectSearch(e.target.value)}
-                        className="mt-1 h-9"
-                        placeholder="Search project..."
-                        disabled={saving}
-                      />
                       <select
-                        value={projectId}
-                        onChange={(e) => setProjectId(e.target.value)}
-                        className="mt-2 h-9 w-full rounded border border-input bg-transparent px-2 text-sm"
+                        className="mt-1.5 h-8 w-full rounded border border-input bg-transparent px-2 text-xs"
+                        value=""
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (!v) return;
+                          setRecognizedItems((prev) => dedupeItems([...prev, v]));
+                        }}
                         disabled={saving}
                       >
-                        <option value="">No project</option>
-                        {projectOptions.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name ?? p.id}
-                          </option>
-                        ))}
-                      </select>
-                      {projectId && projectId === suggestedProjectId ? (
-                        <p className="mt-1 text-[11px] text-muted-foreground">
-                          Suggested from recent activity.
-                        </p>
-                      ) : null}
-                    </div>
-                    <div>
-                      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        Category (Optional)
-                      </label>
-                      <select
-                        value={category}
-                        onChange={(e) => setCategory(e.target.value)}
-                        className="mt-1 h-9 w-full rounded border border-input bg-transparent px-2 text-sm"
-                        disabled={saving}
-                      >
-                        {categories.map((c) => (
-                          <option key={c} value={c}>
-                            {c}
+                        <option value="">Common items…</option>
+                        {ITEM_CATALOG.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
                           </option>
                         ))}
                       </select>
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      <label className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                         Notes
                       </label>
                       <Input
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
-                        className="mt-1 h-9"
+                        className="mt-0.5 h-8 text-xs"
                         placeholder="Optional"
                         disabled={saving}
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      <label className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                         Attachments
                       </label>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {attachmentSlots.length} file(s) ready
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        {attachmentSlots.length} file(s)
                         {attachmentSlots.some(
                           (s) => s.pendingFile && !s.attachmentPath && !s.receiptsPublicUrl
                         )
-                          ? " — storage upload failed (local preview only; will retry on save)"
+                          ? " · upload pending — retries on save"
                           : ""}
                       </p>
                       {attachmentSlots.some((s) => s.uploadError) ? (
@@ -986,13 +1040,13 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                         </p>
                       ) : null}
                       {attachmentSlots.length > 0 ? (
-                        <div className="mt-2 flex flex-wrap gap-2">
+                        <div className="mt-1.5 flex flex-wrap gap-1.5">
                           {attachmentSlots.map((s, idx) => (
                             <button
                               key={idx}
                               type="button"
-                              className="relative overflow-hidden rounded-sm border border-border/60 focus:outline-none focus:ring-1 focus:ring-ring"
-                              onClick={() => setAttachmentLightbox(s.previewUrl)}
+                              className="overflow-hidden rounded-sm border border-border/60 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                              onClick={() => openAttachmentSlotsAt(idx)}
                               disabled={saving}
                               aria-label={`View attachment ${idx + 1}`}
                             >
@@ -1000,137 +1054,44 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                               <img
                                 src={s.previewUrl}
                                 alt=""
-                                className="h-14 w-14 object-cover"
+                                className="h-12 w-12 object-cover"
                                 loading="lazy"
                               />
                             </button>
                           ))}
                         </div>
                       ) : null}
-                      {attachmentSlots.length > 0 ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="mt-2 h-7 px-2 text-xs"
-                          disabled={saving}
-                          onClick={() =>
-                            setAttachmentLightbox(attachmentSlots[0]?.previewUrl ?? null)
-                          }
-                        >
-                          View attachment
-                        </Button>
-                      ) : null}
                     </div>
-                    <div className="flex justify-end gap-2 pt-2">
-                      {duplicateCandidate ? (
-                        <div className="mr-auto flex items-center gap-2 rounded-sm border border-amber-500/40 px-2 py-1 text-xs text-amber-700 dark:text-amber-300">
-                          <span>
-                            Possible duplicate: {duplicateCandidate.vendor} ·{" "}
-                            {duplicateCandidate.date} · $
-                            {duplicateCandidate.amount.toLocaleString()}
-                          </span>
+                    {process.env.NODE_ENV !== "production" && ocrSource !== "none" ? (
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/40 pt-2 text-[11px] text-muted-foreground">
+                        <span>
+                          OCR:{" "}
+                          {ocrSource === "cloud"
+                            ? "cloud"
+                            : ocrSource === "local"
+                              ? "local"
+                              : "manual"}
+                        </span>
+                        {debugUnlocked ? (
                           <Button
                             type="button"
                             variant="ghost"
                             size="sm"
-                            className="h-6 px-2 text-xs"
-                            asChild
+                            className="h-7 px-2 text-[11px]"
+                            onClick={() => setDebugOpen(true)}
                           >
-                            <a
-                              href={`/financial/expenses/${duplicateCandidate.id}`}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              View existing
-                            </a>
+                            Debug
                           </Button>
-                        </div>
-                      ) : null}
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-8"
-                        onClick={() => setStep("upload")}
-                        disabled={saving}
-                      >
-                        Back
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        className="h-8"
-                        onClick={() => void handleSave()}
-                        disabled={saving}
-                      >
-                        {saving ? (
-                          <>
-                            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
-                            Saving...
-                          </>
-                        ) : (
-                          "Save"
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                ) : null}
-                <p className="mt-2 text-xs text-muted-foreground">
-                  High-confidence OCR values are applied automatically; others appear as amber
-                  hints. You can edit everything before save.
-                </p>
-                {process.env.NODE_ENV !== "production" && ocrSource !== "none" ? (
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs text-muted-foreground">
-                      OCR source:{" "}
-                      {ocrSource === "cloud"
-                        ? "Cloud OCR"
-                        : ocrSource === "local"
-                          ? "Local browser OCR fallback"
-                          : "Manual fallback"}
-                    </p>
-                    {debugUnlocked ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        onClick={() => setDebugOpen(true)}
-                      >
-                        Debug OCR
-                      </Button>
+                        ) : null}
+                      </div>
                     ) : null}
                   </div>
                 ) : null}
               </div>
-            )}
-            {error ? <p className="text-sm text-destructive">{error}</p> : null}
-            {processing ? (
-              <p className="text-sm text-muted-foreground flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Processing...
-              </p>
-            ) : null}
-          </div>
-        </DialogContent>
-      </Dialog>
-      <Dialog
-        open={!!attachmentLightbox}
-        onOpenChange={(open) => {
-          if (!open) setAttachmentLightbox(null);
-        }}
-      >
-        <DialogContent className="max-w-lg border-border/60 p-0 gap-0 overflow-hidden">
-          <DialogHeader className="border-b border-border/60 px-4 py-2">
-            <DialogTitle className="text-sm font-medium">Receipt preview</DialogTitle>
-          </DialogHeader>
-          <div className="max-h-[80vh] overflow-auto p-4">
-            {attachmentLightbox ? (
-              /* eslint-disable-next-line @next/next/no-img-element -- dynamic preview URL */
-              <img src={attachmentLightbox} alt="" className="max-h-[70vh] w-full object-contain" />
-            ) : null}
-          </div>
+            </div>
+
+            {error ? <p className="mt-2 shrink-0 text-xs text-destructive">{error}</p> : null}
+          </form>
         </DialogContent>
       </Dialog>
       <Dialog open={debugOpen} onOpenChange={setDebugOpen}>

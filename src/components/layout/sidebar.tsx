@@ -39,10 +39,12 @@ import {
   ScrollText,
   MonitorCheck,
   Archive,
+  Inbox,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { createBrowserClient } from "@/lib/supabase";
+import { RECEIPT_QUEUE_CHANGED_EVENT, fetchReceiptQueueBadgeCount } from "@/lib/receipt-queue";
 import { getCompanyInitials, getCompanyProfile } from "@/lib/company-profile";
 import { useSystemHealth } from "@/contexts/system-health-context";
 
@@ -93,6 +95,7 @@ const sections: { key: (typeof SECTION_KEYS)[number]; label: string; items: NavI
       { href: "/financial/deposits", label: "Deposits", icon: Banknote },
       { href: "/bills", label: "Bills", icon: Receipt },
       { href: "/financial/expenses", label: "Expenses", icon: ShoppingCart },
+      { href: "/financial/receipt-queue", label: "Receipt Queue", icon: Inbox },
       { href: "/financial/accounts", label: "Accounts", icon: Wallet },
     ],
   },
@@ -154,6 +157,7 @@ export function Sidebar({
   const [orgName, setOrgName] = React.useState("HH Group");
   const [logoUrl, setLogoUrl] = React.useState<string | null>(null);
   const [openSections, setOpenSections] = React.useState<Record<string, boolean>>(() => ({}));
+  const [receiptQueueCount, setReceiptQueueCount] = React.useState(0);
   const sectionsInitDone = React.useRef(false);
   const activeSectionKey = React.useMemo(() => {
     for (const section of sections) {
@@ -187,6 +191,31 @@ export function Sidebar({
 
     return () => {
       mounted = false;
+    };
+  }, []);
+
+  React.useEffect(() => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !anon || typeof window === "undefined") return;
+    const client = createBrowserClient(url, anon);
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const n = await fetchReceiptQueueBadgeCount(client);
+        if (!cancelled) setReceiptQueueCount(n);
+      } catch {
+        if (!cancelled) setReceiptQueueCount(0);
+      }
+    };
+    void load();
+    const onQueue = () => void load();
+    window.addEventListener(RECEIPT_QUEUE_CHANGED_EVENT, onQueue);
+    const id = window.setInterval(load, 60_000);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(RECEIPT_QUEUE_CHANGED_EVENT, onQueue);
+      window.clearInterval(id);
     };
   }, []);
 
@@ -330,13 +359,17 @@ export function Sidebar({
                   {section.items.map((item) => {
                     const active = isActive(item.href);
                     const Icon = item.icon;
+                    const navLabel =
+                      item.href === "/financial/receipt-queue"
+                        ? `Receipt Queue (${receiptQueueCount})`
+                        : item.label;
                     return (
                       <Link
                         key={item.href}
                         href={item.href}
                         onClick={onNavigate}
-                        title={item.label}
-                        aria-label={item.label}
+                        title={navLabel}
+                        aria-label={navLabel}
                         className={navRowClass(active)}
                       >
                         {Icon ? <Icon className={navIconClass(active)} strokeWidth={1.75} /> : null}
@@ -375,19 +408,23 @@ export function Sidebar({
                       {section.items.map((item) => {
                         const active = isActive(item.href);
                         const Icon = item.icon;
+                        const navLabel =
+                          item.href === "/financial/receipt-queue"
+                            ? `Receipt Queue (${receiptQueueCount})`
+                            : item.label;
                         return (
                           <Link
                             key={item.href}
                             href={item.href}
                             onClick={onNavigate}
-                            title={collapsed ? item.label : undefined}
-                            aria-label={collapsed ? item.label : undefined}
+                            title={collapsed ? navLabel : undefined}
+                            aria-label={collapsed ? navLabel : undefined}
                             className={navRowClass(active)}
                           >
                             {Icon ? (
                               <Icon className={navIconClass(active)} strokeWidth={1.75} />
                             ) : null}
-                            {!collapsed && <span className="truncate">{item.label}</span>}
+                            {!collapsed && <span className="truncate">{navLabel}</span>}
                           </Link>
                         );
                       })}

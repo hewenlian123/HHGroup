@@ -395,6 +395,7 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
         url={previewUrl}
         mimeType={previewDoc?.mime_type ?? null}
         fileName={previewDoc?.file_name ?? ""}
+        isLoading={loadingPreview && !!previewDoc}
       />
       {deleteError ? <p className="mt-2 text-xs text-destructive">{deleteError}</p> : null}
 

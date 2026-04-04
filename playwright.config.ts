@@ -33,6 +33,8 @@ export default defineConfig({
   globalTeardown: "./tests/global-teardown.ts",
   timeout: 30000,
   retries: 1,
+  /** Cursor/CI often sets `CI=true`; many parallel tabs against `next start` causes timeouts on main/gotos. */
+  workers: process.env.CI ? 2 : undefined,
   /**
    * Web server modes:
    * - CI (without E2E_WEB_SERVER=dev): expects build output, runs `next start`

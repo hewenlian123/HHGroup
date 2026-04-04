@@ -53,7 +53,8 @@ function isMissingColumn(err: { message?: string } | null): boolean {
  * Actual cost = labor cost + expense cost + subcontract cost
  *   - Labor cost = sum(labor_entries.cost_amount or total) allocated to this project via project_am_id / project_pm_id
  *     (or legacy project_id when present). Split-day rows share cost 50/50 across two projects when AM ≠ PM.
- *   - Expense cost = sum(expense_lines.amount) for this project (expense_lines.project_id).
+ *   - Expense cost = sum(expense_lines.amount) for this project (expense_lines.project_id),
+ *     plus lines with null project_id on expenses whose header project_id matches (legacy rows).
  *   - Subcontract cost = sum(subcontract_bills.amount) for this project where status = 'Approved'.
  *
  * Legacy note: labor_cost_allocation trigger/RPC (migrations 202603082200/2300/2400) updates projects.spent,
@@ -184,6 +185,37 @@ async function fetchLaborCostBatch(projectIds: string[]): Promise<Map<string, nu
   return map;
 }
 
+/** Lines with null `project_id` whose expense header is allocated to `projectId` (legacy / partial writes). */
+async function getExpenseCostHeaderOnlyLines(projectId: string): Promise<number> {
+  const c = client();
+  const { data: lines, error } = await c
+    .from("expense_lines")
+    .select("amount, expense_id, project_id")
+    .is("project_id", null);
+  if (error || !lines?.length) {
+    if (error) devLogFail("expense_lines (header-only orphan probe)", error);
+    return 0;
+  }
+  const expenseIds = [
+    ...new Set(
+      (lines as Array<{ expense_id?: string }>)
+        .map((l) => l.expense_id)
+        .filter((id): id is string => typeof id === "string" && id.length > 0)
+    ),
+  ];
+  if (expenseIds.length === 0) return 0;
+  const { data: hdrs, error: hErr } = await c
+    .from("expenses")
+    .select("id")
+    .in("id", expenseIds)
+    .eq("project_id", projectId);
+  if (hErr || !hdrs?.length) return 0;
+  const allowed = new Set((hdrs as Array<{ id: string }>).map((h) => h.id));
+  return (lines as Array<{ expense_id: string; amount?: unknown }>)
+    .filter((l) => allowed.has(l.expense_id))
+    .reduce((s, l) => s + toNum(l.amount), 0);
+}
+
 /**
  * Fetch expense cost for a single project.
  * Detects schema on first call and caches the result for all subsequent calls.
@@ -198,7 +230,9 @@ async function getExpenseCostForProject(projectId: string): Promise<number> {
       .select("amount")
       .eq("project_id", projectId);
     if (!error && Array.isArray(data)) {
-      return (data as Array<{ amount?: unknown }>).reduce((s, e) => s + toNum(e.amount), 0);
+      const direct = (data as Array<{ amount?: unknown }>).reduce((s, e) => s + toNum(e.amount), 0);
+      const headerOnly = await getExpenseCostHeaderOnlyLines(projectId);
+      return direct + headerOnly;
     }
     devLogFail("expense_lines (direct)", error);
     return 0;
@@ -222,7 +256,12 @@ async function getExpenseCostForProject(projectId: string): Promise<number> {
       devLogFail("expense_lines (full)", full.error);
       return 0;
     }
-    return (full.data as Array<{ amount?: unknown }>).reduce((s, e) => s + toNum(e.amount), 0);
+    const direct = (full.data as Array<{ amount?: unknown }>).reduce(
+      (s, e) => s + toNum(e.amount),
+      0
+    );
+    const headerOnly = await getExpenseCostHeaderOnlyLines(projectId);
+    return direct + headerOnly;
   }
 
   if (isMissingColumn(error)) {

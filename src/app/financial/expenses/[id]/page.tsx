@@ -13,6 +13,7 @@ import {
   getExpenseCategories,
   getVendors,
   getAccounts,
+  getPaymentAccounts,
   addExpenseCategory,
   addVendor,
   isVendorDisabled,
@@ -26,10 +27,16 @@ import {
   type Expense,
   type ExpenseAttachment,
   type ExpenseLine,
+  type PaymentAccountRow,
 } from "@/lib/data";
+import { PaymentAccountSelect } from "@/components/payment-account-select";
+import {
+  persistLastExpensePaymentAccountId,
+  rememberExpenseVendorPaymentAccount,
+} from "@/lib/expense-payment-preferences";
 import { CreatableSelect } from "@/components/ui/creatable-select";
 import { SplitLinesEditor } from "@/components/split-lines-editor";
-import { AttachmentPreviewDialog } from "@/components/attachment-preview-dialog";
+import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import { ArrowLeft, Plus, FileText, Download, Trash2 } from "lucide-react";
 import { createBrowserClient } from "@/lib/supabase";
 import { useToast } from "@/components/toast/toast-provider";
@@ -54,6 +61,21 @@ function useAsyncDisabled(name: string | null, fn: (n: string) => Promise<boolea
   return disabled;
 }
 
+function attachmentIsImage(att: ExpenseAttachment): boolean {
+  if (att.mimeType.startsWith("image/")) return true;
+  return (
+    /\.(jpe?g|png|gif|webp)$/i.test(att.fileName) || /\.(jpe?g|png|gif|webp)(\?|#|$)/i.test(att.url)
+  );
+}
+
+function receiptHrefLooksImage(href: string): boolean {
+  return /\.(jpe?g|png|gif|webp)(\?|#|$)/i.test(href);
+}
+
+function receiptHrefLooksPdf(href: string): boolean {
+  return /\.pdf(\?|#|$)/i.test(href);
+}
+
 function makeAttachment(file: File): ExpenseAttachment {
   return {
     id: `att-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
@@ -73,9 +95,10 @@ export default function ExpenseDetailPage() {
   const [notFoundState, setNotFoundState] = React.useState(false);
   const [vendorName, setVendorName] = React.useState("");
   const [accountId, setAccountId] = React.useState("");
+  const [paymentAccountId, setPaymentAccountId] = React.useState("");
+  const [paymentAccountRows, setPaymentAccountRows] = React.useState<PaymentAccountRow[]>([]);
   const [toastMessage, setToastMessage] = React.useState<string | null>(null);
-  const [previewAttachment, setPreviewAttachment] = React.useState<ExpenseAttachment | null>(null);
-  const [previewOpen, setPreviewOpen] = React.useState(false);
+  const { openPreview } = useAttachmentPreview();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [projects, setProjects] = React.useState<Awaited<ReturnType<typeof getProjects>>>([]);
   const [categories, setCategories] = React.useState<string[]>([]);
@@ -108,6 +131,7 @@ export default function ExpenseDetailPage() {
         setExpense(e);
         setVendorName(e.vendorName);
         setAccountId(e.accountId ?? "");
+        setPaymentAccountId(e.paymentAccountId ?? "");
       }
     });
     return () => {
@@ -117,16 +141,21 @@ export default function ExpenseDetailPage() {
 
   React.useEffect(() => {
     let cancelled = false;
-    Promise.all([getProjects(), getExpenseCategories(), getVendors(), getAccounts()]).then(
-      ([p, c, v, accs]) => {
-        if (!cancelled) {
-          setProjects(p);
-          setCategories(c);
-          setVendorsList(v);
-          setAccounts(accs);
-        }
+    Promise.all([
+      getProjects(),
+      getExpenseCategories(),
+      getVendors(),
+      getAccounts(),
+      getPaymentAccounts().catch(() => [] as PaymentAccountRow[]),
+    ]).then(([p, c, v, accs, pay]) => {
+      if (!cancelled) {
+        setProjects(p);
+        setCategories(c);
+        setVendorsList(v);
+        setAccounts(accs);
+        setPaymentAccountRows(pay);
       }
-    );
+    });
     return () => {
       cancelled = true;
     };
@@ -135,20 +164,25 @@ export default function ExpenseDetailPage() {
   const refresh = React.useCallback(async () => {
     if (!id) return;
     const e = await getExpenseById(id);
-    if (e) setExpense(e);
+    if (e) {
+      setExpense(e);
+      setPaymentAccountId(e.paymentAccountId ?? "");
+    }
   }, [id]);
 
   const reloadLookups = React.useCallback(async () => {
-    const [p, c, v, accs] = await Promise.all([
+    const [p, c, v, accs, pay] = await Promise.all([
       getProjects(),
       getExpenseCategories(),
       getVendors(),
       getAccounts(),
+      getPaymentAccounts().catch(() => [] as PaymentAccountRow[]),
     ]);
     setProjects(p);
     setCategories(c);
     setVendorsList(v);
     setAccounts(accs);
+    setPaymentAccountRows(pay);
   }, []);
 
   useOnAppSync(
@@ -160,6 +194,116 @@ export default function ExpenseDetailPage() {
   );
 
   useBreadcrumbEntityLabel(vendorName.trim() || expense?.vendorName?.trim() || null);
+
+  const [attachmentPreviewSrc, setAttachmentPreviewSrc] = React.useState<
+    Record<string, string | undefined>
+  >({});
+
+  const attachmentRowKey = React.useMemo(
+    () =>
+      expense ? expense.attachments.map((a) => `${a.id}:${a.url}:${a.mimeType}`).join("|") : "",
+    [expense]
+  );
+
+  React.useEffect(() => {
+    if (!expense || !supabase) return;
+    let cancelled = false;
+    void (async () => {
+      const next: Record<string, string | undefined> = {};
+      for (const att of expense.attachments) {
+        if (!attachmentIsImage(att)) continue;
+        const { data, error } = await supabase.storage
+          .from("expense-attachments")
+          .createSignedUrl(att.url, 60 * 60);
+        if (!error && data?.signedUrl) next[att.id] = data.signedUrl;
+      }
+      if (!cancelled) setAttachmentPreviewSrc(next);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [expense?.id, attachmentRowKey, supabase]);
+
+  const firstImageAttachment = React.useMemo(
+    () => expense?.attachments.find((a) => attachmentIsImage(a)),
+    [expense?.attachments]
+  );
+  const firstImageSigned =
+    firstImageAttachment != null ? attachmentPreviewSrc[firstImageAttachment.id] : undefined;
+
+  const openPrimaryReceiptPreview = React.useCallback(() => {
+    if (!expense) return;
+    if (expense.receiptUrl) {
+      const u = expense.receiptUrl;
+      openPreview({
+        files: [
+          {
+            url: u,
+            fileName: "Receipt",
+            fileType: (receiptHrefLooksPdf(u) ? "pdf" : "image") as "pdf" | "image",
+          },
+        ],
+        initialIndex: 0,
+        onClosed: () => {},
+      });
+      return;
+    }
+    if (firstImageAttachment && firstImageSigned) {
+      openPreview({
+        files: [
+          {
+            url: firstImageSigned,
+            fileName: firstImageAttachment.fileName,
+            fileType: "image" as const,
+          },
+        ],
+        initialIndex: 0,
+        onClosed: () => {},
+      });
+    }
+  }, [expense, firstImageAttachment, firstImageSigned, openPreview]);
+
+  const openAttachmentCarouselAt = React.useCallback(
+    async (focusIndex: number) => {
+      if (!supabase || !expense) return;
+      const atts = expense.attachments;
+      if (atts.length === 0) return;
+      const files = await Promise.all(
+        atts.map(async (att) => {
+          const cached = attachmentPreviewSrc[att.id];
+          let url = cached ?? "";
+          if (!url) {
+            const { data, error } = await supabase.storage
+              .from("expense-attachments")
+              .createSignedUrl(att.url, 60);
+            if (error || !data?.signedUrl) url = "";
+            else url = data.signedUrl;
+          }
+          const fileType = (
+            att.mimeType === "application/pdf" || receiptHrefLooksPdf(att.fileName)
+              ? "pdf"
+              : "image"
+          ) as "pdf" | "image";
+          return {
+            url,
+            fileName: att.fileName,
+            fileType,
+          };
+        })
+      );
+      if (!files.some((f) => f.url)) {
+        toast({
+          title: "Open failed",
+          description: "Unable to open attachments.",
+          variant: "error",
+        });
+        return;
+      }
+      const ix = Math.max(0, Math.min(focusIndex, files.length - 1));
+      openPreview({ files, initialIndex: ix, onClosed: () => {} });
+    },
+    [supabase, expense, attachmentPreviewSrc, openPreview, toast]
+  );
 
   const byProject = React.useMemo(() => {
     if (!expense) return new Map<string | null, number>();
@@ -196,9 +340,15 @@ export default function ExpenseDetailPage() {
       date: (formData.get("date") as string) || expense.date,
       vendorName,
       accountId: accountId || undefined,
+      paymentAccountId: paymentAccountId.trim() || null,
       referenceNo: (formData.get("referenceNo") as string) || undefined,
       notes: (formData.get("notes") as string) || undefined,
     });
+    const pa = paymentAccountId.trim();
+    if (pa && vendorName.trim()) {
+      rememberExpenseVendorPaymentAccount(vendorName.trim(), pa);
+      persistLastExpensePaymentAccountId(pa);
+    }
     await refresh();
   };
 
@@ -354,6 +504,20 @@ export default function ExpenseDetailPage() {
               </Select>
             </div>
             <div>
+              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Payment
+              </label>
+              <PaymentAccountSelect
+                value={paymentAccountId}
+                onValueChange={(id) => {
+                  setPaymentAccountId(id);
+                  persistLastExpensePaymentAccountId(id);
+                }}
+                onAccountsUpdated={setPaymentAccountRows}
+                className="mt-1 h-9 w-full rounded-sm border border-input bg-transparent px-2 text-sm"
+              />
+            </div>
+            <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Reference #
               </label>
@@ -384,36 +548,51 @@ export default function ExpenseDetailPage() {
 
       <section>
         <h2 className="text-sm font-semibold text-foreground mb-3">Receipt attachments</h2>
-        {expense.receiptUrl ? (
+        {expense.receiptUrl || firstImageSigned ? (
           <div className="mb-4 flex flex-wrap items-start gap-3 border-b border-border/60 pb-4">
             <div className="min-w-0">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
                 Primary receipt
               </p>
               <div className="flex flex-wrap items-center gap-2">
-                {/\.(jpe?g|png|gif|webp)(\?|#|$)/i.test(expense.receiptUrl) ? (
+                {(expense.receiptUrl && receiptHrefLooksImage(expense.receiptUrl)) ||
+                (!expense.receiptUrl && firstImageSigned) ? (
                   <button
                     type="button"
-                    className="overflow-hidden rounded-sm border border-border/60"
-                    onClick={() =>
-                      window.open(expense.receiptUrl!, "_blank", "noopener,noreferrer")
-                    }
-                    aria-label="Open primary receipt image"
+                    className="cursor-pointer overflow-hidden rounded-sm border border-border/60 transition-transform duration-200 ease-out hover:scale-105"
+                    onClick={openPrimaryReceiptPreview}
+                    aria-label="Open primary receipt"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element -- dynamic receipt URL */}
                     <img
-                      src={expense.receiptUrl}
+                      src={
+                        expense.receiptUrl && receiptHrefLooksImage(expense.receiptUrl)
+                          ? expense.receiptUrl
+                          : (firstImageSigned ?? "")
+                      }
                       alt=""
                       className="h-16 w-16 object-cover"
                       loading="lazy"
                     />
                   </button>
                 ) : null}
-                <Button variant="outline" size="sm" className="rounded-sm" asChild>
-                  <a href={expense.receiptUrl} target="_blank" rel="noopener noreferrer">
-                    View attachment
-                  </a>
-                </Button>
+                {expense.receiptUrl ? (
+                  <Button variant="outline" size="sm" className="rounded-sm" asChild>
+                    <a href={expense.receiptUrl} target="_blank" rel="noopener noreferrer">
+                      View attachment
+                    </a>
+                  </Button>
+                ) : firstImageAttachment && firstImageSigned ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-sm"
+                    type="button"
+                    onClick={openPrimaryReceiptPreview}
+                  >
+                    Preview
+                  </Button>
+                ) : null}
               </div>
             </div>
           </div>
@@ -446,25 +625,21 @@ export default function ExpenseDetailPage() {
                 type="button"
                 className="flex items-center gap-3 min-w-0 flex-1 text-left"
                 onClick={() => {
-                  void (async () => {
-                    if (!supabase) return;
-                    const { data, error } = await supabase.storage
-                      .from("expense-attachments")
-                      .createSignedUrl(att.url, 60);
-                    if (error || !data?.signedUrl) {
-                      toast({
-                        title: "Open failed",
-                        description: error?.message ?? "Unable to open attachment.",
-                        variant: "error",
-                      });
-                      return;
-                    }
-                    setPreviewAttachment({ ...att, url: data.signedUrl });
-                    setPreviewOpen(true);
-                  })();
+                  const i = expense.attachments.findIndex((a) => a.id === att.id);
+                  void openAttachmentCarouselAt(i >= 0 ? i : 0);
                 }}
               >
-                <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
+                {attachmentIsImage(att) && attachmentPreviewSrc[att.id] ? (
+                  /* eslint-disable-next-line @next/next/no-img-element -- signed storage URL */
+                  <img
+                    src={attachmentPreviewSrc[att.id]}
+                    alt=""
+                    className="h-10 w-10 shrink-0 cursor-pointer rounded-sm border border-border/60 object-cover transition-transform duration-200 hover:scale-105"
+                    loading="lazy"
+                  />
+                ) : (
+                  <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
+                )}
                 <span className="text-sm font-medium truncate">{att.fileName}</span>
                 <span className="text-xs text-muted-foreground shrink-0">
                   {att.size > 1024 ? `${(att.size / 1024).toFixed(1)} KB` : `${att.size} B`}
@@ -553,12 +728,6 @@ export default function ExpenseDetailPage() {
           </div>
         </div>
       </section>
-
-      <AttachmentPreviewDialog
-        attachment={previewAttachment}
-        open={previewOpen}
-        onOpenChange={setPreviewOpen}
-      />
     </div>
   );
 }

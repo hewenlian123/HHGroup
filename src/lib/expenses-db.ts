@@ -35,15 +35,28 @@ export type Expense = {
   linkedBankTxId?: string | null;
   /** Receipt file URL (storage bucket receipts). */
   receiptUrl?: string | null;
-  /** pending | needs_review | approved | reimbursed | paid */
-  status?: "pending" | "needs_review" | "approved" | "reimbursed" | "paid";
+  /** Workflow status (DB may include additional legacy values). */
+  status?:
+    | "pending"
+    | "needs_review"
+    | "reviewed"
+    | "approved"
+    | "reimbursed"
+    | "reimbursable"
+    | "paid"
+    | "draft";
   workerId?: string | null;
   /** Card name when payment method is Credit Card or Debit Card. */
   cardName?: string | null;
   /** Payment source account (from Accounts module). */
   accountId?: string | null;
+  /** Payment account (Cash / card / bank). */
+  paymentAccountId?: string | null;
+  paymentAccountName?: string | null;
   /** Optional header-level project (expense_lines may also carry project per line). */
   headerProjectId?: string | null;
+  /** company | reimbursement | receipt_upload */
+  sourceType?: "company" | "reimbursement" | "receipt_upload";
 };
 
 type ExpenseRow = {
@@ -61,7 +74,11 @@ type ExpenseRow = {
   worker_id?: string | null;
   card_name?: string | null;
   account_id?: string | null;
+  payment_account_id?: string | null;
   project_id?: string | null;
+  source?: string | null;
+  source_id?: string | null;
+  source_type?: string | null;
 };
 
 type ExpenseLineRow = {
@@ -74,6 +91,8 @@ type ExpenseLineRow = {
   amount?: number;
   total?: number;
 };
+
+const WORKER_REIMBURSEMENT_SOURCE = "worker_reimbursement";
 
 function client() {
   const c = getSupabaseClient();
@@ -103,7 +122,7 @@ async function getLinkedBankTxId(expenseId: string): Promise<string | null> {
   return data?.id ?? null;
 }
 
-async function getAttachments(expenseId: string): Promise<ExpenseAttachment[]> {
+async function getLegacyAttachmentsFromTable(expenseId: string): Promise<ExpenseAttachment[]> {
   const c = client();
   const { data: rows } = await c
     .from("attachments")
@@ -119,6 +138,37 @@ async function getAttachments(expenseId: string): Promise<ExpenseAttachment[]> {
     url: r.file_path ?? "",
     createdAt: r.created_at ?? new Date().toISOString(),
   }));
+}
+
+/** Rows from public.expense_attachments (file_url holds storage path in expense-attachments bucket). */
+async function getExpenseAttachmentRows(expenseId: string): Promise<ExpenseAttachment[]> {
+  const c = client();
+  const { data: rows, error } = await c
+    .from("expense_attachments")
+    .select("id, file_url, file_type, created_at")
+    .eq("expense_id", expenseId);
+  if (error || !rows || !Array.isArray(rows)) return [];
+  return rows.map((r) => {
+    const ft = (r as { file_type?: string }).file_type === "pdf" ? "pdf" : "image";
+    return {
+      id: (r as { id: string }).id,
+      fileName: ft === "pdf" ? "attachment.pdf" : "attachment.jpg",
+      mimeType: ft === "pdf" ? "application/pdf" : "image/jpeg",
+      size: 0,
+      url: (r as { file_url?: string }).file_url ?? "",
+      createdAt: (r as { created_at?: string }).created_at ?? new Date().toISOString(),
+    };
+  });
+}
+
+async function getAttachments(expenseId: string): Promise<ExpenseAttachment[]> {
+  const [legacy, dedicated] = await Promise.all([
+    getLegacyAttachmentsFromTable(expenseId),
+    getExpenseAttachmentRows(expenseId),
+  ]);
+  const merged = [...legacy, ...dedicated];
+  merged.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  return merged;
 }
 
 function toExpenseLine(r: ExpenseLineRow): ExpenseLine {
@@ -139,15 +189,58 @@ function toExpenseLine(r: ExpenseLineRow): ExpenseLine {
   };
 }
 
+function deriveSourceType(row: ExpenseRow): Expense["sourceType"] {
+  const st = (row.source_type ?? "").trim().toLowerCase();
+  if (st === "reimbursement" || st === "receipt_upload" || st === "company")
+    return st as Expense["sourceType"];
+  if ((row.source ?? "").trim() === WORKER_REIMBURSEMENT_SOURCE) return "reimbursement";
+  return "company";
+}
+
+function normalizeExpenseStatus(s: string | null | undefined): NonNullable<Expense["status"]> {
+  const v = (s ?? "pending").toLowerCase();
+  if (
+    v === "needs_review" ||
+    v === "reviewed" ||
+    v === "approved" ||
+    v === "reimbursed" ||
+    v === "paid" ||
+    v === "reimbursable" ||
+    v === "draft"
+  ) {
+    return v as NonNullable<Expense["status"]>;
+  }
+  return "pending";
+}
+
+async function fetchPaymentAccountNameMap(
+  ids: (string | null | undefined)[]
+): Promise<Map<string, string>> {
+  const unique = [...new Set(ids.filter((x): x is string => Boolean(x)))];
+  if (unique.length === 0) return new Map();
+  const c = client();
+  const { data, error } = await c.from("payment_accounts").select("id,name").in("id", unique);
+  if (error) {
+    if (isMissingTable(error)) return new Map();
+    return new Map();
+  }
+  if (!data) return new Map();
+  const m = new Map<string, string>();
+  for (const r of data as { id: string; name: string }[]) {
+    m.set(r.id, r.name);
+  }
+  return m;
+}
+
 async function toExpense(
   row: ExpenseRow,
   lines: ExpenseLineRow[],
   attachments: ExpenseAttachment[],
-  linkedBankTxId: string | null
+  linkedBankTxId: string | null,
+  paymentAccountNames?: Map<string, string>
 ): Promise<Expense> {
-  const s = row.status;
-  const status =
-    s === "approved" || s === "reimbursed" ? s : s === "needs_review" ? "needs_review" : "pending";
+  const status = normalizeExpenseStatus(row.status);
+  const paId = row.payment_account_id ?? null;
   return {
     id: row.id,
     date: row.expense_date?.slice(0, 10) ?? "",
@@ -163,19 +256,25 @@ async function toExpense(
     workerId: row.worker_id ?? undefined,
     cardName: row.card_name ?? undefined,
     accountId: row.account_id ?? undefined,
+    paymentAccountId: paId ?? undefined,
+    paymentAccountName: paId ? (paymentAccountNames?.get(paId) ?? null) : null,
     headerProjectId:
       row.project_id != null && String(row.project_id).trim() !== ""
         ? String(row.project_id)
         : undefined,
+    sourceType: deriveSourceType(row),
   };
 }
 
 /** Select columns: base + optional receipt_url, status, worker_id. */
-const EXPENSE_COLS_FULL =
-  "id,expense_date,vendor,vendor_name,notes,payment_method,reference_no,total,line_count,receipt_url,status,worker_id,card_name,account_id,project_id";
+const EXPENSE_COLS_CORE =
+  "id,expense_date,vendor,vendor_name,notes,payment_method,reference_no,total,line_count,receipt_url,status,worker_id,card_name,account_id,payment_account_id,project_id";
+const EXPENSE_COLS_FULL = `${EXPENSE_COLS_CORE},source,source_id,source_type`;
+/** Same as pre-migration list (no source columns). */
+const EXPENSE_COLS_FULL_LEGACY_META = EXPENSE_COLS_CORE;
 /** Fallback when payment_method column does not exist (e.g. account_id-only schema). */
 const EXPENSE_COLS_FULL_NO_PAYMENT_METHOD =
-  "id,expense_date,vendor,vendor_name,notes,reference_no,total,line_count,receipt_url,status,worker_id,card_name,account_id,project_id";
+  "id,expense_date,vendor,vendor_name,notes,reference_no,total,line_count,receipt_url,status,worker_id,card_name,account_id,payment_account_id,project_id";
 /** Legacy: table may have only vendor (no vendor_name). No payment_method so works when column is missing. */
 const EXPENSE_COLS_LEGACY = "id,expense_date,vendor,notes,reference_no,total,line_count";
 /** Minimal: no reference_no, no payment_method (for schemas that only have core columns). */
@@ -197,70 +296,84 @@ export async function getExpenses(): Promise<Expense[]> {
     .from("expenses")
     .select(EXPENSE_COLS_FULL)
     .order("expense_date", { ascending: false });
-  if (res.error) {
-    if (!isMissingColumn(res.error)) {
-      if (isMissingTable(res.error)) throw new Error(`Expenses table not found. ${HINT}`);
-      throw new Error(res.error.message ? `${res.error.message} ${HINT}` : HINT);
-    }
-    const fallback = await c
-      .from("expenses")
-      .select(EXPENSE_COLS_FULL_NO_PAYMENT_METHOD)
-      .order("expense_date", { ascending: false });
-    if (fallback.error && isMissingColumn(fallback.error)) {
-      const legacy = await c
-        .from("expenses")
-        .select(EXPENSE_COLS_LEGACY)
-        .order("expense_date", { ascending: false });
-      if (legacy.error && isMissingColumn(legacy.error)) {
-        const minimal = await c
-          .from("expenses")
-          .select(EXPENSE_COLS_MINIMAL)
-          .order("expense_date", { ascending: false });
-        if (minimal.error && isMissingColumn(minimal.error)) {
-          const minimalLegacy = await c
-            .from("expenses")
-            .select(EXPENSE_COLS_MINIMAL_LEGACY)
-            .order("expense_date", { ascending: false });
-          if (minimalLegacy.error && isMissingColumn(minimalLegacy.error)) {
-            const noTotal = await c
-              .from("expenses")
-              .select(EXPENSE_COLS_NO_TOTAL)
-              .order("expense_date", { ascending: false });
-            if (noTotal.error && isMissingColumn(noTotal.error)) {
-              const noTotalLegacy = await c
-                .from("expenses")
-                .select(EXPENSE_COLS_NO_TOTAL_LEGACY)
-                .order("expense_date", { ascending: false });
-              if (noTotalLegacy.error) throw new Error(noTotalLegacy.error.message ?? HINT);
-              rows = noTotalLegacy.data ?? [];
-            } else if (noTotal.error) {
-              throw new Error(noTotal.error.message ?? HINT);
-            } else {
-              rows = noTotal.data ?? [];
-            }
-          } else if (minimalLegacy.error) {
-            throw new Error(minimalLegacy.error.message ?? HINT);
-          } else {
-            rows = minimalLegacy.data ?? [];
-          }
-        } else if (minimal.error) {
-          throw new Error(minimal.error.message ?? HINT);
-        } else {
-          rows = minimal.data ?? [];
-        }
-      } else if (legacy.error) {
-        throw new Error(legacy.error.message ?? HINT);
-      } else {
-        rows = legacy.data ?? [];
-      }
-    } else if (fallback.error) {
-      throw new Error(fallback.error.message ?? HINT);
-    } else {
-      rows = fallback.data ?? [];
-    }
-  } else {
+
+  if (!res.error) {
     rows = res.data ?? [];
+  } else if (!isMissingColumn(res.error)) {
+    if (isMissingTable(res.error)) throw new Error(`Expenses table not found. ${HINT}`);
+    throw new Error(res.error.message ? `${res.error.message} ${HINT}` : HINT);
+  } else {
+    const core = await c
+      .from("expenses")
+      .select(EXPENSE_COLS_FULL_LEGACY_META)
+      .order("expense_date", { ascending: false });
+    if (!core.error) {
+      rows = core.data ?? [];
+    } else if (!isMissingColumn(core.error)) {
+      if (isMissingTable(core.error)) throw new Error(`Expenses table not found. ${HINT}`);
+      throw new Error(core.error.message ? `${core.error.message} ${HINT}` : HINT);
+    } else {
+      const fallback = await c
+        .from("expenses")
+        .select(EXPENSE_COLS_FULL_NO_PAYMENT_METHOD)
+        .order("expense_date", { ascending: false });
+      if (fallback.error && isMissingColumn(fallback.error)) {
+        const legacy = await c
+          .from("expenses")
+          .select(EXPENSE_COLS_LEGACY)
+          .order("expense_date", { ascending: false });
+        if (legacy.error && isMissingColumn(legacy.error)) {
+          const minimal = await c
+            .from("expenses")
+            .select(EXPENSE_COLS_MINIMAL)
+            .order("expense_date", { ascending: false });
+          if (minimal.error && isMissingColumn(minimal.error)) {
+            const minimalLegacy = await c
+              .from("expenses")
+              .select(EXPENSE_COLS_MINIMAL_LEGACY)
+              .order("expense_date", { ascending: false });
+            if (minimalLegacy.error && isMissingColumn(minimalLegacy.error)) {
+              const noTotal = await c
+                .from("expenses")
+                .select(EXPENSE_COLS_NO_TOTAL)
+                .order("expense_date", { ascending: false });
+              if (noTotal.error && isMissingColumn(noTotal.error)) {
+                const noTotalLegacy = await c
+                  .from("expenses")
+                  .select(EXPENSE_COLS_NO_TOTAL_LEGACY)
+                  .order("expense_date", { ascending: false });
+                if (noTotalLegacy.error) throw new Error(noTotalLegacy.error.message ?? HINT);
+                rows = noTotalLegacy.data ?? [];
+              } else if (noTotal.error) {
+                throw new Error(noTotal.error.message ?? HINT);
+              } else {
+                rows = noTotal.data ?? [];
+              }
+            } else if (minimalLegacy.error) {
+              throw new Error(minimalLegacy.error.message ?? HINT);
+            } else {
+              rows = minimalLegacy.data ?? [];
+            }
+          } else if (minimal.error) {
+            throw new Error(minimal.error.message ?? HINT);
+          } else {
+            rows = minimal.data ?? [];
+          }
+        } else if (legacy.error) {
+          throw new Error(legacy.error.message ?? HINT);
+        } else {
+          rows = legacy.data ?? [];
+        }
+      } else if (fallback.error) {
+        throw new Error(fallback.error.message ?? HINT);
+      } else {
+        rows = fallback.data ?? [];
+      }
+    }
   }
+  const paymentNameMap = await fetchPaymentAccountNameMap(
+    (rows as ExpenseRow[]).map((r) => r.payment_account_id)
+  );
   const result: Expense[] = [];
   for (const row of rows) {
     const r = row as ExpenseRow;
@@ -268,7 +381,7 @@ export async function getExpenses(): Promise<Expense[]> {
     const lines = (lineRows ?? []) as ExpenseLineRow[];
     const attachments = await getAttachments(r.id);
     const linkedBankTxId = await getLinkedBankTxId(r.id);
-    result.push(await toExpense(r, lines, attachments, linkedBankTxId));
+    result.push(await toExpense(r, lines, attachments, linkedBankTxId, paymentNameMap));
   }
   return result;
 }
@@ -282,66 +395,78 @@ export async function getExpenseById(expenseId: string): Promise<Expense | null>
       if (isMissingTable(res.error)) throw new Error(`Expenses table not found. ${HINT}`);
       return null;
     }
-    const fallback = await c
+    const coreTry = await c
       .from("expenses")
-      .select(EXPENSE_COLS_FULL_NO_PAYMENT_METHOD)
+      .select(EXPENSE_COLS_FULL_LEGACY_META)
       .eq("id", expenseId)
       .maybeSingle();
-    if (fallback.error && isMissingColumn(fallback.error)) {
-      const legacy = await c
+    if (!coreTry.error && coreTry.data) {
+      row = coreTry.data as ExpenseRow;
+    } else if (coreTry.error && !isMissingColumn(coreTry.error)) {
+      return null;
+    } else {
+      const fallback = await c
         .from("expenses")
-        .select(EXPENSE_COLS_LEGACY)
+        .select(EXPENSE_COLS_FULL_NO_PAYMENT_METHOD)
         .eq("id", expenseId)
         .maybeSingle();
-      if (legacy.error && isMissingColumn(legacy.error)) {
-        const minimal = await c
+      if (fallback.error && isMissingColumn(fallback.error)) {
+        const legacy = await c
           .from("expenses")
-          .select(EXPENSE_COLS_MINIMAL)
+          .select(EXPENSE_COLS_LEGACY)
           .eq("id", expenseId)
           .maybeSingle();
-        if (minimal.error && isMissingColumn(minimal.error)) {
-          const minimalLegacy = await c
+        if (legacy.error && isMissingColumn(legacy.error)) {
+          const minimal = await c
             .from("expenses")
-            .select(EXPENSE_COLS_MINIMAL_LEGACY)
+            .select(EXPENSE_COLS_MINIMAL)
             .eq("id", expenseId)
             .maybeSingle();
-          if (minimalLegacy.error && isMissingColumn(minimalLegacy.error)) {
-            const noTotal = await c
+          if (minimal.error && isMissingColumn(minimal.error)) {
+            const minimalLegacy = await c
               .from("expenses")
-              .select(EXPENSE_COLS_NO_TOTAL)
+              .select(EXPENSE_COLS_MINIMAL_LEGACY)
               .eq("id", expenseId)
               .maybeSingle();
-            if (!noTotal.error && noTotal.data) row = noTotal.data as ExpenseRow;
-            else if (noTotal.error && isMissingColumn(noTotal.error)) {
-              const noTotalLegacy = await c
+            if (minimalLegacy.error && isMissingColumn(minimalLegacy.error)) {
+              const noTotal = await c
                 .from("expenses")
-                .select(EXPENSE_COLS_NO_TOTAL_LEGACY)
+                .select(EXPENSE_COLS_NO_TOTAL)
                 .eq("id", expenseId)
                 .maybeSingle();
-              if (!noTotalLegacy.error && noTotalLegacy.data)
-                row = noTotalLegacy.data as ExpenseRow;
+              if (!noTotal.error && noTotal.data) row = noTotal.data as ExpenseRow;
+              else if (noTotal.error && isMissingColumn(noTotal.error)) {
+                const noTotalLegacy = await c
+                  .from("expenses")
+                  .select(EXPENSE_COLS_NO_TOTAL_LEGACY)
+                  .eq("id", expenseId)
+                  .maybeSingle();
+                if (!noTotalLegacy.error && noTotalLegacy.data)
+                  row = noTotalLegacy.data as ExpenseRow;
+              }
+            } else if (!minimalLegacy.error && minimalLegacy.data) {
+              row = minimalLegacy.data as ExpenseRow;
             }
-          } else if (!minimalLegacy.error && minimalLegacy.data) {
-            row = minimalLegacy.data as ExpenseRow;
+          } else if (!minimal.error && minimal.data) {
+            row = minimal.data as ExpenseRow;
           }
-        } else if (!minimal.error && minimal.data) {
-          row = minimal.data as ExpenseRow;
+        } else if (!legacy.error && legacy.data) {
+          row = legacy.data as ExpenseRow;
         }
-      } else if (!legacy.error && legacy.data) {
-        row = legacy.data as ExpenseRow;
+      } else if (!fallback.error && fallback.data) {
+        row = fallback.data as ExpenseRow;
       }
-    } else if (!fallback.error && fallback.data) {
-      row = fallback.data as ExpenseRow;
     }
   } else {
     row = res.data as ExpenseRow | null;
   }
   if (!row) return null;
+  const paymentNameMap = await fetchPaymentAccountNameMap([(row as ExpenseRow).payment_account_id]);
   const { data: lineRows } = await c.from("expense_lines").select("*").eq("expense_id", expenseId);
   const lines = (lineRows ?? []) as ExpenseLineRow[];
   const attachments = await getAttachments(expenseId);
   const linkedBankTxId = await getLinkedBankTxId(expenseId);
-  return toExpense(row, lines, attachments, linkedBankTxId);
+  return toExpense(row, lines, attachments, linkedBankTxId, paymentNameMap);
 }
 
 /** Distinct card names used for a given payment method (e.g. "Credit Card", "Debit Card"). For creatable select options. */
@@ -369,6 +494,7 @@ export async function createExpense(payload: {
   notes?: string;
   cardName?: string | null;
   accountId?: string | null;
+  paymentAccountId?: string | null;
   lines: Array<{
     projectId: string | null;
     category: string;
@@ -438,6 +564,7 @@ export async function createExpense(payload: {
         line_count: group.length,
         card_name: payload.cardName?.trim() || null,
         account_id: payload.accountId ?? null,
+        payment_account_id: payload.paymentAccountId ?? null,
       };
       let expInsErr: { message?: string } | null = null;
       let expRow: { id: string } | null = null;
@@ -519,6 +646,7 @@ export async function createExpense(payload: {
   const updatePayload: Record<string, unknown> = {
     card_name: cardNameValue,
     account_id: payload.accountId ?? null,
+    payment_account_id: payload.paymentAccountId ?? null,
   };
   let updateErr: { message?: string } | null = null;
   const withPaymentMethod = { ...updatePayload, payment_method: paymentMethodValue };
@@ -529,6 +657,11 @@ export async function createExpense(payload: {
   updateErr = upd.error as { message?: string } | null;
   if (updateErr && !isMissingColumn(updateErr)) {
     throw new Error(updateErr.message ?? "Failed to update expense.");
+  }
+
+  const stUpd = await c.from("expenses").update({ source_type: "company" }).in("id", createdIds);
+  if (stUpd.error && !isMissingColumn(stUpd.error)) {
+    console.warn("[createExpense] source_type update:", stUpd.error.message);
   }
 
   const exp = await getExpenseById(firstId);
@@ -542,26 +675,35 @@ function isStatusConstraintError(err: { message?: string } | null): boolean {
   return /check constraint|status|invalid input value for enum|violates check/i.test(m);
 }
 
-/** Create a single expense from Quick Expense flow: one line, receipt_url, status needs_review.
+/** Create a single expense from Quick Expense flow: one line; receipt optional.
  * Persists to real Supabase: expenses and expense_lines tables. No mock. */
 export async function createQuickExpense(payload: {
   date: string;
   vendorName: string;
   totalAmount: number;
-  receiptUrl: string;
+  /** Omit or empty when saving without a receipt file. */
+  receiptUrl?: string | null;
   category?: string;
   notes?: string;
   projectId?: string | null;
+  paymentAccountId?: string | null;
+  /** Defaults: receipt_upload when receiptUrl set, else company. */
+  sourceType?: "company" | "receipt_upload" | "reimbursement";
+  /** When set, overrides default status (receipt → needs_review, else pending). */
+  initialStatus?: NonNullable<Expense["status"]>;
 }): Promise<Expense> {
   const c = client();
   const date = payload.date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
   const vendor = (payload.vendorName ?? "").trim() || "Unknown";
   const total = Number(payload.totalAmount) || 0;
-  const receiptUrl = payload.receiptUrl || "";
+  const receiptUrl = (payload.receiptUrl ?? "").trim();
   const category = (payload.category ?? "Other").trim() || "Other";
   const notes = (payload.notes ?? "").trim();
   const rawPid = payload.projectId;
   const projectId = rawPid != null && String(rawPid).trim() !== "" ? String(rawPid).trim() : null;
+  const sourceType: Expense["sourceType"] =
+    payload.sourceType ?? (receiptUrl ? "receipt_upload" : "company");
+  const resolvedStatus = payload.initialStatus ?? (receiptUrl ? "needs_review" : "pending");
 
   const insertRow: Record<string, unknown> = {
     expense_date: date,
@@ -573,13 +715,33 @@ export async function createQuickExpense(payload: {
     amount: total,
     line_count: 1,
     receipt_url: receiptUrl || null,
-    status: "needs_review",
+    status: resolvedStatus,
+    source_type: sourceType,
   };
   let result = await c
     .from("expenses")
     .insert({ ...insertRow, payment_method: "Other" })
     .select("id")
     .single();
+  if (result.error && isMissingColumn(result.error)) {
+    const noSt = { ...insertRow };
+    delete noSt.source_type;
+    result = await c
+      .from("expenses")
+      .insert({ ...noSt, payment_method: "Other" })
+      .select("id")
+      .single();
+  }
+  if (result.error && isMissingColumn(result.error)) {
+    const noAmt = { ...insertRow };
+    delete noAmt.source_type;
+    delete noAmt.amount;
+    result = await c
+      .from("expenses")
+      .insert({ ...noAmt, payment_method: "Other" })
+      .select("id")
+      .single();
+  }
   if (
     result.error &&
     isStatusConstraintError(result.error) &&
@@ -587,7 +749,11 @@ export async function createQuickExpense(payload: {
   ) {
     result = await c
       .from("expenses")
-      .insert({ ...insertRow, status: "pending", payment_method: "Other" })
+      .insert({
+        ...insertRow,
+        status: "pending",
+        payment_method: "Other",
+      })
       .select("id")
       .single();
   }
@@ -633,6 +799,17 @@ export async function createQuickExpense(payload: {
     };
     result = await c.from("expenses").insert(insertRowLegacy).select("id").single();
   }
+  if (result.error && isMissingColumn(result.error)) {
+    const insertRowLegacyNoAmt: Record<string, unknown> = {
+      expense_date: date,
+      vendor,
+      notes: notes || null,
+      reference_no: null,
+      total,
+      line_count: 1,
+    };
+    result = await c.from("expenses").insert(insertRowLegacyNoAmt).select("id").single();
+  }
   const { data: expRow, error: expErr } = result;
   if (expErr) throw new Error(expErr.message ?? "Failed to create quick expense.");
   const expenseId = (expRow as { id: string } | null)?.id;
@@ -669,12 +846,19 @@ export async function createQuickExpense(payload: {
     }
   }
 
+  if (payload.paymentAccountId !== undefined) {
+    const paId = payload.paymentAccountId?.trim() || null;
+    const paUpd = await c.from("expenses").update({ payment_account_id: paId }).eq("id", expenseId);
+    if (paUpd.error && !isMissingColumn(paUpd.error)) {
+      console.warn("[createQuickExpense] payment_account_id update:", paUpd.error.message);
+    }
+  }
+
   const exp = await getExpenseById(expenseId);
   if (!exp) throw new Error("Failed to load created expense.");
   return exp;
 }
 
-const WORKER_REIMBURSEMENT_SOURCE = "worker_reimbursement";
 const REIMBURSEMENT_CATEGORY = "reimbursement";
 
 /** Create an expense + one line for a paid worker reimbursement. Prevents duplicates by reference_no or source/source_id.
@@ -777,6 +961,7 @@ export async function createExpenseFromPaidReimbursement(
       status: "paid",
       source: WORKER_REIMBURSEMENT_SOURCE,
       source_id: reimbursementId,
+      source_type: "reimbursement",
       worker_id: reimb.workerId ?? null,
       project_id: projectId,
       vendor: vendorName,
@@ -792,6 +977,7 @@ export async function createExpenseFromPaidReimbursement(
       status: "paid",
       source: WORKER_REIMBURSEMENT_SOURCE,
       source_id: reimbursementId,
+      source_type: "reimbursement",
       worker_id: reimb.workerId ?? null,
       project_id: projectId,
       vendor: vendorName,
@@ -807,6 +993,7 @@ export async function createExpenseFromPaidReimbursement(
       status: "approved",
       source: WORKER_REIMBURSEMENT_SOURCE,
       source_id: reimbursementId,
+      source_type: "reimbursement",
       worker_id: reimb.workerId ?? null,
       project_id: projectId,
       vendor: vendorName,
@@ -982,6 +1169,7 @@ export async function updateExpense(
     notes: string;
     cardName: string | null;
     accountId: string | null;
+    paymentAccountId: string | null;
   }>
 ): Promise<Expense | null> {
   const c = client();
@@ -993,11 +1181,22 @@ export async function updateExpense(
   if (patch.notes !== undefined) updates.notes = patch.notes || null;
   if (patch.cardName !== undefined) updates.card_name = patch.cardName?.trim() || null;
   if (patch.accountId !== undefined) updates.account_id = patch.accountId ?? null;
+  if (patch.paymentAccountId !== undefined)
+    updates.payment_account_id = patch.paymentAccountId ?? null;
   if (Object.keys(updates).length > 0) {
     let res = await c.from("expenses").update(updates).eq("id", expenseId);
     let err: { message?: string } | null = res.error;
     if (err && isMissingColumn(err) && updates.payment_method !== undefined) {
       delete updates.payment_method;
+      if (Object.keys(updates).length > 0) {
+        res = await c.from("expenses").update(updates).eq("id", expenseId);
+        err = res.error;
+      } else {
+        err = null;
+      }
+    }
+    if (err && isMissingColumn(err) && updates.payment_account_id !== undefined) {
+      delete updates.payment_account_id;
       if (Object.keys(updates).length > 0) {
         res = await c.from("expenses").update(updates).eq("id", expenseId);
         err = res.error;
@@ -1014,17 +1213,29 @@ export async function updateExpense(
 export async function updateExpenseForReview(
   expenseId: string,
   patch: Partial<{
+    date: string;
     vendorName: string;
     notes: string;
-    status: "pending" | "needs_review" | "approved" | "reimbursed";
+    status:
+      | "pending"
+      | "needs_review"
+      | "reviewed"
+      | "approved"
+      | "reimbursed"
+      | "reimbursable"
+      | "paid"
+      | "draft";
     workerId: string | null;
     projectId: string | null;
     category: string;
     amount: number;
+    sourceType: Expense["sourceType"];
+    paymentAccountId: string | null;
   }>
 ): Promise<Expense | null> {
   const c = client();
   const expUpdates: Record<string, unknown> = {};
+  if (patch.date != null) expUpdates.expense_date = patch.date.slice(0, 10);
   if (patch.vendorName != null) {
     expUpdates.vendor = patch.vendorName;
     expUpdates.vendor_name = patch.vendorName;
@@ -1032,8 +1243,41 @@ export async function updateExpenseForReview(
   if (patch.notes !== undefined) expUpdates.notes = patch.notes || null;
   if (patch.status != null) expUpdates.status = patch.status;
   if (patch.workerId !== undefined) expUpdates.worker_id = patch.workerId;
+  if (patch.sourceType != null) expUpdates.source_type = patch.sourceType;
+  if (patch.paymentAccountId !== undefined) {
+    expUpdates.payment_account_id = patch.paymentAccountId?.trim() || null;
+  }
   if (Object.keys(expUpdates).length > 0) {
-    await c.from("expenses").update(expUpdates).eq("id", expenseId);
+    let res = await c.from("expenses").update(expUpdates).eq("id", expenseId);
+    let err: { message?: string } | null = res.error;
+    if (err && isMissingColumn(err) && patch.sourceType != null) {
+      delete expUpdates.source_type;
+      if (Object.keys(expUpdates).length > 0) {
+        res = await c.from("expenses").update(expUpdates).eq("id", expenseId);
+        err = res.error;
+      } else {
+        err = null;
+      }
+    }
+    if (err && isMissingColumn(err) && patch.date != null) {
+      delete expUpdates.expense_date;
+      if (Object.keys(expUpdates).length > 0) {
+        res = await c.from("expenses").update(expUpdates).eq("id", expenseId);
+        err = res.error;
+      } else {
+        err = null;
+      }
+    }
+    if (err && isMissingColumn(err) && patch.paymentAccountId !== undefined) {
+      delete expUpdates.payment_account_id;
+      if (Object.keys(expUpdates).length > 0) {
+        res = await c.from("expenses").update(expUpdates).eq("id", expenseId);
+        err = res.error;
+      } else {
+        err = null;
+      }
+    }
+    if (err) return null;
   }
   if (patch.projectId !== undefined || patch.category != null || patch.amount != null) {
     const { data: lines } = await c
@@ -1090,7 +1334,7 @@ export async function updateExpenseReceiptUrl(
 
 export async function updateExpenseStatus(
   expenseId: string,
-  status: "pending" | "needs_review" | "approved" | "reimbursed"
+  status: NonNullable<Expense["status"]>
 ): Promise<Expense | null> {
   const c = client();
   const { error } = await c.from("expenses").update({ status }).eq("id", expenseId);
@@ -1207,11 +1451,61 @@ export async function addExpenseAttachment(
   return getExpenseById(expenseId);
 }
 
+function isMissingExpenseAttachmentsTable(error: { message?: string; code?: string }): boolean {
+  const msg = (error.message ?? "").toLowerCase();
+  return (
+    error.code === "42P01" ||
+    msg.includes("expense_attachments") ||
+    (msg.includes("relation") && msg.includes("does not exist"))
+  );
+}
+
+export async function insertExpenseAttachmentRecord(
+  expenseId: string,
+  payload: { storagePath: string; fileType: "image" | "pdf" }
+): Promise<Expense | null> {
+  const c = client();
+  const { error } = await c.from("expense_attachments").insert({
+    expense_id: expenseId,
+    file_url: payload.storagePath,
+    file_type: payload.fileType,
+  });
+  if (error) {
+    if (isMissingExpenseAttachmentsTable(error))
+      throw new Error(
+        "expense_attachments table is missing. Apply migration 202604291300_create_expense_attachments.sql."
+      );
+    throw new Error(error.message ?? "Failed to save attachment.");
+  }
+  return getExpenseById(expenseId);
+}
+
 export async function deleteExpenseAttachment(
   expenseId: string,
   attachmentId: string
 ): Promise<Expense | null> {
   const c = client();
+  const { data: ea, error: eaErr } = await c
+    .from("expense_attachments")
+    .select("id, file_url")
+    .eq("id", attachmentId)
+    .eq("expense_id", expenseId)
+    .maybeSingle();
+  if (!eaErr && ea) {
+    const filePath = (ea as { file_url?: unknown }).file_url;
+    if (typeof filePath === "string" && filePath) {
+      const { error: storageErr } = await c.storage.from("expense-attachments").remove([filePath]);
+      if (storageErr) throw new Error(storageErr.message ?? "Failed to delete attachment file.");
+    }
+    const { error: delErr } = await c
+      .from("expense_attachments")
+      .delete()
+      .eq("id", attachmentId)
+      .eq("expense_id", expenseId);
+    if (delErr) throw new Error(delErr.message ?? "Failed to delete attachment record.");
+    return getExpenseById(expenseId);
+  }
+
   const { data: att, error: attErr } = await c
     .from("attachments")
     .select("id, file_path")

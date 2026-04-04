@@ -1,0 +1,106 @@
+/* Expenses route: light, minimal palette (scoped under .expenses-ui) */
+.expenses-ui {
+  --exp-page-bg: #fafaf9;
+  --exp-content-bg: #ffffff;
+  --exp-primary: #111827;
+  --exp-secondary: #6b7280;
+  --exp-negative: #b91c1c;
+  --exp-positive: #059669;
+  --exp-row-hover: #f9fafb;
+  --exp-border: #e5e7eb;
+  --exp-icon: #9ca3af;
+  --exp-icon-hover: #111827;
+  background-color: var(--exp-page-bg);
+  color: var(--exp-primary);
+}
+
+.expenses-ui-content {
+  background-color: var(--exp-content-bg);
+  color: var(--exp-primary);
+}
+
+.expenses-ui .exp-row:hover {
+  background-color: var(--exp-row-hover);
+}
+
+.expenses-ui .exp-btn-primary {
+  background-color: var(--exp-primary) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+
+.expenses-ui .exp-btn-primary:hover {
+  opacity: 0.92;
+}
+
+.expenses-ui .exp-btn-secondary {
+  background-color: var(--exp-content-bg) !important;
+  color: var(--exp-primary) !important;
+  border-color: var(--exp-border) !important;
+  box-shadow: none !important;
+}
+
+.expenses-ui .exp-btn-secondary:hover {
+  background-color: var(--exp-row-hover) !important;
+}
+
+.expenses-ui .exp-btn-secondary svg {
+  color: var(--exp-icon);
+}
+
+.expenses-ui .exp-btn-secondary:hover svg {
+  color: var(--exp-icon-hover);
+}
+
+.expenses-ui .exp-icon-btn {
+  color: var(--exp-icon) !important;
+}
+
+.expenses-ui .exp-icon-btn:hover {
+  color: var(--exp-icon-hover) !important;
+  background-color: var(--exp-row-hover) !important;
+}
+
+.expenses-ui .exp-icon-danger {
+  color: var(--exp-icon) !important;
+}
+
+.expenses-ui .exp-icon-danger:hover {
+  color: var(--exp-negative) !important;
+  background-color: #fef2f2 !important;
+}
+
+.expenses-ui .exp-divide > li + li {
+  border-top: 1px solid var(--exp-border);
+}
+
+/* Dialog when using expenses palette */
+.expenses-ui-dialog {
+  --exp-primary: #111827;
+  --exp-secondary: #6b7280;
+  --exp-border: #e5e7eb;
+  --exp-row-hover: #f9fafb;
+  background-color: #ffffff !important;
+  color: var(--exp-primary) !important;
+  border-color: var(--exp-border) !important;
+}
+
+.expenses-ui-dialog .exp-dlg-muted {
+  color: var(--exp-secondary);
+}
+
+.expenses-ui-dialog .exp-btn-primary {
+  background-color: #111827 !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+
+.expenses-ui-dialog .exp-btn-secondary {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  border-color: #e5e7eb !important;
+}
+
+.expenses-ui-dialog .exp-btn-secondary:hover {
+  background-color: #f9fafb !important;
+}

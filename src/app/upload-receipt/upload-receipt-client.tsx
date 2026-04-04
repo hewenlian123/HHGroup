@@ -6,7 +6,7 @@ import { AmountDiagnosticsPanel } from "@/components/ocr/amount-diagnostics-pane
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import {
   type AmountRuleDiagnostic,
   type FieldConfidence,
@@ -75,7 +75,7 @@ export function UploadReceiptClient() {
   const [receiptDate, setReceiptDate] = React.useState("");
   const [file, setFile] = React.useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
-  const [previewOpen, setPreviewOpen] = React.useState(false);
+  const { openPreview, closePreview } = useAttachmentPreview();
   const [uploading, setUploading] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [message, setMessage] = React.useState<string | null>(null);
@@ -197,7 +197,7 @@ export function UploadReceiptClient() {
       if (prev) URL.revokeObjectURL(prev);
       return null;
     });
-    setPreviewOpen(false);
+    closePreview();
     setMessage(null);
     setOcrBusy(false);
     setOcrFieldConfidence(null);
@@ -506,8 +506,15 @@ export function UploadReceiptClient() {
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => setPreviewOpen(true)}
-                  className="shrink-0 rounded-md border border-border/70 overflow-hidden"
+                  onClick={() => {
+                    if (!previewUrl || !file) return;
+                    openPreview({
+                      url: previewUrl,
+                      fileName: file.name ?? "Receipt",
+                      fileType: file.type === "application/pdf" ? "pdf" : "image",
+                    });
+                  }}
+                  className="shrink-0 cursor-pointer overflow-hidden rounded-md border border-border/70 transition-transform duration-200 hover:scale-105"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -527,6 +534,7 @@ export function UploadReceiptClient() {
                   size="sm"
                   className="h-8 flex-1"
                   onClick={() => {
+                    closePreview();
                     setFile(null);
                     setOcrFieldConfidence(null);
                     setOcrSuggestions(null);
@@ -581,20 +589,6 @@ export function UploadReceiptClient() {
           {uploading ? "上传中…" : submitting ? "提交中…" : "提交报销 / Submit Receipt"}
         </Button>
       </form>
-      <Dialog open={previewOpen && !!previewUrl} onOpenChange={(open) => setPreviewOpen(open)}>
-        <DialogContent className="max-w-full sm:max-w-lg p-0">
-          {previewUrl ? (
-            <div className="w-full max-h-[80vh] flex items-center justify-center bg-background">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={previewUrl}
-                alt="Receipt full preview"
-                className="max-w-full max-h-[80vh] object-contain"
-              />
-            </div>
-          ) : null}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

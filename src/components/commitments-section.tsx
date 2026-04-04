@@ -522,7 +522,10 @@ export function CommitmentsSection({
       <AttachmentPreviewDialog
         attachment={previewAttachment}
         open={previewOpen}
-        onOpenChange={setPreviewOpen}
+        onOpenChange={(v) => {
+          setPreviewOpen(v);
+          if (!v) setPreviewAttachment(null);
+        }}
       />
     </section>
   );

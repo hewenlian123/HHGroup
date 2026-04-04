@@ -6,18 +6,27 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import { Input } from "@/components/ui/input";
+import { ExpenseCategorySelect } from "@/components/expense-category-select";
 import { CreatableSelect } from "@/components/ui/creatable-select";
 import { useToast } from "@/components/toast/toast-provider";
 import {
   createExpense,
   getProjects,
-  getExpenseCategories,
   getVendors,
   addVendor,
   getAccounts,
+  getPaymentAccounts,
   updateExpenseReceiptUrl,
+  type PaymentAccountRow,
 } from "@/lib/data";
+import { PaymentAccountSelect } from "@/components/payment-account-select";
+import {
+  pickDefaultPaymentAccountId,
+  persistLastExpensePaymentAccountId,
+  rememberExpenseVendorPaymentAccount,
+} from "@/lib/expense-payment-preferences";
 import { createBrowserClient } from "@/lib/supabase";
 
 type ProjectOption = { id: string; name: string | null };
@@ -60,7 +69,6 @@ export default function NewExpensePage() {
   const [error, setError] = React.useState<string | null>(null);
 
   const [projects, setProjects] = React.useState<ProjectOption[]>([]);
-  const [categories, setCategories] = React.useState<string[]>([]);
   const [vendors, setVendors] = React.useState<string[]>([]);
 
   const [date, setDate] = React.useState(() => new Date().toISOString().slice(0, 10));
@@ -71,10 +79,16 @@ export default function NewExpensePage() {
   const [notes, setNotes] = React.useState("");
   const [lines, setLines] = React.useState<LineForm[]>([newLine()]);
   const [receiptFile, setReceiptFile] = React.useState<File | null>(null);
+  const [showAdvanced, setShowAdvanced] = React.useState(false);
+  const [showSplitLines, setShowSplitLines] = React.useState(false);
+  const { openPreview, closePreview } = useAttachmentPreview();
 
   const [accounts, setAccounts] = React.useState<
     Array<{ id: string; name: string; type: string; lastFour: string | null }>
   >([]);
+  const [paymentAccountRows, setPaymentAccountRows] = React.useState<PaymentAccountRow[]>([]);
+  const [paymentAccountId, setPaymentAccountId] = React.useState("");
+  const paymentChoiceTouchedRef = React.useRef(false);
 
   const supabase = React.useMemo(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -86,16 +100,16 @@ export default function NewExpensePage() {
     setLoading(true);
     setError(null);
     try {
-      const [p, c, v, accs] = await Promise.all([
+      const [p, v, accs, payAccs] = await Promise.all([
         getProjects(),
-        getExpenseCategories(),
         getVendors(),
         getAccounts().catch(() => []),
+        getPaymentAccounts().catch(() => [] as PaymentAccountRow[]),
       ]);
       setProjects(p as unknown as ProjectOption[]);
-      setCategories(c);
       setVendors(v);
       setAccounts(accs);
+      setPaymentAccountRows(payAccs);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to load lookups.");
     } finally {
@@ -107,6 +121,12 @@ export default function NewExpensePage() {
     void loadLookups();
   }, [loadLookups]);
 
+  React.useEffect(() => {
+    if (loading || paymentAccountRows.length === 0) return;
+    if (paymentChoiceTouchedRef.current) return;
+    setPaymentAccountId(pickDefaultPaymentAccountId(paymentAccountRows, vendorName));
+  }, [vendorName, paymentAccountRows, loading]);
+
   useOnAppSync(
     React.useCallback(() => {
       void loadLookups();
@@ -114,7 +134,34 @@ export default function NewExpensePage() {
     [loadLookups]
   );
 
-  const total = React.useMemo(() => lines.reduce((s, l) => s + safeAmount(l.amount), 0), [lines]);
+  const effectiveLines = React.useMemo((): LineForm[] => {
+    if (showSplitLines) return lines;
+    const base = lines[0] ?? newLine();
+    return [{ ...base, amount: amountInput }];
+  }, [showSplitLines, lines, amountInput]);
+
+  const total = React.useMemo(
+    () => effectiveLines.reduce((s, l) => s + safeAmount(l.amount), 0),
+    [effectiveLines]
+  );
+
+  const receiptPreviewUrl = React.useMemo(() => {
+    if (!receiptFile) return null;
+    if (receiptFile.type.startsWith("image/") || receiptFile.type === "application/pdf") {
+      return URL.createObjectURL(receiptFile);
+    }
+    return null;
+  }, [receiptFile]);
+  React.useEffect(() => {
+    return () => {
+      if (receiptPreviewUrl) URL.revokeObjectURL(receiptPreviewUrl);
+    };
+  }, [receiptPreviewUrl]);
+
+  const receiptPreviewFileType = React.useMemo((): "image" | "pdf" => {
+    if (receiptFile?.type === "application/pdf") return "pdf";
+    return "image";
+  }, [receiptFile]);
 
   const validate = (): boolean => {
     const v = vendorName.trim();
@@ -142,7 +189,9 @@ export default function NewExpensePage() {
     if (Math.round(amount * 100) !== Math.round(total * 100)) {
       toast({
         title: "Amounts do not match",
-        description: "Total of split lines must match the Amount field.",
+        description: showSplitLines
+          ? "Total of split lines must match the Amount field."
+          : "Line amounts must match the Amount field.",
         variant: "error",
       });
       return false;
@@ -165,7 +214,8 @@ export default function NewExpensePage() {
         referenceNo: referenceNo.trim() || undefined,
         notes: notes.trim() || undefined,
         accountId: accountId || undefined,
-        lines: lines.map((l) => ({
+        paymentAccountId: paymentAccountId.trim() || null,
+        lines: effectiveLines.map((l) => ({
           projectId: l.projectId,
           category: (l.category || "Other").trim() || "Other",
           memo: l.memo.trim() || null,
@@ -184,8 +234,13 @@ export default function NewExpensePage() {
         const { data: urlData } = supabase.storage.from("receipts").getPublicUrl(path);
         await updateExpenseReceiptUrl(created.id, urlData.publicUrl);
       }
+      const pa = paymentAccountId.trim();
+      if (pa) {
+        persistLastExpensePaymentAccountId(pa);
+        rememberExpenseVendorPaymentAccount(vendorName.trim(), pa);
+      }
       toast({ title: "Created", description: "Expense created.", variant: "success" });
-      router.push(`/financial/expenses/${created.id}`);
+      router.push("/financial/expenses");
       void syncRouterAndClients(router);
     } catch (e2: unknown) {
       const msg = e2 instanceof Error ? e2.message : "Failed to create expense.";
@@ -200,16 +255,34 @@ export default function NewExpensePage() {
     <div className="page-container page-stack flex justify-center px-8 py-8">
       <div className="w-full max-w-3xl space-y-7">
         <PageHeader
-          title="New Expense"
-          description="Create an expense and split it across projects."
+          title="New expense"
+          description="Full entry for complex bills; use Quick expense on the list for daily items."
         />
 
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
-        <form onSubmit={onSubmit} className="space-y-7">
-          <section className="space-y-4">
-            <h2 className="text-sm font-medium text-foreground">Expense details</h2>
+        <form onSubmit={onSubmit} className="space-y-6">
+          <section className="space-y-3 border-b border-border/60 pb-6">
+            <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Core
+            </h2>
             <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Amount
+                </label>
+                <div className="flex items-center gap-2 rounded-md border border-input px-3 py-2">
+                  <span className="text-sm font-medium text-muted-foreground">$</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    className="h-9 w-full bg-transparent text-lg tabular-nums outline-none"
+                    placeholder="0.00"
+                    value={amountInput}
+                    onChange={(e) => setAmountInput(e.target.value)}
+                  />
+                </div>
+              </div>
               <div className="space-y-2">
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Vendor
@@ -231,22 +304,6 @@ export default function NewExpensePage() {
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Amount
-                </label>
-                <div className="flex items-center gap-2 rounded-md border border-input px-3 py-1.5">
-                  <span className="text-sm font-medium text-muted-foreground">$</span>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    className="h-7 w-full bg-transparent text-base outline-none"
-                    placeholder="0.00"
-                    value={amountInput}
-                    onChange={(e) => setAmountInput(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Date
                 </label>
                 <Input
@@ -257,47 +314,141 @@ export default function NewExpensePage() {
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Payment source
-                </label>
-                <select
-                  value={accountId}
-                  onChange={(e) => setAccountId(e.target.value)}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
-                >
-                  <option value="">Select payment source</option>
-                  {accounts.map((acc) => (
-                    <option key={acc.id} value={acc.id}>
-                      {acc.lastFour ? `${acc.name} •••• ${acc.lastFour}` : acc.name}
-                    </option>
-                  ))}
-                </select>
+              {!showSplitLines ? (
+                <>
+                  <div className="space-y-2 md:col-span-2 lg:col-span-3">
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <div className="space-y-2">
+                        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                          Project
+                        </label>
+                        <select
+                          value={lines[0]?.projectId ?? ""}
+                          onChange={(e) => {
+                            const v = e.target.value || null;
+                            setLines((prev) => {
+                              const row = prev[0] ?? newLine();
+                              const rest = prev.slice(1);
+                              return [{ ...row, projectId: v }, ...rest];
+                            });
+                          }}
+                          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+                          disabled={loading}
+                        >
+                          <option value="">Overhead</option>
+                          {projects.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name ?? p.id}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                          Category
+                        </label>
+                        <ExpenseCategorySelect
+                          value={lines[0]?.category ?? "Other"}
+                          onValueChange={(v) => {
+                            setLines((prev) => {
+                              const row = prev[0] ?? newLine();
+                              const rest = prev.slice(1);
+                              return [{ ...row, category: v }, ...rest];
+                            });
+                          }}
+                          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+                          disabled={loading}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                          Payment
+                        </label>
+                        <PaymentAccountSelect
+                          value={paymentAccountId}
+                          onValueChange={(id) => {
+                            paymentChoiceTouchedRef.current = true;
+                            setPaymentAccountId(id);
+                            persistLastExpensePaymentAccountId(id);
+                          }}
+                          disabled={loading || saving}
+                          onAccountsUpdated={setPaymentAccountRows}
+                          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : null}
+            </div>
+          </section>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8"
+              onClick={() => setShowAdvanced((v) => !v)}
+            >
+              {showAdvanced ? "Hide" : "More"} options
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8"
+              onClick={() => setShowSplitLines((v) => !v)}
+            >
+              {showSplitLines ? "Single line" : "Split across projects"}
+            </Button>
+          </div>
+
+          {showAdvanced ? (
+            <section className="space-y-4 border-b border-border/60 pb-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Payment source
+                  </label>
+                  <select
+                    value={accountId}
+                    onChange={(e) => setAccountId(e.target.value)}
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+                  >
+                    <option value="">Select payment source</option>
+                    {accounts.map((acc) => (
+                      <option key={acc.id} value={acc.id}>
+                        {acc.lastFour ? `${acc.name} •••• ${acc.lastFour}` : acc.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Reference #
+                  </label>
+                  <Input
+                    value={referenceNo}
+                    onChange={(e) => setReferenceNo(e.target.value)}
+                    className="h-9"
+                    placeholder="Optional"
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Reference #
+                  Notes
                 </label>
                 <Input
-                  value={referenceNo}
-                  onChange={(e) => setReferenceNo(e.target.value)}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
                   className="h-9"
                   placeholder="Optional"
                 />
               </div>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Notes
-              </label>
-              <Input
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="h-9"
-                placeholder="Optional"
-              />
-            </div>
-          </section>
+            </section>
+          ) : null}
 
           <section className="space-y-3">
             <h2 className="text-sm font-medium text-foreground">Receipt</h2>
@@ -334,107 +485,185 @@ export default function NewExpensePage() {
                 <span className="mt-2 text-xs text-foreground">Selected: {receiptFile.name}</span>
               ) : null}
             </label>
+            {receiptPreviewUrl && receiptFile?.type.startsWith("image/") ? (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    openPreview({
+                      url: receiptPreviewUrl,
+                      fileName: receiptFile.name ?? "Receipt",
+                      fileType: receiptPreviewFileType,
+                    })
+                  }
+                  className="cursor-pointer overflow-hidden rounded-sm border border-border/60 p-0.5 transition-transform duration-200 ease-out hover:scale-105"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={receiptPreviewUrl} alt="" className="h-16 w-16 object-cover" />
+                </button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  onClick={() =>
+                    openPreview({
+                      url: receiptPreviewUrl,
+                      fileName: receiptFile.name ?? "Receipt",
+                      fileType: receiptPreviewFileType,
+                    })
+                  }
+                >
+                  Preview
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8"
+                  onClick={() => {
+                    closePreview();
+                    setReceiptFile(null);
+                    const el = document.getElementById("receipt-upload") as HTMLInputElement | null;
+                    if (el) el.value = "";
+                  }}
+                >
+                  Remove
+                </Button>
+              </div>
+            ) : receiptFile?.type === "application/pdf" && receiptPreviewUrl ? (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    openPreview({
+                      url: receiptPreviewUrl,
+                      fileName: receiptFile.name ?? "Receipt",
+                      fileType: "pdf",
+                    })
+                  }
+                  className="flex h-16 w-16 cursor-pointer items-center justify-center rounded-sm border border-border/60 text-[10px] font-medium text-muted-foreground transition-transform duration-200 ease-out hover:scale-105"
+                >
+                  PDF
+                </button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  onClick={() =>
+                    openPreview({
+                      url: receiptPreviewUrl,
+                      fileName: receiptFile.name ?? "Receipt",
+                      fileType: "pdf",
+                    })
+                  }
+                >
+                  Preview
+                </Button>
+              </div>
+            ) : receiptFile ? (
+              <p className="mt-2 text-xs text-muted-foreground">
+                PDF / file attached — preview after save.
+              </p>
+            ) : null}
           </section>
 
-          <section className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-medium text-foreground">Split lines</h2>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8"
-                onClick={() => setLines((prev) => [...prev, newLine()])}
-              >
-                Add line
-              </Button>
-            </div>
+          {showSplitLines ? (
+            <section className="space-y-3 border-b border-border/60 pb-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-medium text-foreground">Split lines</h2>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  onClick={() => setLines((prev) => [...prev, newLine()])}
+                >
+                  Add line
+                </Button>
+              </div>
 
-            <div className="space-y-3">
-              {lines.map((l, idx) => (
-                <div key={l.id} className="grid gap-3 md:grid-cols-[1fr_160px_160px_140px_36px]">
-                  <Input
-                    value={l.memo}
-                    onChange={(e) =>
-                      setLines((prev) =>
-                        prev.map((x) => (x.id === l.id ? { ...x, memo: e.target.value } : x))
-                      )
-                    }
-                    className="h-9"
-                    placeholder="Memo / description"
-                  />
-                  <select
-                    value={l.projectId ?? ""}
-                    onChange={(e) => {
-                      const v = e.target.value || null;
-                      setLines((prev) =>
-                        prev.map((x) => (x.id === l.id ? { ...x, projectId: v } : x))
-                      );
-                    }}
-                    className="h-9 rounded border border-input bg-transparent px-2 text-xs"
-                    disabled={loading}
-                  >
-                    <option value="">Overhead</option>
-                    {projects.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name ?? p.id}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={l.category}
-                    onChange={(e) =>
-                      setLines((prev) =>
-                        prev.map((x) => (x.id === l.id ? { ...x, category: e.target.value } : x))
-                      )
-                    }
-                    className="h-9 rounded border border-input bg-transparent px-2 text-xs"
-                    disabled={loading}
-                  >
-                    {Array.from(new Set(["Other", ...categories])).map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={l.amount}
-                    onChange={(e) =>
-                      setLines((prev) =>
-                        prev.map((x) => (x.id === l.id ? { ...x, amount: e.target.value } : x))
-                      )
-                    }
-                    className="h-9 tabular-nums"
-                    placeholder="0.00"
-                    required={idx === 0}
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 text-destructive"
-                    onClick={() =>
-                      setLines((prev) =>
-                        prev.length <= 1 ? prev : prev.filter((x) => x.id !== l.id)
-                      )
-                    }
-                    aria-label="Remove"
-                    disabled={lines.length <= 1}
-                  >
-                    ×
-                  </Button>
-                </div>
-              ))}
-            </div>
+              <div className="space-y-3">
+                {lines.map((l, idx) => (
+                  <div key={l.id} className="grid gap-3 md:grid-cols-[1fr_160px_160px_140px_36px]">
+                    <Input
+                      value={l.memo}
+                      onChange={(e) =>
+                        setLines((prev) =>
+                          prev.map((x) => (x.id === l.id ? { ...x, memo: e.target.value } : x))
+                        )
+                      }
+                      className="h-9"
+                      placeholder="Memo / description"
+                    />
+                    <select
+                      value={l.projectId ?? ""}
+                      onChange={(e) => {
+                        const v = e.target.value || null;
+                        setLines((prev) =>
+                          prev.map((x) => (x.id === l.id ? { ...x, projectId: v } : x))
+                        );
+                      }}
+                      className="h-9 rounded border border-input bg-transparent px-2 text-xs"
+                      disabled={loading}
+                    >
+                      <option value="">Overhead</option>
+                      {projects.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name ?? p.id}
+                        </option>
+                      ))}
+                    </select>
+                    <ExpenseCategorySelect
+                      value={l.category}
+                      onValueChange={(v) =>
+                        setLines((prev) =>
+                          prev.map((x) => (x.id === l.id ? { ...x, category: v } : x))
+                        )
+                      }
+                      className="h-9 rounded border border-input bg-transparent px-2 text-xs"
+                      disabled={loading}
+                    />
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={l.amount}
+                      onChange={(e) =>
+                        setLines((prev) =>
+                          prev.map((x) => (x.id === l.id ? { ...x, amount: e.target.value } : x))
+                        )
+                      }
+                      className="h-9 tabular-nums"
+                      placeholder="0.00"
+                      required={idx === 0}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 text-destructive"
+                      onClick={() =>
+                        setLines((prev) =>
+                          prev.length <= 1 ? prev : prev.filter((x) => x.id !== l.id)
+                        )
+                      }
+                      aria-label="Remove"
+                      disabled={lines.length <= 1}
+                    >
+                      ×
+                    </Button>
+                  </div>
+                ))}
+              </div>
 
-            <div className="mt-2 flex items-center justify-between border-t border-border/60 pt-3 text-sm">
-              <span className="text-muted-foreground">Total</span>
-              <span className="tabular-nums font-medium">${total.toLocaleString()}</span>
-            </div>
-          </section>
+              <div className="mt-2 flex items-center justify-between border-t border-border/60 pt-3 text-sm">
+                <span className="text-muted-foreground">Total</span>
+                <span className="tabular-nums font-medium">${total.toLocaleString()}</span>
+              </div>
+            </section>
+          ) : null}
 
           <section className="flex items-center justify-between pt-2">
             <Button
@@ -447,7 +676,7 @@ export default function NewExpensePage() {
               Cancel
             </Button>
             <Button type="submit" size="sm" className="h-8" disabled={saving}>
-              {saving ? "Creating…" : "Create Expense"}
+              {saving ? "Creating…" : "Save expense"}
             </Button>
           </section>
         </form>

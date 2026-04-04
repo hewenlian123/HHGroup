@@ -12,6 +12,7 @@ import { PWAInstallPrompt } from "../pwa-install-prompt";
 import { SystemHealthProvider } from "@/contexts/system-health-context";
 import { BreadcrumbOverrideProvider } from "@/contexts/breadcrumb-override-context";
 import { LaborAddEntryProvider } from "@/contexts/labor-add-entry-context";
+import { AttachmentPreviewProvider } from "@/contexts/attachment-preview-context";
 import { SystemHealthPoller } from "@/components/system-health/system-health-poller";
 import { cn } from "@/lib/utils";
 
@@ -51,58 +52,64 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     const printReceiptBg = pathname?.startsWith("/receipt/print/");
     return (
       <ToastProvider>
-        <div className={printReceiptBg ? "min-h-screen bg-[#f5f5f5]" : "min-h-screen bg-[#F2F2F4]"}>
-          {children}
-        </div>
+        <AttachmentPreviewProvider>
+          <div
+            className={printReceiptBg ? "min-h-screen bg-[#f5f5f5]" : "min-h-screen bg-[#F2F2F4]"}
+          >
+            {children}
+          </div>
+        </AttachmentPreviewProvider>
       </ToastProvider>
     );
   }
 
   return (
     <ToastProvider>
-      <BreadcrumbOverrideProvider>
-        <SystemHealthProvider>
-          <LaborAddEntryProvider>
-            <SystemHealthPoller />
-            <div className="app-shell flex h-screen overflow-hidden bg-[#F8F7F4] dark:bg-background">
-              {/* Tablet/Desktop (640px+): sidebar fixed left, collapsible. */}
-              <Sidebar
-                className="hidden sm:flex shrink-0 transition-[width] duration-200"
-                collapsed={collapsed}
-                onToggleCollapsed={() => setCollapsed((v) => !v)}
-              />
-              {/* Mobile (<640px): slide-out drawer (hamburger menu). */}
-              <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-                <SheetContent
-                  side="left"
-                  className="w-[210px] max-w-[85vw] border-r border-[#E5E7EB] [border-right-width:0.5px] bg-white p-0 shadow-none transition-transform duration-200 data-[state=open]:slide-in-from-left data-[state=closed]:slide-out-to-left"
-                >
-                  <Sidebar
-                    className="h-full w-full border-none"
-                    onNavigate={() => setMobileOpen(false)}
-                  />
-                </SheetContent>
-              </Sheet>
-              <div data-app-main-column className="flex min-w-0 flex-1 flex-col overflow-hidden">
-                <Topbar
-                  onOpenSidebar={() => setMobileOpen(true)}
-                  onToggleSidebar={() => setCollapsed((c) => !c)}
+      <AttachmentPreviewProvider>
+        <BreadcrumbOverrideProvider>
+          <SystemHealthProvider>
+            <LaborAddEntryProvider>
+              <SystemHealthPoller />
+              <div className="app-shell flex h-screen overflow-hidden bg-[#F8F7F4] dark:bg-background">
+                {/* Tablet/Desktop (640px+): sidebar fixed left, collapsible. */}
+                <Sidebar
+                  className="hidden sm:flex shrink-0 transition-[width] duration-200"
+                  collapsed={collapsed}
+                  onToggleCollapsed={() => setCollapsed((v) => !v)}
                 />
-                <main
-                  className={cn(
-                    "flex-1 overflow-y-auto overflow-x-hidden bg-[#F8F7F4] pb-14 sm:pb-0"
-                  )}
-                >
-                  {children}
-                </main>
-                <BottomNav className="fixed bottom-0 left-0 right-0 z-30 sm:hidden" />
-                <FloatingActionButton />
+                {/* Mobile (<640px): slide-out drawer (hamburger menu). */}
+                <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+                  <SheetContent
+                    side="left"
+                    className="w-[210px] max-w-[85vw] border-r border-[#E5E7EB] [border-right-width:0.5px] bg-white p-0 shadow-none transition-transform duration-200 data-[state=open]:slide-in-from-left data-[state=closed]:slide-out-to-left"
+                  >
+                    <Sidebar
+                      className="h-full w-full border-none"
+                      onNavigate={() => setMobileOpen(false)}
+                    />
+                  </SheetContent>
+                </Sheet>
+                <div data-app-main-column className="flex min-w-0 flex-1 flex-col overflow-hidden">
+                  <Topbar
+                    onOpenSidebar={() => setMobileOpen(true)}
+                    onToggleSidebar={() => setCollapsed((c) => !c)}
+                  />
+                  <main
+                    className={cn(
+                      "flex-1 overflow-y-auto overflow-x-hidden bg-[#F8F7F4] pb-14 sm:pb-0"
+                    )}
+                  >
+                    {children}
+                  </main>
+                  <BottomNav className="fixed bottom-0 left-0 right-0 z-30 sm:hidden" />
+                  <FloatingActionButton />
+                </div>
               </div>
-            </div>
-            <PWAInstallPrompt />
-          </LaborAddEntryProvider>
-        </SystemHealthProvider>
-      </BreadcrumbOverrideProvider>
+              <PWAInstallPrompt />
+            </LaborAddEntryProvider>
+          </SystemHealthProvider>
+        </BreadcrumbOverrideProvider>
+      </AttachmentPreviewProvider>
     </ToastProvider>
   );
 }
