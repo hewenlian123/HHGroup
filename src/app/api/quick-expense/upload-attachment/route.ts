@@ -4,7 +4,15 @@ import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server
 const BUCKET = "expense-attachments";
 
 export async function POST(req: Request) {
-  const supabase = getServerSupabaseAdmin() ?? getServerSupabase();
+  // Prefer service role so uploads do not depend on storage.objects policies for anon.
+  const admin = getServerSupabaseAdmin();
+  const supabase = admin ?? getServerSupabase();
+  if (process.env.NODE_ENV === "production" && !admin) {
+    console.warn(
+      "[quick-expense/upload-attachment] SUPABASE_SERVICE_ROLE_KEY is unset; using anon. " +
+        "Set it in production so receipt uploads succeed even with restrictive storage RLS."
+    );
+  }
   if (!supabase) {
     return NextResponse.json({ ok: false, message: "Supabase not configured." }, { status: 500 });
   }
