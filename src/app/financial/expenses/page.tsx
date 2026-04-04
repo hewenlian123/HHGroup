@@ -25,10 +25,10 @@ import {
   type Expense,
 } from "@/lib/data";
 import { createBrowserClient } from "@/lib/supabase";
-import { Check, Eye, Minus, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Check, Eye, Pencil, Plus, Trash2, X } from "lucide-react";
 import { Pagination } from "@/components/ui/pagination";
 import { useSearchParams } from "next/navigation";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ExpenseReceiptPreviewDialog } from "./expense-receipt-preview-dialog";
 import { QuickExpenseModal } from "./quick-expense-modal";
 import { EditExpenseModal, type ExpenseReviewSavePatch } from "./edit-expense-modal";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
@@ -37,11 +37,6 @@ import { useToast } from "@/components/toast/toast-provider";
 type ProjectRow = { id: string; name: string | null; status?: string | null };
 type WorkerRow = { id: string; name: string };
 type ReceiptItem = { url: string; fileName: string };
-
-function statusLabel(s: string): string {
-  if (s === "needs_review") return "Needs Review";
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
 
 function mergeExpenseReviewPatch(e: Expense, p: ExpenseReviewSavePatch): Expense {
   const nextLines =
@@ -182,7 +177,6 @@ function ExpensesPageInner() {
     index: number;
     expenseId?: string;
   } | null>(null);
-  const [receiptZoom, setReceiptZoom] = React.useState(1);
   const [quickExpenseOpen, setQuickExpenseOpen] = React.useState(false);
   const receiptReplaceRef = React.useRef<HTMLInputElement>(null);
   const [receiptReplacing, setReceiptReplacing] = React.useState(false);
@@ -253,7 +247,7 @@ function ExpensesPageInner() {
     const allTotal = expenses.reduce((s, e) => s + getExpenseTotal(e), 0);
     const needsReview = expenses.filter((e) => (e.status ?? "pending") === "needs_review").length;
     return { monthTotal, allTotal, needsReview };
-  }, [expenses, safeProjects]);
+  }, [expenses]);
 
   const filtered = React.useMemo(() => {
     let list = expenses;
@@ -311,7 +305,6 @@ function ExpensesPageInner() {
     async (row: Expense) => {
       const raw = getReceiptItems(row);
       const items = await resolveReceiptPreviewUrls(raw, supabase);
-      setReceiptZoom(1);
       setReceiptPreview({ items, index: 0, expenseId: row.id });
     },
     [supabase]
@@ -875,187 +868,48 @@ function ExpensesPageInner() {
         <Pagination page={curPage} pageSize={pageSize} total={total} onPageChange={setPage} />
       ) : null}
 
-      <Dialog
+      <ExpenseReceiptPreviewDialog
         open={!!receiptPreview}
-        onOpenChange={(open) => {
-          if (!open) {
-            setReceiptPreview(null);
-            setReceiptZoom(1);
+        onOpenChange={(next) => {
+          if (!next) setReceiptPreview(null);
+        }}
+        items={receiptPreview?.items ?? []}
+        index={receiptPreview?.index ?? 0}
+        onIndexChange={(i) => setReceiptPreview((p) => (p ? { ...p, index: i } : p))}
+        expenseId={receiptPreview?.expenseId && supabase ? receiptPreview.expenseId : undefined}
+        replaceInputRef={receiptReplaceRef}
+        receiptReplacing={receiptReplacing}
+        onReplaceInputChange={async (e) => {
+          const file = e.target.files?.[0];
+          if (!file || !receiptPreview?.expenseId || !supabase) return;
+          setReceiptReplacing(true);
+          try {
+            const path = `receipts/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+            const { error } = await supabase.storage.from("receipts").upload(path, file, {
+              contentType: file.type || "application/octet-stream",
+              upsert: true,
+            });
+            if (error) throw error;
+            const { data } = supabase.storage.from("receipts").getPublicUrl(path);
+            await updateExpenseReceiptUrl(receiptPreview.expenseId, data.publicUrl);
+            setReceiptPreview((p) =>
+              p
+                ? {
+                    ...p,
+                    items: p.items.map((it, idx) =>
+                      idx === p.index ? { ...it, url: data.publicUrl } : it
+                    ),
+                  }
+                : null
+            );
+            refresh();
+          } finally {
+            setReceiptReplacing(false);
+            e.target.value = "";
           }
         }}
-      >
-        <DialogContent className="max-h-[90vh] max-w-4xl border-border/60 p-0 gap-0 overflow-hidden flex flex-col">
-          <DialogHeader className="shrink-0 border-b border-border/60 px-4 py-2">
-            <DialogTitle className="text-sm font-medium truncate">
-              {receiptPreview
-                ? `${receiptPreview.items[receiptPreview.index]?.fileName ?? "Receipt"} (${receiptPreview.index + 1}/${receiptPreview.items.length})`
-                : "Receipt"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="flex-1 min-h-0 overflow-auto p-4">
-            {receiptPreview
-              ? (() => {
-                  const u = receiptPreview.items[receiptPreview.index]?.url ?? "";
-                  if (u.toLowerCase().endsWith(".pdf")) {
-                    return (
-                      <iframe
-                        src={u}
-                        title="Receipt"
-                        className="w-full h-[70vh] min-h-[400px] rounded border border-border/60"
-                      />
-                    );
-                  }
-                  if (/\.(jpe?g|png|gif|webp)$/i.test(u)) {
-                    /* eslint-disable-next-line @next/next/no-img-element -- receipt URL is dynamic (storage/external) */
-                    return (
-                      <img
-                        src={u}
-                        alt="Receipt"
-                        loading="lazy"
-                        className="max-w-full max-h-[70vh] object-contain rounded border border-border/60"
-                        style={{
-                          transform: `scale(${receiptZoom})`,
-                          transformOrigin: "top center",
-                        }}
-                      />
-                    );
-                  }
-                  return (
-                    <p className="text-sm text-muted-foreground">
-                      <a
-                        href={u}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary underline"
-                      >
-                        Open receipt
-                      </a>
-                    </p>
-                  );
-                })()
-              : null}
-          </div>
-          {receiptPreview ? (
-            <div className="shrink-0 border-t border-border/60 px-4 py-2 flex items-center justify-end gap-2">
-              {receiptPreview.items.length > 1 ? (
-                <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8"
-                    onClick={() =>
-                      setReceiptPreview((p) =>
-                        p
-                          ? {
-                              ...p,
-                              index: (p.index - 1 + p.items.length) % p.items.length,
-                            }
-                          : p
-                      )
-                    }
-                  >
-                    Prev
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8"
-                    onClick={() =>
-                      setReceiptPreview((p) =>
-                        p
-                          ? {
-                              ...p,
-                              index: (p.index + 1) % p.items.length,
-                            }
-                          : p
-                      )
-                    }
-                  >
-                    Next
-                  </Button>
-                </>
-              ) : null}
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8"
-                onClick={() => setReceiptZoom((z) => Math.max(0.5, Number((z - 0.1).toFixed(2))))}
-              >
-                <Minus className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8"
-                onClick={() => setReceiptZoom((z) => Math.min(3, Number((z + 0.1).toFixed(2))))}
-              >
-                <Plus className="h-3.5 w-3.5" />
-              </Button>
-              <Button variant="outline" size="sm" className="h-8" asChild>
-                <a
-                  href={receiptPreview.items[receiptPreview.index]?.url ?? "#"}
-                  download
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Download
-                </a>
-              </Button>
-              {receiptPreview.expenseId && supabase ? (
-                <>
-                  <input
-                    type="file"
-                    ref={receiptReplaceRef}
-                    accept="image/*,.pdf"
-                    capture="environment"
-                    className="hidden"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file || !receiptPreview.expenseId) return;
-                      setReceiptReplacing(true);
-                      try {
-                        const path = `receipts/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
-                        const { error } = await supabase.storage
-                          .from("receipts")
-                          .upload(path, file, {
-                            contentType: file.type || "application/octet-stream",
-                            upsert: true,
-                          });
-                        if (error) throw error;
-                        const { data } = supabase.storage.from("receipts").getPublicUrl(path);
-                        await updateExpenseReceiptUrl(receiptPreview.expenseId, data.publicUrl);
-                        setReceiptPreview((p) =>
-                          p
-                            ? {
-                                ...p,
-                                items: p.items.map((it, idx) =>
-                                  idx === p.index ? { ...it, url: data.publicUrl } : it
-                                ),
-                              }
-                            : null
-                        );
-                        refresh();
-                      } finally {
-                        setReceiptReplacing(false);
-                        e.target.value = "";
-                      }
-                    }}
-                  />
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8"
-                    disabled={receiptReplacing}
-                    onClick={() => receiptReplaceRef.current?.click()}
-                  >
-                    {receiptReplacing ? "Replacing…" : "Replace Receipt"}
-                  </Button>
-                </>
-              ) : null}
-            </div>
-          ) : null}
-        </DialogContent>
-      </Dialog>
+        onReplaceButtonClick={() => receiptReplaceRef.current?.click()}
+      />
 
       <QuickExpenseModal
         open={quickExpenseOpen}
