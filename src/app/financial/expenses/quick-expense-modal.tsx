@@ -39,7 +39,8 @@ async function uploadReceiptToStorage(
   file: File,
   keySuffix: string
 ): Promise<QuickExpenseAttachmentSlot> {
-  // Prefer server upload to avoid browser-side bucket policy/session issues.
+  let serverUploadMessage: string | null = null;
+  // Prefer server upload (service role) to avoid browser-side bucket policy/session issues.
   try {
     const fd = new FormData();
     fd.set("file", file);
@@ -47,24 +48,30 @@ async function uploadReceiptToStorage(
       method: "POST",
       body: fd,
     });
-    if (res.ok) {
-      const payload = (await res.json()) as {
-        ok: boolean;
-        path?: string;
-        signed_url?: string;
-        public_url?: string;
-      };
-      if (payload.ok && payload.path) {
-        const fallbackBlob =
-          !payload.signed_url && !payload.public_url ? URL.createObjectURL(file) : null;
-        return {
-          previewUrl: payload.signed_url || payload.public_url || fallbackBlob || "",
-          attachmentPath: payload.path,
-          receiptsPublicUrl: payload.public_url ?? null,
-          revoke: fallbackBlob ? () => URL.revokeObjectURL(fallbackBlob) : undefined,
-        };
-      }
+    let payload: {
+      ok?: boolean;
+      path?: string;
+      signed_url?: string | null;
+      public_url?: string | null;
+      message?: string;
+    } = {};
+    try {
+      payload = (await res.json()) as typeof payload;
+    } catch {
+      /* non-JSON response */
     }
+    if (res.ok && payload.ok && payload.path) {
+      const fallbackBlob =
+        !payload.signed_url && !payload.public_url ? URL.createObjectURL(file) : null;
+      return {
+        previewUrl: payload.signed_url || payload.public_url || fallbackBlob || "",
+        attachmentPath: payload.path,
+        receiptsPublicUrl: payload.public_url ?? null,
+        revoke: fallbackBlob ? () => URL.revokeObjectURL(fallbackBlob) : undefined,
+      };
+    }
+    const m = typeof payload.message === "string" ? payload.message.trim() : "";
+    if (m) serverUploadMessage = m;
   } catch {
     // fall through to legacy browser upload path
   }
@@ -107,13 +114,14 @@ async function uploadReceiptToStorage(
     return { previewUrl: u, attachmentPath: null, receiptsPublicUrl: u };
   }
   const blob = URL.createObjectURL(file);
+  const detail = serverUploadMessage ? ` Server: ${serverUploadMessage}` : "";
   return {
     previewUrl: blob,
     attachmentPath: null,
     receiptsPublicUrl: null,
     revoke: () => URL.revokeObjectURL(blob),
     pendingFile: file,
-    uploadError: "Upload to Supabase Storage failed (bucket/policy/session).",
+    uploadError: `Upload to Supabase Storage failed (bucket/policy/session).${detail}`,
   };
 }
 
