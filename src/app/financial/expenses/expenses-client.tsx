@@ -58,6 +58,33 @@ function money(n: number): string {
   return `$${Math.round(n).toLocaleString()}`;
 }
 
+function projectSummaryLabel(
+  e: ExpenseRow,
+  linesForExpense: LineMiniRow[],
+  projectNameById: Map<string, string>
+): string {
+  const distinct = new Set<string>();
+  for (const l of linesForExpense) {
+    const pid = l.project_id;
+    if (pid != null && String(pid).trim() !== "") distinct.add(String(pid).trim());
+  }
+  const hid = e.project_id;
+  if (hid != null && String(hid).trim() !== "") distinct.add(String(hid).trim());
+
+  if (distinct.size === 0) {
+    const lineCount = linesForExpense.length;
+    const reported = e.line_count ?? 0;
+    if (lineCount === 0 && reported === 0) return "—";
+    return "Overhead";
+  }
+  if (distinct.size === 1) {
+    const id = [...distinct][0]!;
+    const fromLine = linesForExpense.find((l) => l.project_id === id);
+    return projectNameById.get(id) ?? fromLine?.projects?.name ?? e.projects?.name ?? id;
+  }
+  return `${distinct.size} projects`;
+}
+
 export function ExpensesClient() {
   const router = useRouter();
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -200,6 +227,21 @@ export function ExpensesClient() {
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [lines, rows]);
 
+  const projectNameById = React.useMemo(
+    () => new Map(projectsForFilter.map((p) => [p.id, p.name])),
+    [projectsForFilter]
+  );
+
+  const linesByExpense = React.useMemo(() => {
+    const m = new Map<string, LineMiniRow[]>();
+    for (const l of lines) {
+      const arr = m.get(l.expense_id) ?? [];
+      arr.push(l);
+      m.set(l.expense_id, arr);
+    }
+    return m;
+  }, [lines]);
+
   const categoriesForFilter = React.useMemo(() => {
     const set = new Set<string>();
     for (const l of lines) {
@@ -274,14 +316,9 @@ export function ExpensesClient() {
   const data: Row[] = React.useMemo(() => {
     return filtered.map((e) => {
       const meta = expenseMeta.get(e.id);
-      const projectCount = meta?.projects.size ?? 0;
       const categoryCount = meta?.categories.size ?? 0;
-      const projectLabel =
-        projectCount > 0
-          ? projectCount === 1
-            ? Array.from(meta!.projects.values())[0]!
-            : `${projectCount} projects`
-          : (e.projects?.name ?? "Overhead");
+      const linesForE = linesByExpense.get(e.id) ?? [];
+      const projectLabel = projectSummaryLabel(e, linesForE, projectNameById);
       const catSuffix =
         categoryCount === 0
           ? ""
@@ -290,7 +327,7 @@ export function ExpensesClient() {
             : ` • ${categoryCount} categories`;
       return { ...e, summary: `${projectLabel}${catSuffix}` };
     });
-  }, [expenseMeta, filtered]);
+  }, [expenseMeta, filtered, linesByExpense, projectNameById]);
 
   const columns: Column<Row>[] = [
     {
