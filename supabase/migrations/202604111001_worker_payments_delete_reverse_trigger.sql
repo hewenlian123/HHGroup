@@ -34,11 +34,16 @@ BEGIN
 END;
 $f$;
 
-DROP TRIGGER IF EXISTS trg_worker_payments_before_delete ON public.worker_payments;
-
-CREATE TRIGGER trg_worker_payments_before_delete
-  BEFORE DELETE ON public.worker_payments
-  FOR EACH ROW
-  EXECUTE PROCEDURE public.fn_worker_payments_before_delete();
+DO $$
+BEGIN
+  IF to_regclass('public.worker_payments') IS NULL THEN
+    RETURN;
+  END IF;
+  DROP TRIGGER IF EXISTS trg_worker_payments_before_delete ON public.worker_payments;
+  CREATE TRIGGER trg_worker_payments_before_delete
+    BEFORE DELETE ON public.worker_payments
+    FOR EACH ROW
+    EXECUTE PROCEDURE public.fn_worker_payments_before_delete();
+END $$;
 
 COMMENT ON FUNCTION public.fn_worker_payments_before_delete() IS 'Unlinks labor_entries and reopens worker_reimbursements when a worker_payments row is deleted.';

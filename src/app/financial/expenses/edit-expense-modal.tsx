@@ -387,6 +387,7 @@ export function EditExpenseModal({
                 <div>
                   <label className="exp-dlg-muted text-[11px]">Payment</label>
                   <PaymentAccountSelect
+                    id="edit-expense-payment-select"
                     value={paymentAccountId}
                     onValueChange={(id) => {
                       setPaymentAccountId(id);

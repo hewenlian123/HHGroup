@@ -219,18 +219,34 @@ async function fetchPaymentAccountNameMap(
   const unique = [...new Set(ids.filter((x): x is string => Boolean(x)))];
   if (unique.length === 0) return new Map();
   const c = client();
-  const { data, error } = await c.from("payment_accounts").select("id,name").in("id", unique);
-  if (error) {
-    if (isMissingTable(error)) return new Map();
-    return new Map();
-  }
-  if (!data) return new Map();
   const m = new Map<string, string>();
-  for (const r of data as { id: string; name: string }[]) {
-    m.set(r.id, r.name);
+  const { data, error } = await c.from("payment_accounts").select("id,name").in("id", unique);
+  if (error && isMissingTable(error)) return m;
+  if (!error && data) {
+    for (const r of data as { id: string; name: string }[]) {
+      m.set(r.id, r.name);
+    }
   }
+  const missing = unique.filter((id) => !m.has(id));
+  if (missing.length === 0) return m;
+  await Promise.all(
+    missing.map(async (id) => {
+      const { data: row, error: rowErr } = await c
+        .from("payment_accounts")
+        .select("name")
+        .eq("id", id)
+        .maybeSingle();
+      if (rowErr || !row) return;
+      const name = (row as { name?: string }).name;
+      if (typeof name === "string" && name.length > 0) m.set(id, name);
+    })
+  );
   return m;
 }
+
+type ExpenseRowWithPaymentEmbed = ExpenseRow & {
+  payment_accounts?: { name?: string } | null;
+};
 
 async function toExpense(
   row: ExpenseRow,
@@ -241,6 +257,9 @@ async function toExpense(
 ): Promise<Expense> {
   const status = normalizeExpenseStatus(row.status);
   const paId = row.payment_account_id ?? null;
+  const embedded = (row as ExpenseRowWithPaymentEmbed).payment_accounts?.name;
+  const fromEmbed = typeof embedded === "string" && embedded.length > 0 ? embedded : null;
+  const paymentAccountName = fromEmbed ?? (paId ? (paymentAccountNames?.get(paId) ?? null) : null);
   return {
     id: row.id,
     date: row.expense_date?.slice(0, 10) ?? "",
@@ -257,7 +276,7 @@ async function toExpense(
     cardName: row.card_name ?? undefined,
     accountId: row.account_id ?? undefined,
     paymentAccountId: paId ?? undefined,
-    paymentAccountName: paId ? (paymentAccountNames?.get(paId) ?? null) : null,
+    paymentAccountName,
     headerProjectId:
       row.project_id != null && String(row.project_id).trim() !== ""
         ? String(row.project_id)
@@ -276,26 +295,41 @@ const EXPENSE_COLS_FULL_LEGACY_META = EXPENSE_COLS_CORE;
 const EXPENSE_COLS_FULL_NO_PAYMENT_METHOD =
   "id,expense_date,vendor,vendor_name,notes,reference_no,total,line_count,receipt_url,status,worker_id,card_name,account_id,payment_account_id,project_id";
 /** Legacy: table may have only vendor (no vendor_name). No payment_method so works when column is missing. */
-const EXPENSE_COLS_LEGACY = "id,expense_date,vendor,notes,reference_no,total,line_count";
+const EXPENSE_COLS_LEGACY =
+  "id,expense_date,vendor,notes,reference_no,total,line_count,payment_account_id";
 /** Minimal: no reference_no, no payment_method (for schemas that only have core columns). */
-const EXPENSE_COLS_MINIMAL = "id,expense_date,vendor,vendor_name,notes,total,line_count";
-const EXPENSE_COLS_MINIMAL_LEGACY = "id,expense_date,vendor,notes,total,line_count";
+const EXPENSE_COLS_MINIMAL =
+  "id,expense_date,vendor,vendor_name,notes,total,line_count,payment_account_id";
+const EXPENSE_COLS_MINIMAL_LEGACY =
+  "id,expense_date,vendor,notes,total,line_count,payment_account_id";
 /** Fallback when total/line_count do not exist: total is derived from expense_lines in app. */
-const EXPENSE_COLS_NO_TOTAL = "id,expense_date,vendor,vendor_name,notes";
-const EXPENSE_COLS_NO_TOTAL_LEGACY = "id,expense_date,vendor,notes";
+const EXPENSE_COLS_NO_TOTAL = "id,expense_date,vendor,vendor_name,notes,payment_account_id";
+const EXPENSE_COLS_NO_TOTAL_LEGACY = "id,expense_date,vendor,notes,payment_account_id";
 
 function isMissingColumn(err: { message?: string } | null): boolean {
   const m = err?.message ?? "";
   return /column .* does not exist|schema cache/i.test(m);
 }
 
+function isPaymentEmbedUnsupported(err: { message?: string } | null): boolean {
+  const m = err?.message ?? "";
+  return isMissingColumn(err) || /relationship|Could not find a relationship|PGRST200/i.test(m);
+}
+
 export async function getExpenses(): Promise<Expense[]> {
   const c = client();
   let rows: unknown[] = [];
-  const res = await c
+  let res = await c
     .from("expenses")
-    .select(EXPENSE_COLS_FULL)
+    .select(`${EXPENSE_COLS_FULL}, payment_accounts ( name )`)
     .order("expense_date", { ascending: false });
+
+  if (res.error && isPaymentEmbedUnsupported(res.error)) {
+    res = await c
+      .from("expenses")
+      .select(EXPENSE_COLS_FULL)
+      .order("expense_date", { ascending: false });
+  }
 
   if (!res.error) {
     rows = res.data ?? [];
@@ -718,6 +752,9 @@ export async function createQuickExpense(payload: {
     status: resolvedStatus,
     source_type: sourceType,
   };
+  if (payload.paymentAccountId !== undefined) {
+    insertRow.payment_account_id = payload.paymentAccountId?.trim() || null;
+  }
   let result = await c
     .from("expenses")
     .insert({ ...insertRow, payment_method: "Other" })
@@ -815,16 +852,21 @@ export async function createQuickExpense(payload: {
   const expenseId = (expRow as { id: string } | null)?.id;
   if (!expenseId) throw new Error("Failed to create quick expense: no id.");
 
-  const lineBase = (): Record<string, unknown> => ({
+  const lineBase = (includeProject: boolean): Record<string, unknown> => ({
     expense_id: expenseId,
     amount: total,
-    ...(projectId ? { project_id: projectId } : {}),
+    ...(includeProject && projectId ? { project_id: projectId } : {}),
   });
 
   const lineAttempts: Record<string, unknown>[] = [
-    { ...lineBase(), category, memo: notes || null },
-    { ...lineBase(), category },
-    { ...lineBase() },
+    { ...lineBase(true), category, memo: notes || null },
+    { ...lineBase(true), category },
+    { ...lineBase(true) },
+    // If DB has no expense_lines.project_id (stale remote snapshot), still create the line;
+    // expenses.project_id update below keeps header project.
+    { ...lineBase(false), category, memo: notes || null },
+    { ...lineBase(false), category },
+    { ...lineBase(false) },
   ];
 
   let lineErr: { message?: string } | null = null;

@@ -60,77 +60,77 @@ drop trigger if exists "sync_worker_to_labor_workers_trigger" on "public"."worke
 
 drop trigger if exists "trg_workers_updated_at" on "public"."workers";
 
-drop policy "accounts_delete_all" on "public"."accounts";
+drop policy if exists "accounts_delete_all" on "public"."accounts";
 
-drop policy "accounts_insert_all" on "public"."accounts";
+drop policy if exists "accounts_insert_all" on "public"."accounts";
 
-drop policy "accounts_select_all" on "public"."accounts";
+drop policy if exists "accounts_select_all" on "public"."accounts";
 
-drop policy "accounts_update_all" on "public"."accounts";
+drop policy if exists "accounts_update_all" on "public"."accounts";
 
-drop policy "ap_bill_payments_delete_all" on "public"."ap_bill_payments";
+drop policy if exists "ap_bill_payments_delete_all" on "public"."ap_bill_payments";
 
-drop policy "ap_bill_payments_insert_all" on "public"."ap_bill_payments";
+drop policy if exists "ap_bill_payments_insert_all" on "public"."ap_bill_payments";
 
-drop policy "ap_bill_payments_select_all" on "public"."ap_bill_payments";
+drop policy if exists "ap_bill_payments_select_all" on "public"."ap_bill_payments";
 
-drop policy "ap_bill_payments_update_all" on "public"."ap_bill_payments";
+drop policy if exists "ap_bill_payments_update_all" on "public"."ap_bill_payments";
 
-drop policy "ap_bills_delete_all" on "public"."ap_bills";
+drop policy if exists "ap_bills_delete_all" on "public"."ap_bills";
 
-drop policy "ap_bills_insert_all" on "public"."ap_bills";
+drop policy if exists "ap_bills_insert_all" on "public"."ap_bills";
 
-drop policy "ap_bills_select_all" on "public"."ap_bills";
+drop policy if exists "ap_bills_select_all" on "public"."ap_bills";
 
-drop policy "ap_bills_update_all" on "public"."ap_bills";
+drop policy if exists "ap_bills_update_all" on "public"."ap_bills";
 
-drop policy "attachments_perm_delete" on "public"."attachments";
+drop policy if exists "attachments_perm_delete" on "public"."attachments";
 
-drop policy "attachments_perm_insert" on "public"."attachments";
+drop policy if exists "attachments_perm_insert" on "public"."attachments";
 
-drop policy "attachments_perm_select" on "public"."attachments";
+drop policy if exists "attachments_perm_select" on "public"."attachments";
 
-drop policy "attachments_perm_update" on "public"."attachments";
+drop policy if exists "attachments_perm_update" on "public"."attachments";
 
-drop policy "bank_transactions_delete_all" on "public"."bank_transactions";
+drop policy if exists "bank_transactions_delete_all" on "public"."bank_transactions";
 
-drop policy "bank_transactions_insert_all" on "public"."bank_transactions";
+drop policy if exists "bank_transactions_insert_all" on "public"."bank_transactions";
 
-drop policy "bank_transactions_select_all" on "public"."bank_transactions";
+drop policy if exists "bank_transactions_select_all" on "public"."bank_transactions";
 
-drop policy "bank_transactions_update_all" on "public"."bank_transactions";
+drop policy if exists "bank_transactions_update_all" on "public"."bank_transactions";
 
-drop policy "bill_items_perm_delete" on "public"."bill_items";
+drop policy if exists "bill_items_perm_delete" on "public"."bill_items";
 
-drop policy "bill_items_perm_insert" on "public"."bill_items";
+drop policy if exists "bill_items_perm_insert" on "public"."bill_items";
 
-drop policy "bill_items_perm_select" on "public"."bill_items";
+drop policy if exists "bill_items_perm_select" on "public"."bill_items";
 
-drop policy "bill_items_perm_update" on "public"."bill_items";
+drop policy if exists "bill_items_perm_update" on "public"."bill_items";
 
-drop policy "bill_payments_perm_delete" on "public"."bill_payments";
+drop policy if exists "bill_payments_perm_delete" on "public"."bill_payments";
 
-drop policy "bill_payments_perm_insert" on "public"."bill_payments";
+drop policy if exists "bill_payments_perm_insert" on "public"."bill_payments";
 
-drop policy "bill_payments_perm_select" on "public"."bill_payments";
+drop policy if exists "bill_payments_perm_select" on "public"."bill_payments";
 
-drop policy "bill_payments_perm_update" on "public"."bill_payments";
+drop policy if exists "bill_payments_perm_update" on "public"."bill_payments";
 
-drop policy "bills_perm_delete" on "public"."bills";
+drop policy if exists "bills_perm_delete" on "public"."bills";
 
-drop policy "bills_perm_insert" on "public"."bills";
+drop policy if exists "bills_perm_insert" on "public"."bills";
 
-drop policy "bills_perm_select" on "public"."bills";
+drop policy if exists "bills_perm_select" on "public"."bills";
 
-drop policy "bills_perm_update" on "public"."bills";
+drop policy if exists "bills_perm_update" on "public"."bills";
 
-drop policy "categories_perm_delete" on "public"."categories";
+drop policy if exists "categories_perm_delete" on "public"."categories";
 
-drop policy "categories_perm_insert" on "public"."categories";
+drop policy if exists "categories_perm_insert" on "public"."categories";
 
-drop policy "categories_perm_select" on "public"."categories";
+drop policy if exists "categories_perm_select" on "public"."categories";
 
-drop policy "categories_perm_update" on "public"."categories";
+drop policy if exists "categories_perm_update" on "public"."categories";
 
 do $$
 begin
@@ -142,37 +142,37 @@ begin
   end if;
 end $$;
 
-drop policy "commitments_delete_all" on "public"."commitments";
+drop policy if exists "commitments_delete_all" on "public"."commitments";
 
-drop policy "commitments_insert_all" on "public"."commitments";
+drop policy if exists "commitments_insert_all" on "public"."commitments";
 
-drop policy "commitments_select_all" on "public"."commitments";
+drop policy if exists "commitments_select_all" on "public"."commitments";
 
-drop policy "commitments_update_all" on "public"."commitments";
+drop policy if exists "commitments_update_all" on "public"."commitments";
 
-drop policy "customers_perm_delete" on "public"."customers";
+drop policy if exists "customers_perm_delete" on "public"."customers";
 
-drop policy "customers_perm_insert" on "public"."customers";
+drop policy if exists "customers_perm_insert" on "public"."customers";
 
-drop policy "customers_perm_select" on "public"."customers";
+drop policy if exists "customers_perm_select" on "public"."customers";
 
-drop policy "customers_perm_update" on "public"."customers";
+drop policy if exists "customers_perm_update" on "public"."customers";
 
-drop policy "deposits_delete_all" on "public"."deposits";
+drop policy if exists "deposits_delete_all" on "public"."deposits";
 
-drop policy "deposits_insert_all" on "public"."deposits";
+drop policy if exists "deposits_insert_all" on "public"."deposits";
 
-drop policy "deposits_select_all" on "public"."deposits";
+drop policy if exists "deposits_select_all" on "public"."deposits";
 
-drop policy "deposits_update_all" on "public"."deposits";
+drop policy if exists "deposits_update_all" on "public"."deposits";
 
-drop policy "estimate_payment_schedule_delete_all" on "public"."estimate_payment_schedule";
+drop policy if exists "estimate_payment_schedule_delete_all" on "public"."estimate_payment_schedule";
 
-drop policy "estimate_payment_schedule_insert_all" on "public"."estimate_payment_schedule";
+drop policy if exists "estimate_payment_schedule_insert_all" on "public"."estimate_payment_schedule";
 
-drop policy "estimate_payment_schedule_select_all" on "public"."estimate_payment_schedule";
+drop policy if exists "estimate_payment_schedule_select_all" on "public"."estimate_payment_schedule";
 
-drop policy "estimate_payment_schedule_update_all" on "public"."estimate_payment_schedule";
+drop policy if exists "estimate_payment_schedule_update_all" on "public"."estimate_payment_schedule";
 
 do $$
 begin
@@ -184,37 +184,37 @@ begin
   end if;
 end $$;
 
-drop policy "invoice_items_delete_all" on "public"."invoice_items";
+drop policy if exists "invoice_items_delete_all" on "public"."invoice_items";
 
-drop policy "invoice_items_insert_all" on "public"."invoice_items";
+drop policy if exists "invoice_items_insert_all" on "public"."invoice_items";
 
-drop policy "invoice_items_select_all" on "public"."invoice_items";
+drop policy if exists "invoice_items_select_all" on "public"."invoice_items";
 
-drop policy "invoice_items_update_all" on "public"."invoice_items";
+drop policy if exists "invoice_items_update_all" on "public"."invoice_items";
 
-drop policy "invoice_payments_delete_all" on "public"."invoice_payments";
+drop policy if exists "invoice_payments_delete_all" on "public"."invoice_payments";
 
-drop policy "invoice_payments_insert_all" on "public"."invoice_payments";
+drop policy if exists "invoice_payments_insert_all" on "public"."invoice_payments";
 
-drop policy "invoice_payments_select_all" on "public"."invoice_payments";
+drop policy if exists "invoice_payments_select_all" on "public"."invoice_payments";
 
-drop policy "invoice_payments_update_all" on "public"."invoice_payments";
+drop policy if exists "invoice_payments_update_all" on "public"."invoice_payments";
 
-drop policy "labor_entries_delete_all" on "public"."labor_entries";
+drop policy if exists "labor_entries_delete_all" on "public"."labor_entries";
 
-drop policy "labor_entries_insert_all" on "public"."labor_entries";
+drop policy if exists "labor_entries_insert_all" on "public"."labor_entries";
 
-drop policy "labor_entries_select_all" on "public"."labor_entries";
+drop policy if exists "labor_entries_select_all" on "public"."labor_entries";
 
-drop policy "labor_entries_update_all" on "public"."labor_entries";
+drop policy if exists "labor_entries_update_all" on "public"."labor_entries";
 
-drop policy "labor_payments_delete_all" on "public"."labor_payments";
+drop policy if exists "labor_payments_delete_all" on "public"."labor_payments";
 
-drop policy "labor_payments_insert_all" on "public"."labor_payments";
+drop policy if exists "labor_payments_insert_all" on "public"."labor_payments";
 
-drop policy "labor_payments_select_all" on "public"."labor_payments";
+drop policy if exists "labor_payments_select_all" on "public"."labor_payments";
 
-drop policy "labor_payments_update_all" on "public"."labor_payments";
+drop policy if exists "labor_payments_update_all" on "public"."labor_payments";
 
 do $$
 begin
@@ -226,43 +226,43 @@ begin
   end if;
 end $$;
 
-drop policy "payment_methods_perm_delete" on "public"."payment_methods";
+drop policy if exists "payment_methods_perm_delete" on "public"."payment_methods";
 
-drop policy "payment_methods_perm_insert" on "public"."payment_methods";
+drop policy if exists "payment_methods_perm_insert" on "public"."payment_methods";
 
-drop policy "payment_methods_perm_select" on "public"."payment_methods";
+drop policy if exists "payment_methods_perm_select" on "public"."payment_methods";
 
-drop policy "payment_methods_perm_update" on "public"."payment_methods";
+drop policy if exists "payment_methods_perm_update" on "public"."payment_methods";
 
-drop policy "payment_schedule_template_items_delete_all" on "public"."payment_schedule_template_items";
+drop policy if exists "payment_schedule_template_items_delete_all" on "public"."payment_schedule_template_items";
 
-drop policy "payment_schedule_template_items_insert_all" on "public"."payment_schedule_template_items";
+drop policy if exists "payment_schedule_template_items_insert_all" on "public"."payment_schedule_template_items";
 
-drop policy "payment_schedule_template_items_select_all" on "public"."payment_schedule_template_items";
+drop policy if exists "payment_schedule_template_items_select_all" on "public"."payment_schedule_template_items";
 
-drop policy "payment_schedule_template_items_update_all" on "public"."payment_schedule_template_items";
+drop policy if exists "payment_schedule_template_items_update_all" on "public"."payment_schedule_template_items";
 
-drop policy "payment_schedule_templates_delete_all" on "public"."payment_schedule_templates";
+drop policy if exists "payment_schedule_templates_delete_all" on "public"."payment_schedule_templates";
 
-drop policy "payment_schedule_templates_insert_all" on "public"."payment_schedule_templates";
+drop policy if exists "payment_schedule_templates_insert_all" on "public"."payment_schedule_templates";
 
-drop policy "payment_schedule_templates_select_all" on "public"."payment_schedule_templates";
+drop policy if exists "payment_schedule_templates_select_all" on "public"."payment_schedule_templates";
 
-drop policy "payment_schedule_templates_update_all" on "public"."payment_schedule_templates";
+drop policy if exists "payment_schedule_templates_update_all" on "public"."payment_schedule_templates";
 
-drop policy "profiles_select_all_owner" on "public"."profiles";
+drop policy if exists "profiles_select_all_owner" on "public"."profiles";
 
-drop policy "profiles_select_own" on "public"."profiles";
+drop policy if exists "profiles_select_own" on "public"."profiles";
 
-drop policy "profiles_update_owner" on "public"."profiles";
+drop policy if exists "profiles_update_owner" on "public"."profiles";
 
-drop policy "project_change_order_attachments_delete_all" on "public"."project_change_order_attachments";
+drop policy if exists "project_change_order_attachments_delete_all" on "public"."project_change_order_attachments";
 
-drop policy "project_change_order_attachments_insert_all" on "public"."project_change_order_attachments";
+drop policy if exists "project_change_order_attachments_insert_all" on "public"."project_change_order_attachments";
 
-drop policy "project_change_order_attachments_select_all" on "public"."project_change_order_attachments";
+drop policy if exists "project_change_order_attachments_select_all" on "public"."project_change_order_attachments";
 
-drop policy "project_change_order_attachments_update_all" on "public"."project_change_order_attachments";
+drop policy if exists "project_change_order_attachments_update_all" on "public"."project_change_order_attachments";
 
 do $$
 begin
@@ -299,29 +299,29 @@ begin
   end if;
 end $$;
 
-drop policy "project_schedule_delete_all" on "public"."project_schedule";
+drop policy if exists "project_schedule_delete_all" on "public"."project_schedule";
 
-drop policy "project_schedule_insert_all" on "public"."project_schedule";
+drop policy if exists "project_schedule_insert_all" on "public"."project_schedule";
 
-drop policy "project_schedule_select_all" on "public"."project_schedule";
+drop policy if exists "project_schedule_select_all" on "public"."project_schedule";
 
-drop policy "project_schedule_update_all" on "public"."project_schedule";
+drop policy if exists "project_schedule_update_all" on "public"."project_schedule";
 
-drop policy "project_subcontractors_perm_delete" on "public"."project_subcontractors";
+drop policy if exists "project_subcontractors_perm_delete" on "public"."project_subcontractors";
 
-drop policy "project_subcontractors_perm_insert" on "public"."project_subcontractors";
+drop policy if exists "project_subcontractors_perm_insert" on "public"."project_subcontractors";
 
-drop policy "project_subcontractors_perm_select" on "public"."project_subcontractors";
+drop policy if exists "project_subcontractors_perm_select" on "public"."project_subcontractors";
 
-drop policy "project_subcontractors_perm_update" on "public"."project_subcontractors";
+drop policy if exists "project_subcontractors_perm_update" on "public"."project_subcontractors";
 
-drop policy "projects_perm_delete" on "public"."projects";
+drop policy if exists "projects_perm_delete" on "public"."projects";
 
-drop policy "projects_perm_insert" on "public"."projects";
+drop policy if exists "projects_perm_insert" on "public"."projects";
 
-drop policy "projects_perm_select" on "public"."projects";
+drop policy if exists "projects_perm_select" on "public"."projects";
 
-drop policy "projects_perm_update" on "public"."projects";
+drop policy if exists "projects_perm_update" on "public"."projects";
 
 do $$
 begin
@@ -333,9 +333,9 @@ begin
   end if;
 end $$;
 
-drop policy "role_permissions_owner_select" on "public"."role_permissions";
+drop policy if exists "role_permissions_owner_select" on "public"."role_permissions";
 
-drop policy "role_permissions_owner_write" on "public"."role_permissions";
+drop policy if exists "role_permissions_owner_write" on "public"."role_permissions";
 
 do $$
 begin
@@ -347,21 +347,21 @@ begin
   end if;
 end $$;
 
-drop policy "subcontractors_perm_delete" on "public"."subcontractors";
+drop policy if exists "subcontractors_perm_delete" on "public"."subcontractors";
 
-drop policy "subcontractors_perm_insert" on "public"."subcontractors";
+drop policy if exists "subcontractors_perm_insert" on "public"."subcontractors";
 
-drop policy "subcontractors_perm_select" on "public"."subcontractors";
+drop policy if exists "subcontractors_perm_select" on "public"."subcontractors";
 
-drop policy "subcontractors_perm_update" on "public"."subcontractors";
+drop policy if exists "subcontractors_perm_update" on "public"."subcontractors";
 
-drop policy "vendors_perm_delete" on "public"."vendors";
+drop policy if exists "vendors_perm_delete" on "public"."vendors";
 
-drop policy "vendors_perm_insert" on "public"."vendors";
+drop policy if exists "vendors_perm_insert" on "public"."vendors";
 
-drop policy "vendors_perm_select" on "public"."vendors";
+drop policy if exists "vendors_perm_select" on "public"."vendors";
 
-drop policy "vendors_perm_update" on "public"."vendors";
+drop policy if exists "vendors_perm_update" on "public"."vendors";
 
 do $$
 begin
@@ -1049,95 +1049,95 @@ revoke truncate on table "public"."role_permissions" from "service_role";
 
 revoke update on table "public"."role_permissions" from "service_role";
 
-alter table "public"."accounts" drop constraint if exists "accounts_type_check";
+alter table if exists "public"."accounts" drop constraint if exists "accounts_type_check";
 
-alter table "public"."ap_bill_payments" drop constraint if exists "ap_bill_payments_bill_id_fkey";
+alter table if exists "public"."ap_bill_payments" drop constraint if exists "ap_bill_payments_bill_id_fkey";
 
-alter table "public"."ap_bills" drop constraint if exists "ap_bills_bill_type_check";
+alter table if exists "public"."ap_bills" drop constraint if exists "ap_bills_bill_type_check";
 
-alter table "public"."ap_bills" drop constraint if exists "ap_bills_project_id_fkey";
+alter table if exists "public"."ap_bills" drop constraint if exists "ap_bills_project_id_fkey";
 
-alter table "public"."ap_bills" drop constraint if exists "ap_bills_status_check";
+alter table if exists "public"."ap_bills" drop constraint if exists "ap_bills_status_check";
 
-alter table "public"."attachments" drop constraint if exists "attachments_entity_type_check";
+alter table if exists "public"."attachments" drop constraint if exists "attachments_entity_type_check";
 
-alter table "public"."bank_transactions" drop constraint if exists "bank_transactions_linked_expense_id_fkey";
+alter table if exists "public"."bank_transactions" drop constraint if exists "bank_transactions_linked_expense_id_fkey";
 
-alter table "public"."bank_transactions" drop constraint if exists "bank_transactions_reconcile_type_check";
+alter table if exists "public"."bank_transactions" drop constraint if exists "bank_transactions_reconcile_type_check";
 
-alter table "public"."bank_transactions" drop constraint if exists "bank_transactions_status_check";
+alter table if exists "public"."bank_transactions" drop constraint if exists "bank_transactions_status_check";
 
-alter table "public"."bill_items" drop constraint if exists "bill_items_bill_id_fkey";
+alter table if exists "public"."bill_items" drop constraint if exists "bill_items_bill_id_fkey";
 
-alter table "public"."bill_items" drop constraint if exists "bill_items_project_id_fkey";
+alter table if exists "public"."bill_items" drop constraint if exists "bill_items_project_id_fkey";
 
-alter table "public"."bill_payments" drop constraint if exists "bill_payments_bill_id_fkey";
+alter table if exists "public"."bill_payments" drop constraint if exists "bill_payments_bill_id_fkey";
 
-alter table "public"."bills" drop constraint if exists "bills_category_id_fkey";
+alter table if exists "public"."bills" drop constraint if exists "bills_category_id_fkey";
 
-alter table "public"."bills" drop constraint if exists "bills_status_check";
+alter table if exists "public"."bills" drop constraint if exists "bills_status_check";
 
-alter table "public"."bills" drop constraint if exists "bills_subcontractor_id_fkey";
+alter table if exists "public"."bills" drop constraint if exists "bills_subcontractor_id_fkey";
 
-alter table "public"."categories" drop constraint if exists "categories_status_check";
+alter table if exists "public"."categories" drop constraint if exists "categories_status_check";
 
-alter table "public"."categories" drop constraint if exists "categories_type_check";
+alter table if exists "public"."categories" drop constraint if exists "categories_type_check";
 
-alter table "public"."commitments" drop constraint if exists "commitments_commitment_type_check";
+alter table if exists "public"."commitments" drop constraint if exists "commitments_commitment_type_check";
 
-alter table "public"."commitments" drop constraint if exists "commitments_status_check";
+alter table if exists "public"."commitments" drop constraint if exists "commitments_status_check";
 
-alter table "public"."customers" drop constraint if exists "customers_status_check";
+alter table if exists "public"."customers" drop constraint if exists "customers_status_check";
 
-alter table "public"."daily_work_entries" drop constraint if exists "daily_work_entries_day_type_check";
+alter table if exists "public"."daily_work_entries" drop constraint if exists "daily_work_entries_day_type_check";
 
-alter table "public"."documents" drop constraint if exists "documents_file_type_check";
+alter table if exists "public"."documents" drop constraint if exists "documents_file_type_check";
 
-alter table "public"."estimate_payment_schedule" drop constraint if exists "estimate_payment_schedule_amount_type_check";
+alter table if exists "public"."estimate_payment_schedule" drop constraint if exists "estimate_payment_schedule_amount_type_check";
 
-alter table "public"."estimate_payment_schedule" drop constraint if exists "estimate_payment_schedule_estimate_id_fkey";
+alter table if exists "public"."estimate_payment_schedule" drop constraint if exists "estimate_payment_schedule_estimate_id_fkey";
 
-alter table "public"."estimate_payment_schedule" drop constraint if exists "estimate_payment_schedule_status_check";
+alter table if exists "public"."estimate_payment_schedule" drop constraint if exists "estimate_payment_schedule_status_check";
 
-alter table "public"."estimate_snapshots" drop constraint if exists "estimate_snapshots_estimate_version_unique";
+alter table if exists "public"."estimate_snapshots" drop constraint if exists "estimate_snapshots_estimate_version_unique";
 
-alter table "public"."expense_lines" drop constraint if exists "expense_lines_project_id_fkey";
+alter table if exists "public"."expense_lines" drop constraint if exists "expense_lines_project_id_fkey";
 
-alter table "public"."expenses" drop constraint if exists "expenses_account_id_fkey";
+alter table if exists "public"."expenses" drop constraint if exists "expenses_account_id_fkey";
 
-alter table "public"."expenses" drop constraint if exists "expenses_status_check";
+alter table if exists "public"."expenses" drop constraint if exists "expenses_status_check";
 
-alter table "public"."expenses" drop constraint if exists "expenses_worker_id_fkey";
+alter table if exists "public"."expenses" drop constraint if exists "expenses_worker_id_fkey";
 
-alter table "public"."invoice_payments" drop constraint if exists "invoice_payments_status_check";
+alter table if exists "public"."invoice_payments" drop constraint if exists "invoice_payments_status_check";
 
-alter table "public"."invoices" drop constraint if exists "invoices_invoice_no_key";
+alter table if exists "public"."invoices" drop constraint if exists "invoices_invoice_no_key";
 
-alter table "public"."invoices" drop constraint if exists "invoices_status_check";
+alter table if exists "public"."invoices" drop constraint if exists "invoices_status_check";
 
-alter table "public"."labor_entries" drop constraint if exists "labor_entries_project_am_id_fkey";
+alter table if exists "public"."labor_entries" drop constraint if exists "labor_entries_project_am_id_fkey";
 
-alter table "public"."labor_entries" drop constraint if exists "labor_entries_project_pm_id_fkey";
+alter table if exists "public"."labor_entries" drop constraint if exists "labor_entries_project_pm_id_fkey";
 
-alter table "public"."labor_entries" drop constraint if exists "labor_entries_status_check";
+alter table if exists "public"."labor_entries" drop constraint if exists "labor_entries_status_check";
 
-alter table "public"."payment_methods" drop constraint if exists "payment_methods_name_key";
+alter table if exists "public"."payment_methods" drop constraint if exists "payment_methods_name_key";
 
-alter table "public"."payment_methods" drop constraint if exists "payment_methods_status_check";
+alter table if exists "public"."payment_methods" drop constraint if exists "payment_methods_status_check";
 
-alter table "public"."payment_schedule_template_items" drop constraint if exists "payment_schedule_template_items_amount_type_check";
+alter table if exists "public"."payment_schedule_template_items" drop constraint if exists "payment_schedule_template_items_amount_type_check";
 
-alter table "public"."payment_schedule_template_items" drop constraint if exists "payment_schedule_template_items_template_id_fkey";
+alter table if exists "public"."payment_schedule_template_items" drop constraint if exists "payment_schedule_template_items_template_id_fkey";
 
-alter table "public"."payments_received" drop constraint if exists "payments_received_invoice_id_fkey";
+alter table if exists "public"."payments_received" drop constraint if exists "payments_received_invoice_id_fkey";
 
-alter table "public"."profiles" drop constraint if exists "profiles_id_fkey";
+alter table if exists "public"."profiles" drop constraint if exists "profiles_id_fkey";
 
-alter table "public"."profiles" drop constraint if exists "profiles_role_check";
+alter table if exists "public"."profiles" drop constraint if exists "profiles_role_check";
 
-alter table "public"."project_change_order_attachments" drop constraint if exists "project_change_order_attachments_change_order_id_fkey";
+alter table if exists "public"."project_change_order_attachments" drop constraint if exists "project_change_order_attachments_change_order_id_fkey";
 
-alter table "public"."project_change_orders" drop constraint if exists "project_change_orders_status_check";
+alter table if exists "public"."project_change_orders" drop constraint if exists "project_change_orders_status_check";
 
 do $$
 begin
@@ -1162,21 +1162,21 @@ begin
   end if;
 end $$;
 
-alter table "public"."project_subcontractors" drop constraint if exists "project_subcontractors_project_id_fkey";
+alter table if exists "public"."project_subcontractors" drop constraint if exists "project_subcontractors_project_id_fkey";
 
-alter table "public"."project_subcontractors" drop constraint if exists "project_subcontractors_rate_type_check";
+alter table if exists "public"."project_subcontractors" drop constraint if exists "project_subcontractors_rate_type_check";
 
-alter table "public"."project_subcontractors" drop constraint if exists "project_subcontractors_subcontractor_id_fkey";
+alter table if exists "public"."project_subcontractors" drop constraint if exists "project_subcontractors_subcontractor_id_fkey";
 
-alter table "public"."project_subcontractors" drop constraint if exists "project_subcontractors_unique";
+alter table if exists "public"."project_subcontractors" drop constraint if exists "project_subcontractors_unique";
 
-alter table "public"."project_tasks" drop constraint if exists "project_tasks_priority_check";
+alter table if exists "public"."project_tasks" drop constraint if exists "project_tasks_priority_check";
 
-alter table "public"."project_tasks" drop constraint if exists "project_tasks_status_check";
+alter table if exists "public"."project_tasks" drop constraint if exists "project_tasks_status_check";
 
-alter table "public"."projects" drop constraint if exists "projects_source_estimate_id_unique";
+alter table if exists "public"."projects" drop constraint if exists "projects_source_estimate_id_unique";
 
-alter table "public"."projects" drop constraint if exists "projects_status_check";
+alter table if exists "public"."projects" drop constraint if exists "projects_status_check";
 
 do $$
 begin
@@ -1185,13 +1185,13 @@ begin
   end if;
 end $$;
 
-alter table "public"."role_permissions" drop constraint if exists "role_permissions_role_check";
+alter table if exists "public"."role_permissions" drop constraint if exists "role_permissions_role_check";
 
-alter table "public"."subcontractors" drop constraint if exists "subcontractors_status_check";
+alter table if exists "public"."subcontractors" drop constraint if exists "subcontractors_status_check";
 
-alter table "public"."subcontracts" drop constraint if exists "subcontracts_status_check";
+alter table if exists "public"."subcontracts" drop constraint if exists "subcontracts_status_check";
 
-alter table "public"."vendors" drop constraint if exists "vendors_status_check";
+alter table if exists "public"."vendors" drop constraint if exists "vendors_status_check";
 
 do $$
 begin
@@ -1200,35 +1200,35 @@ begin
   end if;
 end $$;
 
-alter table "public"."worker_reimbursements" drop constraint if exists "worker_reimbursements_payment_id_fkey";
+alter table if exists "public"."worker_reimbursements" drop constraint if exists "worker_reimbursements_payment_id_fkey";
 
-alter table "public"."workers" drop constraint if exists "workers_status_check_v2";
+alter table if exists "public"."workers" drop constraint if exists "workers_status_check_v2";
 
-alter table "public"."bills" drop constraint if exists "bills_project_id_fkey";
+alter table if exists "public"."bills" drop constraint if exists "bills_project_id_fkey";
 
-alter table "public"."bills" drop constraint if exists "bills_vendor_id_fkey";
+alter table if exists "public"."bills" drop constraint if exists "bills_vendor_id_fkey";
 
-alter table "public"."commitments" drop constraint if exists "commitments_project_id_fkey";
+alter table if exists "public"."commitments" drop constraint if exists "commitments_project_id_fkey";
 
-alter table "public"."daily_work_entries" drop constraint if exists "daily_work_entries_worker_id_fkey";
+alter table if exists "public"."daily_work_entries" drop constraint if exists "daily_work_entries_worker_id_fkey";
 
-alter table "public"."deposits" drop constraint if exists "deposits_invoice_id_fkey";
+alter table if exists "public"."deposits" drop constraint if exists "deposits_invoice_id_fkey";
 
-alter table "public"."documents" drop constraint if exists "documents_project_id_fkey";
+alter table if exists "public"."documents" drop constraint if exists "documents_project_id_fkey";
 
-alter table "public"."expenses" drop constraint if exists "expenses_project_id_fkey";
+alter table if exists "public"."expenses" drop constraint if exists "expenses_project_id_fkey";
 
-alter table "public"."invoices" drop constraint if exists "invoices_customer_id_fkey";
+alter table if exists "public"."invoices" drop constraint if exists "invoices_customer_id_fkey";
 
-alter table "public"."invoices" drop constraint if exists "invoices_project_id_fkey";
+alter table if exists "public"."invoices" drop constraint if exists "invoices_project_id_fkey";
 
-alter table "public"."labor_entries" drop constraint if exists "labor_entries_worker_id_fkey";
+alter table if exists "public"."labor_entries" drop constraint if exists "labor_entries_worker_id_fkey";
 
-alter table "public"."labor_payments" drop constraint if exists "labor_payments_worker_id_fkey";
+alter table if exists "public"."labor_payments" drop constraint if exists "labor_payments_worker_id_fkey";
 
-alter table "public"."project_commissions" drop constraint if exists "project_commissions_project_id_fkey";
+alter table if exists "public"."project_commissions" drop constraint if exists "project_commissions_project_id_fkey";
 
-alter table "public"."project_tasks" drop constraint if exists "project_tasks_assigned_worker_id_fkey";
+alter table if exists "public"."project_tasks" drop constraint if exists "project_tasks_assigned_worker_id_fkey";
 
 do $$
 begin
@@ -1237,9 +1237,9 @@ begin
   end if;
 end $$;
 
-alter table "public"."worker_invoices" drop constraint if exists "worker_invoices_worker_id_fkey";
+alter table if exists "public"."worker_invoices" drop constraint if exists "worker_invoices_worker_id_fkey";
 
-alter table "public"."worker_payments" drop constraint if exists "worker_payments_worker_id_fkey";
+alter table if exists "public"."worker_payments" drop constraint if exists "worker_payments_worker_id_fkey";
 
 do $$
 begin
@@ -1248,7 +1248,7 @@ begin
   end if;
 end $$;
 
-alter table "public"."worker_reimbursements" drop constraint if exists "worker_reimbursements_worker_id_fkey";
+alter table if exists "public"."worker_reimbursements" drop constraint if exists "worker_reimbursements_worker_id_fkey";
 
 drop function if exists "public"."allocate_labor_cost_on_insert"();
 
@@ -1322,31 +1322,31 @@ drop function if exists "public"."void_subcontract_bill"(p_bill_id uuid);
 
 drop view if exists "public"."worker_payable_summary";
 
-alter table "public"."ap_bill_payments" drop constraint if exists "ap_bill_payments_pkey";
+alter table if exists "public"."ap_bill_payments" drop constraint if exists "ap_bill_payments_pkey";
 
-alter table "public"."ap_bills" drop constraint if exists "ap_bills_pkey";
+alter table if exists "public"."ap_bills" drop constraint if exists "ap_bills_pkey";
 
-alter table "public"."attachments" drop constraint if exists "attachments_pkey";
+alter table if exists "public"."attachments" drop constraint if exists "attachments_pkey";
 
-alter table "public"."bank_transactions" drop constraint if exists "bank_transactions_pkey";
+alter table if exists "public"."bank_transactions" drop constraint if exists "bank_transactions_pkey";
 
-alter table "public"."bill_items" drop constraint if exists "bill_items_pkey";
+alter table if exists "public"."bill_items" drop constraint if exists "bill_items_pkey";
 
-alter table "public"."bill_payments" drop constraint if exists "bill_payments_pkey";
+alter table if exists "public"."bill_payments" drop constraint if exists "bill_payments_pkey";
 
-alter table "public"."categories" drop constraint if exists "categories_pkey";
+alter table if exists "public"."categories" drop constraint if exists "categories_pkey";
 
-alter table "public"."estimate_payment_schedule" drop constraint if exists "estimate_payment_schedule_pkey";
+alter table if exists "public"."estimate_payment_schedule" drop constraint if exists "estimate_payment_schedule_pkey";
 
-alter table "public"."payment_methods" drop constraint if exists "payment_methods_pkey";
+alter table if exists "public"."payment_methods" drop constraint if exists "payment_methods_pkey";
 
-alter table "public"."payment_schedule_template_items" drop constraint if exists "payment_schedule_template_items_pkey";
+alter table if exists "public"."payment_schedule_template_items" drop constraint if exists "payment_schedule_template_items_pkey";
 
-alter table "public"."payment_schedule_templates" drop constraint if exists "payment_schedule_templates_pkey";
+alter table if exists "public"."payment_schedule_templates" drop constraint if exists "payment_schedule_templates_pkey";
 
-alter table "public"."profiles" drop constraint if exists "profiles_pkey";
+alter table if exists "public"."profiles" drop constraint if exists "profiles_pkey";
 
-alter table "public"."project_change_order_attachments" drop constraint if exists "project_change_order_attachments_pkey";
+alter table if exists "public"."project_change_order_attachments" drop constraint if exists "project_change_order_attachments_pkey";
 
 do $$
 begin
@@ -1361,9 +1361,9 @@ begin
   end if;
 end $$;
 
-alter table "public"."project_subcontractors" drop constraint if exists "project_subcontractors_pkey";
+alter table if exists "public"."project_subcontractors" drop constraint if exists "project_subcontractors_pkey";
 
-alter table "public"."role_permissions" drop constraint if exists "role_permissions_pkey";
+alter table if exists "public"."role_permissions" drop constraint if exists "role_permissions_pkey";
 
 drop index if exists "public"."accounts_name_idx";
 
@@ -1641,7 +1641,7 @@ drop table if exists "public"."role_permissions";
       );
 
 
-alter table "public"."accounting_periods" enable row level security;
+alter table if exists "public"."accounting_periods" enable row level security;
 
 
   create table "public"."clients" (
@@ -1654,7 +1654,7 @@ alter table "public"."accounting_periods" enable row level security;
       );
 
 
-alter table "public"."clients" enable row level security;
+alter table if exists "public"."clients" enable row level security;
 
 
   create table "public"."completion_certificates" (
@@ -1669,7 +1669,7 @@ alter table "public"."clients" enable row level security;
       );
 
 
-alter table "public"."completion_certificates" enable row level security;
+alter table if exists "public"."completion_certificates" enable row level security;
 
 
   create table "public"."cost_allocations" (
@@ -1682,7 +1682,7 @@ alter table "public"."completion_certificates" enable row level security;
       );
 
 
-alter table "public"."cost_allocations" enable row level security;
+alter table if exists "public"."cost_allocations" enable row level security;
 
 
   create table "public"."final_punch_list_items" (
@@ -1693,7 +1693,7 @@ alter table "public"."cost_allocations" enable row level security;
       );
 
 
-alter table "public"."final_punch_list_items" enable row level security;
+alter table if exists "public"."final_punch_list_items" enable row level security;
 
 
   create table "public"."final_punch_lists" (
@@ -1708,7 +1708,7 @@ alter table "public"."final_punch_list_items" enable row level security;
       );
 
 
-alter table "public"."final_punch_lists" enable row level security;
+alter table if exists "public"."final_punch_lists" enable row level security;
 
 
   create table "public"."inspection_logs" (
@@ -1723,7 +1723,7 @@ alter table "public"."final_punch_lists" enable row level security;
       );
 
 
-alter table "public"."inspection_logs" enable row level security;
+alter table if exists "public"."inspection_logs" enable row level security;
 
 
   create table "public"."material_selections" (
@@ -1741,7 +1741,7 @@ alter table "public"."inspection_logs" enable row level security;
       );
 
 
-alter table "public"."material_selections" enable row level security;
+alter table if exists "public"."material_selections" enable row level security;
 
 
   create table "public"."project_cost_codes" (
@@ -1754,7 +1754,7 @@ alter table "public"."material_selections" enable row level security;
       );
 
 
-alter table "public"."project_cost_codes" enable row level security;
+alter table if exists "public"."project_cost_codes" enable row level security;
 
 
   create table "public"."tmp_backup_worker_advances_haijun" (
@@ -1781,183 +1781,183 @@ alter table "public"."project_cost_codes" enable row level security;
       );
 
 
-alter table "public"."warranties" enable row level security;
+alter table if exists "public"."warranties" enable row level security;
 
-alter table "public"."accounts" add column "user_id" uuid;
+alter table if exists "public"."accounts" add column "user_id" uuid;
 
-alter table "public"."accounts" alter column "created_at" drop not null;
+alter table if exists "public"."accounts" alter column "created_at" drop not null;
 
-alter table "public"."accounts" alter column "type" set default 'Bank'::text;
+alter table if exists "public"."accounts" alter column "type" set default 'Bank'::text;
 
-alter table "public"."accounts" alter column "type" drop not null;
+alter table if exists "public"."accounts" alter column "type" drop not null;
 
-alter table "public"."accounts" alter column "updated_at" drop not null;
+alter table if exists "public"."accounts" alter column "updated_at" drop not null;
 
-alter table "public"."bills" drop column "amount_paid";
+alter table if exists "public"."bills" drop column "amount_paid";
 
-alter table "public"."bills" drop column "balance";
+alter table if exists "public"."bills" drop column "balance";
 
-alter table "public"."bills" drop column "bill_date";
+alter table if exists "public"."bills" drop column "bill_date";
 
-alter table "public"."bills" drop column "bill_number";
+alter table if exists "public"."bills" drop column "bill_number";
 
-alter table "public"."bills" drop column "category_id";
+alter table if exists "public"."bills" drop column "category_id";
 
-alter table "public"."bills" drop column "memo";
+alter table if exists "public"."bills" drop column "memo";
 
-alter table "public"."bills" drop column "payee_name";
+alter table if exists "public"."bills" drop column "payee_name";
 
-alter table "public"."bills" drop column "subcontractor_id";
+alter table if exists "public"."bills" drop column "subcontractor_id";
 
-alter table "public"."bills" drop column "subtotal";
+alter table if exists "public"."bills" drop column "subtotal";
 
-alter table "public"."bills" drop column "tax";
+alter table if exists "public"."bills" drop column "tax";
 
-alter table "public"."bills" drop column "total";
+alter table if exists "public"."bills" drop column "total";
 
-alter table "public"."bills" drop column "void_reason";
+alter table if exists "public"."bills" drop column "void_reason";
 
-alter table "public"."bills" add column "amount" numeric;
+alter table if exists "public"."bills" add column "amount" numeric;
 
-alter table "public"."bills" add column "bill_type" text default 'Vendor'::text;
+alter table if exists "public"."bills" add column "bill_type" text default 'Vendor'::text;
 
-alter table "public"."bills" add column "category" text;
+alter table if exists "public"."bills" add column "category" text;
 
-alter table "public"."bills" add column "issue_date" date;
+alter table if exists "public"."bills" add column "issue_date" date;
 
-alter table "public"."bills" add column "notes" text;
+alter table if exists "public"."bills" add column "notes" text;
 
-alter table "public"."bills" add column "vendor_name" text;
+alter table if exists "public"."bills" add column "vendor_name" text;
 
-alter table "public"."bills" alter column "created_at" drop not null;
+alter table if exists "public"."bills" alter column "created_at" drop not null;
 
-alter table "public"."bills" alter column "status" set default 'unpaid'::text;
+alter table if exists "public"."bills" alter column "status" set default 'unpaid'::text;
 
-alter table "public"."bills" alter column "status" drop not null;
+alter table if exists "public"."bills" alter column "status" drop not null;
 
-alter table "public"."bills" alter column "updated_at" drop not null;
+alter table if exists "public"."bills" alter column "updated_at" drop not null;
 
-alter table "public"."commission_payment_records" alter column "amount" set data type numeric(12,2) using "amount"::numeric(12,2);
+alter table if exists "public"."commission_payment_records" alter column "amount" set data type numeric(12,2) using "amount"::numeric(12,2);
 
-alter table "public"."commission_payment_records" alter column "commission_id" drop not null;
+alter table if exists "public"."commission_payment_records" alter column "commission_id" drop not null;
 
-alter table "public"."commission_payment_records" alter column "payment_date" drop not null;
+alter table if exists "public"."commission_payment_records" alter column "payment_date" drop not null;
 
-alter table "public"."commission_payment_records" alter column "payment_method" drop default;
+alter table if exists "public"."commission_payment_records" alter column "payment_method" drop default;
 
-alter table "public"."commission_payment_records" alter column "payment_method" drop not null;
+alter table if exists "public"."commission_payment_records" alter column "payment_method" drop not null;
 
-alter table "public"."commission_payment_records" alter column "project_id" drop not null;
+alter table if exists "public"."commission_payment_records" alter column "project_id" drop not null;
 
-alter table "public"."commitments" drop column "amount";
+alter table if exists "public"."commitments" drop column "amount";
 
-alter table "public"."commitments" drop column "commitment_date";
+alter table if exists "public"."commitments" drop column "commitment_date";
 
-alter table "public"."commitments" drop column "commitment_type";
+alter table if exists "public"."commitments" drop column "commitment_type";
 
-alter table "public"."commitments" drop column "created_at";
+alter table if exists "public"."commitments" drop column "created_at";
 
-alter table "public"."commitments" drop column "notes";
+alter table if exists "public"."commitments" drop column "notes";
 
-alter table "public"."commitments" drop column "updated_at";
+alter table if exists "public"."commitments" drop column "updated_at";
 
-alter table "public"."commitments" drop column "vendor_name";
+alter table if exists "public"."commitments" drop column "vendor_name";
 
-alter table "public"."commitments" add column "budget_code" text;
+alter table if exists "public"."commitments" add column "budget_code" text;
 
-alter table "public"."commitments" add column "committed_amount" numeric default 0;
+alter table if exists "public"."commitments" add column "committed_amount" numeric default 0;
 
-alter table "public"."commitments" add column "paid_amount" numeric default 0;
+alter table if exists "public"."commitments" add column "paid_amount" numeric default 0;
 
-alter table "public"."commitments" add column "vendor" text;
+alter table if exists "public"."commitments" add column "vendor" text;
 
-alter table "public"."commitments" alter column "project_id" drop not null;
+alter table if exists "public"."commitments" alter column "project_id" drop not null;
 
-alter table "public"."commitments" alter column "status" drop not null;
+alter table if exists "public"."commitments" alter column "status" drop not null;
 
-alter table "public"."company_profile" alter column "created_at" drop not null;
+alter table if exists "public"."company_profile" alter column "created_at" drop not null;
 
-alter table "public"."company_profile" alter column "default_tax_pct" drop default;
+alter table if exists "public"."company_profile" alter column "default_tax_pct" drop default;
 
-alter table "public"."company_profile" alter column "updated_at" drop not null;
+alter table if exists "public"."company_profile" alter column "updated_at" drop not null;
 
-alter table "public"."customers" add column "city" text;
+alter table if exists "public"."customers" add column "city" text;
 
-alter table "public"."customers" add column "state" text;
+alter table if exists "public"."customers" add column "state" text;
 
-alter table "public"."customers" add column "zip" text;
+alter table if exists "public"."customers" add column "zip" text;
 
-alter table "public"."customers" alter column "created_at" drop not null;
+alter table if exists "public"."customers" alter column "created_at" drop not null;
 
-alter table "public"."customers" alter column "created_at" set data type timestamp without time zone using "created_at"::timestamp without time zone;
+alter table if exists "public"."customers" alter column "created_at" set data type timestamp without time zone using "created_at"::timestamp without time zone;
 
-alter table "public"."customers" alter column "name" set not null;
+alter table if exists "public"."customers" alter column "name" set not null;
 
-alter table "public"."customers" alter column "status" drop not null;
+alter table if exists "public"."customers" alter column "status" drop not null;
 
-alter table "public"."customers" alter column "updated_at" drop not null;
+alter table if exists "public"."customers" alter column "updated_at" drop not null;
 
-alter table "public"."daily_work_entries" alter column "daily_rate" set default 0;
+alter table if exists "public"."daily_work_entries" alter column "daily_rate" set default 0;
 
-alter table "public"."daily_work_entries" alter column "daily_rate" set data type numeric(10,2) using "daily_rate"::numeric(10,2);
+alter table if exists "public"."daily_work_entries" alter column "daily_rate" set data type numeric(10,2) using "daily_rate"::numeric(10,2);
 
-alter table "public"."daily_work_entries" alter column "day_type" set default 'full_day'::text;
+alter table if exists "public"."daily_work_entries" alter column "day_type" set default 'full_day'::text;
 
-alter table "public"."daily_work_entries" alter column "ot_hours" set data type numeric(10,2) using "ot_hours"::numeric(10,2);
+alter table if exists "public"."daily_work_entries" alter column "ot_hours" set data type numeric(10,2) using "ot_hours"::numeric(10,2);
 
-alter table "public"."daily_work_entries" alter column "total_pay" set data type numeric(10,2) using "total_pay"::numeric(10,2);
+alter table if exists "public"."daily_work_entries" alter column "total_pay" set data type numeric(10,2) using "total_pay"::numeric(10,2);
 
-alter table "public"."daily_work_entries" alter column "worker_id" drop not null;
+alter table if exists "public"."daily_work_entries" alter column "worker_id" drop not null;
 
-alter table "public"."deposits" add column "account" text;
+alter table if exists "public"."deposits" add column "account" text;
 
-alter table "public"."deposits" add column "date" timestamp with time zone default now();
+alter table if exists "public"."deposits" add column "date" timestamp with time zone default now();
 
-alter table "public"."deposits" add column "description" text;
+alter table if exists "public"."deposits" add column "description" text;
 
-alter table "public"."deposits" alter column "amount" set data type numeric(12,2) using "amount"::numeric(12,2);
+alter table if exists "public"."deposits" alter column "amount" set data type numeric(12,2) using "amount"::numeric(12,2);
 
-alter table "public"."deposits" alter column "created_at" drop not null;
+alter table if exists "public"."deposits" alter column "created_at" drop not null;
 
-alter table "public"."deposits" alter column "customer_name" drop default;
+alter table if exists "public"."deposits" alter column "customer_name" drop default;
 
-alter table "public"."deposits" alter column "customer_name" drop not null;
+alter table if exists "public"."deposits" alter column "customer_name" drop not null;
 
-alter table "public"."deposits" alter column "deposit_date" set default now();
+alter table if exists "public"."deposits" alter column "deposit_date" set default now();
 
-alter table "public"."deposits" alter column "deposit_date" drop not null;
+alter table if exists "public"."deposits" alter column "deposit_date" drop not null;
 
-alter table "public"."deposits" alter column "deposit_date" set data type timestamp with time zone using "deposit_date"::timestamp with time zone;
+alter table if exists "public"."deposits" alter column "deposit_date" set data type timestamp with time zone using "deposit_date"::timestamp with time zone;
 
-alter table "public"."deposits" alter column "invoice_id" drop not null;
+alter table if exists "public"."deposits" alter column "invoice_id" drop not null;
 
-alter table "public"."deposits" alter column "payment_id" drop not null;
+alter table if exists "public"."deposits" alter column "payment_id" drop not null;
 
-alter table "public"."documents" drop column if exists "file_name";
+alter table if exists "public"."documents" drop column if exists "file_name";
 
-alter table "public"."documents" drop column if exists "file_path";
+alter table if exists "public"."documents" drop column if exists "file_path";
 
-alter table "public"."documents" drop column if exists "file_type";
+alter table if exists "public"."documents" drop column if exists "file_type";
 
-alter table "public"."documents" drop column if exists "mime_type";
+alter table if exists "public"."documents" drop column if exists "mime_type";
 
-alter table "public"."documents" drop column if exists "notes";
+alter table if exists "public"."documents" drop column if exists "notes";
 
-alter table "public"."documents" drop column if exists "related_id";
+alter table if exists "public"."documents" drop column if exists "related_id";
 
-alter table "public"."documents" drop column if exists "related_module";
+alter table if exists "public"."documents" drop column if exists "related_module";
 
-alter table "public"."documents" drop column if exists "size_bytes";
+alter table if exists "public"."documents" drop column if exists "size_bytes";
 
-alter table "public"."documents" drop column if exists "uploaded_at";
+alter table if exists "public"."documents" drop column if exists "uploaded_at";
 
-alter table "public"."documents" drop column if exists "uploaded_by";
+alter table if exists "public"."documents" drop column if exists "uploaded_by";
 
-alter table "public"."documents" add column "category" text;
+alter table if exists "public"."documents" add column "category" text;
 
-alter table "public"."documents" add column "created_at" timestamp with time zone default now();
+alter table if exists "public"."documents" add column "created_at" timestamp with time zone default now();
 
-alter table "public"."documents" add column "file_url" text;
+alter table if exists "public"."documents" add column "file_url" text;
 
 do $$
 begin
@@ -1966,57 +1966,57 @@ exception
   when others then null;
 end $$;
 
-alter table "public"."estimate_categories" drop column if exists "order_index";
+alter table if exists "public"."estimate_categories" drop column if exists "order_index";
 
-alter table "public"."expense_lines" drop column if exists "category";
+alter table if exists "public"."expense_lines" drop column if exists "category";
 
-alter table "public"."expense_lines" drop column if exists "created_at";
+alter table if exists "public"."expense_lines" drop column if exists "created_at";
 
-alter table "public"."expense_lines" drop column if exists "memo";
+alter table if exists "public"."expense_lines" drop column if exists "memo";
 
-alter table "public"."expense_lines" drop column if exists "name";
+alter table if exists "public"."expense_lines" drop column if exists "name";
 
-alter table "public"."expense_lines" drop column if exists "project_id";
+alter table if exists "public"."expense_lines" drop column if exists "project_id";
 
-alter table "public"."expense_lines" add column "description" text;
+alter table if exists "public"."expense_lines" add column "description" text;
 
-alter table "public"."expense_lines" add column "qty" numeric default 1;
+alter table if exists "public"."expense_lines" add column "qty" numeric default 1;
 
-alter table "public"."expense_lines" add column "total" numeric;
+alter table if exists "public"."expense_lines" add column "total" numeric;
 
-alter table "public"."expense_lines" add column "unit_cost" numeric default 0;
+alter table if exists "public"."expense_lines" add column "unit_cost" numeric default 0;
 
-alter table "public"."expense_lines" alter column "amount" drop default;
+alter table if exists "public"."expense_lines" alter column "amount" drop default;
 
-alter table "public"."expense_lines" alter column "amount" drop not null;
+alter table if exists "public"."expense_lines" alter column "amount" drop not null;
 
-alter table "public"."expenses" drop column if exists "name";
+alter table if exists "public"."expenses" drop column if exists "name";
 
-alter table "public"."expenses" drop column if exists "receipt_url";
+alter table if exists "public"."expenses" drop column if exists "receipt_url";
 
-alter table "public"."expenses" drop column if exists "updated_at";
+alter table if exists "public"."expenses" drop column if exists "updated_at";
 
-alter table "public"."expenses" add column "amount" numeric not null;
+alter table if exists "public"."expenses" add column "amount" numeric not null;
 
-alter table "public"."expenses" add column "category" text;
+alter table if exists "public"."expenses" add column "category" text;
 
-alter table "public"."expenses" add column "cost_code" text;
+alter table if exists "public"."expenses" add column "cost_code" text;
 
-alter table "public"."expenses" add column "tax" numeric default 0;
+alter table if exists "public"."expenses" add column "tax" numeric default 0;
 
-alter table "public"."expenses" add column "vendor_id" uuid;
+alter table if exists "public"."expenses" add column "vendor_id" uuid;
 
-alter table "public"."expenses" alter column "created_at" drop not null;
+alter table if exists "public"."expenses" alter column "created_at" drop not null;
 
-alter table "public"."expenses" alter column "expense_date" drop default;
+alter table if exists "public"."expenses" alter column "expense_date" drop default;
 
-alter table "public"."expenses" alter column "expense_date" drop not null;
+alter table if exists "public"."expenses" alter column "expense_date" drop not null;
 
-alter table "public"."expenses" alter column "line_count" drop not null;
+alter table if exists "public"."expenses" alter column "line_count" drop not null;
 
-alter table "public"."expenses" alter column "payment_method" drop default;
+alter table if exists "public"."expenses" alter column "payment_method" drop default;
 
-alter table "public"."expenses" alter column "payment_method" drop not null;
+alter table if exists "public"."expenses" alter column "payment_method" drop not null;
 
 do $$
 begin
@@ -2025,17 +2025,17 @@ exception
   when others then null;
 end $$;
 
-alter table "public"."expenses" alter column "status" set default 'Draft'::text;
+alter table if exists "public"."expenses" alter column "status" set default 'Draft'::text;
 
-alter table "public"."expenses" alter column "status" drop not null;
+alter table if exists "public"."expenses" alter column "status" drop not null;
 
-alter table "public"."expenses" alter column "total" drop default;
+alter table if exists "public"."expenses" alter column "total" drop default;
 
-alter table "public"."expenses" alter column "total" drop not null;
+alter table if exists "public"."expenses" alter column "total" drop not null;
 
-alter table "public"."expenses" alter column "vendor_name" drop default;
+alter table if exists "public"."expenses" alter column "vendor_name" drop default;
 
-alter table "public"."expenses" alter column "vendor_name" drop not null;
+alter table if exists "public"."expenses" alter column "vendor_name" drop not null;
 
 do $$
 begin
@@ -2054,15 +2054,15 @@ exception
   when others then null;
 end $$;
 
-alter table "public"."invoice_items" alter column "amount" drop default;
+alter table if exists "public"."invoice_items" alter column "amount" drop default;
 
-alter table "public"."invoice_items" alter column "amount" drop not null;
+alter table if exists "public"."invoice_items" alter column "amount" drop not null;
 
-alter table "public"."invoice_items" alter column "created_at" drop not null;
+alter table if exists "public"."invoice_items" alter column "created_at" drop not null;
 
-alter table "public"."invoice_items" alter column "qty" drop default;
+alter table if exists "public"."invoice_items" alter column "qty" drop default;
 
-alter table "public"."invoice_items" alter column "qty" drop not null;
+alter table if exists "public"."invoice_items" alter column "qty" drop not null;
 
 do $$
 begin
@@ -2072,11 +2072,11 @@ exception
   when others then null;
 end $$;
 
-alter table "public"."invoice_payments" alter column "invoice_id" drop not null;
+alter table if exists "public"."invoice_payments" alter column "invoice_id" drop not null;
 
-alter table "public"."invoice_payments" alter column "paid_at" drop default;
+alter table if exists "public"."invoice_payments" alter column "paid_at" drop default;
 
-alter table "public"."invoice_payments" alter column "paid_at" drop not null;
+alter table if exists "public"."invoice_payments" alter column "paid_at" drop not null;
 
 do $$
 begin
@@ -2086,51 +2086,51 @@ exception
   when others then null;
 end $$;
 
-alter table "public"."invoices" drop column if exists "name";
+alter table if exists "public"."invoices" drop column if exists "name";
 
-alter table "public"."invoices" alter column "client_name" drop default;
+alter table if exists "public"."invoices" alter column "client_name" drop default;
 
-alter table "public"."invoices" alter column "client_name" drop not null;
+alter table if exists "public"."invoices" alter column "client_name" drop not null;
 
-alter table "public"."invoices" alter column "created_at" drop not null;
+alter table if exists "public"."invoices" alter column "created_at" drop not null;
 
-alter table "public"."invoices" alter column "due_date" drop default;
+alter table if exists "public"."invoices" alter column "due_date" drop default;
 
-alter table "public"."invoices" alter column "due_date" drop not null;
+alter table if exists "public"."invoices" alter column "due_date" drop not null;
 
-alter table "public"."invoices" alter column "invoice_no" drop not null;
+alter table if exists "public"."invoices" alter column "invoice_no" drop not null;
 
-alter table "public"."invoices" alter column "issue_date" drop not null;
+alter table if exists "public"."invoices" alter column "issue_date" drop not null;
 
-alter table "public"."invoices" alter column "status" drop not null;
+alter table if exists "public"."invoices" alter column "status" drop not null;
 
-alter table "public"."invoices" alter column "total" drop not null;
+alter table if exists "public"."invoices" alter column "total" drop not null;
 
-alter table "public"."invoices" alter column "updated_at" drop not null;
+alter table if exists "public"."invoices" alter column "updated_at" drop not null;
 
-alter table "public"."labor_entries" drop column "approved_at";
+alter table if exists "public"."labor_entries" drop column "approved_at";
 
-alter table "public"."labor_entries" drop column "approved_by";
+alter table if exists "public"."labor_entries" drop column "approved_by";
 
-alter table "public"."labor_entries" drop column "created_at";
+alter table if exists "public"."labor_entries" drop column "created_at";
 
-alter table "public"."labor_entries" drop column "day_rate";
+alter table if exists "public"."labor_entries" drop column "day_rate";
 
-alter table "public"."labor_entries" drop column "locked_at";
+alter table if exists "public"."labor_entries" drop column "locked_at";
 
-alter table "public"."labor_entries" drop column "locked_by";
+alter table if exists "public"."labor_entries" drop column "locked_by";
 
-alter table "public"."labor_entries" drop column "ot_amount";
+alter table if exists "public"."labor_entries" drop column "ot_amount";
 
-alter table "public"."labor_entries" drop column "project_am_id";
+alter table if exists "public"."labor_entries" drop column "project_am_id";
 
-alter table "public"."labor_entries" drop column "project_pm_id";
+alter table if exists "public"."labor_entries" drop column "project_pm_id";
 
-alter table "public"."labor_entries" drop column "submitted_at";
+alter table if exists "public"."labor_entries" drop column "submitted_at";
 
-alter table "public"."labor_entries" drop column "submitted_by";
+alter table if exists "public"."labor_entries" drop column "submitted_by";
 
-alter table "public"."labor_entries" drop column "total";
+alter table if exists "public"."labor_entries" drop column "total";
 
 do $$
 begin
@@ -2139,115 +2139,115 @@ exception
   when others then null;
 end $$;
 
-alter table "public"."labor_entries" alter column "status" set default 'pending'::text;
+alter table if exists "public"."labor_entries" alter column "status" set default 'pending'::text;
 
-alter table "public"."labor_entries" alter column "status" drop not null;
+alter table if exists "public"."labor_entries" alter column "status" drop not null;
 
-alter table "public"."labor_entries" alter column "work_date" drop not null;
+alter table if exists "public"."labor_entries" alter column "work_date" drop not null;
 
-alter table "public"."labor_entries" alter column "worker_id" drop not null;
+alter table if exists "public"."labor_entries" alter column "worker_id" drop not null;
 
-alter table "public"."labor_payments" drop column "applied_end_date";
+alter table if exists "public"."labor_payments" drop column "applied_end_date";
 
-alter table "public"."labor_payments" drop column "applied_start_date";
+alter table if exists "public"."labor_payments" drop column "applied_start_date";
 
-alter table "public"."labor_payments" drop column "memo";
+alter table if exists "public"."labor_payments" drop column "memo";
 
-alter table "public"."labor_payments" add column "note" text;
+alter table if exists "public"."labor_payments" add column "note" text;
 
-alter table "public"."labor_payments" alter column "amount" drop default;
+alter table if exists "public"."labor_payments" alter column "amount" drop default;
 
-alter table "public"."labor_payments" alter column "created_at" drop not null;
+alter table if exists "public"."labor_payments" alter column "created_at" drop not null;
 
-alter table "public"."labor_workers" drop column "created_at";
+alter table if exists "public"."labor_workers" drop column "created_at";
 
-alter table "public"."labor_workers" add column "active" boolean default true;
+alter table if exists "public"."labor_workers" add column "active" boolean default true;
 
-alter table "public"."labor_workers" add column "rate" numeric default 0;
+alter table if exists "public"."labor_workers" add column "rate" numeric default 0;
 
-alter table "public"."labor_workers" add column "type" text default 'Sub'::text;
+alter table if exists "public"."labor_workers" add column "type" text default 'Sub'::text;
 
-alter table "public"."labor_workers" enable row level security;
+alter table if exists "public"."labor_workers" enable row level security;
 
-alter table "public"."material_catalog" alter column "category" drop default;
+alter table if exists "public"."material_catalog" alter column "category" drop default;
 
-alter table "public"."material_catalog" alter column "category" drop not null;
+alter table if exists "public"."material_catalog" alter column "category" drop not null;
 
-alter table "public"."material_catalog" alter column "cost" set data type text using "cost"::text;
+alter table if exists "public"."material_catalog" alter column "cost" set data type text using "cost"::text;
 
-alter table "public"."material_catalog" alter column "created_at" drop not null;
+alter table if exists "public"."material_catalog" alter column "created_at" drop not null;
 
-alter table "public"."material_catalog" alter column "created_at" set data type timestamp without time zone using "created_at"::timestamp without time zone;
+alter table if exists "public"."material_catalog" alter column "created_at" set data type timestamp without time zone using "created_at"::timestamp without time zone;
 
-alter table "public"."material_catalog" alter column "material_name" drop default;
+alter table if exists "public"."material_catalog" alter column "material_name" drop default;
 
-alter table "public"."material_catalog" alter column "material_name" drop not null;
+alter table if exists "public"."material_catalog" alter column "material_name" drop not null;
 
-alter table "public"."payments_received" add column "method" text;
+alter table if exists "public"."payments_received" add column "method" text;
 
-alter table "public"."payments_received" alter column "amount" drop default;
+alter table if exists "public"."payments_received" alter column "amount" drop default;
 
-alter table "public"."payments_received" alter column "amount" drop not null;
+alter table if exists "public"."payments_received" alter column "amount" drop not null;
 
-alter table "public"."payments_received" alter column "created_at" drop not null;
+alter table if exists "public"."payments_received" alter column "created_at" drop not null;
 
-alter table "public"."payments_received" alter column "created_at" set data type timestamp without time zone using "created_at"::timestamp without time zone;
+alter table if exists "public"."payments_received" alter column "created_at" set data type timestamp without time zone using "created_at"::timestamp without time zone;
 
-alter table "public"."payments_received" alter column "customer_name" drop default;
+alter table if exists "public"."payments_received" alter column "customer_name" drop default;
 
-alter table "public"."payments_received" alter column "customer_name" drop not null;
+alter table if exists "public"."payments_received" alter column "customer_name" drop not null;
 
-alter table "public"."payments_received" alter column "invoice_id" drop not null;
+alter table if exists "public"."payments_received" alter column "invoice_id" drop not null;
 
-alter table "public"."payments_received" alter column "payment_date" set default now();
+alter table if exists "public"."payments_received" alter column "payment_date" set default now();
 
-alter table "public"."payments_received" alter column "payment_date" drop not null;
+alter table if exists "public"."payments_received" alter column "payment_date" drop not null;
 
-alter table "public"."payments_received" alter column "payment_date" set data type timestamp without time zone using "payment_date"::timestamp without time zone;
+alter table if exists "public"."payments_received" alter column "payment_date" set data type timestamp without time zone using "payment_date"::timestamp without time zone;
 
-alter table "public"."project_change_orders" drop column "amount";
+alter table if exists "public"."project_change_orders" drop column "amount";
 
-alter table "public"."project_change_orders" drop column "cost_impact";
+alter table if exists "public"."project_change_orders" drop column "cost_impact";
 
-alter table "public"."project_change_orders" drop column "description";
+alter table if exists "public"."project_change_orders" drop column "description";
 
-alter table "public"."project_change_orders" drop column "schedule_impact_days";
+alter table if exists "public"."project_change_orders" drop column "schedule_impact_days";
 
-alter table "public"."project_change_orders" drop column "title";
+alter table if exists "public"."project_change_orders" drop column "title";
 
-alter table "public"."project_change_orders" alter column "approved_by" set data type uuid using "approved_by"::uuid;
+alter table if exists "public"."project_change_orders" alter column "approved_by" set data type uuid using "approved_by"::uuid;
 
-alter table "public"."project_commissions" alter column "base_amount" drop default;
+alter table if exists "public"."project_commissions" alter column "base_amount" drop default;
 
-alter table "public"."project_commissions" alter column "base_amount" drop not null;
+alter table if exists "public"."project_commissions" alter column "base_amount" drop not null;
 
-alter table "public"."project_commissions" alter column "calculation_mode" drop default;
+alter table if exists "public"."project_commissions" alter column "calculation_mode" drop default;
 
-alter table "public"."project_commissions" alter column "calculation_mode" drop not null;
+alter table if exists "public"."project_commissions" alter column "calculation_mode" drop not null;
 
-alter table "public"."project_commissions" alter column "commission_amount" drop default;
+alter table if exists "public"."project_commissions" alter column "commission_amount" drop default;
 
-alter table "public"."project_commissions" alter column "commission_amount" drop not null;
+alter table if exists "public"."project_commissions" alter column "commission_amount" drop not null;
 
-alter table "public"."project_commissions" alter column "created_at" drop not null;
+alter table if exists "public"."project_commissions" alter column "created_at" drop not null;
 
-alter table "public"."project_commissions" alter column "person_name" drop default;
+alter table if exists "public"."project_commissions" alter column "person_name" drop default;
 
-alter table "public"."project_commissions" alter column "person_name" drop not null;
+alter table if exists "public"."project_commissions" alter column "person_name" drop not null;
 
-alter table "public"."project_commissions" alter column "project_id" drop not null;
+alter table if exists "public"."project_commissions" alter column "project_id" drop not null;
 
-alter table "public"."project_commissions" alter column "rate" drop default;
+alter table if exists "public"."project_commissions" alter column "rate" drop default;
 
-alter table "public"."project_commissions" alter column "rate" drop not null;
+alter table if exists "public"."project_commissions" alter column "rate" drop not null;
 
-alter table "public"."project_commissions" alter column "role" drop default;
+alter table if exists "public"."project_commissions" alter column "role" drop default;
 
-alter table "public"."project_commissions" alter column "role" drop not null;
+alter table if exists "public"."project_commissions" alter column "role" drop not null;
 
-alter table "public"."project_commissions" alter column "status" set default 'pending'::text;
+alter table if exists "public"."project_commissions" alter column "status" set default 'pending'::text;
 
-alter table "public"."project_commissions" alter column "status" drop not null;
+alter table if exists "public"."project_commissions" alter column "status" drop not null;
 
 do $$
 begin
@@ -2268,59 +2268,59 @@ begin
   end if;
 end $$;
 
-alter table "public"."project_schedule" add column "description" text;
+alter table if exists "public"."project_schedule" add column "description" text;
 
-alter table "public"."project_schedule" alter column "created_at" drop not null;
+alter table if exists "public"."project_schedule" alter column "created_at" drop not null;
 
-alter table "public"."project_schedule" alter column "created_at" set data type timestamp without time zone using "created_at"::timestamp without time zone;
+alter table if exists "public"."project_schedule" alter column "created_at" set data type timestamp without time zone using "created_at"::timestamp without time zone;
 
-alter table "public"."project_schedule" alter column "project_id" drop not null;
+alter table if exists "public"."project_schedule" alter column "project_id" drop not null;
 
-alter table "public"."project_schedule" alter column "status" set default 'planned'::text;
+alter table if exists "public"."project_schedule" alter column "status" set default 'planned'::text;
 
-alter table "public"."project_schedule" alter column "status" drop not null;
+alter table if exists "public"."project_schedule" alter column "status" drop not null;
 
-alter table "public"."project_schedule" alter column "title" drop default;
+alter table if exists "public"."project_schedule" alter column "title" drop default;
 
-alter table "public"."project_tasks" alter column "created_at" drop not null;
+alter table if exists "public"."project_tasks" alter column "created_at" drop not null;
 
-alter table "public"."project_tasks" alter column "created_at" set data type timestamp without time zone using "created_at"::timestamp without time zone;
+alter table if exists "public"."project_tasks" alter column "created_at" set data type timestamp without time zone using "created_at"::timestamp without time zone;
 
-alter table "public"."project_tasks" alter column "priority" drop not null;
+alter table if exists "public"."project_tasks" alter column "priority" drop not null;
 
-alter table "public"."project_tasks" alter column "project_id" drop not null;
+alter table if exists "public"."project_tasks" alter column "project_id" drop not null;
 
-alter table "public"."project_tasks" alter column "status" drop not null;
+alter table if exists "public"."project_tasks" alter column "status" drop not null;
 
-alter table "public"."project_tasks" alter column "title" drop default;
+alter table if exists "public"."project_tasks" alter column "title" drop default;
 
-alter table "public"."projects" add column "city" text;
+alter table if exists "public"."projects" add column "city" text;
 
-alter table "public"."projects" add column "client_email" text;
+alter table if exists "public"."projects" add column "client_email" text;
 
-alter table "public"."projects" add column "client_id" uuid;
+alter table if exists "public"."projects" add column "client_id" uuid;
 
-alter table "public"."projects" add column "client_phone" text;
+alter table if exists "public"."projects" add column "client_phone" text;
 
-alter table "public"."projects" add column "contract_amount" numeric(14,2) default 0;
+alter table if exists "public"."projects" add column "contract_amount" numeric(14,2) default 0;
 
-alter table "public"."projects" add column "project_number" text;
+alter table if exists "public"."projects" add column "project_number" text;
 
-alter table "public"."projects" add column "state" text;
+alter table if exists "public"."projects" add column "state" text;
 
-alter table "public"."projects" add column "zip_code" text;
+alter table if exists "public"."projects" add column "zip_code" text;
 
-alter table "public"."projects" alter column "created_at" drop not null;
+alter table if exists "public"."projects" alter column "created_at" drop not null;
 
-alter table "public"."projects" alter column "name" drop default;
+alter table if exists "public"."projects" alter column "name" drop default;
 
-alter table "public"."projects" alter column "status" set default 'Active'::text;
+alter table if exists "public"."projects" alter column "status" set default 'Active'::text;
 
-alter table "public"."projects" alter column "updated_at" set default now();
+alter table if exists "public"."projects" alter column "updated_at" set default now();
 
-alter table "public"."projects" alter column "updated_at" drop not null;
+alter table if exists "public"."projects" alter column "updated_at" drop not null;
 
-alter table "public"."projects" alter column "updated_at" set data type timestamp with time zone using "updated_at"::timestamp with time zone;
+alter table if exists "public"."projects" alter column "updated_at" set data type timestamp with time zone using "updated_at"::timestamp with time zone;
 
 do $$
 begin
@@ -2343,101 +2343,101 @@ begin
   end if;
 end $$;
 
-alter table "public"."site_photos" alter column "created_at" drop not null;
+alter table if exists "public"."site_photos" alter column "created_at" drop not null;
 
-alter table "public"."site_photos" alter column "created_at" set data type timestamp without time zone using "created_at"::timestamp without time zone;
+alter table if exists "public"."site_photos" alter column "created_at" set data type timestamp without time zone using "created_at"::timestamp without time zone;
 
-alter table "public"."site_photos" alter column "photo_url" drop not null;
+alter table if exists "public"."site_photos" alter column "photo_url" drop not null;
 
-alter table "public"."site_photos" alter column "project_id" drop not null;
+alter table if exists "public"."site_photos" alter column "project_id" drop not null;
 
-alter table "public"."subcontract_bills" drop column "due_date";
+alter table if exists "public"."subcontract_bills" drop column "due_date";
 
-alter table "public"."subcontractors" drop column "address1";
+alter table if exists "public"."subcontractors" drop column "address1";
 
-alter table "public"."subcontractors" drop column "address2";
+alter table if exists "public"."subcontractors" drop column "address2";
 
-alter table "public"."subcontractors" drop column "city";
+alter table if exists "public"."subcontractors" drop column "city";
 
-alter table "public"."subcontractors" drop column "contact_name";
+alter table if exists "public"."subcontractors" drop column "contact_name";
 
-alter table "public"."subcontractors" drop column "display_name";
+alter table if exists "public"."subcontractors" drop column "display_name";
 
-alter table "public"."subcontractors" drop column "insurance_expiration";
+alter table if exists "public"."subcontractors" drop column "insurance_expiration";
 
-alter table "public"."subcontractors" drop column "insurance_expiration_date";
+alter table if exists "public"."subcontractors" drop column "insurance_expiration_date";
 
-alter table "public"."subcontractors" drop column "legal_name";
+alter table if exists "public"."subcontractors" drop column "legal_name";
 
-alter table "public"."subcontractors" drop column "license_number";
+alter table if exists "public"."subcontractors" drop column "license_number";
 
-alter table "public"."subcontractors" drop column "notes";
+alter table if exists "public"."subcontractors" drop column "notes";
 
-alter table "public"."subcontractors" drop column "state";
+alter table if exists "public"."subcontractors" drop column "state";
 
-alter table "public"."subcontractors" drop column "status";
+alter table if exists "public"."subcontractors" drop column "status";
 
-alter table "public"."subcontractors" drop column "tax_id_last4";
+alter table if exists "public"."subcontractors" drop column "tax_id_last4";
 
-alter table "public"."subcontractors" drop column "updated_at";
+alter table if exists "public"."subcontractors" drop column "updated_at";
 
-alter table "public"."subcontractors" drop column "w9_on_file";
+alter table if exists "public"."subcontractors" drop column "w9_on_file";
 
-alter table "public"."subcontractors" drop column "w9_storage_path";
+alter table if exists "public"."subcontractors" drop column "w9_storage_path";
 
-alter table "public"."subcontractors" drop column "zip";
+alter table if exists "public"."subcontractors" drop column "zip";
 
-alter table "public"."subcontractors" add column "active" boolean not null default true;
+alter table if exists "public"."subcontractors" add column "active" boolean not null default true;
 
-alter table "public"."subcontractors" add column "address" text;
+alter table if exists "public"."subcontractors" add column "address" text;
 
-alter table "public"."subcontractors" add column "name" text not null;
+alter table if exists "public"."subcontractors" add column "name" text not null;
 
-alter table "public"."subcontracts" drop column "retainage_pct";
+alter table if exists "public"."subcontracts" drop column "retainage_pct";
 
-alter table "public"."subcontracts" drop column "status";
+alter table if exists "public"."subcontracts" drop column "status";
 
-alter table "public"."vendors" drop column "contact_name";
+alter table if exists "public"."vendors" drop column "contact_name";
 
-alter table "public"."vendors" drop column "notes";
+alter table if exists "public"."vendors" drop column "notes";
 
-alter table "public"."vendors" drop column "status";
+alter table if exists "public"."vendors" drop column "status";
 
-alter table "public"."vendors" drop column "updated_at";
+alter table if exists "public"."vendors" drop column "updated_at";
 
-alter table "public"."vendors" alter column "created_at" drop not null;
+alter table if exists "public"."vendors" alter column "created_at" drop not null;
 
-alter table "public"."vendors" alter column "created_at" set data type timestamp without time zone using "created_at"::timestamp without time zone;
+alter table if exists "public"."vendors" alter column "created_at" set data type timestamp without time zone using "created_at"::timestamp without time zone;
 
-alter table "public"."vendors" alter column "name" drop not null;
+alter table if exists "public"."vendors" alter column "name" drop not null;
 
-alter table "public"."worker_advances" drop column "created_by";
+alter table if exists "public"."worker_advances" drop column "created_by";
 
-alter table "public"."worker_advances" add column "updated_at" timestamp with time zone default now();
+alter table if exists "public"."worker_advances" add column "updated_at" timestamp with time zone default now();
 
-alter table "public"."worker_advances" alter column "advance_date" drop not null;
+alter table if exists "public"."worker_advances" alter column "advance_date" drop not null;
 
-alter table "public"."worker_advances" alter column "amount" set default 0;
+alter table if exists "public"."worker_advances" alter column "amount" set default 0;
 
-alter table "public"."worker_advances" alter column "amount" set data type numeric(12,2) using "amount"::numeric(12,2);
+alter table if exists "public"."worker_advances" alter column "amount" set data type numeric(12,2) using "amount"::numeric(12,2);
 
-alter table "public"."worker_advances" alter column "created_at" drop not null;
+alter table if exists "public"."worker_advances" alter column "created_at" drop not null;
 
-alter table "public"."worker_advances" alter column "status" drop not null;
+alter table if exists "public"."worker_advances" alter column "status" drop not null;
 
-alter table "public"."worker_advances" alter column "worker_id" drop not null;
+alter table if exists "public"."worker_advances" alter column "worker_id" drop not null;
 
-alter table "public"."worker_invoices" drop column "attachment_url";
+alter table if exists "public"."worker_invoices" drop column "attachment_url";
 
-alter table "public"."worker_invoices" drop column "invoice_date";
+alter table if exists "public"."worker_invoices" drop column "invoice_date";
 
-alter table "public"."worker_invoices" drop column "invoice_number";
+alter table if exists "public"."worker_invoices" drop column "invoice_number";
 
-alter table "public"."worker_invoices" alter column "amount" set not null;
+alter table if exists "public"."worker_invoices" alter column "amount" set not null;
 
-alter table "public"."worker_invoices" alter column "amount" set data type numeric(10,2) using "amount"::numeric(10,2);
+alter table if exists "public"."worker_invoices" alter column "amount" set data type numeric(10,2) using "amount"::numeric(10,2);
 
-alter table "public"."worker_invoices" alter column "worker_id" drop not null;
+alter table if exists "public"."worker_invoices" alter column "worker_id" drop not null;
 
 do $$
 begin
@@ -2486,17 +2486,17 @@ exception
   when others then null;
 end $$;
 
-alter table "public"."workers" drop column "daily_rate";
+alter table if exists "public"."workers" drop column "daily_rate";
 
-alter table "public"."workers" drop column "default_ot_rate";
+alter table if exists "public"."workers" drop column "default_ot_rate";
 
-alter table "public"."workers" drop column "trade";
+alter table if exists "public"."workers" drop column "trade";
 
-alter table "public"."workers" drop column "updated_at";
+alter table if exists "public"."workers" drop column "updated_at";
 
-alter table "public"."workers" alter column "created_at" drop not null;
+alter table if exists "public"."workers" alter column "created_at" drop not null;
 
-alter table "public"."workers" alter column "status" drop not null;
+alter table if exists "public"."workers" alter column "status" drop not null;
 
 CREATE UNIQUE INDEX accounting_periods_month_key ON public.accounting_periods USING btree (month);
 
@@ -2526,31 +2526,42 @@ begin
   end if;
 end $$;
 
-CREATE INDEX idx_inspection_log_date ON public.inspection_log USING btree (inspection_date);
+do $$
+begin
+  if to_regclass('public.inspection_log') is not null then
+    create index if not exists idx_inspection_log_date on public.inspection_log using btree (inspection_date);
+    create index if not exists idx_inspection_log_project on public.inspection_log using btree (project_id);
+  end if;
+end $$;
 
-CREATE INDEX idx_inspection_log_project ON public.inspection_log USING btree (project_id);
-
-CREATE INDEX idx_invoices_project ON public.invoices USING btree (project_id);
-
-CREATE INDEX idx_invoices_status ON public.invoices USING btree (status);
-
-CREATE INDEX idx_labor_worker ON public.labor_entries USING btree (worker_id);
-
-CREATE INDEX idx_project_schedule_dates ON public.project_schedule USING btree (start_date, end_date);
-
-CREATE INDEX idx_project_schedule_project ON public.project_schedule USING btree (project_id);
-
-CREATE INDEX idx_project_tasks_due ON public.project_tasks USING btree (due_date);
-
-CREATE INDEX idx_project_tasks_project ON public.project_tasks USING btree (project_id);
-
-CREATE INDEX idx_projects_created ON public.projects USING btree (created_at DESC);
-
-CREATE INDEX idx_punch_list_project ON public.punch_list USING btree (project_id);
-
-CREATE INDEX idx_worker_receipts_date ON public.worker_receipts USING btree (receipt_date);
-
-CREATE INDEX idx_worker_receipts_reimbursement_id ON public.worker_receipts USING btree (reimbursement_id);
+do $$
+begin
+  if to_regclass('public.invoices') is not null then
+    create index if not exists idx_invoices_project on public.invoices using btree (project_id);
+    create index if not exists idx_invoices_status on public.invoices using btree (status);
+  end if;
+  if to_regclass('public.labor_entries') is not null then
+    create index if not exists idx_labor_worker on public.labor_entries using btree (worker_id);
+  end if;
+  if to_regclass('public.project_schedule') is not null then
+    create index if not exists idx_project_schedule_dates on public.project_schedule using btree (start_date, end_date);
+    create index if not exists idx_project_schedule_project on public.project_schedule using btree (project_id);
+  end if;
+  if to_regclass('public.project_tasks') is not null then
+    create index if not exists idx_project_tasks_due on public.project_tasks using btree (due_date);
+    create index if not exists idx_project_tasks_project on public.project_tasks using btree (project_id);
+  end if;
+  if to_regclass('public.projects') is not null then
+    create index if not exists idx_projects_created on public.projects using btree (created_at desc);
+  end if;
+  if to_regclass('public.punch_list') is not null then
+    create index if not exists idx_punch_list_project on public.punch_list using btree (project_id);
+  end if;
+  if to_regclass('public.worker_receipts') is not null then
+    create index if not exists idx_worker_receipts_date on public.worker_receipts using btree (receipt_date);
+    create index if not exists idx_worker_receipts_reimbursement_id on public.worker_receipts using btree (reimbursement_id);
+  end if;
+end $$;
 
 CREATE UNIQUE INDEX inspection_logs_pkey ON public.inspection_logs USING btree (id);
 
@@ -2560,51 +2571,51 @@ CREATE UNIQUE INDEX project_cost_codes_pkey ON public.project_cost_codes USING b
 
 CREATE UNIQUE INDEX warranties_pkey ON public.warranties USING btree (id);
 
-alter table "public"."accounting_periods" add constraint "accounting_periods_pkey" PRIMARY KEY using index "accounting_periods_pkey";
+alter table if exists "public"."accounting_periods" add constraint "accounting_periods_pkey" PRIMARY KEY using index "accounting_periods_pkey";
 
-alter table "public"."clients" add constraint "clients_pkey" PRIMARY KEY using index "clients_pkey";
+alter table if exists "public"."clients" add constraint "clients_pkey" PRIMARY KEY using index "clients_pkey";
 
-alter table "public"."completion_certificates" add constraint "completion_certificates_pkey" PRIMARY KEY using index "completion_certificates_pkey";
+alter table if exists "public"."completion_certificates" add constraint "completion_certificates_pkey" PRIMARY KEY using index "completion_certificates_pkey";
 
-alter table "public"."cost_allocations" add constraint "cost_allocations_pkey" PRIMARY KEY using index "cost_allocations_pkey";
+alter table if exists "public"."cost_allocations" add constraint "cost_allocations_pkey" PRIMARY KEY using index "cost_allocations_pkey";
 
-alter table "public"."final_punch_list_items" add constraint "final_punch_list_items_pkey" PRIMARY KEY using index "final_punch_list_items_pkey";
+alter table if exists "public"."final_punch_list_items" add constraint "final_punch_list_items_pkey" PRIMARY KEY using index "final_punch_list_items_pkey";
 
-alter table "public"."final_punch_lists" add constraint "final_punch_lists_pkey" PRIMARY KEY using index "final_punch_lists_pkey";
+alter table if exists "public"."final_punch_lists" add constraint "final_punch_lists_pkey" PRIMARY KEY using index "final_punch_lists_pkey";
 
-alter table "public"."inspection_logs" add constraint "inspection_logs_pkey" PRIMARY KEY using index "inspection_logs_pkey";
+alter table if exists "public"."inspection_logs" add constraint "inspection_logs_pkey" PRIMARY KEY using index "inspection_logs_pkey";
 
-alter table "public"."material_selections" add constraint "material_selections_pkey" PRIMARY KEY using index "material_selections_pkey";
+alter table if exists "public"."material_selections" add constraint "material_selections_pkey" PRIMARY KEY using index "material_selections_pkey";
 
-alter table "public"."project_cost_codes" add constraint "project_cost_codes_pkey" PRIMARY KEY using index "project_cost_codes_pkey";
+alter table if exists "public"."project_cost_codes" add constraint "project_cost_codes_pkey" PRIMARY KEY using index "project_cost_codes_pkey";
 
-alter table "public"."warranties" add constraint "warranties_pkey" PRIMARY KEY using index "warranties_pkey";
+alter table if exists "public"."warranties" add constraint "warranties_pkey" PRIMARY KEY using index "warranties_pkey";
 
-alter table "public"."accounting_periods" add constraint "accounting_periods_month_key" UNIQUE using index "accounting_periods_month_key";
+alter table if exists "public"."accounting_periods" add constraint "accounting_periods_month_key" UNIQUE using index "accounting_periods_month_key";
 
-alter table "public"."accounts" add constraint "accounts_user_id_fkey" FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE not valid;
+alter table if exists "public"."accounts" add constraint "accounts_user_id_fkey" FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE not valid;
 
-alter table "public"."accounts" validate constraint "accounts_user_id_fkey";
+alter table if exists "public"."accounts" validate constraint "accounts_user_id_fkey";
 
-alter table "public"."completion_certificates" add constraint "completion_certificates_project_id_fkey" FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE not valid;
+alter table if exists "public"."completion_certificates" add constraint "completion_certificates_project_id_fkey" FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE not valid;
 
-alter table "public"."completion_certificates" validate constraint "completion_certificates_project_id_fkey";
+alter table if exists "public"."completion_certificates" validate constraint "completion_certificates_project_id_fkey";
 
-alter table "public"."cost_allocations" add constraint "cost_allocations_project_id_fkey" FOREIGN KEY (project_id) REFERENCES public.projects(id) not valid;
+alter table if exists "public"."cost_allocations" add constraint "cost_allocations_project_id_fkey" FOREIGN KEY (project_id) REFERENCES public.projects(id) not valid;
 
-alter table "public"."cost_allocations" validate constraint "cost_allocations_project_id_fkey";
+alter table if exists "public"."cost_allocations" validate constraint "cost_allocations_project_id_fkey";
 
-alter table "public"."final_punch_list_items" add constraint "final_punch_list_items_punch_list_id_fkey" FOREIGN KEY (punch_list_id) REFERENCES public.final_punch_lists(id) ON DELETE CASCADE not valid;
+alter table if exists "public"."final_punch_list_items" add constraint "final_punch_list_items_punch_list_id_fkey" FOREIGN KEY (punch_list_id) REFERENCES public.final_punch_lists(id) ON DELETE CASCADE not valid;
 
-alter table "public"."final_punch_list_items" validate constraint "final_punch_list_items_punch_list_id_fkey";
+alter table if exists "public"."final_punch_list_items" validate constraint "final_punch_list_items_punch_list_id_fkey";
 
-alter table "public"."final_punch_lists" add constraint "final_punch_lists_project_id_fkey" FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE not valid;
+alter table if exists "public"."final_punch_lists" add constraint "final_punch_lists_project_id_fkey" FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE not valid;
 
-alter table "public"."final_punch_lists" validate constraint "final_punch_lists_project_id_fkey";
+alter table if exists "public"."final_punch_lists" validate constraint "final_punch_lists_project_id_fkey";
 
-alter table "public"."inspection_logs" add constraint "inspection_logs_project_id_fkey" FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE not valid;
+alter table if exists "public"."inspection_logs" add constraint "inspection_logs_project_id_fkey" FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE not valid;
 
-alter table "public"."inspection_logs" validate constraint "inspection_logs_project_id_fkey";
+alter table if exists "public"."inspection_logs" validate constraint "inspection_logs_project_id_fkey";
 
 do $$
 begin
@@ -2617,21 +2628,21 @@ begin
   end if;
 end $$;
 
-alter table "public"."labor_invoices" add constraint "labor_invoices_worker_id_fkey" FOREIGN KEY (worker_id) REFERENCES public.workers(id) ON DELETE CASCADE not valid;
+alter table if exists "public"."labor_invoices" add constraint "labor_invoices_worker_id_fkey" FOREIGN KEY (worker_id) REFERENCES public.workers(id) ON DELETE CASCADE not valid;
 
-alter table "public"."labor_invoices" validate constraint "labor_invoices_worker_id_fkey";
+alter table if exists "public"."labor_invoices" validate constraint "labor_invoices_worker_id_fkey";
 
-alter table "public"."material_selections" add constraint "material_selections_project_id_fkey" FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE not valid;
+alter table if exists "public"."material_selections" add constraint "material_selections_project_id_fkey" FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE not valid;
 
-alter table "public"."material_selections" validate constraint "material_selections_project_id_fkey";
+alter table if exists "public"."material_selections" validate constraint "material_selections_project_id_fkey";
 
-alter table "public"."project_change_orders" add constraint "project_change_orders_approved_by_fkey" FOREIGN KEY (approved_by) REFERENCES public.workers(id) ON DELETE SET NULL not valid;
+alter table if exists "public"."project_change_orders" add constraint "project_change_orders_approved_by_fkey" FOREIGN KEY (approved_by) REFERENCES public.workers(id) ON DELETE SET NULL not valid;
 
-alter table "public"."project_change_orders" validate constraint "project_change_orders_approved_by_fkey";
+alter table if exists "public"."project_change_orders" validate constraint "project_change_orders_approved_by_fkey";
 
-alter table "public"."project_cost_codes" add constraint "project_cost_codes_project_id_fkey" FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE not valid;
+alter table if exists "public"."project_cost_codes" add constraint "project_cost_codes_project_id_fkey" FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE not valid;
 
-alter table "public"."project_cost_codes" validate constraint "project_cost_codes_project_id_fkey";
+alter table if exists "public"."project_cost_codes" validate constraint "project_cost_codes_project_id_fkey";
 
 do $$
 begin
@@ -2643,9 +2654,9 @@ exception
   when duplicate_object then null;
 end $$;
 
-alter table "public"."projects" add constraint "projects_client_id_fkey" FOREIGN KEY (client_id) REFERENCES public.clients(id) not valid;
+alter table if exists "public"."projects" add constraint "projects_client_id_fkey" FOREIGN KEY (client_id) REFERENCES public.clients(id) not valid;
 
-alter table "public"."projects" validate constraint "projects_client_id_fkey";
+alter table if exists "public"."projects" validate constraint "projects_client_id_fkey";
 
 do $$
 begin
@@ -2662,37 +2673,37 @@ exception
   when duplicate_object then null;
 end $$;
 
-alter table "public"."warranties" add constraint "warranties_project_id_fkey" FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE not valid;
+alter table if exists "public"."warranties" add constraint "warranties_project_id_fkey" FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE not valid;
 
-alter table "public"."warranties" validate constraint "warranties_project_id_fkey";
+alter table if exists "public"."warranties" validate constraint "warranties_project_id_fkey";
 
-alter table "public"."worker_payments" add constraint "worker_payments_project_id_fkey" FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE SET NULL not valid;
+alter table if exists "public"."worker_payments" add constraint "worker_payments_project_id_fkey" FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE SET NULL not valid;
 
-alter table "public"."worker_payments" validate constraint "worker_payments_project_id_fkey";
+alter table if exists "public"."worker_payments" validate constraint "worker_payments_project_id_fkey";
 
-alter table "public"."bills" add constraint "bills_project_id_fkey" FOREIGN KEY (project_id) REFERENCES public.projects(id) not valid;
+alter table if exists "public"."bills" add constraint "bills_project_id_fkey" FOREIGN KEY (project_id) REFERENCES public.projects(id) not valid;
 
-alter table "public"."bills" validate constraint "bills_project_id_fkey";
+alter table if exists "public"."bills" validate constraint "bills_project_id_fkey";
 
-alter table "public"."bills" add constraint "bills_vendor_id_fkey" FOREIGN KEY (vendor_id) REFERENCES public.vendors(id) not valid;
+alter table if exists "public"."bills" add constraint "bills_vendor_id_fkey" FOREIGN KEY (vendor_id) REFERENCES public.vendors(id) not valid;
 
-alter table "public"."bills" validate constraint "bills_vendor_id_fkey";
+alter table if exists "public"."bills" validate constraint "bills_vendor_id_fkey";
 
-alter table "public"."commitments" add constraint "commitments_project_id_fkey" FOREIGN KEY (project_id) REFERENCES public.projects(id) not valid;
+alter table if exists "public"."commitments" add constraint "commitments_project_id_fkey" FOREIGN KEY (project_id) REFERENCES public.projects(id) not valid;
 
-alter table "public"."commitments" validate constraint "commitments_project_id_fkey";
+alter table if exists "public"."commitments" validate constraint "commitments_project_id_fkey";
 
-alter table "public"."daily_work_entries" add constraint "daily_work_entries_worker_id_fkey" FOREIGN KEY (worker_id) REFERENCES public.workers(id) ON DELETE SET NULL not valid;
+alter table if exists "public"."daily_work_entries" add constraint "daily_work_entries_worker_id_fkey" FOREIGN KEY (worker_id) REFERENCES public.workers(id) ON DELETE SET NULL not valid;
 
-alter table "public"."daily_work_entries" validate constraint "daily_work_entries_worker_id_fkey";
+alter table if exists "public"."daily_work_entries" validate constraint "daily_work_entries_worker_id_fkey";
 
-alter table "public"."deposits" add constraint "deposits_invoice_id_fkey" FOREIGN KEY (invoice_id) REFERENCES public.invoices(id) ON DELETE SET NULL not valid;
+alter table if exists "public"."deposits" add constraint "deposits_invoice_id_fkey" FOREIGN KEY (invoice_id) REFERENCES public.invoices(id) ON DELETE SET NULL not valid;
 
-alter table "public"."deposits" validate constraint "deposits_invoice_id_fkey";
+alter table if exists "public"."deposits" validate constraint "deposits_invoice_id_fkey";
 
-alter table "public"."documents" add constraint "documents_project_id_fkey" FOREIGN KEY (project_id) REFERENCES public.projects(id) not valid;
+alter table if exists "public"."documents" add constraint "documents_project_id_fkey" FOREIGN KEY (project_id) REFERENCES public.projects(id) not valid;
 
-alter table "public"."documents" validate constraint "documents_project_id_fkey";
+alter table if exists "public"."documents" validate constraint "documents_project_id_fkey";
 
 do $$
 begin
@@ -2705,29 +2716,29 @@ begin
   end if;
 end $$;
 
-alter table "public"."invoices" add constraint "invoices_customer_id_fkey" FOREIGN KEY (customer_id) REFERENCES public.customers(id) not valid;
+alter table if exists "public"."invoices" add constraint "invoices_customer_id_fkey" FOREIGN KEY (customer_id) REFERENCES public.customers(id) not valid;
 
-alter table "public"."invoices" validate constraint "invoices_customer_id_fkey";
+alter table if exists "public"."invoices" validate constraint "invoices_customer_id_fkey";
 
-alter table "public"."invoices" add constraint "invoices_project_id_fkey" FOREIGN KEY (project_id) REFERENCES public.projects(id) not valid;
+alter table if exists "public"."invoices" add constraint "invoices_project_id_fkey" FOREIGN KEY (project_id) REFERENCES public.projects(id) not valid;
 
-alter table "public"."invoices" validate constraint "invoices_project_id_fkey";
+alter table if exists "public"."invoices" validate constraint "invoices_project_id_fkey";
 
-alter table "public"."labor_entries" add constraint "labor_entries_worker_id_fkey" FOREIGN KEY (worker_id) REFERENCES public.labor_workers(id) not valid;
+alter table if exists "public"."labor_entries" add constraint "labor_entries_worker_id_fkey" FOREIGN KEY (worker_id) REFERENCES public.labor_workers(id) not valid;
 
-alter table "public"."labor_entries" validate constraint "labor_entries_worker_id_fkey";
+alter table if exists "public"."labor_entries" validate constraint "labor_entries_worker_id_fkey";
 
-alter table "public"."labor_payments" add constraint "labor_payments_worker_id_fkey" FOREIGN KEY (worker_id) REFERENCES public.labor_workers(id) ON DELETE CASCADE not valid;
+alter table if exists "public"."labor_payments" add constraint "labor_payments_worker_id_fkey" FOREIGN KEY (worker_id) REFERENCES public.labor_workers(id) ON DELETE CASCADE not valid;
 
-alter table "public"."labor_payments" validate constraint "labor_payments_worker_id_fkey";
+alter table if exists "public"."labor_payments" validate constraint "labor_payments_worker_id_fkey";
 
-alter table "public"."project_commissions" add constraint "project_commissions_project_id_fkey" FOREIGN KEY (project_id) REFERENCES public.projects(id) not valid;
+alter table if exists "public"."project_commissions" add constraint "project_commissions_project_id_fkey" FOREIGN KEY (project_id) REFERENCES public.projects(id) not valid;
 
-alter table "public"."project_commissions" validate constraint "project_commissions_project_id_fkey";
+alter table if exists "public"."project_commissions" validate constraint "project_commissions_project_id_fkey";
 
-alter table "public"."project_tasks" add constraint "project_tasks_assigned_worker_id_fkey" FOREIGN KEY (assigned_worker_id) REFERENCES public.workers(id) not valid;
+alter table if exists "public"."project_tasks" add constraint "project_tasks_assigned_worker_id_fkey" FOREIGN KEY (assigned_worker_id) REFERENCES public.workers(id) not valid;
 
-alter table "public"."project_tasks" validate constraint "project_tasks_assigned_worker_id_fkey";
+alter table if exists "public"."project_tasks" validate constraint "project_tasks_assigned_worker_id_fkey";
 
 do $$
 begin
@@ -2739,13 +2750,13 @@ exception
   when duplicate_object then null;
 end $$;
 
-alter table "public"."worker_invoices" add constraint "worker_invoices_worker_id_fkey" FOREIGN KEY (worker_id) REFERENCES public.workers(id) ON DELETE SET NULL not valid;
+alter table if exists "public"."worker_invoices" add constraint "worker_invoices_worker_id_fkey" FOREIGN KEY (worker_id) REFERENCES public.workers(id) ON DELETE SET NULL not valid;
 
-alter table "public"."worker_invoices" validate constraint "worker_invoices_worker_id_fkey";
+alter table if exists "public"."worker_invoices" validate constraint "worker_invoices_worker_id_fkey";
 
-alter table "public"."worker_payments" add constraint "worker_payments_worker_id_fkey" FOREIGN KEY (worker_id) REFERENCES public.workers(id) ON DELETE SET NULL not valid;
+alter table if exists "public"."worker_payments" add constraint "worker_payments_worker_id_fkey" FOREIGN KEY (worker_id) REFERENCES public.workers(id) ON DELETE SET NULL not valid;
 
-alter table "public"."worker_payments" validate constraint "worker_payments_worker_id_fkey";
+alter table if exists "public"."worker_payments" validate constraint "worker_payments_worker_id_fkey";
 
 do $$
 begin
@@ -2757,9 +2768,9 @@ exception
   when duplicate_object then null;
 end $$;
 
-alter table "public"."worker_reimbursements" add constraint "worker_reimbursements_worker_id_fkey" FOREIGN KEY (worker_id) REFERENCES public.workers(id) ON DELETE SET NULL not valid;
+alter table if exists "public"."worker_reimbursements" add constraint "worker_reimbursements_worker_id_fkey" FOREIGN KEY (worker_id) REFERENCES public.workers(id) ON DELETE SET NULL not valid;
 
-alter table "public"."worker_reimbursements" validate constraint "worker_reimbursements_worker_id_fkey";
+alter table if exists "public"."worker_reimbursements" validate constraint "worker_reimbursements_worker_id_fkey";
 
 set check_function_bodies = off;
 
@@ -3479,2417 +3490,2233 @@ grant truncate on table "public"."warranties" to "service_role";
 
 grant update on table "public"."warranties" to "service_role";
 
-
-  create policy "allow authenticated delete"
-  on "public"."accounting_periods"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."accounting_periods"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."accounting_periods"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."accounting_periods"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "accounts_all_anon"
-  on "public"."accounts"
-  as permissive
-  for all
-  to anon
-using (true)
-with check (true);
-
-
-
-  create policy "accounts_all_authenticated"
-  on "public"."accounts"
-  as permissive
-  for all
-  to authenticated
-using (true)
-with check (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."accounts"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."accounts"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."accounts"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."accounts"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."activity_logs"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."activity_logs"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."activity_logs"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."activity_logs"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."bills"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."bills"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."bills"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."bills"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "bills_delete_all"
-  on "public"."bills"
-  as permissive
-  for delete
-  to anon
-using (true);
-
-
-
-  create policy "bills_insert_all"
-  on "public"."bills"
-  as permissive
-  for insert
-  to anon
-with check (true);
-
-
-
-  create policy "bills_select_all"
-  on "public"."bills"
-  as permissive
-  for select
-  to anon
-using (true);
-
-
-
-  create policy "bills_update_all"
-  on "public"."bills"
-  as permissive
-  for update
-  to anon
-using (true)
-with check (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."clients"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."clients"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."clients"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."clients"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."commission_payment_records"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."commission_payment_records"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."commission_payment_records"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."commission_payment_records"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."commitments"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."commitments"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."commitments"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."commitments"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "dev full access"
-  on "public"."commitments"
-  as permissive
-  for all
-  to anon
-using (true)
-with check (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."company_profile"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."company_profile"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."company_profile"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."company_profile"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "company_profile_delete_all"
-  on "public"."company_profile"
-  as permissive
-  for delete
-  to anon
-using (true);
-
-
-
-  create policy "company_profile_insert_all"
-  on "public"."company_profile"
-  as permissive
-  for insert
-  to anon
-with check (true);
-
-
-
-  create policy "company_profile_select_all"
-  on "public"."company_profile"
-  as permissive
-  for select
-  to anon
-using (true);
-
-
-
-  create policy "company_profile_update_all"
-  on "public"."company_profile"
-  as permissive
-  for update
-  to anon
-using (true)
-with check (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."completion_certificates"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."completion_certificates"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."completion_certificates"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."completion_certificates"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."cost_allocations"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."cost_allocations"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."cost_allocations"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."cost_allocations"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "cost_allocations_delete_all"
-  on "public"."cost_allocations"
-  as permissive
-  for delete
-  to anon
-using (true);
-
-
-
-  create policy "cost_allocations_insert_all"
-  on "public"."cost_allocations"
-  as permissive
-  for insert
-  to anon
-with check (true);
-
-
-
-  create policy "cost_allocations_select_all"
-  on "public"."cost_allocations"
-  as permissive
-  for select
-  to anon
-using (true);
-
-
-
-  create policy "cost_allocations_update_all"
-  on "public"."cost_allocations"
-  as permissive
-  for update
-  to anon
-using (true)
-with check (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."customers"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."customers"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."customers"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."customers"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."daily_work_entries"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."daily_work_entries"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."daily_work_entries"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."daily_work_entries"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."deposits"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."deposits"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."deposits"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."deposits"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "deposits_authenticated"
-  on "public"."deposits"
-  as permissive
-  for all
-  to authenticated
-using (true)
-with check (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."documents"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."documents"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."documents"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."documents"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."estimate_categories"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."estimate_categories"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."estimate_categories"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."estimate_categories"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."estimate_items"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."estimate_items"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."estimate_items"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."estimate_items"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."estimate_meta"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."estimate_meta"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."estimate_meta"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."estimate_meta"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."estimate_snapshots"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."estimate_snapshots"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."estimate_snapshots"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."estimate_snapshots"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."estimates"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."estimates"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."estimates"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."estimates"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."expense_lines"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."expense_lines"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."expense_lines"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."expense_lines"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "dev full access"
-  on "public"."expense_lines"
-  as permissive
-  for all
-  to anon
-using (true)
-with check (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."expenses"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."expenses"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."expenses"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."expenses"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "dev full access"
-  on "public"."expenses"
-  as permissive
-  for all
-  to anon
-using (true)
-with check (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."final_punch_list_items"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."final_punch_list_items"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."final_punch_list_items"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."final_punch_list_items"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."final_punch_lists"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."final_punch_lists"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."final_punch_lists"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."final_punch_lists"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."inspection_log"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."inspection_log"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."inspection_log"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."inspection_log"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."inspection_logs"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."inspection_logs"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."inspection_logs"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."inspection_logs"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."invoice_items"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."invoice_items"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."invoice_items"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."invoice_items"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "invoice_items_anon"
-  on "public"."invoice_items"
-  as permissive
-  for all
-  to anon
-using (true)
-with check (true);
-
-
-
-  create policy "invoice_items_authenticated"
-  on "public"."invoice_items"
-  as permissive
-  for all
-  to authenticated
-using (true)
-with check (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."invoice_payments"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."invoice_payments"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."invoice_payments"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."invoice_payments"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "dev full access"
-  on "public"."invoice_payments"
-  as permissive
-  for all
-  to anon
-using (true)
-with check (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."invoices"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."invoices"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."invoices"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."invoices"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "dev full access"
-  on "public"."invoices"
-  as permissive
-  for all
-  to anon
-using (true)
-with check (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."labor_entries"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."labor_entries"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."labor_entries"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."labor_entries"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "dev full access"
-  on "public"."labor_entries"
-  as permissive
-  for all
-  to anon
-using (true)
-with check (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."labor_invoices"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."labor_invoices"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."labor_invoices"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."labor_invoices"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."labor_payments"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."labor_payments"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."labor_payments"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."labor_payments"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."labor_workers"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."labor_workers"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."labor_workers"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."labor_workers"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "dev full access"
-  on "public"."labor_workers"
-  as permissive
-  for all
-  to anon
-using (true)
-with check (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."material_catalog"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."material_catalog"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."material_catalog"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."material_catalog"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."material_selections"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."material_selections"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."material_selections"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."material_selections"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."payments_received"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."payments_received"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."payments_received"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."payments_received"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."project_budget_items"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."project_budget_items"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."project_budget_items"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."project_budget_items"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."project_change_order_items"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."project_change_order_items"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."project_change_order_items"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."project_change_order_items"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."project_change_orders"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."project_change_orders"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."project_change_orders"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."project_change_orders"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."project_commissions"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."project_commissions"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."project_commissions"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."project_commissions"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."project_cost_codes"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."project_cost_codes"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."project_cost_codes"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."project_cost_codes"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."project_material_selections"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."project_material_selections"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."project_material_selections"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."project_material_selections"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."project_schedule"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."project_schedule"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."project_schedule"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."project_schedule"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."project_tasks"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."project_tasks"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."project_tasks"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."project_tasks"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."projects"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."projects"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."projects"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."projects"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "dev full access"
-  on "public"."projects"
-  as permissive
-  for all
-  to anon
-using (true)
-with check (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."punch_list"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."punch_list"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."punch_list"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."punch_list"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."site_photos"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."site_photos"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."site_photos"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."site_photos"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."subcontract_bills"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."subcontract_bills"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."subcontract_bills"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."subcontract_bills"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."subcontract_payments"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."subcontract_payments"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."subcontract_payments"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."subcontract_payments"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."subcontractors"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."subcontractors"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."subcontractors"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."subcontractors"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."subcontracts"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."subcontracts"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."subcontracts"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."subcontracts"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."vendors"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."vendors"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."vendors"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."vendors"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "vendors_delete_all"
-  on "public"."vendors"
-  as permissive
-  for delete
-  to anon
-using (true);
-
-
-
-  create policy "vendors_insert_all"
-  on "public"."vendors"
-  as permissive
-  for insert
-  to anon
-with check (true);
-
-
-
-  create policy "vendors_select_all"
-  on "public"."vendors"
-  as permissive
-  for select
-  to anon
-using (true);
-
-
-
-  create policy "vendors_update_all"
-  on "public"."vendors"
-  as permissive
-  for update
-  to anon
-using (true)
-with check (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."warranties"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."warranties"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."warranties"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."warranties"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "advances_authenticated"
-  on "public"."worker_advances"
-  as permissive
-  for all
-  to authenticated
-using (true)
-with check (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."worker_advances"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."worker_advances"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."worker_advances"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."worker_advances"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."worker_invoices"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."worker_invoices"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."worker_invoices"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."worker_invoices"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."worker_payments"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."worker_payments"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."worker_payments"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."worker_payments"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."worker_receipts"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."worker_receipts"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."worker_receipts"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."worker_receipts"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "worker_receipts_delete_all_open"
-  on "public"."worker_receipts"
-  as permissive
-  for delete
-  to authenticated, anon
-using (true);
-
-
-
-  create policy "worker_receipts_insert_all_open"
-  on "public"."worker_receipts"
-  as permissive
-  for insert
-  to public
-with check (true);
-
-
-
-  create policy "worker_receipts_select_all_open"
-  on "public"."worker_receipts"
-  as permissive
-  for select
-  to public
-using (true);
-
-
-
-  create policy "worker_receipts_update_all_open"
-  on "public"."worker_receipts"
-  as permissive
-  for update
-  to authenticated, anon
-using (true)
-with check (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."worker_reimbursements"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."worker_reimbursements"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."worker_reimbursements"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."worker_reimbursements"
-  as permissive
-  for update
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated delete"
-  on "public"."workers"
-  as permissive
-  for delete
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated insert"
-  on "public"."workers"
-  as permissive
-  for insert
-  to authenticated
-with check (true);
-
-
-
-  create policy "allow authenticated read"
-  on "public"."workers"
-  as permissive
-  for select
-  to authenticated
-using (true);
-
-
-
-  create policy "allow authenticated update"
-  on "public"."workers"
-  as permissive
-  for update
-  to authenticated
-using (true);
+do $$
+begin
+  if to_regclass('public.accounting_periods') is not null then
+      create policy "allow authenticated delete"
+      on "public"."accounting_periods"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."accounting_periods"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."accounting_periods"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."accounting_periods"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.accounts') is not null then
+      create policy "accounts_all_anon"
+      on "public"."accounts"
+      as permissive
+      for all
+      to anon
+    using (true)
+    with check (true);
+
+      create policy "accounts_all_authenticated"
+      on "public"."accounts"
+      as permissive
+      for all
+      to authenticated
+    using (true)
+    with check (true);
+
+      create policy "allow authenticated delete"
+      on "public"."accounts"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."accounts"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."accounts"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."accounts"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.activity_logs') is not null then
+      create policy "allow authenticated delete"
+      on "public"."activity_logs"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."activity_logs"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."activity_logs"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."activity_logs"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.bills') is not null then
+      create policy "allow authenticated delete"
+      on "public"."bills"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."bills"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."bills"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."bills"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+
+      create policy "bills_delete_all"
+      on "public"."bills"
+      as permissive
+      for delete
+      to anon
+    using (true);
+
+      create policy "bills_insert_all"
+      on "public"."bills"
+      as permissive
+      for insert
+      to anon
+    with check (true);
+
+      create policy "bills_select_all"
+      on "public"."bills"
+      as permissive
+      for select
+      to anon
+    using (true);
+
+      create policy "bills_update_all"
+      on "public"."bills"
+      as permissive
+      for update
+      to anon
+    using (true)
+    with check (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.clients') is not null then
+      create policy "allow authenticated delete"
+      on "public"."clients"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."clients"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."clients"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."clients"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.commission_payment_records') is not null then
+      create policy "allow authenticated delete"
+      on "public"."commission_payment_records"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."commission_payment_records"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."commission_payment_records"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."commission_payment_records"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.commitments') is not null then
+      create policy "allow authenticated delete"
+      on "public"."commitments"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."commitments"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."commitments"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."commitments"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+
+      create policy "dev full access"
+      on "public"."commitments"
+      as permissive
+      for all
+      to anon
+    using (true)
+    with check (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.company_profile') is not null then
+      create policy "allow authenticated delete"
+      on "public"."company_profile"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."company_profile"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."company_profile"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."company_profile"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+
+      create policy "company_profile_delete_all"
+      on "public"."company_profile"
+      as permissive
+      for delete
+      to anon
+    using (true);
+
+      create policy "company_profile_insert_all"
+      on "public"."company_profile"
+      as permissive
+      for insert
+      to anon
+    with check (true);
+
+      create policy "company_profile_select_all"
+      on "public"."company_profile"
+      as permissive
+      for select
+      to anon
+    using (true);
+
+      create policy "company_profile_update_all"
+      on "public"."company_profile"
+      as permissive
+      for update
+      to anon
+    using (true)
+    with check (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.completion_certificates') is not null then
+      create policy "allow authenticated delete"
+      on "public"."completion_certificates"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."completion_certificates"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."completion_certificates"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."completion_certificates"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.cost_allocations') is not null then
+      create policy "allow authenticated delete"
+      on "public"."cost_allocations"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."cost_allocations"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."cost_allocations"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."cost_allocations"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+
+      create policy "cost_allocations_delete_all"
+      on "public"."cost_allocations"
+      as permissive
+      for delete
+      to anon
+    using (true);
+
+      create policy "cost_allocations_insert_all"
+      on "public"."cost_allocations"
+      as permissive
+      for insert
+      to anon
+    with check (true);
+
+      create policy "cost_allocations_select_all"
+      on "public"."cost_allocations"
+      as permissive
+      for select
+      to anon
+    using (true);
+
+      create policy "cost_allocations_update_all"
+      on "public"."cost_allocations"
+      as permissive
+      for update
+      to anon
+    using (true)
+    with check (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.customers') is not null then
+      create policy "allow authenticated delete"
+      on "public"."customers"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."customers"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."customers"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."customers"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.daily_work_entries') is not null then
+      create policy "allow authenticated delete"
+      on "public"."daily_work_entries"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."daily_work_entries"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."daily_work_entries"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."daily_work_entries"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.deposits') is not null then
+      create policy "allow authenticated delete"
+      on "public"."deposits"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."deposits"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."deposits"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."deposits"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+
+      create policy "deposits_authenticated"
+      on "public"."deposits"
+      as permissive
+      for all
+      to authenticated
+    using (true)
+    with check (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.documents') is not null then
+      create policy "allow authenticated delete"
+      on "public"."documents"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."documents"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."documents"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."documents"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.estimate_categories') is not null then
+      create policy "allow authenticated delete"
+      on "public"."estimate_categories"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."estimate_categories"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."estimate_categories"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."estimate_categories"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.estimate_items') is not null then
+      create policy "allow authenticated delete"
+      on "public"."estimate_items"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."estimate_items"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."estimate_items"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."estimate_items"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.estimate_meta') is not null then
+      create policy "allow authenticated delete"
+      on "public"."estimate_meta"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."estimate_meta"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."estimate_meta"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."estimate_meta"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.estimate_snapshots') is not null then
+      create policy "allow authenticated delete"
+      on "public"."estimate_snapshots"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."estimate_snapshots"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."estimate_snapshots"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."estimate_snapshots"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.estimates') is not null then
+      create policy "allow authenticated delete"
+      on "public"."estimates"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."estimates"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."estimates"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."estimates"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.expense_lines') is not null then
+      create policy "allow authenticated delete"
+      on "public"."expense_lines"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."expense_lines"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."expense_lines"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."expense_lines"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+
+      create policy "dev full access"
+      on "public"."expense_lines"
+      as permissive
+      for all
+      to anon
+    using (true)
+    with check (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.expenses') is not null then
+      create policy "allow authenticated delete"
+      on "public"."expenses"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."expenses"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."expenses"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."expenses"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+
+      create policy "dev full access"
+      on "public"."expenses"
+      as permissive
+      for all
+      to anon
+    using (true)
+    with check (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.final_punch_list_items') is not null then
+      create policy "allow authenticated delete"
+      on "public"."final_punch_list_items"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."final_punch_list_items"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."final_punch_list_items"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."final_punch_list_items"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.final_punch_lists') is not null then
+      create policy "allow authenticated delete"
+      on "public"."final_punch_lists"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."final_punch_lists"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."final_punch_lists"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."final_punch_lists"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.inspection_log') is not null then
+      create policy "allow authenticated delete"
+      on "public"."inspection_log"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."inspection_log"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."inspection_log"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."inspection_log"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.inspection_logs') is not null then
+      create policy "allow authenticated delete"
+      on "public"."inspection_logs"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."inspection_logs"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."inspection_logs"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."inspection_logs"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.invoice_items') is not null then
+      create policy "allow authenticated delete"
+      on "public"."invoice_items"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."invoice_items"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."invoice_items"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."invoice_items"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+
+      create policy "invoice_items_anon"
+      on "public"."invoice_items"
+      as permissive
+      for all
+      to anon
+    using (true)
+    with check (true);
+
+      create policy "invoice_items_authenticated"
+      on "public"."invoice_items"
+      as permissive
+      for all
+      to authenticated
+    using (true)
+    with check (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.invoice_payments') is not null then
+      create policy "allow authenticated delete"
+      on "public"."invoice_payments"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."invoice_payments"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."invoice_payments"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."invoice_payments"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+
+      create policy "dev full access"
+      on "public"."invoice_payments"
+      as permissive
+      for all
+      to anon
+    using (true)
+    with check (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.invoices') is not null then
+      create policy "allow authenticated delete"
+      on "public"."invoices"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."invoices"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."invoices"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."invoices"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+
+      create policy "dev full access"
+      on "public"."invoices"
+      as permissive
+      for all
+      to anon
+    using (true)
+    with check (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.labor_entries') is not null then
+      create policy "allow authenticated delete"
+      on "public"."labor_entries"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."labor_entries"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."labor_entries"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."labor_entries"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+
+      create policy "dev full access"
+      on "public"."labor_entries"
+      as permissive
+      for all
+      to anon
+    using (true)
+    with check (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.labor_invoices') is not null then
+      create policy "allow authenticated delete"
+      on "public"."labor_invoices"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."labor_invoices"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."labor_invoices"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."labor_invoices"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.labor_payments') is not null then
+      create policy "allow authenticated delete"
+      on "public"."labor_payments"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."labor_payments"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."labor_payments"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."labor_payments"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.labor_workers') is not null then
+      create policy "allow authenticated delete"
+      on "public"."labor_workers"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."labor_workers"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."labor_workers"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."labor_workers"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+
+      create policy "dev full access"
+      on "public"."labor_workers"
+      as permissive
+      for all
+      to anon
+    using (true)
+    with check (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.material_catalog') is not null then
+      create policy "allow authenticated delete"
+      on "public"."material_catalog"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."material_catalog"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."material_catalog"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."material_catalog"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.material_selections') is not null then
+      create policy "allow authenticated delete"
+      on "public"."material_selections"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."material_selections"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."material_selections"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."material_selections"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.payments_received') is not null then
+      create policy "allow authenticated delete"
+      on "public"."payments_received"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."payments_received"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."payments_received"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."payments_received"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.project_budget_items') is not null then
+      create policy "allow authenticated delete"
+      on "public"."project_budget_items"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."project_budget_items"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."project_budget_items"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."project_budget_items"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.project_change_order_items') is not null then
+      create policy "allow authenticated delete"
+      on "public"."project_change_order_items"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."project_change_order_items"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."project_change_order_items"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."project_change_order_items"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.project_change_orders') is not null then
+      create policy "allow authenticated delete"
+      on "public"."project_change_orders"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."project_change_orders"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."project_change_orders"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."project_change_orders"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.project_commissions') is not null then
+      create policy "allow authenticated delete"
+      on "public"."project_commissions"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."project_commissions"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."project_commissions"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."project_commissions"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.project_cost_codes') is not null then
+      create policy "allow authenticated delete"
+      on "public"."project_cost_codes"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."project_cost_codes"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."project_cost_codes"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."project_cost_codes"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.project_material_selections') is not null then
+      create policy "allow authenticated delete"
+      on "public"."project_material_selections"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."project_material_selections"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."project_material_selections"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."project_material_selections"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.project_schedule') is not null then
+      create policy "allow authenticated delete"
+      on "public"."project_schedule"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."project_schedule"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."project_schedule"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."project_schedule"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.project_tasks') is not null then
+      create policy "allow authenticated delete"
+      on "public"."project_tasks"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."project_tasks"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."project_tasks"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."project_tasks"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.projects') is not null then
+      create policy "allow authenticated delete"
+      on "public"."projects"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."projects"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."projects"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."projects"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+
+      create policy "dev full access"
+      on "public"."projects"
+      as permissive
+      for all
+      to anon
+    using (true)
+    with check (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.punch_list') is not null then
+      create policy "allow authenticated delete"
+      on "public"."punch_list"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."punch_list"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."punch_list"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."punch_list"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.site_photos') is not null then
+      create policy "allow authenticated delete"
+      on "public"."site_photos"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."site_photos"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."site_photos"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."site_photos"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.subcontract_bills') is not null then
+      create policy "allow authenticated delete"
+      on "public"."subcontract_bills"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."subcontract_bills"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."subcontract_bills"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."subcontract_bills"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.subcontract_payments') is not null then
+      create policy "allow authenticated delete"
+      on "public"."subcontract_payments"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."subcontract_payments"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."subcontract_payments"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."subcontract_payments"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.subcontractors') is not null then
+      create policy "allow authenticated delete"
+      on "public"."subcontractors"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."subcontractors"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."subcontractors"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."subcontractors"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.subcontracts') is not null then
+      create policy "allow authenticated delete"
+      on "public"."subcontracts"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."subcontracts"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."subcontracts"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."subcontracts"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.vendors') is not null then
+      create policy "allow authenticated delete"
+      on "public"."vendors"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."vendors"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."vendors"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."vendors"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+
+      create policy "vendors_delete_all"
+      on "public"."vendors"
+      as permissive
+      for delete
+      to anon
+    using (true);
+
+      create policy "vendors_insert_all"
+      on "public"."vendors"
+      as permissive
+      for insert
+      to anon
+    with check (true);
+
+      create policy "vendors_select_all"
+      on "public"."vendors"
+      as permissive
+      for select
+      to anon
+    using (true);
+
+      create policy "vendors_update_all"
+      on "public"."vendors"
+      as permissive
+      for update
+      to anon
+    using (true)
+    with check (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.warranties') is not null then
+      create policy "allow authenticated delete"
+      on "public"."warranties"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."warranties"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."warranties"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."warranties"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.worker_advances') is not null then
+      create policy "advances_authenticated"
+      on "public"."worker_advances"
+      as permissive
+      for all
+      to authenticated
+    using (true)
+    with check (true);
+
+      create policy "allow authenticated delete"
+      on "public"."worker_advances"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."worker_advances"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."worker_advances"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."worker_advances"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.worker_invoices') is not null then
+      create policy "allow authenticated delete"
+      on "public"."worker_invoices"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."worker_invoices"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."worker_invoices"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."worker_invoices"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.worker_payments') is not null then
+      create policy "allow authenticated delete"
+      on "public"."worker_payments"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."worker_payments"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."worker_payments"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."worker_payments"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.worker_receipts') is not null then
+      create policy "allow authenticated delete"
+      on "public"."worker_receipts"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."worker_receipts"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."worker_receipts"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."worker_receipts"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+
+      create policy "worker_receipts_delete_all_open"
+      on "public"."worker_receipts"
+      as permissive
+      for delete
+      to authenticated, anon
+    using (true);
+
+      create policy "worker_receipts_insert_all_open"
+      on "public"."worker_receipts"
+      as permissive
+      for insert
+      to public
+    with check (true);
+
+      create policy "worker_receipts_select_all_open"
+      on "public"."worker_receipts"
+      as permissive
+      for select
+      to public
+    using (true);
+
+      create policy "worker_receipts_update_all_open"
+      on "public"."worker_receipts"
+      as permissive
+      for update
+      to authenticated, anon
+    using (true)
+    with check (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.worker_reimbursements') is not null then
+      create policy "allow authenticated delete"
+      on "public"."worker_reimbursements"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."worker_reimbursements"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."worker_reimbursements"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."worker_reimbursements"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
+
+
+do $$
+begin
+  if to_regclass('public.workers') is not null then
+      create policy "allow authenticated delete"
+      on "public"."workers"
+      as permissive
+      for delete
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated insert"
+      on "public"."workers"
+      as permissive
+      for insert
+      to authenticated
+    with check (true);
+
+      create policy "allow authenticated read"
+      on "public"."workers"
+      as permissive
+      for select
+      to authenticated
+    using (true);
+
+      create policy "allow authenticated update"
+      on "public"."workers"
+      as permissive
+      for update
+      to authenticated
+    using (true);
+  end if;
+end $$;
 
 
 CREATE TRIGGER accounts_set_user_id BEFORE INSERT ON public.accounts FOR EACH ROW EXECUTE FUNCTION public.set_accounts_user_id();

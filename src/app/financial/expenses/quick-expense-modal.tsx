@@ -97,6 +97,7 @@ type Props = {
 export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, expenses }: Props) {
   const { toast } = useToast();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const paymentFieldRef = React.useRef<HTMLDivElement>(null);
   const [processing, setProcessing] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [moreOpen, setMoreOpen] = React.useState(false);
@@ -293,17 +294,21 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
   React.useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    paymentChoiceTouchedRef.current = false;
     void getPaymentAccounts()
       .then((rows) => {
         if (cancelled) return;
         setPaymentAccountRows(rows);
-        setPaymentAccountId(pickDefaultPaymentAccountId(rows, ""));
+        // Do not clobber a payment the user already picked while accounts were loading.
+        if (!paymentChoiceTouchedRef.current) {
+          setPaymentAccountId(pickDefaultPaymentAccountId(rows, ""));
+        }
       })
       .catch(() => {
         if (!cancelled) {
           setPaymentAccountRows([]);
-          setPaymentAccountId("");
+          if (!paymentChoiceTouchedRef.current) {
+            setPaymentAccountId("");
+          }
         }
       });
     return () => {
@@ -499,6 +504,16 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
     setSaving(true);
     setError(null);
     try {
+      const fromState = paymentAccountId.trim();
+      const fromDom =
+        typeof document !== "undefined"
+          ? (paymentFieldRef.current?.querySelector("select")?.value?.trim() ?? "")
+          : "";
+      const effectivePaymentAccountId = fromState || fromDom;
+      if (effectivePaymentAccountId) {
+        paymentChoiceTouchedRef.current = true;
+      }
+
       let slotsToSave = attachmentSlots;
       if (supabase) {
         slotsToSave = await Promise.all(
@@ -530,7 +545,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
           return userNotes ? `${userNotes}\n${itemsPart}` : itemsPart;
         })(),
         projectId: projectId || null,
-        paymentAccountId: paymentAccountId.trim() || null,
+        paymentAccountId: effectivePaymentAccountId || null,
       });
       for (const s of slotsToSave) {
         if (s.attachmentPath) {
@@ -612,7 +627,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
       } catch {
         // ignore
       }
-      const paSaved = paymentAccountId.trim();
+      const paSaved = effectivePaymentAccountId;
       if (paSaved) {
         persistLastExpensePaymentAccountId(paSaved);
         rememberExpenseVendorPaymentAccount(vendorName.trim() || "Unknown", paSaved);
@@ -802,11 +817,12 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                       </p>
                     ) : null}
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0" ref={paymentFieldRef}>
                     <label className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                       Payment
                     </label>
                     <PaymentAccountSelect
+                      id="quick-expense-payment-select"
                       value={paymentAccountId}
                       onValueChange={onPaymentAccountChange}
                       disabled={saving}
