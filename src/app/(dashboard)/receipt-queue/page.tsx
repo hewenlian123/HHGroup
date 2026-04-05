@@ -7,7 +7,9 @@ export default function ReceiptQueuePage() {
   return (
     <React.Suspense
       fallback={
-        <div className="mx-auto max-w-6xl px-4 py-8 text-sm text-muted-foreground">Loading…</div>
+        <div className="min-h-[40vh] bg-[#f5f7fa] px-4 py-8 text-sm text-[#6b7280] dark:bg-background dark:text-muted-foreground">
+          Loading…
+        </div>
       }
     >
       <ReceiptQueueWorkspace />
