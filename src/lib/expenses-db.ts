@@ -782,11 +782,7 @@ export async function createQuickExpense(payload: {
       .select("id")
       .single();
   }
-  if (
-    result.error &&
-    isStatusConstraintError(result.error) &&
-    insertRow.status === "needs_review"
-  ) {
+  if (result.error && isStatusConstraintError(result.error)) {
     result = await c
       .from("expenses")
       .insert({
@@ -794,22 +790,6 @@ export async function createQuickExpense(payload: {
         status: "pending",
         payment_method: "Other",
       })
-      .select("id")
-      .single();
-  }
-  if (result.error && isStatusConstraintError(result.error)) {
-    result = await c
-      .from("expenses")
-      .insert({ ...insertRow, status: "draft", payment_method: "Other" })
-      .select("id")
-      .single();
-  }
-  if (result.error && isStatusConstraintError(result.error)) {
-    const insertWithoutStatus = { ...insertRow };
-    delete insertWithoutStatus.status;
-    result = await c
-      .from("expenses")
-      .insert({ ...insertWithoutStatus, payment_method: "Other" })
       .select("id")
       .single();
   }
@@ -836,6 +816,7 @@ export async function createQuickExpense(payload: {
       total,
       amount: total,
       line_count: 1,
+      status: "pending",
     };
     result = await c.from("expenses").insert(insertRowLegacy).select("id").single();
   }
@@ -847,6 +828,7 @@ export async function createQuickExpense(payload: {
       reference_no: null,
       total,
       line_count: 1,
+      status: "pending",
     };
     result = await c.from("expenses").insert(insertRowLegacyNoAmt).select("id").single();
   }
