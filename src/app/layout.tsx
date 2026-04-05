@@ -5,6 +5,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ensureConstructionSchema } from "@/lib/ensure-construction-schema";
 import { DevUnregisterServiceWorker } from "@/components/dev-unregister-service-worker";
+import { Providers } from "./providers";
 
 const AppShell = dynamic(() => import("@/components/layout/app-shell").then((m) => m.AppShell), {
   ssr: false,
@@ -63,7 +64,9 @@ export default async function RootLayout(
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} antialiased`}>
         {process.env.NODE_ENV === "development" ? <DevUnregisterServiceWorker /> : null}
-        <AppShell>{props.children}</AppShell>
+        <Providers>
+          <AppShell>{props.children}</AppShell>
+        </Providers>
       </body>
     </html>
   );

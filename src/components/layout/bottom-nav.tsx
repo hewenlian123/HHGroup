@@ -11,7 +11,10 @@ import {
   MoreHorizontal,
   type LucideIcon,
 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { prefetchFinancialRoute } from "@/lib/financial-nav-prefetch";
+import { createBrowserClient } from "@/lib/supabase";
 import { BOTTOM_NAV_ROUTES, prefetchRoutes, runWhenIdle } from "@/lib/route-prefetch";
 
 const items: { href: string; label: string; icon: LucideIcon }[] = [
@@ -27,11 +30,13 @@ const BottomNavItem = React.memo(function BottomNavItem({
   label,
   Icon,
   pathname,
+  onPointerEnterNav,
 }: {
   href: string;
   label: string;
   Icon: LucideIcon;
   pathname: string | null;
+  onPointerEnterNav?: () => void;
 }) {
   const router = useRouter();
   const isActive =
@@ -42,7 +47,11 @@ const BottomNavItem = React.memo(function BottomNavItem({
     <Link
       href={href}
       prefetch
-      onPointerDown={() => router.prefetch(href)}
+      onPointerDown={() => {
+        onPointerEnterNav?.();
+        router.prefetch(href);
+      }}
+      onPointerEnter={onPointerEnterNav}
       className={cn(
         "flex min-h-[44px] min-w-[40px] flex-1 flex-col items-center justify-center gap-0.5 text-xs touch-manipulation cursor-pointer",
         "transition-[color,transform,opacity] duration-75 active:opacity-80 active:scale-[0.97]",
@@ -61,6 +70,12 @@ const BottomNavItem = React.memo(function BottomNavItem({
 export function BottomNav({ className }: { className?: string }) {
   const pathname = usePathname();
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const prefetchSupabase = React.useMemo(() => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    return url && anon ? createBrowserClient(url, anon) : null;
+  }, []);
 
   React.useEffect(() => {
     return runWhenIdle(() => prefetchRoutes(router, [...BOTTOM_NAV_ROUTES]));
@@ -81,6 +96,11 @@ export function BottomNav({ className }: { className?: string }) {
           label={item.label}
           Icon={item.icon}
           pathname={pathname}
+          onPointerEnterNav={
+            item.href === "/financial/expenses"
+              ? () => prefetchFinancialRoute(queryClient, prefetchSupabase, item.href)
+              : undefined
+          }
         />
       ))}
     </nav>

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { motion as m } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatusBadge } from "@/components/base";
@@ -22,7 +23,7 @@ const RQ_BTN =
 function fieldClass(layout: RqLayout, extra?: string): string {
   return cn(
     "w-full min-w-0 border border-gray-300 bg-white text-text-primary shadow-none transition-[border-color,box-shadow,background-color] duration-150 ease-out",
-    "hover:border-gray-300 focus-visible:border-blue-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/35",
+    "hover:border-gray-300 focus-visible:border-blue-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/30",
     layout === "mobile"
       ? "min-h-10 rounded-xl px-3 py-2 text-base leading-snug"
       : "h-9 rounded-lg text-xs",
@@ -338,8 +339,8 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
       size="sm"
       className={cn(
         layout === "mobile"
-          ? "h-11 min-h-10 w-full flex-1 rounded-xl border border-transparent bg-black px-4 text-sm font-semibold text-white shadow-sm hover:border-gray-800 hover:bg-gray-900 hover:shadow-md"
-          : "h-9 w-full min-w-0 rounded-lg border border-transparent bg-black px-2 text-xs font-medium text-white shadow-sm hover:border-gray-700 hover:bg-gray-900 hover:shadow",
+          ? "h-11 min-h-10 w-full flex-1 rounded-xl border border-transparent bg-black px-4 text-sm font-semibold text-white shadow-sm transition-transform duration-150 ease-out hover:scale-[1.02] hover:border-gray-800 hover:bg-gray-900 active:scale-[0.98]"
+          : "h-9 w-full min-w-0 rounded-lg border border-transparent bg-black px-2 text-xs font-medium text-white shadow-sm transition-transform duration-150 ease-out hover:scale-[1.02] hover:border-gray-700 hover:bg-gray-900 active:scale-[0.98]",
         RQ_BTN
       )}
       disabled={busy || bulkAdding || captureUploading || rowLocked}
@@ -391,19 +392,30 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
     </>
   );
 
+  const rowHoverMotion =
+    !motion && !rowLocked
+      ? layout === "mobile"
+        ? ({ whileTap: { scale: 0.98 } } as const)
+        : ({
+            whileHover: {
+              y: -1,
+              transition: { duration: 0.15, ease: "easeOut" },
+            },
+          } as const)
+      : {};
+
   const outerClass = cn(
     "relative shrink-0 overflow-hidden bg-white dark:bg-card",
     layout === "mobile"
-      ? "max-h-none rounded-xl shadow-[0_2px_16px_rgba(15,23,42,0.08)] ring-1 ring-black/[0.04] dark:ring-white/10"
-      : "max-h-[520px] rounded-lg shadow-[0_1px_3px_rgba(15,23,42,0.07)]",
+      ? "max-h-none rounded-xl shadow-sm ring-1 ring-black/[0.06] dark:ring-white/10"
+      : "max-h-[520px] rounded-lg shadow-sm ring-1 ring-black/[0.04] dark:ring-white/10",
     !!motion && "pointer-events-none will-change-[opacity,transform,max-height]",
     "transition-[transform,opacity,background-color,max-height,margin,padding,box-shadow] duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]",
     !motion &&
       !rowLocked &&
       layout !== "mobile" &&
-      "hover:-translate-y-px hover:bg-page hover:shadow-md",
-    !motion && !rowLocked && layout === "mobile" && "active:scale-[0.99]",
-    motion === "success_check" && "bg-emerald-50 shadow-md ring-1 ring-emerald-200/80",
+      "hover:bg-gray-50/95 hover:shadow-sm dark:hover:bg-muted/35",
+    motion === "success_check" && "bg-emerald-50 shadow-sm ring-1 ring-emerald-200/80",
     motion === "fade" && "translate-x-2 opacity-0 !duration-200 !ease-[cubic-bezier(0.4,0,0.2,1)]",
     motion === "collapse" &&
       "!mb-0 !max-h-0 !translate-x-2 !py-0 !opacity-0 !duration-200 !ease-[cubic-bezier(0.4,0,0.2,1)]",
@@ -417,18 +429,19 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
       !motion &&
       !rowLocked &&
       layout !== "mobile" &&
-      "hover:-translate-y-px hover:bg-[#FEF9E8] hover:shadow-md dark:hover:bg-amber-950/50"
+      "hover:bg-[#FEF9E8] hover:shadow-sm dark:hover:bg-amber-950/50"
   );
 
   const successOverlayRounded = layout === "mobile" ? "rounded-xl" : "rounded-lg";
 
   if (layout === "mobile") {
     return (
-      <div
+      <m.div
         data-testid="receipt-queue-row"
         data-receipt-queue-row={id}
         data-queue-file-name={row.file_name}
         className={outerClass}
+        {...rowHoverMotion}
       >
         {motion === "success_check" ? (
           <div
@@ -438,9 +451,14 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
             )}
             aria-hidden
           >
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-600 text-white shadow-md">
+            <m.div
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-600 text-white shadow-sm"
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: "spring", stiffness: 480, damping: 26 }}
+            >
               <Check className="h-6 w-6" strokeWidth={2.5} aria-hidden />
-            </div>
+            </m.div>
           </div>
         ) : null}
         <div className="flex touch-manipulation flex-col gap-4 p-4">
@@ -480,7 +498,7 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
             {deleteBtn}
           </div>
         </div>
-      </div>
+      </m.div>
     );
   }
 
@@ -527,11 +545,12 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
   );
 
   return (
-    <div
+    <m.div
       data-testid="receipt-queue-row"
       data-receipt-queue-row={id}
       data-queue-file-name={row.file_name}
       className={outerClass}
+      {...rowHoverMotion}
     >
       {motion === "success_check" ? (
         <div
@@ -541,9 +560,14 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
           )}
           aria-hidden
         >
-          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-600 text-white shadow-sm">
+          <m.div
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-600 text-white shadow-sm"
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 480, damping: 26 }}
+          >
             <Check className="h-6 w-6" strokeWidth={2.5} aria-hidden />
-          </div>
+          </m.div>
         </div>
       ) : null}
       <div className={cn("py-3", layout === "tablet" ? "px-2 md:px-3" : "px-3 lg:px-4")}>
@@ -551,6 +575,6 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
           <div className={layout === "tablet" ? TABLET_GRID : DESKTOP_GRID}>{gridTable}</div>
         </div>
       </div>
-    </div>
+    </m.div>
   );
 }, propsEqual);

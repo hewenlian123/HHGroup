@@ -27,7 +27,19 @@ import { QuickExpenseModal } from "./quick-expense-modal";
 import { UploadReceiptsQueueModal } from "./upload-receipts-queue-modal";
 import { EditExpenseModal, type ExpenseReviewSavePatch } from "./edit-expense-modal";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
+import { useDelayedPending } from "@/hooks/use-delayed-pending";
+import hotToast from "react-hot-toast";
 import { useToast } from "@/components/toast/toast-provider";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  expenseCategoriesQueryKey,
+  expensesQueryKey,
+  fetchExpenseCategories,
+  fetchExpenses,
+  fetchWorkers,
+  workersQueryKey,
+} from "@/lib/queries/expenses";
+import { ExpensesListSkeleton } from "@/components/financial/expenses-list-skeleton";
 import { ExpenseCategorySelect } from "@/components/expense-category-select";
 import {
   persistLastExpensePaymentAccountId,
@@ -255,7 +267,13 @@ function extractExpenseTags(expense: Expense): string[] {
 
 export default function ExpensesPage() {
   return (
-    <React.Suspense fallback={<div className="expenses-ui min-h-[50vh] w-full bg-[#f5f5f7]" />}>
+    <React.Suspense
+      fallback={
+        <div className="expenses-ui mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
+          <ExpensesListSkeleton rows={6} />
+        </div>
+      }
+    >
       <ExpensesPageInner />
     </React.Suspense>
   );
@@ -263,6 +281,7 @@ export default function ExpensesPage() {
 
 function ExpensesPageInner() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -273,11 +292,61 @@ function ExpensesPageInner() {
     [configured, url, anon]
   );
 
+  const readCachedExpenses = React.useCallback(
+    () => queryClient.getQueryData<Expense[]>(expensesQueryKey),
+    [queryClient]
+  );
+  const readCachedCategories = React.useCallback(
+    () => queryClient.getQueryData<string[]>(expenseCategoriesQueryKey),
+    [queryClient]
+  );
+  const readCachedWorkers = React.useCallback(
+    () => queryClient.getQueryData<WorkerRow[]>(workersQueryKey),
+    [queryClient]
+  );
   const [projects, setProjects] = React.useState<ProjectRow[]>([]);
-  const [workers, setWorkers] = React.useState<WorkerRow[]>([]);
+  const [workers, setWorkers] = React.useState<WorkerRow[]>(() => readCachedWorkers() ?? []);
   const [projectsError, setProjectsError] = React.useState<string | null>(null);
-  const [expenses, setExpenses] = React.useState<Expense[]>([]);
-  const [categoriesList, setCategoriesList] = React.useState<string[]>([]);
+  const [expenses, setExpenses] = React.useState<Expense[]>(() => readCachedExpenses() ?? []);
+  const [categoriesList, setCategoriesList] = React.useState<string[]>(
+    () => readCachedCategories() ?? []
+  );
+
+  const {
+    data: expensesQueryData,
+    isPending: expensesQueryPending,
+    isError: expensesQueryError,
+  } = useQuery({
+    queryKey: expensesQueryKey,
+    queryFn: fetchExpenses,
+    placeholderData: keepPreviousData,
+  });
+  const { data: categoriesQueryData } = useQuery({
+    queryKey: expenseCategoriesQueryKey,
+    queryFn: fetchExpenseCategories,
+    placeholderData: keepPreviousData,
+  });
+  const { data: workersQueryData } = useQuery({
+    queryKey: workersQueryKey,
+    queryFn: fetchWorkers,
+    placeholderData: keepPreviousData,
+  });
+
+  React.useLayoutEffect(() => {
+    if (expensesQueryData === undefined) return;
+    setExpenses(expensesQueryData);
+  }, [expensesQueryData]);
+  React.useLayoutEffect(() => {
+    if (categoriesQueryData === undefined) return;
+    setCategoriesList(categoriesQueryData);
+  }, [categoriesQueryData]);
+  React.useLayoutEffect(() => {
+    if (workersQueryData === undefined) return;
+    setWorkers(workersQueryData as WorkerRow[]);
+  }, [workersQueryData]);
+
+  const bundleWaiting = expensesQueryPending && expensesQueryData === undefined;
+  const showExpensesSkeleton = useDelayedPending(bundleWaiting && !expensesQueryError);
   const [search, setSearch] = React.useState("");
   const [projectFilter, setProjectFilter] = React.useState("");
   const [categoryFilter, setCategoryFilter] = React.useState("");
@@ -343,7 +412,10 @@ function ExpensesPageInner() {
     }
     let cancelled = false;
     (async () => {
-      const { data: projectsData, error } = await supabase.from("projects").select("*");
+      const { data: projectsData, error } = await supabase
+        .from("projects")
+        .select("id,name,status")
+        .order("name");
       if (cancelled) return;
       if (error) {
         setProjectsError(error.message ?? "Failed to load projects.");
@@ -358,24 +430,6 @@ function ExpensesPageInner() {
       cancelled = true;
     };
   }, [supabase]);
-
-  React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const [expList, cats, workerList] = await Promise.all([
-        getExpenses(),
-        getExpenseCategories(),
-        getWorkers(),
-      ]);
-      if (cancelled) return;
-      setExpenses(expList);
-      setCategoriesList(cats);
-      setWorkers(workerList as WorkerRow[]);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const safeProjects = React.useMemo(() => projects ?? [], [projects]);
   const projectNameById = React.useMemo(
@@ -537,9 +591,18 @@ function ExpensesPageInner() {
   };
 
   const refresh = React.useCallback(async () => {
-    const list = await getExpenses();
-    setExpenses(list);
-  }, []);
+    const [ex, cat, w] = await Promise.all([
+      fetchExpenses(),
+      fetchExpenseCategories(),
+      fetchWorkers(),
+    ]);
+    setExpenses(ex);
+    setCategoriesList(cat);
+    setWorkers(w as WorkerRow[]);
+    queryClient.setQueryData(expensesQueryKey, ex);
+    queryClient.setQueryData(expenseCategoriesQueryKey, cat);
+    queryClient.setQueryData(workersQueryKey, w);
+  }, [queryClient]);
 
   const openReceiptPreview = React.useCallback(
     async (row: Expense) => {
@@ -614,77 +677,59 @@ function ExpensesPageInner() {
     patchPreview({ replaceBusy: receiptReplacing });
   }, [receiptReplacing, patchPreview]);
 
-  const handleExpenseSave = React.useCallback(
-    (patch: ExpenseReviewSavePatch) => {
-      const prevList = expensesRef.current;
-      const target = prevList.find((e) => e.id === patch.expenseId);
-      if (!target) return;
-      const merged = mergeExpenseReviewPatch(target, patch);
-      const t0 = uiActionMark();
-      flushSync(() => {
-        setExpenses((prev) => prev.map((e) => (e.id === patch.expenseId ? merged : e)));
-        setEditModalOpen(false);
-        setEditExpense(null);
-      });
-      uiActionLog("expense-edit-save-ui", t0, 100);
-      void (async () => {
-        try {
-          const next = await updateExpenseForReview(patch.expenseId, {
-            date: patch.date,
-            vendorName: patch.vendorName,
-            amount: patch.amount,
-            projectId: patch.projectId,
-            workerId: patch.workerId,
-            category: patch.category,
-            notes: patch.notes,
-            status: patch.status,
-            sourceType: patch.sourceType,
-            paymentAccountId: patch.paymentAccountId,
-          });
-          if (!next) {
-            flushSync(() => setExpenses(prevList));
-            toast({
-              title: "Update failed",
-              description: "Expense could not be saved.",
-              variant: "error",
-            });
-            return;
-          }
-          flushSync(() =>
-            setExpenses((prev) => prev.map((e) => (e.id === patch.expenseId ? next : e)))
-          );
-          const pa = next.paymentAccountId?.trim();
-          if (pa && (next.vendorName ?? "").trim()) {
-            rememberExpenseVendorPaymentAccount(next.vendorName!.trim(), pa);
-            persistLastExpensePaymentAccountId(pa);
-          }
-          toast({ title: "Expense updated", variant: "success" });
-        } catch (e) {
+  const handleExpenseSave = React.useCallback((patch: ExpenseReviewSavePatch) => {
+    const prevList = expensesRef.current;
+    const target = prevList.find((e) => e.id === patch.expenseId);
+    if (!target) return;
+    const merged = mergeExpenseReviewPatch(target, patch);
+    const t0 = uiActionMark();
+    flushSync(() => {
+      setExpenses((prev) => prev.map((e) => (e.id === patch.expenseId ? merged : e)));
+      setEditModalOpen(false);
+      setEditExpense(null);
+    });
+    uiActionLog("expense-edit-save-ui", t0, 100);
+    void (async () => {
+      try {
+        const next = await updateExpenseForReview(patch.expenseId, {
+          date: patch.date,
+          vendorName: patch.vendorName,
+          amount: patch.amount,
+          projectId: patch.projectId,
+          workerId: patch.workerId,
+          category: patch.category,
+          notes: patch.notes,
+          status: patch.status,
+          sourceType: patch.sourceType,
+          paymentAccountId: patch.paymentAccountId,
+        });
+        if (!next) {
           flushSync(() => setExpenses(prevList));
-          toast({
-            title: "Update failed",
-            description: e instanceof Error ? e.message : "Unknown error",
-            variant: "error",
-          });
+          hotToast.error("Something went wrong");
+          return;
         }
-      })();
-    },
-    [toast]
-  );
+        flushSync(() =>
+          setExpenses((prev) => prev.map((e) => (e.id === patch.expenseId ? next : e)))
+        );
+        const pa = next.paymentAccountId?.trim();
+        if (pa && (next.vendorName ?? "").trim()) {
+          rememberExpenseVendorPaymentAccount(next.vendorName!.trim(), pa);
+          persistLastExpensePaymentAccountId(pa);
+        }
+        hotToast.success("Saved");
+      } catch {
+        flushSync(() => setExpenses(prevList));
+        hotToast.error("Something went wrong");
+      }
+    })();
+  }, []);
 
   useOnAppSync(
     React.useCallback(() => {
-      void (async () => {
-        const [expList, cats, workerList] = await Promise.all([
-          getExpenses(),
-          getExpenseCategories(),
-          getWorkers(),
-        ]);
-        setExpenses(expList);
-        setCategoriesList(cats);
-        setWorkers(workerList as WorkerRow[]);
-      })();
-    }, []),
+      void queryClient.invalidateQueries({ queryKey: expensesQueryKey });
+      void queryClient.invalidateQueries({ queryKey: expenseCategoriesQueryKey });
+      void queryClient.invalidateQueries({ queryKey: workersQueryKey });
+    }, [queryClient]),
     []
   );
 
@@ -735,9 +780,10 @@ function ExpensesPageInner() {
               const next = await updateExpenseForReview(expenseId, { vendorName: nextVendor });
               if (!next) throw new Error("Failed");
               setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
+              hotToast.success("Saved");
             } catch {
               setExpenses(prev);
-              toast({ title: "Vendor update failed", variant: "error" });
+              hotToast.error("Something went wrong");
             }
           })();
           return true;
@@ -745,7 +791,7 @@ function ExpensesPageInner() {
         case "amount": {
           const num = parseFloat(amountDraft.replace(/,/g, ""));
           if (Number.isNaN(num) || num < 0) {
-            toast({ title: "Invalid amount", variant: "error" });
+            hotToast.error("Something went wrong");
             return false;
           }
           const prev = expensesRef.current;
@@ -772,9 +818,10 @@ function ExpensesPageInner() {
               const next = await updateExpenseForReview(expenseId, { amount: num });
               if (!next) throw new Error("Failed");
               setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
+              hotToast.success("Saved");
             } catch {
               setExpenses(prev);
-              toast({ title: "Amount update failed", variant: "error" });
+              hotToast.error("Something went wrong");
             }
           })();
           return true;
@@ -790,9 +837,10 @@ function ExpensesPageInner() {
               const next = await updateExpenseForReview(expenseId, { date: d });
               if (!next) throw new Error("Failed");
               setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
+              hotToast.success("Saved");
             } catch {
               setExpenses(prev);
-              toast({ title: "Date update failed", variant: "error" });
+              hotToast.error("Something went wrong");
             }
           })();
           return true;
@@ -824,9 +872,10 @@ function ExpensesPageInner() {
               const next = await updateExpenseForReview(expenseId, { projectId: pid });
               if (!next) throw new Error("Failed");
               setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
+              hotToast.success("Saved");
             } catch {
               setExpenses(prev);
-              toast({ title: "Project update failed", variant: "error" });
+              hotToast.error("Something went wrong");
             }
           })();
           return true;
@@ -855,9 +904,10 @@ function ExpensesPageInner() {
               const next = await updateExpenseForReview(expenseId, { category: cat });
               if (!next) throw new Error("Failed");
               setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
+              hotToast.success("Saved");
             } catch {
               setExpenses(prev);
-              toast({ title: "Category update failed", variant: "error" });
+              hotToast.error("Something went wrong");
             }
           })();
           return true;
@@ -873,9 +923,10 @@ function ExpensesPageInner() {
               const next = await updateExpenseForReview(expenseId, { sourceType: sourceTypeDraft });
               if (!next) throw new Error("Failed");
               setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
+              hotToast.success("Saved");
             } catch {
               setExpenses(prev);
-              toast({ title: "Source update failed", variant: "error" });
+              hotToast.error("Something went wrong");
             }
           })();
           return true;
@@ -884,7 +935,7 @@ function ExpensesPageInner() {
           return false;
       }
     },
-    [vendorDraft, amountDraft, dateDraft, projectDraft, categoryDraft, sourceTypeDraft, toast]
+    [vendorDraft, amountDraft, dateDraft, projectDraft, categoryDraft, sourceTypeDraft]
   );
 
   const handleVendorInlineSave = (expenseId: string) => {
@@ -1208,15 +1259,15 @@ function ExpensesPageInner() {
     <div className="expenses-ui w-full">
       <div className="expenses-ui-content mx-auto flex max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6">
         <PageHeader
-          className="[&_h1]:text-text-primary [&_p]:text-text-secondary"
+          className="[&_h1]:font-semibold [&_h1]:text-gray-900 [&_p]:text-sm [&_p]:text-gray-500 dark:[&_h1]:text-foreground dark:[&_p]:text-muted-foreground"
           title="Expenses"
           description="Spend, receipts, reimbursements"
           actions={
             <div className="flex flex-wrap items-center justify-end gap-1.5">
               <Button
-                variant="outline"
+                type="button"
                 size="sm"
-                className="exp-btn-secondary h-8 rounded-sm"
+                className="h-8 rounded-sm border-0 bg-blue-600 text-white shadow-none hover:bg-blue-700"
                 onClick={() => setUploadReceiptsOpen(true)}
               >
                 <Upload className="mr-1 h-3.5 w-3.5" />
@@ -1226,13 +1277,18 @@ function ExpensesPageInner() {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="exp-btn-secondary h-8 rounded-sm"
+                className="h-8 rounded-sm border border-gray-300 bg-white text-gray-700 shadow-none hover:bg-gray-50 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted/50"
                 aria-label="Quick expense"
                 onClick={() => setQuickExpenseOpen(true)}
               >
                 Quick
               </Button>
-              <Button onClick={handleNew} size="sm" className="exp-btn-primary h-8 rounded-sm">
+              <Button
+                type="button"
+                onClick={handleNew}
+                size="sm"
+                className="h-8 rounded-sm border-0 bg-black text-white shadow-none hover:bg-gray-800"
+              >
                 <Plus className="mr-1 h-3.5 w-3.5" />
                 New
               </Button>
@@ -1240,49 +1296,52 @@ function ExpensesPageInner() {
           }
         />
 
-        <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 border-b border-gray-300/60 pb-3 text-xs text-text-secondary">
+        <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 border-b border-gray-200/80 pb-3 text-sm text-gray-500 dark:border-border/60 dark:text-muted-foreground">
           <span>
             Month{" "}
-            <span className="ml-1 font-medium tabular-nums text-text-primary">
+            <span className="ml-1 font-medium tabular-nums text-gray-900 dark:text-foreground">
               ${summary.monthTotal.toLocaleString()}
             </span>
           </span>
           <span>
             Total{" "}
-            <span className="ml-1 font-medium tabular-nums text-text-primary">
+            <span className="ml-1 font-medium tabular-nums text-gray-900 dark:text-foreground">
               ${summary.allTotal.toLocaleString()}
             </span>
           </span>
           <span>
             Unreviewed{" "}
-            <span className="ml-1 font-medium tabular-nums text-text-primary">
+            <span className="ml-1 font-medium tabular-nums text-gray-900 dark:text-foreground">
               {summary.unreviewed}
             </span>
           </span>
           <span>
             Reimb.{" "}
-            <span className="ml-1 font-medium tabular-nums text-text-primary">
+            <span className="ml-1 font-medium tabular-nums text-gray-900 dark:text-foreground">
               {summary.reimbursementCount}
             </span>
           </span>
           <span className="min-w-0">
             Top cat.{" "}
-            <span className="ml-1 font-medium text-text-primary" title={summary.topCategory}>
+            <span
+              className="ml-1 font-medium text-gray-900 dark:text-foreground"
+              title={summary.topCategory}
+            >
               {summary.topCategory}
             </span>
           </span>
         </div>
 
-        <div className="flex w-full flex-col gap-1 border-b border-gray-300/60 pb-3">
+        <div className="flex w-full flex-col gap-1 border-b border-gray-200/80 pb-3 dark:border-border/60">
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
-              variant={listView === "all" ? "default" : "outline"}
+              variant="outline"
               size="sm"
               className={
                 listView === "all"
-                  ? "exp-filter-toggle-active exp-btn-primary h-8 rounded-sm transition-colors duration-150"
-                  : "exp-filter-toggle-inactive exp-btn-secondary h-8 rounded-sm transition-colors duration-150"
+                  ? "h-8 rounded-sm border-transparent bg-blue-600 px-3 text-sm font-medium text-white shadow-none hover:bg-blue-700 hover:text-white"
+                  : "h-8 rounded-sm border-gray-200/80 bg-gray-100 px-3 text-sm font-medium text-gray-600 shadow-none hover:bg-gray-200 hover:text-gray-700 dark:border-border/60 dark:bg-muted dark:text-muted-foreground dark:hover:bg-muted/80"
               }
               onClick={() => setListView("all")}
             >
@@ -1290,12 +1349,12 @@ function ExpensesPageInner() {
             </Button>
             <Button
               type="button"
-              variant={listView === "unreviewed" ? "default" : "outline"}
+              variant="outline"
               size="sm"
               className={
                 listView === "unreviewed"
-                  ? "exp-filter-toggle-active exp-btn-primary h-8 rounded-sm transition-colors duration-150"
-                  : "exp-filter-toggle-inactive exp-btn-secondary h-8 rounded-sm transition-colors duration-150"
+                  ? "h-8 rounded-sm border-transparent bg-blue-600 px-3 text-sm font-medium text-white shadow-none hover:bg-blue-700 hover:text-white"
+                  : "h-8 rounded-sm border-gray-200/80 bg-gray-100 px-3 text-sm font-medium text-gray-600 shadow-none hover:bg-gray-200 hover:text-gray-700 dark:border-border/60 dark:bg-muted dark:text-muted-foreground dark:hover:bg-muted/80"
               }
               onClick={() => setListView("unreviewed")}
             >
@@ -1303,7 +1362,7 @@ function ExpensesPageInner() {
             </Button>
           </div>
           {listView === "unreviewed" ? (
-            <p className="text-[11px] text-text-secondary">
+            <p className="text-sm text-gray-500 dark:text-muted-foreground">
               Enter: save, mark reviewed, next row · Shift+Enter: save only · Tab: next field · ↑↓:
               row · D: delete · Esc: cancel
             </p>
@@ -1315,11 +1374,11 @@ function ExpensesPageInner() {
             placeholder="Search…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-8 rounded-sm border-gray-300/60 bg-white/70 text-sm text-text-primary shadow-none backdrop-blur-md transition-all duration-200 placeholder:text-text-secondary focus:bg-white focus-visible:border-gray-300/60 focus-visible:ring-2 focus-visible:ring-blue-400/30"
+            className="h-8 rounded-sm border border-gray-200/80 bg-white text-sm text-gray-900 shadow-none transition-all duration-200 placeholder:text-gray-500 focus-visible:border-gray-300 focus-visible:ring-2 focus-visible:ring-blue-400/30 dark:border-border/60 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground"
           />
           <div className="flex flex-wrap gap-2">
             <select
-              className="h-8 min-w-[8rem] rounded-sm border border-gray-300/60 bg-white/80 px-2 text-xs text-text-primary shadow-none backdrop-blur-sm"
+              className="h-8 min-w-[8rem] rounded-sm border border-gray-200/80 bg-white px-2 text-xs text-gray-900 shadow-none dark:border-border/60 dark:bg-card dark:text-foreground"
               value={projectFilter}
               onChange={(e) => setProjectFilter(e.target.value)}
             >
@@ -1336,7 +1395,7 @@ function ExpensesPageInner() {
               </span>
             ) : null}
             <select
-              className="h-8 min-w-[7rem] rounded-sm border border-gray-300/60 bg-white/80 px-2 text-xs text-text-primary shadow-none backdrop-blur-sm"
+              className="h-8 min-w-[7rem] rounded-sm border border-gray-200/80 bg-white px-2 text-xs text-gray-900 shadow-none dark:border-border/60 dark:bg-card dark:text-foreground"
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
             >
@@ -1348,7 +1407,7 @@ function ExpensesPageInner() {
               ))}
             </select>
             <select
-              className="h-8 min-w-[6.5rem] rounded-sm border border-gray-300/60 bg-white/80 px-2 text-xs text-text-primary shadow-none backdrop-blur-sm disabled:cursor-not-allowed disabled:opacity-50"
+              className="h-8 min-w-[6.5rem] rounded-sm border border-gray-200/80 bg-white px-2 text-xs text-gray-900 shadow-none disabled:cursor-not-allowed disabled:opacity-50 dark:border-border/60 dark:bg-card dark:text-foreground"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               disabled={listView === "unreviewed"}
@@ -1366,7 +1425,7 @@ function ExpensesPageInner() {
               <option value="reimbursed">Reimbursed</option>
             </select>
             <select
-              className="h-8 min-w-[6.5rem] rounded-sm border border-gray-300/60 bg-white/80 px-2 text-xs text-text-primary shadow-none backdrop-blur-sm"
+              className="h-8 min-w-[6.5rem] rounded-sm border border-gray-200/80 bg-white px-2 text-xs text-gray-900 shadow-none dark:border-border/60 dark:bg-card dark:text-foreground"
               value={sourceTypeFilter}
               onChange={(e) => setSourceTypeFilter(e.target.value)}
             >
@@ -1376,7 +1435,7 @@ function ExpensesPageInner() {
               <option value="reimbursement">Reimbursement</option>
             </select>
             <select
-              className="h-8 min-w-[6rem] rounded-sm border border-gray-300/60 bg-white/80 px-2 text-xs text-text-primary shadow-none backdrop-blur-sm"
+              className="h-8 min-w-[6rem] rounded-sm border border-gray-200/80 bg-white px-2 text-xs text-gray-900 shadow-none dark:border-border/60 dark:bg-card dark:text-foreground"
               value={dateRangeFilter}
               onChange={(e) =>
                 setDateRangeFilter((e.target.value as "all" | "week" | "month") ?? "all")
@@ -1390,9 +1449,11 @@ function ExpensesPageInner() {
         </div>
 
         <section className="mt-4">
-          {total === 0 ? (
-            <div className="border-b border-gray-300/60 py-12 text-center">
-              <p className="text-sm font-medium text-text-primary">
+          {showExpensesSkeleton && expenses.length === 0 ? (
+            <ExpensesListSkeleton rows={8} />
+          ) : total === 0 ? (
+            <div className="border-b border-gray-200/80 py-12 text-center dark:border-border/60">
+              <p className="text-sm font-semibold text-gray-900 dark:text-foreground">
                 {listView === "unreviewed"
                   ? hasNarrowingFilters
                     ? "No unreviewed matches"
@@ -1403,7 +1464,7 @@ function ExpensesPageInner() {
                     ? "No matches"
                     : "No expenses yet"}
               </p>
-              <p className="mt-1 text-xs text-text-secondary">
+              <p className="mt-1 text-sm text-gray-500 dark:text-muted-foreground">
                 {listView === "unreviewed"
                   ? hasNarrowingFilters
                     ? "Try clearing filters or switch to All."
@@ -1417,25 +1478,27 @@ function ExpensesPageInner() {
               {showEmptyOnboardingCtas ? (
                 <div className="mt-4 flex flex-wrap justify-center gap-2">
                   <Button
+                    type="button"
+                    variant="outline"
                     size="sm"
-                    className="exp-btn-primary h-8 rounded-sm"
+                    className="h-8 rounded-sm border border-gray-300 bg-white text-gray-700 shadow-none hover:bg-gray-50 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted/50"
                     onClick={() => setQuickExpenseOpen(true)}
                   >
                     Quick expense
                   </Button>
                   <Button
+                    type="button"
                     size="sm"
-                    variant="outline"
-                    className="exp-btn-secondary h-8 rounded-sm"
+                    className="h-8 rounded-sm border-0 bg-blue-600 text-white shadow-none hover:bg-blue-700"
                     onClick={() => setUploadReceiptsOpen(true)}
                   >
                     <Upload className="mr-1.5 h-3.5 w-3.5" />
                     Upload
                   </Button>
                   <Button
+                    type="button"
                     size="sm"
-                    variant="outline"
-                    className="exp-btn-secondary h-8 rounded-sm"
+                    className="h-8 rounded-sm border-0 bg-black text-white shadow-none hover:bg-gray-800"
                     onClick={handleNew}
                   >
                     New expense
@@ -1447,7 +1510,7 @@ function ExpensesPageInner() {
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="exp-btn-secondary h-8 rounded-sm"
+                    className="h-8 rounded-sm border border-gray-300 bg-white text-gray-700 shadow-none hover:bg-gray-50 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted/50"
                     onClick={() => setListView("all")}
                   >
                     View all expenses
@@ -1456,8 +1519,8 @@ function ExpensesPageInner() {
               ) : null}
             </div>
           ) : (
-            <div className="exp-list-card overflow-hidden rounded-xl border border-gray-300/60 bg-white/70 shadow-sm backdrop-blur-md dark:border-border/60 dark:bg-card/75 dark:backdrop-blur-md">
-              <ul className="exp-divide divide-y divide-gray-300/50 dark:divide-border/60">
+            <div className="exp-list-card overflow-hidden rounded-xl border border-gray-200/60 bg-white shadow-sm dark:border-border/60 dark:bg-card">
+              <ul className="exp-divide divide-y divide-gray-200/70 dark:divide-border/60">
                 {pageRows.map((row) => {
                   const rowTotal = getExpenseTotal(row);
                   const projLabel = projectLabel(row, projectNameById);
@@ -1470,9 +1533,9 @@ function ExpensesPageInner() {
                       ref={(el) => {
                         rowElsRef.current[row.id] = el;
                       }}
-                      className={`group exp-row relative flex flex-col gap-2 bg-transparent px-4 py-3 pr-12 transition-all duration-200 ease-out hover:bg-white hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:-translate-y-px active:scale-[0.99] dark:hover:bg-white/5 dark:hover:shadow-none dark:hover:translate-y-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:pr-14 ${
+                      className={`group exp-row relative flex flex-col gap-2 rounded-lg bg-transparent px-4 py-3 pr-12 transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-50 hover:shadow-[0_2px_6px_rgba(0,0,0,0.04)] active:scale-[0.98] dark:hover:bg-muted/35 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:pr-14 ${
                         listView === "unreviewed" && activeExpenseId === row.id
-                          ? "bg-white shadow-[0_2px_8px_rgba(0,0,0,0.05)] ring-1 ring-inset ring-gray-300/70 dark:bg-white/10 dark:ring-border/60"
+                          ? "bg-white shadow-sm ring-1 ring-inset ring-gray-200/80 dark:bg-white/10 dark:ring-border/60"
                           : ""
                       }`}
                       onClick={() => {
@@ -1488,7 +1551,7 @@ function ExpensesPageInner() {
                               onClick={(e) => e.stopPropagation()}
                             >
                               <Input
-                                className="h-7 rounded-sm border-gray-300/60 text-sm text-text-primary"
+                                className="h-7 rounded-sm border-gray-300/60 text-sm text-text-primary transition-[box-shadow,border-color] duration-150 focus-visible:ring-2 focus-visible:ring-blue-400/30"
                                 value={vendorDraft}
                                 autoFocus
                                 onChange={(e) => setVendorDraft(e.target.value)}
@@ -1518,7 +1581,7 @@ function ExpensesPageInner() {
                           ) : (
                             <button
                               type="button"
-                              className="truncate text-left text-sm font-semibold text-text-primary hover:underline"
+                              className="truncate text-left text-sm font-semibold text-gray-900 hover:underline dark:text-foreground"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setActiveExpenseId(row.id);
@@ -1530,7 +1593,7 @@ function ExpensesPageInner() {
                           )}
                         </div>
                         <div
-                          className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] leading-snug text-text-secondary"
+                          className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-sm leading-snug text-gray-500 dark:text-muted-foreground"
                           onClick={(e) => e.stopPropagation()}
                         >
                           {editingCategoryId === row.id ? (
@@ -1622,7 +1685,7 @@ function ExpensesPageInner() {
                             <span className="inline-flex items-center gap-1" data-inline-field>
                               <Input
                                 type="date"
-                                className="h-7 w-[9.5rem] rounded-sm border-gray-300/60 text-xs text-text-primary"
+                                className="h-7 w-[9.5rem] rounded-sm border-gray-300/60 text-xs text-text-primary transition-[box-shadow,border-color] duration-150 focus-visible:ring-2 focus-visible:ring-blue-400/30"
                                 value={dateDraft}
                                 autoFocus
                                 onChange={(e) => setDateDraft(e.target.value)}
@@ -1728,7 +1791,7 @@ function ExpensesPageInner() {
                               data-inline-field
                             >
                               <Input
-                                className="h-7 w-24 rounded-sm border-gray-300/60 text-right text-sm tabular-nums text-text-primary"
+                                className="h-7 w-24 rounded-sm border-gray-300/60 text-right text-sm tabular-nums text-text-primary transition-[box-shadow,border-color] duration-150 focus-visible:ring-2 focus-visible:ring-blue-400/30"
                                 value={amountDraft}
                                 autoFocus
                                 inputMode="decimal"
@@ -1748,7 +1811,7 @@ function ExpensesPageInner() {
                           ) : (
                             <button
                               type="button"
-                              className="text-base font-semibold tabular-nums tracking-tight text-money-expense transition-opacity duration-200 group-hover:opacity-90 hover:underline"
+                              className="text-base font-semibold tabular-nums tracking-tight text-[#d92d20] transition-opacity duration-200 group-hover:opacity-90 hover:underline"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setActiveExpenseId(row.id);
@@ -1821,13 +1884,13 @@ function ExpensesPageInner() {
                   );
                 })}
               </ul>
-              <div className="border-t border-gray-300/60 px-4 py-2 dark:border-border/60">
+              <div className="border-t border-gray-200/80 px-4 py-2 dark:border-border/60">
                 <Pagination
                   page={curPage}
                   pageSize={pageSize}
                   total={total}
                   onPageChange={setPage}
-                  className="text-text-secondary [&_.text-muted-foreground]:text-text-secondary [&_button]:exp-btn-secondary"
+                  className="text-gray-500 [&_.text-muted-foreground]:text-gray-500 [&_button]:border [&_button]:border-gray-300 [&_button]:bg-white [&_button]:text-gray-700 [&_button]:shadow-none hover:[&_button]:bg-gray-50 dark:text-muted-foreground dark:[&_button]:border-border dark:[&_button]:bg-background dark:[&_button]:text-foreground dark:hover:[&_button]:bg-muted/50"
                 />
               </div>
             </div>

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import { cn } from "@/lib/utils";
 import {
@@ -27,7 +26,6 @@ import { finalizeReceiptQueueExpense } from "@/lib/receipt-queue-expense";
 import {
   RECEIPT_QUEUE_CHANGED_EVENT,
   notifyReceiptQueueChanged,
-  fetchReceiptQueueRows,
   insertReceiptQueueProcessing,
   updateReceiptQueueRow,
   deleteReceiptQueueRow,
@@ -37,8 +35,24 @@ import {
 import { ReceiptQueueRowCard, type RowMotionPhase } from "./receipt-queue-row-card";
 import { useRqLayout } from "./use-rq-layout";
 import { AlertTriangle, Camera, Loader2, Upload } from "lucide-react";
+import hotToast from "react-hot-toast";
 import { useToast } from "@/components/toast/toast-provider";
 import { uiActionLog, uiActionMark, uiNavLog, uiNavMark } from "@/lib/ui-action-perf";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  expensesQueryKey,
+  fetchExpenses,
+  fetchWorkers,
+  workersQueryKey,
+} from "@/lib/queries/expenses";
+import {
+  fetchFinancialProjects,
+  fetchReceiptQueue,
+  financialProjectsQueryKey,
+  receiptQueueQueryKey,
+} from "@/lib/queries/receiptQueue";
+import { useDelayedPending } from "@/hooks/use-delayed-pending";
+import { ReceiptQueueSkeleton } from "@/components/financial/receipt-queue-skeleton";
 
 type ProjectRow = { id: string; name: string | null; status?: string | null };
 type WorkerRow = { id: string; name: string };
@@ -153,16 +167,32 @@ export function ReceiptQueueWorkspace() {
   const rqLayout = useRqLayout();
   const { toast } = useToast();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const cameraInputRef = React.useRef<HTMLInputElement>(null);
   const uploadInputRef = React.useRef<HTMLInputElement>(null);
   const previewReplaceInputRef = React.useRef<HTMLInputElement>(null);
   const rowReuploadInputRef = React.useRef<HTMLInputElement>(null);
   const [replaceTargetId, setReplaceTargetId] = React.useState<string | null>(null);
-  const [rows, setRows] = React.useState<ReceiptQueueRow[]>([]);
-  const [projects, setProjects] = React.useState<ProjectRow[]>([]);
-  const [expenses, setExpenses] = React.useState<Expense[]>([]);
-  const [workers, setWorkers] = React.useState<WorkerRow[]>([]);
-  const [loading, setLoading] = React.useState(true);
+  const readCachedQueue = React.useCallback(
+    () => queryClient.getQueryData<ReceiptQueueRow[]>(receiptQueueQueryKey),
+    [queryClient]
+  );
+  const readCachedProjects = React.useCallback(
+    () => queryClient.getQueryData<ProjectRow[]>(financialProjectsQueryKey),
+    [queryClient]
+  );
+  const readCachedExpenses = React.useCallback(
+    () => queryClient.getQueryData<Expense[]>(expensesQueryKey),
+    [queryClient]
+  );
+  const readCachedWorkers = React.useCallback(
+    () => queryClient.getQueryData<WorkerRow[]>(workersQueryKey),
+    [queryClient]
+  );
+  const [rows, setRows] = React.useState<ReceiptQueueRow[]>(() => readCachedQueue() ?? []);
+  const [projects, setProjects] = React.useState<ProjectRow[]>(() => readCachedProjects() ?? []);
+  const [expenses, setExpenses] = React.useState<Expense[]>(() => readCachedExpenses() ?? []);
+  const [workers, setWorkers] = React.useState<WorkerRow[]>(() => readCachedWorkers() ?? []);
   const [dragOver, setDragOver] = React.useState(false);
   const [captureUploading, setCaptureUploading] = React.useState(false);
   const [bulkAdding, setBulkAdding] = React.useState(false);
@@ -204,6 +234,7 @@ export function ReceiptQueueWorkspace() {
     amount: boolean;
   } | null>(null);
   const lastConfirmFlashRef = React.useRef<{ key: string; at: number }>({ key: "", at: 0 });
+  const hotSavedCooldownRef = React.useRef(0);
 
   const flashConfirmInvalid = React.useCallback(
     (rowId: string, fields: { vendor?: boolean; amount?: boolean }) => {
@@ -231,6 +262,74 @@ export function ReceiptQueueWorkspace() {
     return url && anon ? createBrowserClient(url, anon) : null;
   }, []);
 
+  const {
+    data: receiptQueueData,
+    isPending: receiptQueuePending,
+    isError: receiptQueueError,
+  } = useQuery({
+    queryKey: receiptQueueQueryKey,
+    queryFn: () => fetchReceiptQueue(supabase!),
+    enabled: Boolean(supabase),
+    placeholderData: keepPreviousData,
+  });
+  const { data: expensesQueryData } = useQuery({
+    queryKey: expensesQueryKey,
+    queryFn: fetchExpenses,
+    placeholderData: keepPreviousData,
+  });
+  const { data: workersQueryData } = useQuery({
+    queryKey: workersQueryKey,
+    queryFn: fetchWorkers,
+    placeholderData: keepPreviousData,
+  });
+  const { data: projectsQueryData } = useQuery({
+    queryKey: financialProjectsQueryKey,
+    queryFn: () => fetchFinancialProjects(supabase!),
+    enabled: Boolean(supabase),
+    placeholderData: keepPreviousData,
+  });
+
+  React.useLayoutEffect(() => {
+    if (receiptQueueData === undefined) return;
+    setRows(receiptQueueData);
+  }, [receiptQueueData]);
+  React.useLayoutEffect(() => {
+    if (expensesQueryData === undefined) return;
+    setExpenses(expensesQueryData);
+  }, [expensesQueryData]);
+  React.useLayoutEffect(() => {
+    if (workersQueryData === undefined) return;
+    setWorkers(workersQueryData as WorkerRow[]);
+  }, [workersQueryData]);
+  React.useLayoutEffect(() => {
+    if (projectsQueryData === undefined) return;
+    setProjects(projectsQueryData as ProjectRow[]);
+  }, [projectsQueryData]);
+
+  const queueBootstrapWaiting =
+    Boolean(supabase) && receiptQueuePending && receiptQueueData === undefined;
+  const showQueueSkeleton = useDelayedPending(queueBootstrapWaiting && !receiptQueueError);
+
+  const patchQueueRowMutation = useMutation({
+    mutationFn: async (vars: { id: string; patch: ReceiptQueuePatch }) => {
+      if (!supabase) throw new Error("Supabase is not configured.");
+      await updateReceiptQueueRow(supabase, vars.id, vars.patch);
+    },
+    onSuccess: (_void, { id, patch }) => {
+      queryClient.setQueryData<ReceiptQueueRow[]>(receiptQueueQueryKey, (old) =>
+        (old ?? []).map((row) => (row.id === id ? { ...row, ...patch } : row))
+      );
+    },
+  });
+
+  React.useEffect(() => {
+    if (supabase) return;
+    setRows([]);
+    setProjects([]);
+    setExpenses([]);
+    setWorkers([]);
+  }, [supabase]);
+
   const flushPendingDebouncedPatches = React.useCallback(async () => {
     if (!supabase) return;
     for (const [, raf] of rowPatchRafRef.current) cancelAnimationFrame(raf);
@@ -240,7 +339,7 @@ export function ReceiptQueueWorkspace() {
     for (const [id, patch] of entries) {
       if (Object.keys(patch).length === 0) continue;
       try {
-        await updateReceiptQueueRow(supabase, id, patch);
+        await patchQueueRowMutation.mutateAsync({ id, patch });
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Save failed";
         toast({ title: "Queue row", description: msg, variant: "error" });
@@ -248,7 +347,7 @@ export function ReceiptQueueWorkspace() {
     }
     const inflight = [...rowSavePromises.current.values()];
     if (inflight.length) await Promise.allSettled(inflight);
-  }, [supabase, toast]);
+  }, [supabase, toast, patchQueueRowMutation]);
 
   const needsFixCount = React.useMemo(() => rows.filter(rowNeedsFix).length, [rows]);
 
@@ -334,7 +433,7 @@ export function ReceiptQueueWorkspace() {
   );
 
   React.useEffect(() => {
-    if (loading || rows.length === 0 || initialFocusAppliedRef.current) return;
+    if (queueBootstrapWaiting || rows.length === 0 || initialFocusAppliedRef.current) return;
     const fix = rows.filter((r) => rowNeedsFix(r) && r.status !== "processing");
     if (fix.length === 0) return;
     initialFocusAppliedRef.current = true;
@@ -351,7 +450,7 @@ export function ReceiptQueueWorkspace() {
       cancelAnimationFrame(outer);
       cancelAnimationFrame(inner);
     };
-  }, [loading, rows, focusRowField]);
+  }, [queueBootstrapWaiting, rows, focusRowField]);
 
   const loadRows = React.useCallback(async () => {
     if (!supabase) {
@@ -360,13 +459,14 @@ export function ReceiptQueueWorkspace() {
     }
     try {
       await flushPendingDebouncedPatches();
-      const list = await fetchReceiptQueueRows(supabase);
+      const list = await fetchReceiptQueue(supabase);
       setRows(list);
+      queryClient.setQueryData(receiptQueueQueryKey, list);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to load queue";
       toast({ title: "Receipt queue", description: msg, variant: "error" });
     }
-  }, [supabase, toast, flushPendingDebouncedPatches]);
+  }, [supabase, toast, flushPendingDebouncedPatches, queryClient]);
 
   const refreshAll = React.useCallback(async (): Promise<ReceiptQueueRow[]> => {
     await flushPendingDebouncedPatches();
@@ -374,7 +474,7 @@ export function ReceiptQueueWorkspace() {
     let expList: Expense[] = [];
     let workerList: WorkerRow[] = [];
     const settled = await Promise.allSettled([
-      supabase ? fetchReceiptQueueRows(supabase) : Promise.resolve([] as ReceiptQueueRow[]),
+      supabase ? fetchReceiptQueue(supabase) : Promise.resolve([] as ReceiptQueueRow[]),
       getExpenses(),
       getWorkers(),
     ]);
@@ -395,16 +495,21 @@ export function ReceiptQueueWorkspace() {
     setRows(list);
     setExpenses(expList);
     setWorkers(workerList);
+    queryClient.setQueryData(receiptQueueQueryKey, list);
+    queryClient.setQueryData(expensesQueryKey, expList);
+    queryClient.setQueryData(workersQueryKey, workerList);
     return list;
-  }, [supabase, toast, flushPendingDebouncedPatches]);
+  }, [supabase, toast, flushPendingDebouncedPatches, queryClient]);
 
   /** Lighter than refreshAll: queue + expenses only (no workers reload). */
   const softRefreshQueueAndExpenses = React.useCallback(async () => {
     if (!supabase) return;
+    let list: ReceiptQueueRow[] = [];
     try {
       await flushPendingDebouncedPatches();
-      const list = await fetchReceiptQueueRows(supabase);
+      list = await fetchReceiptQueue(supabase);
       setRows(list);
+      queryClient.setQueryData(receiptQueueQueryKey, list);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to load queue";
       toast({ title: "Receipt queue", description: msg, variant: "error" });
@@ -412,34 +517,11 @@ export function ReceiptQueueWorkspace() {
     try {
       const expList = await getExpenses();
       setExpenses(expList);
+      queryClient.setQueryData(expensesQueryKey, expList);
     } catch {
       /* keep previous expenses for duplicate hints */
     }
-  }, [supabase, toast, flushPendingDebouncedPatches]);
-
-  React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      try {
-        if (!supabase) {
-          setProjects([]);
-          return;
-        }
-        const { data: projectsData, error } = await supabase.from("projects").select("*");
-        if (!cancelled) {
-          if (error) setProjects([]);
-          else setProjects(Array.isArray(projectsData) ? projectsData : []);
-        }
-        if (!cancelled) await refreshAll();
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [supabase, refreshAll]);
+  }, [supabase, toast, flushPendingDebouncedPatches, queryClient]);
 
   const receiptQueueRefreshTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   React.useEffect(() => {
@@ -498,7 +580,7 @@ export function ReceiptQueueWorkspace() {
         if (!merged || Object.keys(merged).length === 0) return;
         const p = (async () => {
           try {
-            await updateReceiptQueueRow(supabase, id, merged);
+            await patchQueueRowMutation.mutateAsync({ id, patch: merged });
           } catch (e) {
             const msg = e instanceof Error ? e.message : "Save failed";
             toast({ title: "Queue row", description: msg, variant: "error" });
@@ -511,7 +593,7 @@ export function ReceiptQueueWorkspace() {
       });
       rowPatchRafRef.current.set(id, raf);
     },
-    [supabase, toast]
+    [supabase, toast, patchQueueRowMutation]
   );
 
   const patchRowImmediate = React.useCallback(
@@ -520,14 +602,18 @@ export function ReceiptQueueWorkspace() {
       const inflight = rowSavePromises.current.get(id);
       if (inflight) await inflight;
       try {
-        await updateReceiptQueueRow(supabase, id, patch);
+        await patchQueueRowMutation.mutateAsync({ id, patch });
         setRows((r) => r.map((x) => (x.id === id ? { ...x, ...patch } : x)));
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : "Save failed";
-        toast({ title: "Queue row", description: msg, variant: "error" });
+        const now = Date.now();
+        if (now - hotSavedCooldownRef.current > 1400) {
+          hotToast.success("Saved");
+          hotSavedCooldownRef.current = now;
+        }
+      } catch {
+        hotToast.error("Something went wrong");
       }
     },
-    [supabase, toast]
+    [supabase, toast, patchQueueRowMutation]
   );
 
   const queueVendorPaymentSuggest = React.useCallback(
@@ -577,19 +663,34 @@ export function ReceiptQueueWorkspace() {
       const inflight = rowSavePromises.current.get(row.id);
       if (inflight) await inflight;
       try {
-        await updateReceiptQueueRow(supabase, row.id, {
-          vendor_name: row.vendor_name,
-          amount: row.amount,
-          expense_date: row.expense_date.slice(0, 10),
-          payment_account_id: row.payment_account_id ?? null,
+        await patchQueueRowMutation.mutateAsync({
+          id: row.id,
+          patch: {
+            vendor_name: row.vendor_name,
+            amount: row.amount,
+            expense_date: row.expense_date.slice(0, 10),
+            payment_account_id: row.payment_account_id ?? null,
+          },
         });
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Save failed";
         toast({ title: "Queue row", description: msg, variant: "error" });
       }
     },
-    [supabase, toast]
+    [supabase, toast, patchQueueRowMutation]
   );
+
+  const finalizeConfirmMutation = useMutation({
+    mutationFn: async (live: ReceiptQueueRow) => {
+      if (!supabase) throw new Error("Supabase is not configured.");
+      await flushRowToDb(live);
+      await finalizeReceiptQueueExpense(supabase, live, "confirm");
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: receiptQueueQueryKey });
+      void queryClient.invalidateQueries({ queryKey: expensesQueryKey });
+    },
+  });
 
   const handleEnterSaveNav = React.useCallback(
     async (rowId: string, shiftKey: boolean, sourceField: string | null) => {
@@ -673,9 +774,13 @@ export function ReceiptQueueWorkspace() {
         return r;
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Processing failed";
-        await updateReceiptQueueRow(supabase, rowId, {
-          status: "failed",
-          error_message: msg,
+        hotToast.error("Something went wrong");
+        await patchQueueRowMutation.mutateAsync({
+          id: rowId,
+          patch: {
+            status: "failed",
+            error_message: msg,
+          },
         });
         return { storageSaved: false };
       } finally {
@@ -683,12 +788,8 @@ export function ReceiptQueueWorkspace() {
         if (!options?.skipRefresh) await refreshAll();
       }
     },
-    [supabase, refreshAll]
+    [supabase, refreshAll, patchQueueRowMutation]
   );
-
-  const openRetryCapturePicker = React.useCallback(() => {
-    uploadInputRef.current?.click();
-  }, []);
 
   const scrollQueueToNewest = React.useCallback(() => {
     window.requestAnimationFrame(() => {
@@ -785,22 +886,10 @@ export function ReceiptQueueWorkspace() {
           if (targetId) {
             focusQueueRowVendor(targetId);
           }
-          toast({
-            title: ok === 1 ? "✔ Receipt added to queue" : `✔ ${ok} receipts added`,
-            variant: "success",
-          });
+          hotToast.success(ok === 1 ? "Uploaded" : `${ok} uploaded`);
         }
         if (fail > 0) {
-          toast({
-            title: "❌ Upload failed",
-            description:
-              fail === fileList.length && firstFailDetail
-                ? `${firstFailDetail} Tap to try again.`
-                : `${fail} of ${fileList.length} could not be saved. Tap to retry.`,
-            variant: "error",
-            durationMs: 8000,
-            onClick: openRetryCapturePicker,
-          });
+          hotToast.error("Something went wrong");
         }
       } finally {
         setCaptureUploading(false);
@@ -811,7 +900,6 @@ export function ReceiptQueueWorkspace() {
       toast,
       refreshAll,
       runUploadForRow,
-      openRetryCapturePicker,
       scrollQueueToNewest,
       flashNewRowHighlights,
       focusQueueRowVendor,
@@ -826,11 +914,14 @@ export function ReceiptQueueWorkspace() {
       }
       void (async () => {
         try {
-          await updateReceiptQueueRow(supabase, rowId, {
-            status: "processing",
-            error_message: null,
-            storage_path: null,
-            receipt_public_url: null,
+          await patchQueueRowMutation.mutateAsync({
+            id: rowId,
+            patch: {
+              status: "processing",
+              error_message: null,
+              storage_path: null,
+              receipt_public_url: null,
+            },
           });
           notifyReceiptQueueChanged();
           setRows((r) =>
@@ -850,31 +941,12 @@ export function ReceiptQueueWorkspace() {
           if (r?.storageSaved) {
             focusQueueRowVendor(rowId);
             flashNewRowHighlights([rowId]);
-            toast({ title: "✔ Receipt added to queue", variant: "success" });
+            hotToast.success("Uploaded");
           } else {
-            toast({
-              title: "❌ Upload failed",
-              description: "Tap to choose a file and try again.",
-              variant: "error",
-              durationMs: 8000,
-              onClick: () => {
-                setReplaceTargetId(rowId);
-                requestAnimationFrame(() => rowReuploadInputRef.current?.click());
-              },
-            });
+            hotToast.error("Something went wrong");
           }
-        } catch (e) {
-          const msg = e instanceof Error ? e.message : "Replace failed";
-          toast({
-            title: "❌ Upload failed",
-            description: msg,
-            variant: "error",
-            durationMs: 8000,
-            onClick: () => {
-              setReplaceTargetId(rowId);
-              requestAnimationFrame(() => rowReuploadInputRef.current?.click());
-            },
-          });
+        } catch {
+          hotToast.error("Something went wrong");
         }
       })();
       const isPdf = file.type === "application/pdf";
@@ -885,7 +957,7 @@ export function ReceiptQueueWorkspace() {
           : p
       );
     },
-    [supabase, toast, runUploadForRow, focusQueueRowVendor, flashNewRowHighlights]
+    [supabase, runUploadForRow, focusQueueRowVendor, flashNewRowHighlights, patchQueueRowMutation]
   );
 
   React.useEffect(() => {
@@ -918,9 +990,9 @@ export function ReceiptQueueWorkspace() {
 
   const runRowExitAnimation = React.useCallback(
     (id: string, options: { flashGreen: boolean; onComplete: () => void }) => {
-      const CHECK_MS = options.flashGreen ? 400 : 0;
-      const FADE_MS = 200;
-      const COLLAPSE_MS = 200;
+      const CHECK_MS = options.flashGreen ? 480 : 0;
+      const FADE_MS = 240;
+      const COLLAPSE_MS = 220;
       const startFade = () => {
         setRowMotion((s) => ({ ...s, [id]: "fade" }));
         window.setTimeout(() => {
@@ -1044,17 +1116,11 @@ export function ReceiptQueueWorkspace() {
         }
         void (async () => {
           try {
-            await flushRowToDb(live);
-            await finalizeReceiptQueueExpense(supabase, live, "confirm");
-            toast({
-              title: "Expense created",
-              description: "Expense created.",
-              variant: "success",
-            });
-          } catch (e) {
+            await finalizeConfirmMutation.mutateAsync(live);
+            hotToast.success("Confirmed");
+          } catch {
             setRows(snapshot);
-            const msg = e instanceof Error ? e.message : "Failed";
-            toast({ title: "Create failed", description: msg, variant: "error" });
+            hotToast.error("Something went wrong");
           }
         })();
       },
@@ -1388,63 +1454,17 @@ export function ReceiptQueueWorkspace() {
           </>
         )}
 
-        {loading && rows.length === 0 ? (
-          <div
-            className="flex flex-col gap-4 md:gap-3"
-            role="status"
-            aria-live="polite"
-            aria-label="Loading queue"
-          >
-            {[0, 1, 2].map((i) => (
-              <React.Fragment key={i}>
-                <div className="rounded-xl border border-gray-300 bg-white p-4 shadow-[0_2px_16px_rgba(15,23,42,0.08)] dark:border-border dark:bg-card md:hidden">
-                  <div className="flex flex-col gap-4">
-                    <div className="flex gap-3">
-                      <Skeleton className="h-16 w-16 shrink-0 rounded-xl" />
-                      <div className="flex flex-1 flex-col gap-2">
-                        <Skeleton className="h-5 w-24 rounded-md" />
-                        <Skeleton className="h-10 w-full rounded-xl" />
-                        <Skeleton className="h-[18px] w-20 rounded-sm" />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Skeleton className="h-10 w-full rounded-xl" />
-                      <Skeleton className="h-10 w-full rounded-xl" />
-                    </div>
-                    <Skeleton className="h-10 w-full rounded-xl" />
-                    <Skeleton className="h-10 w-full rounded-xl" />
-                    <Skeleton className="h-10 w-full rounded-xl" />
-                    <div className="flex gap-2 pt-2">
-                      <Skeleton className="h-11 min-h-10 flex-1 rounded-xl" />
-                      <Skeleton className="h-11 w-11 shrink-0 rounded-xl" />
-                    </div>
-                  </div>
-                </div>
-                <div className="hidden rounded-lg border border-gray-300 bg-white p-4 shadow-[0_1px_3px_rgba(15,23,42,0.07)] dark:border-border dark:bg-card md:block">
-                  <div className="grid w-full items-center gap-x-3 gap-y-2 [grid-template-columns:60px_80px_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_100px]">
-                    <Skeleton className="h-[52px] w-[52px] rounded-lg" />
-                    <Skeleton className="h-8 w-14" />
-                    <div className="min-w-0 space-y-1">
-                      <Skeleton className="h-9 w-full rounded-lg" />
-                      <Skeleton className="h-[18px] w-20 rounded-sm" />
-                    </div>
-                    <div className="min-w-0 space-y-1">
-                      <Skeleton className="h-9 w-full rounded-lg" />
-                      <Skeleton className="h-[18px] w-16 rounded-sm" />
-                    </div>
-                    <Skeleton className="h-9 w-full rounded-lg" />
-                    <Skeleton className="h-9 w-full rounded-lg" />
-                    <Skeleton className="h-9 w-full rounded-lg" />
-                    <Skeleton className="h-9 w-full rounded-lg" />
-                    <Skeleton className="h-9 w-full rounded-lg" />
-                  </div>
-                </div>
-              </React.Fragment>
-            ))}
+        {showQueueSkeleton && rows.length === 0 ? (
+          <div role="status" aria-live="polite" aria-label="Loading queue">
+            <ReceiptQueueSkeleton rows={6} />
           </div>
         ) : null}
 
-        {!loading && rows.length === 0 ? (
+        {!queueBootstrapWaiting &&
+        !showQueueSkeleton &&
+        rows.length === 0 &&
+        supabase &&
+        !receiptQueueError ? (
           <p className="text-sm text-muted-foreground">No items in the queue.</p>
         ) : rows.length > 0 ? (
           <>
