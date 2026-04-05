@@ -319,17 +319,20 @@ function isPaymentEmbedUnsupported(err: { message?: string } | null): boolean {
 export async function getExpenses(): Promise<Expense[]> {
   const c = client();
   let rows: unknown[] = [];
-  let res = await c
+  const resEmbed = await c
     .from("expenses")
     .select(`${EXPENSE_COLS_FULL}, payment_accounts ( name )`)
     .order("expense_date", { ascending: false });
 
-  if (res.error && isPaymentEmbedUnsupported(res.error)) {
-    res = await c
-      .from("expenses")
-      .select(EXPENSE_COLS_FULL)
-      .order("expense_date", { ascending: false });
-  }
+  const resFlat =
+    resEmbed.error && isPaymentEmbedUnsupported(resEmbed.error)
+      ? await c
+          .from("expenses")
+          .select(EXPENSE_COLS_FULL)
+          .order("expense_date", { ascending: false })
+      : null;
+
+  const res = resFlat ?? resEmbed;
 
   if (!res.error) {
     rows = res.data ?? [];
