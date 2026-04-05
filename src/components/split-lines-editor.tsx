@@ -295,9 +295,9 @@ export function SplitLinesEditor({
                 <TableCell>
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="outline"
                     size="icon"
-                    className="h-8 w-8 text-destructive"
+                    className="btn-outline-ghost h-8 w-8 text-destructive"
                     onClick={() => onDeleteLine(line.id)}
                     aria-label="Delete line"
                     disabled={lines.length <= minLines}

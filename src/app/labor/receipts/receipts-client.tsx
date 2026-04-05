@@ -432,8 +432,8 @@ export function ReceiptsClient({
             <Button
               type="button"
               size="sm"
-              variant="destructive"
-              className="rounded-sm h-9"
+              variant="outline"
+              className="btn-outline-destructive rounded-sm h-9"
               onClick={confirmReject}
               disabled={!!busyId}
             >

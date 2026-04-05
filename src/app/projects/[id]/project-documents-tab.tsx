@@ -182,26 +182,26 @@ export function ProjectDocumentsTab({ projectId, documents }: Props) {
                     <td className="h-11 min-h-[44px] px-1 py-0 align-middle text-[13px]">
                       <div className="flex items-center gap-1">
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
-                          className="h-7 text-xs"
+                          className="btn-outline-ghost h-7 text-xs"
                           onClick={() => handlePreview(doc)}
                           disabled={loadingPreview}
                         >
                           Preview
                         </Button>
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
-                          className="h-7 text-xs"
+                          className="btn-outline-ghost h-7 text-xs"
                           onClick={() => handleDownload(doc)}
                         >
                           Download
                         </Button>
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
-                          className="h-7 text-xs text-red-600"
+                          className="btn-outline-ghost h-7 text-xs text-red-600"
                           onClick={() => handleDelete(doc)}
                           disabled={deletingId === doc.id}
                         >

@@ -317,9 +317,9 @@ export default function MaterialCatalogPage() {
                       <td className="h-11 min-h-[44px] px-2 py-0 text-right align-middle text-[13px] sm:px-3">
                         <Button
                           type="button"
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
-                          className="rounded-sm h-8 px-2"
+                          className="btn-outline-ghost rounded-sm h-8 px-2"
                           onClick={() => handleEdit(m)}
                         >
                           Edit

@@ -212,12 +212,12 @@ export default function LaborInvoiceDetailPage() {
       </div>
 
       {message ? (
-        <p className="border-b border-[#E5E7EB] pb-3 text-sm text-muted-foreground dark:border-border">
+        <p className="border-b border-gray-300 pb-3 text-sm text-muted-foreground dark:border-border">
           {message}
         </p>
       ) : null}
 
-      <section className="border-b border-[#E5E7EB] pb-6 dark:border-border">
+      <section className="border-b border-gray-300 pb-6 dark:border-border">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
             <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
@@ -319,7 +319,7 @@ export default function LaborInvoiceDetailPage() {
             value={invoice.memo ?? ""}
             onChange={(e) => handleHeaderSave({ memo: e.target.value })}
             disabled={isReadOnly}
-            className="min-h-[88px] rounded-sm border border-[#E5E7EB] bg-background px-3 py-2 text-sm dark:border-border"
+            className="min-h-[88px] rounded-sm border border-gray-300 bg-background px-3 py-2 text-sm dark:border-border"
           />
         </div>
         <p className="mt-3 text-xs text-amber-600 dark:text-amber-400">
@@ -327,7 +327,7 @@ export default function LaborInvoiceDetailPage() {
         </p>
       </section>
 
-      <section className="border-b border-[#E5E7EB] pb-6 dark:border-border">
+      <section className="border-b border-gray-300 pb-6 dark:border-border">
         <h2 className="mb-3 text-sm font-semibold text-foreground">Attachments</h2>
         <input
           ref={fileInputRef}
@@ -352,7 +352,7 @@ export default function LaborInvoiceDetailPage() {
           {invoice.attachments.map((att) => (
             <li
               key={att.id}
-              className="flex items-center gap-2 border border-[#E5E7EB] p-3 dark:border-border"
+              className="flex items-center gap-2 border border-gray-300 p-3 dark:border-border"
             >
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-foreground">{att.fileName}</p>
@@ -362,8 +362,8 @@ export default function LaborInvoiceDetailPage() {
               </div>
               <Button
                 size="icon"
-                variant="ghost"
-                className="h-8 w-8"
+                variant="outline"
+                className="btn-outline-ghost h-8 w-8"
                 onClick={() => {
                   setPreviewAttachment(att);
                   setPreviewOpen(true);
@@ -374,8 +374,8 @@ export default function LaborInvoiceDetailPage() {
               </Button>
               <Button
                 size="icon"
-                variant="ghost"
-                className="h-8 w-8"
+                variant="outline"
+                className="btn-outline-ghost h-8 w-8"
                 onClick={() => {
                   const a = document.createElement("a");
                   a.href = att.url;
@@ -388,8 +388,8 @@ export default function LaborInvoiceDetailPage() {
               </Button>
               <Button
                 size="icon"
-                variant="ghost"
-                className="h-8 w-8 text-destructive"
+                variant="outline"
+                className="btn-outline-ghost h-8 w-8 text-destructive"
                 onClick={() => handleDeleteAttachment(att)}
                 aria-label="Delete"
                 disabled={isReadOnly}
@@ -401,7 +401,7 @@ export default function LaborInvoiceDetailPage() {
         </ul>
       </section>
 
-      <section className="border-b border-[#E5E7EB] pb-6 dark:border-border">
+      <section className="border-b border-gray-300 pb-6 dark:border-border">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-foreground">Split Allocation</h2>
           <Button

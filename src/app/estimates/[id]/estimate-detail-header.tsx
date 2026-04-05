@@ -138,9 +138,9 @@ export function EstimateDetailHeader({
             <DropdownMenuTrigger asChild>
               <Button
                 type="button"
-                variant="ghost"
+                variant="outline"
                 size="icon"
-                className="h-8 w-8 rounded-md"
+                className="btn-outline-ghost h-8 w-8 rounded-md"
                 aria-label="More"
               >
                 <MoreHorizontal className="h-4 w-4" />

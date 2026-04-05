@@ -4,7 +4,7 @@ export type EstimateStatus = "Draft" | "Sent" | "Approved" | "Rejected" | "Conve
 
 const statusStyles: Record<EstimateStatus, string> = {
   Draft:
-    "inline-flex items-center rounded-md bg-[#F3F4F6] px-2 py-0.5 text-[11px] font-medium text-[#6B7280] dark:bg-muted dark:text-muted-foreground",
+    "inline-flex items-center rounded-md bg-[#F3F4F6] px-2 py-0.5 text-[11px] font-medium text-text-secondary dark:bg-muted dark:text-muted-foreground",
   Sent: "inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-medium text-blue-800 dark:bg-blue-950/50 dark:text-blue-300",
   Approved: "hh-pill-success text-[11px]",
   Rejected: "hh-pill-danger text-[11px]",

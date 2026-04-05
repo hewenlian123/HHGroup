@@ -184,9 +184,9 @@ export default function WorkerBalancesPage() {
                     {r.deletable ? (
                       <Button
                         type="button"
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                        className="btn-outline-ghost h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
                         aria-label={`Delete ${r.workerName}`}
                         onClick={() => setDeleteTarget(r)}
                       >
@@ -215,8 +215,9 @@ export default function WorkerBalancesPage() {
           </DialogHeader>
           <DialogFooter className="pt-3 border-t border-border/60 gap-2 sm:gap-0">
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
+              className="btn-outline-ghost"
               onClick={() => setDeleteTarget(null)}
               disabled={deleteBusy}
             >

@@ -181,18 +181,18 @@ export function SubcontractorsTableClient({
                   <td className="py-1.5 px-1">
                     <div className="flex items-center justify-end gap-1">
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        className="h-7 text-xs"
+                        className="btn-outline-ghost h-7 text-xs"
                         onClick={() => setEditFor(r)}
                         disabled={busy}
                       >
                         Edit
                       </Button>
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        className="h-7 text-xs text-red-600"
+                        className="btn-outline-ghost h-7 text-xs text-red-600"
                         onClick={() => void onDelete(r)}
                         disabled={busy}
                       >

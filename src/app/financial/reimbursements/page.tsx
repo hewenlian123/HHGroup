@@ -183,9 +183,9 @@ function WorkerReimbursementsPageInner() {
                   <TableRow key={row.workerId} className="border-b border-border/30">
                     <TableCell>
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        className="h-8 font-medium text-foreground -ml-2"
+                        className="btn-outline-ghost h-8 font-medium text-foreground -ml-2"
                         onClick={() => setDetailWorker(row)}
                       >
                         {row.workerName}
@@ -260,7 +260,12 @@ function WorkerReimbursementsPageInner() {
                             {exp.status ?? "pending"}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button asChild variant="ghost" size="sm" className="h-7">
+                            <Button
+                              asChild
+                              variant="outline"
+                              size="sm"
+                              className="btn-outline-ghost h-7"
+                            >
                               <Link href={`/financial/expenses/${exp.id}`}>View</Link>
                             </Button>
                           </TableCell>

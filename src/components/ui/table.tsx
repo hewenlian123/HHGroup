@@ -3,11 +3,11 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 const tableShellClass =
-  "relative w-full overflow-hidden rounded-[10px] border-[0.5px] border-solid border-[#E5E7EB] bg-white dark:border-border";
+  "relative w-full overflow-hidden rounded-[10px] border-[0.5px] border-solid border-gray-300 bg-white dark:border-border";
 
 /** Shared vertical rules + bottom line (last column has no right border). */
 export const tableCellBorderClass =
-  "border-b-[0.5px] border-r-[0.5px] border-solid border-[#E5E7EB] last:border-r-0 dark:border-border";
+  "border-b-[0.5px] border-r-[0.5px] border-solid border-gray-300 last:border-r-0 dark:border-border";
 
 /** For legacy `<table>` markup — matches `TableHead`. */
 export const tableRawThClass = cn(
@@ -66,7 +66,7 @@ const TableFooter = React.forwardRef<
   <tfoot
     ref={ref}
     className={cn(
-      "border-t border-[#E5E7EB] [border-top-width:0.5px] font-medium dark:border-border [&>tr]:last:border-b-0",
+      "border-t border-gray-300 [border-top-width:0.5px] font-medium dark:border-border [&>tr]:last:border-b-0",
       className
     )}
     {...props}
@@ -129,7 +129,7 @@ const TableCaption = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <caption
     ref={ref}
-    className={cn("mt-3 text-sm text-[#6B7280] dark:text-muted-foreground", className)}
+    className={cn("mt-3 text-sm text-text-secondary dark:text-muted-foreground", className)}
     {...props}
   />
 ));

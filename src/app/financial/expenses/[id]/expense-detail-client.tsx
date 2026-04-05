@@ -529,12 +529,12 @@ export function ExpenseDetailClient({ id }: { id: string }) {
       </div>
 
       {error ? (
-        <div className="rounded-[12px] border border-[#E5E7EB] bg-white px-4 py-3 text-sm text-muted-foreground">
+        <div className="rounded-[12px] border border-gray-300 bg-white px-4 py-3 text-sm text-muted-foreground">
           {error}
         </div>
       ) : null}
       {message ? (
-        <div className="rounded-[12px] border border-[#E5E7EB] bg-white px-4 py-3 text-sm text-[#166534]">
+        <div className="rounded-[12px] border border-gray-300 bg-white px-4 py-3 text-sm text-[#166534]">
           {message}
         </div>
       ) : null}
@@ -675,7 +675,7 @@ export function ExpenseDetailClient({ id }: { id: string }) {
             attachments.map((att) => (
               <div
                 key={att.id}
-                className="flex items-center gap-3 rounded-[12px] border border-[#E5E7EB] bg-white px-4 py-3"
+                className="flex items-center gap-3 rounded-[12px] border border-gray-300 bg-white px-4 py-3"
               >
                 <button
                   type="button"
@@ -693,18 +693,18 @@ export function ExpenseDetailClient({ id }: { id: string }) {
                   </div>
                 </button>
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="icon"
-                  className="h-9 w-9"
+                  className="btn-outline-ghost h-9 w-9"
                   onClick={() => void openAttachment(att)}
                   aria-label="Open"
                 >
                   <Download className="h-4 w-4" />
                 </Button>
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="icon"
-                  className="h-9 w-9 text-destructive"
+                  className="btn-outline-ghost h-9 w-9 text-destructive"
                   onClick={() => void deleteAttachment(att)}
                   aria-label="Delete"
                 >
@@ -755,7 +755,7 @@ export function ExpenseDetailClient({ id }: { id: string }) {
         )}
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <div className="rounded-[12px] border border-[#E5E7EB] bg-white p-4">
+          <div className="rounded-[12px] border border-gray-300 bg-white p-4">
             <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
               Lines total
             </p>
@@ -763,7 +763,7 @@ export function ExpenseDetailClient({ id }: { id: string }) {
               −{money(linesTotal)}
             </p>
           </div>
-          <div className="rounded-[12px] border border-[#E5E7EB] bg-white p-4">
+          <div className="rounded-[12px] border border-gray-300 bg-white p-4">
             <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
               Per project
             </p>

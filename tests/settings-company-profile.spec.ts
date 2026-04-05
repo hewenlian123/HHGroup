@@ -254,7 +254,9 @@ test.describe("Settings → Company Profile", () => {
       await saveBtn.click();
       const saveResp = await saveRespP;
       try {
-        await expect(saveBtn).toContainText(/Saving/i, { timeout: 3000 });
+        /* Short timeout: after `saveResp` resolves the toast may already be showing; a long
+         * wait here lets the 2s success toast disappear before we assert "Saved". */
+        await expect(saveBtn).toContainText(/Saving/i, { timeout: 250 });
       } catch {
         /* very fast saves may skip the intermediate label */
       }

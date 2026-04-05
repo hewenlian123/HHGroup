@@ -436,8 +436,8 @@ export default function SitePhotosPage() {
                   </button>
                   <Button
                     size="sm"
-                    variant="destructive"
-                    className="rounded-sm"
+                    variant="outline"
+                    className="btn-outline-destructive rounded-sm"
                     onClick={openBulkDeleteConfirm}
                     disabled={selectedIds.size === 0 || bulkDeleting}
                   >
@@ -462,7 +462,7 @@ export default function SitePhotosPage() {
       <div className="max-w-5xl space-y-3">
         <FilterBar className="flex-col items-stretch sm:items-stretch">
           <div className="w-full max-w-md space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Project
             </p>
             <Select
@@ -496,7 +496,7 @@ export default function SitePhotosPage() {
                 className={`group relative text-left rounded-sm border overflow-hidden transition-colors focus-within:ring-2 focus-within:ring-ring ${
                   editMode && selectedIds.has(p.id)
                     ? "border-foreground/80 ring-1 ring-foreground/20"
-                    : "border-[#E5E7EB] hover:bg-[#F9FAFB] dark:border-border/60 dark:hover:bg-muted/30"
+                    : "border-gray-300 hover:bg-[#F9FAFB] dark:border-border/60 dark:hover:bg-muted/30"
                 }`}
               >
                 <div
@@ -646,9 +646,9 @@ export default function SitePhotosPage() {
               Cancel
             </Button>
             <Button
-              variant="destructive"
+              variant="outline"
               size="sm"
-              className="rounded-sm"
+              className="btn-outline-destructive rounded-sm"
               onClick={handleConfirmDelete}
               disabled={deleting}
             >
@@ -681,9 +681,9 @@ export default function SitePhotosPage() {
               Cancel
             </Button>
             <Button
-              variant="destructive"
+              variant="outline"
               size="sm"
-              className="rounded-sm"
+              className="btn-outline-destructive rounded-sm"
               onClick={handleBulkDelete}
               disabled={bulkDeleting}
             >
@@ -854,7 +854,7 @@ export default function SitePhotosPage() {
       >
         {selectedPhoto && (
           <div className="space-y-4">
-            <div className="rounded-sm border border-[#E5E7EB] overflow-hidden bg-background min-h-[8rem] flex items-center justify-center dark:border-border/60">
+            <div className="rounded-sm border border-gray-300 overflow-hidden bg-background min-h-[8rem] flex items-center justify-center dark:border-border/60">
               {failedPhotoIds.has(selectedPhoto.id) ? (
                 <span className="text-sm text-muted-foreground">Photo unavailable</span>
               ) : (
@@ -903,7 +903,8 @@ export default function SitePhotosPage() {
               </Button>
               <Button
                 size="sm"
-                variant="destructive"
+                variant="outline"
+                className="btn-outline-destructive"
                 onClick={() => setDeleteConfirmPhoto(selectedPhoto)}
                 disabled={deleting}
               >
@@ -932,7 +933,7 @@ export default function SitePhotosPage() {
           onClick={() => setUploadOpen(false)}
         >
           <div
-            className="bg-background border border-[#E5E7EB] rounded-sm p-4 w-full max-w-sm space-y-3 dark:border-border/60"
+            className="bg-background border border-gray-300 rounded-sm p-4 w-full max-w-sm space-y-3 dark:border-border/60"
             onClick={(e) => e.stopPropagation()}
           >
             <p className="text-sm font-medium">Upload Photo</p>

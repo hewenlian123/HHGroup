@@ -429,7 +429,7 @@ export function ProjectDetailClient({ id }: { id: string }) {
         </div>
 
         {state.error ? (
-          <div className="rounded-[12px] border border-[#E5E7EB] bg-white px-4 py-3 text-sm text-muted-foreground">
+          <div className="rounded-[12px] border border-gray-300 bg-white px-4 py-3 text-sm text-muted-foreground">
             {state.error}
           </div>
         ) : null}

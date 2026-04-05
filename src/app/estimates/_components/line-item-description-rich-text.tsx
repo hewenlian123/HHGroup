@@ -124,9 +124,12 @@ export const LineItemDescriptionRichText = React.forwardRef<
       <div className="flex flex-wrap items-center gap-0.5 border-b border-border/60 bg-muted/20 px-1.5 py-1">
         <Button
           type="button"
-          variant="ghost"
+          variant="outline"
           size="sm"
-          className={cn("h-7 w-7 shrink-0 rounded-sm p-0", editor.isActive("bold") && "bg-muted")}
+          className={cn(
+            "btn-outline-ghost h-7 w-7 shrink-0 rounded-sm p-0",
+            editor.isActive("bold") && "bg-muted"
+          )}
           disabled={disabled}
           onClick={() => editor.chain().focus().toggleBold().run()}
           title="Bold"
@@ -135,9 +138,12 @@ export const LineItemDescriptionRichText = React.forwardRef<
         </Button>
         <Button
           type="button"
-          variant="ghost"
+          variant="outline"
           size="sm"
-          className={cn("h-7 w-7 shrink-0 rounded-sm p-0", editor.isActive("italic") && "bg-muted")}
+          className={cn(
+            "btn-outline-ghost h-7 w-7 shrink-0 rounded-sm p-0",
+            editor.isActive("italic") && "bg-muted"
+          )}
           disabled={disabled}
           onClick={() => editor.chain().focus().toggleItalic().run()}
           title="Italic"
@@ -146,10 +152,10 @@ export const LineItemDescriptionRichText = React.forwardRef<
         </Button>
         <Button
           type="button"
-          variant="ghost"
+          variant="outline"
           size="sm"
           className={cn(
-            "h-7 w-7 shrink-0 rounded-sm p-0",
+            "btn-outline-ghost h-7 w-7 shrink-0 rounded-sm p-0",
             editor.isActive("underline") && "bg-muted"
           )}
           disabled={disabled}
@@ -161,10 +167,10 @@ export const LineItemDescriptionRichText = React.forwardRef<
         <span className="mx-0.5 h-4 w-px bg-border shrink-0" aria-hidden />
         <Button
           type="button"
-          variant="ghost"
+          variant="outline"
           size="sm"
           className={cn(
-            "h-7 w-7 shrink-0 rounded-sm p-0",
+            "btn-outline-ghost h-7 w-7 shrink-0 rounded-sm p-0",
             editor.isActive("bulletList") && "bg-muted"
           )}
           disabled={disabled}
@@ -175,10 +181,10 @@ export const LineItemDescriptionRichText = React.forwardRef<
         </Button>
         <Button
           type="button"
-          variant="ghost"
+          variant="outline"
           size="sm"
           className={cn(
-            "h-7 w-7 shrink-0 rounded-sm p-0",
+            "btn-outline-ghost h-7 w-7 shrink-0 rounded-sm p-0",
             editor.isActive("orderedList") && "bg-muted"
           )}
           disabled={disabled}

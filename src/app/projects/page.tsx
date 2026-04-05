@@ -45,7 +45,7 @@ export default async function ProjectsPage() {
   });
 
   return (
-    <div className="min-h-full bg-[#F8F7F4]">
+    <div className="min-h-full bg-page">
       <ProjectsListClient rows={rows} dataLoadWarning={dataLoadWarning} />
     </div>
   );

@@ -92,13 +92,13 @@ export default function SettingsUsersPage() {
       />
 
       {message ? (
-        <div className="rounded-lg border border-[#E5E7EB] bg-background px-3 py-2 text-sm text-muted-foreground dark:border-border">
+        <div className="rounded-lg border border-gray-300 bg-background px-3 py-2 text-sm text-muted-foreground dark:border-border">
           {message}
         </div>
       ) : null}
 
-      <Card className="border-[#E5E7EB] p-4 dark:border-border">
-        <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground mb-2">
+      <Card className="border-gray-300 p-4 dark:border-border">
+        <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground mb-2">
           Invite note (optional)
         </p>
         <Input
@@ -108,11 +108,11 @@ export default function SettingsUsersPage() {
         />
       </Card>
 
-      <Card className="overflow-hidden border-[#E5E7EB] p-0 dark:border-border">
+      <Card className="overflow-hidden border-gray-300 p-0 dark:border-border">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#E5E7EB] bg-white dark:border-border/60 dark:bg-muted/30">
+              <tr className="border-b border-gray-300 bg-white dark:border-border/60 dark:bg-muted/30">
                 <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">
                   Email
                 </th>
@@ -133,7 +133,7 @@ export default function SettingsUsersPage() {
                 </tr>
               ) : null}
               {rows.map((row) => (
-                <tr key={row.id} className="border-b border-[#E5E7EB]/80 dark:border-border/30">
+                <tr key={row.id} className="border-b border-gray-300/80 dark:border-border/30">
                   <td className="px-4 py-3 text-foreground">{row.email || row.id}</td>
                   <td className="px-4 py-3">
                     {row.role === "owner" ? (

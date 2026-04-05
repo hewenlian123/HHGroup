@@ -90,7 +90,7 @@ export function CreatableSelect({
   return (
     <div ref={containerRef} className="relative">
       {label ? (
-        <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+        <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
           {label}
         </label>
       ) : null}
@@ -103,7 +103,7 @@ export function CreatableSelect({
         onBlur={handleBlur}
         placeholder={value ? undefined : placeholder}
         className={cn(
-          "flex h-10 min-h-[44px] w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm text-[#111827] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#111827]/10 dark:border-border dark:bg-card dark:text-foreground dark:focus-visible:ring-ring/30 lg:min-h-10",
+          "flex h-10 min-h-[44px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-text-primary shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#111827]/10 dark:border-border dark:bg-card dark:text-foreground dark:focus-visible:ring-ring/30 lg:min-h-10",
           label ? "mt-1" : ""
         )}
         aria-autocomplete="list"
@@ -111,7 +111,7 @@ export function CreatableSelect({
       {isOpen && (
         <ul
           role="listbox"
-          className="absolute z-[100] mt-1 max-h-56 w-full overflow-auto rounded-xl border border-[#E5E7EB] bg-white py-2 shadow-lg dark:border-border dark:bg-popover dark:shadow-md"
+          className="absolute z-[100] mt-1 max-h-56 w-full overflow-auto rounded-xl border border-gray-300 bg-white py-2 shadow-lg dark:border-border dark:bg-popover dark:shadow-md"
         >
           {filtered.map((opt) => (
             <li

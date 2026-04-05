@@ -9,7 +9,7 @@ import { DevUnregisterServiceWorker } from "@/components/dev-unregister-service-
 const AppShell = dynamic(() => import("@/components/layout/app-shell").then((m) => m.AppShell), {
   ssr: false,
   loading: () => (
-    <div className="min-h-screen bg-[#F8F7F4] flex items-center justify-center text-sm text-muted-foreground">
+    <div className="flex min-h-screen items-center justify-center bg-page text-sm text-muted-foreground">
       Loading…
     </div>
   ),

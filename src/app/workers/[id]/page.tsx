@@ -384,9 +384,9 @@ export default function WorkerDashboardPage() {
                             <td className="px-1 py-1.5 text-right">
                               <Button
                                 type="button"
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
-                                className="h-8 w-8 shrink-0 rounded-sm p-0"
+                                className="btn-outline-ghost h-8 w-8 shrink-0 rounded-sm p-0"
                                 aria-expanded={open}
                                 aria-label={open ? `Collapse ${row.label}` : `Expand ${row.label}`}
                                 onClick={(e) => {

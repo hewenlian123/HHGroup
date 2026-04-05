@@ -72,18 +72,18 @@ async function postCommissionReceiptWithProgress(
   });
 }
 
-const COMMISSION_PAGE_BG = "bg-[#F8F7F4]";
+const COMMISSION_PAGE_BG = "bg-page";
 const COMMISSION_MODAL =
   "max-w-[480px] w-full gap-0 border-0 p-8 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-xl sm:rounded-xl sm:max-w-[480px]";
-const COMMISSION_LABEL = "mb-1.5 block text-[12px] font-medium text-[#6B7280]";
+const COMMISSION_LABEL = "mb-1.5 block text-[12px] font-medium text-text-secondary";
 const COMMISSION_FIELD =
-  "h-10 rounded-lg border border-[#E5E7EB] bg-white text-[14px] focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black";
+  "h-10 rounded-lg border border-gray-300 bg-white text-[14px] focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black";
 
 const RECEIPT_UPLOAD_MODAL =
-  "max-w-[480px] w-full gap-0 rounded-[14px] border-[0.5px] border-[#E5E7EB] bg-white p-8 shadow-[0_8px_30px_rgba(0,0,0,0.12)] sm:max-w-[480px]";
+  "max-w-[480px] w-full gap-0 rounded-[14px] border-[0.5px] border-gray-300 bg-white p-8 shadow-[0_8px_30px_rgba(0,0,0,0.12)] sm:max-w-[480px]";
 function PaymentStatusPill({ status }: { status: CommissionPaymentStatus }) {
   const map = {
-    unpaid: { bg: "bg-[#F3F4F6]", text: "text-[#6B7280]", label: "Unpaid" },
+    unpaid: { bg: "bg-[#F3F4F6]", text: "text-text-secondary", label: "Unpaid" },
     partial: { bg: "bg-[#FEF9C3]", text: "text-[#854D0E]", label: "Partial" },
     paid: { bg: "bg-[#DCFCE7]", text: "text-[#166534]", label: "Paid" },
   } as const;
@@ -805,13 +805,13 @@ export function CommissionsClient({
       )}
     >
       <PageHeader
-        className="text-[#111827]"
+        className="text-text-primary"
         title="Commission Payments"
         description="Track commissions and record payments."
       />
 
       {loadError ? (
-        <p className="border-b border-[#E5E7EB] pb-3 text-sm text-destructive" role="alert">
+        <p className="border-b border-gray-300 pb-3 text-sm text-destructive" role="alert">
           {loadError}
         </p>
       ) : null}
@@ -829,7 +829,7 @@ export function CommissionsClient({
             <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
               {label}
             </p>
-            <p className="mt-2 font-mono text-2xl font-bold tabular-nums text-[#111827]">
+            <p className="mt-2 font-mono text-2xl font-bold tabular-nums text-text-primary">
               ${fmtUsd(value)}
             </p>
           </div>
@@ -877,7 +877,7 @@ export function CommissionsClient({
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-[14px]">
             <thead>
-              <tr className="border-b-2 border-[#E5E7EB]">
+              <tr className="border-b-2 border-gray-300">
                 <th className="w-10 px-3 py-3" aria-label="Expand" />
                 <th className="px-3 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
                   Project
@@ -908,13 +908,13 @@ export function CommissionsClient({
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-10 text-center text-[14px] text-[#6B7280]">
+                  <td colSpan={9} className="py-10 text-center text-[14px] text-text-secondary">
                     No commissions.
                   </td>
                 </tr>
               ) : filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-10 text-center text-[14px] text-[#6B7280]">
+                  <td colSpan={9} className="py-10 text-center text-[14px] text-text-secondary">
                     No rows match your filters.
                   </td>
                 </tr>
@@ -929,7 +929,7 @@ export function CommissionsClient({
                       <td className="px-3 py-4 align-middle" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
-                          className="flex h-8 w-8 items-center justify-center rounded-lg text-[#6B7280] hover:bg-[#F3F4F6]"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary hover:bg-[#F3F4F6]"
                           data-testid={`financial-commission-expand-${r.id}`}
                           aria-expanded={expandedIds.has(r.id)}
                           aria-label={
@@ -944,18 +944,18 @@ export function CommissionsClient({
                           )}
                         </button>
                       </td>
-                      <td className="px-3 py-4 font-medium text-[#111827] hover:underline">
+                      <td className="px-3 py-4 font-medium text-text-primary hover:underline">
                         {r.project_name || "—"}
                       </td>
                       <td className="px-3 py-4 text-[#374151]">{r.person_name || "—"}</td>
-                      <td className="px-3 py-4 text-[#6B7280]">{r.role}</td>
-                      <td className="px-3 py-4 text-right font-mono tabular-nums text-[#111827]">
+                      <td className="px-3 py-4 text-text-secondary">{r.role}</td>
+                      <td className="px-3 py-4 text-right font-mono tabular-nums text-text-primary">
                         ${fmtUsd(r.commission_amount)}
                       </td>
-                      <td className="px-3 py-4 text-right font-mono tabular-nums text-[#6B7280]">
+                      <td className="px-3 py-4 text-right font-mono tabular-nums text-text-secondary">
                         ${fmtUsd(r.paid_amount)}
                       </td>
-                      <td className="px-3 py-4 text-right font-mono tabular-nums font-medium text-[#111827]">
+                      <td className="px-3 py-4 text-right font-mono tabular-nums font-medium text-text-primary">
                         ${fmtUsd(r.outstanding_amount)}
                       </td>
                       <td className="px-3 py-4">
@@ -966,7 +966,7 @@ export function CommissionsClient({
                           {r.payment_status !== "paid" ? (
                             <button
                               type="button"
-                              className="text-[14px] font-medium text-[#111827] hover:underline"
+                              className="text-[14px] font-medium text-text-primary hover:underline"
                               data-testid={`financial-commission-record-payment-${r.id}`}
                               aria-label="Record payment"
                               onClick={() => openPaymentModal(r)}
@@ -976,7 +976,7 @@ export function CommissionsClient({
                           ) : null}
                           <button
                             type="button"
-                            className="text-[14px] font-medium text-[#6B7280] hover:text-[#111827] hover:underline"
+                            className="text-[14px] font-medium text-text-secondary hover:text-text-primary hover:underline"
                             data-testid={`financial-commission-view-pdf-${r.id}`}
                             aria-label="View commission summary PDF"
                             onClick={(e) => {
@@ -988,7 +988,7 @@ export function CommissionsClient({
                           </button>
                           <button
                             type="button"
-                            className="text-[14px] font-medium text-[#6B7280] hover:text-[#111827] hover:underline"
+                            className="text-[14px] font-medium text-text-secondary hover:text-text-primary hover:underline"
                             data-testid={`financial-commission-edit-${r.id}`}
                             onClick={() => openEditModal(r)}
                           >
@@ -1012,9 +1012,11 @@ export function CommissionsClient({
                         <td colSpan={9} className="bg-[#EDE9E1]/90 p-0">
                           <div className="px-6 py-4 pl-14">
                             {paymentsLoadingId === r.id ? (
-                              <p className="text-[12px] text-[#6B7280]">Loading payments…</p>
+                              <p className="text-[12px] text-text-secondary">Loading payments…</p>
                             ) : (paymentsByCommission[r.id] ?? []).length === 0 ? (
-                              <p className="text-[12px] text-[#6B7280]">No payments recorded.</p>
+                              <p className="text-[12px] text-text-secondary">
+                                No payments recorded.
+                              </p>
                             ) : (
                               <div className="overflow-x-auto">
                                 <table className="w-full border-collapse text-[13px]">
@@ -1045,16 +1047,16 @@ export function CommissionsClient({
                                         data-testid={`financial-payment-row-${p.id}`}
                                         onClick={(e) => e.stopPropagation()}
                                       >
-                                        <td className="py-2.5 pr-4 font-mono tabular-nums text-[#6B7280]">
+                                        <td className="py-2.5 pr-4 font-mono tabular-nums text-text-secondary">
                                           {p.payment_date || "—"}
                                         </td>
-                                        <td className="py-2.5 pr-4 text-right font-mono tabular-nums text-[#111827]">
+                                        <td className="py-2.5 pr-4 text-right font-mono tabular-nums text-text-primary">
                                           ${fmtUsd(p.amount)}
                                         </td>
                                         <td className="py-2.5 pr-4 text-[#374151]">
                                           {p.payment_method}
                                         </td>
-                                        <td className="max-w-[16rem] truncate py-2.5 pr-4 text-[#6B7280]">
+                                        <td className="max-w-[16rem] truncate py-2.5 pr-4 text-text-secondary">
                                           {p.note || "—"}
                                         </td>
                                         <td className="py-2.5 text-right">
@@ -1098,7 +1100,7 @@ export function CommissionsClient({
                                             ) : (
                                               <button
                                                 type="button"
-                                                className="rounded-md p-1.5 text-[#9CA3AF] hover:bg-white hover:text-[#6B7280]"
+                                                className="rounded-md p-1.5 text-[#9CA3AF] hover:bg-white hover:text-text-secondary"
                                                 data-testid={`financial-payment-receipt-upload-${p.id}`}
                                                 aria-label="Upload receipt"
                                                 onClick={(e) => openReceiptUploadModal(r, p, e)}
@@ -1108,7 +1110,7 @@ export function CommissionsClient({
                                             )}
                                             <button
                                               type="button"
-                                              className="rounded-md p-1.5 text-[#6B7280] hover:bg-white hover:text-[#111827]"
+                                              className="rounded-md p-1.5 text-text-secondary hover:bg-white hover:text-text-primary"
                                               data-testid={`financial-payment-view-pdf-${p.id}`}
                                               aria-label="View payment receipt PDF"
                                               onClick={(e) => {
@@ -1120,7 +1122,7 @@ export function CommissionsClient({
                                             </button>
                                             <button
                                               type="button"
-                                              className="rounded-md p-1.5 text-[#6B7280] hover:bg-white hover:text-[#111827]"
+                                              className="rounded-md p-1.5 text-text-secondary hover:bg-white hover:text-text-primary"
                                               data-testid={`financial-payment-edit-${p.id}`}
                                               aria-label="Edit payment"
                                               onClick={(e) => openPaymentRecordEdit(r, p, e)}
@@ -1165,10 +1167,12 @@ export function CommissionsClient({
       >
         <DialogContent className={COMMISSION_MODAL}>
           <DialogHeader className="space-y-1 text-left">
-            <DialogTitle className="text-xl font-bold text-[#111827]">Edit Commission</DialogTitle>
+            <DialogTitle className="text-xl font-bold text-text-primary">
+              Edit Commission
+            </DialogTitle>
           </DialogHeader>
           {editRow && (
-            <p className="text-[13px] leading-snug text-[#6B7280]">
+            <p className="text-[13px] leading-snug text-text-secondary">
               {editRow.project_name || "Project"} · Paid ${fmtUsd(editRow.paid_amount)}
             </p>
           )}
@@ -1217,7 +1221,7 @@ export function CommissionsClient({
               <Button
                 type="button"
                 variant="outline"
-                className="h-10 rounded-lg border-[#E5E7EB] bg-white text-[14px] font-medium text-[#6B7280] hover:bg-[#F9FAFB]"
+                className="h-10 rounded-lg border-gray-300 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
                 data-testid="financial-commission-edit-cancel"
                 onClick={() => setEditModalOpen(false)}
               >
@@ -1248,10 +1252,10 @@ export function CommissionsClient({
       >
         <DialogContent className={COMMISSION_MODAL}>
           <DialogHeader className="space-y-1 text-left">
-            <DialogTitle className="text-xl font-bold text-[#111827]">Edit Payment</DialogTitle>
+            <DialogTitle className="text-xl font-bold text-text-primary">Edit Payment</DialogTitle>
           </DialogHeader>
           {paymentEditParent && paymentEditRecord && (
-            <p className="text-[13px] leading-snug text-[#6B7280]">
+            <p className="text-[13px] leading-snug text-text-secondary">
               {paymentEditParent.person_name} · {paymentEditParent.project_name}
             </p>
           )}
@@ -1314,7 +1318,7 @@ export function CommissionsClient({
               <Button
                 type="button"
                 variant="outline"
-                className="h-10 rounded-lg border-[#E5E7EB] bg-white text-[14px] font-medium text-[#6B7280] hover:bg-[#F9FAFB]"
+                className="h-10 rounded-lg border-gray-300 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
                 data-testid="financial-payment-edit-cancel"
                 onClick={() => setPaymentEditOpen(false)}
               >
@@ -1342,10 +1346,12 @@ export function CommissionsClient({
       >
         <DialogContent className={COMMISSION_MODAL}>
           <DialogHeader className="space-y-1 text-left">
-            <DialogTitle className="text-xl font-bold text-[#111827]">Record Payment</DialogTitle>
+            <DialogTitle className="text-xl font-bold text-text-primary">
+              Record Payment
+            </DialogTitle>
           </DialogHeader>
           {selectedCommission && (
-            <p className="text-[13px] leading-snug text-[#6B7280]">
+            <p className="text-[13px] leading-snug text-text-secondary">
               {selectedCommission.person_name} · {selectedCommission.project_name} · Outstanding: $
               {fmtUsd(selectedCommission.outstanding_amount)}
             </p>
@@ -1405,7 +1411,7 @@ export function CommissionsClient({
               <Button
                 type="button"
                 variant="outline"
-                className="h-10 rounded-lg border-[#E5E7EB] bg-white text-[14px] font-medium text-[#6B7280] hover:bg-[#F9FAFB]"
+                className="h-10 rounded-lg border-gray-300 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
                 data-testid="financial-record-payment-cancel"
                 onClick={() => setPaymentModalOpen(false)}
               >
@@ -1432,16 +1438,18 @@ export function CommissionsClient({
       >
         <DialogContent className={COMMISSION_MODAL}>
           <DialogHeader className="text-left">
-            <DialogTitle className="text-xl font-bold text-[#111827]">Delete payment</DialogTitle>
+            <DialogTitle className="text-xl font-bold text-text-primary">
+              Delete payment
+            </DialogTitle>
           </DialogHeader>
-          <p className="text-[13px] leading-relaxed text-[#6B7280]">
+          <p className="text-[13px] leading-relaxed text-text-secondary">
             Remove this payment record? This cannot be undone.
           </p>
           <DialogFooter className="mt-6 border-t border-[#F0EDE8] bg-transparent pt-4">
             <Button
               type="button"
               variant="outline"
-              className="h-10 rounded-lg border-[#E5E7EB] bg-white text-[14px] font-medium text-[#6B7280] hover:bg-[#F9FAFB]"
+              className="h-10 rounded-lg border-gray-300 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
               onClick={() => setPaymentDeleteTarget(null)}
               disabled={paymentDeleteSubmitting}
             >
@@ -1467,13 +1475,13 @@ export function CommissionsClient({
       >
         <DialogContent className={COMMISSION_MODAL}>
           <DialogHeader className="text-left">
-            <DialogTitle className="text-xl font-bold text-[#111827]">
+            <DialogTitle className="text-xl font-bold text-text-primary">
               Delete commission
             </DialogTitle>
           </DialogHeader>
-          <p className="text-[13px] leading-relaxed text-[#6B7280]">
+          <p className="text-[13px] leading-relaxed text-text-secondary">
             Remove commission for{" "}
-            <span className="font-medium text-[#111827]">
+            <span className="font-medium text-text-primary">
               {commissionDeleteTarget?.person_name?.trim() || "this person"}
             </span>
             ? This cannot be undone.
@@ -1482,7 +1490,7 @@ export function CommissionsClient({
             <Button
               type="button"
               variant="outline"
-              className="h-10 rounded-lg border-[#E5E7EB] bg-white text-[14px] font-medium text-[#6B7280] hover:bg-[#F9FAFB]"
+              className="h-10 rounded-lg border-gray-300 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
               onClick={() => setCommissionDeleteTarget(null)}
               disabled={commissionDeleteSubmitting}
             >
@@ -1510,10 +1518,10 @@ export function CommissionsClient({
           {receiptUploadModal ? (
             <>
               <DialogHeader className="space-y-2 text-left">
-                <DialogTitle className="text-lg font-semibold text-[#111827]">
+                <DialogTitle className="text-lg font-semibold text-text-primary">
                   Upload Receipt
                 </DialogTitle>
-                <DialogDescription className="text-[13px] text-[#6B7280]">
+                <DialogDescription className="text-[13px] text-text-secondary">
                   {receiptUploadModal.payment.payment_date || "—"} · $
                   {fmtUsd(receiptUploadModal.payment.amount)}
                 </DialogDescription>
@@ -1583,7 +1591,7 @@ export function CommissionsClient({
                       style={{ width: `${Math.max(0, Math.min(100, receiptUploadProgress))}%` }}
                     />
                   </div>
-                  <p className="text-center text-[12px] text-[#6B7280]">Uploading…</p>
+                  <p className="text-center text-[12px] text-text-secondary">Uploading…</p>
                 </div>
               ) : null}
               {receiptUploadError ? (
@@ -1595,7 +1603,7 @@ export function CommissionsClient({
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-10 rounded-lg border-[#E5E7EB] bg-white text-[14px] font-medium text-[#6B7280] hover:bg-[#F9FAFB]"
+                  className="h-10 rounded-lg border-gray-300 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
                   disabled={receiptUploadSubmitting}
                   onClick={() => resetReceiptUploadModal()}
                 >
@@ -1615,7 +1623,7 @@ export function CommissionsClient({
       >
         <DialogContent className="flex max-h-[90vh] max-w-[920px] flex-col gap-0 overflow-hidden p-0 sm:max-w-[920px]">
           <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border/60 px-4 py-3 pr-14">
-            <DialogTitle className="text-left text-base font-semibold text-[#111827]">
+            <DialogTitle className="text-left text-base font-semibold text-text-primary">
               Commission summary
             </DialogTitle>
             <div className="flex flex-wrap gap-2">
@@ -1678,7 +1686,7 @@ export function CommissionsClient({
       >
         <DialogContent className="flex max-h-[90vh] max-w-[920px] flex-col gap-0 overflow-hidden p-0 sm:max-w-[920px]">
           <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border/60 px-4 py-3 pr-14">
-            <DialogTitle className="text-left text-base font-semibold text-[#111827]">
+            <DialogTitle className="text-left text-base font-semibold text-text-primary">
               Payment Receipt
             </DialogTitle>
             <div className="flex flex-wrap gap-2">

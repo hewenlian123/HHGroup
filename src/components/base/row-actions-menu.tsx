@@ -66,10 +66,10 @@ export function RowActionsMenu({
       <DropdownMenuTrigger asChild>
         <Button
           type="button"
-          variant="ghost"
+          variant="outline"
           size="icon"
           className={cn(
-            "h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground",
+            "btn-outline-ghost h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground",
             touchFriendly && "min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 md:h-8 md:w-8",
             appearance === "list" && listRowActionsTriggerClassName,
             className

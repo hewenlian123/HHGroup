@@ -514,9 +514,9 @@ export function EstimateEditor({
             </div>
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="rounded-md h-8 text-muted-foreground hover:text-foreground"
+              className="btn-outline-ghost rounded-md h-8 text-muted-foreground hover:text-foreground"
               onClick={() => setInfoOpen(!infoOpen)}
             >
               {infoOpen ? (
@@ -922,9 +922,9 @@ export function EstimateEditor({
                               <input type="hidden" name="costCode" value={categoryId} />
                               <Button
                                 type="submit"
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
-                                className="h-7 text-xs rounded-md border border-dashed border-zinc-300 dark:border-border text-muted-foreground hover:text-foreground"
+                                className="btn-outline-ghost h-7 text-xs rounded-md border border-dashed border-zinc-300 dark:border-border text-muted-foreground hover:text-foreground"
                               >
                                 <Plus className="h-3.5 w-3.5 mr-1.5" />
                                 Add line item
@@ -1296,7 +1296,12 @@ function LineItemRow({
             <form action={duplicateLineItemAction} className="inline">
               <input type="hidden" name="estimateId" value={estimateId} />
               <input type="hidden" name="itemId" value={row.id} />
-              <Button type="submit" variant="ghost" size="icon" className="h-8 w-8">
+              <Button
+                type="submit"
+                variant="outline"
+                size="icon"
+                className="btn-outline-ghost h-8 w-8"
+              >
                 <Copy className="h-4 w-4" />
               </Button>
             </form>
@@ -1305,9 +1310,9 @@ function LineItemRow({
               <input type="hidden" name="itemId" value={row.id} />
               <Button
                 type="submit"
-                variant="ghost"
+                variant="outline"
                 size="icon"
-                className="h-8 w-8 text-destructive"
+                className="btn-outline-ghost h-8 w-8 text-destructive"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>

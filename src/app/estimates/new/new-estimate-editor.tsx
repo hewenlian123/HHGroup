@@ -383,7 +383,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
       {/* A. Header */}
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200/60 dark:border-border pb-4">
         <div className="flex items-center gap-3">
-          <Button asChild variant="ghost" size="sm" className="rounded-md h-8">
+          <Button asChild variant="outline" size="sm" className="btn-outline-ghost rounded-md h-8">
             <Link href="/estimates">Back</Link>
           </Button>
           <h1 className="text-xl font-semibold tracking-tight text-foreground">New Estimate</h1>
@@ -426,9 +426,9 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
             ) : (
               <Button
                 type="button"
-                variant="ghost"
+                variant="outline"
                 size="sm"
-                className="rounded-md h-8 text-muted-foreground hover:text-foreground"
+                className="btn-outline-ghost rounded-md h-8 text-muted-foreground hover:text-foreground"
                 onClick={beginEstimateInfoEdit}
               >
                 Edit
@@ -761,9 +761,9 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                                 <div className="flex items-center gap-1">
                                   <Button
                                     type="button"
-                                    variant="ghost"
+                                    variant="outline"
                                     size="icon"
-                                    className="h-8 w-8"
+                                    className="btn-outline-ghost h-8 w-8"
                                     onClick={() => duplicateItem(row.id)}
                                     title="Duplicate"
                                   >
@@ -771,9 +771,9 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                                   </Button>
                                   <Button
                                     type="button"
-                                    variant="ghost"
+                                    variant="outline"
                                     size="icon"
-                                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                    className="btn-outline-ghost h-8 w-8 text-muted-foreground hover:text-destructive"
                                     onClick={() => deleteItem(row.id)}
                                     title="Delete"
                                   >
@@ -800,9 +800,9 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                   <div className="px-4 py-2 border-t border-zinc-100/50 dark:border-border/30">
                     <Button
                       type="button"
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
-                      className="h-8 text-muted-foreground hover:text-foreground"
+                      className="btn-outline-ghost h-8 text-muted-foreground hover:text-foreground"
                       onClick={() => addLineItem(code)}
                     >
                       <Plus className="h-4 w-4 mr-2" />
@@ -914,9 +914,9 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                       <td className="py-2 px-2">
                         <Button
                           type="button"
-                          variant="ghost"
+                          variant="outline"
                           size="icon"
-                          className="h-8 w-8 text-destructive"
+                          className="btn-outline-ghost h-8 w-8 text-destructive"
                           onClick={() =>
                             setPaymentMilestones((prev) => prev.filter((x) => x.id !== m.id))
                           }

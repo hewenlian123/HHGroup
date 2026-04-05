@@ -199,15 +199,15 @@ export default function CustomerDetailPage() {
       />
 
       {message ? (
-        <div className="rounded-lg border border-[#E5E7EB] bg-background px-3 py-2 text-sm text-muted-foreground dark:border-border">
+        <div className="rounded-lg border border-gray-300 bg-background px-3 py-2 text-sm text-muted-foreground dark:border-border">
           {message}
         </div>
       ) : null}
 
-      <Card className="border-[#E5E7EB] p-4 dark:border-border">
+      <Card className="border-gray-300 p-4 dark:border-border">
         <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Customer Name
             </p>
             <Input
@@ -225,7 +225,7 @@ export default function CustomerDetailPage() {
             />
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Phone
             </p>
             <Input
@@ -235,7 +235,7 @@ export default function CustomerDetailPage() {
             />
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Email
             </p>
             <Input
@@ -245,7 +245,7 @@ export default function CustomerDetailPage() {
             />
           </div>
           <div className="space-y-1 md:col-span-2">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Address
             </p>
             <Input
@@ -255,7 +255,7 @@ export default function CustomerDetailPage() {
             />
           </div>
           <div className="space-y-1 md:col-span-2">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Notes
             </p>
             <Input
@@ -265,7 +265,7 @@ export default function CustomerDetailPage() {
             />
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Status
             </p>
             <Select

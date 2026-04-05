@@ -135,17 +135,17 @@ export function BillRowActions({
       {isDraft ? (
         <>
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
-            className="h-7 text-xs"
+            className="btn-outline-ghost h-7 text-xs"
             onClick={() => setEditOpen(true)}
           >
             Edit
           </Button>
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
-            className="h-7 text-xs text-red-600"
+            className="btn-outline-ghost h-7 text-xs text-red-600"
             onClick={handleDelete}
             disabled={busy}
           >
@@ -156,17 +156,17 @@ export function BillRowActions({
       {isApproved ? (
         <>
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
-            className="h-7 text-xs"
+            className="btn-outline-ghost h-7 text-xs"
             onClick={() => setPayOpen(true)}
           >
             Record payment
           </Button>
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
-            className="h-7 text-xs text-muted-foreground"
+            className="btn-outline-ghost h-7 text-xs text-muted-foreground"
             onClick={handleVoid}
             disabled={busy}
           >

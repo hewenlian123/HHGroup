@@ -50,7 +50,7 @@ export function EstimatePreviewShell({ estimateId, estimateNumber, children }: P
   return (
     <div className="mx-auto max-w-[8.5in] px-4 py-4 print:px-0 print:py-0">
       <div className="mb-4 flex flex-wrap items-center gap-2 print:hidden">
-        <Button variant="ghost" size="sm" className="rounded-sm h-8" asChild>
+        <Button variant="outline" size="sm" className="btn-outline-ghost rounded-sm h-8" asChild>
           <Link href={`/estimates/${estimateId}`}>
             <ArrowLeft className="h-4 w-4 mr-1" />
             Back to estimate

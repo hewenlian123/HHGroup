@@ -448,7 +448,7 @@ export function UploadReceiptClient() {
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            className="w-full min-h-[64px] rounded-sm border border-dashed border-[#E5E7EB] bg-background px-4 py-4 text-center text-base text-muted-foreground dark:border-border"
+            className="w-full min-h-[64px] rounded-sm border border-dashed border-gray-300 bg-background px-4 py-4 text-center text-base text-muted-foreground dark:border-border"
           >
             {file ? (
               <span className="text-foreground font-medium">{file.name}</span>

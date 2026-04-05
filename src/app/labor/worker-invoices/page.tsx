@@ -387,9 +387,9 @@ export default function WorkerInvoicesPage() {
                   </td>
                   <td className="py-2 px-4">
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
-                      className="h-8"
+                      className="btn-outline-ghost h-8"
                       onClick={() => toggleStatus(r)}
                     >
                       {r.status}
@@ -413,16 +413,16 @@ export default function WorkerInvoicesPage() {
                     <div className="flex gap-1">
                       <Button
                         size="sm"
-                        variant="ghost"
-                        className="h-8"
+                        variant="outline"
+                        className="btn-outline-ghost h-8"
                         onClick={() => handleEdit(r)}
                       >
                         Edit
                       </Button>
                       <Button
                         size="sm"
-                        variant="ghost"
-                        className="h-8 text-red-600"
+                        variant="outline"
+                        className="btn-outline-ghost h-8 text-red-600"
                         onClick={() => handleDelete(r.id)}
                       >
                         Delete

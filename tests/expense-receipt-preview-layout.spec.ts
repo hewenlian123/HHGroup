@@ -3,6 +3,7 @@ import { E2E_PRESERVED_PROJECT_ID } from "./e2e-cleanup-db";
 import {
   pickOrCreatePaymentInSelect,
   prepareReceiptQueueRowForConfirm,
+  receiptQueueRowByFileName,
 } from "./e2e-expenses-helpers";
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -40,7 +41,7 @@ test.describe("Expense receipt preview (layout)", () => {
       buffer: PNG_1X1,
     });
 
-    const queueRow = page.locator("tbody tr").filter({ hasText: queueFileName }).first();
+    const queueRow = receiptQueueRowByFileName(page, queueFileName);
     await expect(queueRow).toBeVisible({ timeout: 120_000 });
     await prepareReceiptQueueRowForConfirm(page, queueRow, {
       vendor: vendorMark,

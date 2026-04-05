@@ -508,12 +508,19 @@ export default function InvoiceDetailClient() {
           {canDeleteInvoice ? (
             deleteConfirm ? (
               <>
-                <Button variant="destructive" size="sm" disabled={busy} onClick={handleDelete}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={busy}
+                  onClick={handleDelete}
+                  className="btn-outline-destructive"
+                >
                   Confirm Delete
                 </Button>
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
+                  className="btn-outline-ghost"
                   disabled={busy}
                   onClick={() => setDeleteConfirm(false)}
                 >
@@ -552,12 +559,19 @@ export default function InvoiceDetailClient() {
           {!isVoid ? (
             voidConfirm ? (
               <>
-                <Button variant="destructive" size="sm" disabled={busy} onClick={handleVoid}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={busy}
+                  onClick={handleVoid}
+                  className="btn-outline-destructive"
+                >
                   Confirm Void
                 </Button>
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
+                  className="btn-outline-ghost"
                   disabled={busy}
                   onClick={() => setVoidConfirm(false)}
                 >
@@ -750,9 +764,9 @@ export default function InvoiceDetailClient() {
                     <td className="py-3 px-4 text-right">
                       {p.status === "Posted" ? (
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
-                          className="h-8 text-red-600 hover:text-red-700"
+                          className="btn-outline-ghost h-8 text-red-600 hover:text-red-700"
                           disabled={busy || isVoid}
                           onClick={() => handleVoidPayment(p.id)}
                           title="Void payment"

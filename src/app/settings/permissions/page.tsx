@@ -135,14 +135,14 @@ export default function SettingsPermissionsPage() {
         }
       />
       {message ? (
-        <div className="rounded-lg border border-[#E5E7EB] bg-background px-3 py-2 text-sm text-muted-foreground dark:border-border">
+        <div className="rounded-lg border border-gray-300 bg-background px-3 py-2 text-sm text-muted-foreground dark:border-border">
           {message}
         </div>
       ) : null}
 
       <FilterBar className="flex-col items-stretch sm:items-stretch">
         <div className="w-full max-w-xs space-y-1">
-          <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+          <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
             Role
           </p>
           <Select
@@ -157,12 +157,12 @@ export default function SettingsPermissionsPage() {
         </div>
       </FilterBar>
 
-      <Card className="border-[#E5E7EB] p-5 dark:border-border">
+      <Card className="border-gray-300 p-5 dark:border-border">
         <div className="space-y-4">
           {PERMISSION_GROUPS.map((group) => (
             <div
               key={group.title}
-              className="rounded-sm border border-[#E5E7EB] p-3 dark:border-border/60"
+              className="rounded-sm border border-gray-300 p-3 dark:border-border/60"
             >
               <p className="mb-2 text-sm font-semibold text-foreground">{group.title}</p>
               <div className="grid gap-2 md:grid-cols-2">

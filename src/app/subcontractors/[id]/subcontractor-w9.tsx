@@ -77,10 +77,11 @@ export function SubcontractorW9({
           </Button>
           <Button
             type="button"
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={handleRemove}
             disabled={uploading}
+            className="btn-outline-ghost"
           >
             Remove
           </Button>

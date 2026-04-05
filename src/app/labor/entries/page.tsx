@@ -287,7 +287,7 @@ function DailyEntriesPageInner() {
       <FilterBar>
         <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-6">
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               From
             </p>
             <Input
@@ -300,7 +300,7 @@ function DailyEntriesPageInner() {
             />
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               To
             </p>
             <Input
@@ -311,7 +311,7 @@ function DailyEntriesPageInner() {
             />
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Worker
             </p>
             <Select
@@ -329,7 +329,7 @@ function DailyEntriesPageInner() {
             </Select>
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Project
             </p>
             <Select
@@ -347,7 +347,7 @@ function DailyEntriesPageInner() {
             </Select>
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Status
             </p>
             <Select
@@ -367,7 +367,7 @@ function DailyEntriesPageInner() {
             </Select>
           </div>
           <div className="space-y-1 sm:col-span-2 lg:col-span-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Search
             </p>
             <Input
@@ -380,7 +380,7 @@ function DailyEntriesPageInner() {
         </div>
       </FilterBar>
       {selectedIds.size > 0 ? (
-        <div className="flex flex-wrap items-center gap-2 border-b border-[#E5E7EB] py-2 dark:border-border/60">
+        <div className="flex flex-wrap items-center gap-2 border-b border-gray-300 py-2 dark:border-border/60">
           <span className="text-xs text-muted-foreground">{selectedIds.size} selected</span>
           <Button variant="outline" size="sm" onClick={handleBulkSubmit} disabled={!!bulkAction}>
             {bulkAction === "submit" ? "…" : "Submit"}
@@ -391,7 +391,12 @@ function DailyEntriesPageInner() {
           <Button variant="outline" size="sm" onClick={handleBulkLock} disabled={!!bulkAction}>
             {bulkAction === "lock" ? "…" : "Lock"}
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="btn-outline-ghost"
+            onClick={() => setSelectedIds(new Set())}
+          >
             Clear
           </Button>
         </div>
@@ -402,14 +407,14 @@ function DailyEntriesPageInner() {
         </div>
       ) : null}
       {message ? (
-        <div className="rounded-lg border border-[#E5E7EB] bg-background px-3 py-2 text-sm text-muted-foreground dark:border-border">
+        <div className="rounded-lg border border-gray-300 bg-background px-3 py-2 text-sm text-muted-foreground dark:border-border">
           {message}
         </div>
       ) : null}
-      <div className="overflow-x-auto border-t border-[#E5E7EB] dark:border-border/60">
+      <div className="overflow-x-auto border-t border-gray-300 dark:border-border/60">
         <table className="w-full text-sm border-collapse">
           <thead>
-            <tr className="border-b border-[#E5E7EB] bg-white dark:border-border/60 dark:bg-muted/30">
+            <tr className="border-b border-gray-300 bg-white dark:border-border/60 dark:bg-muted/30">
               <th className="w-8 px-1">
                 <input
                   type="checkbox"
@@ -474,7 +479,7 @@ function DailyEntriesPageInner() {
                   <tr
                     key={row.id}
                     className={cn(
-                      "border-b border-[#E5E7EB]/80 dark:border-border/40",
+                      "border-b border-gray-300/80 dark:border-border/40",
                       !rowLocked && listTableRowClassName
                     )}
                     onClick={() => {
@@ -532,18 +537,18 @@ function DailyEntriesPageInner() {
                     <td className="py-1.5 px-1" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1">
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
-                          className="h-7 text-xs"
+                          className="btn-outline-ghost h-7 text-xs"
                           onClick={() => openEdit(row)}
                           disabled={rowLocked}
                         >
                           Edit
                         </Button>
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
-                          className="h-7 text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                          className="btn-outline-ghost h-7 text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                           onClick={() => handleDelete(row)}
                           disabled={rowLocked || deletingId === row.id}
                         >

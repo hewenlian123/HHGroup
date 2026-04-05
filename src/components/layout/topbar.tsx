@@ -166,16 +166,16 @@ export function Topbar({
   return (
     <header
       className={cn(
-        "sticky top-0 z-40 flex h-11 shrink-0 items-center border-b border-[#E5E7EB] [border-bottom-width:0.5px] bg-white px-3 sm:px-4 lg:px-8 dark:border-border dark:bg-background",
+        "sticky top-0 z-40 flex h-11 shrink-0 items-center border-b border-gray-300 [border-bottom-width:0.5px] bg-white px-3 sm:px-4 lg:px-8 dark:border-border dark:bg-background",
         "flex-row gap-3 sm:gap-4"
       )}
     >
       <div className="flex min-w-0 flex-1 items-center gap-3 sm:gap-4">
         {/* Mobile (<640px): open drawer (hamburger). */}
         <Button
-          variant="ghost"
+          variant="outline"
           size="icon"
-          className="h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 sm:hidden"
+          className="btn-outline-ghost h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 sm:hidden"
           aria-label="Open menu"
           onClick={onOpenSidebar}
         >
@@ -183,9 +183,9 @@ export function Topbar({
         </Button>
         {/* Tablet/Desktop (640px+): collapse sidebar. */}
         <Button
-          variant="ghost"
+          variant="outline"
           size="icon"
-          className="hidden h-9 w-9 min-h-[44px] min-w-[44px] shrink-0 sm:flex"
+          className="btn-outline-ghost hidden h-9 w-9 min-h-[44px] min-w-[44px] shrink-0 sm:flex"
           aria-label="Toggle sidebar"
           onClick={onToggleSidebar}
         >
@@ -198,7 +198,7 @@ export function Topbar({
           aria-label="Breadcrumb"
           title={breadcrumbs.join(" › ")}
         >
-          <span className="truncate text-[#111827] dark:text-foreground">{breadcrumbLine}</span>
+          <span className="truncate text-text-primary dark:text-foreground">{breadcrumbLine}</span>
         </nav>
       </div>
 
@@ -219,7 +219,7 @@ export function Topbar({
             type="search"
             placeholder="Search projects, workers, invoices..."
             className={cn(
-              "h-[30px] w-full rounded-lg border-[0.5px] border-[#E5E7EB] bg-white pl-8 pr-2.5 text-[13px] text-[#374151] shadow-none dark:border-border dark:bg-card dark:text-foreground placeholder:text-[#9CA3AF] dark:placeholder:text-muted-foreground",
+              "h-[30px] w-full rounded-lg border-[0.5px] border-gray-300 bg-white pl-8 pr-2.5 text-[13px] text-[#374151] shadow-none dark:border-border dark:bg-card dark:text-foreground placeholder:text-[#9CA3AF] dark:placeholder:text-muted-foreground",
               "outline-none transition-colors duration-150 focus:border-[#111827] focus:ring-2 focus:ring-[#111827]/10 dark:focus:ring-ring/30",
               "min-w-0 max-sm:placeholder:opacity-0"
             )}
@@ -227,12 +227,12 @@ export function Topbar({
         </label>
         <div className="relative inline-flex shrink-0">
           <Button
-            variant="ghost"
+            variant="outline"
             size="icon"
-            className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg border-[0.5px] border-[#E5E7EB] bg-white shadow-none transition-colors duration-150 hover:bg-[#F5F7FA] dark:border-border dark:bg-card dark:hover:bg-muted"
+            className="btn-outline-ghost flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg border-[0.5px] border-gray-300 bg-white shadow-none transition-colors duration-150 hover:bg-[#F5F7FA] dark:border-border dark:bg-card dark:hover:bg-muted"
             aria-label="Notifications"
           >
-            <Bell className="h-4 w-4 text-[#6b7280] dark:text-muted-foreground" />
+            <Bell className="h-4 w-4 text-text-secondary dark:text-muted-foreground" />
           </Button>
           {systemHealth.status === "warning" && (
             <span
@@ -250,7 +250,7 @@ export function Topbar({
             <Button
               variant="outline"
               size="sm"
-              className="h-9 min-h-[44px] rounded-md border-[0.5px] border-[#E5E7EB] bg-white px-3.5 py-2.5 text-sm font-medium text-[#111827] shadow-none hover:bg-[#F5F7FA] hover:text-[#111827] sm:min-h-0 dark:border-border dark:bg-card dark:text-foreground dark:hover:bg-muted"
+              className="h-9 min-h-[44px] rounded-md border-[0.5px] border-gray-300 bg-white px-3.5 py-2.5 text-sm font-medium text-text-primary shadow-none hover:bg-[#F5F7FA] hover:text-text-primary sm:min-h-0 dark:border-border dark:bg-card dark:text-foreground dark:hover:bg-muted"
             >
               <Plus className="mr-2 h-4 w-4" />
               New
@@ -315,8 +315,8 @@ export function Topbar({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
-              variant="ghost"
-              className="relative h-9 w-9 min-h-[44px] min-w-[44px] shrink-0 rounded-full p-0 sm:min-h-0 sm:min-w-0"
+              variant="outline"
+              className="btn-outline-ghost relative h-9 w-9 min-h-[44px] min-w-[44px] shrink-0 rounded-full p-0 sm:min-h-0 sm:min-w-0"
             >
               <Avatar className="h-8 w-8">
                 {logoUrl ? (

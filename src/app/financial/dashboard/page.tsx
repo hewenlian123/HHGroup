@@ -47,7 +47,7 @@ export default async function CompanyFinancialDashboardPage() {
           actions={
             <Link
               href="/financial"
-              className="inline-flex min-h-[44px] sm:min-h-0 items-center text-sm text-[#6B7280] hover:text-[#111111]"
+              className="inline-flex min-h-[44px] sm:min-h-0 items-center text-sm text-text-secondary hover:text-[#111111]"
             >
               Financial
             </Link>

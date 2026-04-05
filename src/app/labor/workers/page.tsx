@@ -261,12 +261,12 @@ export default function LaborWorkersPage() {
       </FilterBar>
 
       {message ? (
-        <p className="border-b border-[#E5E7EB] pb-3 text-sm text-muted-foreground dark:border-border">
+        <p className="border-b border-gray-300 pb-3 text-sm text-muted-foreground dark:border-border">
           {message}
         </p>
       ) : null}
       {editorOpen ? (
-        <section className="border-b border-[#E5E7EB] pb-4 dark:border-border">
+        <section className="border-b border-gray-300 pb-4 dark:border-border">
           <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">Name</p>
@@ -326,7 +326,7 @@ export default function LaborWorkersPage() {
               </Select>
             </div>
           </div>
-          <div className="mt-4 flex flex-col-reverse items-stretch justify-end gap-2 border-t border-[#E5E7EB] pt-3 sm:flex-row sm:items-center dark:border-border">
+          <div className="mt-4 flex flex-col-reverse items-stretch justify-end gap-2 border-t border-gray-300 pt-3 sm:flex-row sm:items-center dark:border-border">
             <Button
               variant="outline"
               size="sm"

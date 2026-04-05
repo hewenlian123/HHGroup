@@ -80,9 +80,9 @@ export function ChangeOrderAttachmentsSection({
               {!readOnly && (
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  className="h-8 w-8 shrink-0 p-0 text-muted-foreground hover:text-destructive"
+                  className="btn-outline-ghost h-8 w-8 shrink-0 p-0 text-muted-foreground hover:text-destructive"
                   onClick={() => handleDelete(att.id)}
                   disabled={pending}
                 >

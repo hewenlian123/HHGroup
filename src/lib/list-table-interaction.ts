@@ -14,7 +14,7 @@ export const listTablePrimaryCellClassName =
 
 /** Currency / numeric emphasis columns (beats per-column color on hover). */
 export const listTableAmountCellClassName = cn(
-  "transition-colors duration-200 group-hover:!text-[#111827] dark:group-hover:!text-foreground"
+  "transition-colors duration-200 group-hover:!text-text-primary dark:group-hover:!text-foreground"
 );
 
 /** Row actions trigger: always visible (keyboard, screen readers, E2E); hover still styles the control. */
@@ -26,7 +26,7 @@ export const listRowActionsTriggerClassName = cn(
 );
 
 export const listRowActionsContentClassName = cn(
-  "min-w-[160px] border-[0.5px] border-[#E5E7EB] bg-white p-0 py-2 shadow-lg rounded-card",
+  "min-w-[160px] border-[0.5px] border-gray-300 bg-white p-0 py-2 shadow-lg rounded-card",
   "dark:border-border dark:bg-popover dark:text-popover-foreground"
 );
 

@@ -71,7 +71,7 @@ export function DataTable<T>({
                 <TableRow
                   key={id}
                   className={cn(
-                    "table-row-compact cursor-pointer border-b border-[#E5E7EB] transition-colors hover:bg-gray-50",
+                    "table-row-compact cursor-pointer border-b border-gray-300 transition-colors hover:bg-page",
                     onRowClick && "cursor-pointer"
                   )}
                   onClick={(e) => {
@@ -95,9 +95,9 @@ export function DataTable<T>({
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="icon"
-                              className="h-8 w-8 shrink-0 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0"
+                              className="btn-outline-ghost h-8 w-8 shrink-0 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0"
                               aria-label="Row actions"
                             >
                               <MoreHorizontal className="h-4 w-4" />
@@ -135,7 +135,7 @@ export function DataTable<T>({
           return (
             <div
               key={id}
-              className="rounded-lg border border-[#E5E7EB] bg-white p-3"
+              className="rounded-lg border border-gray-300 bg-white p-3"
               role={onRowClick ? "button" : undefined}
               tabIndex={onRowClick ? 0 : undefined}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
@@ -147,7 +147,7 @@ export function DataTable<T>({
               <dl className="mt-3 space-y-2">
                 {columns.slice(1).map((col) => (
                   <div key={col.key} className="flex justify-between gap-2 text-sm">
-                    <dt className="text-[#6B7280]">{col.header}</dt>
+                    <dt className="text-text-secondary">{col.header}</dt>
                     <dd className={cn(col.numeric && "text-right tabular-nums")}>
                       {getCellContent(row, col)}
                     </dd>
@@ -159,9 +159,9 @@ export function DataTable<T>({
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        className="min-h-[44px] min-w-[44px]"
+                        className="btn-outline-ghost min-h-[44px] min-w-[44px]"
                         aria-label="Row actions"
                       >
                         <MoreHorizontal className="h-4 w-4" />

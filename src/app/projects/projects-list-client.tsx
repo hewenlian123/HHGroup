@@ -45,11 +45,11 @@ export type ProjectsListRow = {
   updatedAt: string;
 };
 
-const PAGE_BG = "bg-[#F8F7F4]";
+const PAGE_BG = "bg-page";
 const FIELD =
-  "h-10 rounded-lg border-[0.5px] border-[#E5E7EB] bg-white text-[14px] focus-visible:border-[#111827] focus-visible:ring-2 focus-visible:ring-[#111827]/15";
+  "h-10 rounded-lg border-[0.5px] border-gray-300 bg-white text-[14px] focus-visible:border-[#111827] focus-visible:ring-2 focus-visible:ring-[#111827]/15";
 const MODAL =
-  "max-w-[480px] w-full gap-0 border-[0.5px] border-[#E5E7EB] p-8 shadow-modal rounded-modal sm:max-w-[480px]";
+  "max-w-[480px] w-full gap-0 border-[0.5px] border-gray-300 p-8 shadow-modal rounded-modal sm:max-w-[480px]";
 
 function fmtUsd0(n: number): string {
   return `$${Math.round(n).toLocaleString("en-US")}`;
@@ -58,7 +58,7 @@ function fmtUsd0(n: number): string {
 function profitClass(n: number): string {
   if (n > 0.005) return "text-[#166534]";
   if (n < -0.005) return "text-red-600";
-  return "text-[#6B7280]";
+  return "text-text-secondary";
 }
 
 export type ProjectListStatusFilter = "all" | "active" | "completed" | "pending" | "on_hold";
@@ -204,7 +204,7 @@ export function ProjectsListClient({
   return (
     <div className={cn("page-container page-stack py-8 text-[14px] leading-normal", PAGE_BG)}>
       {dataLoadWarning ? (
-        <p className="border-b border-[#E5E7EB] pb-3 text-sm text-[#6B7280]" role="status">
+        <p className="border-b border-gray-300 pb-3 text-sm text-text-secondary" role="status">
           {dataLoadWarning}
         </p>
       ) : null}
@@ -213,18 +213,18 @@ export function ProjectsListClient({
         <div>
           <h1
             data-testid="projects-page-heading"
-            className="text-2xl font-bold tracking-tight text-[#111827]"
+            className="text-2xl font-bold tracking-tight text-text-primary"
           >
             Projects
           </h1>
-          <p className="mt-1 max-w-xl text-[14px] text-[#6B7280]">
+          <p className="mt-1 max-w-xl text-[14px] text-text-secondary">
             Revenue, labor cost, and profit — click a row or View to open a project.
           </p>
         </div>
         <Button
           asChild
           variant="outline"
-          className="h-10 shrink-0 rounded-md border-[0.5px] border-[#E5E7EB] bg-white px-4 text-[14px] font-medium text-[#111827] shadow-none hover:bg-[#F5F7FA]"
+          className="h-10 shrink-0 rounded-md border-[0.5px] border-gray-300 bg-white px-4 text-[14px] font-medium text-text-primary shadow-none hover:bg-[#F5F7FA]"
         >
           <Link href="/projects/new">
             <Plus className="mr-2 h-4 w-4" />
@@ -244,10 +244,10 @@ export function ProjectsListClient({
         ).map(([label, value]) => (
           <div
             key={label}
-            className="rounded-[10px] border-[0.5px] border-solid border-[#E5E7EB] bg-white px-4 py-[14px]"
+            className="rounded-[10px] border-[0.5px] border-solid border-gray-300 bg-white px-4 py-[14px]"
           >
             <p className="kpi-metric-label">{label}</p>
-            <p className="kpi-metric-value mt-0.5 font-mono tabular-nums text-[#111827]">
+            <p className="kpi-metric-value mt-0.5 font-mono tabular-nums text-text-primary">
               {label === "TOTAL BUDGET" ? fmtUsd0(value as number) : (value as number)}
             </p>
           </div>
@@ -293,7 +293,7 @@ export function ProjectsListClient({
 
       {filtered.length === 0 ? (
         <div className="rounded-lg bg-white px-8 py-14 text-center shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
-          <p className="text-[14px] font-medium text-[#6B7280]">
+          <p className="text-[14px] font-medium text-text-secondary">
             {dataLoadWarning
               ? "Could not load projects."
               : query.trim() || statusFilter !== "all"
@@ -304,7 +304,7 @@ export function ProjectsListClient({
             <Button
               asChild
               variant="outline"
-              className="mt-6 h-10 rounded-md border-[0.5px] border-[#E5E7EB] bg-white px-4 text-[#111827] shadow-none hover:bg-[#F5F7FA]"
+              className="mt-6 h-10 rounded-md border-[0.5px] border-gray-300 bg-white px-4 text-text-primary shadow-none hover:bg-[#F5F7FA]"
             >
               <Link href="/projects/new">New Project</Link>
             </Button>
@@ -342,7 +342,9 @@ export function ProjectsListClient({
                     aria-label={`Open project ${r.name}`}
                     className="cursor-pointer transition-colors hover:bg-[#F5F7FA]"
                   >
-                    <td className={cn(tableRawTdClass, "font-medium text-[#111827]")}>{r.name}</td>
+                    <td className={cn(tableRawTdClass, "font-medium text-text-primary")}>
+                      {r.name}
+                    </td>
                     <td className={tableRawTdClass}>{r.clientName ?? "—"}</td>
                     <td className={tableRawTdClass}>
                       <ProjectListStatusPill status={r.status} />
@@ -350,7 +352,7 @@ export function ProjectsListClient({
                     <td
                       className={cn(
                         tableRawTdClass,
-                        "text-right font-mono tabular-nums text-[#111827]"
+                        "text-right font-mono tabular-nums text-text-primary"
                       )}
                     >
                       {fmtUsd0(r.revenue)}
@@ -358,7 +360,7 @@ export function ProjectsListClient({
                     <td
                       className={cn(
                         tableRawTdClass,
-                        "text-right font-mono tabular-nums text-[#6B7280]"
+                        "text-right font-mono tabular-nums text-text-secondary"
                       )}
                     >
                       {fmtUsd0(r.laborCost)}
@@ -372,7 +374,9 @@ export function ProjectsListClient({
                     >
                       {fmtUsd0(r.profit)}
                     </td>
-                    <td className={cn(tableRawTdClass, "font-mono text-[13px] text-[#6B7280]")}>
+                    <td
+                      className={cn(tableRawTdClass, "font-mono text-[13px] text-text-secondary")}
+                    >
                       {r.updatedAt}
                     </td>
                     <td
@@ -386,14 +390,14 @@ export function ProjectsListClient({
                       >
                         <button
                           type="button"
-                          className="text-[14px] font-medium text-[#111827] hover:underline"
+                          className="text-[14px] font-medium text-text-primary hover:underline"
                           onClick={() => handleNavigate(r.id)}
                         >
                           View
                         </button>
                         <button
                           type="button"
-                          className="text-[14px] font-medium text-[#6B7280] hover:text-[#111827] hover:underline"
+                          className="text-[14px] font-medium text-text-secondary hover:text-text-primary hover:underline"
                           onClick={() => router.push(`/projects/${r.id}/edit`)}
                         >
                           Edit
@@ -420,10 +424,10 @@ export function ProjectsListClient({
       <Dialog open={deleteBlockedOpen} onOpenChange={setDeleteBlockedOpen}>
         <DialogContent className={MODAL}>
           <DialogHeader className="text-left">
-            <DialogTitle className="text-xl font-bold text-[#111827]">
+            <DialogTitle className="text-xl font-bold text-text-primary">
               Cannot delete project
             </DialogTitle>
-            <DialogDescription className="text-[13px] leading-relaxed text-[#6B7280]">
+            <DialogDescription className="text-[13px] leading-relaxed text-text-secondary">
               This project has related records. Remove or reassign them first, or archive the
               project.
             </DialogDescription>
@@ -450,7 +454,7 @@ export function ProjectsListClient({
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-9 shrink-0 rounded-lg border-[#E5E7EB] text-[13px]"
+                        className="h-9 shrink-0 rounded-lg border-gray-300 text-[13px]"
                         asChild
                       >
                         <Link href={href} onClick={() => setDeleteBlockedOpen(false)}>
@@ -480,7 +484,7 @@ export function ProjectsListClient({
           <DialogFooter className="mt-4 flex-wrap gap-2 border-t border-[#F0EDE8] bg-transparent pt-4">
             <Button
               variant="outline"
-              className="h-10 rounded-lg border-[#E5E7EB] bg-white text-[14px] font-medium text-[#6B7280]"
+              className="h-10 rounded-lg border-gray-300 bg-white text-[14px] font-medium text-text-secondary"
               onClick={() => setDeleteBlockedOpen(false)}
               disabled={forceDeleteInProgress}
             >
@@ -490,7 +494,7 @@ export function ProjectsListClient({
               <>
                 <Button
                   variant="outline"
-                  className="h-10 rounded-lg border-[#E5E7EB] text-[14px] font-medium"
+                  className="h-10 rounded-lg border-gray-300 text-[14px] font-medium"
                   onClick={async () => {
                     if (!deleteBlockedProjectId) return;
                     const result = await archiveProjectAction(deleteBlockedProjectId);

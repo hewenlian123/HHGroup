@@ -158,8 +158,8 @@ export function WorkerPaymentReceiptPreviewModal({ paymentId, open, onOpenChange
                 <Button
                   type="button"
                   size="sm"
-                  variant="ghost"
-                  className="h-8 w-8 shrink-0 p-0"
+                  variant="outline"
+                  className="btn-outline-ghost h-8 w-8 shrink-0 p-0"
                   aria-label="Close"
                 >
                   <X className="h-4 w-4" />

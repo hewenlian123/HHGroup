@@ -56,9 +56,9 @@ export default async function EstimatesListPage({
             </form>
             <Button
               asChild
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="rounded-sm text-foreground hover:bg-[#F9FAFB] dark:hover:bg-muted/30"
+              className="btn-outline-ghost rounded-sm text-foreground hover:bg-[#F9FAFB] dark:hover:bg-muted/30"
             >
               <Link href="/estimates/new">
                 <Plus className="mr-2 h-4 w-4" />
@@ -84,19 +84,19 @@ export default async function EstimatesListPage({
       )}
       {list.length > 0 ? (
         <div className="grid grid-cols-2 gap-[10px] lg:grid-cols-4">
-          <div className="rounded-[10px] border-[0.5px] border-solid border-[#E5E7EB] bg-white px-4 py-[14px] dark:border-border">
+          <div className="rounded-[10px] border-[0.5px] border-solid border-gray-300 bg-white px-4 py-[14px] dark:border-border">
             <p className="kpi-metric-label">Total Estimates</p>
             <p className="kpi-metric-value mt-0.5 tabular-nums">{totalEstimates}</p>
           </div>
-          <div className="rounded-[10px] border-[0.5px] border-solid border-[#E5E7EB] bg-white px-4 py-[14px] dark:border-border">
+          <div className="rounded-[10px] border-[0.5px] border-solid border-gray-300 bg-white px-4 py-[14px] dark:border-border">
             <p className="kpi-metric-label">Draft</p>
             <p className="kpi-metric-value mt-0.5 tabular-nums">{draftCount}</p>
           </div>
-          <div className="rounded-[10px] border-[0.5px] border-solid border-[#E5E7EB] bg-white px-4 py-[14px] dark:border-border">
+          <div className="rounded-[10px] border-[0.5px] border-solid border-gray-300 bg-white px-4 py-[14px] dark:border-border">
             <p className="kpi-metric-label">Sent</p>
             <p className="kpi-metric-value mt-0.5 tabular-nums">{sentCount}</p>
           </div>
-          <div className="rounded-[10px] border-[0.5px] border-solid border-[#E5E7EB] bg-white px-4 py-[14px] dark:border-border">
+          <div className="rounded-[10px] border-[0.5px] border-solid border-gray-300 bg-white px-4 py-[14px] dark:border-border">
             <p className="kpi-metric-label">Total Value</p>
             <p className="kpi-metric-value mt-0.5 tabular-nums">
               $

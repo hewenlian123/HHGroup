@@ -14,10 +14,10 @@ export default function CostCodesPage() {
       />
       <section>
         <h2 className="mb-4 text-base font-semibold text-foreground">Default cost codes</h2>
-        <div className="overflow-x-auto rounded-sm border border-[#E5E7EB] dark:border-border">
+        <div className="overflow-x-auto rounded-sm border border-gray-300 dark:border-border">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#E5E7EB] bg-white dark:border-border/60 dark:bg-muted/20">
+              <tr className="border-b border-gray-300 bg-white dark:border-border/60 dark:bg-muted/20">
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Code
                 </th>
@@ -30,7 +30,7 @@ export default function CostCodesPage() {
               {costCodes.map((cc) => (
                 <tr
                   key={cc.code}
-                  className="border-b border-[#E5E7EB]/80 transition-colors last:border-0 hover:bg-[#F9FAFB] dark:border-border/30 dark:hover:bg-muted/20"
+                  className="border-b border-gray-300/80 transition-colors last:border-0 hover:bg-[#F9FAFB] dark:border-border/30 dark:hover:bg-muted/20"
                 >
                   <td className="px-4 py-2.5 font-medium tabular-nums">{cc.code}</td>
                   <td className="px-4 py-2.5 text-foreground">{cc.name}</td>

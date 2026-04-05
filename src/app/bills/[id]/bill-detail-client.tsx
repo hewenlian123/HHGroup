@@ -215,9 +215,9 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
         {bill.status !== "Void" &&
           (!voidConfirm ? (
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="text-muted-foreground"
+              className="btn-outline-ghost text-muted-foreground"
               onClick={() => setVoidConfirm(true)}
             >
               Mark void
@@ -227,7 +227,12 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
               <Button variant="outline" size="sm" className="text-red-600" onClick={handleVoid}>
                 Confirm void
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => setVoidConfirm(false)}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="btn-outline-ghost"
+                onClick={() => setVoidConfirm(false)}
+              >
                 Cancel
               </Button>
             </>
@@ -237,9 +242,9 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
           payments.length === 0 &&
           (!deleteConfirm ? (
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="text-red-600"
+              className="btn-outline-ghost text-red-600"
               onClick={() => setDeleteConfirm(true)}
             >
               Delete
@@ -254,7 +259,12 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
               >
                 Confirm delete
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => setDeleteConfirm(false)}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="btn-outline-ghost"
+                onClick={() => setDeleteConfirm(false)}
+              >
                 Cancel
               </Button>
             </>
