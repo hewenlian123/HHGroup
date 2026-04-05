@@ -18,7 +18,8 @@ import {
   type Expense,
 } from "@/lib/data";
 import { createBrowserClient } from "@/lib/supabase";
-import { Check, Paperclip, Pencil, Plus, Trash2, Upload, X } from "lucide-react";
+import { Check, Loader2, Paperclip, Pencil, Plus, Trash2, Upload, X } from "lucide-react";
+import { uiActionLog, uiActionMark, uiNavLog, uiNavMark } from "@/lib/ui-action-perf";
 import { Pagination } from "@/components/ui/pagination";
 import { useSearchParams } from "next/navigation";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
@@ -619,11 +620,13 @@ function ExpensesPageInner() {
       const target = prevList.find((e) => e.id === patch.expenseId);
       if (!target) return;
       const merged = mergeExpenseReviewPatch(target, patch);
+      const t0 = uiActionMark();
       flushSync(() => {
         setExpenses((prev) => prev.map((e) => (e.id === patch.expenseId ? merged : e)));
         setEditModalOpen(false);
         setEditExpense(null);
       });
+      uiActionLog("expense-edit-save-ui", t0, 100);
       void (async () => {
         try {
           const next = await updateExpenseForReview(patch.expenseId, {
@@ -685,172 +688,40 @@ function ExpensesPageInner() {
     []
   );
 
-  const handleNew = async () => {
+  const handleNew = () => {
+    const t0 = uiNavMark();
     router.push("/financial/expenses/new");
+    requestAnimationFrame(() => uiNavLog("expenses->new-expense", t0, 200));
   };
 
-  const handleDelete = React.useCallback(async (expense: Expense) => {
-    if (typeof window === "undefined" || !window.confirm("Delete this expense?")) return;
-    const prev = expensesRef.current;
-    setDeletingExpenseId(expense.id);
-    setExpenses((list) => list.filter((e) => e.id !== expense.id));
-    try {
+  const handleDelete = React.useCallback(
+    (expense: Expense) => {
+      if (typeof window === "undefined" || !window.confirm("Delete this expense?")) return;
+      const prev = expensesRef.current;
+      const t0 = uiActionMark();
+      setDeletingExpenseId(expense.id);
+      setExpenses((list) => list.filter((e) => e.id !== expense.id));
+      uiActionLog("expense-delete-ui", t0, 100);
       expense.attachments?.forEach((a) => {
         if (a.url?.startsWith("blob:")) URL.revokeObjectURL(a.url);
       });
-      await deleteExpense(expense.id);
-    } catch {
-      setExpenses(prev);
-    } finally {
-      setDeletingExpenseId(null);
-    }
-  }, []);
-
-  const handleVendorInlineSave = async (expenseId: string) => {
-    const nextVendor = vendorDraft.trim() || "Unknown";
-    const prev = expensesRef.current;
-    setExpenses((list) =>
-      list.map((e) => (e.id === expenseId ? { ...e, vendorName: nextVendor } : e))
-    );
-    clearInlineEdits();
-    try {
-      const next = await updateExpenseForReview(expenseId, { vendorName: nextVendor });
-      if (!next) throw new Error("Failed");
-      setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
-    } catch {
-      setExpenses(prev);
-      toast({ title: "Vendor update failed", variant: "error" });
-    }
-  };
-
-  const handleAmountInlineSave = async (expenseId: string) => {
-    const num = parseFloat(amountDraft.replace(/,/g, ""));
-    if (Number.isNaN(num) || num < 0) {
-      toast({ title: "Invalid amount", variant: "error" });
-      return;
-    }
-    const prev = expensesRef.current;
-    setExpenses((list) =>
-      list.map((e) => {
-        if (e.id !== expenseId) return e;
-        if (e.lines.length === 0) {
-          return {
-            ...e,
-            lines: [{ id: `tmp-${expenseId}`, projectId: null, category: "Other", amount: num }],
-          };
+      void (async () => {
+        try {
+          await deleteExpense(expense.id);
+        } catch {
+          setExpenses(prev);
+          toast({ title: "Delete failed", variant: "error" });
+        } finally {
+          setDeletingExpenseId(null);
         }
-        return {
-          ...e,
-          lines: e.lines.map((line, i) => (i === 0 ? { ...line, amount: num } : line)),
-        };
-      })
-    );
-    clearInlineEdits();
-    try {
-      const next = await updateExpenseForReview(expenseId, { amount: num });
-      if (!next) throw new Error("Failed");
-      setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
-    } catch {
-      setExpenses(prev);
-      toast({ title: "Amount update failed", variant: "error" });
-    }
-  };
-
-  const handleDateInlineSave = async (expenseId: string) => {
-    const d = dateDraft.trim().slice(0, 10);
-    if (!d) return;
-    const prev = expensesRef.current;
-    setExpenses((list) => list.map((e) => (e.id === expenseId ? { ...e, date: d } : e)));
-    clearInlineEdits();
-    try {
-      const next = await updateExpenseForReview(expenseId, { date: d });
-      if (!next) throw new Error("Failed");
-      setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
-    } catch {
-      setExpenses(prev);
-      toast({ title: "Date update failed", variant: "error" });
-    }
-  };
-
-  const handleProjectInlineSave = async (expenseId: string) => {
-    const raw = projectDraft.trim();
-    const pid = raw === "" ? null : raw;
-    const prev = expensesRef.current;
-    setExpenses((list) =>
-      list.map((e) => {
-        if (e.id !== expenseId) return e;
-        if (e.lines.length === 0) {
-          return {
-            ...e,
-            headerProjectId: pid,
-            lines: [{ id: `tmp-${expenseId}`, projectId: pid, category: "Other", amount: 0 }],
-          };
-        }
-        return {
-          ...e,
-          headerProjectId: pid,
-          lines: e.lines.map((line, i) => (i === 0 ? { ...line, projectId: pid } : line)),
-        };
-      })
-    );
-    clearInlineEdits();
-    try {
-      const next = await updateExpenseForReview(expenseId, { projectId: pid });
-      if (!next) throw new Error("Failed");
-      setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
-    } catch {
-      setExpenses(prev);
-      toast({ title: "Project update failed", variant: "error" });
-    }
-  };
-
-  const handleCategoryInlineSave = async (expenseId: string) => {
-    const cat = categoryDraft.trim() || "Other";
-    const prev = expensesRef.current;
-    setExpenses((list) =>
-      list.map((e) => {
-        if (e.id !== expenseId) return e;
-        if (e.lines.length === 0) {
-          return {
-            ...e,
-            lines: [{ id: `tmp-${expenseId}`, projectId: null, category: cat, amount: 0 }],
-          };
-        }
-        return {
-          ...e,
-          lines: e.lines.map((line, i) => (i === 0 ? { ...line, category: cat } : line)),
-        };
-      })
-    );
-    clearInlineEdits();
-    try {
-      const next = await updateExpenseForReview(expenseId, { category: cat });
-      if (!next) throw new Error("Failed");
-      setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
-    } catch {
-      setExpenses(prev);
-      toast({ title: "Category update failed", variant: "error" });
-    }
-  };
-
-  const handleSourceInlineSave = async (expenseId: string) => {
-    const prev = expensesRef.current;
-    setExpenses((list) =>
-      list.map((e) => (e.id === expenseId ? { ...e, sourceType: sourceTypeDraft } : e))
-    );
-    clearInlineEdits();
-    try {
-      const next = await updateExpenseForReview(expenseId, { sourceType: sourceTypeDraft });
-      if (!next) throw new Error("Failed");
-      setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
-    } catch {
-      setExpenses(prev);
-      toast({ title: "Source update failed", variant: "error" });
-    }
-  };
+      })();
+    },
+    [toast]
+  );
 
   const persistInlineField = React.useCallback(
-    async (expenseId: string, field: InlineEditField): Promise<boolean> => {
+    (expenseId: string, field: InlineEditField): boolean => {
+      const t0 = uiActionMark();
       switch (field) {
         case "vendor": {
           const nextVendor = vendorDraft.trim() || "Unknown";
@@ -858,16 +729,18 @@ function ExpensesPageInner() {
           setExpenses((list) =>
             list.map((e) => (e.id === expenseId ? { ...e, vendorName: nextVendor } : e))
           );
-          try {
-            const next = await updateExpenseForReview(expenseId, { vendorName: nextVendor });
-            if (!next) throw new Error("Failed");
-            setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
-            return true;
-          } catch {
-            setExpenses(prev);
-            toast({ title: "Vendor update failed", variant: "error" });
-            return false;
-          }
+          uiActionLog("expense-inline-save-ui", t0, 100);
+          void (async () => {
+            try {
+              const next = await updateExpenseForReview(expenseId, { vendorName: nextVendor });
+              if (!next) throw new Error("Failed");
+              setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
+            } catch {
+              setExpenses(prev);
+              toast({ title: "Vendor update failed", variant: "error" });
+            }
+          })();
+          return true;
         }
         case "amount": {
           const num = parseFloat(amountDraft.replace(/,/g, ""));
@@ -893,32 +766,36 @@ function ExpensesPageInner() {
               };
             })
           );
-          try {
-            const next = await updateExpenseForReview(expenseId, { amount: num });
-            if (!next) throw new Error("Failed");
-            setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
-            return true;
-          } catch {
-            setExpenses(prev);
-            toast({ title: "Amount update failed", variant: "error" });
-            return false;
-          }
+          uiActionLog("expense-inline-save-ui", t0, 100);
+          void (async () => {
+            try {
+              const next = await updateExpenseForReview(expenseId, { amount: num });
+              if (!next) throw new Error("Failed");
+              setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
+            } catch {
+              setExpenses(prev);
+              toast({ title: "Amount update failed", variant: "error" });
+            }
+          })();
+          return true;
         }
         case "date": {
           const d = dateDraft.trim().slice(0, 10);
           if (!d) return false;
           const prev = expensesRef.current;
           setExpenses((list) => list.map((e) => (e.id === expenseId ? { ...e, date: d } : e)));
-          try {
-            const next = await updateExpenseForReview(expenseId, { date: d });
-            if (!next) throw new Error("Failed");
-            setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
-            return true;
-          } catch {
-            setExpenses(prev);
-            toast({ title: "Date update failed", variant: "error" });
-            return false;
-          }
+          uiActionLog("expense-inline-save-ui", t0, 100);
+          void (async () => {
+            try {
+              const next = await updateExpenseForReview(expenseId, { date: d });
+              if (!next) throw new Error("Failed");
+              setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
+            } catch {
+              setExpenses(prev);
+              toast({ title: "Date update failed", variant: "error" });
+            }
+          })();
+          return true;
         }
         case "project": {
           const raw = projectDraft.trim();
@@ -941,16 +818,18 @@ function ExpensesPageInner() {
               };
             })
           );
-          try {
-            const next = await updateExpenseForReview(expenseId, { projectId: pid });
-            if (!next) throw new Error("Failed");
-            setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
-            return true;
-          } catch {
-            setExpenses(prev);
-            toast({ title: "Project update failed", variant: "error" });
-            return false;
-          }
+          uiActionLog("expense-inline-save-ui", t0, 100);
+          void (async () => {
+            try {
+              const next = await updateExpenseForReview(expenseId, { projectId: pid });
+              if (!next) throw new Error("Failed");
+              setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
+            } catch {
+              setExpenses(prev);
+              toast({ title: "Project update failed", variant: "error" });
+            }
+          })();
+          return true;
         }
         case "category": {
           const cat = categoryDraft.trim() || "Other";
@@ -970,32 +849,36 @@ function ExpensesPageInner() {
               };
             })
           );
-          try {
-            const next = await updateExpenseForReview(expenseId, { category: cat });
-            if (!next) throw new Error("Failed");
-            setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
-            return true;
-          } catch {
-            setExpenses(prev);
-            toast({ title: "Category update failed", variant: "error" });
-            return false;
-          }
+          uiActionLog("expense-inline-save-ui", t0, 100);
+          void (async () => {
+            try {
+              const next = await updateExpenseForReview(expenseId, { category: cat });
+              if (!next) throw new Error("Failed");
+              setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
+            } catch {
+              setExpenses(prev);
+              toast({ title: "Category update failed", variant: "error" });
+            }
+          })();
+          return true;
         }
         case "source": {
           const prev = expensesRef.current;
           setExpenses((list) =>
             list.map((e) => (e.id === expenseId ? { ...e, sourceType: sourceTypeDraft } : e))
           );
-          try {
-            const next = await updateExpenseForReview(expenseId, { sourceType: sourceTypeDraft });
-            if (!next) throw new Error("Failed");
-            setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
-            return true;
-          } catch {
-            setExpenses(prev);
-            toast({ title: "Source update failed", variant: "error" });
-            return false;
-          }
+          uiActionLog("expense-inline-save-ui", t0, 100);
+          void (async () => {
+            try {
+              const next = await updateExpenseForReview(expenseId, { sourceType: sourceTypeDraft });
+              if (!next) throw new Error("Failed");
+              setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
+            } catch {
+              setExpenses(prev);
+              toast({ title: "Source update failed", variant: "error" });
+            }
+          })();
+          return true;
         }
         default:
           return false;
@@ -1003,6 +886,36 @@ function ExpensesPageInner() {
     },
     [vendorDraft, amountDraft, dateDraft, projectDraft, categoryDraft, sourceTypeDraft, toast]
   );
+
+  const handleVendorInlineSave = (expenseId: string) => {
+    persistInlineField(expenseId, "vendor");
+    clearInlineEdits();
+  };
+
+  const handleAmountInlineSave = (expenseId: string) => {
+    if (!persistInlineField(expenseId, "amount")) return;
+    clearInlineEdits();
+  };
+
+  const handleDateInlineSave = (expenseId: string) => {
+    if (!persistInlineField(expenseId, "date")) return;
+    clearInlineEdits();
+  };
+
+  const handleProjectInlineSave = (expenseId: string) => {
+    persistInlineField(expenseId, "project");
+    clearInlineEdits();
+  };
+
+  const handleCategoryInlineSave = (expenseId: string) => {
+    persistInlineField(expenseId, "category");
+    clearInlineEdits();
+  };
+
+  const handleSourceInlineSave = (expenseId: string) => {
+    persistInlineField(expenseId, "source");
+    clearInlineEdits();
+  };
 
   const openInlineField = React.useCallback(
     (expenseId: string, field: InlineEditField) => {
@@ -1091,38 +1004,40 @@ function ExpensesPageInner() {
   );
 
   const markExpenseReviewed = React.useCallback(
-    async (expenseId: string): Promise<boolean> => {
+    (expenseId: string) => {
       const prev = expensesRef.current;
+      const t0 = uiActionMark();
       setExpenses((list) =>
         list.map((e) => (e.id === expenseId ? { ...e, status: "reviewed" as const } : e))
       );
-      try {
-        const saved = await updateExpenseForReview(expenseId, { status: "reviewed" });
-        if (!saved) throw new Error("Failed");
-        const persisted = (saved.status ?? "pending") === "reviewed";
-        if (persisted) {
-          setExpenses((list) => list.map((e) => (e.id === expenseId ? saved : e)));
-          return true;
+      uiActionLog("expense-mark-reviewed-ui", t0, 100);
+      void (async () => {
+        try {
+          const saved = await updateExpenseForReview(expenseId, { status: "reviewed" });
+          if (!saved) throw new Error("Failed");
+          const persisted = (saved.status ?? "pending") === "reviewed";
+          if (persisted) {
+            setExpenses((list) => list.map((e) => (e.id === expenseId ? saved : e)));
+            return;
+          }
+          setExpenses(prev);
+          toast({
+            title: "Could not mark reviewed",
+            description: "Status may not be supported in this environment.",
+            variant: "default",
+          });
+        } catch {
+          setExpenses(prev);
+          toast({ title: "Status update failed", variant: "error" });
         }
-        setExpenses(prev);
-        toast({
-          title: "Could not mark reviewed",
-          description: "Status may not be supported in this environment.",
-          variant: "default",
-        });
-        return false;
-      } catch {
-        setExpenses(prev);
-        toast({ title: "Status update failed", variant: "error" });
-        return false;
-      }
+      })();
     },
     [toast]
   );
 
   const handleInlineEnter = React.useCallback(
-    async (row: Expense, field: InlineEditField, opts: { markReviewed: boolean }) => {
-      const ok = await persistInlineField(row.id, field);
+    (row: Expense, field: InlineEditField, opts: { markReviewed: boolean }) => {
+      const ok = persistInlineField(row.id, field);
       if (!ok) return;
       if (!opts.markReviewed) {
         clearInlineEdits();
@@ -1133,8 +1048,7 @@ function ExpensesPageInner() {
       const idx = rows.findIndex((r) => r.id === row.id);
       const nextRow = rows[idx + 1];
       if (isUnreviewedStatus(row.status)) {
-        const stOk = await markExpenseReviewed(row.id);
-        if (!stOk) return;
+        markExpenseReviewed(row.id);
       }
       if (listView === "unreviewed") {
         if (nextRow) {
@@ -1228,29 +1142,32 @@ function ExpensesPageInner() {
     return () => window.removeEventListener("keydown", onKey, true);
   }, [clearInlineEdits, handleDelete]);
 
-  const toggleStatus = async (expense: Expense) => {
+  const toggleStatus = (expense: Expense) => {
     const current = expense.status ?? "pending";
     const next = isUnreviewedStatus(current) ? "reviewed" : "needs_review";
     const prev = expensesRef.current;
+    const t0 = uiActionMark();
     setExpenses((list) => list.map((e) => (e.id === expense.id ? { ...e, status: next } : e)));
-    try {
-      const saved = await updateExpenseForReview(expense.id, { status: next });
-      if (!saved) throw new Error("Failed");
-      const persisted = (saved.status ?? "pending") === next;
-      if (persisted) {
-        setExpenses((list) => list.map((e) => (e.id === expense.id ? saved : e)));
-      } else {
-        // Some schemas may not support status persistence; keep optimistic UI state.
-        toast({
-          title: "Status changed locally",
-          description: "This environment does not persist status updates yet.",
-          variant: "default",
-        });
+    uiActionLog("expense-toggle-status-ui", t0, 100);
+    void (async () => {
+      try {
+        const saved = await updateExpenseForReview(expense.id, { status: next });
+        if (!saved) throw new Error("Failed");
+        const persisted = (saved.status ?? "pending") === next;
+        if (persisted) {
+          setExpenses((list) => list.map((e) => (e.id === expense.id ? saved : e)));
+        } else {
+          toast({
+            title: "Status changed locally",
+            description: "This environment does not persist status updates yet.",
+            variant: "default",
+          });
+        }
+      } catch {
+        setExpenses(prev);
+        toast({ title: "Status update failed", variant: "error" });
       }
-    } catch {
-      setExpenses(prev);
-      toast({ title: "Status update failed", variant: "error" });
-    }
+    })();
   };
 
   const onInlineKeyDown = React.useCallback(
@@ -1262,10 +1179,8 @@ function ExpensesPageInner() {
       }
       if (e.key === "Tab") {
         e.preventDefault();
-        void (async () => {
-          const ok = await persistInlineField(row.id, field);
-          if (ok) advanceInlineField(row.id, field, e.shiftKey ? -1 : 1);
-        })();
+        const ok = persistInlineField(row.id, field);
+        if (ok) advanceInlineField(row.id, field, e.shiftKey ? -1 : 1);
         return;
       }
       if (e.key === "Enter") {
@@ -1874,13 +1789,16 @@ function ExpensesPageInner() {
                         size="icon"
                         className="exp-icon-danger h-7 w-7"
                         aria-label="Delete"
-                        disabled={deletingExpenseId === row.id}
                         onClick={(e) => {
                           e.stopPropagation();
-                          void handleDelete(row);
+                          handleDelete(row);
                         }}
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        {deletingExpenseId === row.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                        ) : (
+                          <Trash2 className="h-3.5 w-3.5" />
+                        )}
                       </Button>
                     </div>
                   </li>

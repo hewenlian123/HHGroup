@@ -42,16 +42,15 @@ import {
   insertReceiptQueueProcessing,
   updateReceiptQueueRow,
   deleteReceiptQueueRow,
+  type ReceiptQueuePatch,
   type ReceiptQueueRow,
 } from "@/lib/receipt-queue";
 import { AlertTriangle, Camera, Loader2, Trash2, Upload } from "lucide-react";
 import { useToast } from "@/components/toast/toast-provider";
+import { uiActionLog, uiActionMark, uiNavLog, uiNavMark } from "@/lib/ui-action-perf";
 
 type ProjectRow = { id: string; name: string | null; status?: string | null };
 type WorkerRow = { id: string; name: string };
-
-/** Matches `animate-receipt-queue-row-exit` in tailwind.config.ts */
-const RECEIPT_QUEUE_ROW_EXIT_MS = 220;
 
 async function signStoragePath(
   supabase: NonNullable<ReturnType<typeof createBrowserClient>>,
@@ -149,7 +148,6 @@ export function ReceiptQueueWorkspace() {
   const [dragOver, setDragOver] = React.useState(false);
   const [captureUploading, setCaptureUploading] = React.useState(false);
   const [bulkAdding, setBulkAdding] = React.useState(false);
-  const [confirmingId, setConfirmingId] = React.useState<string | null>(null);
   const [previewUrls, setPreviewUrls] = React.useState<Record<string, string>>({});
   const [receiptPreview, setReceiptPreview] = React.useState<{
     rowId: string;
@@ -161,6 +159,9 @@ export function ReceiptQueueWorkspace() {
   receiptPreviewRef.current = receiptPreview;
   const { openPreview, closePreview } = useAttachmentPreview();
   const debouncers = React.useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const pendingPatchesById = React.useRef<Map<string, ReceiptQueuePatch>>(new Map());
+  /** Debounced saves continue async after pendingPatches is cleared; await these before refetching rows. */
+  const rowSavePromises = React.useRef<Map<string, Promise<void>>>(new Map());
   const fieldRefs = React.useRef<FieldRefs>({ vendor: {}, amount: {}, date: {} });
   const rowsRef = React.useRef(rows);
   rowsRef.current = rows;
@@ -170,7 +171,6 @@ export function ReceiptQueueWorkspace() {
   const [listFilter, setListFilter] = React.useState<"all" | "needs_fix">("all");
   const [activeQueueRowId, setActiveQueueRowId] = React.useState<string | null>(null);
   const [newRowHighlightIds, setNewRowHighlightIds] = React.useState<string[]>([]);
-  const [exitingRowIds, setExitingRowIds] = React.useState<Set<string>>(() => new Set());
   const removeInFlightRef = React.useRef<Set<string>>(new Set());
   const initialFocusAppliedRef = React.useRef(false);
   const queueBottomSentinelRef = React.useRef<HTMLDivElement | null>(null);
@@ -180,6 +180,25 @@ export function ReceiptQueueWorkspace() {
     const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     return url && anon ? createBrowserClient(url, anon) : null;
   }, []);
+
+  const flushPendingDebouncedPatches = React.useCallback(async () => {
+    if (!supabase) return;
+    for (const [, t] of debouncers.current) clearTimeout(t);
+    debouncers.current.clear();
+    const entries = [...pendingPatchesById.current.entries()];
+    pendingPatchesById.current.clear();
+    for (const [id, patch] of entries) {
+      if (Object.keys(patch).length === 0) continue;
+      try {
+        await updateReceiptQueueRow(supabase, id, patch);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Save failed";
+        toast({ title: "Queue row", description: msg, variant: "error" });
+      }
+    }
+    const inflight = [...rowSavePromises.current.values()];
+    if (inflight.length) await Promise.allSettled(inflight);
+  }, [supabase, toast]);
 
   const needsFixCount = React.useMemo(() => rows.filter(rowNeedsFix).length, [rows]);
 
@@ -220,15 +239,17 @@ export function ReceiptQueueWorkspace() {
       return;
     }
     try {
+      await flushPendingDebouncedPatches();
       const list = await fetchReceiptQueueRows(supabase);
       setRows(list);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to load queue";
       toast({ title: "Receipt queue", description: msg, variant: "error" });
     }
-  }, [supabase, toast]);
+  }, [supabase, toast, flushPendingDebouncedPatches]);
 
   const refreshAll = React.useCallback(async (): Promise<ReceiptQueueRow[]> => {
+    await flushPendingDebouncedPatches();
     let list: ReceiptQueueRow[] = [];
     let expList: Expense[] = [];
     let workerList: WorkerRow[] = [];
@@ -255,7 +276,26 @@ export function ReceiptQueueWorkspace() {
     setExpenses(expList);
     setWorkers(workerList);
     return list;
-  }, [supabase, toast]);
+  }, [supabase, toast, flushPendingDebouncedPatches]);
+
+  /** Lighter than refreshAll: queue + expenses only (no workers reload). */
+  const softRefreshQueueAndExpenses = React.useCallback(async () => {
+    if (!supabase) return;
+    try {
+      await flushPendingDebouncedPatches();
+      const list = await fetchReceiptQueueRows(supabase);
+      setRows(list);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to load queue";
+      toast({ title: "Receipt queue", description: msg, variant: "error" });
+    }
+    try {
+      const expList = await getExpenses();
+      setExpenses(expList);
+    } catch {
+      /* keep previous expenses for duplicate hints */
+    }
+  }, [supabase, toast, flushPendingDebouncedPatches]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -282,10 +322,10 @@ export function ReceiptQueueWorkspace() {
   }, [supabase, refreshAll]);
 
   React.useEffect(() => {
-    const onChange = () => void refreshAll();
+    const onChange = () => void softRefreshQueueAndExpenses();
     window.addEventListener(RECEIPT_QUEUE_CHANGED_EVENT, onChange);
     return () => window.removeEventListener(RECEIPT_QUEUE_CHANGED_EVENT, onChange);
-  }, [refreshAll]);
+  }, [softRefreshQueueAndExpenses]);
 
   React.useEffect(() => {
     if (!supabase || !rows.length) {
@@ -315,22 +355,31 @@ export function ReceiptQueueWorkspace() {
   }, [supabase, rows]);
 
   const patchRowDebounced = React.useCallback(
-    (id: string, patch: Parameters<typeof updateReceiptQueueRow>[2]) => {
+    (id: string, patch: ReceiptQueuePatch) => {
       if (!supabase) return;
+      const prevPatch = pendingPatchesById.current.get(id) ?? {};
+      pendingPatchesById.current.set(id, { ...prevPatch, ...patch });
       const prevT = debouncers.current.get(id);
       if (prevT) clearTimeout(prevT);
       debouncers.current.set(
         id,
         setTimeout(() => {
           debouncers.current.delete(id);
-          void (async () => {
+          const merged = pendingPatchesById.current.get(id);
+          pendingPatchesById.current.delete(id);
+          if (!merged || Object.keys(merged).length === 0) return;
+          const p = (async () => {
             try {
-              await updateReceiptQueueRow(supabase, id, patch);
+              await updateReceiptQueueRow(supabase, id, merged);
             } catch (e) {
               const msg = e instanceof Error ? e.message : "Save failed";
               toast({ title: "Queue row", description: msg, variant: "error" });
             }
           })();
+          rowSavePromises.current.set(id, p);
+          void p.finally(() => {
+            if (rowSavePromises.current.get(id) === p) rowSavePromises.current.delete(id);
+          });
         }, 450)
       );
     },
@@ -338,8 +387,10 @@ export function ReceiptQueueWorkspace() {
   );
 
   const patchRowImmediate = React.useCallback(
-    async (id: string, patch: Parameters<typeof updateReceiptQueueRow>[2]) => {
+    async (id: string, patch: ReceiptQueuePatch) => {
       if (!supabase) return;
+      const inflight = rowSavePromises.current.get(id);
+      if (inflight) await inflight;
       try {
         await updateReceiptQueueRow(supabase, id, patch);
         setRows((r) => r.map((x) => (x.id === id ? { ...x, ...patch } : x)));
@@ -394,6 +445,9 @@ export function ReceiptQueueWorkspace() {
         clearTimeout(t);
         debouncers.current.delete(row.id);
       }
+      pendingPatchesById.current.delete(row.id);
+      const inflight = rowSavePromises.current.get(row.id);
+      if (inflight) await inflight;
       try {
         await updateReceiptQueueRow(supabase, row.id, {
           vendor_name: row.vendor_name,
@@ -624,7 +678,19 @@ export function ReceiptQueueWorkspace() {
             receipt_public_url: null,
           });
           notifyReceiptQueueChanged();
-          await refreshAll();
+          setRows((r) =>
+            r.map((x) =>
+              x.id === rowId
+                ? {
+                    ...x,
+                    status: "processing",
+                    error_message: null,
+                    storage_path: null,
+                    receipt_public_url: null,
+                  }
+                : x
+            )
+          );
           const r = await runUploadForRow(rowId, file);
           if (r?.storageSaved) {
             focusQueueRowVendor(rowId);
@@ -664,7 +730,7 @@ export function ReceiptQueueWorkspace() {
           : p
       );
     },
-    [supabase, toast, refreshAll, runUploadForRow, focusQueueRowVendor, flashNewRowHighlights]
+    [supabase, toast, runUploadForRow, focusQueueRowVendor, flashNewRowHighlights]
   );
 
   React.useEffect(() => {
@@ -696,36 +762,32 @@ export function ReceiptQueueWorkspace() {
   }, [receiptPreview, openPreview, closePreview, replaceRowFile]);
 
   const removeRow = React.useCallback(
-    async (id: string) => {
+    (id: string) => {
       if (!supabase) return;
       if (removeInFlightRef.current.has(id)) return;
+      const prev = rowsRef.current;
+      const removed = prev.find((r) => r.id === id);
+      if (!removed) return;
       removeInFlightRef.current.add(id);
       setReceiptPreview((p) => (p?.rowId === id ? null : p));
       setActiveQueueRowId((cur) => (cur === id ? null : cur));
-      const reducedMotion =
-        typeof window !== "undefined" &&
-        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      if (!reducedMotion) {
-        setExitingRowIds((prev) => new Set(prev).add(id));
-        await new Promise<void>((r) => setTimeout(r, RECEIPT_QUEUE_ROW_EXIT_MS));
-      }
-      try {
-        await deleteReceiptQueueRow(supabase, id);
-        notifyReceiptQueueChanged();
-        await refreshAll();
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : "Remove failed";
-        toast({ title: "Receipt queue", description: msg, variant: "error" });
-      } finally {
-        removeInFlightRef.current.delete(id);
-        setExitingRowIds((prev) => {
-          const next = new Set(prev);
-          next.delete(id);
-          return next;
-        });
-      }
+      const t0 = uiActionMark();
+      setRows((r) => r.filter((x) => x.id !== id));
+      uiActionLog("receipt-queue-delete-ui", t0, 100);
+      void (async () => {
+        try {
+          await deleteReceiptQueueRow(supabase, id);
+          notifyReceiptQueueChanged();
+        } catch (e) {
+          setRows(prev);
+          const msg = e instanceof Error ? e.message : "Remove failed";
+          toast({ title: "Receipt queue", description: msg, variant: "error" });
+        } finally {
+          removeInFlightRef.current.delete(id);
+        }
+      })();
     },
-    [supabase, toast, refreshAll]
+    [supabase, toast]
   );
 
   const dupWarning = (row: ReceiptQueueRow): string | null => {
@@ -741,26 +803,47 @@ export function ReceiptQueueWorkspace() {
     return dup ? `Possible duplicate of expense ${dup.id.slice(0, 8)}…` : null;
   };
 
-  const confirmRow = async (row: ReceiptQueueRow) => {
-    const total = Number(row.amount);
+  const confirmRow = (row: ReceiptQueueRow) => {
+    const live = rowsRef.current.find((r) => r.id === row.id) ?? row;
+    const total = Number(live.amount);
     if (!Number.isFinite(total) || total <= 0) {
       toast({ title: "Amount required", variant: "error" });
       return;
     }
-    if (row.status === "processing" || !supabase) return;
-    setConfirmingId(row.id);
-    try {
-      await finalizeReceiptQueueExpense(supabase, row, "confirm");
-      toast({ title: "Expense created", variant: "success" });
-      setActiveQueueRowId((cur) => (cur === row.id ? null : cur));
-      await refreshAll();
-      router.refresh();
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Failed";
-      toast({ title: "Create failed", description: msg, variant: "error" });
-    } finally {
-      setConfirmingId(null);
+    if (!live.vendor_name.trim()) {
+      toast({ title: "Vendor required", variant: "error" });
+      return;
     }
+    if (live.status === "processing") return;
+    if (!supabase) {
+      toast({
+        title: "Receipt queue",
+        description: "Supabase is not configured.",
+        variant: "error",
+      });
+      return;
+    }
+    const snapshot = rowsRef.current;
+    const t0 = uiActionMark();
+    setReceiptPreview((p) => (p?.rowId === live.id ? null : p));
+    setActiveQueueRowId((cur) => (cur === live.id ? null : cur));
+    setRows((r) => r.filter((x) => x.id !== live.id));
+    uiActionLog("receipt-queue-confirm-ui", t0, 100);
+    void (async () => {
+      try {
+        await finalizeReceiptQueueExpense(supabase, live, "confirm");
+        toast({
+          title: "Expense created",
+          description: "Expense created.",
+          variant: "success",
+        });
+        void softRefreshQueueAndExpenses();
+      } catch (e) {
+        setRows(snapshot);
+        const msg = e instanceof Error ? e.message : "Failed";
+        toast({ title: "Create failed", description: msg, variant: "error" });
+      }
+    })();
   };
 
   const addAllEligibleCount = React.useMemo(
@@ -780,6 +863,7 @@ export function ReceiptQueueWorkspace() {
         await finalizeReceiptQueueExpense(supabase, row, "bulk");
         successCount += 1;
         succeededIds.add(row.id);
+        setRows((r) => r.filter((x) => x.id !== row.id));
         const prevUrl = previewUrls[row.id];
         if (prevUrl?.startsWith("blob:")) {
           try {
@@ -794,11 +878,12 @@ export function ReceiptQueueWorkspace() {
     }
     setReceiptPreview((p) => (p && succeededIds.has(p.rowId) ? null : p));
     if (successCount > 0 || failCount > 0) {
-      await refreshAll();
-      router.refresh();
+      await softRefreshQueueAndExpenses();
     }
     if (successCount > 0) {
+      const navT = uiNavMark();
       router.push("/financial/expenses?view=unreviewed&focus_unreviewed=1&page=1");
+      requestAnimationFrame(() => uiNavLog("receipt-queue-bulk->expenses", navT, 200));
     }
     if (failCount === 0 && successCount > 0) {
       toast({
@@ -816,7 +901,7 @@ export function ReceiptQueueWorkspace() {
       });
     }
     setBulkAdding(false);
-  }, [rows, supabase, toast, refreshAll, router, previewUrls]);
+  }, [rows, supabase, toast, softRefreshQueueAndExpenses, router, previewUrls]);
 
   const openRowPreview = (row: ReceiptQueueRow) => {
     const src = previewUrls[row.id];
@@ -978,11 +1063,20 @@ export function ReceiptQueueWorkspace() {
           </>
         )}
 
-        {loading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
-        ) : rows.length === 0 ? (
+        {loading && rows.length === 0 ? (
+          <div
+            className="flex items-center gap-2 border-b border-border/60 py-3 text-xs text-muted-foreground"
+            role="status"
+            aria-live="polite"
+          >
+            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden />
+            <span>Loading queue…</span>
+          </div>
+        ) : null}
+
+        {!loading && rows.length === 0 ? (
           <p className="text-sm text-muted-foreground">No items in the queue.</p>
-        ) : (
+        ) : rows.length > 0 ? (
           <>
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-200/80 bg-[#FFFBEB] px-3 py-2.5 dark:border-amber-800/50 dark:bg-amber-950/30">
               <div className="flex min-w-0 items-center gap-2 text-sm text-[#78350f] dark:text-amber-100">
@@ -1082,13 +1176,11 @@ export function ReceiptQueueWorkspace() {
                       const needsHighlight = rowNeedsFix(row) && !busy;
                       const vendorMissing = !busy && row.vendor_name.trim() === "";
                       const showAmountHint = !busy && amountIsMissing(row);
-                      const isExiting = exitingRowIds.has(row.id);
                       return (
                         <TableRow
                           key={row.id}
-                          aria-busy={isExiting}
                           className={cn(
-                            "table-row-compact transition-[background-color,box-shadow] duration-200 ease-out",
+                            "table-row-compact transition-[background-color,box-shadow,opacity] duration-200 ease-out",
                             activeQueueRowId === row.id &&
                               "relative z-[1] ring-1 ring-inset ring-[#E5E7EB] dark:ring-border",
                             activeQueueRowId === row.id &&
@@ -1098,14 +1190,13 @@ export function ReceiptQueueWorkspace() {
                             needsHighlight &&
                               "bg-[#FFFBEB] hover:bg-[#FEF3C7] dark:bg-amber-950/35 dark:hover:bg-amber-950/50",
                             needsHighlight &&
-                              "shadow-[inset_3px_0_0_0_#F59E0B] dark:shadow-[inset_3px_0_0_0_rgb(245,158,11)]",
-                            isExiting && "pointer-events-none animate-receipt-queue-row-exit"
+                              "shadow-[inset_3px_0_0_0_#F59E0B] dark:shadow-[inset_3px_0_0_0_rgb(245,158,11)]"
                           )}
                         >
                           <TableCell className="p-2">
                             <button
                               type="button"
-                              disabled={busy || !prev || isExiting}
+                              disabled={busy || !prev}
                               aria-label="Preview receipt"
                               className={cn(
                                 "relative h-12 w-12 shrink-0 overflow-hidden rounded-sm border border-border/60 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -1154,7 +1245,6 @@ export function ReceiptQueueWorkspace() {
                                 variant="ghost"
                                 size="sm"
                                 className="mt-1 h-7 px-2 text-xs"
-                                disabled={isExiting}
                                 onClick={() => onReplacePick(row.id)}
                               >
                                 Re-upload
@@ -1172,7 +1262,7 @@ export function ReceiptQueueWorkspace() {
                                 }}
                                 placeholder="Vendor"
                                 value={row.vendor_name}
-                                disabled={busy || isExiting}
+                                disabled={busy}
                                 onFocus={() => setActiveQueueRowId(row.id)}
                                 onChange={(e) => {
                                   const v = e.target.value;
@@ -1207,7 +1297,7 @@ export function ReceiptQueueWorkspace() {
                                 placeholder="Amount"
                                 inputMode="decimal"
                                 value={row.amount}
-                                disabled={busy || isExiting}
+                                disabled={busy}
                                 onFocus={() => setActiveQueueRowId(row.id)}
                                 onChange={(e) => {
                                   const v = e.target.value;
@@ -1238,7 +1328,7 @@ export function ReceiptQueueWorkspace() {
                               }}
                               type="date"
                               value={row.expense_date.slice(0, 10)}
-                              disabled={busy || isExiting}
+                              disabled={busy}
                               onFocus={() => setActiveQueueRowId(row.id)}
                               onChange={(e) => {
                                 const v = e.target.value;
@@ -1255,7 +1345,7 @@ export function ReceiptQueueWorkspace() {
                             <select
                               className="h-8 w-full max-w-[200px] rounded border border-input bg-transparent px-2 text-xs"
                               value={row.project_id ?? ""}
-                              disabled={busy || isExiting}
+                              disabled={busy}
                               onChange={(e) => {
                                 const v = e.target.value || null;
                                 void patchRowImmediate(row.id, { project_id: v });
@@ -1272,7 +1362,7 @@ export function ReceiptQueueWorkspace() {
                           <TableCell className="p-1">
                             <ExpenseCategorySelect
                               value={row.category}
-                              disabled={busy || isExiting}
+                              disabled={busy}
                               onValueChange={(v) => void patchRowImmediate(row.id, { category: v })}
                               className="h-8 w-full max-w-[180px] rounded border border-input bg-transparent px-2 text-xs"
                             />
@@ -1280,7 +1370,7 @@ export function ReceiptQueueWorkspace() {
                           <TableCell className="p-1 align-top">
                             <PaymentAccountSelect
                               value={row.payment_account_id ?? ""}
-                              disabled={busy || isExiting}
+                              disabled={busy}
                               onValueChange={(id) => {
                                 const next = id.trim() ? id : null;
                                 if (!next) queueAutoPaymentDoneRef.current.delete(row.id);
@@ -1296,7 +1386,7 @@ export function ReceiptQueueWorkspace() {
                                 <select
                                   className="h-8 w-full rounded border border-input bg-transparent px-2 text-[11px]"
                                   value={row.worker_id ?? ""}
-                                  disabled={busy || isExiting}
+                                  disabled={busy}
                                   onChange={(e) => {
                                     const v = e.target.value || null;
                                     void patchRowImmediate(row.id, { worker_id: v });
@@ -1317,25 +1407,21 @@ export function ReceiptQueueWorkspace() {
                                   className="h-8 flex-1 text-xs"
                                   disabled={
                                     busy ||
-                                    isExiting ||
                                     bulkAdding ||
                                     captureUploading ||
-                                    confirmingId === row.id
+                                    vendorMissing ||
+                                    showAmountHint
                                   }
-                                  onClick={() => void confirmRow(row)}
+                                  onClick={() => confirmRow(row)}
                                 >
-                                  {confirmingId === row.id ? (
-                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                  ) : (
-                                    "Confirm"
-                                  )}
+                                  Confirm
                                 </Button>
                                 <Button
                                   type="button"
                                   variant="outline"
                                   size="sm"
                                   className="h-8 px-2"
-                                  disabled={busy || isExiting}
+                                  disabled={busy}
                                   onClick={() => void removeRow(row.id)}
                                   aria-label="Remove"
                                 >
@@ -1353,7 +1439,7 @@ export function ReceiptQueueWorkspace() {
               </>
             )}
           </>
-        )}
+        ) : null}
       </div>
     </div>
   );

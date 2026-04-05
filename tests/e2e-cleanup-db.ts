@@ -22,6 +22,29 @@ export type CleanupTestDataResult = {
   warnings: string[];
 };
 
+/** Receipt queue rows created only by Playwright (file_name patterns). */
+const E2E_RECEIPT_QUEUE_FILE_PATTERNS = ["queue-receipt-%", "receipt-layout-%", "rq-%"] as const;
+
+/** Delete E2E receipt_queue rows so failed specs do not accumulate and starve the UI. */
+export async function purgeE2EReceiptQueueRows(supabase: SupabaseClient): Promise<number> {
+  const seen = new Set<string>();
+  for (const p of E2E_RECEIPT_QUEUE_FILE_PATTERNS) {
+    const { data, error } = await supabase.from("receipt_queue").select("id").ilike("file_name", p);
+    if (error || !data?.length) continue;
+    for (const r of data as { id: string }[]) {
+      if (r.id) seen.add(r.id);
+    }
+  }
+  const ids = Array.from(seen);
+  if (ids.length === 0) return 0;
+  const { error: delErr } = await supabase.from("receipt_queue").delete().in("id", ids);
+  if (delErr) {
+    console.warn("[purgeE2EReceiptQueueRows]", delErr.message);
+    return 0;
+  }
+  return ids.length;
+}
+
 function uniqueIds(ids: string[]): string[] {
   const seen: Record<string, boolean> = {};
   const out: string[] = [];
@@ -321,6 +344,9 @@ export async function cleanupTestData(supabase: SupabaseClient): Promise<Cleanup
     if (expErr) warnings.push(`expenses (e2e vendor cleanup): ${expErr.message}`);
     else bump("expenses", e2eExpenseIds.length);
   }
+
+  const rqPurged = await purgeE2EReceiptQueueRows(supabase);
+  if (rqPurged > 0) bump("receipt_queue", rqPurged);
 
   return { deleted, warnings };
 }

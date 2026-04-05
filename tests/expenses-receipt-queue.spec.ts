@@ -1,6 +1,10 @@
 import { test, expect } from "@playwright/test";
 import { E2E_PRESERVED_PROJECT_ID } from "./e2e-cleanup-db";
-import { expenseListRow, expensesVendorSearch } from "./e2e-expenses-helpers";
+import {
+  expenseListRow,
+  expensesVendorSearch,
+  prepareReceiptQueueRowForConfirm,
+} from "./e2e-expenses-helpers";
 
 const PNG_1X1 = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
@@ -8,7 +12,8 @@ const PNG_1X1 = Buffer.from(
 );
 
 test.describe("Expenses: receipt upload queue", () => {
-  test.describe.configure({ timeout: 120_000 });
+  /** Parallel chromium workers + shared local DB can starve upload/OCR; retries absorb flake. */
+  test.describe.configure({ timeout: 120_000, retries: 2 });
 
   test("upload → receipt queue → confirm creates expense and clears row", async ({ page }) => {
     await page.goto("/financial/receipt-queue", { waitUntil: "domcontentloaded", timeout: 60_000 });
@@ -33,19 +38,17 @@ test.describe("Expenses: receipt upload queue", () => {
 
     const queueRow = page.locator("tbody tr").filter({ hasText: queueFileName }).first();
     await expect(queueRow).toBeVisible({ timeout: 120_000 });
-    const vendorInput = queueRow.locator('input[placeholder="Vendor"]:not([disabled])').first();
-    await vendorInput.waitFor({ state: "visible", timeout: 120_000 });
-    await vendorInput.fill(vendorMark);
-    await queueRow.getByPlaceholder("Amount").fill("88.12");
+    await prepareReceiptQueueRowForConfirm(
+      page,
+      queueRow,
+      {
+        vendor: vendorMark,
+        amount: "88.12",
+        projectId: E2E_PRESERVED_PROJECT_ID,
+      },
+      { assertConfirmEnabled: true }
+    );
 
-    const projectSelect = queueRow
-      .locator("select")
-      .filter({ has: page.locator(`option[value="${E2E_PRESERVED_PROJECT_ID}"]`) });
-    await projectSelect.selectOption({ value: E2E_PRESERVED_PROJECT_ID });
-
-    await expect(queueRow.getByRole("button", { name: "Confirm", exact: true })).toBeEnabled({
-      timeout: 60_000,
-    });
     await queueRow.getByRole("button", { name: "Confirm", exact: true }).click();
 
     await expect

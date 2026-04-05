@@ -5,6 +5,7 @@ import {
   expenseListRow,
   expensesVendorSearch,
   pickOrCreatePaymentInSelect,
+  prepareReceiptQueueRowForConfirm,
 } from "./e2e-expenses-helpers";
 
 const PNG_1X1 = Buffer.from(
@@ -63,15 +64,11 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
 
     const queueRow = page.locator("tbody tr").filter({ hasText: queueFileName }).first();
     await expect(queueRow).toBeVisible({ timeout: 120_000 });
-    const vendorInput = queueRow.locator('input[placeholder="Vendor"]:not([disabled])').first();
-    await vendorInput.waitFor({ state: "visible", timeout: 120_000 });
-    await vendorInput.fill(vendorMark);
-    await queueRow.getByPlaceholder("Amount").fill("15.00");
-
-    const projectSelect = queueRow
-      .locator("select")
-      .filter({ has: page.locator(`option[value="${E2E_PRESERVED_PROJECT_ID}"]`) });
-    await projectSelect.selectOption({ value: E2E_PRESERVED_PROJECT_ID });
+    await prepareReceiptQueueRowForConfirm(page, queueRow, {
+      vendor: vendorMark,
+      amount: "15.00",
+      projectId: E2E_PRESERVED_PROJECT_ID,
+    });
 
     const paySel = queueRow
       .locator("select")
@@ -84,9 +81,14 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
     await expect(preview).toBeVisible({ timeout: 15_000 });
     await preview.getByRole("button", { name: "Close" }).click();
 
-    await expect(queueRow.getByRole("button", { name: "Confirm", exact: true })).toBeEnabled({
-      timeout: 120_000,
-    });
+    await prepareReceiptQueueRowForConfirm(
+      page,
+      queueRow,
+      { vendor: vendorMark, amount: "15.00", projectId: E2E_PRESERVED_PROJECT_ID },
+      { assertConfirmEnabled: true }
+    );
+    await pickOrCreatePaymentInSelect(page, paySel);
+
     await queueRow.getByRole("button", { name: "Confirm", exact: true }).click();
 
     await expect
