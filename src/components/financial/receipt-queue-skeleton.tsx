@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 function RowSkeleton() {
   return (
-    <div className="border-b border-border/50 px-3 py-3 lg:px-4">
+    <div className="border-b border-[#e5e7eb] bg-[#ffffff] px-3 py-3 lg:px-4">
       <div className="flex min-w-[700px] items-center gap-3 lg:min-w-[920px]">
         <Skeleton className="h-[52px] w-[52px] shrink-0 rounded-lg" />
         <Skeleton className="h-4 w-14 shrink-0 rounded-sm" />
@@ -28,7 +28,7 @@ export function ReceiptQueueSkeleton({ rows = 5 }: { rows?: number }) {
         <Skeleton className="h-9 w-28 rounded-sm" />
         <Skeleton className="h-9 w-32 rounded-sm" />
       </div>
-      <div className="overflow-x-auto border-b border-border/60">
+      <div className="overflow-x-auto rounded-lg border border-[#e5e7eb] bg-[#ffffff]">
         {Array.from({ length: rows }, (_, i) => (
           <RowSkeleton key={i} />
         ))}

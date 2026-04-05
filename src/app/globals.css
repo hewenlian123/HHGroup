@@ -24,8 +24,8 @@
   .rq-workspace input:not([type="hidden"]):not([type="file"]):focus-visible,
   .rq-workspace select:focus-visible {
     @apply ring-0 ring-offset-0 outline-none;
-    border-color: #1a1a1a;
-    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.07);
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
   }
 }
 
@@ -90,8 +90,8 @@
   }
   .hh-pill-warning {
     @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
-    background-color: #fef9c3;
-    color: #854d0e;
+    background-color: #fef3c7;
+    color: #a16207;
   }
   .hh-pill-neutral {
     @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
@@ -101,7 +101,7 @@
   .hh-pill-danger {
     @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
     background-color: #fee2e2;
-    color: #991b1b;
+    color: #d92d20;
   }
   .hh-modal-shell {
     @apply w-full max-w-[480px] rounded-[14px] border-[0.5px] border-gray-300 bg-white p-8 shadow-modal;

@@ -1,9 +1,9 @@
 /* Expenses route: Apple-style layered grays (scoped under .expenses-ui) */
 .expenses-ui {
-  --exp-page-bg: #f6f7f9;
+  --exp-page-bg: #f3f4f6;
   --exp-content-bg: transparent;
   --exp-primary: #111827;
-  --exp-secondary: #6b7280;
+  --exp-secondary: #4b5563;
   --exp-negative: #d92d20;
   --exp-positive: #22c55e;
   --exp-row-hover: #ffffff;
@@ -74,7 +74,7 @@
 /* Dialog when using expenses palette */
 .expenses-ui-dialog {
   --exp-primary: #111827;
-  --exp-secondary: #6b7280;
+  --exp-secondary: #4b5563;
   --exp-border: #e5e7eb;
   --exp-row-hover: #f9fafb;
   background-color: #ffffff !important;

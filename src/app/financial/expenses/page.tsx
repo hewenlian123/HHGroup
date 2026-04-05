@@ -1259,7 +1259,7 @@ function ExpensesPageInner() {
     <div className="expenses-ui w-full">
       <div className="expenses-ui-content mx-auto flex max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6">
         <PageHeader
-          className="[&_h1]:font-semibold [&_h1]:text-gray-900 [&_p]:text-sm [&_p]:text-gray-500 dark:[&_h1]:text-foreground dark:[&_p]:text-muted-foreground"
+          className="[&_h1]:font-semibold [&_h1]:text-gray-900 [&_p]:text-sm [&_p]:text-gray-600 dark:[&_h1]:text-foreground dark:[&_p]:text-muted-foreground"
           title="Expenses"
           description="Spend, receipts, reimbursements"
           actions={
@@ -1267,7 +1267,7 @@ function ExpensesPageInner() {
               <Button
                 type="button"
                 size="sm"
-                className="h-8 rounded-sm border-0 bg-blue-600 text-white shadow-none hover:bg-blue-700"
+                className="h-8 rounded-sm border-0 bg-blue-500 text-white shadow-none hover:bg-blue-600"
                 onClick={() => setUploadReceiptsOpen(true)}
               >
                 <Upload className="mr-1 h-3.5 w-3.5" />
@@ -1296,7 +1296,7 @@ function ExpensesPageInner() {
           }
         />
 
-        <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 border-b border-gray-200/80 pb-3 text-sm text-gray-500 dark:border-border/60 dark:text-muted-foreground">
+        <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 border-b border-gray-200/80 pb-3 text-sm text-gray-600 dark:border-border/60 dark:text-muted-foreground">
           <span>
             Month{" "}
             <span className="ml-1 font-medium tabular-nums text-gray-900 dark:text-foreground">
@@ -1340,8 +1340,8 @@ function ExpensesPageInner() {
               size="sm"
               className={
                 listView === "all"
-                  ? "h-8 rounded-sm border-transparent bg-blue-600 px-3 text-sm font-medium text-white shadow-none hover:bg-blue-700 hover:text-white"
-                  : "h-8 rounded-sm border-gray-200/80 bg-gray-100 px-3 text-sm font-medium text-gray-600 shadow-none hover:bg-gray-200 hover:text-gray-700 dark:border-border/60 dark:bg-muted dark:text-muted-foreground dark:hover:bg-muted/80"
+                  ? "h-8 rounded-sm border-transparent bg-blue-500 px-3 text-sm font-medium text-white shadow-none hover:bg-blue-600 hover:text-white"
+                  : "h-8 rounded-sm border-gray-200/80 bg-gray-100 px-3 text-sm font-medium text-gray-600 shadow-none hover:bg-blue-50 hover:text-gray-800 dark:border-border/60 dark:bg-muted dark:text-muted-foreground dark:hover:bg-muted/80"
               }
               onClick={() => setListView("all")}
             >
@@ -1353,8 +1353,8 @@ function ExpensesPageInner() {
               size="sm"
               className={
                 listView === "unreviewed"
-                  ? "h-8 rounded-sm border-transparent bg-blue-600 px-3 text-sm font-medium text-white shadow-none hover:bg-blue-700 hover:text-white"
-                  : "h-8 rounded-sm border-gray-200/80 bg-gray-100 px-3 text-sm font-medium text-gray-600 shadow-none hover:bg-gray-200 hover:text-gray-700 dark:border-border/60 dark:bg-muted dark:text-muted-foreground dark:hover:bg-muted/80"
+                  ? "h-8 rounded-sm border-transparent bg-blue-500 px-3 text-sm font-medium text-white shadow-none hover:bg-blue-600 hover:text-white"
+                  : "h-8 rounded-sm border-gray-200/80 bg-gray-100 px-3 text-sm font-medium text-gray-600 shadow-none hover:bg-blue-50 hover:text-gray-800 dark:border-border/60 dark:bg-muted dark:text-muted-foreground dark:hover:bg-muted/80"
               }
               onClick={() => setListView("unreviewed")}
             >
@@ -1362,7 +1362,7 @@ function ExpensesPageInner() {
             </Button>
           </div>
           {listView === "unreviewed" ? (
-            <p className="text-sm text-gray-500 dark:text-muted-foreground">
+            <p className="text-sm text-gray-600 dark:text-muted-foreground">
               Enter: save, mark reviewed, next row · Shift+Enter: save only · Tab: next field · ↑↓:
               row · D: delete · Esc: cancel
             </p>
@@ -1374,7 +1374,7 @@ function ExpensesPageInner() {
             placeholder="Search…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-8 rounded-sm border border-gray-200/80 bg-white text-sm text-gray-900 shadow-none transition-all duration-200 placeholder:text-gray-500 focus-visible:border-gray-300 focus-visible:ring-2 focus-visible:ring-blue-400/30 dark:border-border/60 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground"
+            className="h-8 rounded-sm border border-gray-200/80 bg-white text-sm text-gray-900 shadow-none transition-all duration-200 placeholder:text-gray-600 focus-visible:border-gray-300 focus-visible:ring-2 focus-visible:ring-blue-400/30 dark:border-border/60 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground"
           />
           <div className="flex flex-wrap gap-2">
             <select
@@ -1464,7 +1464,7 @@ function ExpensesPageInner() {
                     ? "No matches"
                     : "No expenses yet"}
               </p>
-              <p className="mt-1 text-sm text-gray-500 dark:text-muted-foreground">
+              <p className="mt-1 text-sm text-gray-600 dark:text-muted-foreground">
                 {listView === "unreviewed"
                   ? hasNarrowingFilters
                     ? "Try clearing filters or switch to All."
@@ -1489,7 +1489,7 @@ function ExpensesPageInner() {
                   <Button
                     type="button"
                     size="sm"
-                    className="h-8 rounded-sm border-0 bg-blue-600 text-white shadow-none hover:bg-blue-700"
+                    className="h-8 rounded-sm border-0 bg-blue-500 text-white shadow-none hover:bg-blue-600"
                     onClick={() => setUploadReceiptsOpen(true)}
                   >
                     <Upload className="mr-1.5 h-3.5 w-3.5" />
@@ -1519,8 +1519,8 @@ function ExpensesPageInner() {
               ) : null}
             </div>
           ) : (
-            <div className="exp-list-card overflow-hidden rounded-xl border border-gray-200/60 bg-white shadow-sm dark:border-border/60 dark:bg-card">
-              <ul className="exp-divide divide-y divide-gray-200/70 dark:divide-border/60">
+            <div className="exp-list-card overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-[0_4px_12px_rgba(0,0,0,0.06)] dark:border-border/60 dark:bg-card dark:shadow-none">
+              <ul className="exp-divide divide-y divide-gray-200/80 dark:divide-border/60">
                 {pageRows.map((row) => {
                   const rowTotal = getExpenseTotal(row);
                   const projLabel = projectLabel(row, projectNameById);
@@ -1533,7 +1533,7 @@ function ExpensesPageInner() {
                       ref={(el) => {
                         rowElsRef.current[row.id] = el;
                       }}
-                      className={`group exp-row relative flex flex-col gap-2 rounded-lg bg-transparent px-4 py-3 pr-12 transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-50 hover:shadow-[0_2px_6px_rgba(0,0,0,0.04)] active:scale-[0.98] dark:hover:bg-muted/35 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:pr-14 ${
+                      className={`group exp-row relative flex flex-col gap-2 rounded-lg bg-transparent px-4 py-4 pr-12 transition-all duration-150 ease-out hover:-translate-y-[1px] hover:bg-white hover:shadow-[0_6px_14px_rgba(0,0,0,0.06)] active:scale-[0.98] dark:hover:bg-muted/35 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:pr-14 ${
                         listView === "unreviewed" && activeExpenseId === row.id
                           ? "bg-white shadow-sm ring-1 ring-inset ring-gray-200/80 dark:bg-white/10 dark:ring-border/60"
                           : ""
@@ -1593,7 +1593,7 @@ function ExpensesPageInner() {
                           )}
                         </div>
                         <div
-                          className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-sm leading-snug text-gray-500 dark:text-muted-foreground"
+                          className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-sm leading-snug text-gray-600 dark:text-muted-foreground"
                           onClick={(e) => e.stopPropagation()}
                         >
                           {editingCategoryId === row.id ? (
@@ -1791,7 +1791,7 @@ function ExpensesPageInner() {
                               data-inline-field
                             >
                               <Input
-                                className="h-7 w-24 rounded-sm border-gray-300/60 text-right text-sm tabular-nums text-text-primary transition-[box-shadow,border-color] duration-150 focus-visible:ring-2 focus-visible:ring-blue-400/30"
+                                className="h-7 w-24 rounded-sm border-gray-200/80 text-right text-[15px] tabular-nums text-text-primary transition-[box-shadow,border-color] duration-150 focus-visible:ring-2 focus-visible:ring-blue-400/30"
                                 value={amountDraft}
                                 autoFocus
                                 inputMode="decimal"
@@ -1811,7 +1811,7 @@ function ExpensesPageInner() {
                           ) : (
                             <button
                               type="button"
-                              className="text-base font-semibold tabular-nums tracking-tight text-[#d92d20] transition-opacity duration-200 group-hover:opacity-90 hover:underline"
+                              className="text-[15px] font-semibold tabular-nums tracking-tight text-[#d92d20] transition-opacity duration-200 group-hover:opacity-90 hover:underline"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setActiveExpenseId(row.id);
@@ -1890,7 +1890,7 @@ function ExpensesPageInner() {
                   pageSize={pageSize}
                   total={total}
                   onPageChange={setPage}
-                  className="text-gray-500 [&_.text-muted-foreground]:text-gray-500 [&_button]:border [&_button]:border-gray-300 [&_button]:bg-white [&_button]:text-gray-700 [&_button]:shadow-none hover:[&_button]:bg-gray-50 dark:text-muted-foreground dark:[&_button]:border-border dark:[&_button]:bg-background dark:[&_button]:text-foreground dark:hover:[&_button]:bg-muted/50"
+                  className="text-gray-600 [&_.text-muted-foreground]:text-gray-600 [&_button]:border [&_button]:border-gray-200/80 [&_button]:bg-white [&_button]:text-gray-700 [&_button]:shadow-none hover:[&_button]:bg-gray-50 dark:text-muted-foreground dark:[&_button]:border-border dark:[&_button]:bg-background dark:[&_button]:text-foreground dark:hover:[&_button]:bg-muted/50"
                 />
               </div>
             </div>

@@ -132,8 +132,8 @@ const config: Config = {
           },
         },
         "receipt-queue-row-new": {
-          "0%": { backgroundColor: "rgb(255 251 235)" },
-          "100%": { backgroundColor: "rgb(255 251 235 / 0)" },
+          "0%": { backgroundColor: "rgb(239 246 255)" },
+          "100%": { backgroundColor: "rgb(239 246 255 / 0)" },
         },
         "receipt-queue-row-exit": {
           "0%": {
