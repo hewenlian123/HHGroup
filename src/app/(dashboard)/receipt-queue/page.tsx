@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { ReceiptQueueWorkspace } from "./receipt-queue-workspace";
+import { ReceiptQueueWorkspace } from "@/app/financial/receipt-queue/receipt-queue-workspace";
 
 export default function ReceiptQueuePage() {
   return (

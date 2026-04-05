@@ -5,16 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { StatusBadge } from "@/components/base";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import { cn } from "@/lib/utils";
 import {
@@ -26,8 +17,6 @@ import {
   type PaymentAccountRow,
 } from "@/lib/data";
 import { pickDefaultPaymentAccountId } from "@/lib/expense-payment-preferences";
-import { ExpenseCategorySelect } from "@/components/expense-category-select";
-import { PaymentAccountSelect } from "@/components/payment-account-select";
 import { createBrowserClient } from "@/lib/supabase";
 import { inferExpenseCategoryFromVendor } from "@/lib/receipt-infer-category";
 import {
@@ -45,7 +34,9 @@ import {
   type ReceiptQueuePatch,
   type ReceiptQueueRow,
 } from "@/lib/receipt-queue";
-import { AlertTriangle, Camera, Loader2, Trash2, Upload } from "lucide-react";
+import { ReceiptQueueRowCard, type RowMotionPhase } from "./receipt-queue-row-card";
+import { useRqLayout } from "./use-rq-layout";
+import { AlertTriangle, Camera, Loader2, Upload } from "lucide-react";
 import { useToast } from "@/components/toast/toast-provider";
 import { uiActionLog, uiActionMark, uiNavLog, uiNavMark } from "@/lib/ui-action-perf";
 
@@ -108,10 +99,22 @@ function rowNeedsFix(row: ReceiptQueueRow): boolean {
   return row.status === "failed" || row.vendor_name.trim() === "" || amountIsMissing(row);
 }
 
-function firstEditableFieldForRow(row: ReceiptQueueRow): "vendor" | "amount" | "date" {
+const ENTER_FIELD_ORDER = [
+  "vendor",
+  "amount",
+  "date",
+  "project",
+  "category",
+  "payment",
+  "worker",
+] as const;
+
+type QueueFocusField = (typeof ENTER_FIELD_ORDER)[number];
+
+function firstEditableFieldForRow(row: ReceiptQueueRow): QueueFocusField {
   if (!row.vendor_name.trim()) return "vendor";
   if (amountIsMissing(row)) return "amount";
-  return "vendor";
+  return "date";
 }
 
 /** Among rows whose ids are in `addedIds`, pick the one with the greatest `created_at`. */
@@ -132,7 +135,22 @@ type FieldRefs = {
   date: Record<string, HTMLInputElement | null>;
 };
 
+/** Buttons: hover lighten 140ms ease; active scale 0.95 90ms spring */
+const RQ_BTN =
+  "transition-[background-color,transform,color] duration-[140ms] ease-out active:scale-[0.95] active:duration-90 active:ease-[cubic-bezier(0.34,1.56,0.64,1)]";
+
+function scrollReceiptQueueRowIntoViewMobile(rowId: string) {
+  if (typeof window === "undefined") return;
+  if (window.matchMedia("(min-width: 768px)").matches) return;
+  requestAnimationFrame(() => {
+    document
+      .querySelector(`[data-receipt-queue-row="${rowId}"]`)
+      ?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+  });
+}
+
 export function ReceiptQueueWorkspace() {
+  const rqLayout = useRqLayout();
   const { toast } = useToast();
   const router = useRouter();
   const cameraInputRef = React.useRef<HTMLInputElement>(null);
@@ -149,6 +167,8 @@ export function ReceiptQueueWorkspace() {
   const [captureUploading, setCaptureUploading] = React.useState(false);
   const [bulkAdding, setBulkAdding] = React.useState(false);
   const [previewUrls, setPreviewUrls] = React.useState<Record<string, string>>({});
+  const previewUrlsRef = React.useRef(previewUrls);
+  previewUrlsRef.current = previewUrls;
   const [receiptPreview, setReceiptPreview] = React.useState<{
     rowId: string;
     src: string;
@@ -158,7 +178,9 @@ export function ReceiptQueueWorkspace() {
   const receiptPreviewRef = React.useRef(receiptPreview);
   receiptPreviewRef.current = receiptPreview;
   const { openPreview, closePreview } = useAttachmentPreview();
-  const debouncers = React.useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  /** Per-row rAF handles: coalesce rapid typing into ≤1 PATCH per frame (no visible input lag). */
+  const rowPatchRafRef = React.useRef<Map<string, number>>(new Map());
+  const confirmingRowIdsRef = React.useRef<Set<string>>(new Set());
   const pendingPatchesById = React.useRef<Map<string, ReceiptQueuePatch>>(new Map());
   /** Debounced saves continue async after pendingPatches is cleared; await these before refetching rows. */
   const rowSavePromises = React.useRef<Map<string, Promise<void>>>(new Map());
@@ -174,6 +196,34 @@ export function ReceiptQueueWorkspace() {
   const removeInFlightRef = React.useRef<Set<string>>(new Set());
   const initialFocusAppliedRef = React.useRef(false);
   const queueBottomSentinelRef = React.useRef<HTMLDivElement | null>(null);
+  /** Row exit: success check → fade/slide → height collapse. */
+  const [rowMotion, setRowMotion] = React.useState<Record<string, RowMotionPhase>>({});
+  const [confirmInvalid, setConfirmInvalid] = React.useState<{
+    rowId: string;
+    vendor: boolean;
+    amount: boolean;
+  } | null>(null);
+  const lastConfirmFlashRef = React.useRef<{ key: string; at: number }>({ key: "", at: 0 });
+
+  const flashConfirmInvalid = React.useCallback(
+    (rowId: string, fields: { vendor?: boolean; amount?: boolean }) => {
+      const key = `${rowId}:${!!fields.vendor}:${!!fields.amount}`;
+      const now = Date.now();
+      if (lastConfirmFlashRef.current.key === key && now - lastConfirmFlashRef.current.at < 650) {
+        return;
+      }
+      lastConfirmFlashRef.current = { key, at: now };
+      setConfirmInvalid({
+        rowId,
+        vendor: !!fields.vendor,
+        amount: !!fields.amount,
+      });
+      window.setTimeout(() => {
+        setConfirmInvalid((cur) => (cur?.rowId === rowId ? null : cur));
+      }, 340);
+    },
+    []
+  );
 
   const supabase = React.useMemo(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -183,8 +233,8 @@ export function ReceiptQueueWorkspace() {
 
   const flushPendingDebouncedPatches = React.useCallback(async () => {
     if (!supabase) return;
-    for (const [, t] of debouncers.current) clearTimeout(t);
-    debouncers.current.clear();
+    for (const [, raf] of rowPatchRafRef.current) cancelAnimationFrame(raf);
+    rowPatchRafRef.current.clear();
     const entries = [...pendingPatchesById.current.entries()];
     pendingPatchesById.current.clear();
     for (const [id, patch] of entries) {
@@ -202,16 +252,86 @@ export function ReceiptQueueWorkspace() {
 
   const needsFixCount = React.useMemo(() => rows.filter(rowNeedsFix).length, [rows]);
 
+  const queueProgress = React.useMemo(() => {
+    if (rows.length === 0) return { done: 0, total: 0, pct: 0 };
+    const done = rows.filter((r) => !rowNeedsFix(r)).length;
+    return { done, total: rows.length, pct: Math.round((done / rows.length) * 100) };
+  }, [rows]);
+
   const displayedRows = React.useMemo(() => {
     if (listFilter === "needs_fix") return rows.filter(rowNeedsFix);
     return rows;
   }, [rows, listFilter]);
 
-  const focusRowField = React.useCallback((field: "vendor" | "amount" | "date", rowId: string) => {
-    const el = fieldRefs.current[field][rowId];
-    el?.focus();
-    el?.select();
+  const applyQueueFieldFocus = React.useCallback((field: QueueFocusField, rowId: string) => {
+    if (field === "vendor" || field === "amount" || field === "date") {
+      const el = fieldRefs.current[field][rowId];
+      el?.focus();
+      el?.select();
+      scrollReceiptQueueRowIntoViewMobile(rowId);
+      return;
+    }
+    const root = document.querySelector(`[data-receipt-queue-row="${rowId}"]`);
+    const host = root?.querySelector(`[data-queue-field="${field}"]`);
+    const elRaw =
+      host instanceof HTMLInputElement || host instanceof HTMLSelectElement
+        ? host
+        : host?.querySelector("input,select");
+    if (!(elRaw instanceof HTMLElement)) return;
+    const el = elRaw as HTMLInputElement | HTMLSelectElement;
+    if (el.disabled) return;
+    el.focus();
+    if (el instanceof HTMLInputElement) el.select();
+    scrollReceiptQueueRowIntoViewMobile(rowId);
   }, []);
+
+  /** Next frame — use after layout when the target row is already mounted. */
+  const focusRowField = React.useCallback(
+    (field: QueueFocusField, rowId: string) => {
+      requestAnimationFrame(() => applyQueueFieldFocus(field, rowId));
+    },
+    [applyQueueFieldFocus]
+  );
+
+  /** After a state update removes/reorders rows (confirm): wait for commit + layout. */
+  const focusRowFieldAfterLayout = React.useCallback(
+    (field: QueueFocusField, rowId: string) => {
+      queueMicrotask(() => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => applyQueueFieldFocus(field, rowId));
+        });
+      });
+    },
+    [applyQueueFieldFocus]
+  );
+
+  const tryFocusNextFieldInSameRow = React.useCallback(
+    (rowId: string, currentField: string): boolean => {
+      const i = (ENTER_FIELD_ORDER as readonly string[]).indexOf(currentField);
+      if (i < 0) return false;
+      const root = document.querySelector(`[data-receipt-queue-row="${rowId}"]`);
+      if (!root || !(root instanceof HTMLElement)) return false;
+      for (let j = i + 1; j < ENTER_FIELD_ORDER.length; j++) {
+        const f = ENTER_FIELD_ORDER[j];
+        const host = root.querySelector(`[data-queue-field="${f}"]`);
+        if (!host) continue;
+        const elRaw =
+          host instanceof HTMLInputElement || host instanceof HTMLSelectElement
+            ? host
+            : host.querySelector("input,select");
+        if (!(elRaw instanceof HTMLElement)) continue;
+        const el = elRaw as HTMLInputElement | HTMLSelectElement;
+        if (el.disabled) continue;
+        el.focus();
+        if (el instanceof HTMLInputElement) el.select();
+        setActiveQueueRowId(rowId);
+        scrollReceiptQueueRowIntoViewMobile(rowId);
+        return true;
+      }
+      return false;
+    },
+    []
+  );
 
   React.useEffect(() => {
     if (loading || rows.length === 0 || initialFocusAppliedRef.current) return;
@@ -321,10 +441,20 @@ export function ReceiptQueueWorkspace() {
     };
   }, [supabase, refreshAll]);
 
+  const receiptQueueRefreshTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   React.useEffect(() => {
-    const onChange = () => void softRefreshQueueAndExpenses();
+    const onChange = () => {
+      if (receiptQueueRefreshTimerRef.current) clearTimeout(receiptQueueRefreshTimerRef.current);
+      receiptQueueRefreshTimerRef.current = setTimeout(() => {
+        receiptQueueRefreshTimerRef.current = null;
+        void softRefreshQueueAndExpenses();
+      }, 140);
+    };
     window.addEventListener(RECEIPT_QUEUE_CHANGED_EVENT, onChange);
-    return () => window.removeEventListener(RECEIPT_QUEUE_CHANGED_EVENT, onChange);
+    return () => {
+      window.removeEventListener(RECEIPT_QUEUE_CHANGED_EVENT, onChange);
+      if (receiptQueueRefreshTimerRef.current) clearTimeout(receiptQueueRefreshTimerRef.current);
+    };
   }, [softRefreshQueueAndExpenses]);
 
   React.useEffect(() => {
@@ -359,29 +489,27 @@ export function ReceiptQueueWorkspace() {
       if (!supabase) return;
       const prevPatch = pendingPatchesById.current.get(id) ?? {};
       pendingPatchesById.current.set(id, { ...prevPatch, ...patch });
-      const prevT = debouncers.current.get(id);
-      if (prevT) clearTimeout(prevT);
-      debouncers.current.set(
-        id,
-        setTimeout(() => {
-          debouncers.current.delete(id);
-          const merged = pendingPatchesById.current.get(id);
-          pendingPatchesById.current.delete(id);
-          if (!merged || Object.keys(merged).length === 0) return;
-          const p = (async () => {
-            try {
-              await updateReceiptQueueRow(supabase, id, merged);
-            } catch (e) {
-              const msg = e instanceof Error ? e.message : "Save failed";
-              toast({ title: "Queue row", description: msg, variant: "error" });
-            }
-          })();
-          rowSavePromises.current.set(id, p);
-          void p.finally(() => {
-            if (rowSavePromises.current.get(id) === p) rowSavePromises.current.delete(id);
-          });
-        }, 450)
-      );
+      const prevRaf = rowPatchRafRef.current.get(id);
+      if (prevRaf != null) cancelAnimationFrame(prevRaf);
+      const raf = requestAnimationFrame(() => {
+        rowPatchRafRef.current.delete(id);
+        const merged = pendingPatchesById.current.get(id);
+        pendingPatchesById.current.delete(id);
+        if (!merged || Object.keys(merged).length === 0) return;
+        const p = (async () => {
+          try {
+            await updateReceiptQueueRow(supabase, id, merged);
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : "Save failed";
+            toast({ title: "Queue row", description: msg, variant: "error" });
+          }
+        })();
+        rowSavePromises.current.set(id, p);
+        void p.finally(() => {
+          if (rowSavePromises.current.get(id) === p) rowSavePromises.current.delete(id);
+        });
+      });
+      rowPatchRafRef.current.set(id, raf);
     },
     [supabase, toast]
   );
@@ -440,10 +568,10 @@ export function ReceiptQueueWorkspace() {
   const flushRowToDb = React.useCallback(
     async (row: ReceiptQueueRow) => {
       if (!supabase) return;
-      const t = debouncers.current.get(row.id);
-      if (t) {
-        clearTimeout(t);
-        debouncers.current.delete(row.id);
+      const raf = rowPatchRafRef.current.get(row.id);
+      if (raf != null) {
+        cancelAnimationFrame(raf);
+        rowPatchRafRef.current.delete(row.id);
       }
       pendingPatchesById.current.delete(row.id);
       const inflight = rowSavePromises.current.get(row.id);
@@ -464,12 +592,19 @@ export function ReceiptQueueWorkspace() {
   );
 
   const handleEnterSaveNav = React.useCallback(
-    async (rowId: string, shiftKey: boolean) => {
+    async (rowId: string, shiftKey: boolean, sourceField: string | null) => {
       if (!supabase) return;
       const row = rowsRef.current.find((r) => r.id === rowId);
       if (!row || row.status === "processing") return;
-      await flushRowToDb(row);
-      if (shiftKey) return;
+      if (shiftKey) {
+        await flushRowToDb(row);
+        await flushPendingDebouncedPatches();
+        return;
+      }
+      void flushRowToDb(row);
+      if (sourceField && tryFocusNextFieldInSameRow(rowId, sourceField)) {
+        return;
+      }
       const all = rowsRef.current;
       const curIdx = all.findIndex((r) => r.id === rowId);
       if (curIdx === -1) return;
@@ -481,22 +616,42 @@ export function ReceiptQueueWorkspace() {
           break;
         }
       }
+      if (!next) {
+        for (let i = 0; i < curIdx; i++) {
+          const r = all[i];
+          if (rowNeedsFix(r) && r.status !== "processing") {
+            next = r;
+            break;
+          }
+        }
+      }
       if (next) {
-        window.requestAnimationFrame(() => {
-          setActiveQueueRowId(next.id);
-          focusRowField(firstEditableFieldForRow(next), next.id);
+        setActiveQueueRowId(next.id);
+        requestAnimationFrame(() => {
+          applyQueueFieldFocus(firstEditableFieldForRow(next!), next!.id);
         });
       }
     },
-    [supabase, flushRowToDb, focusRowField]
+    [
+      supabase,
+      flushRowToDb,
+      applyQueueFieldFocus,
+      flushPendingDebouncedPatches,
+      tryFocusNextFieldInSameRow,
+    ]
   );
 
   const onEditableKeyDown = React.useCallback(
-    (row: ReceiptQueueRow) => (e: React.KeyboardEvent<HTMLInputElement | HTMLSelectElement>) => {
+    (e: React.KeyboardEvent<HTMLInputElement | HTMLSelectElement>) => {
       if (e.key !== "Enter") return;
       if (e.nativeEvent.isComposing) return;
+      const id = e.currentTarget.getAttribute("data-queue-row-id");
+      if (!id) return;
+      const r = rowsRef.current.find((x) => x.id === id);
+      if (!r || r.status === "processing") return;
       e.preventDefault();
-      void handleEnterSaveNav(row.id, e.shiftKey);
+      const field = e.currentTarget.getAttribute("data-queue-field");
+      void handleEnterSaveNav(id, e.shiftKey, field);
     },
     [handleEnterSaveNav]
   );
@@ -761,7 +916,35 @@ export function ReceiptQueueWorkspace() {
     });
   }, [receiptPreview, openPreview, closePreview, replaceRowFile]);
 
-  const removeRow = React.useCallback(
+  const runRowExitAnimation = React.useCallback(
+    (id: string, options: { flashGreen: boolean; onComplete: () => void }) => {
+      const CHECK_MS = options.flashGreen ? 400 : 0;
+      const FADE_MS = 200;
+      const COLLAPSE_MS = 200;
+      const startFade = () => {
+        setRowMotion((s) => ({ ...s, [id]: "fade" }));
+        window.setTimeout(() => {
+          setRowMotion((s) => ({ ...s, [id]: "collapse" }));
+          window.setTimeout(() => {
+            setRowMotion((s) => {
+              const { [id]: _, ...rest } = s;
+              return rest;
+            });
+            options.onComplete();
+          }, COLLAPSE_MS);
+        }, FADE_MS);
+      };
+      if (options.flashGreen) {
+        setRowMotion((s) => ({ ...s, [id]: "success_check" }));
+        window.setTimeout(startFade, CHECK_MS);
+      } else {
+        startFade();
+      }
+    },
+    []
+  );
+
+  const performRemoveRowCore = React.useCallback(
     (id: string) => {
       if (!supabase) return;
       if (removeInFlightRef.current.has(id)) return;
@@ -790,6 +973,21 @@ export function ReceiptQueueWorkspace() {
     [supabase, toast]
   );
 
+  const removeRow = React.useCallback(
+    (id: string) => {
+      if (!supabase) return;
+      if (removeInFlightRef.current.has(id)) return;
+      if (rowMotion[id]) return;
+      const removed = rowsRef.current.find((r) => r.id === id);
+      if (!removed) return;
+      runRowExitAnimation(id, {
+        flashGreen: false,
+        onComplete: () => performRemoveRowCore(id),
+      });
+    },
+    [supabase, rowMotion, runRowExitAnimation, performRemoveRowCore]
+  );
+
   const dupWarning = (row: ReceiptQueueRow): string | null => {
     const total = Number(row.amount);
     if (!Number.isFinite(total)) return null;
@@ -807,10 +1005,12 @@ export function ReceiptQueueWorkspace() {
     const live = rowsRef.current.find((r) => r.id === row.id) ?? row;
     const total = Number(live.amount);
     if (!Number.isFinite(total) || total <= 0) {
+      flashConfirmInvalid(live.id, { amount: true });
       toast({ title: "Amount required", variant: "error" });
       return;
     }
     if (!live.vendor_name.trim()) {
+      flashConfirmInvalid(live.id, { vendor: true });
       toast({ title: "Vendor required", variant: "error" });
       return;
     }
@@ -823,27 +1023,42 @@ export function ReceiptQueueWorkspace() {
       });
       return;
     }
-    const snapshot = rowsRef.current;
-    const t0 = uiActionMark();
-    setReceiptPreview((p) => (p?.rowId === live.id ? null : p));
-    setActiveQueueRowId((cur) => (cur === live.id ? null : cur));
-    setRows((r) => r.filter((x) => x.id !== live.id));
-    uiActionLog("receipt-queue-confirm-ui", t0, 100);
-    void (async () => {
-      try {
-        await finalizeReceiptQueueExpense(supabase, live, "confirm");
-        toast({
-          title: "Expense created",
-          description: "Expense created.",
-          variant: "success",
-        });
-        void softRefreshQueueAndExpenses();
-      } catch (e) {
-        setRows(snapshot);
-        const msg = e instanceof Error ? e.message : "Failed";
-        toast({ title: "Create failed", description: msg, variant: "error" });
-      }
-    })();
+    if (rowMotion[live.id]) return;
+    if (confirmingRowIdsRef.current.has(live.id)) return;
+    confirmingRowIdsRef.current.add(live.id);
+    runRowExitAnimation(live.id, {
+      flashGreen: true,
+      onComplete: () => {
+        confirmingRowIdsRef.current.delete(live.id);
+        const snapshot = rowsRef.current;
+        const remainingAfter = snapshot.filter((x) => x.id !== live.id);
+        const t0 = uiActionMark();
+        setReceiptPreview((p) => (p?.rowId === live.id ? null : p));
+        setActiveQueueRowId((cur) => (cur === live.id ? null : cur));
+        setRows((r) => r.filter((x) => x.id !== live.id));
+        uiActionLog("receipt-queue-confirm-ui", t0, 100);
+        const next = remainingAfter.find((r) => rowNeedsFix(r) && r.status !== "processing");
+        if (next) {
+          setActiveQueueRowId(next.id);
+          focusRowFieldAfterLayout(firstEditableFieldForRow(next), next.id);
+        }
+        void (async () => {
+          try {
+            await flushRowToDb(live);
+            await finalizeReceiptQueueExpense(supabase, live, "confirm");
+            toast({
+              title: "Expense created",
+              description: "Expense created.",
+              variant: "success",
+            });
+          } catch (e) {
+            setRows(snapshot);
+            const msg = e instanceof Error ? e.message : "Failed";
+            toast({ title: "Create failed", description: msg, variant: "error" });
+          }
+        })();
+      },
+    });
   };
 
   const addAllEligibleCount = React.useMemo(
@@ -903,8 +1118,24 @@ export function ReceiptQueueWorkspace() {
     setBulkAdding(false);
   }, [rows, supabase, toast, softRefreshQueueAndExpenses, router, previewUrls]);
 
-  const openRowPreview = (row: ReceiptQueueRow) => {
-    const src = previewUrls[row.id];
+  const onReplacePick = React.useCallback((rowId: string) => {
+    setReplaceTargetId(rowId);
+    requestAnimationFrame(() => {
+      rowReuploadInputRef.current?.click();
+    });
+  }, []);
+
+  const queueHandlersRef = React.useRef({
+    confirmRow: ((_row: ReceiptQueueRow) => {}) as (row: ReceiptQueueRow) => void,
+    removeRow: ((_id: string) => {}) as (id: string) => void,
+    openPreview: ((_id: string) => {}) as (id: string) => void,
+  });
+  queueHandlersRef.current.confirmRow = confirmRow;
+  queueHandlersRef.current.removeRow = removeRow;
+  queueHandlersRef.current.openPreview = (id: string) => {
+    const row = rowsRef.current.find((r) => r.id === id);
+    if (!row) return;
+    const src = previewUrlsRef.current[row.id];
     if (!src || row.status === "processing") return;
     const isPdf =
       row.mime_type === "application/pdf" || row.file_name.toLowerCase().endsWith(".pdf");
@@ -916,30 +1147,115 @@ export function ReceiptQueueWorkspace() {
     });
   };
 
-  const onReplacePick = (rowId: string) => {
-    setReplaceTargetId(rowId);
-    requestAnimationFrame(() => {
-      rowReuploadInputRef.current?.click();
-    });
-  };
+  const stableConfirmRow = React.useCallback((row: ReceiptQueueRow) => {
+    queueHandlersRef.current.confirmRow(row);
+  }, []);
+  const stableRemoveRow = React.useCallback((id: string) => {
+    queueHandlersRef.current.removeRow(id);
+  }, []);
+  const stableOpenPreview = React.useCallback((id: string) => {
+    queueHandlersRef.current.openPreview(id);
+  }, []);
+
+  const registerVendorRef = React.useCallback((id: string, el: HTMLInputElement | null) => {
+    fieldRefs.current.vendor[id] = el;
+  }, []);
+  const registerAmountRef = React.useCallback((id: string, el: HTMLInputElement | null) => {
+    fieldRefs.current.amount[id] = el;
+  }, []);
+  const registerDateRef = React.useCallback((id: string, el: HTMLInputElement | null) => {
+    fieldRefs.current.date[id] = el;
+  }, []);
+
+  const onVendorChange = React.useCallback(
+    (id: string, v: string) => {
+      queueAutoPaymentDoneRef.current.delete(id);
+      setConfirmInvalid((cur) => {
+        if (!cur || cur.rowId !== id) return cur;
+        const next = { ...cur, vendor: false };
+        return next.amount ? next : null;
+      });
+      setRows((r) => r.map((x) => (x.id === id ? { ...x, vendor_name: v } : x)));
+      patchRowDebounced(id, { vendor_name: v });
+      queueVendorPaymentSuggest(id, v);
+    },
+    [patchRowDebounced, queueVendorPaymentSuggest]
+  );
+  const onAmountChange = React.useCallback(
+    (id: string, v: string) => {
+      setConfirmInvalid((cur) => {
+        if (!cur || cur.rowId !== id) return cur;
+        const next = { ...cur, amount: false };
+        return next.vendor ? next : null;
+      });
+      setRows((r) => r.map((x) => (x.id === id ? { ...x, amount: v } : x)));
+      patchRowDebounced(id, { amount: v });
+    },
+    [patchRowDebounced]
+  );
+  const onDateChange = React.useCallback(
+    (id: string, v: string) => {
+      setRows((r) => r.map((x) => (x.id === id ? { ...x, expense_date: v } : x)));
+      patchRowDebounced(id, { expense_date: v });
+    },
+    [patchRowDebounced]
+  );
+  const onProjectChange = React.useCallback(
+    (id: string, v: string | null) => {
+      void patchRowImmediate(id, { project_id: v });
+    },
+    [patchRowImmediate]
+  );
+  const onCategoryChange = React.useCallback(
+    (id: string, v: string) => {
+      void patchRowImmediate(id, { category: v });
+    },
+    [patchRowImmediate]
+  );
+  const onPaymentChange = React.useCallback(
+    (id: string, v: string | null) => {
+      if (!v) queueAutoPaymentDoneRef.current.delete(id);
+      void patchRowImmediate(id, { payment_account_id: v });
+    },
+    [patchRowImmediate]
+  );
+  const onWorkerChange = React.useCallback(
+    (id: string, v: string | null) => {
+      void patchRowImmediate(id, { worker_id: v });
+    },
+    [patchRowImmediate]
+  );
 
   return (
-    <div className="w-full">
-      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6">
+    <div className="w-full bg-[#f5f0e8] dark:bg-background">
+      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-3 py-6 sm:gap-8 sm:px-6 sm:py-8">
         <PageHeader
-          className="[&_h1]:text-[#111827] [&_p]:text-[#6B7280]"
-          title="Receipt queue"
-          description="Uploads persist across sessions. In vendor, amount, or date: Enter saves and jumps to the next row that needs attention; Shift+Enter saves only. Add all imports in bulk (needs review)."
+          className="items-start gap-1 border-0 pb-0 sm:items-start [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:tracking-tight [&_h1]:text-[#111827] [&_p]:max-w-2xl [&_p]:text-sm [&_p]:leading-relaxed [&_p]:text-[#6B7280]"
+          title="Receipt Queue"
+          description="Uploads persist across sessions. Enter saves the row and moves to the next field, then the next row that needs attention. Shift+Enter saves this row and flushes all pending edits. Add all imports in bulk (needs review)."
           actions={
-            <div className="flex flex-wrap items-center gap-1.5">
-              <Button variant="outline" size="sm" className="h-8 rounded-sm" asChild>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                  "h-9 rounded-md border-hh-secondary-border bg-white px-3 text-sm font-medium text-hh-secondary-text shadow-none",
+                  RQ_BTN,
+                  "hover:bg-[#f4f4f2]"
+                )}
+                asChild
+              >
                 <Link href="/financial/expenses">Expenses</Link>
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 rounded-sm"
+                className={cn(
+                  "h-9 rounded-md border-2 border-[#111827] bg-white px-3 text-sm font-semibold text-[#111827] shadow-none",
+                  RQ_BTN,
+                  "hover:bg-gray-50"
+                )}
                 disabled={bulkAdding || !supabase || addAllEligibleCount === 0}
                 onClick={() => void handleAddAll()}
               >
@@ -997,34 +1313,40 @@ export function ReceiptQueueWorkspace() {
                 replaceRowFile(tid, f);
               }}
             />
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-3">
               <Button
                 type="button"
-                variant="outline"
                 size="sm"
-                className="h-9"
+                className={cn(
+                  "h-10 gap-2 rounded-lg border-0 bg-[#111827] px-4 text-sm font-medium text-white shadow-none",
+                  RQ_BTN,
+                  "hover:bg-gray-800"
+                )}
                 disabled={captureUploading}
                 onClick={() => cameraInputRef.current?.click()}
               >
                 {captureUploading ? (
-                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
                 ) : (
-                  <Camera className="mr-1.5 h-3.5 w-3.5" />
+                  <Camera className="h-4 w-4" />
                 )}
                 Take photo
               </Button>
               <Button
                 type="button"
-                variant="outline"
                 size="sm"
-                className="h-9"
+                className={cn(
+                  "h-10 gap-2 rounded-lg border-0 bg-hh-link px-4 text-sm font-medium text-white shadow-none",
+                  RQ_BTN,
+                  "hover:bg-blue-600"
+                )}
                 disabled={captureUploading}
                 onClick={() => uploadInputRef.current?.click()}
               >
                 {captureUploading ? (
-                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
                 ) : (
-                  <Upload className="mr-1.5 h-3.5 w-3.5" />
+                  <Upload className="h-4 w-4" />
                 )}
                 Upload files
               </Button>
@@ -1036,8 +1358,8 @@ export function ReceiptQueueWorkspace() {
             ) : null}
             <div
               className={cn(
-                "flex min-h-[72px] flex-col items-center justify-center gap-1 border border-dashed border-border/60 py-6 text-xs text-muted-foreground transition-colors",
-                dragOver && !captureUploading && "border-foreground/50",
+                "flex min-h-[140px] flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-hh-border bg-[#F9FAFB] py-8 text-sm text-[#6B7280] transition-colors duration-[140ms] ease-out",
+                dragOver && !captureUploading && "border-hh-link/50 bg-[#EFF6FF]",
                 captureUploading && "pointer-events-none opacity-60"
               )}
               onDragEnter={(e) => {
@@ -1058,19 +1380,67 @@ export function ReceiptQueueWorkspace() {
                 void enqueueFiles(e.dataTransfer.files);
               }}
             >
-              <span>{captureUploading ? "Uploading…" : "Drop files here to add to the queue"}</span>
+              <Upload className="h-8 w-8 text-[#9CA3AF]" aria-hidden />
+              <span className="text-sm font-medium text-[#6B7280]">
+                {captureUploading ? "Uploading…" : "Drop files here to add to the queue"}
+              </span>
             </div>
           </>
         )}
 
         {loading && rows.length === 0 ? (
           <div
-            className="flex items-center gap-2 border-b border-border/60 py-3 text-xs text-muted-foreground"
+            className="flex flex-col gap-4 md:gap-3"
             role="status"
             aria-live="polite"
+            aria-label="Loading queue"
           >
-            <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" aria-hidden />
-            <span>Loading queue…</span>
+            {[0, 1, 2].map((i) => (
+              <React.Fragment key={i}>
+                <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-[0_2px_16px_rgba(15,23,42,0.08)] dark:border-border dark:bg-card md:hidden">
+                  <div className="flex flex-col gap-4">
+                    <div className="flex gap-3">
+                      <Skeleton className="h-16 w-16 shrink-0 rounded-xl" />
+                      <div className="flex flex-1 flex-col gap-2">
+                        <Skeleton className="h-5 w-24 rounded-md" />
+                        <Skeleton className="h-10 w-full rounded-xl" />
+                        <Skeleton className="h-[18px] w-20 rounded-sm" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Skeleton className="h-10 w-full rounded-xl" />
+                      <Skeleton className="h-10 w-full rounded-xl" />
+                    </div>
+                    <Skeleton className="h-10 w-full rounded-xl" />
+                    <Skeleton className="h-10 w-full rounded-xl" />
+                    <Skeleton className="h-10 w-full rounded-xl" />
+                    <div className="flex gap-2 pt-2">
+                      <Skeleton className="h-11 min-h-10 flex-1 rounded-xl" />
+                      <Skeleton className="h-11 w-11 shrink-0 rounded-xl" />
+                    </div>
+                  </div>
+                </div>
+                <div className="hidden rounded-lg border border-gray-200 bg-white p-4 shadow-[0_1px_3px_rgba(15,23,42,0.07)] dark:border-border dark:bg-card md:block">
+                  <div className="grid w-full items-center gap-x-3 gap-y-2 [grid-template-columns:60px_80px_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_100px]">
+                    <Skeleton className="h-[52px] w-[52px] rounded-lg" />
+                    <Skeleton className="h-8 w-14" />
+                    <div className="min-w-0 space-y-1">
+                      <Skeleton className="h-9 w-full rounded-lg" />
+                      <Skeleton className="h-[18px] w-20 rounded-sm" />
+                    </div>
+                    <div className="min-w-0 space-y-1">
+                      <Skeleton className="h-9 w-full rounded-lg" />
+                      <Skeleton className="h-[18px] w-16 rounded-sm" />
+                    </div>
+                    <Skeleton className="h-9 w-full rounded-lg" />
+                    <Skeleton className="h-9 w-full rounded-lg" />
+                    <Skeleton className="h-9 w-full rounded-lg" />
+                    <Skeleton className="h-9 w-full rounded-lg" />
+                    <Skeleton className="h-9 w-full rounded-lg" />
+                  </div>
+                </div>
+              </React.Fragment>
+            ))}
           </div>
         ) : null}
 
@@ -1078,46 +1448,65 @@ export function ReceiptQueueWorkspace() {
           <p className="text-sm text-muted-foreground">No items in the queue.</p>
         ) : rows.length > 0 ? (
           <>
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-200/80 bg-[#FFFBEB] px-3 py-2.5 dark:border-amber-800/50 dark:bg-amber-950/30">
-              <div className="flex min-w-0 items-center gap-2 text-sm text-[#78350f] dark:text-amber-100">
-                <AlertTriangle
-                  className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400"
-                  aria-hidden
-                />
-                <span>
-                  {needsFixCount === 0 ? (
-                    "All caught up."
-                  ) : (
-                    <>
-                      {needsFixCount} item{needsFixCount === 1 ? "" : "s"} need attention
-                    </>
-                  )}
-                </span>
-              </div>
-              <div className="flex shrink-0 flex-col items-end gap-1 sm:flex-row sm:items-center">
-                <p className="text-[11px] text-amber-900/75 dark:text-amber-200/80">
-                  Enter: save &amp; next · Shift+Enter: save
-                </p>
-                <div className="flex gap-1">
-                  <Button
-                    type="button"
-                    variant={listFilter === "all" ? "outline" : "ghost"}
-                    size="sm"
-                    className="h-8 rounded-sm"
-                    onClick={() => setListFilter("all")}
-                  >
-                    All
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={listFilter === "needs_fix" ? "outline" : "ghost"}
-                    size="sm"
-                    className="h-8 rounded-sm"
-                    onClick={() => setListFilter("needs_fix")}
-                  >
-                    Needs fix ({needsFixCount})
-                  </Button>
+            <div className="overflow-hidden rounded-lg border border-amber-200/90 bg-[#FFFBEB] dark:border-amber-800/50 dark:bg-amber-950/30">
+              <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3 sm:items-center">
+                <div className="flex min-w-0 items-center gap-2 text-sm font-medium text-[#78350f] dark:text-amber-100">
+                  <AlertTriangle
+                    className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400"
+                    aria-hidden
+                  />
+                  <span>
+                    {needsFixCount === 0 ? (
+                      "All caught up."
+                    ) : (
+                      <>
+                        {needsFixCount} item{needsFixCount === 1 ? "" : "s"} need attention
+                      </>
+                    )}
+                  </span>
                 </div>
+                <div className="flex w-full shrink-0 flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
+                  <p className="text-center text-[11px] text-amber-900/70 dark:text-amber-200/80 sm:text-right">
+                    Enter: field → next row · Shift+Enter: save all pending
+                  </p>
+                  <div className="flex justify-center gap-1 sm:justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setListFilter("all")}
+                      className={cn(
+                        "rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-[140ms] ease-out",
+                        listFilter === "all"
+                          ? "bg-white text-[#111827] shadow-sm ring-1 ring-amber-200/80 dark:bg-amber-900/40 dark:text-amber-50 dark:ring-amber-700/50"
+                          : "text-amber-900/80 hover:bg-amber-100/80 dark:text-amber-200/90 dark:hover:bg-amber-900/30"
+                      )}
+                    >
+                      All
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setListFilter("needs_fix")}
+                      className={cn(
+                        "rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-[140ms] ease-out",
+                        listFilter === "needs_fix"
+                          ? "bg-white text-[#111827] shadow-sm ring-1 ring-amber-200/80 dark:bg-amber-900/40 dark:text-amber-50 dark:ring-amber-700/50"
+                          : "text-amber-900/80 hover:bg-amber-100/80 dark:text-amber-200/90 dark:hover:bg-amber-900/30"
+                      )}
+                    >
+                      Needs fix ({needsFixCount})
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 border-t border-amber-200/60 px-4 py-2 dark:border-amber-800/40">
+                <div className="relative h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-amber-100/80 dark:bg-amber-900/40">
+                  <div
+                    className="absolute inset-y-0 left-0 rounded-full bg-hh-link transition-[width] duration-300"
+                    style={{ width: `${queueProgress.pct}%` }}
+                  />
+                </div>
+                <span className="shrink-0 tabular-nums text-xs font-medium text-[#78350f] dark:text-amber-100">
+                  {queueProgress.done} / {queueProgress.total} ({queueProgress.pct}%)
+                </span>
               </div>
             </div>
 
@@ -1134,307 +1523,61 @@ export function ReceiptQueueWorkspace() {
               </p>
             ) : (
               <>
-                <Table>
-                  <TableHeader>
-                    <TableRow className="hover:bg-transparent">
-                      <TableHead className="w-[52px] text-[10px] uppercase tracking-wide">
-                        {" "}
-                      </TableHead>
-                      <TableHead className="text-[10px] uppercase tracking-wide">File</TableHead>
-                      <TableHead className="w-[100px] text-[10px] uppercase tracking-wide">
-                        Status
-                      </TableHead>
-                      <TableHead className="min-w-[120px] text-[10px] uppercase tracking-wide">
-                        Vendor
-                      </TableHead>
-                      <TableHead className="w-[100px] text-[10px] uppercase tracking-wide">
-                        Amount
-                      </TableHead>
-                      <TableHead className="w-[130px] text-[10px] uppercase tracking-wide">
-                        Date
-                      </TableHead>
-                      <TableHead className="min-w-[140px] text-[10px] uppercase tracking-wide">
-                        Project
-                      </TableHead>
-                      <TableHead className="min-w-[120px] text-[10px] uppercase tracking-wide">
-                        Category
-                      </TableHead>
-                      <TableHead className="min-w-[130px] text-[10px] uppercase tracking-wide">
-                        Payment
-                      </TableHead>
-                      <TableHead className="w-[100px] text-[10px] uppercase tracking-wide">
-                        {" "}
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {displayedRows.map((row) => {
-                      const prev = previewUrls[row.id];
-                      const st = queueStatusBadge(row.status);
-                      const busy = row.status === "processing";
-                      const dup = dupWarning(row);
-                      const needsHighlight = rowNeedsFix(row) && !busy;
-                      const vendorMissing = !busy && row.vendor_name.trim() === "";
-                      const showAmountHint = !busy && amountIsMissing(row);
-                      return (
-                        <TableRow
-                          key={row.id}
-                          className={cn(
-                            "table-row-compact transition-[background-color,box-shadow,opacity] duration-200 ease-out",
-                            activeQueueRowId === row.id &&
-                              "relative z-[1] ring-1 ring-inset ring-[#E5E7EB] dark:ring-border",
-                            activeQueueRowId === row.id &&
-                              !needsHighlight &&
-                              "bg-[#F9FAFB] dark:bg-muted/25",
-                            newRowHighlightIds.includes(row.id) && "animate-receipt-queue-row-new",
-                            needsHighlight &&
-                              "bg-[#FFFBEB] hover:bg-[#FEF3C7] dark:bg-amber-950/35 dark:hover:bg-amber-950/50",
-                            needsHighlight &&
-                              "shadow-[inset_3px_0_0_0_#F59E0B] dark:shadow-[inset_3px_0_0_0_rgb(245,158,11)]"
-                          )}
-                        >
-                          <TableCell className="p-2">
-                            <button
-                              type="button"
-                              disabled={busy || !prev}
-                              aria-label="Preview receipt"
-                              className={cn(
-                                "relative h-12 w-12 shrink-0 overflow-hidden rounded-sm border border-border/60 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                                busy || !prev
-                                  ? "cursor-not-allowed opacity-60"
-                                  : "cursor-pointer hover:opacity-95"
-                              )}
-                              onClick={() => openRowPreview(row)}
-                            >
-                              {row.mime_type === "application/pdf" ||
-                              row.file_name.toLowerCase().endsWith(".pdf") ? (
-                                <div className="flex h-full w-full items-center justify-center bg-background text-[9px] font-medium text-muted-foreground">
-                                  PDF
-                                </div>
-                              ) : prev ? (
-                                /* eslint-disable-next-line @next/next/no-img-element */
-                                <img src={prev} alt="" className="h-full w-full object-cover" />
-                              ) : (
-                                <div className="flex h-full w-full items-center justify-center text-[9px] text-muted-foreground">
-                                  —
-                                </div>
-                              )}
-                              {busy ? (
-                                <div className="absolute inset-0 flex items-center justify-center bg-background/70">
-                                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                                </div>
-                              ) : null}
-                            </button>
-                          </TableCell>
-                          <TableCell className="max-w-[180px] p-2">
-                            <p className="truncate text-xs font-medium">{row.file_name || "—"}</p>
-                            <p className="truncate text-[11px] text-muted-foreground">
-                              OCR: {row.ocr_source}
-                            </p>
-                            {row.error_message ? (
-                              <p className="text-[11px] text-destructive">{row.error_message}</p>
-                            ) : null}
-                            {dup ? (
-                              <p className="text-[11px] text-amber-700 dark:text-amber-300">
-                                {dup}
-                              </p>
-                            ) : null}
-                            {row.status === "failed" ? (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="mt-1 h-7 px-2 text-xs"
-                                onClick={() => onReplacePick(row.id)}
-                              >
-                                Re-upload
-                              </Button>
-                            ) : null}
-                          </TableCell>
-                          <TableCell className="p-2">
-                            <StatusBadge label={st.label} variant={st.variant} />
-                          </TableCell>
-                          <TableCell className="p-1 align-top">
-                            <div className="space-y-0.5">
-                              <Input
-                                ref={(el) => {
-                                  fieldRefs.current.vendor[row.id] = el;
-                                }}
-                                placeholder="Vendor"
-                                value={row.vendor_name}
-                                disabled={busy}
-                                onFocus={() => setActiveQueueRowId(row.id)}
-                                onChange={(e) => {
-                                  const v = e.target.value;
-                                  queueAutoPaymentDoneRef.current.delete(row.id);
-                                  setRows((r) =>
-                                    r.map((x) => (x.id === row.id ? { ...x, vendor_name: v } : x))
-                                  );
-                                  patchRowDebounced(row.id, { vendor_name: v });
-                                  queueVendorPaymentSuggest(row.id, v);
-                                }}
-                                onKeyDown={onEditableKeyDown(row)}
-                                className="h-8 text-xs"
-                                autoComplete="off"
-                              />
-                              {vendorMissing ? (
-                                <p
-                                  className="flex items-center gap-1 text-[11px] text-amber-800 dark:text-amber-200"
-                                  role="status"
-                                >
-                                  <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden />
-                                  Vendor missing
-                                </p>
-                              ) : null}
-                            </div>
-                          </TableCell>
-                          <TableCell className="p-1 align-top">
-                            <div className="space-y-0.5">
-                              <Input
-                                ref={(el) => {
-                                  fieldRefs.current.amount[row.id] = el;
-                                }}
-                                placeholder="Amount"
-                                inputMode="decimal"
-                                value={row.amount}
-                                disabled={busy}
-                                onFocus={() => setActiveQueueRowId(row.id)}
-                                onChange={(e) => {
-                                  const v = e.target.value;
-                                  setRows((r) =>
-                                    r.map((x) => (x.id === row.id ? { ...x, amount: v } : x))
-                                  );
-                                  patchRowDebounced(row.id, { amount: v });
-                                }}
-                                onKeyDown={onEditableKeyDown(row)}
-                                className="h-8 tabular-nums text-xs"
-                                autoComplete="off"
-                              />
-                              {showAmountHint ? (
-                                <p
-                                  className="flex items-center gap-1 text-[11px] text-amber-800 dark:text-amber-200"
-                                  role="status"
-                                >
-                                  <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden />
-                                  $—
-                                </p>
-                              ) : null}
-                            </div>
-                          </TableCell>
-                          <TableCell className="p-1 align-top">
-                            <Input
-                              ref={(el) => {
-                                fieldRefs.current.date[row.id] = el;
-                              }}
-                              type="date"
-                              value={row.expense_date.slice(0, 10)}
-                              disabled={busy}
-                              onFocus={() => setActiveQueueRowId(row.id)}
-                              onChange={(e) => {
-                                const v = e.target.value;
-                                setRows((r) =>
-                                  r.map((x) => (x.id === row.id ? { ...x, expense_date: v } : x))
-                                );
-                                patchRowDebounced(row.id, { expense_date: v });
-                              }}
-                              onKeyDown={onEditableKeyDown(row)}
-                              className="h-8 text-xs"
-                            />
-                          </TableCell>
-                          <TableCell className="p-1">
-                            <select
-                              className="h-8 w-full max-w-[200px] rounded border border-input bg-transparent px-2 text-xs"
-                              value={row.project_id ?? ""}
-                              disabled={busy}
-                              onChange={(e) => {
-                                const v = e.target.value || null;
-                                void patchRowImmediate(row.id, { project_id: v });
-                              }}
-                            >
-                              <option value="">Project…</option>
-                              {projects.map((p) => (
-                                <option key={p.id} value={p.id}>
-                                  {p.name ?? p.id}
-                                </option>
-                              ))}
-                            </select>
-                          </TableCell>
-                          <TableCell className="p-1">
-                            <ExpenseCategorySelect
-                              value={row.category}
-                              disabled={busy}
-                              onValueChange={(v) => void patchRowImmediate(row.id, { category: v })}
-                              className="h-8 w-full max-w-[180px] rounded border border-input bg-transparent px-2 text-xs"
-                            />
-                          </TableCell>
-                          <TableCell className="p-1 align-top">
-                            <PaymentAccountSelect
-                              value={row.payment_account_id ?? ""}
-                              disabled={busy}
-                              onValueChange={(id) => {
-                                const next = id.trim() ? id : null;
-                                if (!next) queueAutoPaymentDoneRef.current.delete(row.id);
-                                void patchRowImmediate(row.id, { payment_account_id: next });
-                              }}
-                              className="h-8 w-full max-w-[180px] rounded border border-input bg-transparent px-2 text-xs"
-                              onKeyDown={onEditableKeyDown(row)}
-                            />
-                          </TableCell>
-                          <TableCell className="p-1">
-                            <div className="flex flex-col gap-1">
-                              {workers.length > 0 ? (
-                                <select
-                                  className="h-8 w-full rounded border border-input bg-transparent px-2 text-[11px]"
-                                  value={row.worker_id ?? ""}
-                                  disabled={busy}
-                                  onChange={(e) => {
-                                    const v = e.target.value || null;
-                                    void patchRowImmediate(row.id, { worker_id: v });
-                                  }}
-                                >
-                                  <option value="">Company</option>
-                                  {workers.map((w) => (
-                                    <option key={w.id} value={w.id}>
-                                      {w.name}
-                                    </option>
-                                  ))}
-                                </select>
-                              ) : null}
-                              <div className="flex gap-1">
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  className="h-8 flex-1 text-xs"
-                                  disabled={
-                                    busy ||
-                                    bulkAdding ||
-                                    captureUploading ||
-                                    vendorMissing ||
-                                    showAmountHint
-                                  }
-                                  onClick={() => confirmRow(row)}
-                                >
-                                  Confirm
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-8 px-2"
-                                  disabled={busy}
-                                  onClick={() => void removeRow(row.id)}
-                                  aria-label="Remove"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
-                              </div>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+                <div className="flex flex-col gap-4 md:gap-3">
+                  {displayedRows.map((row) => {
+                    const prev = previewUrls[row.id];
+                    const st = queueStatusBadge(row.status);
+                    const dup = dupWarning(row);
+                    const needsHighlight = rowNeedsFix(row) && row.status !== "processing";
+                    const vendorMissing =
+                      row.status !== "processing" && row.vendor_name.trim() === "";
+                    const showAmountHint = row.status !== "processing" && amountIsMissing(row);
+                    const motion = rowMotion[row.id];
+                    const rowLocked = !!motion;
+                    const vendorShake = confirmInvalid?.rowId === row.id && confirmInvalid.vendor;
+                    const amountShake = confirmInvalid?.rowId === row.id && confirmInvalid.amount;
+                    return (
+                      <ReceiptQueueRowCard
+                        key={row.id}
+                        layout={rqLayout}
+                        row={row}
+                        previewUrl={prev}
+                        projects={projects}
+                        workers={workers}
+                        statusLabel={st.label}
+                        statusVariant={st.variant}
+                        motion={motion}
+                        rowLocked={rowLocked}
+                        activeQueueRowId={activeQueueRowId}
+                        needsHighlight={needsHighlight}
+                        newRowHighlight={newRowHighlightIds.includes(row.id)}
+                        vendorMissing={vendorMissing}
+                        showAmountHint={showAmountHint}
+                        vendorShake={vendorShake}
+                        amountShake={amountShake}
+                        dup={dup}
+                        bulkAdding={bulkAdding}
+                        captureUploading={captureUploading}
+                        registerVendorRef={registerVendorRef}
+                        registerAmountRef={registerAmountRef}
+                        registerDateRef={registerDateRef}
+                        setActiveQueueRowId={setActiveQueueRowId}
+                        onVendorChange={onVendorChange}
+                        onAmountChange={onAmountChange}
+                        onDateChange={onDateChange}
+                        onProjectChange={onProjectChange}
+                        onCategoryChange={onCategoryChange}
+                        onPaymentChange={onPaymentChange}
+                        onWorkerChange={onWorkerChange}
+                        onPreview={stableOpenPreview}
+                        onReplace={onReplacePick}
+                        onConfirm={stableConfirmRow}
+                        onRemove={stableRemoveRow}
+                        onEditableKeyDown={onEditableKeyDown}
+                      />
+                    );
+                  })}
+                </div>
                 <div ref={queueBottomSentinelRef} className="h-px w-full shrink-0" aria-hidden />
               </>
             )}

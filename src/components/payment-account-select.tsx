@@ -30,6 +30,8 @@ export type PaymentAccountSelectProps = {
   autoFocus?: boolean;
   onKeyDown?: React.KeyboardEventHandler<HTMLSelectElement>;
   onAccountsUpdated?: (rows: PaymentAccountRow[]) => void;
+  "data-queue-row-id"?: string;
+  "data-queue-field"?: string;
 };
 
 export function PaymentAccountSelect({
@@ -41,6 +43,8 @@ export function PaymentAccountSelect({
   autoFocus,
   onKeyDown,
   onAccountsUpdated,
+  "data-queue-row-id": dataQueueRowId,
+  "data-queue-field": dataQueueField,
 }: PaymentAccountSelectProps) {
   const { toast } = useToast();
   const [accounts, setAccounts] = React.useState<PaymentAccountRow[]>([]);
@@ -143,6 +147,8 @@ export function PaymentAccountSelect({
         className={cn(className)}
         autoFocus={autoFocus}
         aria-busy={loading}
+        data-queue-row-id={dataQueueRowId}
+        data-queue-field={dataQueueField}
       >
         <option value="">—</option>
         {accounts.map((a) => (

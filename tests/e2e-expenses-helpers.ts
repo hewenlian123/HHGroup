@@ -10,6 +10,11 @@ export function expensesVendorSearch(page: Page): Locator {
   return page.locator("main").getByRole("textbox", { name: "Search…" });
 }
 
+/** Card row on `/financial/receipt-queue` (`data-testid="receipt-queue-row"`). */
+export function receiptQueueRowByFileName(page: Page, fileName: string): Locator {
+  return page.getByTestId("receipt-queue-row").filter({ hasText: fileName }).first();
+}
+
 /**
  * `PaymentAccountSelect` in Quick expense / edit flows: native `<select>` that includes
  * “+ Add new account” (unlike Project / Category selects).
@@ -142,7 +147,10 @@ export async function waitForReceiptQueueEditableVendor(
   page: Page,
   timeoutMs = 120_000
 ): Promise<Locator> {
-  const vendor = page.locator('tbody tr input[placeholder="Vendor"]:not([disabled])').first();
+  const vendor = page
+    .getByTestId("receipt-queue-row")
+    .locator('input[placeholder="Vendor"]:not([disabled])')
+    .first();
   await vendor.waitFor({ state: "visible", timeout: timeoutMs });
   return vendor;
 }
