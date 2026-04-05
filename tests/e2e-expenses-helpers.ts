@@ -14,11 +14,10 @@ export function expensesVendorSearch(page: Page): Locator {
  * `PaymentAccountSelect` in Quick expense / edit flows: native `<select>` that includes
  * “+ Add new account” (unlike Project / Category selects).
  */
-export function dialogPaymentAccountSelect(dialog: Locator, page: Page): Locator {
+export function dialogPaymentAccountSelect(dialog: Locator, _page: Page): Locator {
   return dialog
-    .locator("select")
-    .filter({ has: page.getByRole("option", { name: "+ Add new account" }) })
-    .first();
+    .locator("#quick-expense-payment-select")
+    .or(dialog.locator("#edit-expense-payment-select"));
 }
 
 /**
@@ -34,7 +33,12 @@ export async function pickOrCreatePaymentInSelect(
   for (const label of preferredFirst) {
     const o = sel.getByRole("option", { name: label, exact: true });
     if ((await o.count()) > 0) {
-      await sel.selectOption({ label });
+      const value = await o.first().getAttribute("value");
+      if (value && value.trim() !== "") {
+        await sel.selectOption({ value });
+      } else {
+        await sel.selectOption({ label });
+      }
       return label;
     }
   }

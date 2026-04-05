@@ -30,7 +30,10 @@ import { ExpenseCategorySelect } from "@/components/expense-category-select";
 import { PaymentAccountSelect } from "@/components/payment-account-select";
 import { createBrowserClient } from "@/lib/supabase";
 import { inferExpenseCategoryFromVendor } from "@/lib/receipt-infer-category";
-import { processReceiptQueueUpload } from "@/lib/receipt-queue-process-upload";
+import {
+  processReceiptQueueUpload,
+  type ProcessReceiptQueueResult,
+} from "@/lib/receipt-queue-process-upload";
 import { finalizeReceiptQueueExpense } from "@/lib/receipt-queue-expense";
 import {
   RECEIPT_QUEUE_CHANGED_EVENT,
@@ -46,6 +49,9 @@ import { useToast } from "@/components/toast/toast-provider";
 
 type ProjectRow = { id: string; name: string | null; status?: string | null };
 type WorkerRow = { id: string; name: string };
+
+/** Matches `animate-receipt-queue-row-exit` in tailwind.config.ts */
+const RECEIPT_QUEUE_ROW_EXIT_MS = 220;
 
 async function signStoragePath(
   supabase: NonNullable<ReturnType<typeof createBrowserClient>>,
@@ -109,6 +115,18 @@ function firstEditableFieldForRow(row: ReceiptQueueRow): "vendor" | "amount" | "
   return "vendor";
 }
 
+/** Among rows whose ids are in `addedIds`, pick the one with the greatest `created_at`. */
+function newestAddedQueueRowId(list: ReceiptQueueRow[], addedIds: string[]): string | null {
+  if (!addedIds.length) return null;
+  const set = new Set(addedIds);
+  let best: ReceiptQueueRow | null = null;
+  for (const r of list) {
+    if (!set.has(r.id)) continue;
+    if (!best || String(r.created_at) > String(best.created_at)) best = r;
+  }
+  return best?.id ?? null;
+}
+
 type FieldRefs = {
   vendor: Record<string, HTMLInputElement | null>;
   amount: Record<string, HTMLInputElement | null>;
@@ -129,6 +147,7 @@ export function ReceiptQueueWorkspace() {
   const [workers, setWorkers] = React.useState<WorkerRow[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [dragOver, setDragOver] = React.useState(false);
+  const [captureUploading, setCaptureUploading] = React.useState(false);
   const [bulkAdding, setBulkAdding] = React.useState(false);
   const [confirmingId, setConfirmingId] = React.useState<string | null>(null);
   const [previewUrls, setPreviewUrls] = React.useState<Record<string, string>>({});
@@ -149,7 +168,12 @@ export function ReceiptQueueWorkspace() {
   const queueAutoPaymentDoneRef = React.useRef<Set<string>>(new Set());
   const vendorPaymentSuggestTimers = React.useRef<Map<string, number>>(new Map());
   const [listFilter, setListFilter] = React.useState<"all" | "needs_fix">("all");
+  const [activeQueueRowId, setActiveQueueRowId] = React.useState<string | null>(null);
+  const [newRowHighlightIds, setNewRowHighlightIds] = React.useState<string[]>([]);
+  const [exitingRowIds, setExitingRowIds] = React.useState<Set<string>>(() => new Set());
+  const removeInFlightRef = React.useRef<Set<string>>(new Set());
   const initialFocusAppliedRef = React.useRef(false);
+  const queueBottomSentinelRef = React.useRef<HTMLDivElement | null>(null);
 
   const supabase = React.useMemo(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -180,6 +204,7 @@ export function ReceiptQueueWorkspace() {
     let inner = 0;
     const outer = window.requestAnimationFrame(() => {
       inner = window.requestAnimationFrame(() => {
+        setActiveQueueRowId(row.id);
         focusRowField(field, row.id);
       });
     });
@@ -203,7 +228,7 @@ export function ReceiptQueueWorkspace() {
     }
   }, [supabase, toast]);
 
-  const refreshAll = React.useCallback(async () => {
+  const refreshAll = React.useCallback(async (): Promise<ReceiptQueueRow[]> => {
     let list: ReceiptQueueRow[] = [];
     let expList: Expense[] = [];
     let workerList: WorkerRow[] = [];
@@ -229,6 +254,7 @@ export function ReceiptQueueWorkspace() {
     setRows(list);
     setExpenses(expList);
     setWorkers(workerList);
+    return list;
   }, [supabase, toast]);
 
   React.useEffect(() => {
@@ -403,6 +429,7 @@ export function ReceiptQueueWorkspace() {
       }
       if (next) {
         window.requestAnimationFrame(() => {
+          setActiveQueueRowId(next.id);
           focusRowField(firstEditableFieldForRow(next), next.id);
         });
       }
@@ -421,52 +448,165 @@ export function ReceiptQueueWorkspace() {
   );
 
   const runUploadForRow = React.useCallback(
-    async (rowId: string, file: File) => {
-      if (!supabase) return;
+    async (
+      rowId: string,
+      file: File,
+      options?: { skipRefresh?: boolean }
+    ): Promise<ProcessReceiptQueueResult | null> => {
+      if (!supabase) return null;
       try {
-        await processReceiptQueueUpload(supabase, rowId, file, inferExpenseCategoryFromVendor);
+        const r = await processReceiptQueueUpload(
+          supabase,
+          rowId,
+          file,
+          inferExpenseCategoryFromVendor
+        );
+        return r;
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Processing failed";
         await updateReceiptQueueRow(supabase, rowId, {
           status: "failed",
           error_message: msg,
         });
+        return { storageSaved: false };
+      } finally {
+        notifyReceiptQueueChanged();
+        if (!options?.skipRefresh) await refreshAll();
       }
-      notifyReceiptQueueChanged();
-      await refreshAll();
     },
     [supabase, refreshAll]
   );
 
+  const openRetryCapturePicker = React.useCallback(() => {
+    uploadInputRef.current?.click();
+  }, []);
+
+  const scrollQueueToNewest = React.useCallback(() => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        queueBottomSentinelRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "end",
+        });
+      });
+    });
+  }, []);
+
+  /** Focus vendor after DOM has row refs (post-refresh). */
+  const focusQueueRowVendor = React.useCallback(
+    (rowId: string) => {
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => {
+            setActiveQueueRowId(rowId);
+            focusRowField("vendor", rowId);
+            fieldRefs.current.vendor[rowId]?.scrollIntoView({
+              block: "nearest",
+              behavior: "smooth",
+            });
+          });
+        });
+      });
+    },
+    [focusRowField]
+  );
+
+  const flashNewRowHighlights = React.useCallback((rowIds: string[]) => {
+    if (!rowIds.length) return;
+    setNewRowHighlightIds((prev) => [...new Set([...prev, ...rowIds])]);
+    for (const id of rowIds) {
+      window.setTimeout(() => {
+        setNewRowHighlightIds((prev) => prev.filter((x) => x !== id));
+      }, 600);
+    }
+  }, []);
+
   const enqueueFiles = React.useCallback(
-    (files: FileList | File[] | null) => {
+    async (files: FileList | File[] | null) => {
       if (!files?.length || !supabase) {
         if (!supabase) toast({ title: "Storage unavailable", variant: "error" });
         return;
       }
-      const list = Array.from(files).filter((f) => f.size > 0);
-      if (!list.length) return;
-      for (const file of list) {
-        void (async () => {
-          let qid: string;
-          try {
-            qid = await insertReceiptQueueProcessing(supabase, file);
-          } catch (e) {
-            const msg = e instanceof Error ? e.message : "Enqueue failed";
-            toast({ title: "Receipt queue", description: msg, variant: "error" });
-            return;
+      const fileList = Array.from(files).filter((f) => f.size > 0);
+      if (!fileList.length) return;
+
+      setCaptureUploading(true);
+      let ok = 0;
+      let fail = 0;
+      let firstFailDetail: string | undefined;
+
+      try {
+        const outcomes = await Promise.all(
+          fileList.map(async (file) => {
+            let qid: string;
+            try {
+              qid = await insertReceiptQueueProcessing(supabase, file);
+            } catch (e) {
+              const msg = e instanceof Error ? e.message : "Enqueue failed";
+              return { ok: false as const, detail: msg };
+            }
+            notifyReceiptQueueChanged();
+            const r = await runUploadForRow(qid, file, { skipRefresh: true });
+            if (r?.storageSaved) return { ok: true as const, rowId: qid };
+            return {
+              ok: false as const,
+              detail: "Could not save file to storage.",
+            };
+          })
+        );
+
+        for (const o of outcomes) {
+          if (o.ok) ok += 1;
+          else {
+            fail += 1;
+            if (!firstFailDetail) firstFailDetail = o.detail;
           }
-          notifyReceiptQueueChanged();
-          await runUploadForRow(qid, file);
-        })();
+        }
+
+        const queueList = await refreshAll();
+
+        if (ok > 0) {
+          const addedRowIds = outcomes
+            .filter((o): o is { ok: true; rowId: string } => o.ok && "rowId" in o)
+            .map((o) => o.rowId);
+          const targetId = newestAddedQueueRowId(queueList, addedRowIds);
+          setListFilter("all");
+          scrollQueueToNewest();
+          flashNewRowHighlights(addedRowIds);
+          if (targetId) {
+            focusQueueRowVendor(targetId);
+          }
+          toast({
+            title: ok === 1 ? "✔ Receipt added to queue" : `✔ ${ok} receipts added`,
+            variant: "success",
+          });
+        }
+        if (fail > 0) {
+          toast({
+            title: "❌ Upload failed",
+            description:
+              fail === fileList.length && firstFailDetail
+                ? `${firstFailDetail} Tap to try again.`
+                : `${fail} of ${fileList.length} could not be saved. Tap to retry.`,
+            variant: "error",
+            durationMs: 8000,
+            onClick: openRetryCapturePicker,
+          });
+        }
+      } finally {
+        setCaptureUploading(false);
       }
-      toast({
-        title: `${list.length} file${list.length === 1 ? "" : "s"} queued`,
-        description: "Processing in the background. You can leave this page.",
-        variant: "success",
-      });
     },
-    [supabase, toast, refreshAll, runUploadForRow]
+    [
+      supabase,
+      toast,
+      refreshAll,
+      runUploadForRow,
+      openRetryCapturePicker,
+      scrollQueueToNewest,
+      flashNewRowHighlights,
+      focusQueueRowVendor,
+    ]
   );
 
   const replaceRowFile = React.useCallback(
@@ -485,10 +625,35 @@ export function ReceiptQueueWorkspace() {
           });
           notifyReceiptQueueChanged();
           await refreshAll();
-          await runUploadForRow(rowId, file);
+          const r = await runUploadForRow(rowId, file);
+          if (r?.storageSaved) {
+            focusQueueRowVendor(rowId);
+            flashNewRowHighlights([rowId]);
+            toast({ title: "✔ Receipt added to queue", variant: "success" });
+          } else {
+            toast({
+              title: "❌ Upload failed",
+              description: "Tap to choose a file and try again.",
+              variant: "error",
+              durationMs: 8000,
+              onClick: () => {
+                setReplaceTargetId(rowId);
+                requestAnimationFrame(() => rowReuploadInputRef.current?.click());
+              },
+            });
+          }
         } catch (e) {
           const msg = e instanceof Error ? e.message : "Replace failed";
-          toast({ title: "Receipt queue", description: msg, variant: "error" });
+          toast({
+            title: "❌ Upload failed",
+            description: msg,
+            variant: "error",
+            durationMs: 8000,
+            onClick: () => {
+              setReplaceTargetId(rowId);
+              requestAnimationFrame(() => rowReuploadInputRef.current?.click());
+            },
+          });
         }
       })();
       const isPdf = file.type === "application/pdf";
@@ -499,7 +664,7 @@ export function ReceiptQueueWorkspace() {
           : p
       );
     },
-    [supabase, toast, refreshAll, runUploadForRow]
+    [supabase, toast, refreshAll, runUploadForRow, focusQueueRowVendor, flashNewRowHighlights]
   );
 
   React.useEffect(() => {
@@ -533,7 +698,17 @@ export function ReceiptQueueWorkspace() {
   const removeRow = React.useCallback(
     async (id: string) => {
       if (!supabase) return;
+      if (removeInFlightRef.current.has(id)) return;
+      removeInFlightRef.current.add(id);
       setReceiptPreview((p) => (p?.rowId === id ? null : p));
+      setActiveQueueRowId((cur) => (cur === id ? null : cur));
+      const reducedMotion =
+        typeof window !== "undefined" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (!reducedMotion) {
+        setExitingRowIds((prev) => new Set(prev).add(id));
+        await new Promise<void>((r) => setTimeout(r, RECEIPT_QUEUE_ROW_EXIT_MS));
+      }
       try {
         await deleteReceiptQueueRow(supabase, id);
         notifyReceiptQueueChanged();
@@ -541,6 +716,13 @@ export function ReceiptQueueWorkspace() {
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Remove failed";
         toast({ title: "Receipt queue", description: msg, variant: "error" });
+      } finally {
+        removeInFlightRef.current.delete(id);
+        setExitingRowIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
       }
     },
     [supabase, toast, refreshAll]
@@ -570,6 +752,7 @@ export function ReceiptQueueWorkspace() {
     try {
       await finalizeReceiptQueueExpense(supabase, row, "confirm");
       toast({ title: "Expense created", variant: "success" });
+      setActiveQueueRowId((cur) => (cur === row.id ? null : cur));
       await refreshAll();
       router.refresh();
     } catch (e) {
@@ -613,6 +796,9 @@ export function ReceiptQueueWorkspace() {
     if (successCount > 0 || failCount > 0) {
       await refreshAll();
       router.refresh();
+    }
+    if (successCount > 0) {
+      router.push("/financial/expenses?view=unreviewed&focus_unreviewed=1&page=1");
     }
     if (failCount === 0 && successCount > 0) {
       toast({
@@ -694,8 +880,9 @@ export function ReceiptQueueWorkspace() {
               accept="image/*"
               capture="environment"
               className="hidden"
+              disabled={captureUploading}
               onChange={(e) => {
-                enqueueFiles(e.target.files);
+                void enqueueFiles(e.target.files);
                 e.target.value = "";
               }}
             />
@@ -705,8 +892,9 @@ export function ReceiptQueueWorkspace() {
               accept="image/*,application/pdf"
               multiple
               className="hidden"
+              disabled={captureUploading}
               onChange={(e) => {
-                enqueueFiles(e.target.files);
+                void enqueueFiles(e.target.files);
                 e.target.value = "";
               }}
             />
@@ -730,9 +918,14 @@ export function ReceiptQueueWorkspace() {
                 variant="outline"
                 size="sm"
                 className="h-9"
+                disabled={captureUploading}
                 onClick={() => cameraInputRef.current?.click()}
               >
-                <Camera className="mr-1.5 h-3.5 w-3.5" />
+                {captureUploading ? (
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
+                ) : (
+                  <Camera className="mr-1.5 h-3.5 w-3.5" />
+                )}
                 Take photo
               </Button>
               <Button
@@ -740,24 +933,35 @@ export function ReceiptQueueWorkspace() {
                 variant="outline"
                 size="sm"
                 className="h-9"
+                disabled={captureUploading}
                 onClick={() => uploadInputRef.current?.click()}
               >
-                <Upload className="mr-1.5 h-3.5 w-3.5" />
+                {captureUploading ? (
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
+                ) : (
+                  <Upload className="mr-1.5 h-3.5 w-3.5" />
+                )}
                 Upload files
               </Button>
             </div>
+            {captureUploading ? (
+              <p className="text-xs text-muted-foreground" role="status" aria-live="polite">
+                Uploading…
+              </p>
+            ) : null}
             <div
               className={cn(
                 "flex min-h-[72px] flex-col items-center justify-center gap-1 border border-dashed border-border/60 py-6 text-xs text-muted-foreground transition-colors",
-                dragOver && "border-foreground/50"
+                dragOver && !captureUploading && "border-foreground/50",
+                captureUploading && "pointer-events-none opacity-60"
               )}
               onDragEnter={(e) => {
                 e.preventDefault();
-                setDragOver(true);
+                if (!captureUploading) setDragOver(true);
               }}
               onDragOver={(e) => {
                 e.preventDefault();
-                e.dataTransfer.dropEffect = "copy";
+                e.dataTransfer.dropEffect = captureUploading ? "none" : "copy";
               }}
               onDragLeave={(e) => {
                 if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false);
@@ -765,10 +969,11 @@ export function ReceiptQueueWorkspace() {
               onDrop={(e) => {
                 e.preventDefault();
                 setDragOver(false);
-                enqueueFiles(e.dataTransfer.files);
+                if (captureUploading) return;
+                void enqueueFiles(e.dataTransfer.files);
               }}
             >
-              <span>Drop files here to add to the queue</span>
+              <span>{captureUploading ? "Uploading…" : "Drop files here to add to the queue"}</span>
             </div>
           </>
         )}
@@ -834,294 +1039,318 @@ export function ReceiptQueueWorkspace() {
                 </button>
               </p>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="w-[52px] text-[10px] uppercase tracking-wide">
-                      {" "}
-                    </TableHead>
-                    <TableHead className="text-[10px] uppercase tracking-wide">File</TableHead>
-                    <TableHead className="w-[100px] text-[10px] uppercase tracking-wide">
-                      Status
-                    </TableHead>
-                    <TableHead className="min-w-[120px] text-[10px] uppercase tracking-wide">
-                      Vendor
-                    </TableHead>
-                    <TableHead className="w-[100px] text-[10px] uppercase tracking-wide">
-                      Amount
-                    </TableHead>
-                    <TableHead className="w-[130px] text-[10px] uppercase tracking-wide">
-                      Date
-                    </TableHead>
-                    <TableHead className="min-w-[140px] text-[10px] uppercase tracking-wide">
-                      Project
-                    </TableHead>
-                    <TableHead className="min-w-[120px] text-[10px] uppercase tracking-wide">
-                      Category
-                    </TableHead>
-                    <TableHead className="min-w-[130px] text-[10px] uppercase tracking-wide">
-                      Payment
-                    </TableHead>
-                    <TableHead className="w-[100px] text-[10px] uppercase tracking-wide">
-                      {" "}
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {displayedRows.map((row) => {
-                    const prev = previewUrls[row.id];
-                    const st = queueStatusBadge(row.status);
-                    const busy = row.status === "processing";
-                    const dup = dupWarning(row);
-                    const needsHighlight = rowNeedsFix(row) && !busy;
-                    const vendorMissing = !busy && row.vendor_name.trim() === "";
-                    const showAmountHint = !busy && amountIsMissing(row);
-                    return (
-                      <TableRow
-                        key={row.id}
-                        className={cn(
-                          "table-row-compact",
-                          needsHighlight &&
-                            "bg-[#FFFBEB] hover:bg-[#FEF3C7] dark:bg-amber-950/35 dark:hover:bg-amber-950/50",
-                          needsHighlight &&
-                            "shadow-[inset_3px_0_0_0_#F59E0B] dark:shadow-[inset_3px_0_0_0_rgb(245,158,11)]"
-                        )}
-                      >
-                        <TableCell className="p-2">
-                          <button
-                            type="button"
-                            disabled={busy || !prev}
-                            aria-label="Preview receipt"
-                            className={cn(
-                              "relative h-12 w-12 shrink-0 overflow-hidden rounded-sm border border-border/60 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                              busy || !prev
-                                ? "cursor-not-allowed opacity-60"
-                                : "cursor-pointer hover:opacity-95"
-                            )}
-                            onClick={() => openRowPreview(row)}
-                          >
-                            {row.mime_type === "application/pdf" ||
-                            row.file_name.toLowerCase().endsWith(".pdf") ? (
-                              <div className="flex h-full w-full items-center justify-center bg-background text-[9px] font-medium text-muted-foreground">
-                                PDF
-                              </div>
-                            ) : prev ? (
-                              /* eslint-disable-next-line @next/next/no-img-element */
-                              <img src={prev} alt="" className="h-full w-full object-cover" />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center text-[9px] text-muted-foreground">
-                                —
-                              </div>
-                            )}
-                            {busy ? (
-                              <div className="absolute inset-0 flex items-center justify-center bg-background/70">
-                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                              </div>
-                            ) : null}
-                          </button>
-                        </TableCell>
-                        <TableCell className="max-w-[180px] p-2">
-                          <p className="truncate text-xs font-medium">{row.file_name || "—"}</p>
-                          <p className="truncate text-[11px] text-muted-foreground">
-                            OCR: {row.ocr_source}
-                          </p>
-                          {row.error_message ? (
-                            <p className="text-[11px] text-destructive">{row.error_message}</p>
-                          ) : null}
-                          {dup ? (
-                            <p className="text-[11px] text-amber-700 dark:text-amber-300">{dup}</p>
-                          ) : null}
-                          {row.status === "failed" ? (
-                            <Button
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="w-[52px] text-[10px] uppercase tracking-wide">
+                        {" "}
+                      </TableHead>
+                      <TableHead className="text-[10px] uppercase tracking-wide">File</TableHead>
+                      <TableHead className="w-[100px] text-[10px] uppercase tracking-wide">
+                        Status
+                      </TableHead>
+                      <TableHead className="min-w-[120px] text-[10px] uppercase tracking-wide">
+                        Vendor
+                      </TableHead>
+                      <TableHead className="w-[100px] text-[10px] uppercase tracking-wide">
+                        Amount
+                      </TableHead>
+                      <TableHead className="w-[130px] text-[10px] uppercase tracking-wide">
+                        Date
+                      </TableHead>
+                      <TableHead className="min-w-[140px] text-[10px] uppercase tracking-wide">
+                        Project
+                      </TableHead>
+                      <TableHead className="min-w-[120px] text-[10px] uppercase tracking-wide">
+                        Category
+                      </TableHead>
+                      <TableHead className="min-w-[130px] text-[10px] uppercase tracking-wide">
+                        Payment
+                      </TableHead>
+                      <TableHead className="w-[100px] text-[10px] uppercase tracking-wide">
+                        {" "}
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {displayedRows.map((row) => {
+                      const prev = previewUrls[row.id];
+                      const st = queueStatusBadge(row.status);
+                      const busy = row.status === "processing";
+                      const dup = dupWarning(row);
+                      const needsHighlight = rowNeedsFix(row) && !busy;
+                      const vendorMissing = !busy && row.vendor_name.trim() === "";
+                      const showAmountHint = !busy && amountIsMissing(row);
+                      const isExiting = exitingRowIds.has(row.id);
+                      return (
+                        <TableRow
+                          key={row.id}
+                          aria-busy={isExiting}
+                          className={cn(
+                            "table-row-compact transition-[background-color,box-shadow] duration-200 ease-out",
+                            activeQueueRowId === row.id &&
+                              "relative z-[1] ring-1 ring-inset ring-[#E5E7EB] dark:ring-border",
+                            activeQueueRowId === row.id &&
+                              !needsHighlight &&
+                              "bg-[#F9FAFB] dark:bg-muted/25",
+                            newRowHighlightIds.includes(row.id) && "animate-receipt-queue-row-new",
+                            needsHighlight &&
+                              "bg-[#FFFBEB] hover:bg-[#FEF3C7] dark:bg-amber-950/35 dark:hover:bg-amber-950/50",
+                            needsHighlight &&
+                              "shadow-[inset_3px_0_0_0_#F59E0B] dark:shadow-[inset_3px_0_0_0_rgb(245,158,11)]",
+                            isExiting && "pointer-events-none animate-receipt-queue-row-exit"
+                          )}
+                        >
+                          <TableCell className="p-2">
+                            <button
                               type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="mt-1 h-7 px-2 text-xs"
-                              onClick={() => onReplacePick(row.id)}
+                              disabled={busy || !prev || isExiting}
+                              aria-label="Preview receipt"
+                              className={cn(
+                                "relative h-12 w-12 shrink-0 overflow-hidden rounded-sm border border-border/60 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                                busy || !prev
+                                  ? "cursor-not-allowed opacity-60"
+                                  : "cursor-pointer hover:opacity-95"
+                              )}
+                              onClick={() => openRowPreview(row)}
                             >
-                              Re-upload
-                            </Button>
-                          ) : null}
-                        </TableCell>
-                        <TableCell className="p-2">
-                          <StatusBadge label={st.label} variant={st.variant} />
-                        </TableCell>
-                        <TableCell className="p-1 align-top">
-                          <div className="space-y-0.5">
+                              {row.mime_type === "application/pdf" ||
+                              row.file_name.toLowerCase().endsWith(".pdf") ? (
+                                <div className="flex h-full w-full items-center justify-center bg-background text-[9px] font-medium text-muted-foreground">
+                                  PDF
+                                </div>
+                              ) : prev ? (
+                                /* eslint-disable-next-line @next/next/no-img-element */
+                                <img src={prev} alt="" className="h-full w-full object-cover" />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center text-[9px] text-muted-foreground">
+                                  —
+                                </div>
+                              )}
+                              {busy ? (
+                                <div className="absolute inset-0 flex items-center justify-center bg-background/70">
+                                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                </div>
+                              ) : null}
+                            </button>
+                          </TableCell>
+                          <TableCell className="max-w-[180px] p-2">
+                            <p className="truncate text-xs font-medium">{row.file_name || "—"}</p>
+                            <p className="truncate text-[11px] text-muted-foreground">
+                              OCR: {row.ocr_source}
+                            </p>
+                            {row.error_message ? (
+                              <p className="text-[11px] text-destructive">{row.error_message}</p>
+                            ) : null}
+                            {dup ? (
+                              <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                                {dup}
+                              </p>
+                            ) : null}
+                            {row.status === "failed" ? (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="mt-1 h-7 px-2 text-xs"
+                                disabled={isExiting}
+                                onClick={() => onReplacePick(row.id)}
+                              >
+                                Re-upload
+                              </Button>
+                            ) : null}
+                          </TableCell>
+                          <TableCell className="p-2">
+                            <StatusBadge label={st.label} variant={st.variant} />
+                          </TableCell>
+                          <TableCell className="p-1 align-top">
+                            <div className="space-y-0.5">
+                              <Input
+                                ref={(el) => {
+                                  fieldRefs.current.vendor[row.id] = el;
+                                }}
+                                placeholder="Vendor"
+                                value={row.vendor_name}
+                                disabled={busy || isExiting}
+                                onFocus={() => setActiveQueueRowId(row.id)}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  queueAutoPaymentDoneRef.current.delete(row.id);
+                                  setRows((r) =>
+                                    r.map((x) => (x.id === row.id ? { ...x, vendor_name: v } : x))
+                                  );
+                                  patchRowDebounced(row.id, { vendor_name: v });
+                                  queueVendorPaymentSuggest(row.id, v);
+                                }}
+                                onKeyDown={onEditableKeyDown(row)}
+                                className="h-8 text-xs"
+                                autoComplete="off"
+                              />
+                              {vendorMissing ? (
+                                <p
+                                  className="flex items-center gap-1 text-[11px] text-amber-800 dark:text-amber-200"
+                                  role="status"
+                                >
+                                  <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden />
+                                  Vendor missing
+                                </p>
+                              ) : null}
+                            </div>
+                          </TableCell>
+                          <TableCell className="p-1 align-top">
+                            <div className="space-y-0.5">
+                              <Input
+                                ref={(el) => {
+                                  fieldRefs.current.amount[row.id] = el;
+                                }}
+                                placeholder="Amount"
+                                inputMode="decimal"
+                                value={row.amount}
+                                disabled={busy || isExiting}
+                                onFocus={() => setActiveQueueRowId(row.id)}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  setRows((r) =>
+                                    r.map((x) => (x.id === row.id ? { ...x, amount: v } : x))
+                                  );
+                                  patchRowDebounced(row.id, { amount: v });
+                                }}
+                                onKeyDown={onEditableKeyDown(row)}
+                                className="h-8 tabular-nums text-xs"
+                                autoComplete="off"
+                              />
+                              {showAmountHint ? (
+                                <p
+                                  className="flex items-center gap-1 text-[11px] text-amber-800 dark:text-amber-200"
+                                  role="status"
+                                >
+                                  <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden />
+                                  $—
+                                </p>
+                              ) : null}
+                            </div>
+                          </TableCell>
+                          <TableCell className="p-1 align-top">
                             <Input
                               ref={(el) => {
-                                fieldRefs.current.vendor[row.id] = el;
+                                fieldRefs.current.date[row.id] = el;
                               }}
-                              placeholder="Vendor"
-                              value={row.vendor_name}
-                              disabled={busy}
+                              type="date"
+                              value={row.expense_date.slice(0, 10)}
+                              disabled={busy || isExiting}
+                              onFocus={() => setActiveQueueRowId(row.id)}
                               onChange={(e) => {
                                 const v = e.target.value;
-                                queueAutoPaymentDoneRef.current.delete(row.id);
                                 setRows((r) =>
-                                  r.map((x) => (x.id === row.id ? { ...x, vendor_name: v } : x))
+                                  r.map((x) => (x.id === row.id ? { ...x, expense_date: v } : x))
                                 );
-                                patchRowDebounced(row.id, { vendor_name: v });
-                                queueVendorPaymentSuggest(row.id, v);
+                                patchRowDebounced(row.id, { expense_date: v });
                               }}
                               onKeyDown={onEditableKeyDown(row)}
                               className="h-8 text-xs"
-                              autoComplete="off"
                             />
-                            {vendorMissing ? (
-                              <p
-                                className="flex items-center gap-1 text-[11px] text-amber-800 dark:text-amber-200"
-                                role="status"
-                              >
-                                <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden />
-                                Vendor missing
-                              </p>
-                            ) : null}
-                          </div>
-                        </TableCell>
-                        <TableCell className="p-1 align-top">
-                          <div className="space-y-0.5">
-                            <Input
-                              ref={(el) => {
-                                fieldRefs.current.amount[row.id] = el;
-                              }}
-                              placeholder="Amount"
-                              inputMode="decimal"
-                              value={row.amount}
-                              disabled={busy}
+                          </TableCell>
+                          <TableCell className="p-1">
+                            <select
+                              className="h-8 w-full max-w-[200px] rounded border border-input bg-transparent px-2 text-xs"
+                              value={row.project_id ?? ""}
+                              disabled={busy || isExiting}
                               onChange={(e) => {
-                                const v = e.target.value;
-                                setRows((r) =>
-                                  r.map((x) => (x.id === row.id ? { ...x, amount: v } : x))
-                                );
-                                patchRowDebounced(row.id, { amount: v });
+                                const v = e.target.value || null;
+                                void patchRowImmediate(row.id, { project_id: v });
                               }}
-                              onKeyDown={onEditableKeyDown(row)}
-                              className="h-8 tabular-nums text-xs"
-                              autoComplete="off"
+                            >
+                              <option value="">Project…</option>
+                              {projects.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                  {p.name ?? p.id}
+                                </option>
+                              ))}
+                            </select>
+                          </TableCell>
+                          <TableCell className="p-1">
+                            <ExpenseCategorySelect
+                              value={row.category}
+                              disabled={busy || isExiting}
+                              onValueChange={(v) => void patchRowImmediate(row.id, { category: v })}
+                              className="h-8 w-full max-w-[180px] rounded border border-input bg-transparent px-2 text-xs"
                             />
-                            {showAmountHint ? (
-                              <p
-                                className="flex items-center gap-1 text-[11px] text-amber-800 dark:text-amber-200"
-                                role="status"
-                              >
-                                <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden />
-                                $—
-                              </p>
-                            ) : null}
-                          </div>
-                        </TableCell>
-                        <TableCell className="p-1 align-top">
-                          <Input
-                            ref={(el) => {
-                              fieldRefs.current.date[row.id] = el;
-                            }}
-                            type="date"
-                            value={row.expense_date.slice(0, 10)}
-                            disabled={busy}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setRows((r) =>
-                                r.map((x) => (x.id === row.id ? { ...x, expense_date: v } : x))
-                              );
-                              patchRowDebounced(row.id, { expense_date: v });
-                            }}
-                            onKeyDown={onEditableKeyDown(row)}
-                            className="h-8 text-xs"
-                          />
-                        </TableCell>
-                        <TableCell className="p-1">
-                          <select
-                            className="h-8 w-full max-w-[200px] rounded border border-input bg-transparent px-2 text-xs"
-                            value={row.project_id ?? ""}
-                            disabled={busy}
-                            onChange={(e) => {
-                              const v = e.target.value || null;
-                              void patchRowImmediate(row.id, { project_id: v });
-                            }}
-                          >
-                            <option value="">Project…</option>
-                            {projects.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {p.name ?? p.id}
-                              </option>
-                            ))}
-                          </select>
-                        </TableCell>
-                        <TableCell className="p-1">
-                          <ExpenseCategorySelect
-                            value={row.category}
-                            disabled={busy}
-                            onValueChange={(v) => void patchRowImmediate(row.id, { category: v })}
-                            className="h-8 w-full max-w-[180px] rounded border border-input bg-transparent px-2 text-xs"
-                          />
-                        </TableCell>
-                        <TableCell className="p-1 align-top">
-                          <PaymentAccountSelect
-                            value={row.payment_account_id ?? ""}
-                            disabled={busy}
-                            onValueChange={(id) => {
-                              const next = id.trim() ? id : null;
-                              if (!next) queueAutoPaymentDoneRef.current.delete(row.id);
-                              void patchRowImmediate(row.id, { payment_account_id: next });
-                            }}
-                            className="h-8 w-full max-w-[180px] rounded border border-input bg-transparent px-2 text-xs"
-                            onKeyDown={onEditableKeyDown(row)}
-                          />
-                        </TableCell>
-                        <TableCell className="p-1">
-                          <div className="flex flex-col gap-1">
-                            {workers.length > 0 ? (
-                              <select
-                                className="h-8 w-full rounded border border-input bg-transparent px-2 text-[11px]"
-                                value={row.worker_id ?? ""}
-                                disabled={busy}
-                                onChange={(e) => {
-                                  const v = e.target.value || null;
-                                  void patchRowImmediate(row.id, { worker_id: v });
-                                }}
-                              >
-                                <option value="">Company</option>
-                                {workers.map((w) => (
-                                  <option key={w.id} value={w.id}>
-                                    {w.name}
-                                  </option>
-                                ))}
-                              </select>
-                            ) : null}
-                            <div className="flex gap-1">
-                              <Button
-                                type="button"
-                                size="sm"
-                                className="h-8 flex-1 text-xs"
-                                disabled={busy || bulkAdding || confirmingId === row.id}
-                                onClick={() => void confirmRow(row)}
-                              >
-                                {confirmingId === row.id ? (
-                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                ) : (
-                                  "Confirm"
-                                )}
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="h-8 px-2"
-                                disabled={busy}
-                                onClick={() => void removeRow(row.id)}
-                                aria-label="Remove"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
+                          </TableCell>
+                          <TableCell className="p-1 align-top">
+                            <PaymentAccountSelect
+                              value={row.payment_account_id ?? ""}
+                              disabled={busy || isExiting}
+                              onValueChange={(id) => {
+                                const next = id.trim() ? id : null;
+                                if (!next) queueAutoPaymentDoneRef.current.delete(row.id);
+                                void patchRowImmediate(row.id, { payment_account_id: next });
+                              }}
+                              className="h-8 w-full max-w-[180px] rounded border border-input bg-transparent px-2 text-xs"
+                              onKeyDown={onEditableKeyDown(row)}
+                            />
+                          </TableCell>
+                          <TableCell className="p-1">
+                            <div className="flex flex-col gap-1">
+                              {workers.length > 0 ? (
+                                <select
+                                  className="h-8 w-full rounded border border-input bg-transparent px-2 text-[11px]"
+                                  value={row.worker_id ?? ""}
+                                  disabled={busy || isExiting}
+                                  onChange={(e) => {
+                                    const v = e.target.value || null;
+                                    void patchRowImmediate(row.id, { worker_id: v });
+                                  }}
+                                >
+                                  <option value="">Company</option>
+                                  {workers.map((w) => (
+                                    <option key={w.id} value={w.id}>
+                                      {w.name}
+                                    </option>
+                                  ))}
+                                </select>
+                              ) : null}
+                              <div className="flex gap-1">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  className="h-8 flex-1 text-xs"
+                                  disabled={
+                                    busy ||
+                                    isExiting ||
+                                    bulkAdding ||
+                                    captureUploading ||
+                                    confirmingId === row.id
+                                  }
+                                  onClick={() => void confirmRow(row)}
+                                >
+                                  {confirmingId === row.id ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    "Confirm"
+                                  )}
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 px-2"
+                                  disabled={busy || isExiting}
+                                  onClick={() => void removeRow(row.id)}
+                                  aria-label="Remove"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
                             </div>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+                <div ref={queueBottomSentinelRef} className="h-px w-full shrink-0" aria-hidden />
+              </>
             )}
           </>
         )}

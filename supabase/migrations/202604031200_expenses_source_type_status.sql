@@ -1,12 +1,26 @@
 -- Expenses: source_type (company | reimbursement | receipt_upload) and extended status values.
 ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS source_type text;
 
-UPDATE public.expenses e
-SET source_type = CASE
-  WHEN e.source = 'worker_reimbursement' THEN 'reimbursement'
-  WHEN COALESCE(trim(e.source_type), '') = '' THEN 'company'
-  ELSE e.source_type
-END;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'expenses' AND column_name = 'source'
+  ) THEN
+    UPDATE public.expenses e
+    SET source_type = CASE
+      WHEN e.source = 'worker_reimbursement' THEN 'reimbursement'
+      WHEN COALESCE(trim(e.source_type::text), '') = '' THEN 'company'
+      ELSE e.source_type
+    END;
+  ELSE
+    UPDATE public.expenses e
+    SET source_type = CASE
+      WHEN COALESCE(trim(e.source_type::text), '') = '' THEN 'company'
+      ELSE e.source_type
+    END;
+  END IF;
+END $$;
 
 ALTER TABLE public.expenses
   ALTER COLUMN source_type SET DEFAULT 'company';

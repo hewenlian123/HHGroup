@@ -85,8 +85,6 @@ export function PaymentAccountSelect({
     }
   }, [addOpen]);
 
-  const byId = React.useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts]);
-
   const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const v = e.target.value;
     if (v === ADD_NEW_VALUE) {
@@ -134,14 +132,11 @@ export function PaymentAccountSelect({
     }
   };
 
-  const selected = value && byId.get(value);
-  const validValue = selected ? value : "";
-
   return (
     <>
       <select
         id={id}
-        value={validValue}
+        value={value}
         disabled={disabled || loading}
         onChange={handleSelectChange}
         onKeyDown={onKeyDown}

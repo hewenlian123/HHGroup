@@ -142,6 +142,19 @@ const standaloneItems: NavItem[] = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
+/** Bumps when `count` changes so the badge remounts and the one-shot animation runs (skip initial mount). */
+function useReceiptQueueCountAnimKey(count: number) {
+  const prev = React.useRef<number | null>(null);
+  const [animKey, setAnimKey] = React.useState(0);
+  React.useEffect(() => {
+    if (prev.current !== null && prev.current !== count) {
+      setAnimKey((k) => k + 1);
+    }
+    prev.current = count;
+  }, [count]);
+  return animKey;
+}
+
 export function Sidebar({
   className,
   onNavigate,
@@ -158,6 +171,7 @@ export function Sidebar({
   const [logoUrl, setLogoUrl] = React.useState<string | null>(null);
   const [openSections, setOpenSections] = React.useState<Record<string, boolean>>(() => ({}));
   const [receiptQueueCount, setReceiptQueueCount] = React.useState(0);
+  const receiptQueueAnimKey = useReceiptQueueCountAnimKey(receiptQueueCount);
   const sectionsInitDone = React.useRef(false);
   const activeSectionKey = React.useMemo(() => {
     for (const section of sections) {
@@ -283,7 +297,7 @@ export function Sidebar({
   /** Notion-style nav row: 13px, py-1.5 px-2, rounded-md */
   const navRowClass = (active: boolean) =>
     cn(
-      "group relative flex items-center rounded-md text-[13px] transition-colors duration-150",
+      "group relative flex items-center rounded-md text-[13px] transition-colors duration-200 ease-out",
       collapsed
         ? "min-h-[44px] justify-center px-2 py-1.5 sm:min-h-0"
         : "min-h-0 gap-2.5 px-2 py-1.5 sm:min-h-0",
@@ -363,6 +377,31 @@ export function Sidebar({
                       item.href === "/financial/receipt-queue"
                         ? `Receipt Queue (${receiptQueueCount})`
                         : item.label;
+                    if (item.href === "/financial/receipt-queue" && Icon) {
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          onClick={onNavigate}
+                          title={navLabel}
+                          aria-label={navLabel}
+                          className={navRowClass(active)}
+                        >
+                          <div className="relative flex shrink-0 items-center justify-center">
+                            <Icon className={navIconClass(active)} strokeWidth={1.75} />
+                            {receiptQueueCount > 0 ? (
+                              <span
+                                key={receiptQueueAnimKey}
+                                className="absolute -right-2 -top-1 z-[1] flex min-h-[15px] min-w-[15px] items-center justify-center rounded-sm px-1 text-[10px] font-semibold tabular-nums leading-none text-[#111827] animate-receipt-queue-badge dark:text-foreground"
+                                aria-hidden
+                              >
+                                {receiptQueueCount > 99 ? "99+" : receiptQueueCount}
+                              </span>
+                            ) : null}
+                          </div>
+                        </Link>
+                      );
+                    }
                     return (
                       <Link
                         key={item.href}
@@ -412,6 +451,29 @@ export function Sidebar({
                           item.href === "/financial/receipt-queue"
                             ? `Receipt Queue (${receiptQueueCount})`
                             : item.label;
+                        if (item.href === "/financial/receipt-queue" && Icon) {
+                          return (
+                            <Link
+                              key={item.href}
+                              href={item.href}
+                              onClick={onNavigate}
+                              title={collapsed ? navLabel : undefined}
+                              aria-label={collapsed ? navLabel : undefined}
+                              className={navRowClass(active)}
+                            >
+                              <Icon className={navIconClass(active)} strokeWidth={1.75} />
+                              <span className="flex min-w-0 flex-1 items-baseline gap-0">
+                                <span className="truncate">Receipt Queue </span>
+                                <span
+                                  key={receiptQueueAnimKey}
+                                  className="inline-block shrink-0 origin-center rounded-sm px-0.5 tabular-nums animate-receipt-queue-badge"
+                                >
+                                  ({receiptQueueCount})
+                                </span>
+                              </span>
+                            </Link>
+                          );
+                        }
                         return (
                           <Link
                             key={item.href}

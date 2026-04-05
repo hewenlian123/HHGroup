@@ -10,6 +10,12 @@ import { updateReceiptQueueRow } from "@/lib/receipt-queue";
 
 type BrowserSupabase = NonNullable<ReturnType<typeof createBrowserClient>>;
 
+/** Outcome after attempting storage + queue row update (OCR may still be partial). */
+export type ProcessReceiptQueueResult = {
+  /** True once the file is stored (attachment path or public URL). */
+  storageSaved: boolean;
+};
+
 /**
  * Upload + OCR for a `receipt_queue` row; sets status `pending` or `failed`.
  */
@@ -18,7 +24,7 @@ export async function processReceiptQueueUpload(
   rowId: string,
   file: File,
   inferCategory: (vendor: string) => string
-): Promise<void> {
+): Promise<ProcessReceiptQueueResult> {
   const slot = await uploadReceiptToStorage(supabase, file, rowId);
   const ocrResults: Array<{ result: ReceiptOcrResult; source: OcrSource }> = [];
   if (file.type.startsWith("image/")) {
@@ -32,6 +38,7 @@ export async function processReceiptQueueUpload(
     ocrResults.length > 0 ? mergeReceiptOcrResults(ocrResults, { inferCategory }) : null;
   const today = new Date().toISOString().slice(0, 10);
   const uploadFailed = !!(slot.uploadError && !slot.attachmentPath && !slot.receiptsPublicUrl);
+  const storageSaved = Boolean(slot.attachmentPath || slot.receiptsPublicUrl);
   await updateReceiptQueueRow(supabase, rowId, {
     status: uploadFailed ? "failed" : "pending",
     storage_path: slot.attachmentPath,
@@ -48,4 +55,5 @@ export async function processReceiptQueueUpload(
     category: merged?.mappedCategory ?? "Other",
     ocr_source: merged?.source ?? "none",
   });
+  return { storageSaved };
 }

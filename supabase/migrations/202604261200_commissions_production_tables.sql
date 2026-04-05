@@ -44,7 +44,8 @@ ALTER TABLE IF EXISTS public.commissions ADD COLUMN IF NOT EXISTS person_id uuid
 
 DO $$
 BEGIN
-  IF to_regclass('public.workers') IS NOT NULL
+  IF to_regclass('public.commissions') IS NOT NULL
+     AND to_regclass('public.workers') IS NOT NULL
      AND NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'commissions_person_id_fkey')
   THEN
     ALTER TABLE public.commissions
@@ -62,6 +63,13 @@ DROP INDEX IF EXISTS public.idx_commission_payment_records_payment_date;
 DROP INDEX IF EXISTS public.idx_project_commissions_project_id;
 DROP INDEX IF EXISTS public.idx_project_commissions_status;
 
-CREATE INDEX IF NOT EXISTS idx_commission_payments_commission_id ON public.commission_payments (commission_id);
-CREATE INDEX IF NOT EXISTS idx_commission_payments_payment_date ON public.commission_payments (payment_date);
-CREATE INDEX IF NOT EXISTS idx_commissions_project_id ON public.commissions (project_id);
+DO $$
+BEGIN
+  IF to_regclass('public.commission_payments') IS NOT NULL THEN
+    CREATE INDEX IF NOT EXISTS idx_commission_payments_commission_id ON public.commission_payments (commission_id);
+    CREATE INDEX IF NOT EXISTS idx_commission_payments_payment_date ON public.commission_payments (payment_date);
+  END IF;
+  IF to_regclass('public.commissions') IS NOT NULL THEN
+    CREATE INDEX IF NOT EXISTS idx_commissions_project_id ON public.commissions (project_id);
+  END IF;
+END $$;

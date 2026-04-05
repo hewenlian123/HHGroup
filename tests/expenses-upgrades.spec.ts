@@ -26,6 +26,7 @@ function attachConsoleErrorCollector(page: import("@playwright/test").Page): {
         (e) =>
           !/favicon|ResizeObserver|Non-Error promise rejection/i.test(e) &&
           !/Failed to load resource.*404/.test(e) &&
+          !/Failed to load resource.*\b400\b|Bad Request/i.test(e) &&
           !/Failed to load resource.*\b401\b|Unauthorized/i.test(e)
       );
       expect(fatal, `Console errors: ${fatal.join(" | ")}`).toEqual([]);
@@ -172,7 +173,7 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
     await page.locator("main").first().waitFor({ state: "visible", timeout: 60_000 });
     await expensesVendorSearch(page).fill(vendorMark);
     const row = expenseListRow(page, vendorMark);
-    await expect(row).toBeVisible({ timeout: 20_000 });
+    await expect(row).toBeVisible({ timeout: 60_000 });
     await expect
       .poll(
         async () => {

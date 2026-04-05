@@ -1046,6 +1046,41 @@ function ExpensesPageInner() {
     [clearInlineEdits]
   );
 
+  const focusUnreviewedFromReceiptBulk = searchParams.get("focus_unreviewed") === "1";
+  const focusUnreviewedConsumedRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (!focusUnreviewedFromReceiptBulk) {
+      focusUnreviewedConsumedRef.current = false;
+      return;
+    }
+    if (listView !== "unreviewed" || pageRows.length === 0) return;
+    const first = pageRows[0];
+    if (!first || !expensesRef.current.some((e) => e.id === first.id)) return;
+    if (focusUnreviewedConsumedRef.current) return;
+    focusUnreviewedConsumedRef.current = true;
+
+    const id = first.id;
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        setActiveExpenseId(id);
+        openInlineField(id, "vendor");
+        const sp = new URLSearchParams(searchParams.toString());
+        sp.delete("focus_unreviewed");
+        const qs = sp.toString();
+        router.replace(qs ? `/financial/expenses?${qs}` : `/financial/expenses`, { scroll: false });
+      });
+    });
+  }, [
+    focusUnreviewedFromReceiptBulk,
+    listView,
+    pageRowIdsKey,
+    pageRows,
+    openInlineField,
+    router,
+    searchParams,
+  ]);
+
   const advanceInlineField = React.useCallback(
     (expenseId: string, field: InlineEditField, dir: 1 | -1) => {
       const ix = INLINE_EDIT_FIELDS.indexOf(field);

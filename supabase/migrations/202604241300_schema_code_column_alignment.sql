@@ -134,4 +134,9 @@ BEGIN
     COMMENT ON COLUMN public.labor_entries.project_id IS 'COALESCE(AM project, PM project) when both exist on daily labor schema.';
   END IF;
 END $$;
-COMMENT ON COLUMN public.worker_payments.amount IS 'Generated mirror of total_amount for API compatibility.';
+DO $$
+BEGIN
+  IF to_regclass('public.worker_payments') IS NOT NULL THEN
+    COMMENT ON COLUMN public.worker_payments.amount IS 'Generated mirror of total_amount for API compatibility.';
+  END IF;
+END $$;

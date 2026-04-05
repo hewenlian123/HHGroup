@@ -320,4 +320,27 @@ export async function ensureE2EPreservedSeed(supabase: SupabaseClient): Promise<
       );
     }
   }
+
+  // Default payment accounts for expenses / receipt queue (matches migration seed).
+  const { error: paymentAccountsProbe } = await supabase
+    .from("payment_accounts")
+    .select("id")
+    .limit(1);
+  if (paymentAccountsProbe && isMissingTableError(paymentAccountsProbe.message)) {
+    /* optional until payment_accounts migration */
+  } else if (paymentAccountsProbe) {
+    throw new Error(`E2E seed payment_accounts probe: ${paymentAccountsProbe.message}`);
+  } else {
+    const { error: paUpsert } = await supabase.from("payment_accounts").upsert(
+      [
+        { name: "Cash", type: "cash" },
+        { name: "Amex", type: "card" },
+        { name: "Chase", type: "card" },
+      ],
+      { onConflict: "name" }
+    );
+    if (paUpsert) {
+      throw new Error(`E2E seed payment_accounts: ${paUpsert.message}`);
+    }
+  }
 }

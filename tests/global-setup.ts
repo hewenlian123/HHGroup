@@ -68,4 +68,28 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
     }
   }
   console.log("[global-setup] Post-seed DB verify OK (3333… / 2222… / 1111… present).");
+
+  // Prime Next.js dev compile for heavy routes so first tests do not sit on AppShell "Loading…".
+  const base = (process.env.E2E_BASE_URL || "http://localhost:3000").replace(/\/$/, "");
+  if (process.env.E2E_SKIP_APP_WARMUP !== "1") {
+    const paths = ["/financial/expenses", "/dashboard", "/financial/receipt-queue"];
+    for (const p of paths) {
+      try {
+        const ac = new AbortController();
+        const timer = setTimeout(() => ac.abort(), 180_000);
+        const res = await fetch(`${base}${p}`, { signal: ac.signal, redirect: "follow" });
+        clearTimeout(timer);
+        if (!res.ok) {
+          console.warn(`[global-setup] App warmup ${p}: HTTP ${res.status}`);
+        }
+      } catch (e) {
+        console.warn(
+          "[global-setup] App warmup fetch failed (non-fatal):",
+          p,
+          e instanceof Error ? e.message : e
+        );
+      }
+    }
+    console.log("[global-setup] App warmup finished.");
+  }
 }

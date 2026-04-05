@@ -94,6 +94,48 @@ const config: Config = {
         modal: "0 12px 40px rgba(17, 24, 39, 0.08), 0 2px 12px rgba(17, 24, 39, 0.04)",
         "summary-card": "0 1px 4px rgba(0,0,0,0.06)",
       },
+      keyframes: {
+        "receipt-queue-badge": {
+          "0%": {
+            transform: "scale(1) translateY(0)",
+            opacity: "1",
+            backgroundColor: "transparent",
+          },
+          "45%": {
+            transform: "scale(1.12) translateY(-2px)",
+            opacity: "1",
+            backgroundColor: "rgb(99 102 241 / 0.18)",
+          },
+          "100%": {
+            transform: "scale(1) translateY(0)",
+            opacity: "1",
+            backgroundColor: "transparent",
+          },
+        },
+        "receipt-queue-row-new": {
+          "0%": { backgroundColor: "rgb(255 251 235)" },
+          "100%": { backgroundColor: "rgb(255 251 235 / 0)" },
+        },
+        "receipt-queue-row-exit": {
+          "0%": {
+            opacity: "1",
+            transform: "translateY(0)",
+          },
+          "100%": {
+            opacity: "0",
+            transform: "translateY(-10px)",
+          },
+        },
+      },
+      animation: {
+        "receipt-queue-badge": "receipt-queue-badge 220ms cubic-bezier(0.33, 1, 0.68, 1) both",
+        "receipt-queue-row-new": "receipt-queue-row-new 600ms ease-out forwards",
+        "receipt-queue-row-exit": "receipt-queue-row-exit 220ms ease-out forwards",
+      },
+      transitionDuration: {
+        micro: "200ms",
+        "micro-slow": "240ms",
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],
