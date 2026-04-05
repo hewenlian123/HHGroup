@@ -294,22 +294,24 @@ export function Sidebar({
   const isActive = (href: string) =>
     pathname === href || (href !== "/dashboard" && pathname.startsWith(href + "/"));
 
-  /** Notion-style nav row: 13px, py-1.5 px-2, rounded-md */
+  /** Nav row: active = dark pill; hover = lighter bg 120ms */
   const navRowClass = (active: boolean) =>
     cn(
-      "group relative flex items-center rounded-md text-[13px] transition-colors duration-200 ease-out",
+      "group relative flex items-center rounded-md text-[13px] transition-colors duration-[120ms] ease-out",
       collapsed
         ? "min-h-[44px] justify-center px-2 py-1.5 sm:min-h-0"
         : "min-h-0 gap-2.5 px-2 py-1.5 sm:min-h-0",
       active
-        ? "bg-[#EEF3FA] font-medium text-[#111827] dark:bg-muted dark:text-foreground"
-        : "font-normal text-[#111827] hover:bg-[#F5F7FA] dark:text-foreground/90 dark:hover:bg-muted/60"
+        ? "bg-[#1a1a1a] font-medium text-white dark:bg-[#1a1a1a] dark:text-white"
+        : "font-normal text-[#111827] hover:bg-[#f5f5f3] dark:text-foreground/90 dark:hover:bg-muted/60"
     );
 
   const navIconClass = (active: boolean, extra?: string) =>
     cn(
-      "h-[16px] w-[16px] shrink-0 text-[#9CA3AF] transition-colors duration-150 group-hover:text-[#111827]",
-      active && "text-[#111827]",
+      "h-[16px] w-[16px] shrink-0 transition-colors duration-[120ms] ease-out",
+      active
+        ? "text-white"
+        : "text-[#9CA3AF] group-hover:text-[#111827] dark:group-hover:text-foreground",
       extra
     );
 
@@ -392,7 +394,10 @@ export function Sidebar({
                             {receiptQueueCount > 0 ? (
                               <span
                                 key={receiptQueueAnimKey}
-                                className="absolute -right-2 -top-1 z-[1] flex min-h-[15px] min-w-[15px] items-center justify-center rounded-sm px-1 text-[10px] font-semibold tabular-nums leading-none text-[#111827] animate-receipt-queue-badge dark:text-foreground"
+                                className={cn(
+                                  "absolute -right-2 -top-1 z-[1] flex min-h-[15px] min-w-[15px] items-center justify-center rounded-sm px-1 text-[10px] font-semibold tabular-nums leading-none animate-receipt-queue-badge",
+                                  active ? "text-white" : "text-[#111827] dark:text-foreground"
+                                )}
                                 aria-hidden
                               >
                                 {receiptQueueCount > 99 ? "99+" : receiptQueueCount}

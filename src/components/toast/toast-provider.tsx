@@ -18,6 +18,7 @@ type ToastRecord = ToastInput & {
   id: string;
   createdAt: number;
   onClick?: () => void;
+  exiting?: boolean;
 };
 
 type ToastContextValue = {
@@ -46,16 +47,21 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       id,
       createdAt: Date.now(),
       variant: t.variant ?? "default",
-      durationMs: t.durationMs ?? 4000,
+      durationMs: t.durationMs ?? 2000,
       title: t.title,
       description: t.description,
       onClick: t.onClick,
     };
     setToasts((prev) => [rec, ...prev].slice(0, 4));
 
+    const total = rec.durationMs ?? 2000;
+    const exitLead = Math.max(0, total - 180);
+    window.setTimeout(() => {
+      setToasts((prev) => prev.map((x) => (x.id === id ? { ...x, exiting: true } : x)));
+    }, exitLead);
     window.setTimeout(() => {
       setToasts((prev) => prev.filter((x) => x.id !== id));
-    }, rec.durationMs);
+    }, total);
   }, []);
 
   const value = React.useMemo<ToastContextValue>(() => ({ toast }), [toast]);
@@ -72,9 +78,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               type={t.onClick ? "button" : undefined}
               onClick={t.onClick}
               className={cn(
-                "pointer-events-auto w-full rounded-md border px-3 py-2 text-left shadow-[var(--shadow-1)]",
+                "pointer-events-auto w-full rounded-md border px-3 py-2 text-left shadow-[var(--shadow-1)] will-change-transform",
                 variantClasses(t.variant ?? "default"),
-                t.onClick && "cursor-pointer hover:opacity-90"
+                t.onClick && !t.exiting && "cursor-pointer hover:opacity-90",
+                t.exiting ? "animate-toast-out" : "animate-toast-in"
               )}
               role="status"
               aria-live="polite"

@@ -26,6 +26,9 @@ export type ExpenseCategorySelectProps = {
   onKeyDown?: React.KeyboardEventHandler<HTMLSelectElement>;
   /** Notified with refreshed names after load or after creating a category */
   onCategoriesUpdated?: (names: string[]) => void;
+  /** Forwarded to the native select for keyboard / focus navigation (e.g. receipt queue). */
+  "data-queue-row-id"?: string;
+  "data-queue-field"?: string;
 };
 
 function mergeOptions(names: string[], current: string): string[] {
@@ -44,6 +47,8 @@ export function ExpenseCategorySelect({
   autoFocus,
   onKeyDown,
   onCategoriesUpdated,
+  "data-queue-row-id": dataQueueRowId,
+  "data-queue-field": dataQueueField,
 }: ExpenseCategorySelectProps) {
   const { toast } = useToast();
   const [options, setOptions] = React.useState<string[]>([]);
@@ -150,6 +155,8 @@ export function ExpenseCategorySelect({
         className={cn(className)}
         autoFocus={autoFocus}
         aria-busy={loading}
+        data-queue-row-id={dataQueueRowId}
+        data-queue-field={dataQueueField}
       >
         {merged.map((c) => (
           <option key={c} value={c}>
