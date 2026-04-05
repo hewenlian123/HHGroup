@@ -855,10 +855,10 @@ export default function BankReconcileClient() {
             />
           </div>
           {importMessage ? (
-            <p className="mb-2 text-sm text-[#111827] dark:text-foreground">{importMessage}</p>
+            <p className="mb-2 text-sm text-text-primary dark:text-foreground">{importMessage}</p>
           ) : null}
           {toastMessage ? (
-            <p className="mb-2 text-sm text-[#111827] dark:text-foreground">{toastMessage}</p>
+            <p className="mb-2 text-sm text-text-primary dark:text-foreground">{toastMessage}</p>
           ) : null}
 
           <div className="flex gap-2 mb-3">
@@ -1159,7 +1159,12 @@ export default function BankReconcileClient() {
                                 {s.memoLabel}
                               </span>
                               <div className="ml-auto flex gap-1">
-                                <Button asChild variant="ghost" size="sm" className="h-8">
+                                <Button
+                                  asChild
+                                  variant="outline"
+                                  size="sm"
+                                  className="btn-outline-ghost h-8"
+                                >
                                   <Link href={`/financial/expenses/${s.expense.id}`}>View</Link>
                                 </Button>
                                 <Button

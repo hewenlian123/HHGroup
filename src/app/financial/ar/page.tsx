@@ -59,7 +59,7 @@ export default async function ARPage() {
 
       <section>
         <h2 className="mb-4 text-lg font-semibold text-foreground">AR Overview</h2>
-        <div className="grid gap-4 border-b border-[#E5E7EB] pb-6 sm:grid-cols-3 dark:border-border">
+        <div className="grid gap-4 border-b border-gray-300 pb-6 sm:grid-cols-3 dark:border-border">
           {kpis.map(({ label, value, icon: Icon }) => (
             <div key={label}>
               <div className="flex items-center justify-between gap-2">
@@ -87,7 +87,7 @@ export default async function ARPage() {
       <section>
         <h2 className="mb-4 text-lg font-semibold text-foreground">Outstanding by aging</h2>
         {sortedBuckets.length === 0 ? (
-          <p className="border-b border-[#E5E7EB] py-8 text-center text-sm text-muted-foreground dark:border-border">
+          <p className="border-b border-gray-300 py-8 text-center text-sm text-muted-foreground dark:border-border">
             No outstanding invoices.
           </p>
         ) : (
@@ -95,9 +95,9 @@ export default async function ARPage() {
             {sortedBuckets.map((bucket) => (
               <div
                 key={bucket}
-                className="overflow-hidden rounded-sm border border-[#E5E7EB] dark:border-border"
+                className="overflow-hidden rounded-sm border border-gray-300 dark:border-border"
               >
-                <h3 className="border-b border-[#E5E7EB] bg-white px-4 py-3 text-sm font-semibold text-foreground dark:border-border dark:bg-muted/30">
+                <h3 className="border-b border-gray-300 bg-white px-4 py-3 text-sm font-semibold text-foreground dark:border-border dark:bg-muted/30">
                   {bucket} days overdue
                 </h3>
                 <Table>

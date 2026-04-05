@@ -3,6 +3,17 @@
 @tailwind utilities;
 
 @layer components {
+  /**
+   * Button `variant="outline"` companions (former ghost / destructive).
+   * Use with outline for toolbar icons, cancel, or dangerous actions.
+   */
+  .btn-outline-ghost {
+    @apply !border-0 bg-transparent shadow-none hover:bg-gray-50 dark:!border-transparent dark:bg-transparent dark:hover:bg-muted/40;
+  }
+  .btn-outline-destructive {
+    @apply text-status-error border-status-error hover:bg-red-50 dark:border-status-error dark:hover:bg-red-950/30;
+  }
+
   /** Receipt queue: focus border + halo (180ms ease); wins over Input default ring */
   .rq-workspace input:not([type="hidden"]):not([type="file"]),
   .rq-workspace select {
@@ -33,7 +44,7 @@
     @apply flex flex-col gap-3;
   }
   .table-head-label {
-    @apply text-xs font-medium uppercase tracking-wide text-[#6B7280];
+    @apply text-xs font-medium uppercase tracking-wide text-text-secondary;
   }
   .table-row-compact {
     @apply h-10;
@@ -47,21 +58,21 @@
     @apply text-right font-mono tabular-nums;
   }
   .date-text {
-    @apply tabular-nums text-[#6B7280];
+    @apply tabular-nums text-text-secondary;
   }
   /* Summary / KPI cards (4-col grid, 10px gap) */
   .kpi-metric {
-    @apply rounded-[10px] border-[0.5px] border-[#E5E7EB] bg-white px-4 py-[14px];
+    @apply rounded-[10px] border-[0.5px] border-gray-300 bg-white px-4 py-[14px];
   }
   .kpi-metric-label {
     @apply text-[11px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF];
   }
   .kpi-metric-value {
-    @apply text-xl font-semibold text-[#111827];
+    @apply text-xl font-semibold text-text-primary;
   }
   /** Filter bar: native inputs / selects */
   .filter-field {
-    @apply h-9 min-h-9 w-full rounded-lg border-[0.5px] border-[#E5E7EB] bg-white px-3 text-[13px] text-[#374151] shadow-none outline-none transition-colors placeholder:text-[#9CA3AF];
+    @apply h-9 min-h-9 w-full rounded-lg border-[0.5px] border-gray-300 bg-white px-3 text-[13px] text-[#374151] shadow-none outline-none transition-colors placeholder:text-[#9CA3AF];
     @apply focus-visible:border-[#111827] focus-visible:ring-2 focus-visible:ring-[#111827]/10;
   }
   /** Positive profit / margin figures (deep green, not tailwind green-600) */
@@ -93,7 +104,7 @@
     color: #991b1b;
   }
   .hh-modal-shell {
-    @apply w-full max-w-[480px] rounded-[14px] border-[0.5px] border-[#E5E7EB] bg-white p-8 shadow-modal;
+    @apply w-full max-w-[480px] rounded-[14px] border-[0.5px] border-gray-300 bg-white p-8 shadow-modal;
   }
   /* Add-on: touch-friendly forms only when <1024px; desktop unchanged */
   .form-mobile-friendly input,
@@ -138,13 +149,13 @@
     touch-action: pan-x;
   }
   .ui-divider {
-    @apply border-b border-[#E5E7EB] [border-bottom-width:0.5px];
+    @apply border-b border-gray-300 [border-bottom-width:0.5px];
   }
   .ui-section {
     @apply py-2;
   }
   .ui-section-label {
-    @apply text-xs font-semibold uppercase tracking-wide text-[#6B7280];
+    @apply text-xs font-semibold uppercase tracking-wide text-text-secondary;
   }
 }
 
@@ -155,7 +166,7 @@
    * Do not use --ruled together with tableRawThClass / tableRawTdClass (borders would double).
    */
   .airtable-table-wrap {
-    @apply relative w-full overflow-hidden rounded-[10px] border-[0.5px] border-solid border-[#E5E7EB] bg-white dark:border-border;
+    @apply relative w-full overflow-hidden rounded-[10px] border-[0.5px] border-solid border-gray-300 bg-white dark:border-border;
   }
   .airtable-table-scroll {
     @apply max-w-full overflow-x-auto;
@@ -188,8 +199,8 @@
 @layer base {
   :root {
     /* ---- HH Group color tokens (HSL components for hsl()) ---- */
-    /* Page canvas #F8F7F4 */
-    --background: 48 23% 96%;
+    /* Page canvas — matches tailwind theme.colors.page (#f5f5f7) */
+    --background: 240 20% 97%;
     --foreground: 220 39% 11%;
     --card: 0 0% 100%;
     --card-foreground: 220 39% 11%;

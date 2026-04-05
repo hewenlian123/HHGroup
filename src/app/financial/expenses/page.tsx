@@ -150,7 +150,7 @@ function ExpenseAttachmentTrigger({ row, onPreview }: { row: Expense; onPreview:
   const items = React.useMemo(() => getReceiptItems(row), [row]);
 
   if (items.length === 0) {
-    return <span className="text-[#6B7280]/50">—</span>;
+    return <span className="text-text-secondary/50">—</span>;
   }
 
   const label = items.length > 1 ? `${items.length} files` : "Attachment";
@@ -158,7 +158,7 @@ function ExpenseAttachmentTrigger({ row, onPreview }: { row: Expense; onPreview:
   return (
     <button
       type="button"
-      className="inline-flex max-w-full cursor-pointer items-center gap-1.5 text-[11px] text-[#6B7280] hover:underline"
+      className="inline-flex max-w-full cursor-pointer items-center gap-1.5 text-[11px] text-text-secondary hover:underline"
       onClick={(e) => {
         e.stopPropagation();
         onPreview();
@@ -166,7 +166,7 @@ function ExpenseAttachmentTrigger({ row, onPreview }: { row: Expense; onPreview:
       aria-label={`View ${items.length > 1 ? `${items.length} attachments` : "attachment"}`}
       title="Preview attachment"
     >
-      <Paperclip className="h-3.5 w-3.5 shrink-0 text-[#9CA3AF]" strokeWidth={1.75} />
+      <Paperclip className="h-3.5 w-3.5 shrink-0 text-text-secondary/75" strokeWidth={1.75} />
       <span className="min-w-0 truncate">{label}</span>
     </button>
   );
@@ -176,10 +176,10 @@ function ExpenseAttachmentTrigger({ row, onPreview }: { row: Expense; onPreview:
 function expenseStatusDotTextClass(status: string | undefined): { dot: string; text: string } {
   const v = (status ?? "pending").toLowerCase();
   if (v === "needs_review") {
-    return { dot: "bg-[#D97706]", text: "text-[#B45309]" };
+    return { dot: "bg-amber-500", text: "text-amber-700 dark:text-amber-500/90" };
   }
   if (v === "pending") {
-    return { dot: "bg-[#9CA3AF]", text: "text-[#6B7280]" };
+    return { dot: "bg-status-pending", text: "text-text-secondary dark:text-text-secondary" };
   }
   if (
     v === "reviewed" ||
@@ -188,9 +188,9 @@ function expenseStatusDotTextClass(status: string | undefined): { dot: string; t
     v === "reimbursed" ||
     v === "reimbursable"
   ) {
-    return { dot: "bg-[#059669]", text: "text-[#059669]" };
+    return { dot: "bg-green-500", text: "text-green-600 dark:text-green-500" };
   }
-  return { dot: "bg-[#9CA3AF]", text: "text-[#6B7280]" };
+  return { dot: "bg-status-pending", text: "text-text-secondary dark:text-text-secondary" };
 }
 
 function normalizedVendorLabel(vendor: string): string {
@@ -255,7 +255,7 @@ function extractExpenseTags(expense: Expense): string[] {
 
 export default function ExpensesPage() {
   return (
-    <React.Suspense fallback={<div className="expenses-ui min-h-[50vh] w-full bg-[#FAFAF9]" />}>
+    <React.Suspense fallback={<div className="expenses-ui min-h-[50vh] w-full bg-[#f5f5f7]" />}>
       <ExpensesPageInner />
     </React.Suspense>
   );
@@ -1208,7 +1208,7 @@ function ExpensesPageInner() {
     <div className="expenses-ui w-full">
       <div className="expenses-ui-content mx-auto flex max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6">
         <PageHeader
-          className="[&_h1]:text-[#111827] [&_p]:text-[#6B7280]"
+          className="[&_h1]:text-text-primary [&_p]:text-text-secondary"
           title="Expenses"
           description="Spend, receipts, reimbursements"
           actions={
@@ -1240,40 +1240,40 @@ function ExpensesPageInner() {
           }
         />
 
-        <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 border-b border-[#E5E7EB] pb-3 text-xs text-[#6B7280]">
+        <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 border-b border-gray-300/60 pb-3 text-xs text-text-secondary">
           <span>
             Month{" "}
-            <span className="ml-1 font-medium tabular-nums text-[#111827]">
+            <span className="ml-1 font-medium tabular-nums text-text-primary">
               ${summary.monthTotal.toLocaleString()}
             </span>
           </span>
           <span>
             Total{" "}
-            <span className="ml-1 font-medium tabular-nums text-[#111827]">
+            <span className="ml-1 font-medium tabular-nums text-text-primary">
               ${summary.allTotal.toLocaleString()}
             </span>
           </span>
           <span>
             Unreviewed{" "}
-            <span className="ml-1 font-medium tabular-nums text-[#111827]">
+            <span className="ml-1 font-medium tabular-nums text-text-primary">
               {summary.unreviewed}
             </span>
           </span>
           <span>
             Reimb.{" "}
-            <span className="ml-1 font-medium tabular-nums text-[#111827]">
+            <span className="ml-1 font-medium tabular-nums text-text-primary">
               {summary.reimbursementCount}
             </span>
           </span>
           <span className="min-w-0">
             Top cat.{" "}
-            <span className="ml-1 font-medium text-[#111827]" title={summary.topCategory}>
+            <span className="ml-1 font-medium text-text-primary" title={summary.topCategory}>
               {summary.topCategory}
             </span>
           </span>
         </div>
 
-        <div className="flex w-full flex-col gap-1 border-b border-[#E5E7EB] pb-3">
+        <div className="flex w-full flex-col gap-1 border-b border-gray-300/60 pb-3">
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
@@ -1281,8 +1281,8 @@ function ExpensesPageInner() {
               size="sm"
               className={
                 listView === "all"
-                  ? "exp-btn-primary h-8 rounded-sm"
-                  : "exp-btn-secondary h-8 rounded-sm"
+                  ? "exp-filter-toggle-active exp-btn-primary h-8 rounded-sm transition-colors duration-150"
+                  : "exp-filter-toggle-inactive exp-btn-secondary h-8 rounded-sm transition-colors duration-150"
               }
               onClick={() => setListView("all")}
             >
@@ -1294,8 +1294,8 @@ function ExpensesPageInner() {
               size="sm"
               className={
                 listView === "unreviewed"
-                  ? "exp-btn-primary h-8 rounded-sm"
-                  : "exp-btn-secondary h-8 rounded-sm"
+                  ? "exp-filter-toggle-active exp-btn-primary h-8 rounded-sm transition-colors duration-150"
+                  : "exp-filter-toggle-inactive exp-btn-secondary h-8 rounded-sm transition-colors duration-150"
               }
               onClick={() => setListView("unreviewed")}
             >
@@ -1303,7 +1303,7 @@ function ExpensesPageInner() {
             </Button>
           </div>
           {listView === "unreviewed" ? (
-            <p className="text-[11px] text-[#6B7280]">
+            <p className="text-[11px] text-text-secondary">
               Enter: save, mark reviewed, next row · Shift+Enter: save only · Tab: next field · ↑↓:
               row · D: delete · Esc: cancel
             </p>
@@ -1315,11 +1315,11 @@ function ExpensesPageInner() {
             placeholder="Search…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-8 rounded-sm border-[#E5E7EB] bg-white text-sm text-[#111827] placeholder:text-[#9CA3AF]"
+            className="h-8 rounded-sm border-gray-300/60 bg-white/70 text-sm text-text-primary shadow-none backdrop-blur-md transition-all duration-200 placeholder:text-text-secondary focus:bg-white focus-visible:border-gray-300/60 focus-visible:ring-2 focus-visible:ring-blue-400/30"
           />
           <div className="flex flex-wrap gap-2">
             <select
-              className="h-8 min-w-[8rem] rounded-sm border border-[#E5E7EB] bg-white px-2 text-xs text-[#111827]"
+              className="h-8 min-w-[8rem] rounded-sm border border-gray-300/60 bg-white/80 px-2 text-xs text-text-primary shadow-none backdrop-blur-sm"
               value={projectFilter}
               onChange={(e) => setProjectFilter(e.target.value)}
             >
@@ -1336,7 +1336,7 @@ function ExpensesPageInner() {
               </span>
             ) : null}
             <select
-              className="h-8 min-w-[7rem] rounded-sm border border-[#E5E7EB] bg-white px-2 text-xs text-[#111827]"
+              className="h-8 min-w-[7rem] rounded-sm border border-gray-300/60 bg-white/80 px-2 text-xs text-text-primary shadow-none backdrop-blur-sm"
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
             >
@@ -1348,7 +1348,7 @@ function ExpensesPageInner() {
               ))}
             </select>
             <select
-              className="h-8 min-w-[6.5rem] rounded-sm border border-[#E5E7EB] bg-white px-2 text-xs text-[#111827] disabled:cursor-not-allowed disabled:opacity-50"
+              className="h-8 min-w-[6.5rem] rounded-sm border border-gray-300/60 bg-white/80 px-2 text-xs text-text-primary shadow-none backdrop-blur-sm disabled:cursor-not-allowed disabled:opacity-50"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               disabled={listView === "unreviewed"}
@@ -1366,7 +1366,7 @@ function ExpensesPageInner() {
               <option value="reimbursed">Reimbursed</option>
             </select>
             <select
-              className="h-8 min-w-[6.5rem] rounded-sm border border-[#E5E7EB] bg-white px-2 text-xs text-[#111827]"
+              className="h-8 min-w-[6.5rem] rounded-sm border border-gray-300/60 bg-white/80 px-2 text-xs text-text-primary shadow-none backdrop-blur-sm"
               value={sourceTypeFilter}
               onChange={(e) => setSourceTypeFilter(e.target.value)}
             >
@@ -1376,7 +1376,7 @@ function ExpensesPageInner() {
               <option value="reimbursement">Reimbursement</option>
             </select>
             <select
-              className="h-8 min-w-[6rem] rounded-sm border border-[#E5E7EB] bg-white px-2 text-xs text-[#111827]"
+              className="h-8 min-w-[6rem] rounded-sm border border-gray-300/60 bg-white/80 px-2 text-xs text-text-primary shadow-none backdrop-blur-sm"
               value={dateRangeFilter}
               onChange={(e) =>
                 setDateRangeFilter((e.target.value as "all" | "week" | "month") ?? "all")
@@ -1391,8 +1391,8 @@ function ExpensesPageInner() {
 
         <section className="mt-4">
           {total === 0 ? (
-            <div className="border-b border-[#E5E7EB] py-12 text-center">
-              <p className="text-sm font-medium text-[#111827]">
+            <div className="border-b border-gray-300/60 py-12 text-center">
+              <p className="text-sm font-medium text-text-primary">
                 {listView === "unreviewed"
                   ? hasNarrowingFilters
                     ? "No unreviewed matches"
@@ -1403,7 +1403,7 @@ function ExpensesPageInner() {
                     ? "No matches"
                     : "No expenses yet"}
               </p>
-              <p className="mt-1 text-xs text-[#6B7280]">
+              <p className="mt-1 text-xs text-text-secondary">
                 {listView === "unreviewed"
                   ? hasNarrowingFilters
                     ? "Try clearing filters or switch to All."
@@ -1456,31 +1456,31 @@ function ExpensesPageInner() {
               ) : null}
             </div>
           ) : (
-            <ul className="exp-divide">
-              {pageRows.map((row) => {
-                const rowTotal = getExpenseTotal(row);
-                const projLabel = projectLabel(row, projectNameById);
-                const status = row.status ?? "pending";
-                const statusStyle = expenseStatusDotTextClass(status);
-                const catLabel = primaryCategory(row);
-                return (
-                  <li
-                    key={row.id}
-                    ref={(el) => {
-                      rowElsRef.current[row.id] = el;
-                    }}
-                    className={`group exp-row relative py-3.5 pl-0 pr-16 transition-colors ${
-                      listView === "unreviewed" && activeExpenseId === row.id
-                        ? "bg-[#F9FAFB] ring-1 ring-inset ring-[#E5E7EB]"
-                        : ""
-                    }`}
-                    onClick={() => {
-                      if (listView === "unreviewed") setActiveExpenseId(row.id);
-                    }}
-                  >
-                    <div className="min-w-0">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
+            <div className="exp-list-card overflow-hidden rounded-xl border border-gray-300/60 bg-white/70 shadow-sm backdrop-blur-md dark:border-border/60 dark:bg-card/75 dark:backdrop-blur-md">
+              <ul className="exp-divide divide-y divide-gray-300/50 dark:divide-border/60">
+                {pageRows.map((row) => {
+                  const rowTotal = getExpenseTotal(row);
+                  const projLabel = projectLabel(row, projectNameById);
+                  const status = row.status ?? "pending";
+                  const statusStyle = expenseStatusDotTextClass(status);
+                  const catLabel = primaryCategory(row);
+                  return (
+                    <li
+                      key={row.id}
+                      ref={(el) => {
+                        rowElsRef.current[row.id] = el;
+                      }}
+                      className={`group exp-row relative flex flex-col gap-2 bg-transparent px-4 py-3 pr-12 transition-all duration-200 ease-out hover:bg-white hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:-translate-y-px active:scale-[0.99] dark:hover:bg-white/5 dark:hover:shadow-none dark:hover:translate-y-0 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:pr-14 ${
+                        listView === "unreviewed" && activeExpenseId === row.id
+                          ? "bg-white shadow-[0_2px_8px_rgba(0,0,0,0.05)] ring-1 ring-inset ring-gray-300/70 dark:bg-white/10 dark:ring-border/60"
+                          : ""
+                      }`}
+                      onClick={() => {
+                        if (listView === "unreviewed") setActiveExpenseId(row.id);
+                      }}
+                    >
+                      <div className="min-w-0 flex-1 space-y-0.5">
+                        <div className="min-w-0">
                           {editingVendorId === row.id ? (
                             <div
                               className="flex max-w-md items-center gap-1"
@@ -1488,16 +1488,16 @@ function ExpensesPageInner() {
                               onClick={(e) => e.stopPropagation()}
                             >
                               <Input
-                                className="h-7 rounded-sm border-[#E5E7EB] text-sm text-[#111827]"
+                                className="h-7 rounded-sm border-gray-300/60 text-sm text-text-primary"
                                 value={vendorDraft}
                                 autoFocus
                                 onChange={(e) => setVendorDraft(e.target.value)}
                                 onKeyDown={onInlineKeyDown(row, "vendor")}
                               />
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="icon"
-                                className="exp-icon-btn h-7 w-7 shrink-0"
+                                className="btn-outline-ghost exp-icon-btn h-7 w-7 shrink-0"
                                 aria-label="Save vendor"
                                 onMouseDown={(e) => e.preventDefault()}
                                 onClick={() => void handleVendorInlineSave(row.id)}
@@ -1505,9 +1505,9 @@ function ExpensesPageInner() {
                                 <Check className="h-3.5 w-3.5" />
                               </Button>
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="icon"
-                                className="exp-icon-btn h-7 w-7 shrink-0"
+                                className="btn-outline-ghost exp-icon-btn h-7 w-7 shrink-0"
                                 aria-label="Cancel"
                                 onMouseDown={(e) => e.preventDefault()}
                                 onClick={() => clearInlineEdits()}
@@ -1518,7 +1518,7 @@ function ExpensesPageInner() {
                           ) : (
                             <button
                               type="button"
-                              className="truncate text-left text-sm font-semibold text-[#111827] hover:underline"
+                              className="truncate text-left text-sm font-semibold text-text-primary hover:underline"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setActiveExpenseId(row.id);
@@ -1529,55 +1529,14 @@ function ExpensesPageInner() {
                             </button>
                           )}
                         </div>
-                        <div className="shrink-0 text-right" onClick={(e) => e.stopPropagation()}>
-                          {editingAmountId === row.id ? (
-                            <div className="flex items-center justify-end gap-1" data-inline-field>
-                              <Input
-                                className="h-7 w-24 rounded-sm border-[#E5E7EB] text-right text-sm tabular-nums text-[#111827]"
-                                value={amountDraft}
-                                autoFocus
-                                inputMode="decimal"
-                                onChange={(e) => setAmountDraft(e.target.value)}
-                                onKeyDown={onInlineKeyDown(row, "amount")}
-                              />
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="exp-icon-btn h-7 w-7"
-                                onMouseDown={(e) => e.preventDefault()}
-                                onClick={() => void handleAmountInlineSave(row.id)}
-                              >
-                                <Check className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              className="text-base font-semibold tabular-nums tracking-tight text-[#B91C1C] hover:underline"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveExpenseId(row.id);
-                                openInlineField(row.id, "amount");
-                              }}
-                            >
-                              −$
-                              {rowTotal.toLocaleString(undefined, {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      <div className="mt-0.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                         <div
-                          className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 text-[11px] leading-relaxed text-[#6B7280]"
+                          className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] leading-snug text-text-secondary"
                           onClick={(e) => e.stopPropagation()}
                         >
                           {editingCategoryId === row.id ? (
                             <span data-inline-field className="inline-flex items-center gap-1">
                               <ExpenseCategorySelect
-                                className="h-7 max-w-[9rem] rounded-sm border border-[#E5E7EB] bg-white px-1.5 text-xs text-[#111827]"
+                                className="h-7 max-w-[9rem] rounded-sm border border-gray-300/60 bg-white/90 px-1.5 text-xs text-text-primary backdrop-blur-sm"
                                 value={categoryDraft}
                                 autoFocus
                                 onValueChange={setCategoryDraft}
@@ -1585,9 +1544,9 @@ function ExpensesPageInner() {
                                 onKeyDown={onInlineKeyDown(row, "category")}
                               />
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="icon"
-                                className="exp-icon-btn h-7 w-7"
+                                className="btn-outline-ghost exp-icon-btn h-7 w-7"
                                 onMouseDown={(e) => e.preventDefault()}
                                 onClick={() => void handleCategoryInlineSave(row.id)}
                               >
@@ -1597,7 +1556,7 @@ function ExpensesPageInner() {
                           ) : (
                             <button
                               type="button"
-                              className="hover:text-[#111827] hover:underline"
+                              className="hover:text-text-primary hover:underline"
                               onClick={() => {
                                 setActiveExpenseId(row.id);
                                 openInlineField(row.id, "category");
@@ -1606,7 +1565,10 @@ function ExpensesPageInner() {
                               {catLabel}
                             </button>
                           )}
-                          <span className="text-[#E5E7EB]" aria-hidden>
+                          <span
+                            className="text-text-secondary/60 dark:text-text-secondary"
+                            aria-hidden
+                          >
                             ·
                           </span>
                           {editingProjectId === row.id ? (
@@ -1615,7 +1577,7 @@ function ExpensesPageInner() {
                               className="inline-flex min-w-0 items-center gap-1"
                             >
                               <select
-                                className="h-7 max-w-[10rem] rounded-sm border border-[#E5E7EB] bg-white px-1.5 text-xs text-[#111827]"
+                                className="h-7 max-w-[10rem] rounded-sm border border-gray-300/60 bg-white/90 px-1.5 text-xs text-text-primary backdrop-blur-sm"
                                 value={projectDraft}
                                 autoFocus
                                 onChange={(e) => setProjectDraft(e.target.value)}
@@ -1629,9 +1591,9 @@ function ExpensesPageInner() {
                                 ))}
                               </select>
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="icon"
-                                className="exp-icon-btn h-7 w-7 shrink-0"
+                                className="btn-outline-ghost exp-icon-btn h-7 w-7 shrink-0"
                                 onMouseDown={(e) => e.preventDefault()}
                                 onClick={() => void handleProjectInlineSave(row.id)}
                               >
@@ -1641,7 +1603,7 @@ function ExpensesPageInner() {
                           ) : (
                             <button
                               type="button"
-                              className="min-w-0 max-w-[10rem] truncate hover:text-[#111827] hover:underline"
+                              className="min-w-0 max-w-[10rem] truncate hover:text-text-primary hover:underline"
                               onClick={() => {
                                 setActiveExpenseId(row.id);
                                 openInlineField(row.id, "project");
@@ -1650,23 +1612,26 @@ function ExpensesPageInner() {
                               {projLabel}
                             </button>
                           )}
-                          <span className="text-[#E5E7EB]" aria-hidden>
+                          <span
+                            className="text-text-secondary/60 dark:text-text-secondary"
+                            aria-hidden
+                          >
                             ·
                           </span>
                           {editingDateId === row.id ? (
                             <span className="inline-flex items-center gap-1" data-inline-field>
                               <Input
                                 type="date"
-                                className="h-7 w-[9.5rem] rounded-sm border-[#E5E7EB] text-xs text-[#111827]"
+                                className="h-7 w-[9.5rem] rounded-sm border-gray-300/60 text-xs text-text-primary"
                                 value={dateDraft}
                                 autoFocus
                                 onChange={(e) => setDateDraft(e.target.value)}
                                 onKeyDown={onInlineKeyDown(row, "date")}
                               />
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="icon"
-                                className="exp-icon-btn h-7 w-7"
+                                className="btn-outline-ghost exp-icon-btn h-7 w-7"
                                 onMouseDown={(e) => e.preventDefault()}
                                 onClick={() => void handleDateInlineSave(row.id)}
                               >
@@ -1676,7 +1641,7 @@ function ExpensesPageInner() {
                           ) : (
                             <button
                               type="button"
-                              className="hover:text-[#111827] hover:underline"
+                              className="hover:text-text-primary hover:underline"
                               onClick={() => {
                                 setActiveExpenseId(row.id);
                                 openInlineField(row.id, "date");
@@ -1685,7 +1650,10 @@ function ExpensesPageInner() {
                               {row.date || "—"}
                             </button>
                           )}
-                          <span className="text-[#E5E7EB]" aria-hidden>
+                          <span
+                            className="text-text-secondary/60 dark:text-text-secondary"
+                            aria-hidden
+                          >
                             ·
                           </span>
                           <span className="inline-flex min-w-0 max-w-[8rem] items-center gap-1">
@@ -1701,13 +1669,16 @@ function ExpensesPageInner() {
                               {row.paymentAccountName ?? "—"}
                             </span>
                           </span>
-                          <span className="text-[#E5E7EB]" aria-hidden>
+                          <span
+                            className="text-text-secondary/60 dark:text-text-secondary"
+                            aria-hidden
+                          >
                             ·
                           </span>
                           {editingSourceId === row.id ? (
                             <span data-inline-field className="inline-flex items-center gap-1">
                               <select
-                                className="h-7 rounded-sm border border-[#E5E7EB] bg-white px-1.5 text-xs text-[#111827]"
+                                className="h-7 rounded-sm border border-gray-300/60 bg-white/90 px-1.5 text-xs text-text-primary backdrop-blur-sm"
                                 value={sourceTypeDraft}
                                 autoFocus
                                 onChange={(e) =>
@@ -1722,9 +1693,9 @@ function ExpensesPageInner() {
                                 <option value="reimbursement">Reimbursement</option>
                               </select>
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="icon"
-                                className="exp-icon-btn h-7 w-7"
+                                className="btn-outline-ghost exp-icon-btn h-7 w-7"
                                 onMouseDown={(e) => e.preventDefault()}
                                 onClick={() => void handleSourceInlineSave(row.id)}
                               >
@@ -1734,7 +1705,7 @@ function ExpensesPageInner() {
                           ) : (
                             <button
                               type="button"
-                              className="hover:text-[#111827] hover:underline"
+                              className="hover:text-text-primary hover:underline"
                               onClick={() => {
                                 setActiveExpenseId(row.id);
                                 openInlineField(row.id, "source");
@@ -1744,10 +1715,55 @@ function ExpensesPageInner() {
                             </button>
                           )}
                         </div>
-                        <div
-                          className="flex shrink-0 items-center gap-2 text-[11px]"
-                          onClick={(e) => e.stopPropagation()}
-                        >
+                      </div>
+
+                      <div
+                        className="flex shrink-0 flex-col gap-2 sm:items-end"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex w-full items-center justify-between sm:block sm:w-auto sm:text-right">
+                          {editingAmountId === row.id ? (
+                            <div
+                              className="flex items-center justify-end gap-1 sm:ml-auto"
+                              data-inline-field
+                            >
+                              <Input
+                                className="h-7 w-24 rounded-sm border-gray-300/60 text-right text-sm tabular-nums text-text-primary"
+                                value={amountDraft}
+                                autoFocus
+                                inputMode="decimal"
+                                onChange={(e) => setAmountDraft(e.target.value)}
+                                onKeyDown={onInlineKeyDown(row, "amount")}
+                              />
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="btn-outline-ghost exp-icon-btn h-7 w-7"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => void handleAmountInlineSave(row.id)}
+                              >
+                                <Check className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              className="text-base font-semibold tabular-nums tracking-tight text-money-expense transition-opacity duration-200 group-hover:opacity-90 hover:underline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveExpenseId(row.id);
+                                openInlineField(row.id, "amount");
+                              }}
+                            >
+                              −$
+                              {rowTotal.toLocaleString(undefined, {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}
+                            </button>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-end gap-2 text-[11px]">
                           <ExpenseAttachmentTrigger
                             row={row}
                             onPreview={() => void openReceiptPreview(row)}
@@ -1768,55 +1784,55 @@ function ExpensesPageInner() {
                           </button>
                         </div>
                       </div>
-                    </div>
-                    <div className="absolute bottom-0 right-0 top-0 flex items-center gap-0.5 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="exp-icon-btn h-7 w-7"
-                        title="Edit"
-                        aria-label="Edit"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditExpense(row);
-                          setEditModalOpen(true);
-                        }}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="exp-icon-danger h-7 w-7"
-                        aria-label="Delete"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(row);
-                        }}
-                      >
-                        {deletingExpenseId === row.id ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                        ) : (
-                          <Trash2 className="h-3.5 w-3.5" />
-                        )}
-                      </Button>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+
+                      <div className="absolute right-1.5 top-3 z-[1] flex items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 max-sm:opacity-100 sm:top-1/2 sm:-translate-y-1/2">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="btn-outline-ghost exp-icon-btn h-7 w-7"
+                          title="Edit"
+                          aria-label="Edit"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditExpense(row);
+                            setEditModalOpen(true);
+                          }}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="btn-outline-ghost exp-icon-danger h-7 w-7"
+                          aria-label="Delete"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(row);
+                          }}
+                        >
+                          {deletingExpenseId === row.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                          ) : (
+                            <Trash2 className="h-3.5 w-3.5" />
+                          )}
+                        </Button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+              <div className="border-t border-gray-300/60 px-4 py-2 dark:border-border/60">
+                <Pagination
+                  page={curPage}
+                  pageSize={pageSize}
+                  total={total}
+                  onPageChange={setPage}
+                  className="text-text-secondary [&_.text-muted-foreground]:text-text-secondary [&_button]:exp-btn-secondary"
+                />
+              </div>
+            </div>
           )}
         </section>
-
-        {total > 0 ? (
-          <Pagination
-            page={curPage}
-            pageSize={pageSize}
-            total={total}
-            onPageChange={setPage}
-            className="text-[#6B7280] [&_.text-muted-foreground]:text-[#6B7280] [&_button]:exp-btn-secondary"
-          />
-        ) : null}
 
         <QuickExpenseModal
           open={quickExpenseOpen}

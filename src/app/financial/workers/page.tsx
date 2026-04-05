@@ -180,8 +180,8 @@ export default function FinancialWorkersPage() {
                   <td className="py-2 px-3">
                     <Button
                       size="sm"
-                      variant="ghost"
-                      className="h-7 text-xs rounded-sm"
+                      variant="outline"
+                      className="btn-outline-ghost h-7 text-xs rounded-sm"
                       onClick={() => openLedger(row)}
                     >
                       Ledger

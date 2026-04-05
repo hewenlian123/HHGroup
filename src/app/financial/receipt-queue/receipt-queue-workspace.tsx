@@ -1230,7 +1230,7 @@ export function ReceiptQueueWorkspace() {
     <div className="w-full bg-[#f5f0e8] dark:bg-background">
       <div className="mx-auto flex max-w-6xl flex-col gap-6 px-3 py-6 sm:gap-8 sm:px-6 sm:py-8">
         <PageHeader
-          className="items-start gap-1 border-0 pb-0 sm:items-start [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:tracking-tight [&_h1]:text-[#111827] [&_p]:max-w-2xl [&_p]:text-sm [&_p]:leading-relaxed [&_p]:text-[#6B7280]"
+          className="items-start gap-1 border-0 pb-0 sm:items-start [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:tracking-tight [&_h1]:text-text-primary [&_p]:max-w-2xl [&_p]:text-sm [&_p]:leading-relaxed [&_p]:text-text-secondary"
           title="Receipt Queue"
           description="Uploads persist across sessions. Enter saves the row and moves to the next field, then the next row that needs attention. Shift+Enter saves this row and flushes all pending edits. Add all imports in bulk (needs review)."
           actions={
@@ -1252,9 +1252,9 @@ export function ReceiptQueueWorkspace() {
                 variant="outline"
                 size="sm"
                 className={cn(
-                  "h-9 rounded-md border-2 border-[#111827] bg-white px-3 text-sm font-semibold text-[#111827] shadow-none",
+                  "h-9 rounded-md border-2 border-[#111827] bg-white px-3 text-sm font-semibold text-text-primary shadow-none",
                   RQ_BTN,
-                  "hover:bg-gray-50"
+                  "hover:bg-page"
                 )}
                 disabled={bulkAdding || !supabase || addAllEligibleCount === 0}
                 onClick={() => void handleAddAll()}
@@ -1336,7 +1336,7 @@ export function ReceiptQueueWorkspace() {
                 type="button"
                 size="sm"
                 className={cn(
-                  "h-10 gap-2 rounded-lg border-0 bg-hh-link px-4 text-sm font-medium text-white shadow-none",
+                  "h-10 gap-2 rounded-lg border-0 bg-brand-primary px-4 text-sm font-medium text-white shadow-none",
                   RQ_BTN,
                   "hover:bg-blue-600"
                 )}
@@ -1358,8 +1358,8 @@ export function ReceiptQueueWorkspace() {
             ) : null}
             <div
               className={cn(
-                "flex min-h-[140px] flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-hh-border bg-[#F9FAFB] py-8 text-sm text-[#6B7280] transition-colors duration-[140ms] ease-out",
-                dragOver && !captureUploading && "border-hh-link/50 bg-[#EFF6FF]",
+                "flex min-h-[140px] flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-hh-border bg-[#F9FAFB] py-8 text-sm text-text-secondary transition-colors duration-[140ms] ease-out",
+                dragOver && !captureUploading && "border-brand-primary/50 bg-brand-primary/5",
                 captureUploading && "pointer-events-none opacity-60"
               )}
               onDragEnter={(e) => {
@@ -1381,7 +1381,7 @@ export function ReceiptQueueWorkspace() {
               }}
             >
               <Upload className="h-8 w-8 text-[#9CA3AF]" aria-hidden />
-              <span className="text-sm font-medium text-[#6B7280]">
+              <span className="text-sm font-medium text-text-secondary">
                 {captureUploading ? "Uploading…" : "Drop files here to add to the queue"}
               </span>
             </div>
@@ -1397,7 +1397,7 @@ export function ReceiptQueueWorkspace() {
           >
             {[0, 1, 2].map((i) => (
               <React.Fragment key={i}>
-                <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-[0_2px_16px_rgba(15,23,42,0.08)] dark:border-border dark:bg-card md:hidden">
+                <div className="rounded-xl border border-gray-300 bg-white p-4 shadow-[0_2px_16px_rgba(15,23,42,0.08)] dark:border-border dark:bg-card md:hidden">
                   <div className="flex flex-col gap-4">
                     <div className="flex gap-3">
                       <Skeleton className="h-16 w-16 shrink-0 rounded-xl" />
@@ -1420,7 +1420,7 @@ export function ReceiptQueueWorkspace() {
                     </div>
                   </div>
                 </div>
-                <div className="hidden rounded-lg border border-gray-200 bg-white p-4 shadow-[0_1px_3px_rgba(15,23,42,0.07)] dark:border-border dark:bg-card md:block">
+                <div className="hidden rounded-lg border border-gray-300 bg-white p-4 shadow-[0_1px_3px_rgba(15,23,42,0.07)] dark:border-border dark:bg-card md:block">
                   <div className="grid w-full items-center gap-x-3 gap-y-2 [grid-template-columns:60px_80px_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_100px]">
                     <Skeleton className="h-[52px] w-[52px] rounded-lg" />
                     <Skeleton className="h-8 w-14" />
@@ -1476,7 +1476,7 @@ export function ReceiptQueueWorkspace() {
                       className={cn(
                         "rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-[140ms] ease-out",
                         listFilter === "all"
-                          ? "bg-white text-[#111827] shadow-sm ring-1 ring-amber-200/80 dark:bg-amber-900/40 dark:text-amber-50 dark:ring-amber-700/50"
+                          ? "bg-white text-text-primary shadow-sm ring-1 ring-amber-200/80 dark:bg-amber-900/40 dark:text-amber-50 dark:ring-amber-700/50"
                           : "text-amber-900/80 hover:bg-amber-100/80 dark:text-amber-200/90 dark:hover:bg-amber-900/30"
                       )}
                     >
@@ -1488,7 +1488,7 @@ export function ReceiptQueueWorkspace() {
                       className={cn(
                         "rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-[140ms] ease-out",
                         listFilter === "needs_fix"
-                          ? "bg-white text-[#111827] shadow-sm ring-1 ring-amber-200/80 dark:bg-amber-900/40 dark:text-amber-50 dark:ring-amber-700/50"
+                          ? "bg-white text-text-primary shadow-sm ring-1 ring-amber-200/80 dark:bg-amber-900/40 dark:text-amber-50 dark:ring-amber-700/50"
                           : "text-amber-900/80 hover:bg-amber-100/80 dark:text-amber-200/90 dark:hover:bg-amber-900/30"
                       )}
                     >
@@ -1500,7 +1500,7 @@ export function ReceiptQueueWorkspace() {
               <div className="flex items-center gap-3 border-t border-amber-200/60 px-4 py-2 dark:border-amber-800/40">
                 <div className="relative h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-amber-100/80 dark:bg-amber-900/40">
                   <div
-                    className="absolute inset-y-0 left-0 rounded-full bg-hh-link transition-[width] duration-300"
+                    className="absolute inset-y-0 left-0 rounded-full bg-brand-primary transition-[width] duration-300"
                     style={{ width: `${queueProgress.pct}%` }}
                   />
                 </div>

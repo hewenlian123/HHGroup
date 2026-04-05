@@ -141,8 +141,8 @@ export function ConvertToProjectDrawer({
         <div className="flex gap-2 pt-2">
           <Button
             type="button"
-            variant="ghost"
-            className="flex-1"
+            variant="outline"
+            className="btn-outline-ghost flex-1"
             onClick={() => onOpenChange(false)}
             disabled={pending}
           >

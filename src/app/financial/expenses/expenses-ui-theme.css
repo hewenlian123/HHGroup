@@ -1,15 +1,15 @@
-/* Expenses route: light, minimal palette (scoped under .expenses-ui) */
+/* Expenses route: Apple-style layered grays (scoped under .expenses-ui) */
 .expenses-ui {
-  --exp-page-bg: #fafaf9;
-  --exp-content-bg: #ffffff;
+  --exp-page-bg: #f5f5f7;
+  --exp-content-bg: transparent;
   --exp-primary: #111827;
   --exp-secondary: #6b7280;
-  --exp-negative: #b91c1c;
-  --exp-positive: #059669;
-  --exp-row-hover: #f9fafb;
-  --exp-border: #e5e7eb;
+  --exp-negative: #d92d20;
+  --exp-positive: #22c55e;
+  --exp-row-hover: #ffffff;
+  --exp-border: rgb(0 0 0 / 0.08);
   --exp-icon: #9ca3af;
-  --exp-icon-hover: #111827;
+  --exp-icon-hover: #374151;
   background-color: var(--exp-page-bg);
   color: var(--exp-primary);
 }
@@ -19,15 +19,7 @@
   color: var(--exp-primary);
 }
 
-.expenses-ui .exp-row {
-  transition:
-    background-color 0.2s ease,
-    opacity 0.2s ease;
-}
-
-.expenses-ui .exp-row:hover {
-  background-color: var(--exp-row-hover);
-}
+/* Row motion: Tailwind `transition-all` on `<li.exp-row>` (hover lift/shadow, active scale) */
 
 .expenses-ui .exp-btn-primary {
   background-color: var(--exp-primary) !important;
@@ -35,19 +27,35 @@
   border-color: transparent !important;
 }
 
+/* List view toggles: Apple-style solid black when selected */
+.expenses-ui .exp-filter-toggle-active.exp-btn-primary {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+
+.expenses-ui .exp-filter-toggle-inactive.exp-btn-secondary:hover {
+  background-color: #e5e7eb !important;
+}
+
+.dark .expenses-ui .exp-filter-toggle-inactive.exp-btn-secondary:hover {
+  background-color: #404040 !important;
+}
+
 .expenses-ui .exp-btn-primary:hover {
   opacity: 0.92;
 }
 
 .expenses-ui .exp-btn-secondary {
-  background-color: var(--exp-content-bg) !important;
+  background-color: rgb(255 255 255 / 0.72) !important;
   color: var(--exp-primary) !important;
-  border-color: var(--exp-border) !important;
+  border-color: rgb(0 0 0 / 0.08) !important;
   box-shadow: none !important;
+  backdrop-filter: blur(8px);
 }
 
 .expenses-ui .exp-btn-secondary:hover {
-  background-color: var(--exp-row-hover) !important;
+  background-color: #ffffff !important;
 }
 
 .expenses-ui .exp-btn-secondary svg {
@@ -64,7 +72,7 @@
 
 .expenses-ui .exp-icon-btn:hover {
   color: var(--exp-icon-hover) !important;
-  background-color: var(--exp-row-hover) !important;
+  background-color: rgb(255 255 255 / 0.85) !important;
 }
 
 .expenses-ui .exp-icon-danger {
@@ -73,12 +81,10 @@
 
 .expenses-ui .exp-icon-danger:hover {
   color: var(--exp-negative) !important;
-  background-color: #fef2f2 !important;
+  background-color: rgb(254 242 242 / 0.9) !important;
 }
 
-.expenses-ui .exp-divide > li + li {
-  border-top: 1px solid var(--exp-border);
-}
+/* Row dividers: use Tailwind `divide-y` on the list inside `.exp-list-card` */
 
 /* Dialog when using expenses palette */
 .expenses-ui-dialog {

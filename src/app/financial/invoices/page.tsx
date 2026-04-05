@@ -180,7 +180,7 @@ function InvoicesPageInner() {
       <FilterBar>
         <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1 sm:col-span-2 lg:col-span-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Search
             </p>
             <Input
@@ -190,7 +190,7 @@ function InvoicesPageInner() {
             />
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Status
             </p>
             <Select
@@ -205,7 +205,7 @@ function InvoicesPageInner() {
             </Select>
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Project
             </p>
             <Select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)}>
@@ -282,7 +282,7 @@ function InvoicesPageInner() {
                     key={inv.id}
                     className={cn(
                       listTableRowClassName,
-                      "group border-b border-[#E5E7EB]/80 dark:border-border/30"
+                      "group border-b border-gray-300/80 dark:border-border/30"
                     )}
                     onClick={() => router.push(`/financial/invoices/${inv.id}`)}
                   >
@@ -339,13 +339,23 @@ function InvoicesPageInner() {
                     </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex justify-end gap-1">
-                        <Button asChild variant="ghost" size="sm" className="h-8">
+                        <Button
+                          asChild
+                          variant="outline"
+                          size="sm"
+                          className="btn-outline-ghost h-8"
+                        >
                           <Link href={`/financial/invoices/${inv.id}`}>
                             <Eye className="h-4 w-4 mr-1" /> View
                           </Link>
                         </Button>
                         {inv.computedStatus !== "Void" && inv.computedStatus !== "Paid" && (
-                          <Button asChild variant="ghost" size="sm" className="h-8">
+                          <Button
+                            asChild
+                            variant="outline"
+                            size="sm"
+                            className="btn-outline-ghost h-8"
+                          >
                             <Link href={`/financial/invoices/${inv.id}?recordPayment=1`}>
                               <CreditCard className="h-4 w-4 mr-1" /> Record Payment
                             </Link>
@@ -353,9 +363,9 @@ function InvoicesPageInner() {
                         )}
                         {inv.computedStatus !== "Void" && (
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
-                            className="h-8"
+                            className="btn-outline-ghost h-8"
                             onClick={() => handleDuplicate(inv.id)}
                             title="Duplicate"
                           >
@@ -366,17 +376,17 @@ function InvoicesPageInner() {
                           (voidConfirmId === inv.id ? (
                             <>
                               <Button
-                                variant="destructive"
+                                variant="outline"
                                 size="sm"
-                                className="h-8"
+                                className="btn-outline-destructive h-8"
                                 onClick={() => handleVoid(inv.id)}
                               >
                                 Confirm Void
                               </Button>
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
-                                className="h-8"
+                                className="btn-outline-ghost h-8"
                                 onClick={() => setVoidConfirmId(null)}
                               >
                                 Cancel
@@ -384,9 +394,9 @@ function InvoicesPageInner() {
                             </>
                           ) : (
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
-                              className="h-8 text-red-600 hover:text-red-700"
+                              className="btn-outline-ghost h-8 text-red-600 hover:text-red-700"
                               onClick={() => setVoidConfirmId(inv.id)}
                               title="Void"
                             >

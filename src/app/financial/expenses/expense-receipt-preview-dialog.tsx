@@ -152,9 +152,9 @@ export function ExpenseReceiptPreviewDialog({
               <DialogPrimitive.Close asChild>
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
                   size="icon"
-                  className="absolute right-3 top-3 h-9 w-9 shrink-0 rounded-sm"
+                  className="btn-outline-ghost absolute right-3 top-3 h-9 w-9 shrink-0 rounded-sm"
                   aria-label="Close"
                 >
                   <X className="h-4 w-4" />
@@ -232,18 +232,18 @@ export function ExpenseReceiptPreviewDialog({
                   <>
                     <Button
                       type="button"
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
-                      className="h-9"
+                      className="btn-outline-ghost h-9"
                       onClick={() => onIndexChange((index - 1 + items.length) % items.length)}
                     >
                       Prev
                     </Button>
                     <Button
                       type="button"
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
-                      className="h-9"
+                      className="btn-outline-ghost h-9"
                       onClick={() => onIndexChange((index + 1) % items.length)}
                     >
                       Next

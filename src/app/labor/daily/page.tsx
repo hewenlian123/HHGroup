@@ -265,7 +265,7 @@ export default function DailyLaborLogPage() {
             <select
               value={projectFilter}
               onChange={(e) => setProjectFilter(e.target.value)}
-              className="h-9 min-w-[200px] rounded-lg border border-[#E5E7EB] bg-white px-3 text-sm"
+              className="h-9 min-w-[200px] rounded-lg border border-gray-300 bg-white px-3 text-sm"
             >
               <option value="">All projects</option>
               {projects.map((p) => (
@@ -286,36 +286,36 @@ export default function DailyLaborLogPage() {
       />
       <Divider />
       {error ? <p className="py-3 text-sm text-red-600">{error}</p> : null}
-      {message ? <p className="py-3 text-sm text-gray-500">{message}</p> : null}
+      {message ? <p className="py-3 text-sm text-text-secondary">{message}</p> : null}
 
       <div className="space-y-2">
-        <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
+        <p className="text-xs font-medium uppercase tracking-wide text-text-secondary">
           Entries for {workDate}
         </p>
         {entriesLoading ? (
-          <p className="py-4 text-sm text-gray-500">Loading…</p>
+          <p className="py-4 text-sm text-text-secondary">Loading…</p>
         ) : dayEntries.length === 0 ? (
-          <p className="py-4 text-sm text-gray-500">
+          <p className="py-4 text-sm text-text-secondary">
             No entries for this date. Use &quot;+ Add Entry&quot; to add workers.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-[#E5E7EB]">
+          <div className="overflow-x-auto rounded-lg border border-gray-300">
             <table className="w-full text-sm border-collapse">
               <thead>
-                <tr className="border-b border-[#E5E7EB] bg-gray-50">
-                  <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-gray-500">
+                <tr className="border-b border-gray-300 bg-page">
+                  <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-text-secondary">
                     Worker
                   </th>
-                  <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-gray-500">
+                  <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-text-secondary">
                     Project
                   </th>
-                  <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-gray-500">
+                  <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-text-secondary">
                     Day Type
                   </th>
-                  <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-gray-500 tabular-nums">
+                  <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-text-secondary tabular-nums">
                     OT
                   </th>
-                  <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-gray-500 tabular-nums">
+                  <th className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-text-secondary tabular-nums">
                     Total Pay
                   </th>
                   <th className="w-20" />
@@ -327,16 +327,18 @@ export default function DailyLaborLogPage() {
                   const sess = sessionFromFlags((e as any).morning, (e as any).afternoon);
                   const pay = e.cost_amount != null ? Number(e.cost_amount) : 0;
                   return (
-                    <tr key={e.id} className="group border-b border-[#E5E7EB] last:border-b-0">
+                    <tr key={e.id} className="group border-b border-gray-300 last:border-b-0">
                       <td className="py-2 px-3 font-medium text-[#111111]">
                         {e.worker_name ?? "—"}
                       </td>
-                      <td className="py-2 px-3 text-gray-600">{e.project_name ?? "—"}</td>
-                      <td className="py-2 px-3 text-gray-600">
+                      <td className="py-2 px-3 text-text-secondary">{e.project_name ?? "—"}</td>
+                      <td className="py-2 px-3 text-text-secondary">
                         <span className="mr-1">{sessionTag(sess)}</span>
                         {dayType}
                       </td>
-                      <td className="py-2 px-3 text-right tabular-nums text-gray-600">{otHours}</td>
+                      <td className="py-2 px-3 text-right tabular-nums text-text-secondary">
+                        {otHours}
+                      </td>
                       <td className="py-2 px-3 text-right tabular-nums font-medium">
                         ${pay.toFixed(2)}
                       </td>
@@ -344,9 +346,9 @@ export default function DailyLaborLogPage() {
                         <div className="flex justify-end gap-1">
                           <UiButton
                             type="button"
-                            variant="ghost"
+                            variant="outline"
                             size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                            className="btn-outline-ghost h-8 w-8 text-muted-foreground hover:text-foreground"
                             onClick={() => openEdit(e)}
                             aria-label="Edit entry"
                           >
@@ -354,9 +356,9 @@ export default function DailyLaborLogPage() {
                           </UiButton>
                           <UiButton
                             type="button"
-                            variant="ghost"
+                            variant="outline"
                             size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            className="btn-outline-ghost h-8 w-8 text-muted-foreground hover:text-destructive"
                             onClick={() => void handleDelete(e)}
                             aria-label="Delete entry"
                           >
@@ -536,7 +538,7 @@ const QuickTimesheetWorkerRow = React.memo(function QuickTimesheetWorkerRow({
       />
       <div className="min-w-0 flex-1">
         <div className="text-sm font-medium text-[#111111]">{worker.name}</div>
-        <div className="text-xs text-gray-500">${dailyRate.toFixed(0)} / day</div>
+        <div className="text-xs text-text-secondary">${dailyRate.toFixed(0)} / day</div>
       </div>
     </label>
   );
@@ -842,7 +844,7 @@ function QuickTimesheetModal({
 
         <div className="space-y-4">
           <div className="flex flex-col gap-2">
-            <label className="text-xs font-medium text-gray-500">Date</label>
+            <label className="text-xs font-medium text-text-secondary">Date</label>
             <Input
               type="date"
               value={date}
@@ -862,15 +864,15 @@ function QuickTimesheetModal({
             return (
               <div
                 key={section.id}
-                className="space-y-3 rounded-md border border-[#E5E7EB] bg-white px-3 py-3"
+                className="space-y-3 rounded-md border border-gray-300 bg-white px-3 py-3"
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-500">Project</label>
+                    <label className="text-xs font-medium text-text-secondary">Project</label>
                     <select
                       value={section.projectId}
                       onChange={(e) => handleProjectChange(section.id, e.target.value)}
-                      className="h-9 min-w-[200px] rounded-lg border border-[#E5E7EB] bg-white px-3 text-sm"
+                      className="h-9 min-w-[200px] rounded-lg border border-gray-300 bg-white px-3 text-sm"
                     >
                       <option value="">Select project</option>
                       {projects.map((p) => (
@@ -881,7 +883,7 @@ function QuickTimesheetModal({
                     </select>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] text-gray-500">Section {index + 1}</span>
+                    <span className="text-[11px] text-text-secondary">Section {index + 1}</span>
                     {sections.length > 1 && (
                       <Button
                         type="button"
@@ -899,7 +901,7 @@ function QuickTimesheetModal({
 
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-between gap-2">
-                    <label className="text-xs font-medium text-gray-500">Workers</label>
+                    <label className="text-xs font-medium text-text-secondary">Workers</label>
                     <div className="flex items-center gap-1.5">
                       <Button
                         type="button"
@@ -931,9 +933,9 @@ function QuickTimesheetModal({
                       </Button>
                     </div>
                   </div>
-                  <div className="max-h-80 min-h-0 overflow-hidden rounded-lg border border-[#E5E7EB] bg-white">
+                  <div className="max-h-80 min-h-0 overflow-hidden rounded-lg border border-gray-300 bg-white">
                     {workers.length === 0 ? (
-                      <p className="px-3 py-3 text-xs text-gray-500">No workers found.</p>
+                      <p className="px-3 py-3 text-xs text-text-secondary">No workers found.</p>
                     ) : workers.length > QUICK_TIMESHEET_VIRTUAL_THRESHOLD ? (
                       <VirtualScrollList
                         count={workers.length}
@@ -944,7 +946,7 @@ function QuickTimesheetModal({
                           const w = workers[i];
                           if (!w) return null;
                           return (
-                            <div key={w.id} className="border-b border-[#E5E7EB] last:border-b-0">
+                            <div key={w.id} className="border-b border-gray-300 last:border-b-0">
                               <QuickTimesheetWorkerRow
                                 worker={w}
                                 sectionId={section.id}
@@ -972,7 +974,7 @@ function QuickTimesheetModal({
                     )}
                   </div>
                   {fullDayWorkerIds.size > 0 ? (
-                    <p className="text-[11px] text-gray-500">
+                    <p className="text-[11px] text-text-secondary">
                       Workers who have completed a full day (AM+PM) on this date are disabled across
                       all projects.
                     </p>
@@ -981,11 +983,11 @@ function QuickTimesheetModal({
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex flex-col gap-2">
-                    <label className="text-xs font-medium text-gray-500">Day Type</label>
+                    <label className="text-xs font-medium text-text-secondary">Day Type</label>
                     <select
                       value={section.dayType}
                       onChange={(e) => setDayTypeForSection(section.id, e.target.value as DayType)}
-                      className="h-9 rounded-lg border border-[#E5E7EB] bg-white px-3 text-sm"
+                      className="h-9 rounded-lg border border-gray-300 bg-white px-3 text-sm"
                     >
                       <option value="full_day">Full Day</option>
                       <option value="half_day">Half Day</option>
@@ -993,7 +995,7 @@ function QuickTimesheetModal({
                     </select>
                   </div>
                   <div className="flex flex-col gap-2">
-                    <label className="text-xs font-medium text-gray-500">
+                    <label className="text-xs font-medium text-text-secondary">
                       Overtime hours (optional)
                     </label>
                     <Input
@@ -1010,21 +1012,21 @@ function QuickTimesheetModal({
 
                 {section.selectedWorkerIds.size > 0 ? (
                   <div className="flex flex-col gap-2">
-                    <label className="text-xs font-medium text-gray-500">Attendance</label>
-                    <div className="overflow-x-auto rounded-lg border border-[#E5E7EB]">
+                    <label className="text-xs font-medium text-text-secondary">Attendance</label>
+                    <div className="overflow-x-auto rounded-lg border border-gray-300">
                       <table className="w-full text-sm">
                         <thead>
-                          <tr className="border-b border-[#E5E7EB] bg-gray-50">
-                            <th className="py-2 px-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                          <tr className="border-b border-gray-300 bg-page">
+                            <th className="py-2 px-3 text-left text-xs font-medium uppercase tracking-wide text-text-secondary">
                               Worker
                             </th>
-                            <th className="py-2 px-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                            <th className="py-2 px-3 text-left text-xs font-medium uppercase tracking-wide text-text-secondary">
                               Day Type
                             </th>
-                            <th className="py-2 px-3 text-right text-xs font-medium uppercase tracking-wide text-gray-500 tabular-nums">
+                            <th className="py-2 px-3 text-right text-xs font-medium uppercase tracking-wide text-text-secondary tabular-nums">
                               OT
                             </th>
-                            <th className="py-2 px-3 text-right text-xs font-medium uppercase tracking-wide text-gray-500 tabular-nums">
+                            <th className="py-2 px-3 text-right text-xs font-medium uppercase tracking-wide text-text-secondary tabular-nums">
                               Pay
                             </th>
                           </tr>
@@ -1042,12 +1044,12 @@ function QuickTimesheetModal({
                             const otRate = (dailyRate / 8) * 1.5;
                             const pay = basePay + otNum * otRate;
                             return (
-                              <tr key={id} className="border-b border-[#E5E7EB] last:border-b-0">
+                              <tr key={id} className="border-b border-gray-300 last:border-b-0">
                                 <td className="py-2 px-3 font-medium text-[#111111]">
                                   {worker?.name ?? id}
                                 </td>
-                                <td className="py-2 px-3 text-gray-600">{dayLabel}</td>
-                                <td className="py-2 px-3 text-right tabular-nums text-gray-600">
+                                <td className="py-2 px-3 text-text-secondary">{dayLabel}</td>
+                                <td className="py-2 px-3 text-right tabular-nums text-text-secondary">
                                   {otNum > 0 ? otNum : "—"}
                                 </td>
                                 <td className="py-2 px-3 text-right tabular-nums font-medium">

@@ -274,8 +274,8 @@ export default function WorkerPaymentsPage() {
                         </button>
                         <Button
                           size="sm"
-                          variant="ghost"
-                          className="h-8 text-red-600"
+                          variant="outline"
+                          className="btn-outline-ghost h-8 text-red-600"
                           onClick={() => handleDelete(r.id)}
                         >
                           Delete

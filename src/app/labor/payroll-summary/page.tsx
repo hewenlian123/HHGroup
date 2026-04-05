@@ -148,9 +148,9 @@ export default function PayrollSummaryPage() {
                 <tr key={r.workerId} className="border-b border-border/40 hover:bg-muted/10">
                   <td className="py-2 px-4">
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
-                      className="h-8 font-medium -ml-2 text-foreground"
+                      className="btn-outline-ghost h-8 font-medium -ml-2 text-foreground"
                       onClick={() => openWorkerDetail(r.workerId)}
                     >
                       {r.workerName}
@@ -183,9 +183,9 @@ export default function PayrollSummaryPage() {
               {rows.find((r) => r.workerId === detailWorkerId)?.workerName ?? "Worker"} — Detail
             </h2>
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="h-8"
+              className="btn-outline-ghost h-8"
               onClick={() => setDetailWorkerId(null)}
             >
               Close

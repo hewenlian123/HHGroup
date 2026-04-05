@@ -137,7 +137,7 @@ export default function LaborCostAllocationPage() {
       <div className="space-y-6">
         <FilterBar className="flex-col items-stretch sm:items-stretch">
           <div className="w-full max-w-md space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Project
             </p>
             <Select
@@ -165,11 +165,11 @@ export default function LaborCostAllocationPage() {
         ) : null}
         <SectionHeader label="Summary" />
         <div className="grid grid-cols-3 gap-x-8 gap-y-2 py-3">
-          <div className="flex justify-between items-baseline border-b border-[#E5E7EB] pb-1.5 dark:border-border/40">
+          <div className="flex justify-between items-baseline border-b border-gray-300 pb-1.5 dark:border-border/40">
             <span className="text-sm text-muted-foreground">Revenue</span>
             <span className="tabular-nums text-right font-medium">${fmtUsd(revenue)}</span>
           </div>
-          <div className="flex justify-between items-baseline border-b border-[#E5E7EB] pb-1.5 dark:border-border/40">
+          <div className="flex justify-between items-baseline border-b border-gray-300 pb-1.5 dark:border-border/40">
             <span className="text-sm text-muted-foreground">Profit</span>
             <span
               className={cn(
@@ -182,16 +182,16 @@ export default function LaborCostAllocationPage() {
               {profit >= 0 ? "" : "−"}${fmtUsd(Math.abs(profit))}
             </span>
           </div>
-          <div className="flex justify-between items-baseline border-b border-[#E5E7EB] pb-1.5 dark:border-border/40">
+          <div className="flex justify-between items-baseline border-b border-gray-300 pb-1.5 dark:border-border/40">
             <span className="text-sm text-muted-foreground">Margin %</span>
             <span className="tabular-nums text-right font-medium">{fmtPct(marginPct)}</span>
           </div>
         </div>
         <SectionHeader label="Cost by code" />
-        <div className="overflow-x-auto border-t border-[#E5E7EB] dark:border-border/60">
+        <div className="overflow-x-auto border-t border-gray-300 dark:border-border/60">
           <table className="w-full text-sm border-collapse">
             <thead>
-              <tr className="border-b border-[#E5E7EB] bg-white dark:border-border/60 dark:bg-muted/30">
+              <tr className="border-b border-gray-300 bg-white dark:border-border/60 dark:bg-muted/30">
                 <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Cost Code
                 </th>
@@ -211,7 +211,7 @@ export default function LaborCostAllocationPage() {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.code} className="border-b border-[#E5E7EB]/80 dark:border-border/40">
+                <tr key={r.code} className="border-b border-gray-300/80 dark:border-border/40">
                   <td className="py-1.5 px-3">
                     <span className="font-medium tabular-nums">{r.code}</span>
                     <span className="text-muted-foreground ml-2">{r.name}</span>
@@ -254,7 +254,7 @@ export default function LaborCostAllocationPage() {
               ))}
             </tbody>
             <tfoot>
-              <tr className="border-t border-[#E5E7EB] font-medium dark:border-border/60">
+              <tr className="border-t border-gray-300 font-medium dark:border-border/60">
                 <td className="py-2 px-3">Total</td>
                 <td className="py-2 px-3 text-right tabular-nums">${fmtUsd(totals.budget)}</td>
                 <td className="py-2 px-3 text-right tabular-nums">${fmtUsd(totals.actual)}</td>

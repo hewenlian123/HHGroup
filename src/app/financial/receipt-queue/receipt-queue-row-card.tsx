@@ -21,7 +21,7 @@ const RQ_BTN =
 
 function fieldClass(layout: RqLayout, extra?: string): string {
   return cn(
-    "w-full min-w-0 border border-gray-200 bg-white text-[#111827] shadow-none transition-[border-color,box-shadow,background-color] duration-150 ease-out",
+    "w-full min-w-0 border border-gray-300 bg-white text-text-primary shadow-none transition-[border-color,box-shadow,background-color] duration-150 ease-out",
     "hover:border-gray-300 focus-visible:border-blue-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/35",
     layout === "mobile"
       ? "min-h-10 rounded-xl px-3 py-2 text-base leading-snug"
@@ -166,7 +166,7 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
       aria-label="Preview receipt"
       data-queue-row-id={id}
       className={cn(
-        "relative overflow-hidden border border-gray-200 text-left transition-[opacity,box-shadow] duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/35",
+        "relative overflow-hidden border border-gray-300 text-left transition-[opacity,box-shadow] duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/35",
         thumbSize,
         busy || !prev
           ? "cursor-not-allowed opacity-60"
@@ -356,8 +356,8 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
       size="sm"
       className={cn(
         layout === "mobile"
-          ? "h-11 min-h-10 min-w-[2.75rem] shrink-0 rounded-xl border-gray-200 px-3 text-muted-foreground transition-[background-color,transform,color,box-shadow] duration-150 ease-out hover:border-red-200/80 hover:bg-[#fef2f2] hover:text-[#ef4444] hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/35 active:scale-[0.96]"
-          : "h-9 shrink-0 rounded-lg border-gray-200 px-2 text-muted-foreground transition-[background-color,transform,color,box-shadow] duration-[140ms] ease-out hover:scale-110 hover:border-red-200/80 hover:bg-[#fef2f2] hover:text-[#ef4444] hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/35 active:scale-[0.88] active:duration-90 active:ease-[cubic-bezier(0.34,1.56,0.64,1)]",
+          ? "h-11 min-h-10 min-w-[2.75rem] shrink-0 rounded-xl border-gray-300 px-3 text-muted-foreground transition-[background-color,transform,color,box-shadow] duration-150 ease-out hover:border-red-200/80 hover:bg-[#fef2f2] hover:text-[#ef4444] hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/35 active:scale-[0.96]"
+          : "h-9 shrink-0 rounded-lg border-gray-300 px-2 text-muted-foreground transition-[background-color,transform,color,box-shadow] duration-[140ms] ease-out hover:scale-110 hover:border-red-200/80 hover:bg-[#fef2f2] hover:text-[#ef4444] hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/35 active:scale-[0.88] active:duration-90 active:ease-[cubic-bezier(0.34,1.56,0.64,1)]",
         RQ_BTN
       )}
       disabled={busy || rowLocked}
@@ -377,10 +377,10 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
       {row.status === "failed" ? (
         <Button
           type="button"
-          variant="ghost"
+          variant="outline"
           size="sm"
           className={cn(
-            "px-1.5",
+            "btn-outline-ghost px-1.5",
             layout === "mobile" ? "h-10 min-h-10 text-xs" : "h-6 text-[10px]"
           )}
           onClick={() => onReplace(id)}
@@ -401,7 +401,7 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
     !motion &&
       !rowLocked &&
       layout !== "mobile" &&
-      "hover:-translate-y-px hover:bg-gray-50 hover:shadow-md",
+      "hover:-translate-y-px hover:bg-page hover:shadow-md",
     !motion && !rowLocked && layout === "mobile" && "active:scale-[0.99]",
     motion === "success_check" && "bg-emerald-50 shadow-md ring-1 ring-emerald-200/80",
     motion === "fade" && "translate-x-2 opacity-0 !duration-200 !ease-[cubic-bezier(0.4,0,0.2,1)]",
@@ -450,7 +450,10 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
               <StatusBadge label={statusLabel} variant={statusVariant} />
               {vendorInput}
               {vendorHintRow}
-              <p className="truncate text-[11px] font-medium text-[#111827]" title={row.file_name}>
+              <p
+                className="truncate text-[11px] font-medium text-text-primary"
+                title={row.file_name}
+              >
                 {row.file_name || "—"}
               </p>
               {metaBlock}
@@ -485,7 +488,7 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
     <>
       <div className="min-w-0 space-y-1">
         {thumbButton}
-        <p className="truncate text-[10px] font-medium text-[#111827]" title={row.file_name}>
+        <p className="truncate text-[10px] font-medium text-text-primary" title={row.file_name}>
           {row.file_name || "—"}
         </p>
         {metaBlock}

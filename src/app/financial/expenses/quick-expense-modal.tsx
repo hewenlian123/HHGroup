@@ -914,9 +914,9 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                     </span>
                     <Button
                       type="button"
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
-                      className="h-6 shrink-0 px-2 text-[11px]"
+                      className="btn-outline-ghost h-6 shrink-0 px-2 text-[11px]"
                       asChild
                     >
                       <a
@@ -1113,9 +1113,9 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                         {debugUnlocked ? (
                           <Button
                             type="button"
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
-                            className="h-7 px-2 text-[11px]"
+                            className="btn-outline-ghost h-7 px-2 text-[11px]"
                             onClick={() => setDebugOpen(true)}
                           >
                             Debug

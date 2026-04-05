@@ -6,6 +6,7 @@ import {
   expensesVendorSearch,
   pickOrCreatePaymentInSelect,
   prepareReceiptQueueRowForConfirm,
+  receiptQueueRowByFileName,
 } from "./e2e-expenses-helpers";
 
 const PNG_1X1 = Buffer.from(
@@ -62,7 +63,7 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
       buffer: PNG_1X1,
     });
 
-    const queueRow = page.locator("tbody tr").filter({ hasText: queueFileName }).first();
+    const queueRow = receiptQueueRowByFileName(page, queueFileName);
     await expect(queueRow).toBeVisible({ timeout: 120_000 });
     await prepareReceiptQueueRowForConfirm(page, queueRow, {
       vendor: vendorMark,

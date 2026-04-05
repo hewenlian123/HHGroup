@@ -147,31 +147,31 @@ export function BillsListClient({ bills, summary, projects }: Props) {
       <Card className="overflow-hidden p-0">
         <div className="grid divide-y divide-[#E5E7EB] sm:grid-cols-2 sm:divide-y-0 md:grid-cols-4 md:divide-x dark:divide-border/60">
           <div className="p-4">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Outstanding
             </p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-[#111827] dark:text-foreground">
+            <p className="mt-1 text-lg font-semibold tabular-nums text-text-primary dark:text-foreground">
               {fmtUsd(summary.totalOutstanding)}
             </p>
           </div>
           <div className="p-4">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Overdue
             </p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-[#111827] dark:text-foreground">
+            <p className="mt-1 text-lg font-semibold tabular-nums text-text-primary dark:text-foreground">
               {fmtUsd(summary.overdueAmount)}
             </p>
           </div>
           <div className="p-4">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Due This Week
             </p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-[#111827] dark:text-foreground">
+            <p className="mt-1 text-lg font-semibold tabular-nums text-text-primary dark:text-foreground">
               {fmtUsd(summary.dueThisWeekAmount)}
             </p>
           </div>
           <div className="p-4">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Paid This Month
             </p>
             <p className="mt-1 text-lg font-semibold tabular-nums text-hh-profit-positive dark:text-hh-profit-positive">
@@ -184,7 +184,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
       <FilterBar>
         <div className="flex w-full flex-col gap-4">
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Search
             </p>
             <Input
@@ -198,7 +198,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
                 Status
               </p>
               <Select
@@ -215,7 +215,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
               </Select>
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
                 Type
               </p>
               <Select
@@ -232,7 +232,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
               </Select>
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
                 Project
               </p>
               <Select
@@ -249,7 +249,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
               </Select>
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
                 Date range
               </p>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
@@ -294,7 +294,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                 <div key={bill.id} className="group relative">
                   <Link
                     href={`/bills/${bill.id}`}
-                    className="block rounded-sm border border-[#E5E7EB] bg-background p-4 transition-colors hover:bg-[#F9FAFB] active:bg-[#F9FAFB]/80 dark:border-border/60 dark:hover:bg-muted/30"
+                    className="block rounded-sm border border-gray-300 bg-background p-4 transition-colors hover:bg-[#F9FAFB] active:bg-[#F9FAFB]/80 dark:border-border/60 dark:hover:bg-muted/30"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1 pr-8">
@@ -404,9 +404,9 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
-                                className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+                                className="btn-outline-ghost h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
                               >
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>

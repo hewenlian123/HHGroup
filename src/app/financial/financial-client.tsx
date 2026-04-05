@@ -169,7 +169,7 @@ export function FinancialClient() {
       ) : null}
 
       <section>
-        <h2 className="mb-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+        <h2 className="mb-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
           CASH OVERVIEW
         </h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -177,8 +177,8 @@ export function FinancialClient() {
             <Card key={label}>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
-                <div className="rounded-lg border border-[#E5E7EB] bg-white p-2 dark:border-border dark:bg-muted">
-                  <Icon className="h-4 w-4 text-gray-500 dark:text-muted-foreground" />
+                <div className="rounded-lg border border-gray-300 bg-white p-2 dark:border-border dark:bg-muted">
+                  <Icon className="h-4 w-4 text-text-secondary dark:text-muted-foreground" />
                 </div>
               </CardHeader>
               <CardContent>
@@ -208,7 +208,7 @@ export function FinancialClient() {
         ) : null}
 
         <div className="mt-6">
-          <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+          <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
             Recent Unreconciled Transactions
           </h3>
           <Card className="overflow-hidden">
@@ -246,7 +246,7 @@ export function FinancialClient() {
                     recentUnreconciled.map((tx) => (
                       <TableRow
                         key={tx.id}
-                        className="border-b border-[#E5E7EB] dark:border-border/60"
+                        className="border-b border-gray-300 dark:border-border/60"
                       >
                         <TableCell className="tabular-nums">{tx.txn_date}</TableCell>
                         <TableCell>{tx.description}</TableCell>

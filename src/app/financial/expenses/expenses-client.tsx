@@ -432,7 +432,7 @@ export function ExpensesClient() {
       />
 
       {error ? (
-        <div className="rounded-lg border border-[#E5E7EB] bg-white px-4 py-3 text-sm text-gray-600 shadow-sm dark:border-border dark:bg-card dark:text-muted-foreground">
+        <div className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-text-secondary shadow-sm dark:border-border dark:bg-card dark:text-muted-foreground">
           {error}
         </div>
       ) : null}
@@ -440,11 +440,11 @@ export function ExpensesClient() {
       <FilterBar>
         <div className="grid w-full gap-4 sm:grid-cols-3">
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Search
             </p>
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-muted-foreground" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary/75 dark:text-muted-foreground" />
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -454,7 +454,7 @@ export function ExpensesClient() {
             </div>
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Project
             </p>
             <Select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)}>
@@ -467,7 +467,7 @@ export function ExpensesClient() {
             </Select>
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Category
             </p>
             <Select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>

@@ -209,7 +209,7 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
           </div>
           <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-6">
             <div className="space-y-1 sm:col-span-2">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
                 Search
               </p>
               <Input
@@ -222,7 +222,7 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
               />
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
                 Project
               </p>
               <Select
@@ -238,7 +238,7 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
               </Select>
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
                 Type
               </p>
               <Select value={fileType} onChange={(e) => setFilters({ file_type: e.target.value })}>
@@ -251,7 +251,7 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
               </Select>
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
                 From
               </p>
               <Input
@@ -261,7 +261,7 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
               />
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
                 To
               </p>
               <Input
@@ -285,7 +285,7 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
           }
         />
       ) : (
-        <div className="border-t border-[#E5E7EB] pt-4 dark:border-border/60">
+        <div className="border-t border-gray-300 pt-4 dark:border-border/60">
           <div className="airtable-table-wrap airtable-table-wrap--ruled">
             <div className="airtable-table-scroll">
               <table className="w-full text-sm">
@@ -343,26 +343,26 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
                         <td className="py-1.5 px-1" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center gap-1 flex-wrap">
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
-                              className="h-7 text-xs"
+                              className="btn-outline-ghost h-7 text-xs"
                               onClick={() => handlePreview(doc)}
                               disabled={loadingPreview}
                             >
                               Preview
                             </Button>
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
-                              className="h-7 text-xs"
+                              className="btn-outline-ghost h-7 text-xs"
                               onClick={() => handleDownload(doc)}
                             >
                               Download
                             </Button>
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
-                              className="h-7 text-xs text-red-600"
+                              className="btn-outline-ghost h-7 text-xs text-red-600"
                               onClick={() => handleDelete(doc)}
                               disabled={deletingId === doc.id}
                             >
@@ -370,7 +370,11 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
                             </Button>
                             {relatedUrl ? (
                               <Link href={relatedUrl}>
-                                <Button variant="ghost" size="sm" className="h-7 text-xs">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="btn-outline-ghost h-7 text-xs"
+                                >
                                   Open related
                                 </Button>
                               </Link>

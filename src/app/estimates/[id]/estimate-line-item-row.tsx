@@ -161,9 +161,9 @@ export function EstimateLineItemRow({
                 <input type="hidden" name="itemId" value={row.id} />
                 <Button
                   type="submit"
-                  variant="ghost"
+                  variant="outline"
                   size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                  className="btn-outline-ghost h-8 w-8 text-muted-foreground hover:text-foreground"
                   title="Duplicate"
                 >
                   <Copy className="h-4 w-4" />
@@ -174,9 +174,9 @@ export function EstimateLineItemRow({
                 <input type="hidden" name="itemId" value={row.id} />
                 <Button
                   type="submit"
-                  variant="ghost"
+                  variant="outline"
                   size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                  className="btn-outline-ghost h-8 w-8 text-muted-foreground hover:text-destructive"
                   title="Delete"
                 >
                   <Trash2 className="h-4 w-4" />

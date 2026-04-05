@@ -153,11 +153,11 @@ export default function WorkerProfileEditPage() {
         }
       />
       {message ? (
-        <p className="border-b border-[#E5E7EB] pb-3 text-sm text-muted-foreground dark:border-border">
+        <p className="border-b border-gray-300 pb-3 text-sm text-muted-foreground dark:border-border">
           {message}
         </p>
       ) : null}
-      <section className="border-b border-[#E5E7EB] pb-6 dark:border-border">
+      <section className="border-b border-gray-300 pb-6 dark:border-border">
         <div className="grid gap-4">
           <div className="grid gap-1.5">
             <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">

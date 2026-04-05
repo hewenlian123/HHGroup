@@ -167,9 +167,9 @@ export function EstimatePaymentSchedule(props: {
                             <input type="hidden" name="itemId" value={item.id} />
                             <Button
                               type="submit"
-                              variant="ghost"
+                              variant="outline"
                               size="icon"
-                              className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                              className="btn-outline-ghost h-8 w-8 text-destructive hover:bg-destructive/10"
                               aria-label="Delete"
                             >
                               <Trash2 className="h-4 w-4" />

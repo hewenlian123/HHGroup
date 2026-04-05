@@ -90,9 +90,9 @@ export function SubcontractorDetailClient({ subcontractor }: { subcontractor: Su
           Edit
         </Button>
         <Button
-          variant="ghost"
+          variant="outline"
           size="sm"
-          className="h-8 text-red-600"
+          className="btn-outline-ghost h-8 text-red-600"
           onClick={handleDelete}
           disabled={busy}
         >

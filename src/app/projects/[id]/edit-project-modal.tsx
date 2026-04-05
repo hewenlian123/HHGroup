@@ -17,9 +17,9 @@ import { cn } from "@/lib/utils";
 
 const MODAL =
   "max-w-[480px] w-full gap-0 border-0 p-8 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-xl sm:rounded-xl sm:max-w-[480px]";
-const LBL = "mb-1.5 block text-[12px] font-medium text-[#6B7280]";
+const LBL = "mb-1.5 block text-[12px] font-medium text-text-secondary";
 const FIELD =
-  "h-10 rounded-lg border border-[#E5E7EB] bg-white text-[14px] focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black";
+  "h-10 rounded-lg border border-gray-300 bg-white text-[14px] focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black";
 
 type CustomerOption = { id: string; name: string };
 
@@ -113,7 +113,7 @@ export function EditProjectModal({ open, onOpenChange, project, onSave }: Props)
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={MODAL}>
         <DialogHeader className="text-left">
-          <DialogTitle className="text-xl font-bold text-[#111827]">Edit project</DialogTitle>
+          <DialogTitle className="text-xl font-bold text-text-primary">Edit project</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
           <div>
@@ -179,7 +179,7 @@ export function EditProjectModal({ open, onOpenChange, project, onSave }: Props)
             <Button
               type="button"
               variant="outline"
-              className="h-10 rounded-lg border-[#E5E7EB] bg-white text-[14px] font-medium text-[#6B7280] hover:bg-[#F9FAFB]"
+              className="h-10 rounded-lg border-gray-300 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
               onClick={() => onOpenChange(false)}
               disabled={saving}
             >

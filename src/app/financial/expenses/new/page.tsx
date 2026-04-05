@@ -395,9 +395,9 @@ export default function NewExpensePage() {
             </Button>
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="h-8"
+              className="btn-outline-ghost h-8"
               onClick={() => setShowSplitLines((v) => !v)}
             >
               {showSplitLines ? "Single line" : "Split across projects"}
@@ -518,9 +518,9 @@ export default function NewExpensePage() {
                 </Button>
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  className="h-8"
+                  className="btn-outline-ghost h-8"
                   onClick={() => {
                     closePreview();
                     setReceiptFile(null);
@@ -641,9 +641,9 @@ export default function NewExpensePage() {
                     />
                     <Button
                       type="button"
-                      variant="ghost"
+                      variant="outline"
                       size="icon"
-                      className="h-9 w-9 text-destructive"
+                      className="btn-outline-ghost h-9 w-9 text-destructive"
                       onClick={() =>
                         setLines((prev) =>
                           prev.length <= 1 ? prev : prev.filter((x) => x.id !== l.id)
@@ -668,9 +668,9 @@ export default function NewExpensePage() {
           <section className="flex items-center justify-between pt-2">
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="h-8"
+              className="btn-outline-ghost h-8"
               onClick={() => router.push("/financial/expenses")}
             >
               Cancel

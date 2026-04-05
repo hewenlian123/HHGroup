@@ -46,8 +46,8 @@ export function EstimateReadOnlyContent({ payload }: { payload: EstimateReadOnly
   return (
     <>
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <div className="overflow-hidden rounded-sm border border-[#E5E7EB] dark:border-border">
-          <div className="border-b border-[#E5E7EB] px-4 py-3 dark:border-border">
+        <div className="overflow-hidden rounded-sm border border-gray-300 dark:border-border">
+          <div className="border-b border-gray-300 px-4 py-3 dark:border-border">
             <h3 className="text-base font-semibold text-foreground">Client Info</h3>
           </div>
           <div className="space-y-2 px-4 py-3 text-sm">
@@ -57,8 +57,8 @@ export function EstimateReadOnlyContent({ payload }: { payload: EstimateReadOnly
             <p className="text-muted-foreground">{payload.clientAddress}</p>
           </div>
         </div>
-        <div className="overflow-hidden rounded-sm border border-[#E5E7EB] dark:border-border">
-          <div className="border-b border-[#E5E7EB] px-4 py-3 dark:border-border">
+        <div className="overflow-hidden rounded-sm border border-gray-300 dark:border-border">
+          <div className="border-b border-gray-300 px-4 py-3 dark:border-border">
             <h3 className="text-base font-semibold text-foreground">Project Info</h3>
           </div>
           <div className="space-y-2 px-4 py-3 text-sm">
@@ -86,7 +86,7 @@ export function EstimateReadOnlyContent({ payload }: { payload: EstimateReadOnly
         </div>
       </section>
 
-      <div className="ml-auto max-w-md overflow-hidden rounded-sm border border-[#E5E7EB] p-6 dark:border-border">
+      <div className="ml-auto max-w-md overflow-hidden rounded-sm border border-gray-300 p-6 dark:border-border">
         <div className="pb-2">
           <h3 className="text-base font-semibold text-foreground">Summary</h3>
         </div>
@@ -94,7 +94,7 @@ export function EstimateReadOnlyContent({ payload }: { payload: EstimateReadOnly
           <SummaryRow label="Subtotal" value={subtotal} />
           <SummaryRow label="Overhead (5%)" value={overhead} />
           <SummaryRow label="Profit (10%)" value={profit} />
-          <div className="flex items-center justify-between border-t border-[#E5E7EB] pt-3 dark:border-border">
+          <div className="flex items-center justify-between border-t border-gray-300 pt-3 dark:border-border">
             <span className="font-semibold text-foreground">Grand Total</span>
             <span className="font-semibold tabular-nums text-foreground">
               ${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
@@ -123,7 +123,7 @@ function CostCodeSectionReadOnly({
   const headerLabel = cc ? `${cc.code} 00 00 – ${cc.name}` : `${categoryId} – ${title}`;
 
   return (
-    <div className="overflow-hidden rounded-sm border border-[#E5E7EB] dark:border-border">
+    <div className="overflow-hidden rounded-sm border border-gray-300 dark:border-border">
       <details className="group" open>
         <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 px-6 py-4 hover:bg-[#F9FAFB]/80 dark:hover:bg-muted/20">
           <div className="flex items-center gap-2">
@@ -134,11 +134,11 @@ function CostCodeSectionReadOnly({
             ${sectionSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </span>
         </summary>
-        <div className="border-t border-[#E5E7EB] dark:border-border">
+        <div className="border-t border-gray-300 dark:border-border">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[#E5E7EB] bg-white dark:border-border/60 dark:bg-muted/20">
+                <tr className="border-b border-gray-300 bg-white dark:border-border/60 dark:bg-muted/20">
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Description
                   </th>
@@ -163,7 +163,7 @@ function CostCodeSectionReadOnly({
                 {rows.map((row) => (
                   <tr
                     key={row.id}
-                    className="border-b border-[#E5E7EB]/80 transition-colors hover:bg-[#F9FAFB] dark:border-border/30 dark:hover:bg-muted/20"
+                    className="border-b border-gray-300/80 transition-colors hover:bg-[#F9FAFB] dark:border-border/30 dark:hover:bg-muted/20"
                   >
                     <td className="px-4 py-3 font-medium text-foreground">{row.desc}</td>
                     <td className="px-4 py-3 text-right tabular-nums text-foreground">{row.qty}</td>

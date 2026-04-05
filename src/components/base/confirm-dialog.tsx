@@ -90,15 +90,17 @@ export function ConfirmDialog({
         {children}
         <DialogFooter className="gap-2 pt-3">
           <Button
-            variant="ghost"
+            variant="outline"
             size="default"
+            className="btn-outline-ghost"
             onClick={() => onOpenChange(false)}
             disabled={isBusy}
           >
             {cancelLabel}
           </Button>
           <Button
-            variant={destructive ? "danger" : "primary"}
+            variant={destructive ? "outline" : "default"}
+            className={destructive ? "btn-outline-destructive" : undefined}
             size="default"
             onClick={handleConfirm}
             disabled={isBusy}

@@ -355,9 +355,9 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
                           <DropdownMenuTrigger asChild>
                             <Button
                               type="button"
-                              variant="ghost"
+                              variant="outline"
                               size="icon"
-                              className="h-7 w-7 rounded-sm"
+                              className="btn-outline-ghost h-7 w-7 rounded-sm"
                             >
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
@@ -504,9 +504,9 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
             </Button>
             <Button
               type="button"
-              variant="destructive"
+              variant="outline"
               size="sm"
-              className="h-9 rounded-sm"
+              className="btn-outline-destructive h-9 rounded-sm"
               onClick={handleDelete}
               disabled={deleteBusy}
             >

@@ -265,7 +265,7 @@ export function ProjectsClient() {
     <div className="page-container page-stack">
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-[#111827] dark:text-foreground sm:text-3xl">
+          <h1 className="text-2xl font-semibold tracking-tight text-text-primary dark:text-foreground sm:text-3xl">
             Projects
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">Manage all construction projects.</p>
@@ -275,7 +275,7 @@ export function ProjectsClient() {
             asChild
             variant="outline"
             size="sm"
-            className="border-[0.5px] border-[#E5E7EB] bg-white text-[#111827] shadow-none hover:bg-[#F5F7FA] dark:border-border dark:bg-card"
+            className="border-[0.5px] border-gray-300 bg-white text-text-primary shadow-none hover:bg-[#F5F7FA] dark:border-border dark:bg-card"
           >
             <Link href="/projects/new">
               <Plus className="h-4 w-4" />
@@ -289,53 +289,53 @@ export function ProjectsClient() {
       </header>
 
       {error ? (
-        <div className="rounded-lg border border-[#E5E7EB] bg-background px-4 py-3 text-sm text-muted-foreground dark:border-border">
+        <div className="rounded-lg border border-gray-300 bg-background px-4 py-3 text-sm text-muted-foreground dark:border-border">
           {error}
         </div>
       ) : null}
 
       <div className="grid grid-cols-2 gap-[10px] sm:grid-cols-2 lg:grid-cols-5">
-        <div className="rounded-[10px] border-[0.5px] border-solid border-[#E5E7EB] bg-white px-4 py-[14px] dark:border-border">
+        <div className="rounded-[10px] border-[0.5px] border-solid border-gray-300 bg-white px-4 py-[14px] dark:border-border">
           <p className="kpi-metric-label">Total Projects</p>
           {loading ? (
             <Skeleton className="mt-2 h-7 w-16" />
           ) : (
-            <p className="kpi-metric-value mt-0.5 tabular-nums text-[#111827] dark:text-foreground">
+            <p className="kpi-metric-value mt-0.5 tabular-nums text-text-primary dark:text-foreground">
               {summary.total}
             </p>
           )}
         </div>
-        <div className="rounded-[10px] border-[0.5px] border-solid border-[#E5E7EB] bg-white px-4 py-[14px] dark:border-border">
+        <div className="rounded-[10px] border-[0.5px] border-solid border-gray-300 bg-white px-4 py-[14px] dark:border-border">
           <p className="kpi-metric-label">Active</p>
           {loading ? (
             <Skeleton className="mt-2 h-7 w-16" />
           ) : (
-            <p className="kpi-metric-value mt-0.5 tabular-nums text-[#111827] dark:text-foreground">
+            <p className="kpi-metric-value mt-0.5 tabular-nums text-text-primary dark:text-foreground">
               {summary.active}
             </p>
           )}
         </div>
-        <div className="rounded-[10px] border-[0.5px] border-solid border-[#E5E7EB] bg-white px-4 py-[14px] dark:border-border">
+        <div className="rounded-[10px] border-[0.5px] border-solid border-gray-300 bg-white px-4 py-[14px] dark:border-border">
           <p className="kpi-metric-label">Completed</p>
           {loading ? (
             <Skeleton className="mt-2 h-7 w-16" />
           ) : (
-            <p className="kpi-metric-value mt-0.5 tabular-nums text-[#111827] dark:text-foreground">
+            <p className="kpi-metric-value mt-0.5 tabular-nums text-text-primary dark:text-foreground">
               {summary.completed}
             </p>
           )}
         </div>
-        <div className="rounded-[10px] border-[0.5px] border-solid border-[#E5E7EB] bg-white px-4 py-[14px] dark:border-border">
+        <div className="rounded-[10px] border-[0.5px] border-solid border-gray-300 bg-white px-4 py-[14px] dark:border-border">
           <p className="kpi-metric-label">Total Budget</p>
           {loading ? (
             <Skeleton className="mt-2 h-7 w-28" />
           ) : (
-            <p className="kpi-metric-value mt-0.5 tabular-nums text-[#111827] dark:text-foreground">
+            <p className="kpi-metric-value mt-0.5 tabular-nums text-text-primary dark:text-foreground">
               {money(summary.totalBudget)}
             </p>
           )}
         </div>
-        <div className="rounded-[10px] border-[0.5px] border-solid border-[#E5E7EB] bg-white px-4 py-[14px] sm:col-span-2 lg:col-span-1 dark:border-border">
+        <div className="rounded-[10px] border-[0.5px] border-solid border-gray-300 bg-white px-4 py-[14px] sm:col-span-2 lg:col-span-1 dark:border-border">
           <p className="kpi-metric-label">Total Profit</p>
           {loading ? (
             <Skeleton className="mt-2 h-7 w-28" />
@@ -358,11 +358,11 @@ export function ProjectsClient() {
       <FilterBar className="flex-col items-stretch sm:items-stretch">
         <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1 sm:col-span-2 lg:col-span-3">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Search
             </p>
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-muted-foreground" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary/75 dark:text-muted-foreground" />
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -372,7 +372,7 @@ export function ProjectsClient() {
             </div>
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Status
             </p>
             <Select

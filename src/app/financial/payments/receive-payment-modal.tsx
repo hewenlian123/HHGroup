@@ -263,9 +263,9 @@ export function ReceivePaymentModal({
           <div className="flex justify-end gap-2 pt-2 border-t border-border/60">
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="h-8"
+              className="btn-outline-ghost h-8"
               onClick={() => onOpenChange(false)}
             >
               Cancel

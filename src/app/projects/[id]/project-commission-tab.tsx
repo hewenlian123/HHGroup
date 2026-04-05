@@ -19,9 +19,9 @@ const CALC_MODES = ["Auto", "Manual"] as const;
 
 const COMMISSION_MODAL =
   "max-w-[480px] w-full gap-0 border-0 p-8 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-xl sm:rounded-xl sm:max-w-[480px]";
-const COMMISSION_LABEL = "mb-1.5 block text-[12px] font-medium text-[#6B7280]";
+const COMMISSION_LABEL = "mb-1.5 block text-[12px] font-medium text-text-secondary";
 const COMMISSION_FIELD =
-  "h-10 rounded-lg border border-[#E5E7EB] bg-white text-[14px] focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black";
+  "h-10 rounded-lg border border-gray-300 bg-white text-[14px] focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black";
 
 const fmtUsd = (n: number) =>
   n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -32,7 +32,7 @@ function ProjectPaymentStatus({ status }: { status: CommissionPaymentStatus }) {
       ? { dot: "bg-[#22C55E]", label: "Paid", text: "text-[#166534]" }
       : status === "partial"
         ? { dot: "bg-[#EAB308]", label: "Partial", text: "text-[#854D0E]" }
-        : { dot: "bg-[#9CA3AF]", label: "Unpaid", text: "text-[#6B7280]" };
+        : { dot: "bg-[#9CA3AF]", label: "Unpaid", text: "text-text-secondary" };
   return (
     <span className="inline-flex items-center gap-2 text-[14px]">
       <span className={cn("h-2 w-2 shrink-0 rounded-full", cfg.dot)} aria-hidden />
@@ -183,7 +183,7 @@ export function ProjectCommissionTab({
 
   return (
     <>
-      <div className="flex items-center justify-between border-b border-[#E5E7EB] pb-3">
+      <div className="flex items-center justify-between border-b border-gray-300 pb-3">
         <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9CA3AF]">
           Commissions
         </h3>
@@ -236,7 +236,7 @@ export function ProjectCommissionTab({
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="py-10 text-center text-[14px] text-[#6B7280]">
+                  <td colSpan={10} className="py-10 text-center text-[14px] text-text-secondary">
                     No commissions. Click &quot;+ Add Commission&quot; to add one.
                   </td>
                 </tr>
@@ -247,24 +247,24 @@ export function ProjectCommissionTab({
                     className="border-b border-[#E8E4DD] last:border-b-0 transition-colors hover:bg-white/90"
                     data-testid={`project-commission-row-${c.id}`}
                   >
-                    <td className="px-3 py-3.5 font-medium text-[#111827]">
+                    <td className="px-3 py-3.5 font-medium text-text-primary">
                       {c.person_name || "—"}
                     </td>
                     <td className="px-3 py-3.5 text-[#374151]">{c.role}</td>
-                    <td className="px-3 py-3.5 text-[#6B7280]">{c.calculation_mode}</td>
-                    <td className="px-3 py-3.5 text-right font-mono tabular-nums text-[#6B7280]">
+                    <td className="px-3 py-3.5 text-text-secondary">{c.calculation_mode}</td>
+                    <td className="px-3 py-3.5 text-right font-mono tabular-nums text-text-secondary">
                       {c.rate > 0 ? `${(c.rate * 100).toFixed(1)}%` : "—"}
                     </td>
                     <td className="px-3 py-3.5 text-right font-mono tabular-nums text-[#374151]">
                       ${fmtUsd(c.base_amount)}
                     </td>
-                    <td className="px-3 py-3.5 text-right font-mono tabular-nums font-medium text-[#111827]">
+                    <td className="px-3 py-3.5 text-right font-mono tabular-nums font-medium text-text-primary">
                       ${fmtUsd(c.commission_amount)}
                     </td>
-                    <td className="px-3 py-3.5 text-right font-mono tabular-nums text-[#6B7280]">
+                    <td className="px-3 py-3.5 text-right font-mono tabular-nums text-text-secondary">
                       ${fmtUsd(c.paid_amount)}
                     </td>
-                    <td className="px-3 py-3.5 text-right font-mono tabular-nums font-medium text-[#111827]">
+                    <td className="px-3 py-3.5 text-right font-mono tabular-nums font-medium text-text-primary">
                       ${fmtUsd(c.outstanding_amount)}
                     </td>
                     <td className="px-3 py-3.5">
@@ -302,13 +302,13 @@ export function ProjectCommissionTab({
       >
         <DialogContent className={COMMISSION_MODAL}>
           <DialogHeader className="text-left">
-            <DialogTitle className="text-xl font-bold text-[#111827]">
+            <DialogTitle className="text-xl font-bold text-text-primary">
               Delete commission
             </DialogTitle>
           </DialogHeader>
-          <p className="text-[13px] leading-relaxed text-[#6B7280]">
+          <p className="text-[13px] leading-relaxed text-text-secondary">
             Remove this commission for{" "}
-            <span className="font-medium text-[#111827]">
+            <span className="font-medium text-text-primary">
               {pendingDelete?.person_name?.trim() || "this person"}
             </span>
             ? This cannot be undone.
@@ -317,7 +317,7 @@ export function ProjectCommissionTab({
             <Button
               type="button"
               variant="outline"
-              className="h-10 rounded-lg border-[#E5E7EB] bg-white text-[14px] font-medium text-[#6B7280] hover:bg-[#F9FAFB]"
+              className="h-10 rounded-lg border-gray-300 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
               data-testid="project-commission-delete-cancel"
               onClick={() => setPendingDelete(null)}
               disabled={deletingId != null}
@@ -340,7 +340,9 @@ export function ProjectCommissionTab({
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
         <DialogContent className={COMMISSION_MODAL}>
           <DialogHeader className="text-left">
-            <DialogTitle className="text-xl font-bold text-[#111827]">Add Commission</DialogTitle>
+            <DialogTitle className="text-xl font-bold text-text-primary">
+              Add Commission
+            </DialogTitle>
           </DialogHeader>
           <form id="commission-form" onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
             <div>
@@ -448,7 +450,7 @@ export function ProjectCommissionTab({
             <Button
               type="button"
               variant="outline"
-              className="h-10 rounded-lg border-[#E5E7EB] bg-white text-[14px] font-medium text-[#6B7280] hover:bg-[#F9FAFB]"
+              className="h-10 rounded-lg border-gray-300 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
               data-testid="project-commission-cancel"
               onClick={() => setModalOpen(false)}
             >

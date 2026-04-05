@@ -18,9 +18,9 @@ export function AddLineItemButton({
       <input type="hidden" name="costCode" value={costCode} />
       <Button
         type="submit"
-        variant="ghost"
+        variant="outline"
         size="sm"
-        className="text-muted-foreground hover:text-foreground"
+        className="btn-outline-ghost text-muted-foreground hover:text-foreground"
       >
         <Plus className="h-4 w-4 mr-2" />
         Add line item

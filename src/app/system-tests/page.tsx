@@ -291,8 +291,8 @@ export default function SystemTestsPage() {
             <Button
               key={id}
               size="sm"
-              variant="ghost"
-              className="min-h-[44px] sm:min-h-0 text-xs"
+              variant="outline"
+              className="btn-outline-ghost min-h-[44px] sm:min-h-0 text-xs"
               onClick={() => runWorkflowTests(id)}
               disabled={anyRunning}
             >
@@ -332,8 +332,8 @@ export default function SystemTestsPage() {
             <Button
               key={id}
               size="sm"
-              variant="ghost"
-              className="min-h-[44px] sm:min-h-0 text-xs"
+              variant="outline"
+              className="btn-outline-ghost min-h-[44px] sm:min-h-0 text-xs"
               onClick={() => runFullSystemTests(id)}
               disabled={anyRunning}
             >

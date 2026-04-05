@@ -235,12 +235,12 @@ export function ProjectDetailTabsClient({
   return (
     <PageLayout
       divider={false}
-      className="bg-[#F8F7F4] py-6"
+      className="bg-page py-6"
       header={
         <div className="space-y-4">
           <Link
             href="/projects"
-            className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[#6B7280] hover:text-[#111827]"
+            className="inline-flex items-center gap-1.5 text-[12px] font-medium text-text-secondary hover:text-text-primary"
           >
             <ArrowLeft className="h-4 w-4" />
             Projects
@@ -249,13 +249,13 @@ export function ProjectDetailTabsClient({
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0 space-y-2">
                 <div className="flex flex-wrap items-center gap-3">
-                  <h1 className="text-xl font-bold tracking-tight text-[#111827] sm:text-2xl">
+                  <h1 className="text-xl font-bold tracking-tight text-text-primary sm:text-2xl">
                     {displayProject.name}
                   </h1>
                   <ProjectDetailStatusPill status={displayProject.status} />
                 </div>
                 {(displayProject.client || displayProject.address) && (
-                  <p className="text-[14px] text-[#6B7280]">
+                  <p className="text-[14px] text-text-secondary">
                     {[displayProject.client, displayProject.address].filter(Boolean).join(" · ")}
                   </p>
                 )}
@@ -265,7 +265,7 @@ export function ProjectDetailTabsClient({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-9 rounded-lg border-[#E5E7EB] text-[13px] text-[#6B7280]"
+                    className="h-9 rounded-lg border-gray-300 text-[13px] text-text-secondary"
                     aria-label="Project actions"
                   >
                     <MoreHorizontal className="mr-1 h-4 w-4" />
@@ -331,14 +331,14 @@ export function ProjectDetailTabsClient({
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            <div className="mt-6 border-t border-[#E5E7EB] pt-6">
-              <div className="rounded-lg border-[0.5px] border-[#E5E7EB] bg-white p-4 sm:p-5">
+            <div className="mt-6 border-t border-gray-300 pt-6">
+              <div className="rounded-lg border-[0.5px] border-gray-300 bg-white p-4 sm:p-5">
                 <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
                       Budget
                     </p>
-                    <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-[#111827]">
+                    <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-text-primary">
                       ${budgetVal.toLocaleString()}
                     </p>
                   </div>
@@ -346,7 +346,7 @@ export function ProjectDetailTabsClient({
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
                       Spent
                     </p>
-                    <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-[#111827]">
+                    <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-text-primary">
                       ${spentVal.toLocaleString()}
                     </p>
                   </div>
@@ -367,7 +367,7 @@ export function ProjectDetailTabsClient({
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
                       Margin
                     </p>
-                    <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-[#111827]">
+                    <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-text-primary">
                       {marginPct.toFixed(1)}%
                     </p>
                   </div>
@@ -399,7 +399,7 @@ export function ProjectDetailTabsClient({
             }}
             className="w-full"
           >
-            <div className="flex items-center justify-between gap-2 border-b-2 border-[#E5E7EB] pb-0">
+            <div className="flex items-center justify-between gap-2 border-b-2 border-gray-300 pb-0">
               <TabsList className="h-10 min-h-0 flex-1 justify-start gap-0 overflow-x-auto whitespace-nowrap rounded-none border-0 bg-transparent p-0">
                 {(
                   [
@@ -413,7 +413,7 @@ export function ProjectDetailTabsClient({
                   <TabsTrigger
                     key={t.key}
                     value={t.key}
-                    className="rounded-none border-b-2 border-transparent px-3 py-2.5 text-[13px] font-medium text-[#6B7280] data-[state=active]:border-[#111827] data-[state=active]:text-[#111827] data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:text-[14px]"
+                    className="rounded-none border-b-2 border-transparent px-3 py-2.5 text-[13px] font-medium text-text-secondary data-[state=active]:border-[#111827] data-[state=active]:text-text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:text-[14px]"
                   >
                     {t.label}
                   </TabsTrigger>
@@ -442,9 +442,9 @@ export function ProjectDetailTabsClient({
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
-                    className="h-9 shrink-0 px-2 text-[13px] text-[#6B7280] hover:text-[#111827]"
+                    className="btn-outline-ghost h-9 shrink-0 px-2 text-[13px] text-text-secondary hover:text-text-primary"
                   >
                     More ▾
                   </Button>
@@ -565,7 +565,7 @@ export function ProjectDetailTabsClient({
                 <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-[13px]">
                   <div className="flex items-center justify-between gap-3 py-2">
                     <span className="text-[#9CA3AF]">Client</span>
-                    <span className="truncate text-right text-[#111827]">
+                    <span className="truncate text-right text-text-primary">
                       {displayProject.client ??
                         (displayProject as { client_name?: string }).client_name ??
                         "—"}
@@ -573,7 +573,7 @@ export function ProjectDetailTabsClient({
                   </div>
                   <div className="flex items-center justify-between gap-3 py-2">
                     <span className="text-[#9CA3AF]">Contract value</span>
-                    <span className="tabular-nums text-right text-[#111827]">
+                    <span className="tabular-nums text-right text-text-primary">
                       $
                       {canonicalProfit.revenue.toLocaleString("en-US", {
                         maximumFractionDigits: 0,
@@ -582,7 +582,7 @@ export function ProjectDetailTabsClient({
                   </div>
                   <div className="flex items-center justify-between gap-3 py-2">
                     <span className="text-[#9CA3AF]">Budget</span>
-                    <span className="tabular-nums text-right text-[#111827]">
+                    <span className="tabular-nums text-right text-text-primary">
                       $
                       {(displayProject.budget ?? financialSummary?.budget ?? 0).toLocaleString(
                         "en-US",
@@ -594,7 +594,7 @@ export function ProjectDetailTabsClient({
                   </div>
                   <div className="flex items-center justify-between gap-3 py-2">
                     <span className="text-[#9CA3AF]">Spent</span>
-                    <span className="tabular-nums text-right text-[#111827]">
+                    <span className="tabular-nums text-right text-text-primary">
                       $
                       {(financialSummary?.spent ?? canonicalProfit.actualCost).toLocaleString(
                         "en-US",
@@ -618,7 +618,7 @@ export function ProjectDetailTabsClient({
                   </div>
                   <div className="flex items-center justify-between gap-3 py-2">
                     <span className="text-[#9CA3AF]">Margin</span>
-                    <span className="tabular-nums text-right text-[#111827]">
+                    <span className="tabular-nums text-right text-text-primary">
                       {(canonicalProfit.margin * 100).toFixed(1)}%
                     </span>
                   </div>
@@ -1010,7 +1010,7 @@ export function ProjectDetailTabsClient({
               />
             </TabsContent>
             <TabsContent value="commission" className={cn(TAB_PANEL, "p-0 overflow-hidden sm:p-0")}>
-              <div className="rounded-lg bg-[#F8F7F4] p-4 sm:p-5">
+              <div className="rounded-lg bg-page p-4 sm:p-5">
                 <ProjectCommissionTab
                   projectId={projectId}
                   commissions={commissions}

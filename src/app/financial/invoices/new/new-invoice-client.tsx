@@ -405,9 +405,9 @@ export default function NewInvoiceClient() {
                     </td>
                     <td className="py-2 px-2 text-right">
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        className="h-8 text-red-600 hover:text-red-700"
+                        className="btn-outline-ghost h-8 text-red-600 hover:text-red-700"
                         onClick={() =>
                           setLines((prev) =>
                             prev.length <= 1 ? prev : prev.filter((_, i) => i !== idx)

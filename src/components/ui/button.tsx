@@ -4,23 +4,22 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
+/**
+ * Button variants — only `default`, `secondary`, and `outline`.
+ * For toolbar / icon-only or cancel actions: `variant="outline" className="btn-outline-ghost"`.
+ * For destructive text actions: `variant="outline" className="btn-outline-destructive"`.
+ */
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium touch-manipulation transition-[color,background-color,border-color,box-shadow,opacity,transform] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#111827]/20 dark:focus-visible:ring-ring/40 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 active:opacity-90 active:scale-[0.98]",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium touch-manipulation transition-[color,background-color,border-color,box-shadow,opacity,transform] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/25 dark:focus-visible:ring-brand-primary/35 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 active:opacity-90 active:scale-[0.98]",
   {
     variants: {
       variant: {
-        default: "bg-[#111827] text-white hover:bg-[#111827]/90",
-        primary: "bg-[#111827] text-white hover:bg-[#111827]/90",
-        destructive: "bg-[#DC2626] text-white hover:bg-[#DC2626]/90",
-        danger:
-          "border-0 bg-transparent text-[#DC2626] hover:bg-[#DC2626] hover:text-white dark:hover:bg-[#DC2626]",
-        outline:
-          "border border-[#D1D5DB] bg-white text-[#374151] shadow-none hover:bg-[#F9FAFB] dark:border-border dark:bg-card dark:text-foreground dark:hover:bg-muted",
+        default:
+          "border border-transparent bg-black text-white hover:bg-gray-900 dark:bg-black dark:hover:bg-gray-800",
         secondary:
-          "border border-[#D1D5DB] bg-white text-[#374151] shadow-none hover:bg-[#F9FAFB] dark:border-border dark:bg-card dark:text-foreground dark:hover:bg-muted",
-        ghost:
-          "text-[#6B7280] hover:bg-[#F9FAFB] hover:text-[#111827] dark:text-muted-foreground dark:hover:bg-muted dark:hover:text-foreground",
-        link: "text-[#2563EB] underline-offset-4 hover:underline dark:text-foreground",
+          "border border-transparent bg-brand-primary text-white shadow-none hover:bg-blue-700 dark:bg-brand-primary dark:hover:bg-blue-600",
+        outline:
+          "border border-gray-300 bg-white text-text-primary shadow-none hover:bg-gray-50 dark:border-border dark:bg-card dark:text-foreground dark:hover:bg-muted",
       },
       size: {
         /* Touch-friendly: min 44px on mobile/tablet (max-lg) */

@@ -303,7 +303,7 @@ export function Sidebar({
         : "min-h-0 gap-2.5 px-2 py-1.5 sm:min-h-0",
       active
         ? "bg-[#1a1a1a] font-medium text-white dark:bg-[#1a1a1a] dark:text-white"
-        : "font-normal text-[#111827] hover:bg-[#f5f5f3] dark:text-foreground/90 dark:hover:bg-muted/60"
+        : "font-normal text-text-primary hover:bg-[#f5f5f3] dark:text-foreground/90 dark:hover:bg-muted/60"
     );
 
   const navIconClass = (active: boolean, extra?: string) =>
@@ -311,21 +311,21 @@ export function Sidebar({
       "h-[16px] w-[16px] shrink-0 transition-colors duration-[120ms] ease-out",
       active
         ? "text-white"
-        : "text-[#9CA3AF] group-hover:text-[#111827] dark:group-hover:text-foreground",
+        : "text-[#9CA3AF] group-hover:text-text-primary dark:group-hover:text-foreground",
       extra
     );
 
   return (
     <aside
       className={cn(
-        "flex h-full shrink-0 flex-col border-r border-[#E5E7EB] [border-right-width:0.5px] bg-white dark:border-border dark:bg-background",
+        "flex h-full shrink-0 flex-col border-r border-gray-300 [border-right-width:0.5px] bg-white dark:border-border dark:bg-background",
         collapsed ? "w-[72px]" : "w-[210px]",
         className
       )}
     >
       <div
         className={cn(
-          "flex h-12 items-center gap-2 border-b border-[#E5E7EB] [border-bottom-width:0.5px] dark:border-border",
+          "flex h-12 items-center gap-2 border-b border-gray-300 [border-bottom-width:0.5px] dark:border-border",
           collapsed ? "px-3" : "px-3"
         )}
       >
@@ -340,7 +340,7 @@ export function Sidebar({
             <p className="truncate text-[10px] font-medium uppercase tracking-[0.08em] text-[#9CA3AF]">
               HH Unified
             </p>
-            <p className="truncate text-[13px] font-semibold text-[#111827] dark:text-foreground">
+            <p className="truncate text-[13px] font-semibold text-text-primary dark:text-foreground">
               {orgName}
             </p>
           </div>
@@ -396,7 +396,7 @@ export function Sidebar({
                                 key={receiptQueueAnimKey}
                                 className={cn(
                                   "absolute -right-2 -top-1 z-[1] flex min-h-[15px] min-w-[15px] items-center justify-center rounded-sm px-1 text-[10px] font-semibold tabular-nums leading-none animate-receipt-queue-badge",
-                                  active ? "text-white" : "text-[#111827] dark:text-foreground"
+                                  active ? "text-white" : "text-text-primary dark:text-foreground"
                                 )}
                                 aria-hidden
                               >
@@ -549,15 +549,15 @@ export function Sidebar({
 
       {/* User footer */}
       {!collapsed && (
-        <div className="border-t border-[#E5E7EB] [border-top-width:0.5px] dark:border-border px-3 py-3">
+        <div className="border-t border-gray-300 [border-top-width:0.5px] dark:border-border px-3 py-3">
           <div className="flex items-center gap-2.5">
             <Avatar className="h-8 w-8 shrink-0 rounded-md">
-              <AvatarFallback className="rounded-md bg-[#F5F7FA] text-[11px] font-medium text-[#6B7280]">
+              <AvatarFallback className="rounded-md bg-[#F5F7FA] text-[11px] font-medium text-text-secondary">
                 U
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] font-medium leading-tight text-[#111827] dark:text-foreground">
+              <p className="truncate text-[13px] font-medium leading-tight text-text-primary dark:text-foreground">
                 User
               </p>
               <p className="truncate text-[11px] text-[#9CA3AF] dark:text-muted-foreground">
@@ -569,12 +569,12 @@ export function Sidebar({
       )}
 
       {/* Collapse button at bottom */}
-      <div className="border-t border-[#E5E7EB] [border-top-width:0.5px] dark:border-border p-2">
+      <div className="border-t border-gray-300 [border-top-width:0.5px] dark:border-border p-2">
         <button
           type="button"
           onClick={onToggleCollapsed}
           className={cn(
-            "flex w-full items-center rounded-md text-[13px] font-medium text-[#9CA3AF] transition-colors duration-150 hover:bg-[#F5F7FA] hover:text-[#111827] dark:text-muted-foreground dark:hover:bg-muted dark:hover:text-foreground",
+            "flex w-full items-center rounded-md text-[13px] font-medium text-[#9CA3AF] transition-colors duration-150 hover:bg-[#F5F7FA] hover:text-text-primary dark:text-muted-foreground dark:hover:bg-muted dark:hover:text-foreground",
             collapsed ? "min-h-[44px] justify-center px-2 py-2 sm:min-h-8" : "gap-2 px-2 py-1.5"
           )}
           aria-label="Collapse sidebar"

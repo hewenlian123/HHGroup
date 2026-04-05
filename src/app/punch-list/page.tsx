@@ -57,7 +57,7 @@ const PriorityBadge = React.memo(function PriorityBadge({ priority }: { priority
   const p = (priority || "Medium").toLowerCase();
   const style =
     p === "low"
-      ? "bg-[#f3f4f6] text-[#6b7280]"
+      ? "bg-[#f3f4f6] text-text-secondary"
       : p === "medium"
         ? "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300"
         : "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300";
@@ -77,7 +77,7 @@ const StatusBadge = React.memo(function StatusBadge({ status }: { status: string
       ? "bg-[#DCFCE7] text-[#166534] dark:bg-emerald-950 dark:text-emerald-300"
       : n === "assigned"
         ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300"
-        : "bg-[#f3f4f6] text-[#6b7280]";
+        : "bg-[#f3f4f6] text-text-secondary";
   return (
     <span className={cn("inline-flex text-[11px] font-medium py-0.5 px-1.5 rounded-[6px]", style)}>
       {label}

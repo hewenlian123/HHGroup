@@ -236,7 +236,7 @@ export default function LaborInvoicesListClient() {
       <FilterBar>
         <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Search
             </p>
             <Input
@@ -246,7 +246,7 @@ export default function LaborInvoicesListClient() {
             />
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Status
             </p>
             <Select
@@ -261,13 +261,13 @@ export default function LaborInvoicesListClient() {
             </Select>
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               From
             </p>
             <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               To
             </p>
             <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
@@ -275,7 +275,7 @@ export default function LaborInvoicesListClient() {
         </div>
       </FilterBar>
       {message ? (
-        <div className="rounded-lg border border-[#E5E7EB] dark:border-border bg-background px-3 py-2 text-sm text-muted-foreground">
+        <div className="rounded-lg border border-gray-300 dark:border-border bg-background px-3 py-2 text-sm text-muted-foreground">
           {message}
         </div>
       ) : null}
@@ -288,7 +288,7 @@ export default function LaborInvoicesListClient() {
         <div className="table-responsive">
           <table className="w-full min-w-[560px] text-sm md:min-w-0">
             <thead>
-              <tr className="border-b border-[#E5E7EB] dark:border-border/60 bg-white dark:bg-muted/30">
+              <tr className="border-b border-gray-300 dark:border-border/60 bg-white dark:bg-muted/30">
                 <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
                   Invoice #
                 </th>
@@ -328,7 +328,7 @@ export default function LaborInvoicesListClient() {
                       key={row.id}
                       className={cn(
                         listTableRowClassName,
-                        "border-b border-[#E5E7EB]/80 dark:border-border/30"
+                        "border-b border-gray-300/80 dark:border-border/30"
                       )}
                       onClick={() => router.push(`/labor/invoices/${row.id}`)}
                     >
@@ -421,12 +421,18 @@ export default function LaborInvoicesListClient() {
           </DialogHeader>
           <p className="text-sm text-muted-foreground">This cannot be undone.</p>
           <DialogFooter className="gap-2 pt-3 border-t border-border/60">
-            <Button variant="ghost" size="sm" onClick={() => setVoidConfirmId(null)}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="btn-outline-ghost"
+              onClick={() => setVoidConfirmId(null)}
+            >
               Cancel
             </Button>
             <Button
-              variant="destructive"
+              variant="outline"
               size="sm"
+              className="btn-outline-destructive"
               disabled={!!busyId}
               onClick={async () => {
                 if (!voidConfirmId) return;

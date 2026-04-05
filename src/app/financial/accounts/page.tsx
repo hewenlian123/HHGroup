@@ -260,7 +260,7 @@ function AccountsPageInner() {
                     key={row.id}
                     className={cn(
                       listTableRowClassName,
-                      "group border-b border-[#E5E7EB]/80 dark:border-border/30"
+                      "group border-b border-gray-300/80 dark:border-border/30"
                     )}
                     onClick={() => openEdit(row)}
                   >
@@ -358,9 +358,9 @@ function AccountsPageInner() {
             <div className="flex justify-end gap-2 pt-2">
               <Button
                 type="button"
-                variant="ghost"
+                variant="outline"
                 size="sm"
-                className="h-8"
+                className="btn-outline-ghost h-8"
                 onClick={() => {
                   setModalOpen(false);
                   setEditingId(null);

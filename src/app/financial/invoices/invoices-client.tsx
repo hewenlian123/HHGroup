@@ -366,14 +366,15 @@ export function InvoicesClient() {
               <Button
                 variant="outline"
                 size="sm"
-                className="border-[0.5px] border-[#E5E7EB] bg-white"
+                className="border-[0.5px] border-gray-300 bg-white"
                 onClick={() => setVoidConfirmId(null)}
               >
                 Cancel
               </Button>
               <Button
-                variant="destructive"
+                variant="outline"
                 size="sm"
+                className="btn-outline-destructive"
                 disabled={!!busyId}
                 onClick={async () => {
                   if (!voidConfirmId || !supabase) return;

@@ -276,9 +276,9 @@ export function CommitmentsSection({
                       {row.attachments?.length ? (
                         <div className="flex items-center gap-1">
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
-                            className="h-8"
+                            className="btn-outline-ghost h-8"
                             onClick={() => {
                               setPreviewAttachment(row.attachments[0]);
                               setPreviewOpen(true);
@@ -288,9 +288,9 @@ export function CommitmentsSection({
                             <Eye className="h-4 w-4" />
                           </Button>
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
-                            className="h-8"
+                            className="btn-outline-ghost h-8"
                             onClick={() => {
                               const att = row.attachments[0];
                               const a = document.createElement("a");
@@ -313,18 +313,18 @@ export function CommitmentsSection({
                     <td className="py-3 px-4 text-right">
                       <div className="flex justify-end gap-1">
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
-                          className="h-8"
+                          className="btn-outline-ghost h-8"
                           onClick={() => openEdit(row)}
                           title="Edit"
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
-                          className="h-8 text-red-600 hover:text-red-700"
+                          className="btn-outline-ghost h-8 text-red-600 hover:text-red-700"
                           onClick={() => handleDelete(row)}
                           title="Delete"
                         >

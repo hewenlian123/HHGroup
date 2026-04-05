@@ -29,7 +29,7 @@ function statusLabel(s: string): string {
 function statusClass(s: string): string {
   switch (s) {
     case "Draft":
-      return "bg-[#f3f4f6] text-[#6b7280]";
+      return "bg-[#f3f4f6] text-text-secondary";
     case "Pending Approval":
       return "bg-[#fff7ed] text-[#c2410c]";
     case "Approved":
@@ -37,7 +37,7 @@ function statusClass(s: string): string {
     case "Rejected":
       return "bg-[#fef2f2] text-[#b91c1c]";
     default:
-      return "bg-[#f3f4f6] text-[#6b7280]";
+      return "bg-[#f3f4f6] text-text-secondary";
   }
 }
 
@@ -115,7 +115,7 @@ export function ChangeOrdersView({
         ) : null}
         {grouped.length === 0 ? (
           <div className="py-24 text-center">
-            <p className="text-[15px] text-[#6b7280]">
+            <p className="text-[15px] text-text-secondary">
               {dataLoadWarning ? "Could not load change orders." : "No change orders yet."}
             </p>
             <p className="mt-1 text-sm text-[#9ca3af]">
@@ -149,7 +149,7 @@ export function ChangeOrdersView({
                     >
                       <div className="min-w-0 flex-1">
                         <div className="font-medium text-[#111] text-[15px]">{co.number}</div>
-                        <div className="text-sm text-[#6b7280] truncate mt-0.5">
+                        <div className="text-sm text-text-secondary truncate mt-0.5">
                           {co.title || "Untitled"}
                         </div>
                       </div>

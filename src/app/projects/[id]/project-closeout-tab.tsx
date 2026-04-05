@@ -344,9 +344,9 @@ export function ProjectCloseoutTab({
                         <td className="min-h-[44px] px-2 py-1.5 align-middle no-print">
                           <Button
                             type="button"
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
-                            className="h-9 text-destructive"
+                            className="btn-outline-ghost h-9 text-destructive"
                             onClick={() => removePunchItem(idx)}
                           >
                             Remove
@@ -416,25 +416,25 @@ export function ProjectCloseoutTab({
       </div>
 
       {/* 2. Warranty Information */}
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-200">
+      <div className="rounded-xl border border-gray-300 bg-white shadow-sm overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-300">
           <SectionHeader label="Warranty Information" />
         </div>
         <div className="p-4 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">
                 Start date
               </label>
               <Input
                 type="date"
                 value={warrantyForm.start_date}
                 onChange={(e) => setWarrantyForm((p) => ({ ...p, start_date: e.target.value }))}
-                className="mt-1 h-10 rounded-lg border-gray-200"
+                className="mt-1 h-10 rounded-lg border-gray-300"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">
                 Period (months)
               </label>
               <Input
@@ -447,18 +447,18 @@ export function ProjectCloseoutTab({
                     period_months: parseInt(e.target.value, 10) || 12,
                   }))
                 }
-                className="mt-1 h-10 rounded-lg border-gray-200"
+                className="mt-1 h-10 rounded-lg border-gray-300"
               />
             </div>
           </div>
           {warrantyExpiration && (
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-text-secondary">
               <span className="font-medium">Warranty expiration:</span>{" "}
               {new Date(warrantyExpiration).toLocaleDateString()}
             </p>
           )}
           <div>
-            <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">
               Notes
             </label>
             <textarea
@@ -466,7 +466,7 @@ export function ProjectCloseoutTab({
               onChange={(e) => setWarrantyForm((p) => ({ ...p, notes: e.target.value }))}
               placeholder="Notes"
               rows={2}
-              className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
             />
           </div>
           <Button
@@ -482,23 +482,23 @@ export function ProjectCloseoutTab({
       </div>
 
       {/* 3. Final Invoice */}
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-200">
+      <div className="rounded-xl border border-gray-300 bg-white shadow-sm overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-300">
           <SectionHeader label="Final Invoice" />
         </div>
         <div className="p-4 space-y-3">
           <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Contract value</span>
+            <span className="text-text-secondary">Contract value</span>
             <span className="font-medium tabular-nums">${fmtUsd(contractValue)}</span>
           </div>
           <Divider />
           <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Payments received</span>
+            <span className="text-text-secondary">Payments received</span>
             <span className="font-medium tabular-nums">${fmtUsd(billingSummary.paidTotal)}</span>
           </div>
           <Divider />
           <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Remaining balance</span>
+            <span className="text-text-secondary">Remaining balance</span>
             <span className="font-medium tabular-nums">${fmtUsd(remainingBalance)}</span>
           </div>
           <div className="pt-2">
@@ -515,19 +515,19 @@ export function ProjectCloseoutTab({
       </div>
 
       {/* 4. Completion Certificate */}
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-200">
+      <div className="rounded-xl border border-gray-300 bg-white shadow-sm overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-300">
           <SectionHeader label="Completion Certificate" />
         </div>
         <div className="p-4 space-y-4">
           <div>
-            <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">
               Project
             </label>
-            <p className="mt-1 text-sm font-medium text-gray-900">{projectName}</p>
+            <p className="mt-1 text-sm font-medium text-text-primary">{projectName}</p>
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">
               Completion date
             </label>
             <Input
@@ -536,12 +536,12 @@ export function ProjectCloseoutTab({
               onChange={(e) =>
                 setCompletionForm((p) => ({ ...p, completion_date: e.target.value }))
               }
-              className="mt-1 h-10 rounded-lg border-gray-200"
+              className="mt-1 h-10 rounded-lg border-gray-300"
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">
                 Contractor name
               </label>
               <Input
@@ -550,24 +550,24 @@ export function ProjectCloseoutTab({
                   setCompletionForm((p) => ({ ...p, contractor_name: e.target.value }))
                 }
                 placeholder="Contractor"
-                className="mt-1 h-10 rounded-lg border-gray-200"
+                className="mt-1 h-10 rounded-lg border-gray-300"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">
                 Client name
               </label>
               <Input
                 value={completionForm.client_name}
                 onChange={(e) => setCompletionForm((p) => ({ ...p, client_name: e.target.value }))}
                 placeholder="Client"
-                className="mt-1 h-10 rounded-lg border-gray-200"
+                className="mt-1 h-10 rounded-lg border-gray-300"
               />
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">
                 Contractor signature
               </label>
               <Input
@@ -576,11 +576,11 @@ export function ProjectCloseoutTab({
                   setCompletionForm((p) => ({ ...p, contractor_signature: e.target.value }))
                 }
                 placeholder="Signature"
-                className="mt-1 h-10 rounded-lg border-gray-200"
+                className="mt-1 h-10 rounded-lg border-gray-300"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">
                 Client signature
               </label>
               <Input
@@ -589,7 +589,7 @@ export function ProjectCloseoutTab({
                   setCompletionForm((p) => ({ ...p, client_signature: e.target.value }))
                 }
                 placeholder="Signature"
-                className="mt-1 h-10 rounded-lg border-gray-200"
+                className="mt-1 h-10 rounded-lg border-gray-300"
               />
             </div>
           </div>

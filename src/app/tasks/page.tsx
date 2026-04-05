@@ -599,9 +599,9 @@ export default function TasksPage() {
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="icon"
-                            className="h-8 w-8 min-h-[44px] min-w-[44px] rounded-sm touch-manipulation"
+                            className="btn-outline-ghost h-8 w-8 min-h-[44px] min-w-[44px] rounded-sm touch-manipulation"
                             aria-label="Task actions"
                             disabled={submitting}
                           >
@@ -730,9 +730,9 @@ export default function TasksPage() {
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button
-                                  variant="ghost"
+                                  variant="outline"
                                   size="icon"
-                                  className="h-7 w-7 rounded-sm"
+                                  className="btn-outline-ghost h-7 w-7 rounded-sm"
                                   aria-label="Task actions"
                                   disabled={submitting}
                                 >
@@ -860,8 +860,8 @@ export default function TasksPage() {
             <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/60">
               <Button
                 size="sm"
-                variant="ghost"
-                className="rounded-sm text-destructive hover:text-destructive hover:bg-destructive/10"
+                variant="outline"
+                className="btn-outline-ghost rounded-sm text-destructive hover:text-destructive hover:bg-destructive/10"
                 onClick={handleDeleteTask}
                 disabled={submitting}
               >

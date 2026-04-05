@@ -19,9 +19,28 @@ const config: Config = {
         touch: "44px",
       },
       colors: {
-        /** HH Group design system (2026) */
+        /** Semantic UI tokens — single source of truth (Linear / Apple SaaS) */
+        brand: {
+          primary: "#2563eb",
+        },
+        page: "#f5f5f7",
+        text: {
+          primary: "#111827",
+          secondary: "#6b7280",
+        },
+        status: {
+          error: "#dc2626",
+          warning: "#f59e0b",
+          success: "#16a34a",
+          pending: "#6b7280",
+        },
+        money: {
+          expense: "#d92d20",
+          income: "#16a34a",
+        },
+        /** HH Group legacy aliases (prefer brand/page/text-* above) */
         hh: {
-          page: "#F8F7F4",
+          page: "#f5f5f7",
           surface: "#FFFFFF",
           ink: "#111827",
           muted: "#6B7280",

@@ -156,7 +156,7 @@ export function ProjectTasksTab({
                           "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
                           t.priority === "high" && "bg-red-100 text-red-800",
                           t.priority === "medium" && "bg-amber-100 text-amber-800",
-                          t.priority === "low" && "bg-gray-100 text-gray-600"
+                          t.priority === "low" && "bg-page text-text-secondary"
                         )}
                       >
                         {PRIORITY_LABEL[t.priority] ?? t.priority}
@@ -171,25 +171,25 @@ export function ProjectTasksTab({
       </div>
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-lg rounded-xl border-gray-200 shadow-sm">
+        <DialogContent className="max-w-lg rounded-xl border-gray-300 shadow-sm">
           <DialogHeader>
             <DialogTitle>New Task</DialogTitle>
             <DialogDescription>Add a task to this project.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">
                 Title
               </label>
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Task title"
-                className="mt-1.5 h-10 rounded-lg border-gray-200"
+                className="mt-1.5 h-10 rounded-lg border-gray-300"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">
                 Description
               </label>
               <textarea
@@ -197,17 +197,17 @@ export function ProjectTasksTab({
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Optional description"
                 rows={3}
-                className="mt-1.5 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                className="mt-1.5 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">
                 Assigned Worker
               </label>
               <select
                 value={assignedWorkerId}
                 onChange={(e) => setAssignedWorkerId(e.target.value)}
-                className="mt-1.5 h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm"
+                className="mt-1.5 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm"
               >
                 <option value="">—</option>
                 {workers.map((w) => (
@@ -218,24 +218,24 @@ export function ProjectTasksTab({
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">
                 Due Date
               </label>
               <Input
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="mt-1.5 h-10 rounded-lg border-gray-200"
+                className="mt-1.5 h-10 rounded-lg border-gray-300"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">
                 Priority
               </label>
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as "low" | "medium" | "high")}
-                className="mt-1.5 h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm"
+                className="mt-1.5 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm"
               >
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
@@ -244,7 +244,7 @@ export function ProjectTasksTab({
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}
           </div>
-          <DialogFooter className="border-t border-gray-200 pt-4">
+          <DialogFooter className="border-t border-gray-300 pt-4">
             <Button
               variant="outline"
               size="sm"

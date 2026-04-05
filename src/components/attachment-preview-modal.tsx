@@ -271,9 +271,9 @@ export function AttachmentPreviewModal({
               </div>
               <Button
                 type="button"
-                variant="ghost"
+                variant="outline"
                 size="icon"
-                className="absolute right-2 top-2 h-9 w-9 shrink-0 rounded-sm"
+                className="btn-outline-ghost absolute right-2 top-2 h-9 w-9 shrink-0 rounded-sm"
                 aria-label="Close"
                 onClick={onClose}
               >
@@ -290,9 +290,9 @@ export function AttachmentPreviewModal({
                 <>
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="outline"
                     size="icon"
-                    className="absolute left-1 top-1/2 z-20 h-9 w-9 -translate-y-1/2 rounded-sm"
+                    className="btn-outline-ghost absolute left-1 top-1/2 z-20 h-9 w-9 -translate-y-1/2 rounded-sm"
                     aria-label="Previous attachment"
                     onClick={goPrev}
                   >
@@ -300,9 +300,9 @@ export function AttachmentPreviewModal({
                   </Button>
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="outline"
                     size="icon"
-                    className="absolute right-1 top-1/2 z-20 h-9 w-9 -translate-y-1/2 rounded-sm"
+                    className="btn-outline-ghost absolute right-1 top-1/2 z-20 h-9 w-9 -translate-y-1/2 rounded-sm"
                     aria-label="Next attachment"
                     onClick={goNext}
                   >

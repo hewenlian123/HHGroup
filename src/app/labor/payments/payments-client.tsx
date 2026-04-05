@@ -310,19 +310,19 @@ export default function LaborPaymentsClient() {
       <FilterBar>
         <div className="grid w-full gap-4 sm:grid-cols-3">
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Start
             </p>
             <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               End
             </p>
             <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Project
             </p>
             <Select value={projectId} onChange={(e) => setProjectId(e.target.value)}>
@@ -340,13 +340,13 @@ export default function LaborPaymentsClient() {
       <Card className="overflow-hidden p-0">
         <div className="grid divide-y divide-[#E5E7EB] sm:grid-cols-3 sm:divide-y-0 sm:divide-x dark:divide-border/60">
           <div className="p-5">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Total Due
             </p>
             {loading ? (
               <Skeleton className="mt-2 h-7 w-24" />
             ) : (
-              <p className="text-lg font-semibold tabular-nums mt-1 text-[#111827] dark:text-foreground">
+              <p className="text-lg font-semibold tabular-nums mt-1 text-text-primary dark:text-foreground">
                 {new Intl.NumberFormat("en-US", {
                   style: "currency",
                   currency: "USD",
@@ -356,13 +356,13 @@ export default function LaborPaymentsClient() {
             )}
           </div>
           <div className="p-5">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Total Paid
             </p>
             {loading ? (
               <Skeleton className="mt-2 h-7 w-24" />
             ) : (
-              <p className="text-lg font-semibold tabular-nums mt-1 text-[#111827] dark:text-foreground">
+              <p className="text-lg font-semibold tabular-nums mt-1 text-text-primary dark:text-foreground">
                 {new Intl.NumberFormat("en-US", {
                   style: "currency",
                   currency: "USD",
@@ -372,13 +372,13 @@ export default function LaborPaymentsClient() {
             )}
           </div>
           <div className="p-5">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-muted-foreground">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Outstanding
             </p>
             {loading ? (
               <Skeleton className="mt-2 h-7 w-24" />
             ) : (
-              <p className="text-lg font-semibold tabular-nums mt-1 text-[#111827] dark:text-foreground">
+              <p className="text-lg font-semibold tabular-nums mt-1 text-text-primary dark:text-foreground">
                 {new Intl.NumberFormat("en-US", {
                   style: "currency",
                   currency: "USD",
@@ -391,7 +391,7 @@ export default function LaborPaymentsClient() {
       </Card>
 
       {message ? (
-        <div className="rounded-lg border border-[#E5E7EB] dark:border-border bg-background px-3 py-2 text-sm text-muted-foreground">
+        <div className="rounded-lg border border-gray-300 dark:border-border bg-background px-3 py-2 text-sm text-muted-foreground">
           {message}
         </div>
       ) : null}
@@ -514,7 +514,7 @@ export default function LaborPaymentsClient() {
                           colSpan={6}
                         >
                           <div className="space-y-3">
-                            <div className="border-b border-[#E5E7EB] dark:border-border pb-3">
+                            <div className="border-b border-gray-300 dark:border-border pb-3">
                               <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">
                                 Pay Run Source
                               </p>
@@ -529,7 +529,7 @@ export default function LaborPaymentsClient() {
                                     }).format(row.confirmedDailyTotal)}
                                   </span>
                                 </div>
-                                <div className="flex justify-between gap-4 font-medium text-foreground pt-1 border-t border-[#E5E7EB] dark:border-border">
+                                <div className="flex justify-between gap-4 font-medium text-foreground pt-1 border-t border-gray-300 dark:border-border">
                                   <span>Confirmed total</span>
                                   <span className="tabular-nums">
                                     {new Intl.NumberFormat("en-US", {
