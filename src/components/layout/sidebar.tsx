@@ -44,6 +44,8 @@ import {
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { createBrowserClient } from "@/lib/supabase";
+import { useQueryClient } from "@tanstack/react-query";
+import { prefetchFinancialRoute } from "@/lib/financial-nav-prefetch";
 import { RECEIPT_QUEUE_CHANGED_EVENT, fetchReceiptQueueBadgeCount } from "@/lib/receipt-queue";
 import { getCompanyInitials, getCompanyProfile } from "@/lib/company-profile";
 import { useSystemHealth } from "@/contexts/system-health-context";
@@ -155,6 +157,15 @@ function useReceiptQueueCountAnimKey(count: number) {
   return animKey;
 }
 
+function financialNavPrefetchProps(
+  href: string,
+  run: (h: string) => void
+): { onPointerEnter?: () => void; onPointerDown?: () => void } {
+  if (href !== "/financial/expenses" && href !== "/financial/receipt-queue") return {};
+  const prefetch = () => run(href);
+  return { onPointerEnter: prefetch, onPointerDown: prefetch };
+}
+
 export function Sidebar({
   className,
   onNavigate,
@@ -167,6 +178,16 @@ export function Sidebar({
   onToggleCollapsed?: () => void;
 }) {
   const pathname = usePathname();
+  const queryClient = useQueryClient();
+  const prefetchSupabase = React.useMemo(() => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    return url && anon ? createBrowserClient(url, anon) : null;
+  }, []);
+  const prefetchFinancialNav = React.useCallback(
+    (href: string) => prefetchFinancialRoute(queryClient, prefetchSupabase, href),
+    [queryClient, prefetchSupabase]
+  );
   const [orgName, setOrgName] = React.useState("HH Group");
   const [logoUrl, setLogoUrl] = React.useState<string | null>(null);
   const [openSections, setOpenSections] = React.useState<Record<string, boolean>>(() => ({}));
@@ -385,6 +406,7 @@ export function Sidebar({
                           key={item.href}
                           href={item.href}
                           onClick={onNavigate}
+                          {...financialNavPrefetchProps(item.href, prefetchFinancialNav)}
                           title={navLabel}
                           aria-label={navLabel}
                           className={navRowClass(active)}
@@ -412,6 +434,7 @@ export function Sidebar({
                         key={item.href}
                         href={item.href}
                         onClick={onNavigate}
+                        {...financialNavPrefetchProps(item.href, prefetchFinancialNav)}
                         title={navLabel}
                         aria-label={navLabel}
                         className={navRowClass(active)}
@@ -462,6 +485,7 @@ export function Sidebar({
                               key={item.href}
                               href={item.href}
                               onClick={onNavigate}
+                              {...financialNavPrefetchProps(item.href, prefetchFinancialNav)}
                               title={collapsed ? navLabel : undefined}
                               aria-label={collapsed ? navLabel : undefined}
                               className={navRowClass(active)}
@@ -484,6 +508,7 @@ export function Sidebar({
                             key={item.href}
                             href={item.href}
                             onClick={onNavigate}
+                            {...financialNavPrefetchProps(item.href, prefetchFinancialNav)}
                             title={collapsed ? navLabel : undefined}
                             aria-label={collapsed ? navLabel : undefined}
                             className={navRowClass(active)}

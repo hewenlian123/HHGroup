@@ -72,10 +72,13 @@ function mapRow(r: Record<string, unknown>): ReceiptQueueRow {
   };
 }
 
+const RECEIPT_QUEUE_LIST_COLS =
+  "id,status,storage_path,receipt_public_url,file_name,mime_type,size_bytes,vendor_name,amount,expense_date,project_id,category,source_type,worker_id,payment_account_id,ocr_source,error_message,created_at,updated_at";
+
 export async function fetchReceiptQueueRows(supabase: SupabaseClient): Promise<ReceiptQueueRow[]> {
   const { data, error } = await supabase
     .from("receipt_queue")
-    .select("*")
+    .select(RECEIPT_QUEUE_LIST_COLS)
     .in("status", ["pending", "processing", "failed"])
     .order("created_at", { ascending: true });
   if (error) throw new Error(error.message);
@@ -85,7 +88,7 @@ export async function fetchReceiptQueueRows(supabase: SupabaseClient): Promise<R
 export async function fetchReceiptQueueBadgeCount(supabase: SupabaseClient): Promise<number> {
   const { count, error } = await supabase
     .from("receipt_queue")
-    .select("*", { count: "exact", head: true })
+    .select("id", { count: "exact", head: true })
     .in("status", ["pending", "processing", "failed"]);
   if (error) return 0;
   return count ?? 0;
