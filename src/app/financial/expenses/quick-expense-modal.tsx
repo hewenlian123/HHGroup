@@ -22,6 +22,7 @@ import { createBrowserClient } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { ChevronDown, Loader2, Paperclip } from "lucide-react";
 import { useToast } from "@/components/toast/toast-provider";
+import { uiActionLog, uiActionMark } from "@/lib/ui-action-perf";
 import { ExpenseCategorySelect } from "@/components/expense-category-select";
 import { PaymentAccountSelect } from "@/components/payment-account-select";
 import { AmountDiagnosticsPanel } from "@/components/ocr/amount-diagnostics-panel";
@@ -100,10 +101,18 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
   const paymentFieldRef = React.useRef<HTMLDivElement>(null);
   const [processing, setProcessing] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
+  const [saveFlash, setSaveFlash] = React.useState(false);
   const [moreOpen, setMoreOpen] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [attachmentSlots, setAttachmentSlots] = React.useState<QuickExpenseAttachmentSlot[]>([]);
   const { openPreview } = useAttachmentPreview();
+
+  React.useEffect(() => {
+    if (!open) {
+      setSaveFlash(false);
+      setSaving(false);
+    }
+  }, [open]);
 
   const openAttachmentSlotsAt = React.useCallback(
     (initialIndex: number) => {
@@ -501,6 +510,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
       return;
     }
     setDuplicateCandidate(null);
+    const perfStart = uiActionMark();
     setSaving(true);
     setError(null);
     try {
@@ -632,46 +642,51 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
         persistLastExpensePaymentAccountId(paSaved);
         rememberExpenseVendorPaymentAccount(vendorName.trim() || "Unknown", paSaved);
       }
-      await onSuccess();
-      if (saveAndNew) {
-        setVendorName("");
-        setAmount("");
-        setDate(new Date().toISOString().slice(0, 10));
-        setCategory("Other");
-        paymentChoiceTouchedRef.current = false;
-        setPaymentAccountId(
-          paymentAccountRows.length > 0 ? pickDefaultPaymentAccountId(paymentAccountRows, "") : ""
-        );
-        if (paymentAccountRows.length === 0) {
-          void getPaymentAccounts().then((rows) => {
-            setPaymentAccountRows(rows);
-            setPaymentAccountId(pickDefaultPaymentAccountId(rows, ""));
+      setSaving(false);
+      uiActionLog("quick-expense-save-ui", perfStart, 100);
+      setSaveFlash(true);
+      void onSuccess();
+      window.setTimeout(() => {
+        setSaveFlash(false);
+        if (saveAndNew) {
+          setVendorName("");
+          setAmount("");
+          setDate(new Date().toISOString().slice(0, 10));
+          setCategory("Other");
+          paymentChoiceTouchedRef.current = false;
+          setPaymentAccountId(
+            paymentAccountRows.length > 0 ? pickDefaultPaymentAccountId(paymentAccountRows, "") : ""
+          );
+          if (paymentAccountRows.length === 0) {
+            void getPaymentAccounts().then((rows) => {
+              setPaymentAccountRows(rows);
+              setPaymentAccountId(pickDefaultPaymentAccountId(rows, ""));
+            });
+          }
+          setNotes("");
+          setRecognizedItems([]);
+          setItemDraft("");
+          setOcrSuggestions(null);
+          setFieldConfidence({ vendor: "low", amount: "low", date: "low" });
+          setDetectedSnapshot(null);
+          setDuplicateConfirmed(false);
+          setDuplicateCandidate(null);
+          setDebugData(null);
+          setAttachmentSlots((prev) => {
+            for (const s of prev) s.revoke?.();
+            return [];
           });
+          if (fileInputRef.current) fileInputRef.current.value = "";
+          setError(null);
+          window.setTimeout(() => amountInputRef.current?.focus(), 0);
+        } else {
+          onOpenChange(false);
         }
-        setNotes("");
-        setRecognizedItems([]);
-        setItemDraft("");
-        setOcrSuggestions(null);
-        setFieldConfidence({ vendor: "low", amount: "low", date: "low" });
-        setDetectedSnapshot(null);
-        setDuplicateConfirmed(false);
-        setDuplicateCandidate(null);
-        setDebugData(null);
-        setAttachmentSlots((prev) => {
-          for (const s of prev) s.revoke?.();
-          return [];
-        });
-        if (fileInputRef.current) fileInputRef.current.value = "";
-        setError(null);
-        window.setTimeout(() => amountInputRef.current?.focus(), 0);
-      } else {
-        onOpenChange(false);
-      }
+      }, 220);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to save expense.";
       setError(msg);
       toast({ title: "Save failed", description: msg, variant: "error" });
-    } finally {
       setSaving(false);
     }
   };
@@ -922,16 +937,23 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                     size="sm"
                     className="h-8"
                     onClick={() => void handleSave(true)}
-                    disabled={saving || !supabase}
+                    disabled={saving || saveFlash || !supabase}
                   >
-                    Save &amp; new
+                    {saveFlash ? "✔ Done" : "Save & new"}
                   </Button>
-                  <Button type="submit" size="sm" className="h-8" disabled={saving || !supabase}>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    className="h-8"
+                    disabled={saving || saveFlash || !supabase}
+                  >
                     {saving ? (
                       <>
                         <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
                         Saving…
                       </>
+                    ) : saveFlash ? (
+                      "✔ Done"
                     ) : (
                       "Save"
                     )}

@@ -197,20 +197,49 @@ function deriveSourceType(row: ExpenseRow): Expense["sourceType"] {
   return "company";
 }
 
-function normalizeExpenseStatus(s: string | null | undefined): NonNullable<Expense["status"]> {
-  const v = (s ?? "pending").toLowerCase();
-  if (
-    v === "needs_review" ||
-    v === "reviewed" ||
-    v === "approved" ||
-    v === "reimbursed" ||
-    v === "paid" ||
-    v === "reimbursable" ||
-    v === "draft"
-  ) {
-    return v as NonNullable<Expense["status"]>;
-  }
+/** Allowed by public.expenses_status_check (migration 202604302000). */
+const EXPENSE_DB_STATUSES = new Set([
+  "pending",
+  "needs_review",
+  "reviewed",
+  "approved",
+  "reimbursed",
+  "reimbursable",
+  "paid",
+  "draft",
+]);
+
+/**
+ * Coerce any UI/API string to a value that satisfies expenses_status_check.
+ * Unknown or legacy labels map to pending.
+ */
+export function expenseStatusForDatabase(
+  s: string | null | undefined
+): NonNullable<Expense["status"]> {
+  const raw = (s ?? "pending").trim();
+  if (!raw) return "pending";
+  let v = raw.toLowerCase().replace(/[\s-]+/g, "_");
+  if (v === "need_review") v = "needs_review";
+  if (EXPENSE_DB_STATUSES.has(v)) return v as NonNullable<Expense["status"]>;
   return "pending";
+}
+
+/** Allowed by public.expenses source_type CHECK (202604031200). */
+export function expenseSourceTypeForDatabase(
+  st: string | null | undefined
+): NonNullable<Expense["sourceType"]> {
+  const v = (st ?? "company")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+  if (v === "receipt_upload" || v === "receipt" || v === "upload") return "receipt_upload";
+  if (v === "reimbursement" || v === "reimburse") return "reimbursement";
+  if (v === "company") return "company";
+  return "company";
+}
+
+function normalizeExpenseStatus(s: string | null | undefined): NonNullable<Expense["status"]> {
+  return expenseStatusForDatabase(s);
 }
 
 async function fetchPaymentAccountNameMap(
@@ -738,9 +767,12 @@ export async function createQuickExpense(payload: {
   const notes = (payload.notes ?? "").trim();
   const rawPid = payload.projectId;
   const projectId = rawPid != null && String(rawPid).trim() !== "" ? String(rawPid).trim() : null;
-  const sourceType: Expense["sourceType"] =
-    payload.sourceType ?? (receiptUrl ? "receipt_upload" : "company");
-  const resolvedStatus = payload.initialStatus ?? (receiptUrl ? "needs_review" : "pending");
+  const sourceType = expenseSourceTypeForDatabase(
+    payload.sourceType ?? (receiptUrl ? "receipt_upload" : "company")
+  );
+  const resolvedStatus = expenseStatusForDatabase(
+    payload.initialStatus ?? (receiptUrl ? "needs_review" : "pending")
+  );
 
   const insertRow: Record<string, unknown> = {
     expense_date: date,
@@ -1268,9 +1300,10 @@ export async function updateExpenseForReview(
     expUpdates.vendor_name = patch.vendorName;
   }
   if (patch.notes !== undefined) expUpdates.notes = patch.notes || null;
-  if (patch.status != null) expUpdates.status = patch.status;
+  if (patch.status != null) expUpdates.status = expenseStatusForDatabase(String(patch.status));
   if (patch.workerId !== undefined) expUpdates.worker_id = patch.workerId;
-  if (patch.sourceType != null) expUpdates.source_type = patch.sourceType;
+  if (patch.sourceType != null)
+    expUpdates.source_type = expenseSourceTypeForDatabase(String(patch.sourceType));
   if (patch.paymentAccountId !== undefined) {
     expUpdates.payment_account_id = patch.paymentAccountId?.trim() || null;
   }
@@ -1361,10 +1394,13 @@ export async function updateExpenseReceiptUrl(
 
 export async function updateExpenseStatus(
   expenseId: string,
-  status: NonNullable<Expense["status"]>
+  status: NonNullable<Expense["status"]> | string
 ): Promise<Expense | null> {
   const c = client();
-  const { error } = await c.from("expenses").update({ status }).eq("id", expenseId);
+  const { error } = await c
+    .from("expenses")
+    .update({ status: expenseStatusForDatabase(status) })
+    .eq("id", expenseId);
   if (error) {
     if (isMissingColumn(error)) return getExpenseById(expenseId);
     return null;

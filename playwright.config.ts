@@ -52,7 +52,7 @@ export default defineConfig({
             command: isDev ? `npm run dev:safe -- -p ${port}` : `PORT=${port} npm run start`,
             url: resolvedBase,
             reuseExistingServer: !process.env.CI,
-            timeout: 120_000,
+            timeout: isDev ? 180_000 : 120_000,
             env: {
               ...process.env,
               NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",

@@ -1,6 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { E2E_PRESERVED_PROJECT_ID } from "./e2e-cleanup-db";
-import { pickOrCreatePaymentInSelect } from "./e2e-expenses-helpers";
+import {
+  pickOrCreatePaymentInSelect,
+  prepareReceiptQueueRowForConfirm,
+} from "./e2e-expenses-helpers";
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
@@ -39,15 +42,11 @@ test.describe("Expense receipt preview (layout)", () => {
 
     const queueRow = page.locator("tbody tr").filter({ hasText: queueFileName }).first();
     await expect(queueRow).toBeVisible({ timeout: 120_000 });
-
-    const vendorInput = queueRow.locator('input[placeholder="Vendor"]:not([disabled])').first();
-    await vendorInput.waitFor({ state: "visible", timeout: 120_000 });
-    await vendorInput.fill(vendorMark);
-    await queueRow.getByPlaceholder("Amount").fill("22.22");
-    const projectSelect = queueRow
-      .locator("select")
-      .filter({ has: page.locator(`option[value="${E2E_PRESERVED_PROJECT_ID}"]`) });
-    await projectSelect.selectOption({ value: E2E_PRESERVED_PROJECT_ID });
+    await prepareReceiptQueueRowForConfirm(page, queueRow, {
+      vendor: vendorMark,
+      amount: "22.22",
+      projectId: E2E_PRESERVED_PROJECT_ID,
+    });
 
     const paySel = queueRow
       .locator("select")
@@ -75,9 +74,15 @@ test.describe("Expense receipt preview (layout)", () => {
     await preview.getByRole("button", { name: "Close" }).click();
     await expect(preview).toBeHidden({ timeout: 10_000 });
 
-    await expect(queueRow.getByRole("button", { name: "Confirm", exact: true })).toBeEnabled({
-      timeout: 120_000,
-    });
+    // Soft refresh can refetch before debounced queue patches land; re-sync row + payment.
+    await prepareReceiptQueueRowForConfirm(
+      page,
+      queueRow,
+      { vendor: vendorMark, amount: "22.22", projectId: E2E_PRESERVED_PROJECT_ID },
+      { assertConfirmEnabled: true }
+    );
+    await pickOrCreatePaymentInSelect(page, paySel);
+
     await queueRow.getByRole("button", { name: "Confirm", exact: true }).click();
     await expect
       .poll(

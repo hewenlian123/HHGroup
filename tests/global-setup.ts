@@ -14,6 +14,7 @@ import {
   E2E_PRESERVED_CUSTOMER_ID,
   E2E_PRESERVED_PROJECT_ID,
   E2E_PRESERVED_WORKER_ID,
+  purgeE2EReceiptQueueRows,
 } from "./e2e-cleanup-db";
 import { runSchemaAutoRepair } from "../src/lib/ensure-schema-auto-repair";
 import { ensureE2EPreservedSeed } from "./e2e-ensure-seed";
@@ -47,6 +48,11 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
 
   const supabase = createClient(url, key);
   await ensureE2EPreservedSeed(supabase);
+
+  const rqPurged = await purgeE2EReceiptQueueRows(supabase);
+  if (rqPurged > 0) {
+    console.log(`[global-setup] purged ${rqPurged} stale E2E receipt_queue row(s).`);
+  }
 
   const ids = {
     customer: E2E_PRESERVED_CUSTOMER_ID,
