@@ -58,3 +58,6 @@ next-env.d.ts
 
 # Cursor / IDE
 .cursor/
+
+# Stale PWA copies with spaces in the name (build glitches). Real worker: public/sw.js
+public/sw\ *.js
