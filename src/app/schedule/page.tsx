@@ -16,6 +16,14 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
+import { Search } from "lucide-react";
+import {
+  MobileFabButton,
+  MobileFilterSheet,
+  MobileListHeader,
+  MobileSearchFiltersRow,
+  mobileListPagePaddingClass,
+} from "@/components/mobile/mobile-list-chrome";
 
 type ViewMode = "list" | "calendar";
 type ScheduleRow = {
@@ -202,6 +210,8 @@ export default function SchedulePage() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const [modalOpen, setModalOpen] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [form, setForm] = React.useState({
     project_id: "",
@@ -285,27 +295,95 @@ export default function SchedulePage() {
   );
   const statusLabel = React.useCallback((status: string) => STATUS_LABEL[status] ?? status, []);
 
+  const filteredSchedule = React.useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return schedule;
+    return schedule.filter(
+      (s) =>
+        (s.title ?? "").toLowerCase().includes(q) ||
+        (s.project_name ?? "").toLowerCase().includes(q)
+    );
+  }, [schedule, searchQuery]);
+
+  const activeDrawerFilterCount = viewMode !== "list" ? 1 : 0;
+
   return (
     <PageLayout
+      divider={false}
+      className={cn("max-w-5xl", mobileListPagePaddingClass, "max-md:!gap-3")}
       header={
-        <PageHeader
-          title="Schedule"
-          description="Project schedule across all projects."
-          actions={
-            <Button
-              size="touch"
-              className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90 min-h-[44px]"
-              onClick={openModal}
-            >
-              + New schedule item
-            </Button>
-          }
-        />
+        <>
+          <div className="hidden md:block">
+            <PageHeader
+              title="Schedule"
+              description="Project schedule across all projects."
+              actions={
+                <Button
+                  size="sm"
+                  className="h-9 rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90"
+                  onClick={openModal}
+                >
+                  + New schedule item
+                </Button>
+              }
+            />
+          </div>
+          <div className="md:hidden">
+            <MobileListHeader
+              title="Schedule"
+              fab={<MobileFabButton ariaLabel="New schedule item" onClick={openModal} />}
+            />
+          </div>
+        </>
       }
     >
-      <div className="max-w-5xl space-y-3">
+      <div className="max-w-5xl space-y-3 md:mx-auto">
+        <MobileSearchFiltersRow
+          filterSheetOpen={filtersOpen}
+          onOpenFilters={() => setFiltersOpen(true)}
+          activeFilterCount={activeDrawerFilterCount}
+          searchSlot={
+            <div className="relative w-full">
+              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search schedule…"
+                className="h-10 pl-8 text-sm"
+              />
+            </div>
+          }
+        />
+        <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="View">
+          <div className="flex gap-1 rounded-sm border border-gray-100 bg-background p-0.5 dark:border-border/60">
+            <button
+              type="button"
+              onClick={() => setViewMode("list")}
+              className={cn(
+                "flex-1 rounded-md px-3 py-2 text-sm font-medium",
+                viewMode === "list" ? "bg-foreground text-background" : "text-muted-foreground"
+              )}
+            >
+              List
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("calendar")}
+              className={cn(
+                "flex-1 rounded-md px-3 py-2 text-sm font-medium",
+                viewMode === "calendar" ? "bg-foreground text-background" : "text-muted-foreground"
+              )}
+            >
+              Calendar
+            </button>
+          </div>
+          <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
+            Done
+          </Button>
+        </MobileFilterSheet>
+
         {/* View switch: List | Calendar */}
-        <div className="flex items-center gap-1 p-0.5 rounded-sm border border-gray-100 bg-background w-fit dark:border-border/60">
+        <div className="hidden w-fit items-center gap-1 rounded-sm border border-gray-100 bg-background p-0.5 dark:border-border/60 md:flex">
           <button
             type="button"
             onClick={() => setViewMode("list")}
@@ -332,9 +410,21 @@ export default function SchedulePage() {
           </button>
         </div>
 
+        <div className="hidden md:flex md:max-w-md md:items-center md:gap-2">
+          <div className="relative min-w-0 flex-1">
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search schedule…"
+              className="h-9 pl-8 text-sm"
+            />
+          </div>
+        </div>
+
         {/* List view — compact list */}
         {viewMode === "list" && (
-          <div className="airtable-table-wrap airtable-table-wrap--ruled bg-background">
+          <div className="airtable-table-wrap airtable-table-wrap--ruled bg-background max-md:border-0 max-md:bg-transparent">
             {loading ? (
               <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>
             ) : error ? (
@@ -346,37 +436,66 @@ export default function SchedulePage() {
                   New schedule item
                 </Button>
               </div>
+            ) : filteredSchedule.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">No matches.</div>
             ) : (
-              <div className="airtable-table-scroll">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr>
-                      <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                        Title
-                      </th>
-                      <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                        Project
-                      </th>
-                      <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                        Dates
-                      </th>
-                      <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                        Status
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {schedule.map((s) => (
-                      <ScheduleTableRow
-                        key={s.id}
-                        item={s}
-                        statusStyle={statusStyle}
-                        statusLabel={statusLabel}
-                      />
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <>
+                <div className="divide-y divide-gray-100 dark:divide-border/60 md:hidden">
+                  {filteredSchedule.map((s) => (
+                    <div key={s.id} className="flex min-h-[56px] flex-col gap-1 py-2.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-foreground">{s.title || "—"}</p>
+                          <p className="truncate text-xs text-text-secondary dark:text-muted-foreground">
+                            {s.project_name ?? "—"}
+                          </p>
+                        </div>
+                        <span
+                          className={cn(
+                            "inline-flex shrink-0 rounded-sm px-1.5 py-0.5 text-xs font-medium",
+                            statusStyle(s.status)
+                          )}
+                        >
+                          {statusLabel(s.status)}
+                        </span>
+                      </div>
+                      <p className="text-sm font-medium tabular-nums text-foreground">
+                        {formatDateRange(s.start_date, s.end_date)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+                <div className="airtable-table-scroll hidden md:block">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr>
+                        <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                          Title
+                        </th>
+                        <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                          Project
+                        </th>
+                        <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                          Dates
+                        </th>
+                        <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                          Status
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredSchedule.map((s) => (
+                        <ScheduleTableRow
+                          key={s.id}
+                          item={s}
+                          statusStyle={statusStyle}
+                          statusLabel={statusLabel}
+                        />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </div>
         )}
@@ -395,23 +514,41 @@ export default function SchedulePage() {
                   New schedule item
                 </Button>
               </div>
+            ) : filteredSchedule.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">No matches.</div>
             ) : (
               <>
-                {/* Mobile: simplified list (event title + date only) */}
-                <div className="lg:hidden divide-y divide-[#E5E7EB] dark:divide-border/60">
-                  {schedule.map((s) => (
-                    <div key={s.id} className="py-3 px-3 sm:px-4">
-                      <div className="font-medium text-foreground">{s.title || "—"}</div>
-                      <div className="text-sm text-muted-foreground mt-0.5 tabular-nums">
-                        {formatDateRange(s.start_date, s.end_date)}
+                <div className="divide-y divide-gray-100 dark:divide-border/60 lg:hidden">
+                  {filteredSchedule.map((s) => (
+                    <div
+                      key={s.id}
+                      className="flex min-h-[56px] flex-col gap-1 px-0 py-2.5 sm:px-4"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-foreground">{s.title || "—"}</p>
+                          <p className="truncate text-xs text-text-secondary dark:text-muted-foreground">
+                            {s.project_name ?? "—"}
+                          </p>
+                        </div>
+                        <span
+                          className={cn(
+                            "inline-flex shrink-0 rounded-sm px-1.5 py-0.5 text-xs font-medium",
+                            statusStyle(s.status)
+                          )}
+                        >
+                          {statusLabel(s.status)}
+                        </span>
                       </div>
+                      <p className="text-sm font-medium tabular-nums text-foreground">
+                        {formatDateRange(s.start_date, s.end_date)}
+                      </p>
                     </div>
                   ))}
                 </div>
-                {/* Desktop: month calendar grid */}
-                <div className="hidden lg:block p-4">
+                <div className="hidden p-4 lg:block">
                   <ScheduleCalendarGrid
-                    schedule={schedule}
+                    schedule={filteredSchedule}
                     statusStyle={statusStyle}
                     statusLabel={statusLabel}
                   />

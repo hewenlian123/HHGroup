@@ -4,8 +4,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { dispatchClientDataSync } from "@/lib/sync-router-client";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
+import Link from "next/link";
 import { flushSync } from "react-dom";
-import { Upload, Image as ImageIcon, Trash2 } from "lucide-react";
+import { Building2, Search, Upload, Image as ImageIcon, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { SectionHeader } from "@/components/section-header";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,14 @@ import {
   validateCompanyProfileEmailField,
   validateLogoFileForUpload,
 } from "@/lib/company-profile-form-validation";
+import { cn } from "@/lib/utils";
+import {
+  MobileEmptyState,
+  MobileFilterSheet,
+  MobileListHeader,
+  MobileSearchFiltersRow,
+  mobileListPagePaddingClass,
+} from "@/components/mobile/mobile-list-chrome";
 
 type FormState = {
   org_name: string;
@@ -158,6 +167,8 @@ export default function SettingsCompanyPage() {
   const [uploading, setUploading] = React.useState(false);
   /** next/image rejects unconfigured remote hosts; use <img> and recover from broken URLs. */
   const [logoLoadError, setLogoLoadError] = React.useState(false);
+  const [settingsSheetOpen, setSettingsSheetOpen] = React.useState(false);
+  const [sectionQuery, setSectionQuery] = React.useState("");
   React.useEffect(() => {
     setLogoLoadError(false);
   }, [profile?.logo_url]);
@@ -499,12 +510,121 @@ export default function SettingsCompanyPage() {
   /** Require a loaded row so Save never no-ops silently (e.g. load/RLS failure). */
   const disabled = !configured || !supabase || loading || saving || uploading || !profile;
 
+  const q = sectionQuery.trim().toLowerCase();
+  const brandHit =
+    !q ||
+    /brand|logo|upload|remove|image|sidebar|topbar|pdf|png|jpg|svg|drag|drop|branding/i.test(q);
+  const profileHit =
+    !q ||
+    /profile|company|legal|address|tax|phone|email|invoice|term|note|license|web|country|zip|state|city|default|org|name|footer|website|vat|save/i.test(
+      q
+    );
+  const sectionMismatchMobile = Boolean(q && !brandHit && !profileHit);
+  const activeSettingsFilterCount = q ? 1 : 0;
+
   return (
-    <div className="page-container page-stack py-6">
-      <PageHeader
+    <div
+      className={cn("page-container page-stack py-6", mobileListPagePaddingClass, "max-md:!gap-3")}
+    >
+      <div className="hidden md:block">
+        <PageHeader
+          title="Company"
+          subtitle="Manage branding and profile details used across the app and generated documents."
+        />
+      </div>
+
+      <MobileListHeader
         title="Company"
-        subtitle="Manage branding and profile details used across the app and generated documents."
+        fab={<span className="inline-block h-10 w-10 shrink-0" aria-hidden />}
       />
+      <MobileSearchFiltersRow
+        filterSheetOpen={settingsSheetOpen}
+        onOpenFilters={() => setSettingsSheetOpen(true)}
+        activeFilterCount={activeSettingsFilterCount}
+        searchSlot={
+          <div className="relative w-full">
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              value={sectionQuery}
+              onChange={(e) => setSectionQuery(e.target.value)}
+              placeholder="Find branding or profile fields…"
+              className="h-10 pl-8 text-sm"
+              aria-label="Filter company settings sections"
+            />
+          </div>
+        }
+      />
+      <MobileFilterSheet
+        open={settingsSheetOpen}
+        onOpenChange={setSettingsSheetOpen}
+        title="Settings"
+      >
+        <div className="flex flex-col gap-2">
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="h-9 w-full justify-start rounded-sm"
+          >
+            <Link href="/settings/account">Account</Link>
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="h-9 w-full justify-start rounded-sm"
+          >
+            <Link href="/settings/users">Users</Link>
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="h-9 w-full justify-start rounded-sm"
+          >
+            <Link href="/settings/permissions">Permissions</Link>
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="h-9 w-full justify-start rounded-sm"
+          >
+            <Link href="/settings/lists">Lists</Link>
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="h-9 w-full justify-start rounded-sm"
+          >
+            <Link href="/settings/categories">Categories</Link>
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="h-9 w-full justify-start rounded-sm"
+          >
+            <Link href="/settings/subcontractors">Subcontractors</Link>
+          </Button>
+        </div>
+        <Button
+          type="button"
+          className="w-full rounded-sm"
+          onClick={() => setSettingsSheetOpen(false)}
+        >
+          Done
+        </Button>
+      </MobileFilterSheet>
+
+      {sectionMismatchMobile ? (
+        <MobileEmptyState
+          icon={<Building2 className="h-5 w-5" />}
+          message="No sections match your search. Try other keywords or clear the search box."
+        />
+      ) : null}
 
       {!configured ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
@@ -513,7 +633,12 @@ export default function SettingsCompanyPage() {
         </div>
       ) : null}
 
-      <section className="border-b border-gray-100 pb-8 dark:border-border">
+      <section
+        className={cn(
+          "border-b border-gray-100 pb-8 dark:border-border",
+          q && !brandHit && "max-md:hidden"
+        )}
+      >
         <SectionHeader
           title="Branding"
           subtitle="Upload logo for sidebar, topbar, and future PDF output."
@@ -576,7 +701,10 @@ export default function SettingsCompanyPage() {
         </div>
       </section>
 
-      <section className="pt-2" data-testid="company-profile-section">
+      <section
+        className={cn("pt-2", q && !profileHit && "max-md:hidden")}
+        data-testid="company-profile-section"
+      >
         <SectionHeader
           title="Company Profile"
           subtitle="This profile is shared globally across HH Unified."

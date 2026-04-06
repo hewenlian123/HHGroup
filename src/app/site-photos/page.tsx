@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
-import { Trash2, Download, ClipboardList } from "lucide-react";
+import { ClipboardList, Download, ImageIcon, Search, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { PageLayout, PageHeader, Drawer } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
@@ -17,6 +18,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { createPunchListItemAction } from "@/app/punch-list/actions";
+import {
+  MobileEmptyState,
+  MobileFabButton,
+  MobileFilterSheet,
+  MobileListHeader,
+  MobileSearchFiltersRow,
+  mobileListPagePaddingClass,
+} from "@/components/mobile/mobile-list-chrome";
 
 type PhotoRow = {
   id: string;
@@ -81,7 +90,23 @@ export default function SitePhotosPage() {
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = React.useState(false);
   const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
   const canDelete = true;
+
+  const filteredPhotos = React.useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return photos;
+    return photos.filter(
+      (p) =>
+        (p.project_name ?? "").toLowerCase().includes(q) ||
+        (p.description ?? "").toLowerCase().includes(q) ||
+        (p.tags ?? "").toLowerCase().includes(q) ||
+        (p.uploaded_by ?? "").toLowerCase().includes(q)
+    );
+  }, [photos, searchQuery]);
+
+  const activeDrawerFilterCount = projectFilter ? 1 : 0;
 
   const markPhotoFailed = React.useCallback((id: string) => {
     setFailedPhotoIds((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
@@ -403,64 +428,163 @@ export default function SitePhotosPage() {
 
   return (
     <PageLayout
+      divider={false}
+      className={cn("max-w-5xl", mobileListPagePaddingClass, "max-md:!gap-3")}
       header={
-        <PageHeader
-          title="Site Photos"
-          description="Photos by project."
-          actions={
-            <div className="flex items-center gap-2">
-              {editMode ? (
-                <>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="rounded-sm"
-                    onClick={toggleEditMode}
-                    disabled={bulkDeleting}
-                  >
-                    Cancel
-                  </Button>
-                  <button
-                    type="button"
-                    onClick={selectAllPhotos}
-                    className="text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    Select all
-                  </button>
-                  <button
-                    type="button"
-                    onClick={clearSelection}
-                    className="text-xs text-muted-foreground hover:text-foreground"
-                  >
-                    Clear
-                  </button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="btn-outline-destructive rounded-sm"
-                    onClick={openBulkDeleteConfirm}
-                    disabled={selectedIds.size === 0 || bulkDeleting}
-                  >
-                    Delete ({selectedIds.size})
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button size="sm" variant="outline" onClick={toggleEditMode}>
-                    Edit
-                  </Button>
-                  <Button size="sm" onClick={openUpload}>
-                    + Upload Photo
-                  </Button>
-                </>
-              )}
+        <>
+          <div className="hidden md:block">
+            <PageHeader
+              title="Site Photos"
+              description="Photos by project."
+              actions={
+                <div className="flex items-center gap-2">
+                  {editMode ? (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="rounded-sm"
+                        onClick={toggleEditMode}
+                        disabled={bulkDeleting}
+                      >
+                        Cancel
+                      </Button>
+                      <button
+                        type="button"
+                        onClick={selectAllPhotos}
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        Select all
+                      </button>
+                      <button
+                        type="button"
+                        onClick={clearSelection}
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        Clear
+                      </button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="btn-outline-destructive rounded-sm"
+                        onClick={openBulkDeleteConfirm}
+                        disabled={selectedIds.size === 0 || bulkDeleting}
+                      >
+                        Delete ({selectedIds.size})
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button size="sm" variant="outline" onClick={toggleEditMode}>
+                        Edit
+                      </Button>
+                      <Button size="sm" onClick={openUpload}>
+                        + Upload Photo
+                      </Button>
+                    </>
+                  )}
+                </div>
+              }
+            />
+          </div>
+          <div className="md:hidden">
+            <MobileListHeader
+              title="Site Photos"
+              fab={<MobileFabButton ariaLabel="Upload photo" onClick={openUpload} />}
+            />
+          </div>
+        </>
+      }
+    >
+      <div className="max-w-5xl space-y-3 md:mx-auto">
+        <MobileSearchFiltersRow
+          filterSheetOpen={filtersOpen}
+          onOpenFilters={() => setFiltersOpen(true)}
+          activeFilterCount={activeDrawerFilterCount}
+          searchSlot={
+            <div className="relative w-full">
+              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search photos…"
+                className="h-10 pl-8 text-sm"
+              />
             </div>
           }
         />
-      }
-    >
-      <div className="max-w-5xl space-y-3">
-        <FilterBar className="flex-col items-stretch sm:items-stretch">
+        <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">Project</p>
+            <Select
+              value={projectFilter}
+              onChange={(e) => setProjectFilter(e.target.value)}
+              className="min-h-10 w-full"
+            >
+              <option value="">All projects</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          {!editMode ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full rounded-sm"
+              onClick={toggleEditMode}
+            >
+              Select photos
+            </Button>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="rounded-sm"
+                onClick={toggleEditMode}
+                disabled={bulkDeleting}
+              >
+                Cancel selection
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="rounded-sm"
+                onClick={selectAllPhotos}
+              >
+                Select all
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="rounded-sm"
+                onClick={clearSelection}
+              >
+                Clear
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="btn-outline-destructive rounded-sm"
+                onClick={openBulkDeleteConfirm}
+                disabled={selectedIds.size === 0 || bulkDeleting}
+              >
+                Delete ({selectedIds.size})
+              </Button>
+            </div>
+          )}
+          <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
+            Done
+          </Button>
+        </MobileFilterSheet>
+
+        <FilterBar className="hidden flex-col items-stretch sm:items-stretch md:flex">
           <div className="w-full max-w-md space-y-1">
             <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Project
@@ -485,37 +609,32 @@ export default function SitePhotosPage() {
         ) : error ? (
           <div className="py-10 text-center text-sm text-destructive">{error}</div>
         ) : photos.length === 0 ? (
-          <div className="py-10 text-center text-sm text-muted-foreground">
-            No photos yet. Upload a photo to get started.
-          </div>
+          <>
+            <MobileEmptyState
+              icon={<ImageIcon className="h-8 w-8 opacity-80" aria-hidden />}
+              message="No photos yet. Upload a photo to get started."
+              action={
+                <Button size="sm" variant="outline" onClick={openUpload}>
+                  Upload photo
+                </Button>
+              }
+            />
+            <div className="hidden py-10 text-center text-sm text-muted-foreground md:block">
+              No photos yet. Upload a photo to get started.
+            </div>
+          </>
+        ) : filteredPhotos.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            No photos match your search.
+          </p>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {photos.map((p) => (
-              <div
-                key={p.id}
-                className={`group relative text-left rounded-sm border overflow-hidden transition-colors focus-within:ring-2 focus-within:ring-ring ${
-                  editMode && selectedIds.has(p.id)
-                    ? "border-foreground/80 ring-1 ring-foreground/20"
-                    : "border-gray-100 hover:bg-[#F9FAFB] dark:border-border/60 dark:hover:bg-muted/30"
-                }`}
-              >
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => {
-                    if (editMode) {
-                      setSelectedIds((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(p.id)) next.delete(p.id);
-                        else next.add(p.id);
-                        return next;
-                      });
-                    } else {
-                      openViewer(p);
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
+          <>
+            <div className="divide-y divide-gray-100 dark:divide-border/60 md:hidden">
+              {filteredPhotos.map((p) => (
+                <div key={p.id} className="flex min-h-[56px] gap-3 py-2.5">
+                  <button
+                    type="button"
+                    onClick={() => {
                       if (editMode) {
                         setSelectedIds((prev) => {
                           const next = new Set(prev);
@@ -524,103 +643,212 @@ export default function SitePhotosPage() {
                           return next;
                         });
                       } else openViewer(p);
-                    }
-                  }}
-                  className="block w-full text-left cursor-pointer focus:outline-none"
-                >
-                  <div className="aspect-square bg-[#F3F4F6] relative dark:bg-muted/30">
-                    {editMode && (
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          togglePhotoSelection(e, p.id);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            togglePhotoSelection(e as unknown as React.MouseEvent, p.id);
-                          }
-                        }}
-                        className="absolute top-1.5 left-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-sm border border-border bg-background shadow-sm"
-                      >
-                        {selectedIds.has(p.id) ? (
-                          <span className="text-xs font-medium text-[#111111]">✓</span>
-                        ) : null}
-                      </div>
-                    )}
-                    {!editMode && (
-                      <div
-                        className="absolute top-1.5 right-1.5 z-10"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <RowActionsMenu
-                          appearance="list"
-                          ariaLabel={`Actions for photo`}
-                          touchFriendly={false}
-                          className="h-8 w-8 bg-background/90 hover:bg-background rounded-sm"
-                          actions={[
-                            { label: "View", onClick: () => openViewer(p) },
-                            { label: "Edit", onClick: () => openDetail(p) },
-                            {
-                              label: "Create Punch Issue",
-                              onClick: () =>
-                                openPunchIssueModal(
-                                  {
-                                    preventDefault: () => {},
-                                    stopPropagation: () => {},
-                                  } as React.MouseEvent,
-                                  p
-                                ),
-                            },
-                            ...(canDelete
-                              ? [
-                                  {
-                                    label: "Delete",
-                                    onClick: () => setDeleteConfirmPhoto(p),
-                                    destructive: true,
-                                  },
-                                ]
-                              : []),
-                          ]}
+                    }}
+                    className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                  >
+                    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-sm border border-gray-100 bg-muted/30 dark:border-border/60">
+                      {editMode && (
+                        <span className="absolute left-1 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-sm border border-border bg-background text-xs">
+                          {selectedIds.has(p.id) ? "✓" : ""}
+                        </span>
+                      )}
+                      {failedPhotoIds.has(p.id) ? (
+                        <span className="flex h-full w-full items-center justify-center text-[10px] text-muted-foreground">
+                          —
+                        </span>
+                      ) : (
+                        <img
+                          src={photoImageUrl(p.photo_url)}
+                          alt=""
+                          className="h-full w-full object-cover"
+                          onError={() => markPhotoFailed(p.id)}
                         />
-                      </div>
-                    )}
-                    {failedPhotoIds.has(p.id) ? (
-                      <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
-                        Photo unavailable
-                      </div>
-                    ) : (
-                      <img
-                        src={photoImageUrl(p.photo_url)}
-                        alt={p.description || "Site photo"}
-                        className="w-full h-full object-cover"
-                        onError={() => markPhotoFailed(p.id)}
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {p.project_name ?? "—"}
+                      </p>
+                      <p className="truncate text-xs text-text-secondary dark:text-muted-foreground">
+                        {p.description || "—"}
+                      </p>
+                    </div>
+                  </button>
+                  {!editMode && (
+                    <div
+                      className="flex shrink-0 items-center"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <RowActionsMenu
+                        appearance="list"
+                        ariaLabel="Photo actions"
+                        touchFriendly={false}
+                        className="h-8 w-8 rounded-sm bg-background/90 hover:bg-background"
+                        actions={[
+                          { label: "View", onClick: () => openViewer(p) },
+                          { label: "Edit", onClick: () => openDetail(p) },
+                          {
+                            label: "Create Punch Issue",
+                            onClick: () =>
+                              openPunchIssueModal(
+                                {
+                                  preventDefault: () => {},
+                                  stopPropagation: () => {},
+                                } as React.MouseEvent,
+                                p
+                              ),
+                          },
+                          ...(canDelete
+                            ? [
+                                {
+                                  label: "Delete",
+                                  onClick: () => setDeleteConfirmPhoto(p),
+                                  destructive: true as const,
+                                },
+                              ]
+                            : []),
+                        ]}
                       />
-                    )}
-                  </div>
-                  <div className="p-2 space-y-0.5">
-                    <p className="text-xs font-medium text-foreground truncate">
-                      {p.project_name ?? "—"}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate">{p.description || "—"}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {p.uploaded_by ? `By ${p.uploaded_by}` : "—"}
-                    </p>
-                    <p className="text-xs text-muted-foreground tabular-nums">
-                      {p.created_at
-                        ? new Date(p.created_at).toLocaleString(undefined, {
-                            dateStyle: "short",
-                            timeStyle: "short",
-                          })
-                        : "—"}
-                    </p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="hidden grid-cols-2 gap-3 sm:grid-cols-3 md:grid md:grid-cols-4">
+              {filteredPhotos.map((p) => (
+                <div
+                  key={p.id}
+                  className={`group relative text-left rounded-sm border overflow-hidden transition-colors focus-within:ring-2 focus-within:ring-ring ${
+                    editMode && selectedIds.has(p.id)
+                      ? "border-foreground/80 ring-1 ring-foreground/20"
+                      : "border-gray-100 hover:bg-[#F9FAFB] dark:border-border/60 dark:hover:bg-muted/30"
+                  }`}
+                >
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => {
+                      if (editMode) {
+                        setSelectedIds((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(p.id)) next.delete(p.id);
+                          else next.add(p.id);
+                          return next;
+                        });
+                      } else {
+                        openViewer(p);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        if (editMode) {
+                          setSelectedIds((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(p.id)) next.delete(p.id);
+                            else next.add(p.id);
+                            return next;
+                          });
+                        } else openViewer(p);
+                      }
+                    }}
+                    className="block w-full text-left cursor-pointer focus:outline-none"
+                  >
+                    <div className="aspect-square bg-[#F3F4F6] relative dark:bg-muted/30">
+                      {editMode && (
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            togglePhotoSelection(e, p.id);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              togglePhotoSelection(e as unknown as React.MouseEvent, p.id);
+                            }
+                          }}
+                          className="absolute top-1.5 left-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-sm border border-border bg-background shadow-sm"
+                        >
+                          {selectedIds.has(p.id) ? (
+                            <span className="text-xs font-medium text-[#111111]">✓</span>
+                          ) : null}
+                        </div>
+                      )}
+                      {!editMode && (
+                        <div
+                          className="absolute top-1.5 right-1.5 z-10"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <RowActionsMenu
+                            appearance="list"
+                            ariaLabel={`Actions for photo`}
+                            touchFriendly={false}
+                            className="h-8 w-8 bg-background/90 hover:bg-background rounded-sm"
+                            actions={[
+                              { label: "View", onClick: () => openViewer(p) },
+                              { label: "Edit", onClick: () => openDetail(p) },
+                              {
+                                label: "Create Punch Issue",
+                                onClick: () =>
+                                  openPunchIssueModal(
+                                    {
+                                      preventDefault: () => {},
+                                      stopPropagation: () => {},
+                                    } as React.MouseEvent,
+                                    p
+                                  ),
+                              },
+                              ...(canDelete
+                                ? [
+                                    {
+                                      label: "Delete",
+                                      onClick: () => setDeleteConfirmPhoto(p),
+                                      destructive: true,
+                                    },
+                                  ]
+                                : []),
+                            ]}
+                          />
+                        </div>
+                      )}
+                      {failedPhotoIds.has(p.id) ? (
+                        <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
+                          Photo unavailable
+                        </div>
+                      ) : (
+                        <img
+                          src={photoImageUrl(p.photo_url)}
+                          alt={p.description || "Site photo"}
+                          className="w-full h-full object-cover"
+                          onError={() => markPhotoFailed(p.id)}
+                        />
+                      )}
+                    </div>
+                    <div className="p-2 space-y-0.5">
+                      <p className="text-xs font-medium text-foreground truncate">
+                        {p.project_name ?? "—"}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {p.description || "—"}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {p.uploaded_by ? `By ${p.uploaded_by}` : "—"}
+                      </p>
+                      <p className="text-xs text-muted-foreground tabular-nums">
+                        {p.created_at
+                          ? new Date(p.created_at).toLocaleString(undefined, {
+                              dateStyle: "short",
+                              timeStyle: "short",
+                            })
+                          : "—"}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 

@@ -14,6 +14,15 @@ import { StatusBadge } from "@/components/status-badge";
 import { TableShell, tableRawTdClass, tableRawThClass } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
+import { Search, Store } from "lucide-react";
+import {
+  MobileEmptyState,
+  MobileFabButton,
+  MobileFilterSheet,
+  MobileListHeader,
+  MobileSearchFiltersRow,
+  mobileListPagePaddingClass,
+} from "@/components/mobile/mobile-list-chrome";
 
 type VendorRow = {
   id: string;
@@ -71,6 +80,8 @@ export default function VendorsPage() {
   const [form, setForm] = React.useState<VendorForm>(EMPTY_FORM);
   const [submitting, setSubmitting] = React.useState(false);
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = React.useState(false);
+  const [mobileStatus, setMobileStatus] = React.useState<"all" | "active" | "inactive">("all");
 
   const refresh = React.useCallback(async () => {
     setLoading(true);
@@ -117,6 +128,13 @@ export default function VendorsPage() {
         .some((value) => value.includes(q))
     );
   }, [rows, query]);
+
+  const mobileRows = React.useMemo(() => {
+    if (mobileStatus === "all") return filtered;
+    return filtered.filter((row) => row.status === mobileStatus);
+  }, [filtered, mobileStatus]);
+
+  const activeMobileFilterCount = mobileStatus !== "all" ? 1 : 0;
 
   const openCreate = () => {
     setEditorMode("create");
@@ -220,28 +238,89 @@ export default function VendorsPage() {
   );
 
   return (
-    <div className="page-container page-stack py-6">
-      <PageHeader
+    <div
+      className={cn("page-container page-stack py-6", mobileListPagePaddingClass, "max-md:!gap-3")}
+    >
+      <div className="hidden md:block">
+        <PageHeader
+          title="Vendors"
+          subtitle="Manage material and service vendors used by AP bills."
+          actions={
+            <div className="flex items-center gap-2">
+              <Button asChild variant="outline" size="sm" className="rounded-sm">
+                <Link href="/settings/lists?tab=vendors">Open Lists View</Link>
+              </Button>
+              <Button
+                size="sm"
+                className="rounded-sm"
+                onClick={openCreate}
+                disabled={submitting || !!deletingId}
+              >
+                + New Vendor
+              </Button>
+            </div>
+          }
+        />
+      </div>
+
+      <MobileListHeader
         title="Vendors"
-        subtitle="Manage material and service vendors used by AP bills."
-        actions={
-          <div className="flex items-center gap-2">
-            <Button asChild variant="outline" size="sm" className="rounded-sm">
-              <Link href="/settings/lists?tab=vendors">Open Lists View</Link>
-            </Button>
-            <Button
-              size="sm"
-              className="rounded-sm"
-              onClick={openCreate}
-              disabled={submitting || !!deletingId}
-            >
-              + New Vendor
-            </Button>
+        fab={
+          <MobileFabButton
+            ariaLabel="New vendor"
+            onClick={() => {
+              if (!submitting && !deletingId) openCreate();
+            }}
+          />
+        }
+      />
+      <MobileSearchFiltersRow
+        filterSheetOpen={mobileFiltersOpen}
+        onOpenFilters={() => setMobileFiltersOpen(true)}
+        activeFilterCount={activeMobileFilterCount}
+        searchSlot={
+          <div className="relative w-full">
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search name, contact, phone…"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              className="h-10 pl-8 text-sm"
+              aria-label="Search vendors"
+            />
           </div>
         }
       />
+      <MobileFilterSheet
+        open={mobileFiltersOpen}
+        onOpenChange={setMobileFiltersOpen}
+        title="Filters"
+      >
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Status</p>
+          <select
+            value={mobileStatus}
+            onChange={(e) => setMobileStatus(e.target.value as "all" | "active" | "inactive")}
+            className="h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+          >
+            <option value="all">All</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+        <Button asChild variant="outline" size="sm" className="h-9 w-full rounded-sm">
+          <Link href="/settings/lists?tab=vendors">Lists view</Link>
+        </Button>
+        <Button
+          type="button"
+          className="w-full rounded-sm"
+          onClick={() => setMobileFiltersOpen(false)}
+        >
+          Done
+        </Button>
+      </MobileFilterSheet>
 
-      <FilterBar>
+      <FilterBar className="hidden md:block">
         <Input
           placeholder="Search name, contact, phone, email"
           value={query}
@@ -347,25 +426,30 @@ export default function VendorsPage() {
         </section>
       ) : null}
 
-      <div className="flex flex-col gap-3 md:hidden">
+      <div className="md:hidden divide-y divide-gray-100 dark:divide-border/60">
+        {!loading && mobileRows.length === 0 ? (
+          <MobileEmptyState
+            icon={<Store className="h-5 w-5" />}
+            message={filtered.length === 0 ? "No vendors yet." : "No vendors match your filters."}
+          />
+        ) : null}
         {!loading &&
-          filtered.map((row) => (
-            <div
-              key={row.id}
-              className="rounded-sm border border-border/60 bg-background p-4 dark:bg-card"
-            >
-              <p className="font-medium text-foreground">{row.name}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{row.contact_name || "—"}</p>
-              <p className="text-xs text-muted-foreground">{row.phone || "—"}</p>
-              <p className="text-xs text-muted-foreground">{row.email || "—"}</p>
-              <div className="mt-2">
-                <StatusBadge status={row.status} />
+          mobileRows.map((row) => (
+            <div key={row.id} className="flex min-h-[56px] flex-col justify-center gap-2 py-2">
+              <div className="min-w-0">
+                <p className="font-medium text-foreground">{row.name}</p>
+                <p className="text-xs text-muted-foreground">{row.contact_name || "—"}</p>
+                <p className="text-xs text-muted-foreground">{row.phone || "—"}</p>
+                <p className="truncate text-xs text-muted-foreground">{row.email || "—"}</p>
+                <div className="mt-1">
+                  <StatusBadge status={row.status} />
+                </div>
               </div>
-              <div className="mt-3 flex flex-col gap-2 border-t border-border/40 pt-3 sm:flex-row">
+              <div className="flex gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-11 w-full rounded-sm px-3 sm:h-8 sm:flex-1"
+                  className="h-8 flex-1 rounded-sm px-3"
                   onClick={() => openEdit(row)}
                 >
                   Edit
@@ -373,7 +457,7 @@ export default function VendorsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-11 w-full rounded-sm px-3 sm:h-8 sm:flex-1"
+                  className="h-8 flex-1 rounded-sm px-3"
                   onClick={() => void handleDelete(row)}
                   disabled={deletingId === row.id}
                 >
@@ -382,8 +466,8 @@ export default function VendorsPage() {
               </div>
             </div>
           ))}
-        {!loading && filtered.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">No vendors yet.</p>
+        {loading ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">Loading vendors...</p>
         ) : null}
       </div>
 

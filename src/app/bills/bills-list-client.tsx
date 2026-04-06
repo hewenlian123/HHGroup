@@ -27,7 +27,15 @@ import {
 import type { ApBillWithProject } from "@/lib/data";
 import { AP_BILL_TYPES, AP_BILL_STATUSES } from "@/lib/data";
 import { deleteBillDraftAction, voidBillAction } from "./actions";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, Search } from "lucide-react";
+import {
+  MobileEmptyState,
+  MobileFabPlus,
+  MobileFilterSheet,
+  MobileListHeader,
+  MobileSearchFiltersRow,
+  mobileListPagePaddingClass,
+} from "@/components/mobile/mobile-list-chrome";
 
 function fmtUsd(n: number): string {
   return `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -71,6 +79,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
   const [localBills, setLocalBills] = React.useState<ApBillWithProject[]>(bills);
   React.useEffect(() => setLocalBills(bills), [bills]);
   const [voidConfirmId, setVoidConfirmId] = React.useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
 
   const search = searchParams.get("search") ?? "";
   const status = searchParams.get("status") ?? "";
@@ -121,6 +130,13 @@ export function BillsListClient({ bills, summary, projects }: Props) {
     if (!result.ok && snapshot) setLocalBills(snapshot);
   }, []);
 
+  const activeDrawerFilterCount =
+    (status ? 1 : 0) +
+    (billType ? 1 : 0) +
+    (projectId ? 1 : 0) +
+    (dateFrom ? 1 : 0) +
+    (dateTo ? 1 : 0);
+
   const statusPill = React.useCallback(
     (
       bill: ApBillWithProject
@@ -136,8 +152,107 @@ export function BillsListClient({ bills, summary, projects }: Props) {
   );
 
   return (
-    <div className="flex flex-col gap-6 text-foreground [font-family:var(--font-inter),var(--font-geist-sans),sans-serif]">
-      <Card className="overflow-hidden p-0">
+    <div
+      className={cn(
+        "flex flex-col gap-6 text-foreground [font-family:var(--font-inter),var(--font-geist-sans),sans-serif]",
+        mobileListPagePaddingClass,
+        "max-md:!gap-3"
+      )}
+    >
+      <MobileListHeader
+        title="Bills"
+        fab={<MobileFabPlus href="/bills/new" ariaLabel="New bill" />}
+      />
+      <MobileSearchFiltersRow
+        filterSheetOpen={filtersOpen}
+        onOpenFilters={() => setFiltersOpen(true)}
+        activeFilterCount={activeDrawerFilterCount}
+        searchSlot={
+          <div className="relative w-full">
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Vendor, reference…"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onBlur={() => setFilters({ search: searchInput })}
+              onKeyDown={(e) => e.key === "Enter" && setFilters({ search: searchInput })}
+              className="h-10 pl-8 text-sm"
+              aria-label="Search bills"
+            />
+          </div>
+        }
+      />
+      <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Status</p>
+          <Select
+            value={status}
+            onChange={(e) => setFilters({ status: e.target.value })}
+            className="w-full"
+          >
+            <option value="">All</option>
+            {AP_BILL_STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Type</p>
+          <Select
+            value={billType}
+            onChange={(e) => setFilters({ bill_type: e.target.value })}
+            className="w-full"
+          >
+            <option value="">All</option>
+            {AP_BILL_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Project</p>
+          <Select
+            value={projectId}
+            onChange={(e) => setFilters({ project_id: e.target.value })}
+            className="w-full"
+          >
+            <option value="">All</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Date from</p>
+          <Input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setFilters({ date_from: e.target.value })}
+            className="w-full"
+          />
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Date to</p>
+          <Input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setFilters({ date_to: e.target.value })}
+            className="w-full"
+          />
+        </div>
+        <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
+          Done
+        </Button>
+      </MobileFilterSheet>
+
+      <Card className="hidden overflow-hidden p-0 md:block">
         <div className="grid divide-y divide-[#E5E7EB] sm:grid-cols-2 sm:divide-y-0 md:grid-cols-4 md:divide-x dark:divide-border/60">
           <div className="p-4">
             <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
@@ -174,7 +289,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
         </div>
       </Card>
 
-      <FilterBar>
+      <FilterBar className="hidden md:block">
         <div className="flex w-full flex-col gap-4">
           <div className="space-y-1">
             <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
@@ -267,47 +382,56 @@ export function BillsListClient({ bills, summary, projects }: Props) {
 
       {/* Table or empty state */}
       {localBills.length === 0 ? (
-        <div className="flex min-h-[280px] flex-col items-center justify-center text-center">
-          <p className="text-sm font-medium text-foreground">No bills yet</p>
-          <Button
-            asChild
-            size="touch"
-            className="mt-4 rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90"
-          >
-            <Link href="/bills/new">Create First Bill</Link>
-          </Button>
-        </div>
+        <>
+          <MobileEmptyState
+            icon={<MoreHorizontal className="h-8 w-8 opacity-80" aria-hidden />}
+            message="No bills yet. Create one to track payables."
+            action={
+              <Button asChild size="sm" variant="outline">
+                <Link href="/bills/new">New bill</Link>
+              </Button>
+            }
+          />
+          <div className="hidden md:flex min-h-[280px] flex-col items-center justify-center text-center">
+            <p className="text-sm font-medium text-foreground">No bills yet</p>
+            <Button
+              asChild
+              size="touch"
+              className="mt-4 rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90"
+            >
+              <Link href="/bills/new">Create First Bill</Link>
+            </Button>
+          </div>
+        </>
       ) : (
         <>
-          {/* Mobile: card layout */}
-          <div className="flex flex-col gap-3 md:hidden">
+          <div className="divide-y divide-gray-100 dark:divide-border/60 md:hidden">
             {localBills.map((bill) => {
               const s = statusPill(bill);
               return (
-                <div key={bill.id} className="group relative">
+                <div key={bill.id} className="group relative flex min-h-[56px] items-center py-2.5">
                   <Link
                     href={`/bills/${bill.id}`}
-                    className="block rounded-sm border border-gray-100 bg-background p-4 transition-colors hover:bg-[#F9FAFB] active:bg-[#F9FAFB]/80 dark:border-border/60 dark:hover:bg-muted/30"
+                    className="flex min-w-0 flex-1 items-center gap-3 pr-10 text-left"
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1 pr-8">
-                        <p className="font-medium text-foreground truncate">{bill.vendor_name}</p>
-                        <p className="mt-0.5 text-sm text-muted-foreground truncate">
-                          {bill.project_name ?? "—"}
-                        </p>
-                        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                          <span className="tabular-nums font-medium">{fmtUsd(bill.amount)}</span>
-                          <span className="text-muted-foreground">
-                            Due {formatDate(bill.due_date)}
-                          </span>
-                        </div>
-                      </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {bill.vendor_name}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {bill.project_name ?? "—"} · Due {formatDate(bill.due_date)}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <span className="text-sm font-medium tabular-nums">
+                        {fmtUsd(bill.amount)}
+                      </span>
                       <StatusBadge label={s.label} variant={s.variant} />
                     </div>
                   </Link>
                   {bill.status === "Draft" && bill.paid_amount <= 0 ? (
                     <div
-                      className="absolute right-2 top-2"
+                      className="absolute right-0 top-1/2 -translate-y-1/2"
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();

@@ -16,6 +16,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { Search } from "lucide-react";
+import {
+  MobileEmptyState,
+  MobileFabButton,
+  MobileFilterSheet,
+  MobileListHeader,
+  MobileSearchFiltersRow,
+  mobileListPagePaddingClass,
+} from "@/components/mobile/mobile-list-chrome";
 
 type InspectionRow = {
   id: string;
@@ -65,6 +74,10 @@ export default function InspectionLogPage() {
     status: "pending" as "passed" | "failed" | "pending",
     notes: "",
   });
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
+  const [projectFilter, setProjectFilter] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState("");
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -176,94 +189,278 @@ export default function InspectionLogPage() {
     }
   };
 
+  const filteredEntries = React.useMemo(() => {
+    let list = entries;
+    if (projectFilter) {
+      list = list.filter((e) => e.project_id === projectFilter);
+    }
+    if (statusFilter) {
+      list = list.filter((e) => e.status === statusFilter);
+    }
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      list = list.filter(
+        (e) =>
+          (e.inspection_type ?? "").toLowerCase().includes(q) ||
+          (e.project_name ?? "").toLowerCase().includes(q) ||
+          (e.inspector ?? "").toLowerCase().includes(q) ||
+          (e.notes ?? "").toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [entries, projectFilter, statusFilter, searchQuery]);
+
+  const activeDrawerFilterCount = (projectFilter ? 1 : 0) + (statusFilter ? 1 : 0);
+
   return (
     <PageLayout
+      divider={false}
+      className={cn("max-w-5xl", mobileListPagePaddingClass, "max-md:!gap-3")}
       header={
-        <PageHeader
-          title="Inspection Log"
-          description="Track inspections by project."
-          actions={
-            <Button size="sm" onClick={openModal}>
-              + New Inspection
-            </Button>
-          }
-        />
+        <>
+          <div className="hidden md:block">
+            <PageHeader
+              title="Inspection Log"
+              description="Track inspections by project."
+              actions={
+                <Button size="sm" onClick={openModal}>
+                  + New Inspection
+                </Button>
+              }
+            />
+          </div>
+          <div className="md:hidden">
+            <MobileListHeader
+              title="Inspection Log"
+              fab={<MobileFabButton ariaLabel="New inspection" onClick={openModal} />}
+            />
+          </div>
+        </>
       }
     >
-      <div className="max-w-5xl space-y-3">
-        <div className="airtable-table-wrap airtable-table-wrap--ruled">
+      <div className="max-w-5xl space-y-3 md:mx-auto">
+        <MobileSearchFiltersRow
+          filterSheetOpen={filtersOpen}
+          onOpenFilters={() => setFiltersOpen(true)}
+          activeFilterCount={activeDrawerFilterCount}
+          searchSlot={
+            <div className="relative w-full">
+              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search inspections…"
+                className="h-10 pl-8 text-sm"
+              />
+            </div>
+          }
+        />
+        <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">Project</p>
+            <Select
+              value={projectFilter}
+              onChange={(e) => setProjectFilter(e.target.value)}
+              className="mt-1 w-full"
+            >
+              <option value="">All projects</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">Status</p>
+            <Select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="mt-1 w-full"
+            >
+              <option value="">All statuses</option>
+              {STATUS_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
+            Done
+          </Button>
+        </MobileFilterSheet>
+
+        <div className="hidden flex-wrap items-end gap-3 md:flex">
+          <div className="relative min-w-[200px] flex-1 max-w-md">
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search inspections…"
+              className="h-9 pl-8 text-sm"
+            />
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              Project
+            </p>
+            <Select
+              value={projectFilter}
+              onChange={(e) => setProjectFilter(e.target.value)}
+              className="h-9 min-w-[160px]"
+            >
+              <option value="">All</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              Status
+            </p>
+            <Select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="h-9 min-w-[120px]"
+            >
+              <option value="">All</option>
+              {STATUS_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+        </div>
+
+        <div className="airtable-table-wrap airtable-table-wrap--ruled max-md:border-0 max-md:bg-transparent">
           {loading ? (
             <div className="py-10 text-center text-sm text-muted-foreground">Loading…</div>
           ) : error ? (
-            <div className="py-10 text-center text-sm text-destructive px-3">{error}</div>
+            <div className="px-3 py-10 text-center text-sm text-destructive">{error}</div>
           ) : entries.length === 0 ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">
-              No inspections yet.
-            </div>
+            <>
+              <MobileEmptyState
+                icon={<Search className="h-8 w-8 opacity-80" aria-hidden />}
+                message="No inspections yet."
+                action={
+                  <Button size="sm" variant="outline" onClick={openModal}>
+                    New inspection
+                  </Button>
+                }
+              />
+              <div className="hidden py-10 text-center text-sm text-muted-foreground md:block">
+                No inspections yet.
+              </div>
+            </>
+          ) : filteredEntries.length === 0 ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">No matches.</div>
           ) : (
-            <div className="airtable-table-scroll">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr>
-                    <th className="h-8 px-2 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
-                      Date
-                    </th>
-                    <th className="h-8 px-2 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
-                      Project
-                    </th>
-                    <th className="h-8 px-2 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
-                      Inspection Type
-                    </th>
-                    <th className="hidden h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] md:table-cell">
-                      Inspector
-                    </th>
-                    <th className="h-8 px-2 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
-                      Status
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {entries.map((row) => (
-                    <tr
-                      key={row.id}
-                      onClick={() => openDrawer(row)}
-                      className={listTableRowClassName}
-                    >
-                      <td className="py-2 px-2 sm:px-3 text-muted-foreground tabular-nums">
-                        {row.inspection_date
-                          ? new Date(row.inspection_date).toLocaleDateString()
-                          : "—"}
-                      </td>
-                      <td className="py-2 px-2 sm:px-3 text-muted-foreground">
-                        {row.project_name ?? "—"}
-                      </td>
-                      <td
+            <>
+              <div className="divide-y divide-gray-100 dark:divide-border/60 md:hidden">
+                {filteredEntries.map((row) => (
+                  <button
+                    key={row.id}
+                    type="button"
+                    onClick={() => openDrawer(row)}
+                    className="flex w-full min-h-[56px] flex-col gap-1 py-2.5 text-left"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-foreground">
+                          {row.inspection_type || "—"}
+                        </p>
+                        <p className="truncate text-xs text-text-secondary dark:text-muted-foreground">
+                          {(row.project_name ?? "—") +
+                            " · " +
+                            (row.inspection_date
+                              ? new Date(row.inspection_date).toLocaleDateString()
+                              : "—")}
+                        </p>
+                      </div>
+                      <span
                         className={cn(
-                          "py-2 px-2 sm:px-3 font-medium",
-                          listTablePrimaryCellClassName,
-                          "hover:underline"
+                          "inline-flex shrink-0 rounded-sm px-1.5 py-0.5 text-xs font-medium capitalize",
+                          STATUS_STYLES[row.status] ?? STATUS_STYLES.pending
                         )}
                       >
-                        {row.inspection_type || "—"}
-                      </td>
-                      <td className="hidden md:table-cell py-2 px-3 text-muted-foreground">
-                        {row.inspector ?? "—"}
-                      </td>
-                      <td className="py-2 px-2 sm:px-3">
-                        <span
+                        {row.status}
+                      </span>
+                    </div>
+                    {row.inspector ? (
+                      <p className="text-xs text-muted-foreground">{row.inspector}</p>
+                    ) : null}
+                  </button>
+                ))}
+              </div>
+              <div className="airtable-table-scroll hidden md:block">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr>
+                      <th className="h-8 px-2 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
+                        Date
+                      </th>
+                      <th className="h-8 px-2 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
+                        Project
+                      </th>
+                      <th className="h-8 px-2 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
+                        Inspection Type
+                      </th>
+                      <th className="hidden h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] md:table-cell">
+                        Inspector
+                      </th>
+                      <th className="h-8 px-2 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
+                        Status
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredEntries.map((row) => (
+                      <tr
+                        key={row.id}
+                        onClick={() => openDrawer(row)}
+                        className={listTableRowClassName}
+                      >
+                        <td className="py-2 px-2 sm:px-3 text-muted-foreground tabular-nums">
+                          {row.inspection_date
+                            ? new Date(row.inspection_date).toLocaleDateString()
+                            : "—"}
+                        </td>
+                        <td className="py-2 px-2 sm:px-3 text-muted-foreground">
+                          {row.project_name ?? "—"}
+                        </td>
+                        <td
                           className={cn(
-                            "inline-flex rounded-sm px-1.5 py-0.5 text-xs font-medium capitalize",
-                            STATUS_STYLES[row.status] ?? STATUS_STYLES.pending
+                            "py-2 px-2 sm:px-3 font-medium",
+                            listTablePrimaryCellClassName,
+                            "hover:underline"
                           )}
                         >
-                          {row.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                          {row.inspection_type || "—"}
+                        </td>
+                        <td className="hidden md:table-cell py-2 px-3 text-muted-foreground">
+                          {row.inspector ?? "—"}
+                        </td>
+                        <td className="py-2 px-2 sm:px-3">
+                          <span
+                            className={cn(
+                              "inline-flex rounded-sm px-1.5 py-0.5 text-xs font-medium capitalize",
+                              STATUS_STYLES[row.status] ?? STATUS_STYLES.pending
+                            )}
+                          >
+                            {row.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       </div>

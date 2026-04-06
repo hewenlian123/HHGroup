@@ -27,7 +27,15 @@ import {
   getAccountsAction,
   updateAccountAction,
 } from "./actions";
-import { Plus } from "lucide-react";
+import { Plus, Search } from "lucide-react";
+import {
+  MobileEmptyState,
+  MobileFabButton,
+  MobileFilterSheet,
+  MobileListHeader,
+  MobileSearchFiltersRow,
+  mobileListPagePaddingClass,
+} from "@/components/mobile/mobile-list-chrome";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/toast/toast-provider";
 import { EmptyState } from "@/components/empty-state";
@@ -57,6 +65,9 @@ function AccountsPageInner() {
   const [notes, setNotes] = React.useState("");
   const nameInputRef = React.useRef<HTMLInputElement>(null);
   const [editingId, setEditingId] = React.useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [typeFilter, setTypeFilter] = React.useState<"" | AccountType>("");
 
   const load = React.useCallback(async () => {
     const res = await getAccountsAction();
@@ -128,6 +139,21 @@ function AccountsPageInner() {
     syncRouterNonBlocking(router);
     toast({ title: "Account deleted", variant: "success" });
   };
+
+  const filteredAccounts = React.useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return accounts.filter((row) => {
+      if (typeFilter && row.type !== typeFilter) return false;
+      if (!q) return true;
+      const hay = [row.name, row.type, row.lastFour, row.notes]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [accounts, searchQuery, typeFilter]);
+
+  const activeDrawerFilterCount = typeFilter ? 1 : 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -211,50 +237,116 @@ function AccountsPageInner() {
   };
 
   return (
-    <div className="page-container page-stack py-6">
-      <PageHeader
-        title="Accounts"
-        description="Manage payment sources: credit cards, debit cards, bank accounts, cash."
-        actions={
-          <Button size="sm" className="h-8 max-md:min-h-11 w-full sm:w-auto" onClick={openModal}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Account
-          </Button>
-        }
-      />
-
-      {loading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
-      ) : accounts.length === 0 ? (
-        <EmptyState
-          title="No accounts yet"
-          description="Add a payment source to use when creating expenses."
-          icon={null}
-          action={
+    <div
+      className={cn("page-container page-stack py-6", mobileListPagePaddingClass, "max-md:!gap-3")}
+    >
+      <div className="hidden md:block">
+        <PageHeader
+          title="Accounts"
+          description="Manage payment sources: credit cards, debit cards, bank accounts, cash."
+          actions={
             <Button size="sm" className="h-8 max-md:min-h-11 w-full sm:w-auto" onClick={openModal}>
               <Plus className="h-4 w-4 mr-2" />
               Add Account
             </Button>
           }
         />
+      </div>
+      <MobileListHeader
+        title="Accounts"
+        fab={<MobileFabButton ariaLabel="Add account" onClick={openModal} />}
+      />
+      <MobileSearchFiltersRow
+        filterSheetOpen={filtersOpen}
+        onOpenFilters={() => setFiltersOpen(true)}
+        activeFilterCount={activeDrawerFilterCount}
+        searchSlot={
+          <div className="relative w-full">
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search accounts…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-10 pl-8 text-sm"
+              aria-label="Search accounts"
+            />
+          </div>
+        }
+      />
+      <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Account type</p>
+          <Select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter((e.target.value || "") as "" | AccountType)}
+            className="w-full"
+          >
+            <option value="">All types</option>
+            {ACCOUNT_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
+          Done
+        </Button>
+      </MobileFilterSheet>
+
+      {loading ? (
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      ) : accounts.length === 0 ? (
+        <>
+          <MobileEmptyState
+            icon={<Plus className="h-8 w-8 opacity-80" aria-hidden />}
+            message="No accounts yet. Add a payment source for expenses."
+            action={
+              <Button size="sm" variant="outline" onClick={openModal}>
+                Add account
+              </Button>
+            }
+          />
+          <div className="hidden md:block">
+            <EmptyState
+              title="No accounts yet"
+              description="Add a payment source to use when creating expenses."
+              icon={null}
+              action={
+                <Button
+                  size="sm"
+                  className="h-8 max-md:min-h-11 w-full sm:w-auto"
+                  onClick={openModal}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Account
+                </Button>
+              }
+            />
+          </div>
+        </>
       ) : (
         <>
-          <div className="flex flex-col gap-3 md:hidden">
-            {accounts.map((row) => (
-              <div
-                key={row.id}
-                className="rounded-sm border border-border/60 p-4 transition-colors hover:bg-muted/20"
-              >
-                <div className="flex items-start justify-between gap-2">
+          {filteredAccounts.length === 0 ? (
+            <MobileEmptyState
+              icon={<Search className="h-8 w-8 opacity-80" aria-hidden />}
+              message="No accounts match your filters."
+            />
+          ) : (
+            <div className="divide-y divide-gray-100 dark:divide-border/60 md:hidden">
+              {filteredAccounts.map((row) => (
+                <div
+                  key={row.id}
+                  className="flex min-h-[56px] items-start justify-between gap-2 py-2.5"
+                >
                   <button
                     type="button"
                     className="min-w-0 flex-1 text-left"
                     onClick={() => openEdit(row)}
                   >
-                    <p className="font-medium text-foreground">{row.name}</p>
-                    <p className="text-sm text-muted-foreground">{row.type}</p>
-                    <p className="mt-1 text-xs tabular-nums text-muted-foreground">
-                      Last 4: {row.lastFour ?? "—"}
+                    <p className="truncate text-sm font-medium text-foreground">{row.name}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {row.type} · Last 4: {row.lastFour ?? "—"}
                     </p>
                   </button>
                   <div className="flex shrink-0 items-center gap-2">
@@ -270,9 +362,9 @@ function AccountsPageInner() {
                     />
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
           <Card className="hidden overflow-hidden p-0 md:block">
             <div className="overflow-x-auto">
               <Table className="min-w-[640px] lg:min-w-0">

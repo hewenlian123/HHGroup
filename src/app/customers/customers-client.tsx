@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,13 @@ import {
 import type { Customer } from "@/lib/customers-db";
 import { runOptimisticPersist } from "@/lib/optimistic-save";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
+import {
+  MobileEmptyState,
+  MobileFabButton,
+  MobileListHeader,
+  mobileListPagePaddingClass,
+} from "@/components/mobile/mobile-list-chrome";
+import { cn } from "@/lib/utils";
 
 type Props = {
   initialCustomers: Customer[];
@@ -255,13 +262,19 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
   };
 
   return (
-    <div className="space-y-4">
+    <div className={cn("space-y-4", mobileListPagePaddingClass, "max-md:!space-y-3")}>
       {dataLoadWarning ? (
         <p className="border-b border-border/60 pb-3 text-sm text-muted-foreground" role="status">
           {dataLoadWarning}
         </p>
       ) : null}
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+
+      <MobileListHeader
+        title="Customers"
+        fab={<MobileFabButton onClick={openNew} ariaLabel="New customer" />}
+      />
+
+      <div className="hidden flex-col gap-3 md:flex md:flex-row md:items-center md:justify-between">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
             Customers
@@ -285,85 +298,109 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
         </div>
       </div>
 
-      <div className="rounded-sm border border-border/60 bg-background">
-        <div className="border-b border-border/60 px-4 py-2.5 text-xs text-muted-foreground">
+      <div className="md:hidden">
+        <Input
+          placeholder="Search customers…"
+          value={search}
+          onChange={(e) => startTransition(() => setSearch(e.target.value))}
+          className="h-10 w-full text-sm"
+        />
+      </div>
+
+      <div className="rounded-sm border border-border/60 bg-background max-md:rounded-none max-md:border-0 max-md:bg-transparent dark:max-md:bg-transparent">
+        <div className="hidden border-b border-border/60 px-4 py-2.5 text-xs text-muted-foreground md:block">
           Total customers: {items.length}
         </div>
         {items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-dashed border-border/60 text-xs text-muted-foreground">
-              ☺
+          <>
+            <MobileEmptyState
+              icon={<UserRound className="h-8 w-8" aria-hidden />}
+              message={
+                dataLoadWarning
+                  ? "Could not load customers."
+                  : "No customers yet. Add one to get started."
+              }
+              action={
+                !dataLoadWarning ? (
+                  <Button type="button" size="sm" variant="outline" onClick={openNew}>
+                    New customer
+                  </Button>
+                ) : undefined
+              }
+            />
+            <div className="hidden flex-col items-center justify-center gap-2 py-10 text-center md:flex">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-dashed border-border/60 text-xs text-muted-foreground">
+                ☺
+              </div>
+              <p className="text-sm font-medium text-foreground">
+                {dataLoadWarning ? "Could not load customers." : "No customers yet."}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {dataLoadWarning
+                  ? "Check your connection and database configuration, then refresh."
+                  : "Add your first client to start tracking projects and estimates."}
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                className="mt-2 h-8 rounded-sm px-3 text-xs"
+                onClick={openNew}
+              >
+                + Add customer
+              </Button>
             </div>
-            <p className="text-sm font-medium text-foreground">
-              {dataLoadWarning ? "Could not load customers." : "No customers yet."}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {dataLoadWarning
-                ? "Check your connection and database configuration, then refresh."
-                : "Add your first client to start tracking projects and estimates."}
-            </p>
-            <Button
-              type="button"
-              size="sm"
-              className="mt-2 h-8 rounded-sm px-3 text-xs"
-              onClick={openNew}
-            >
-              + Add customer
-            </Button>
-          </div>
+          </>
         ) : (
           <>
-            <div className="flex flex-col gap-3 border-b border-border/60 p-3 md:hidden">
+            <div className="divide-y divide-gray-100 dark:divide-border/60 md:hidden">
               {filtered.map((c) => (
-                <div
-                  key={c.id}
-                  className="rounded-sm border border-border/60 bg-background p-4 dark:bg-card"
-                >
+                <div key={c.id} className="flex min-h-[56px] items-center gap-2 py-2.5">
                   <Link
                     href={`/customers/${c.id}`}
-                    className="block font-medium text-foreground hover:underline"
+                    className="flex min-w-0 flex-1 items-center gap-3 text-left active:bg-muted/30"
                   >
-                    {c.name}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-foreground">{c.name}</p>
+                      <p className="truncate text-xs text-text-secondary dark:text-muted-foreground">
+                        {c.email ?? "—"}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-sm font-medium tabular-nums text-foreground">
+                      {c.phone?.trim() ? c.phone : "—"}
+                    </span>
                   </Link>
-                  <p className="mt-1 text-xs text-muted-foreground">{c.email ?? "—"}</p>
-                  <p className="text-xs text-muted-foreground">{c.phone ?? "—"}</p>
-                  <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
-                    {truncateText(c.address, 80)}
-                  </p>
-                  <div className="mt-3 flex justify-end border-t border-border/40 pt-3">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="btn-outline-ghost min-h-11 w-full sm:min-h-8 sm:w-auto"
-                        >
-                          <MoreHorizontal className="mr-2 h-4 w-4" />
-                          Actions
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="min-w-[160px]">
-                        <DropdownMenuItem
-                          onSelect={(e) => {
-                            e.preventDefault();
-                            openEdit(c);
-                          }}
-                        >
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onSelect={(e) => {
-                            e.preventDefault();
-                            confirmDelete(c);
-                          }}
-                          className="text-destructive focus:text-destructive"
-                        >
-                          Delete…
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 shrink-0 rounded-sm"
+                        aria-label={`Actions for ${c.name}`}
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="min-w-[160px]">
+                      <DropdownMenuItem
+                        onSelect={(e) => {
+                          e.preventDefault();
+                          openEdit(c);
+                        }}
+                      >
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={(e) => {
+                          e.preventDefault();
+                          confirmDelete(c);
+                        }}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        Delete…
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               ))}
             </div>

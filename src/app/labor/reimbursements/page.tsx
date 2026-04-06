@@ -31,7 +31,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, Search } from "lucide-react";
+import {
+  MobileEmptyState,
+  MobileFabButton,
+  MobileFilterSheet,
+  MobileListHeader,
+  MobileSearchFiltersRow,
+  mobileListPagePaddingClass,
+} from "@/components/mobile/mobile-list-chrome";
 import { DeleteRowAction } from "@/components/base";
 
 function fmtUsd(n: number): string {
@@ -86,6 +94,7 @@ export default function WorkerReimbursementsPage() {
   const [batchPayMethod, setBatchPayMethod] = React.useState("");
   const [batchPayNote, setBatchPayNote] = React.useState("");
   const [batchPaySubmitting, setBatchPaySubmitting] = React.useState(false);
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -446,51 +455,133 @@ export default function WorkerReimbursementsPage() {
     );
   }
 
+  const sortFilterActive = sort.key !== "createdAt" || sort.dir !== "desc" ? 1 : 0;
+
   return (
-    <div className="page-container page-stack py-6">
-      <PageHeader
-        title="Worker Reimbursements"
-        subtitle="Construction finance: approve, pay, and track worker reimbursements."
-        actions={
-          <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-            <Link
-              href="/financial/workers"
-              className="text-sm text-muted-foreground hover:text-foreground max-md:min-h-11 max-md:inline-flex max-md:items-center sm:mr-2"
-            >
-              Worker Balances
-            </Link>
-            <Link
-              href="/labor/receipts"
-              className="text-sm text-muted-foreground hover:text-foreground max-md:min-h-11 max-md:inline-flex max-md:items-center sm:mr-2"
-            >
-              Receipt Uploads
-            </Link>
-            <Link
-              href="/labor"
-              className="text-sm text-muted-foreground hover:text-foreground max-md:min-h-11 max-md:inline-flex max-md:items-center sm:mr-2"
-            >
-              Labor
-            </Link>
-            <Button
-              size="sm"
-              className="w-full max-md:min-h-11 sm:w-auto"
-              onClick={() => {
-                setEditingId(null);
-                setShowForm(true);
-              }}
-            >
-              + New Reimbursement
-            </Button>
+    <div
+      className={cn("page-container page-stack py-6", mobileListPagePaddingClass, "max-md:!gap-3")}
+    >
+      <div className="hidden md:block">
+        <PageHeader
+          title="Worker Reimbursements"
+          subtitle="Construction finance: approve, pay, and track worker reimbursements."
+          actions={
+            <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+              <Link
+                href="/financial/workers"
+                className="text-sm text-muted-foreground hover:text-foreground max-md:min-h-11 max-md:inline-flex max-md:items-center sm:mr-2"
+              >
+                Worker Balances
+              </Link>
+              <Link
+                href="/labor/receipts"
+                className="text-sm text-muted-foreground hover:text-foreground max-md:min-h-11 max-md:inline-flex max-md:items-center sm:mr-2"
+              >
+                Receipt Uploads
+              </Link>
+              <Link
+                href="/labor"
+                className="text-sm text-muted-foreground hover:text-foreground max-md:min-h-11 max-md:inline-flex max-md:items-center sm:mr-2"
+              >
+                Labor
+              </Link>
+              <Button
+                size="sm"
+                className="w-full max-md:min-h-11 sm:w-auto"
+                onClick={() => {
+                  setEditingId(null);
+                  setShowForm(true);
+                }}
+              >
+                + New Reimbursement
+              </Button>
+            </div>
+          }
+        />
+      </div>
+      <MobileListHeader
+        title="Reimbursements"
+        fab={
+          <MobileFabButton
+            ariaLabel="New reimbursement"
+            onClick={() => {
+              setEditingId(null);
+              setShowForm(true);
+            }}
+          />
+        }
+      />
+      <MobileSearchFiltersRow
+        filterSheetOpen={filtersOpen}
+        onOpenFilters={() => setFiltersOpen(true)}
+        activeFilterCount={sortFilterActive}
+        searchSlot={
+          <div className="relative w-full">
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Worker, project, vendor…"
+              className="h-10 pl-8 text-sm"
+              aria-label="Search reimbursements"
+            />
           </div>
         }
       />
+      <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Sort by</p>
+          <Select
+            value={sort.key}
+            onChange={(e) =>
+              setSort((s) => ({
+                ...s,
+                key: e.target.value as "createdAt" | "amount" | "status",
+              }))
+            }
+            className="w-full"
+          >
+            <option value="createdAt">Date</option>
+            <option value="amount">Amount</option>
+            <option value="status">Status</option>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Order</p>
+          <Select
+            value={sort.dir}
+            onChange={(e) => setSort((s) => ({ ...s, dir: e.target.value as "asc" | "desc" }))}
+            className="w-full"
+          >
+            <option value="desc">Newest / high first</option>
+            <option value="asc">Oldest / low first</option>
+          </Select>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="w-full rounded-sm"
+          disabled={selectedIds.size === 0 || !selectedSameWorker || selectedRows.length === 0}
+          onClick={() => {
+            openCreateWorkerPayment();
+            setFiltersOpen(false);
+          }}
+        >
+          Create Worker Payment
+          {selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}
+        </Button>
+        <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
+          Done
+        </Button>
+      </MobileFilterSheet>
       {schemaWarning ? (
         <div className="rounded-lg border border-amber-200/80 bg-background px-3 py-2 text-sm text-amber-700 dark:border-amber-900/40 dark:text-amber-500">
           {schemaWarning} Run Labor schema migration (e.g. ensure labor tables) or check Supabase
           Project Settings → API → Reload schema.
         </div>
       ) : null}
-      <FilterBar>
+      <FilterBar className="hidden md:block">
         <div className="flex w-full flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
           <div className="space-y-1 min-w-[200px] flex-1">
             <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
@@ -639,46 +730,52 @@ export default function WorkerReimbursementsPage() {
         </div>
       )}
 
-      {/* Mobile: card layout */}
-      <div className="flex flex-col gap-3 md:hidden">
+      <div className="md:hidden">
         {loading ? (
-          <p className="py-6 text-center text-muted-foreground text-xs">Loading…</p>
+          <p className="py-6 text-center text-xs text-muted-foreground">Loading…</p>
         ) : paged.length === 0 ? (
-          <p className="py-6 text-center text-muted-foreground text-xs">No reimbursements yet.</p>
+          <MobileEmptyState
+            icon={<Search className="h-8 w-8 opacity-80" aria-hidden />}
+            message="No reimbursements yet."
+          />
         ) : (
-          paged.map((r) => (
-            <div
-              key={r.id}
-              className="rounded-sm border border-gray-100 p-3 space-y-2 dark:border-border/60"
-            >
-              <div className="flex justify-between items-start gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  {r.status === "pending" ? (
-                    <input
-                      type="checkbox"
-                      aria-label={`Select ${workerName(r)}`}
-                      checked={selectedIds.has(r.id)}
-                      onChange={() => toggleSelection(r.id, r.status)}
-                      className="h-4 w-4 shrink-0 rounded border-input"
-                    />
-                  ) : null}
-                  <span className="font-medium truncate">{workerName(r)}</span>
+          <div className="divide-y divide-gray-100 dark:divide-border/60">
+            {paged.map((r) => (
+              <div key={r.id} className="flex min-h-[56px] flex-col gap-2 py-2.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex min-w-0 flex-1 items-start gap-2">
+                    {r.status === "pending" ? (
+                      <input
+                        type="checkbox"
+                        aria-label={`Select ${workerName(r)}`}
+                        checked={selectedIds.has(r.id)}
+                        onChange={() => toggleSelection(r.id, r.status)}
+                        className="mt-0.5 h-4 w-4 shrink-0 rounded border-input"
+                      />
+                    ) : null}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {workerName(r)}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {projectName(r)} · {r.vendor ?? "—"}
+                      </p>
+                      <p className="mt-1 text-xs tabular-nums text-muted-foreground">
+                        {(r.createdAt ?? "").slice(0, 10)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <span className="text-sm font-medium tabular-nums">${fmtUsd(r.amount)}</span>
+                    <span className="text-xs capitalize text-muted-foreground">{r.status}</span>
+                  </div>
                 </div>
-                <span className="text-muted-foreground text-xs shrink-0">
-                  {(r.createdAt ?? "").slice(0, 10)}
-                </span>
+                <div className="flex justify-end pl-6">
+                  <ActionsDropdown r={r} />
+                </div>
               </div>
-              <p className="text-sm text-muted-foreground">
-                {projectName(r)} · {r.vendor ?? "—"}
-              </p>
-              <p className="text-sm font-medium">
-                ${fmtUsd(r.amount)} · {r.status}
-              </p>
-              <div className="flex justify-end pt-2">
-                <ActionsDropdown r={r} />
-              </div>
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </div>
 

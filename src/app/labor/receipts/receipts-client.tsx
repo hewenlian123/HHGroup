@@ -8,6 +8,16 @@ import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/native-select";
+import { cn } from "@/lib/utils";
+import { Search } from "lucide-react";
+import {
+  MobileEmptyState,
+  MobileFilterSheet,
+  MobileListHeader,
+  MobileSearchFiltersRow,
+  mobileListPagePaddingClass,
+} from "@/components/mobile/mobile-list-chrome";
 import {
   Dialog,
   DialogContent,
@@ -48,6 +58,35 @@ export function ReceiptsClient({
   const [message, setMessage] = React.useState<string | null>(null);
   const [successMessage, setSuccessMessage] = React.useState<string | null>(null);
   const [viewReceiptUrl, setViewReceiptUrl] = React.useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState("");
+
+  const displayRows = React.useMemo(() => {
+    let list = rows;
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      list = list.filter((r) => {
+        const hay = [
+          r.workerName,
+          r.projectName,
+          r.expenseType,
+          r.vendor,
+          r.status,
+          String(r.amount),
+        ]
+          .join(" ")
+          .toLowerCase();
+        return hay.includes(q);
+      });
+    }
+    if (statusFilter) {
+      list = list.filter((r) => r.status === statusFilter);
+    }
+    return list;
+  }, [rows, searchQuery, statusFilter]);
+
+  const activeDrawerFilterCount = statusFilter ? 1 : 0;
 
   React.useEffect(() => {
     setRows(initialRows);
@@ -182,11 +221,53 @@ export function ReceiptsClient({
   const isPdfReceipt = viewReceiptUrl != null && viewReceiptUrl.toLowerCase().endsWith(".pdf");
 
   return (
-    <div className="page-container py-6">
-      <PageHeader
-        title="Worker Receipt Uploads"
-        description="Approve or reject uploaded receipts; approved items become reimbursements."
+    <div className={cn("page-container py-6", mobileListPagePaddingClass, "max-md:!gap-3")}>
+      <div className="hidden md:block">
+        <PageHeader
+          title="Worker Receipt Uploads"
+          description="Approve or reject uploaded receipts; approved items become reimbursements."
+        />
+      </div>
+      <MobileListHeader
+        title="Receipt Uploads"
+        fab={<span className="inline-block h-10 w-10 shrink-0" aria-hidden />}
       />
+      <MobileSearchFiltersRow
+        filterSheetOpen={filtersOpen}
+        onOpenFilters={() => setFiltersOpen(true)}
+        activeFilterCount={activeDrawerFilterCount}
+        searchSlot={
+          <div className="relative w-full">
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Worker, project, vendor…"
+              className="h-10 pl-8 text-sm"
+              aria-label="Search receipts"
+            />
+          </div>
+        }
+      />
+      <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Status</p>
+          <Select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="w-full"
+          >
+            <option value="">All</option>
+            <option value="Pending">Pending</option>
+            <option value="Approved">Approved</option>
+            <option value="Rejected">Rejected</option>
+            <option value="Paid">Paid</option>
+          </Select>
+        </div>
+        <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
+          Done
+        </Button>
+      </MobileFilterSheet>
 
       {dataLoadWarning ? (
         <p className="border-b border-border/60 pb-3 text-sm text-muted-foreground" role="status">
@@ -216,66 +297,84 @@ export function ReceiptsClient({
         </p>
       )}
 
-      {/* Mobile: card layout */}
-      <div className="flex flex-col gap-3 md:hidden">
+      <div className="md:hidden">
         {rows.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">No receipt uploads yet.</p>
+          <MobileEmptyState
+            icon={<Search className="h-8 w-8 opacity-80" aria-hidden />}
+            message="No receipt uploads yet."
+          />
+        ) : displayRows.length === 0 ? (
+          <MobileEmptyState
+            icon={<Search className="h-8 w-8 opacity-80" aria-hidden />}
+            message="No receipts match your filters."
+          />
         ) : (
-          rows.map((r) => (
-            <div key={r.id} className="rounded-sm border border-border/60 bg-background p-4">
-              <p className="font-medium text-foreground truncate">{r.workerName}</p>
-              <p className="text-sm text-muted-foreground truncate">
-                {r.projectName || "—"} · {r.expenseType || "—"}
-              </p>
-              <p className="text-sm text-muted-foreground truncate">{r.vendor || "—"}</p>
-              <div className="mt-2 flex items-center justify-between gap-2">
-                <span className="tabular-nums font-medium">${fmtUsd(r.amount)}</span>
-                <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
-                  <span className={`h-1.5 w-1.5 rounded-full ${statusDot(r.status)}`} />
-                  {r.status}
-                </span>
+          <div className="divide-y divide-gray-100 dark:divide-border/60">
+            {displayRows.map((r) => (
+              <div key={r.id} className="flex min-h-[56px] flex-col gap-2 py-2.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground">{r.workerName}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {r.projectName || "—"} · {r.expenseType || "—"}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">{r.vendor || "—"}</p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <span className="text-sm font-medium tabular-nums">${fmtUsd(r.amount)}</span>
+                    <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <span className={`h-1.5 w-1.5 rounded-full ${statusDot(r.status)}`} />
+                      {r.status}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <RowActionsMenu
+                    ariaLabel={`Actions for receipt ${r.id}`}
+                    actions={[
+                      ...(r.receiptUrl
+                        ? [
+                            {
+                              label: "View receipt",
+                              onClick: () => setViewReceiptUrl(r.receiptUrl!),
+                            },
+                          ]
+                        : []),
+                      ...(r.status === "Pending"
+                        ? [
+                            {
+                              label: "Approve",
+                              onClick: () => approve(r.id),
+                              disabled: busyId === r.id,
+                            },
+                            {
+                              label: "Reject",
+                              onClick: () => openReject(r.id),
+                              disabled: busyId === r.id,
+                            },
+                          ]
+                        : []),
+                      ...(r.status === "Approved"
+                        ? [
+                            {
+                              label: "Reset to Pending",
+                              onClick: () => resetToPending(r.id),
+                              disabled: busyId === r.id,
+                            },
+                          ]
+                        : []),
+                      {
+                        label: "Delete",
+                        onClick: () => handleDelete(r.id),
+                        destructive: true,
+                        disabled: busyId === r.id,
+                      },
+                    ]}
+                  />
+                </div>
               </div>
-              <div className="mt-2 flex justify-end">
-                <RowActionsMenu
-                  ariaLabel={`Actions for receipt ${r.id}`}
-                  actions={[
-                    ...(r.receiptUrl
-                      ? [{ label: "View receipt", onClick: () => setViewReceiptUrl(r.receiptUrl!) }]
-                      : []),
-                    ...(r.status === "Pending"
-                      ? [
-                          {
-                            label: "Approve",
-                            onClick: () => approve(r.id),
-                            disabled: busyId === r.id,
-                          },
-                          {
-                            label: "Reject",
-                            onClick: () => openReject(r.id),
-                            disabled: busyId === r.id,
-                          },
-                        ]
-                      : []),
-                    ...(r.status === "Approved"
-                      ? [
-                          {
-                            label: "Reset to Pending",
-                            onClick: () => resetToPending(r.id),
-                            disabled: busyId === r.id,
-                          },
-                        ]
-                      : []),
-                    {
-                      label: "Delete",
-                      onClick: () => handleDelete(r.id),
-                      destructive: true,
-                      disabled: busyId === r.id,
-                    },
-                  ]}
-                />
-              </div>
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </div>
       <div className="table-responsive hidden rounded-sm border border-border/60 md:block">
@@ -316,8 +415,14 @@ export function ReceiptsClient({
                   No receipt uploads yet.
                 </td>
               </tr>
+            ) : displayRows.length === 0 ? (
+              <tr>
+                <td colSpan={9} className="py-6 text-center text-muted-foreground text-sm">
+                  No receipts match filters.
+                </td>
+              </tr>
             ) : (
-              rows.map((r) => (
+              displayRows.map((r) => (
                 <tr key={r.id} className="border-b border-border/60 last:border-b-0">
                   <td className="py-2 px-3 font-medium text-foreground">{r.workerName}</td>
                   <td className="py-2 px-3 text-muted-foreground">{r.projectName || "—"}</td>

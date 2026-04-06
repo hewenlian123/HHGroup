@@ -36,7 +36,16 @@ import {
 } from "@/lib/receipt-queue";
 import { ReceiptQueueRowCard, type RowMotionPhase } from "./receipt-queue-row-card";
 import { useRqLayout } from "./use-rq-layout";
-import { AlertTriangle, Camera, Upload } from "lucide-react";
+import { AlertTriangle, Camera, Search, Upload } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  MobileEmptyState,
+  MobileFabButton,
+  MobileFilterSheet,
+  MobileListHeader,
+  MobileSearchFiltersRow,
+  mobileListPagePaddingClass,
+} from "@/components/mobile/mobile-list-chrome";
 import hotToast from "react-hot-toast";
 import { useToast } from "@/components/toast/toast-provider";
 import { uiActionLog, uiActionMark, uiNavLog, uiNavMark } from "@/lib/ui-action-perf";
@@ -253,6 +262,8 @@ export function ReceiptQueueWorkspace() {
   const queueAutoPaymentDoneRef = React.useRef<Set<string>>(new Set());
   const vendorPaymentSuggestTimers = React.useRef<Map<string, number>>(new Map());
   const [listFilter, setListFilter] = React.useState<"all" | "needs_fix">("all");
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
+  const [vendorSearch, setVendorSearch] = React.useState("");
   const [activeQueueRowId, setActiveQueueRowId] = React.useState<string | null>(null);
   const [newRowHighlightIds, setNewRowHighlightIds] = React.useState<string[]>([]);
   const removeInFlightRef = React.useRef<Set<string>>(new Set());
@@ -390,9 +401,13 @@ export function ReceiptQueueWorkspace() {
   }, [rows]);
 
   const displayedRows = React.useMemo(() => {
-    if (listFilter === "needs_fix") return rows.filter(rowNeedsFix);
-    return rows;
-  }, [rows, listFilter]);
+    const base = listFilter === "needs_fix" ? rows.filter(rowNeedsFix) : rows;
+    const q = vendorSearch.trim().toLowerCase();
+    if (!q) return base;
+    return base.filter((r) => r.vendor_name.toLowerCase().includes(q));
+  }, [rows, listFilter, vendorSearch]);
+
+  const activeDrawerFilterCount = listFilter === "needs_fix" ? 1 : 0;
 
   const applyQueueFieldFocus = React.useCallback((field: QueueFocusField, rowId: string) => {
     if (field === "vendor" || field === "amount" || field === "date") {
@@ -1368,46 +1383,149 @@ export function ReceiptQueueWorkspace() {
 
   return (
     <div className="rq-workspace w-full bg-[#f5f7fa] dark:bg-background">
-      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-0 py-6 sm:gap-8 sm:px-6 sm:py-8">
-        <PageHeader
-          className="items-start gap-1 border-0 pb-0 sm:items-start [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:tracking-tight [&_h1]:text-[#111827] [&_p]:max-w-2xl [&_p]:text-sm [&_p]:leading-relaxed [&_p]:text-[#6b7280]"
+      <div
+        className={cn(
+          "mx-auto flex max-w-6xl flex-col gap-6 px-0 py-6 sm:gap-8 sm:px-6 sm:py-8",
+          mobileListPagePaddingClass,
+          "max-md:!gap-3"
+        )}
+      >
+        <div className="hidden md:block">
+          <PageHeader
+            className="items-start gap-1 border-0 pb-0 sm:items-start [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:tracking-tight [&_h1]:text-[#111827] [&_p]:max-w-2xl [&_p]:text-sm [&_p]:leading-relaxed [&_p]:text-[#6b7280]"
+            title="Receipt Queue"
+            description="Uploads persist across sessions. Enter saves the row and moves to the next field, then the next row that needs attention. Shift+Enter saves this row and flushes all pending edits. Add all imports in bulk (needs review)."
+            actions={
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "h-9 rounded-md border-[#e5e7eb] bg-white px-3 text-sm font-medium text-[#111827] shadow-none",
+                    RQ_BTN,
+                    "hover:bg-[#f3f4f6]"
+                  )}
+                  asChild
+                >
+                  <Link href="/financial/expenses">Expenses</Link>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "h-9 rounded-md border-2 border-[#111827] bg-white px-3 text-sm font-semibold text-[#111827] shadow-none",
+                    RQ_BTN,
+                    "hover:bg-[#f3f4f6]"
+                  )}
+                  disabled={bulkAdding || !supabase || addAllEligibleCount === 0}
+                  onClick={() => void handleAddAll()}
+                >
+                  {bulkAdding ? (
+                    <InlineLoading aria-label="Adding" />
+                  ) : (
+                    `Add all (${addAllEligibleCount})`
+                  )}
+                </Button>
+              </div>
+            }
+          />
+        </div>
+        <MobileListHeader
           title="Receipt Queue"
-          description="Uploads persist across sessions. Enter saves the row and moves to the next field, then the next row that needs attention. Shift+Enter saves this row and flushes all pending edits. Add all imports in bulk (needs review)."
-          actions={
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className={cn(
-                  "h-9 rounded-md border-[#e5e7eb] bg-white px-3 text-sm font-medium text-[#111827] shadow-none",
-                  RQ_BTN,
-                  "hover:bg-[#f3f4f6]"
-                )}
-                asChild
-              >
-                <Link href="/financial/expenses">Expenses</Link>
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className={cn(
-                  "h-9 rounded-md border-2 border-[#111827] bg-white px-3 text-sm font-semibold text-[#111827] shadow-none",
-                  RQ_BTN,
-                  "hover:bg-[#f3f4f6]"
-                )}
-                disabled={bulkAdding || !supabase || addAllEligibleCount === 0}
-                onClick={() => void handleAddAll()}
-              >
-                {bulkAdding ? (
-                  <InlineLoading aria-label="Adding" />
-                ) : (
-                  `Add all (${addAllEligibleCount})`
-                )}
-              </Button>
+          fab={
+            <MobileFabButton
+              ariaLabel="Upload files"
+              onClick={() => uploadInputRef.current?.click()}
+            />
+          }
+        />
+        <MobileSearchFiltersRow
+          filterSheetOpen={filtersOpen}
+          onOpenFilters={() => setFiltersOpen(true)}
+          activeFilterCount={activeDrawerFilterCount}
+          searchSlot={
+            <div className="relative w-full">
+              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={vendorSearch}
+                onChange={(e) => setVendorSearch(e.target.value)}
+                placeholder="Vendor…"
+                className="h-10 border-[#e5e7eb] bg-white pl-8 text-sm dark:border-border dark:bg-background"
+                aria-label="Filter queue by vendor"
+              />
             </div>
           }
         />
+        <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">View</p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={listFilter === "all" ? "default" : "outline"}
+                className="rounded-sm"
+                onClick={() => {
+                  setListFilter("all");
+                  setFiltersOpen(false);
+                }}
+              >
+                All
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={listFilter === "needs_fix" ? "default" : "outline"}
+                className="rounded-sm"
+                onClick={() => {
+                  setListFilter("needs_fix");
+                  setFiltersOpen(false);
+                }}
+              >
+                Needs fix ({needsFixCount})
+              </Button>
+            </div>
+          </div>
+          <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
+            Done
+          </Button>
+        </MobileFilterSheet>
+
+        {supabase ? (
+          <div className="flex flex-wrap gap-2 md:hidden">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-sm"
+              disabled={captureUploading}
+              onClick={() => cameraInputRef.current?.click()}
+            >
+              {captureUploading ? (
+                <InlineLoading size="sm" aria-hidden />
+              ) : (
+                <Camera className="h-4 w-4" />
+              )}
+              <span className="ml-1.5">Take photo</span>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-sm"
+              disabled={captureUploading}
+              onClick={() => uploadInputRef.current?.click()}
+            >
+              {captureUploading ? (
+                <InlineLoading size="sm" aria-hidden />
+              ) : (
+                <Upload className="h-4 w-4" />
+              )}
+              <span className="ml-1.5">Upload</span>
+            </Button>
+          </div>
+        ) : null}
 
         {rows.some((r) => r.status === "processing") ? (
           <p
@@ -1463,7 +1581,7 @@ export function ReceiptQueueWorkspace() {
                 replaceRowFile(tid, f);
               }}
             />
-            <div className="flex flex-wrap gap-3">
+            <div className="hidden flex-wrap gap-3 md:flex">
               <Button
                 type="button"
                 size="sm"
@@ -1514,7 +1632,7 @@ export function ReceiptQueueWorkspace() {
             ) : null}
             <div
               className={cn(
-                "flex min-h-[140px] flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[#e5e7eb] bg-white py-8 text-sm text-[#6b7280] transition-colors duration-[140ms] ease-out",
+                "hidden min-h-[140px] flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[#e5e7eb] bg-white py-8 text-sm text-[#6b7280] transition-colors duration-[140ms] ease-out md:flex",
                 dragOver && !captureUploading && "border-[#2563eb]/45 bg-[#2563eb]/[0.06]",
                 captureUploading && "pointer-events-none opacity-60"
               )}
@@ -1559,16 +1677,22 @@ export function ReceiptQueueWorkspace() {
         rows.length === 0 &&
         supabase &&
         !receiptQueueError ? (
-          <div
-            ref={emptyQueueRef}
-            tabIndex={-1}
-            data-receipt-queue-empty
-            className="flex min-h-[min(40vh,280px)] flex-col justify-center transition-opacity duration-200 ease-out animate-in fade-in"
-          >
-            <p className="text-center text-sm text-[#6b7280] dark:text-muted-foreground">
-              No items in the queue.
-            </p>
-          </div>
+          <>
+            <MobileEmptyState
+              icon={<Upload className="h-8 w-8 opacity-80" aria-hidden />}
+              message="No items in the queue. Use the + button to upload."
+            />
+            <div
+              ref={emptyQueueRef}
+              tabIndex={-1}
+              data-receipt-queue-empty
+              className="hidden min-h-[min(40vh,280px)] flex-col justify-center transition-opacity duration-200 ease-out animate-in fade-in md:flex"
+            >
+              <p className="text-center text-sm text-[#6b7280] dark:text-muted-foreground">
+                No items in the queue.
+              </p>
+            </div>
+          </>
         ) : rows.length > 0 ? (
           <>
             <div className="overflow-hidden rounded-lg border border-[#f4d47c] bg-[#fff8e8] dark:border-amber-800/50 dark:bg-amber-950/30">
@@ -1592,7 +1716,7 @@ export function ReceiptQueueWorkspace() {
                   <p className="text-center text-[11px] text-[#9a5b13]/90 dark:text-amber-200/80 sm:text-right">
                     Enter: field → next row · Shift+Enter: save all pending
                   </p>
-                  <div className="flex justify-center gap-1 sm:justify-end">
+                  <div className="hidden justify-center gap-1 sm:justify-end md:flex">
                     <button
                       type="button"
                       onClick={() => setListFilter("all")}
@@ -1634,16 +1758,36 @@ export function ReceiptQueueWorkspace() {
             </div>
 
             {displayedRows.length === 0 ? (
-              <p className="py-8 text-center text-sm text-[#6b7280] dark:text-muted-foreground">
-                No rows in this view.{" "}
-                <button
-                  type="button"
-                  className="text-foreground underline underline-offset-2 hover:text-foreground/80"
-                  onClick={() => setListFilter("all")}
-                >
-                  Show all
-                </button>
-              </p>
+              <>
+                <MobileEmptyState
+                  icon={<Search className="h-8 w-8 opacity-80" aria-hidden />}
+                  message="No rows in this view."
+                  action={
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="rounded-sm"
+                      onClick={() => {
+                        setListFilter("all");
+                        setVendorSearch("");
+                      }}
+                    >
+                      Show all
+                    </Button>
+                  }
+                />
+                <p className="hidden py-8 text-center text-sm text-[#6b7280] dark:text-muted-foreground md:block">
+                  No rows in this view.{" "}
+                  <button
+                    type="button"
+                    className="text-foreground underline underline-offset-2 hover:text-foreground/80"
+                    onClick={() => setListFilter("all")}
+                  >
+                    Show all
+                  </button>
+                </p>
+              </>
             ) : (
               <>
                 <div className="flex flex-col gap-4 md:gap-3">

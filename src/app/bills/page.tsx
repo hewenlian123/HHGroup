@@ -39,15 +39,17 @@ export default async function BillsPage({ searchParams }: Props) {
   return (
     <PageLayout
       header={
-        <PageHeader
-          title="Bills"
-          description="Track vendor, labor, and other payables"
-          actions={
-            <Button asChild size="sm">
-              <Link href="/bills/new">+ New Bill</Link>
-            </Button>
-          }
-        />
+        <div className="hidden md:block">
+          <PageHeader
+            title="Bills"
+            description="Track vendor, labor, and other payables"
+            actions={
+              <Button asChild size="sm">
+                <Link href="/bills/new">+ New Bill</Link>
+              </Button>
+            }
+          />
+        </div>
       }
     >
       <div className="mx-auto w-full max-w-[1200px]">

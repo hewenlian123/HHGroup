@@ -40,6 +40,15 @@ import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { useToast } from "@/components/toast/toast-provider";
 import { voidInvoiceFromClient } from "@/lib/invoice-void-client";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
+import {
+  MobileEmptyState,
+  MobileFabPlus,
+  MobileFilterSheet,
+  MobileListHeader,
+  MobileSearchFiltersRow,
+  mobileListPagePaddingClass,
+} from "@/components/mobile/mobile-list-chrome";
+import { Search } from "lucide-react";
 
 const STATUS_OPTIONS: { value: "" | InvoiceComputedStatus; label: string }[] = [
   { value: "", label: "All" },
@@ -69,6 +78,7 @@ function InvoicesPageInner() {
   const [voidConfirmId, setVoidConfirmId] = React.useState<string | null>(null);
   const [voidBusyId, setVoidBusyId] = React.useState<string | null>(null);
   const [projects, setProjects] = React.useState<Awaited<ReturnType<typeof getProjects>>>([]);
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -189,21 +199,83 @@ function InvoicesPageInner() {
     [router]
   );
 
+  const activeDrawerFilterCount = (statusFilter ? 1 : 0) + (projectFilter ? 1 : 0);
+
   return (
-    <div className="page-container page-stack py-6">
-      <PageHeader
+    <div
+      className={cn("page-container page-stack py-6", mobileListPagePaddingClass, "max-md:!gap-3")}
+    >
+      <div className="hidden md:block">
+        <PageHeader
+          title="Invoices"
+          subtitle="Create and manage invoices. Record payments and track AR."
+          actions={
+            <Button asChild size="sm">
+              <Link href="/financial/invoices/new">
+                <Plus className="h-4 w-4 mr-2" />
+                New Invoice
+              </Link>
+            </Button>
+          }
+        />
+      </div>
+      <MobileListHeader
         title="Invoices"
-        subtitle="Create and manage invoices. Record payments and track AR."
-        actions={
-          <Button asChild size="sm">
-            <Link href="/financial/invoices/new">
-              <Plus className="h-4 w-4 mr-2" />
-              New Invoice
-            </Link>
-          </Button>
+        fab={<MobileFabPlus href="/financial/invoices/new" ariaLabel="New invoice" />}
+      />
+
+      <MobileSearchFiltersRow
+        filterSheetOpen={filtersOpen}
+        onOpenFilters={() => setFiltersOpen(true)}
+        activeFilterCount={activeDrawerFilterCount}
+        searchSlot={
+          <div className="relative w-full">
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Invoice #, client, project…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-10 pl-8 text-sm"
+            />
+          </div>
         }
       />
-      <FilterBar>
+      <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Status</p>
+          <Select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as "" | InvoiceComputedStatus)}
+            className="w-full"
+          >
+            {STATUS_OPTIONS.map((o) => (
+              <option key={o.value || "all"} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Project</p>
+          <Select
+            value={projectFilter}
+            onChange={(e) => setProjectFilter(e.target.value)}
+            className="w-full"
+          >
+            <option value="">All projects</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
+          Done
+        </Button>
+      </MobileFilterSheet>
+
+      <FilterBar className="hidden md:block">
         <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1 sm:col-span-2 lg:col-span-1">
             <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
@@ -247,51 +319,66 @@ function InvoicesPageInner() {
       </FilterBar>
 
       {total === 0 ? (
-        <EmptyState
-          title={
-            search.trim() || statusFilter || projectFilter
-              ? "No invoices match filters"
-              : "No invoices yet"
-          }
-          description={
-            search.trim() || statusFilter || projectFilter
-              ? "Try adjusting the filters."
-              : "Create an invoice to get started."
-          }
-          icon={<Plus className="h-5 w-5" />}
-          action={
-            search.trim() || statusFilter || projectFilter ? null : (
-              <Button asChild size="sm" className="h-8">
-                <Link href="/financial/invoices/new">New Invoice</Link>
-              </Button>
-            )
-          }
-        />
+        <>
+          <MobileEmptyState
+            icon={<Plus className="h-8 w-8 opacity-80" aria-hidden />}
+            message={
+              search.trim() || statusFilter || projectFilter
+                ? "No invoices match your filters."
+                : "No invoices yet. Create one to get started."
+            }
+            action={
+              !(search.trim() || statusFilter || projectFilter) ? (
+                <Button asChild size="sm" variant="outline">
+                  <Link href="/financial/invoices/new">New invoice</Link>
+                </Button>
+              ) : undefined
+            }
+          />
+          <div className="hidden md:block">
+            <EmptyState
+              title={
+                search.trim() || statusFilter || projectFilter
+                  ? "No invoices match filters"
+                  : "No invoices yet"
+              }
+              description={
+                search.trim() || statusFilter || projectFilter
+                  ? "Try adjusting the filters."
+                  : "Create an invoice to get started."
+              }
+              icon={<Plus className="h-5 w-5" />}
+              action={
+                search.trim() || statusFilter || projectFilter ? null : (
+                  <Button asChild size="sm" className="h-8">
+                    <Link href="/financial/invoices/new">New Invoice</Link>
+                  </Button>
+                )
+              }
+            />
+          </div>
+        </>
       ) : (
         <>
-          <div className="flex flex-col gap-3 md:hidden">
+          <div className="divide-y divide-gray-100 dark:divide-border/60 md:hidden">
             {tableInvoiceRows.map(({ invoice: inv, projectLabel }) => (
               <button
                 key={inv.id}
                 type="button"
-                className="w-full rounded-sm border border-gray-100 bg-white p-4 text-left transition-colors hover:bg-gray-50 active:bg-gray-100 dark:border-border dark:bg-card dark:hover:bg-muted/30 dark:active:bg-muted/40"
+                className="flex min-h-[56px] w-full items-center gap-3 py-2.5 text-left"
                 onClick={() => startTransition(() => router.push(`/financial/invoices/${inv.id}`))}
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-foreground">{inv.invoiceNo}</p>
-                    <p className="mt-0.5 truncate text-sm text-muted-foreground">
-                      {inv.clientName}
-                    </p>
-                    <p className="mt-1 truncate text-xs text-muted-foreground">{projectLabel}</p>
-                  </div>
-                  <InvoiceStatusBadge status={inv.computedStatus} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-foreground">{inv.invoiceNo}</p>
+                  <p className="truncate text-xs text-text-secondary dark:text-muted-foreground">
+                    {inv.clientName} · {projectLabel}
+                  </p>
                 </div>
-                <div className="mt-3 flex flex-wrap items-baseline justify-between gap-2 border-t border-border/40 pt-3 text-sm tabular-nums">
-                  <span className="font-medium text-foreground">${inv.total.toLocaleString()}</span>
-                  <span className="text-muted-foreground">
-                    Balance ${inv.balanceDue.toLocaleString()}
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  <span className="text-sm font-medium tabular-nums text-foreground">
+                    ${inv.total.toLocaleString()}
                   </span>
+                  <InvoiceStatusBadge status={inv.computedStatus} />
                 </div>
               </button>
             ))}
