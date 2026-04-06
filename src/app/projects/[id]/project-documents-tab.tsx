@@ -15,6 +15,7 @@ import {
 import { uploadProjectDocument } from "./documents/actions";
 import { DOCUMENT_FILE_TYPES } from "@/lib/data";
 import type { DocumentRow } from "@/lib/data";
+import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 
 function formatDate(s: string): string {
   if (!s) return "—";
@@ -163,10 +164,7 @@ export function ProjectDocumentsTab({ projectId, documents }: Props) {
               </thead>
               <tbody>
                 {documents.map((doc) => (
-                  <tr
-                    key={doc.id}
-                    className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
-                  >
+                  <tr key={doc.id} className={listTableRowStaticClassName}>
                     <td
                       className="h-11 min-h-[44px] max-w-[240px] truncate px-3 py-0 align-middle text-[13px] font-medium"
                       title={doc.file_name}

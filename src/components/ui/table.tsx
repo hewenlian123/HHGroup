@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
+import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 
 const tableShellClass =
   "relative w-full overflow-hidden rounded-[10px] border-[0.5px] border-solid border-gray-300 bg-white dark:border-border";
@@ -43,7 +44,14 @@ const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => (
-  <thead ref={ref} className={cn("[&_tr]:border-0", className)} {...props} />
+  <thead
+    ref={ref}
+    className={cn(
+      "[&_tr]:border-0 [&_tr]:hover:!translate-y-0 [&_tr]:hover:!bg-transparent dark:[&_tr]:hover:!bg-transparent [&_tr]:active:!scale-100",
+      className
+    )}
+    {...props}
+  />
 ));
 TableHeader.displayName = "TableHeader";
 
@@ -79,7 +87,8 @@ const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTML
     <tr
       ref={ref}
       className={cn(
-        "border-0 transition-colors hover:bg-[#F5F7FA] data-[state=selected]:bg-muted dark:hover:bg-muted/50",
+        listTableRowStaticClassName,
+        "data-[state=selected]:bg-muted",
         "[&>td:first-child]:font-medium",
         className
       )}

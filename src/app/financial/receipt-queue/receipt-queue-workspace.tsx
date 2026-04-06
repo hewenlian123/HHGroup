@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { InlineLoading } from "@/components/ui/skeleton";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import { cn } from "@/lib/utils";
 import {
@@ -34,13 +35,15 @@ import {
 } from "@/lib/receipt-queue";
 import { ReceiptQueueRowCard, type RowMotionPhase } from "./receipt-queue-row-card";
 import { useRqLayout } from "./use-rq-layout";
-import { AlertTriangle, Camera, Loader2, Upload } from "lucide-react";
+import { AlertTriangle, Camera, Upload } from "lucide-react";
 import hotToast from "react-hot-toast";
 import { useToast } from "@/components/toast/toast-provider";
 import { uiActionLog, uiActionMark, uiNavLog, uiNavMark } from "@/lib/ui-action-perf";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  expensesQueryKey,
+  buildExpensesQueryKey,
+  defaultExpenseListSort,
+  expensesQueryKeyRoot,
   fetchExpenses,
   fetchWorkers,
   workersQueryKey,
@@ -53,6 +56,11 @@ import {
 } from "@/lib/queries/receiptQueue";
 import { useDelayedPending } from "@/hooks/use-delayed-pending";
 import { ReceiptQueueSkeleton } from "@/components/financial/receipt-queue-skeleton";
+import {
+  afterLayout,
+  neighborRowIdAfterRemove,
+  scrollElementIntoViewNearest,
+} from "@/lib/list-flow";
 
 type ProjectRow = { id: string; name: string | null; status?: string | null };
 type WorkerRow = { id: string; name: string };
@@ -131,6 +139,26 @@ function firstEditableFieldForRow(row: ReceiptQueueRow): QueueFocusField {
   return "date";
 }
 
+/** Visual neighbor after removal; skip `processing` rows by scanning outward in list order. */
+function nextQueueRowForFocus(
+  remainingAfter: ReceiptQueueRow[],
+  snapshotBeforeRemove: ReceiptQueueRow[],
+  removedId: string
+): ReceiptQueueRow | null {
+  const nid = neighborRowIdAfterRemove(snapshotBeforeRemove, removedId);
+  if (!nid) return null;
+  const start = remainingAfter.findIndex((r) => r.id === nid);
+  if (start < 0) return null;
+  if (remainingAfter[start]!.status !== "processing") return remainingAfter[start]!;
+  for (let j = start + 1; j < remainingAfter.length; j++) {
+    if (remainingAfter[j]!.status !== "processing") return remainingAfter[j]!;
+  }
+  for (let j = start - 1; j >= 0; j--) {
+    if (remainingAfter[j]!.status !== "processing") return remainingAfter[j]!;
+  }
+  return null;
+}
+
 /** Among rows whose ids are in `addedIds`, pick the one with the greatest `created_at`. */
 function newestAddedQueueRowId(list: ReceiptQueueRow[], addedIds: string[]): string | null {
   if (!addedIds.length) return null;
@@ -153,13 +181,11 @@ type FieldRefs = {
 const RQ_BTN =
   "transition-[background-color,transform,color] duration-[140ms] ease-out active:scale-[0.95] active:duration-90 active:ease-[cubic-bezier(0.34,1.56,0.64,1)]";
 
-function scrollReceiptQueueRowIntoViewMobile(rowId: string) {
+function scrollReceiptQueueRowIntoView(rowId: string, behavior: ScrollBehavior = "smooth") {
   if (typeof window === "undefined") return;
-  if (window.matchMedia("(min-width: 768px)").matches) return;
   requestAnimationFrame(() => {
-    document
-      .querySelector(`[data-receipt-queue-row="${rowId}"]`)
-      ?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+    const el = document.querySelector(`[data-receipt-queue-row="${rowId}"]`);
+    scrollElementIntoViewNearest(el ?? undefined, behavior);
   });
 }
 
@@ -168,6 +194,7 @@ export function ReceiptQueueWorkspace() {
   const { toast } = useToast();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const emptyQueueRef = React.useRef<HTMLDivElement>(null);
   const cameraInputRef = React.useRef<HTMLInputElement>(null);
   const uploadInputRef = React.useRef<HTMLInputElement>(null);
   const previewReplaceInputRef = React.useRef<HTMLInputElement>(null);
@@ -182,7 +209,7 @@ export function ReceiptQueueWorkspace() {
     [queryClient]
   );
   const readCachedExpenses = React.useCallback(
-    () => queryClient.getQueryData<Expense[]>(expensesQueryKey),
+    () => queryClient.getQueryData<Expense[]>(buildExpensesQueryKey(defaultExpenseListSort)),
     [queryClient]
   );
   const readCachedWorkers = React.useCallback(
@@ -273,8 +300,8 @@ export function ReceiptQueueWorkspace() {
     placeholderData: keepPreviousData,
   });
   const { data: expensesQueryData } = useQuery({
-    queryKey: expensesQueryKey,
-    queryFn: fetchExpenses,
+    queryKey: buildExpensesQueryKey(defaultExpenseListSort),
+    queryFn: () => fetchExpenses(defaultExpenseListSort),
     placeholderData: keepPreviousData,
   });
   const { data: workersQueryData } = useQuery({
@@ -367,7 +394,7 @@ export function ReceiptQueueWorkspace() {
       const el = fieldRefs.current[field][rowId];
       el?.focus();
       el?.select();
-      scrollReceiptQueueRowIntoViewMobile(rowId);
+      scrollReceiptQueueRowIntoView(rowId);
       return;
     }
     const root = document.querySelector(`[data-receipt-queue-row="${rowId}"]`);
@@ -381,7 +408,7 @@ export function ReceiptQueueWorkspace() {
     if (el.disabled) return;
     el.focus();
     if (el instanceof HTMLInputElement) el.select();
-    scrollReceiptQueueRowIntoViewMobile(rowId);
+    scrollReceiptQueueRowIntoView(rowId);
   }, []);
 
   /** Next frame — use after layout when the target row is already mounted. */
@@ -424,7 +451,7 @@ export function ReceiptQueueWorkspace() {
         el.focus();
         if (el instanceof HTMLInputElement) el.select();
         setActiveQueueRowId(rowId);
-        scrollReceiptQueueRowIntoViewMobile(rowId);
+        scrollReceiptQueueRowIntoView(rowId);
         return true;
       }
       return false;
@@ -475,7 +502,7 @@ export function ReceiptQueueWorkspace() {
     let workerList: WorkerRow[] = [];
     const settled = await Promise.allSettled([
       supabase ? fetchReceiptQueue(supabase) : Promise.resolve([] as ReceiptQueueRow[]),
-      getExpenses(),
+      getExpenses(defaultExpenseListSort),
       getWorkers(),
     ]);
     const q = settled[0];
@@ -496,7 +523,7 @@ export function ReceiptQueueWorkspace() {
     setExpenses(expList);
     setWorkers(workerList);
     queryClient.setQueryData(receiptQueueQueryKey, list);
-    queryClient.setQueryData(expensesQueryKey, expList);
+    queryClient.setQueryData(buildExpensesQueryKey(defaultExpenseListSort), expList);
     queryClient.setQueryData(workersQueryKey, workerList);
     return list;
   }, [supabase, toast, flushPendingDebouncedPatches, queryClient]);
@@ -515,9 +542,9 @@ export function ReceiptQueueWorkspace() {
       toast({ title: "Receipt queue", description: msg, variant: "error" });
     }
     try {
-      const expList = await getExpenses();
+      const expList = await getExpenses(defaultExpenseListSort);
       setExpenses(expList);
-      queryClient.setQueryData(expensesQueryKey, expList);
+      queryClient.setQueryData(buildExpensesQueryKey(defaultExpenseListSort), expList);
     } catch {
       /* keep previous expenses for duplicate hints */
     }
@@ -688,7 +715,7 @@ export function ReceiptQueueWorkspace() {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: receiptQueueQueryKey });
-      void queryClient.invalidateQueries({ queryKey: expensesQueryKey });
+      void queryClient.invalidateQueries({ queryKey: expensesQueryKeyRoot });
     },
   });
 
@@ -712,7 +739,7 @@ export function ReceiptQueueWorkspace() {
       let next: ReceiptQueueRow | undefined;
       for (let i = curIdx + 1; i < all.length; i++) {
         const r = all[i];
-        if (rowNeedsFix(r) && r.status !== "processing") {
+        if (r.status !== "processing") {
           next = r;
           break;
         }
@@ -720,7 +747,7 @@ export function ReceiptQueueWorkspace() {
       if (!next) {
         for (let i = 0; i < curIdx; i++) {
           const r = all[i];
-          if (rowNeedsFix(r) && r.status !== "processing") {
+          if (r.status !== "processing") {
             next = r;
             break;
           }
@@ -728,8 +755,12 @@ export function ReceiptQueueWorkspace() {
       }
       if (next) {
         setActiveQueueRowId(next.id);
-        requestAnimationFrame(() => {
-          applyQueueFieldFocus(firstEditableFieldForRow(next!), next!.id);
+        queueMicrotask(() => {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              applyQueueFieldFocus(firstEditableFieldForRow(next!), next!.id);
+            });
+          });
         });
       }
     },
@@ -1023,12 +1054,29 @@ export function ReceiptQueueWorkspace() {
       const prev = rowsRef.current;
       const removed = prev.find((r) => r.id === id);
       if (!removed) return;
+      const remaining = prev.filter((x) => x.id !== id);
+      const nextRow = nextQueueRowForFocus(remaining, prev, id);
+      let focusFollowDelete = false;
       removeInFlightRef.current.add(id);
       setReceiptPreview((p) => (p?.rowId === id ? null : p));
-      setActiveQueueRowId((cur) => (cur === id ? null : cur));
+      setActiveQueueRowId((cur) => {
+        if (cur === id) {
+          focusFollowDelete = true;
+          return nextRow?.id ?? null;
+        }
+        return cur;
+      });
       const t0 = uiActionMark();
       setRows((r) => r.filter((x) => x.id !== id));
       uiActionLog("receipt-queue-delete-ui", t0, 100);
+      afterLayout(() => {
+        if (!focusFollowDelete) return;
+        if (nextRow) {
+          applyQueueFieldFocus(firstEditableFieldForRow(nextRow), nextRow.id);
+        } else {
+          emptyQueueRef.current?.focus({ preventScroll: true });
+        }
+      });
       void (async () => {
         try {
           await deleteReceiptQueueRow(supabase, id);
@@ -1042,7 +1090,7 @@ export function ReceiptQueueWorkspace() {
         }
       })();
     },
-    [supabase, toast]
+    [supabase, toast, applyQueueFieldFocus]
   );
 
   const removeRow = React.useCallback(
@@ -1074,6 +1122,7 @@ export function ReceiptQueueWorkspace() {
   };
 
   const confirmRow = (row: ReceiptQueueRow) => {
+    const anchorRowId = activeQueueRowId;
     const live = rowsRef.current.find((r) => r.id === row.id) ?? row;
     const total = Number(live.amount);
     if (!Number.isFinite(total) || total <= 0) {
@@ -1106,13 +1155,16 @@ export function ReceiptQueueWorkspace() {
         const remainingAfter = snapshot.filter((x) => x.id !== live.id);
         const t0 = uiActionMark();
         setReceiptPreview((p) => (p?.rowId === live.id ? null : p));
-        setActiveQueueRowId((cur) => (cur === live.id ? null : cur));
+        const next = nextQueueRowForFocus(remainingAfter, snapshot, live.id);
+        setActiveQueueRowId((cur) => (cur === live.id ? (next?.id ?? null) : cur));
         setRows((r) => r.filter((x) => x.id !== live.id));
         uiActionLog("receipt-queue-confirm-ui", t0, 100);
-        const next = remainingAfter.find((r) => rowNeedsFix(r) && r.status !== "processing");
-        if (next) {
-          setActiveQueueRowId(next.id);
+        if (next && anchorRowId === live.id) {
           focusRowFieldAfterLayout(firstEditableFieldForRow(next), next.id);
+        } else if (!next && anchorRowId === live.id) {
+          afterLayout(() => {
+            emptyQueueRef.current?.focus({ preventScroll: true });
+          });
         }
         void (async () => {
           try {
@@ -1326,7 +1378,7 @@ export function ReceiptQueueWorkspace() {
                 onClick={() => void handleAddAll()}
               >
                 {bulkAdding ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-label="Adding" />
+                  <InlineLoading aria-label="Adding" />
                 ) : (
                   `Add all (${addAllEligibleCount})`
                 )}
@@ -1392,7 +1444,7 @@ export function ReceiptQueueWorkspace() {
                 onClick={() => cameraInputRef.current?.click()}
               >
                 {captureUploading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  <InlineLoading size="md" aria-hidden />
                 ) : (
                   <Camera className="h-4 w-4" />
                 )}
@@ -1410,7 +1462,7 @@ export function ReceiptQueueWorkspace() {
                 onClick={() => uploadInputRef.current?.click()}
               >
                 {captureUploading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  <InlineLoading size="md" aria-hidden />
                 ) : (
                   <Upload className="h-4 w-4" />
                 )}
@@ -1469,9 +1521,16 @@ export function ReceiptQueueWorkspace() {
         rows.length === 0 &&
         supabase &&
         !receiptQueueError ? (
-          <p className="text-sm text-[#6b7280] dark:text-muted-foreground">
-            No items in the queue.
-          </p>
+          <div
+            ref={emptyQueueRef}
+            tabIndex={-1}
+            data-receipt-queue-empty
+            className="flex min-h-[min(40vh,280px)] flex-col justify-center transition-opacity duration-200 ease-out animate-in fade-in"
+          >
+            <p className="text-center text-sm text-[#6b7280] dark:text-muted-foreground">
+              No items in the queue.
+            </p>
+          </div>
         ) : rows.length > 0 ? (
           <>
             <div className="overflow-hidden rounded-lg border border-[#f4d47c] bg-[#fff8e8] dark:border-amber-800/50 dark:bg-amber-950/30">

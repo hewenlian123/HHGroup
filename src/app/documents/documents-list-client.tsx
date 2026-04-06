@@ -8,7 +8,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { FilterBar } from "@/components/filter-bar";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { Select } from "@/components/ui/native-select";
 import { cn } from "@/lib/utils";
 import { listTablePrimaryCellClassName, listTableRowClassName } from "@/lib/list-table-interaction";
 import {
@@ -315,10 +315,7 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
                     return (
                       <tr
                         key={doc.id}
-                        className={cn(
-                          listTableRowClassName,
-                          "transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
-                        )}
+                        className={listTableRowClassName}
                         onClick={() => void handlePreview(doc)}
                       >
                         <td

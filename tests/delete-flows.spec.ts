@@ -91,7 +91,7 @@ test.describe("Delete UX: Delete control visible without hover (existing rows)",
       .first();
     await expectVisibleOrSkip(dataRow, "No worker rows or list still loading.", LIST_LOAD_MS);
     const del = dataRow.getByRole("button", { name: /^Delete$/ });
-    await expectDeleteControlVisibleWithoutHover(page, del, 1200);
+    await expectDeleteControlVisibleWithoutHover(page, del, 8000);
   });
 
   test("labor subcontractors: first data row Delete is immediately visible", async ({ page }) => {

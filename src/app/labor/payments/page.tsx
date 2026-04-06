@@ -15,6 +15,7 @@ import {
   type WorkerPayment,
 } from "@/lib/data";
 import { dispatchClientDataSync } from "@/lib/sync-router-client";
+import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 
 function fmtUsd(n: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -238,10 +239,7 @@ export default function WorkerPaymentsPage() {
                 </tr>
               ) : (
                 paged.map((r) => (
-                  <tr
-                    key={r.id}
-                    className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
-                  >
+                  <tr key={r.id} className={listTableRowStaticClassName}>
                     <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
                       {workerNameById.get(r.workerId) ?? r.workerId}
                     </td>

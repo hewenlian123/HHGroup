@@ -7,11 +7,12 @@ import { createBrowserClient } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { Select } from "@/components/ui/native-select";
 import { FilterBar } from "@/components/filter-bar";
 import { StatusBadge } from "@/components/status-badge";
 import { TableShell, tableRawTdClass, tableRawThClass } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 
 type SubcontractorRow = {
   id: string;
@@ -527,10 +528,7 @@ export default function SubcontractorsPage() {
                 </tr>
               ) : null}
               {filtered.map((row) => (
-                <tr
-                  key={row.id}
-                  className="group transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/20"
-                >
+                <tr key={row.id} className={listTableRowStaticClassName}>
                   <td className={cn(tableRawTdClass, "font-medium text-foreground")}>
                     <Link href={`/labor/subcontractors/${row.id}`} className="hover:underline">
                       {row.display_name}

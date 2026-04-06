@@ -17,7 +17,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 bg-[rgba(248,247,244,0.85)] backdrop-blur-[4px] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-50 bg-black/50 backdrop-blur-md duration-150 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className
     )}
     {...props}
@@ -34,13 +34,15 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid max-h-[90vh] w-full max-w-[480px] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-[14px] border-[0.5px] border-gray-300 bg-white p-8 shadow-modal duration-150 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] dark:border-border dark:bg-card dark:shadow-none",
+        "fixed left-[50%] top-[50%] z-50 grid max-h-[90vh] w-full max-w-[480px] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-md border-[0.5px] border-gray-300 bg-white p-8 shadow-none ease-out dark:border-border dark:bg-card",
+        "md:data-[state=open]:animate-hh-dialog-in md:data-[state=closed]:animate-hh-dialog-out",
+        "max-md:data-[state=open]:animate-in max-md:data-[state=closed]:animate-out max-md:data-[state=closed]:fade-out-0 max-md:data-[state=open]:fade-in-0 max-md:data-[state=open]:slide-in-from-bottom-4 max-md:data-[state=closed]:slide-out-to-bottom-4 max-md:duration-150",
         "max-md:fixed max-md:inset-0 max-md:left-0 max-md:top-0 max-md:translate-x-0 max-md:translate-y-0 max-md:max-h-none max-md:w-full max-md:max-w-none max-md:rounded-none max-md:border-0 max-md:p-4",
         className
       )}
       {...props}
     >
-      <DialogPrimitive.Close className="absolute right-4 top-4 flex items-center justify-center rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none max-lg:min-h-[44px] max-lg:min-w-[44px] touch-manipulation lg:min-h-0 lg:min-w-0">
+      <DialogPrimitive.Close className="absolute right-4 top-4 flex items-center justify-center rounded-sm opacity-70 transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-50 hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/30 focus-visible:ring-offset-0 active:scale-[0.97] active:duration-100 max-md:active:scale-[0.96] disabled:pointer-events-none max-lg:min-h-[44px] max-lg:min-w-[44px] touch-manipulation dark:hover:bg-muted/40 lg:min-h-0 lg:min-w-0">
         <X className="h-4 w-4" />
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>

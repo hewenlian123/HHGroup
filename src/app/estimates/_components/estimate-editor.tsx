@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
+import { InlineLoading } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type {
@@ -62,7 +63,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ChevronRight, ChevronDown, Plus, Copy, Trash2, GripVertical, Loader2 } from "lucide-react";
+import { ChevronRight, ChevronDown, Plus, Copy, Trash2, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EstimateStatusBadge } from "./estimate-status-badge";
 import { EstimatePaymentSchedule } from "./estimate-payment-schedule";
@@ -1773,7 +1774,7 @@ function AddCategoryBlock({
           onClick={() => void runAdd()}
         >
           {busy ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" aria-hidden />
+            <InlineLoading className="mr-2" size="md" aria-hidden />
           ) : (
             <Plus className="h-4 w-4 mr-2" aria-hidden />
           )}

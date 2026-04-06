@@ -5,6 +5,7 @@ import * as React from "react";
 import { flushSync } from "react-dom";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
+import { InlineLoading } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -15,7 +16,6 @@ import {
   type ExpenseAttachment,
 } from "@/lib/data";
 import { useToast } from "@/components/toast/toast-provider";
-import { Loader2 } from "lucide-react";
 import { inferAttachmentPreviewType } from "@/components/attachment-preview-modal";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import { ExpenseCategorySelect } from "@/components/expense-category-select";
@@ -474,7 +474,7 @@ export function EditExpenseModal({
                     >
                       {uploadBusy ? (
                         <>
-                          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                          <InlineLoading className="mr-1.5" />
                           Uploading…
                         </>
                       ) : (
@@ -523,7 +523,7 @@ export function EditExpenseModal({
                               /* eslint-disable-next-line @next/next/no-img-element */
                               <img src={thumb} alt="" className="h-full w-full object-cover" />
                             ) : (
-                              <Loader2 className="h-4 w-4 animate-spin text-[#9CA3AF]" />
+                              <InlineLoading className="h-4 w-4" size="md" />
                             )}
                           </button>
                           <span className="min-w-0 flex-1 truncate text-xs text-text-primary">
@@ -574,7 +574,7 @@ export function EditExpenseModal({
                 >
                   {saving ? (
                     <>
-                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
+                      <InlineLoading className="mr-1.5" aria-hidden />
                       Saving…
                     </>
                   ) : (

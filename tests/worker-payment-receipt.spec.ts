@@ -1,7 +1,9 @@
 import { test, expect } from "@playwright/test";
+import { resetAndEnsureE2EPaymentSeedFromEnv } from "./e2e-reset-worker-payroll";
 import {
   allowWorkerPaymentMutations,
   deleteAllWorkerPaymentsForWorker,
+  openWorkerPaymentReceiptPreviewAndAssertLaborLines,
 } from "./payment-e2e-helpers";
 
 /**
@@ -19,6 +21,10 @@ const WORKER_NAME = (process.env.E2E_WORKER_NAME ?? "[E2E] Seed Worker").trim();
 
 test.describe("Worker payment → receipt labor lines", () => {
   test.describe.configure({ timeout: 120_000 });
+
+  test.beforeAll(async () => {
+    await resetAndEnsureE2EPaymentSeedFromEnv();
+  });
 
   test("links labor entries on receipt (not 0 lines)", async ({ page }, testInfo) => {
     test.skip(
@@ -105,7 +111,7 @@ test.describe("Worker payment → receipt labor lines", () => {
 
     const payRow = page.locator("tbody tr").filter({ hasText: WORKER_NAME }).first();
     test.skip((await payRow.count()) === 0, "No payment row for this worker on /labor/payments.");
-    await payRow.getByRole("button", { name: "View Receipt" }).click();
+    await openWorkerPaymentReceiptPreviewAndAssertLaborLines(page, payRow);
     const receiptPreview = page.getByRole("dialog", { name: /Receipt preview/i });
     await expect(receiptPreview).toBeVisible({ timeout: 30_000 });
     await expect(receiptPreview.getByText("Loading receipt…")).not.toBeVisible({

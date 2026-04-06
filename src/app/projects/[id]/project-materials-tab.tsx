@@ -15,6 +15,7 @@ import {
 import type { ProjectMaterialSelectionWithMaterial } from "@/lib/data";
 import type { MaterialCatalogRow } from "@/lib/data";
 import { cn } from "@/lib/utils";
+import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 
 const STATUS_OPTIONS = [
   { value: "Selected", label: "Selected" },
@@ -202,10 +203,7 @@ export function ProjectMaterialsTab({
               </thead>
               <tbody>
                 {rows.map((row) => (
-                  <tr
-                    key={row.id}
-                    className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
-                  >
+                  <tr key={row.id} className={listTableRowStaticClassName}>
                     <td className="h-11 min-h-[44px] px-2 py-0 align-middle sm:px-3">
                       {row.material_photo_url ? (
                         <a

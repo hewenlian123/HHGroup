@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { SectionHeader, Divider } from "@/components/base";
 import { cn } from "@/lib/utils";
+import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 
 type PunchItem = {
   id: string;
@@ -70,10 +71,7 @@ export function ProjectPunchListTab({
               </thead>
               <tbody>
                 {punchItems.map((r) => (
-                  <tr
-                    key={r.id}
-                    className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
-                  >
+                  <tr key={r.id} className={listTableRowStaticClassName}>
                     <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
                       {r.issue || "—"}
                     </td>

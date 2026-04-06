@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
+import { InlineLoading } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
@@ -20,7 +21,7 @@ import {
 } from "@/lib/expense-payment-preferences";
 import { createBrowserClient } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
-import { ChevronDown, Loader2, Paperclip } from "lucide-react";
+import { ChevronDown, Paperclip } from "lucide-react";
 import { useToast } from "@/components/toast/toast-provider";
 import { uiActionLog, uiActionMark } from "@/lib/ui-action-perf";
 import { ExpenseCategorySelect } from "@/components/expense-category-select";
@@ -890,7 +891,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                   ) : null}
                   {processing ? (
                     <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                      <InlineLoading aria-hidden />
                       Scanning…
                     </span>
                   ) : null}
@@ -949,7 +950,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                   >
                     {saving ? (
                       <>
-                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
+                        <InlineLoading className="mr-1.5" aria-hidden />
                         Saving…
                       </>
                     ) : saveFlash ? (

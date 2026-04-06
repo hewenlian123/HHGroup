@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 
 type MaterialRow = {
   id: string;
@@ -263,10 +264,7 @@ export default function MaterialCatalogPage() {
                 </thead>
                 <tbody>
                   {materials.map((m) => (
-                    <tr
-                      key={m.id}
-                      className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
-                    >
+                    <tr key={m.id} className={listTableRowStaticClassName}>
                       <td className="h-11 min-h-[44px] px-2 py-0 align-middle sm:px-3">
                         {m.photo_url ? (
                           <a

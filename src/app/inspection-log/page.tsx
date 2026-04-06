@@ -5,7 +5,7 @@ import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { PageLayout, PageHeader, Drawer } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { Select } from "@/components/ui/native-select";
 import { listTablePrimaryCellClassName, listTableRowClassName } from "@/lib/list-table-interaction";
 import {
   Dialog,
@@ -227,10 +227,7 @@ export default function InspectionLogPage() {
                     <tr
                       key={row.id}
                       onClick={() => openDrawer(row)}
-                      className={cn(
-                        listTableRowClassName,
-                        "transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
-                      )}
+                      className={listTableRowClassName}
                     >
                       <td className="py-2 px-2 sm:px-3 text-muted-foreground tabular-nums">
                         {row.inspection_date

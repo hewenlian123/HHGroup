@@ -8,7 +8,7 @@ import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { FilterBar } from "@/components/filter-bar";
-import { Select } from "@/components/ui/select";
+import { Select } from "@/components/ui/native-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";

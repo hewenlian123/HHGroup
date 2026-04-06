@@ -16,6 +16,7 @@ import { createProjectTaskAction, updateProjectTaskAction } from "../actions";
 import type { ProjectTaskWithWorker } from "@/lib/data";
 import type { Worker } from "@/lib/labor-db";
 import { cn } from "@/lib/utils";
+import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 
 const PRIORITY_LABEL: Record<string, string> = { low: "Low", medium: "Medium", high: "High" };
 
@@ -128,10 +129,7 @@ export function ProjectTasksTab({
               </thead>
               <tbody>
                 {tasks.map((t) => (
-                  <tr
-                    key={t.id}
-                    className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
-                  >
+                  <tr key={t.id} className={listTableRowStaticClassName}>
                     <td className="h-11 min-h-[44px] px-3 py-0 align-middle">
                       <input
                         type="checkbox"

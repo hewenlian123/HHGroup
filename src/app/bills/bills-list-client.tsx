@@ -10,7 +10,7 @@ import { FilterBar } from "@/components/filter-bar";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { Select } from "@/components/ui/native-select";
 import { cn } from "@/lib/utils";
 import {
   listTableAmountCellClassName,
@@ -355,10 +355,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                   {localBills.map((bill) => (
                     <tr
                       key={bill.id}
-                      className={cn(
-                        listTableRowClassName,
-                        "transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
-                      )}
+                      className={listTableRowClassName}
                       onClick={() => router.push(`/bills/${bill.id}`)}
                     >
                       <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">

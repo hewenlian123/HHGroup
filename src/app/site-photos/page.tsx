@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { FilterBar } from "@/components/filter-bar";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { Select } from "@/components/ui/native-select";
 import {
   Dialog,
   DialogContent,

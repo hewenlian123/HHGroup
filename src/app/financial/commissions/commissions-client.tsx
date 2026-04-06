@@ -7,7 +7,6 @@ import {
   ChevronRight,
   Eye,
   FileText,
-  Loader2,
   Paperclip,
   Pencil,
   Search,
@@ -18,8 +17,9 @@ import { syncRouterAndClients } from "@/lib/sync-router-client";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { InlineLoading } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { Select } from "@/components/ui/native-select";
 import { cn } from "@/lib/utils";
 import {
   Dialog,
@@ -507,7 +507,7 @@ export function CommissionsClient({
       >
         {printing ? (
           <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+            <InlineLoading className="mr-2" size="md" aria-hidden />
             Preparing…
           </>
         ) : (
@@ -1066,16 +1066,13 @@ export function CommissionsClient({
                                                 <button
                                                   type="button"
                                                   disabled={receiptViewLoading?.payment.id === p.id}
-                                                  className="rounded-md p-1.5 text-blue-600 hover:bg-white hover:text-blue-700 disabled:opacity-50"
+                                                  className="rounded-md p-1.5 text-blue-600 transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-100 hover:text-blue-700 active:scale-[0.95] active:duration-100 disabled:opacity-50 dark:hover:bg-muted/50"
                                                   data-testid={`financial-payment-receipt-view-${p.id}`}
                                                   aria-label="View uploaded receipt"
                                                   onClick={(e) => openReceiptPreview(r, p, e)}
                                                 >
                                                   {receiptViewLoading?.payment.id === p.id ? (
-                                                    <Loader2
-                                                      className="h-4 w-4 animate-spin"
-                                                      aria-hidden
-                                                    />
+                                                    <InlineLoading size="md" aria-hidden />
                                                   ) : (
                                                     <FileText className="h-4 w-4" />
                                                   )}
@@ -1083,7 +1080,7 @@ export function CommissionsClient({
                                                 <button
                                                   type="button"
                                                   disabled={receiptDeletingPaymentId === p.id}
-                                                  className="rounded-md p-1.5 text-red-600 hover:bg-white hover:text-red-700 disabled:opacity-50"
+                                                  className="rounded-md p-1.5 text-red-600 transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-100 hover:text-red-700 active:scale-[0.95] active:duration-100 disabled:opacity-50 dark:hover:bg-muted/50"
                                                   data-testid={`financial-payment-receipt-remove-${p.id}`}
                                                   aria-label="Remove uploaded receipt"
                                                   onClick={(e) =>
@@ -1091,7 +1088,7 @@ export function CommissionsClient({
                                                   }
                                                 >
                                                   {receiptDeletingPaymentId === p.id ? (
-                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                    <InlineLoading size="md" aria-hidden />
                                                   ) : (
                                                     <Trash2 className="h-4 w-4" />
                                                   )}
@@ -1100,7 +1097,7 @@ export function CommissionsClient({
                                             ) : (
                                               <button
                                                 type="button"
-                                                className="rounded-md p-1.5 text-[#9CA3AF] hover:bg-white hover:text-text-secondary"
+                                                className="rounded-md p-1.5 text-[#9CA3AF] transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-100 hover:text-text-secondary active:scale-[0.95] active:duration-100 dark:hover:bg-muted/50"
                                                 data-testid={`financial-payment-receipt-upload-${p.id}`}
                                                 aria-label="Upload receipt"
                                                 onClick={(e) => openReceiptUploadModal(r, p, e)}

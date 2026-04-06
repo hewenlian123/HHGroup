@@ -59,9 +59,24 @@ export type Expense = {
   sourceType?: "company" | "reimbursement" | "receipt_upload";
 };
 
+/** List sort for `/financial/expenses` (Supabase + stable in-memory pass). */
+export type ExpenseSortField = "date" | "amount" | "vendor";
+export type ExpenseSortOrder = "asc" | "desc";
+export type ExpenseListSort = { field: ExpenseSortField; order: ExpenseSortOrder };
+
+export const defaultExpenseListSort: ExpenseListSort = {
+  field: "date",
+  order: "desc",
+};
+
+export function isDefaultExpenseListSort(sort: ExpenseListSort): boolean {
+  return sort.field === "date" && sort.order === "desc";
+}
+
 type ExpenseRow = {
   id: string;
   expense_date: string;
+  created_at?: string | null;
   vendor?: string;
   vendor_name?: string;
   payment_method?: string;
@@ -316,24 +331,25 @@ async function toExpense(
 
 /** Select columns: base + optional receipt_url, status, worker_id. */
 const EXPENSE_COLS_CORE =
-  "id,expense_date,vendor,vendor_name,notes,payment_method,reference_no,total,line_count,receipt_url,status,worker_id,card_name,account_id,payment_account_id,project_id";
+  "id,expense_date,vendor,vendor_name,notes,payment_method,reference_no,total,line_count,receipt_url,status,worker_id,card_name,account_id,payment_account_id,project_id,created_at";
 const EXPENSE_COLS_FULL = `${EXPENSE_COLS_CORE},source,source_id,source_type`;
 /** Same as pre-migration list (no source columns). */
 const EXPENSE_COLS_FULL_LEGACY_META = EXPENSE_COLS_CORE;
 /** Fallback when payment_method column does not exist (e.g. account_id-only schema). */
 const EXPENSE_COLS_FULL_NO_PAYMENT_METHOD =
-  "id,expense_date,vendor,vendor_name,notes,reference_no,total,line_count,receipt_url,status,worker_id,card_name,account_id,payment_account_id,project_id";
+  "id,expense_date,vendor,vendor_name,notes,reference_no,total,line_count,receipt_url,status,worker_id,card_name,account_id,payment_account_id,project_id,created_at";
 /** Legacy: table may have only vendor (no vendor_name). No payment_method so works when column is missing. */
 const EXPENSE_COLS_LEGACY =
-  "id,expense_date,vendor,notes,reference_no,total,line_count,payment_account_id";
+  "id,expense_date,vendor,notes,reference_no,total,line_count,payment_account_id,created_at";
 /** Minimal: no reference_no, no payment_method (for schemas that only have core columns). */
 const EXPENSE_COLS_MINIMAL =
-  "id,expense_date,vendor,vendor_name,notes,total,line_count,payment_account_id";
+  "id,expense_date,vendor,vendor_name,notes,total,line_count,payment_account_id,created_at";
 const EXPENSE_COLS_MINIMAL_LEGACY =
-  "id,expense_date,vendor,notes,total,line_count,payment_account_id";
+  "id,expense_date,vendor,notes,total,line_count,payment_account_id,created_at";
 /** Fallback when total/line_count do not exist: total is derived from expense_lines in app. */
-const EXPENSE_COLS_NO_TOTAL = "id,expense_date,vendor,vendor_name,notes,payment_account_id";
-const EXPENSE_COLS_NO_TOTAL_LEGACY = "id,expense_date,vendor,notes,payment_account_id";
+const EXPENSE_COLS_NO_TOTAL =
+  "id,expense_date,vendor,vendor_name,notes,payment_account_id,created_at";
+const EXPENSE_COLS_NO_TOTAL_LEGACY = "id,expense_date,vendor,notes,payment_account_id,created_at";
 
 function isMissingColumn(err: { message?: string } | null): boolean {
   const m = err?.message ?? "";
@@ -345,20 +361,83 @@ function isPaymentEmbedUnsupported(err: { message?: string } | null): boolean {
   return isMissingColumn(err) || /relationship|Could not find a relationship|PGRST200/i.test(m);
 }
 
-export async function getExpenses(): Promise<Expense[]> {
+function statusPriorityKey(status: string | null | undefined): number {
+  const v = (status ?? "pending").toLowerCase();
+  if (v === "needs_review") return 0;
+  if (v === "pending") return 1;
+  return 2;
+}
+
+function compareExpenseRowsForSort(a: ExpenseRow, b: ExpenseRow, sort: ExpenseListSort): number {
+  if (isDefaultExpenseListSort(sort)) {
+    const sp = statusPriorityKey(a.status) - statusPriorityKey(b.status);
+    if (sp !== 0) return sp;
+  }
+
+  const ad = (a.expense_date ?? "").slice(0, 10);
+  const bd = (b.expense_date ?? "").slice(0, 10);
+  const at = Number(a.total ?? 0);
+  const bt = Number(b.total ?? 0);
+  const av = (a.vendor_name ?? a.vendor ?? "").toLowerCase();
+  const bv = (b.vendor_name ?? b.vendor ?? "").toLowerCase();
+  const ac = String(a.created_at ?? "");
+  const bc = String(b.created_at ?? "");
+
+  let cmp = 0;
+  switch (sort.field) {
+    case "date":
+      cmp = ad.localeCompare(bd);
+      break;
+    case "amount":
+      cmp = at === bt ? 0 : at < bt ? -1 : 1;
+      break;
+    case "vendor":
+      cmp = av.localeCompare(bv);
+      break;
+  }
+  if (sort.order === "desc") {
+    cmp = -cmp;
+  }
+  if (cmp !== 0) return cmp;
+
+  const ct = bc.localeCompare(ac);
+  if (ct !== 0) return -ct;
+
+  return String(a.id).localeCompare(String(b.id));
+}
+
+function sortExpenseRowsInPlace(rows: ExpenseRow[], sort: ExpenseListSort): void {
+  rows.sort((a, b) => compareExpenseRowsForSort(a, b, sort));
+}
+
+/** Chain `.order` for list fetch; always ends with `created_at` desc for stability. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Supabase builder
+function applyExpenseOrderToQuery(q: any, sort: ExpenseListSort): any {
+  const asc = sort.order === "asc";
+  let x = q;
+  if (sort.field === "date") {
+    x = x.order("expense_date", { ascending: asc });
+  } else if (sort.field === "amount") {
+    x = x.order("total", { ascending: asc });
+  } else {
+    x = x.order("vendor_name", { ascending: asc });
+  }
+  return x.order("created_at", { ascending: false });
+}
+
+export async function getExpenses(
+  sort: ExpenseListSort = defaultExpenseListSort
+): Promise<Expense[]> {
   const c = client();
   let rows: unknown[] = [];
-  const resEmbed = await c
-    .from("expenses")
-    .select(`${EXPENSE_COLS_FULL}, payment_accounts ( name )`)
-    .order("expense_date", { ascending: false });
+  const resEmbed = await applyExpenseOrderToQuery(
+    c.from("expenses").select(`${EXPENSE_COLS_FULL}, payment_accounts ( name )`),
+    sort
+  );
 
   const resFlat =
     resEmbed.error && isPaymentEmbedUnsupported(resEmbed.error)
-      ? await c
-          .from("expenses")
-          .select(EXPENSE_COLS_FULL)
-          .order("expense_date", { ascending: false })
+      ? await applyExpenseOrderToQuery(c.from("expenses").select(EXPENSE_COLS_FULL), sort)
       : null;
 
   const res = resFlat ?? resEmbed;
@@ -369,45 +448,45 @@ export async function getExpenses(): Promise<Expense[]> {
     if (isMissingTable(res.error)) throw new Error(`Expenses table not found. ${HINT}`);
     throw new Error(res.error.message ? `${res.error.message} ${HINT}` : HINT);
   } else {
-    const core = await c
-      .from("expenses")
-      .select(EXPENSE_COLS_FULL_LEGACY_META)
-      .order("expense_date", { ascending: false });
+    const core = await applyExpenseOrderToQuery(
+      c.from("expenses").select(EXPENSE_COLS_FULL_LEGACY_META),
+      sort
+    );
     if (!core.error) {
       rows = core.data ?? [];
     } else if (!isMissingColumn(core.error)) {
       if (isMissingTable(core.error)) throw new Error(`Expenses table not found. ${HINT}`);
       throw new Error(core.error.message ? `${core.error.message} ${HINT}` : HINT);
     } else {
-      const fallback = await c
-        .from("expenses")
-        .select(EXPENSE_COLS_FULL_NO_PAYMENT_METHOD)
-        .order("expense_date", { ascending: false });
+      const fallback = await applyExpenseOrderToQuery(
+        c.from("expenses").select(EXPENSE_COLS_FULL_NO_PAYMENT_METHOD),
+        sort
+      );
       if (fallback.error && isMissingColumn(fallback.error)) {
-        const legacy = await c
-          .from("expenses")
-          .select(EXPENSE_COLS_LEGACY)
-          .order("expense_date", { ascending: false });
+        const legacy = await applyExpenseOrderToQuery(
+          c.from("expenses").select(EXPENSE_COLS_LEGACY),
+          sort
+        );
         if (legacy.error && isMissingColumn(legacy.error)) {
-          const minimal = await c
-            .from("expenses")
-            .select(EXPENSE_COLS_MINIMAL)
-            .order("expense_date", { ascending: false });
+          const minimal = await applyExpenseOrderToQuery(
+            c.from("expenses").select(EXPENSE_COLS_MINIMAL),
+            sort
+          );
           if (minimal.error && isMissingColumn(minimal.error)) {
-            const minimalLegacy = await c
-              .from("expenses")
-              .select(EXPENSE_COLS_MINIMAL_LEGACY)
-              .order("expense_date", { ascending: false });
+            const minimalLegacy = await applyExpenseOrderToQuery(
+              c.from("expenses").select(EXPENSE_COLS_MINIMAL_LEGACY),
+              sort
+            );
             if (minimalLegacy.error && isMissingColumn(minimalLegacy.error)) {
-              const noTotal = await c
-                .from("expenses")
-                .select(EXPENSE_COLS_NO_TOTAL)
-                .order("expense_date", { ascending: false });
+              const noTotal = await applyExpenseOrderToQuery(
+                c.from("expenses").select(EXPENSE_COLS_NO_TOTAL),
+                sort
+              );
               if (noTotal.error && isMissingColumn(noTotal.error)) {
-                const noTotalLegacy = await c
-                  .from("expenses")
-                  .select(EXPENSE_COLS_NO_TOTAL_LEGACY)
-                  .order("expense_date", { ascending: false });
+                const noTotalLegacy = await applyExpenseOrderToQuery(
+                  c.from("expenses").select(EXPENSE_COLS_NO_TOTAL_LEGACY),
+                  sort
+                );
                 if (noTotalLegacy.error) throw new Error(noTotalLegacy.error.message ?? HINT);
                 rows = noTotalLegacy.data ?? [];
               } else if (noTotal.error) {
@@ -437,12 +516,16 @@ export async function getExpenses(): Promise<Expense[]> {
       }
     }
   }
+
+  const rowModels = rows as ExpenseRow[];
+  sortExpenseRowsInPlace(rowModels, sort);
+
   const paymentNameMap = await fetchPaymentAccountNameMap(
-    (rows as ExpenseRow[]).map((r) => r.payment_account_id)
+    rowModels.map((r) => r.payment_account_id)
   );
   const result: Expense[] = [];
-  for (const row of rows) {
-    const r = row as ExpenseRow;
+  for (const row of rowModels) {
+    const r = row;
     const { data: lineRows } = await c.from("expense_lines").select("*").eq("expense_id", r.id);
     const lines = (lineRows ?? []) as ExpenseLineRow[];
     const attachments = await getAttachments(r.id);

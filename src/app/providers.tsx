@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { keepPreviousData, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HotToaster } from "@/components/hot-toast-root";
+import { Toaster } from "@/components/ui/sonner";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = React.useState(
@@ -13,6 +14,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
             staleTime: 30_000,
             refetchOnWindowFocus: false,
             retry: 1,
+            placeholderData: keepPreviousData,
           },
         },
       })
@@ -21,6 +23,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={queryClient}>
       {children}
       <HotToaster />
+      <Toaster position="bottom-right" closeButton />
     </QueryClientProvider>
   );
 }

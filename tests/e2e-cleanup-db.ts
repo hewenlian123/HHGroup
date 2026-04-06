@@ -23,7 +23,7 @@ export type CleanupTestDataResult = {
 };
 
 /** Receipt queue rows created only by Playwright (file_name patterns). */
-const E2E_RECEIPT_QUEUE_FILE_PATTERNS = ["queue-receipt-%", "receipt-layout-%", "rq-%"] as const;
+const E2E_RECEIPT_QUEUE_FILE_PATTERNS = ["queue-%", "receipt-layout-%", "rq-%"] as const;
 
 /** Delete E2E receipt_queue rows so failed specs do not accumulate and starve the UI. */
 export async function purgeE2EReceiptQueueRows(supabase: SupabaseClient): Promise<number> {

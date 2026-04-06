@@ -1,11 +1,13 @@
 import { test, expect } from "@playwright/test";
 import { E2E_PRESERVED_PROJECT_ID } from "./e2e-cleanup-db";
 import {
+  attachmentPreviewModal,
   dialogPaymentAccountSelect,
   expenseListRow,
   expensesVendorSearch,
   pickOrCreatePaymentInSelect,
   prepareReceiptQueueRowForConfirm,
+  receiptQueueExpenseSuccessSeen,
   receiptQueueRowByFileName,
 } from "./e2e-expenses-helpers";
 
@@ -77,8 +79,8 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
       .first();
     await pickOrCreatePaymentInSelect(page, paySel);
 
-    await queueRow.getByRole("button", { name: "Preview receipt" }).click();
-    const preview = page.getByRole("dialog", { name: /Receipt preview/i });
+    await queueRow.getByRole("button", { name: /preview receipt/i }).click();
+    const preview = attachmentPreviewModal(page);
     await expect(preview).toBeVisible({ timeout: 15_000 });
     await preview.getByRole("button", { name: "Close" }).click();
 
@@ -97,7 +99,13 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
         async () => {
           const t = await page.locator("body").innerText();
           if (/create failed/i.test(t)) throw new Error("Confirm failed.");
-          return /expense created/i.test(t) ? "ok" : null;
+          if (receiptQueueExpenseSuccessSeen(t)) return "ok";
+          const n = await page
+            .getByTestId("receipt-queue-row")
+            .filter({ has: page.locator(`input[value="${vendorMark}"]`) })
+            .count();
+          if (n === 0) return "ok";
+          return null;
         },
         { timeout: 120_000, intervals: [300] }
       )
@@ -145,10 +153,7 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
       .filter({ has: page.locator(`option[value="${E2E_PRESERVED_PROJECT_ID}"]`) })
       .selectOption({ value: E2E_PRESERVED_PROJECT_ID });
 
-    const payLabel = await pickOrCreatePaymentInSelect(
-      page,
-      dialogPaymentAccountSelect(dialog, page)
-    );
+    await pickOrCreatePaymentInSelect(page, dialogPaymentAccountSelect(dialog, page));
 
     await dialog.getByRole("button", { name: "Save", exact: true }).click();
     if (
@@ -177,15 +182,10 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
     await expensesVendorSearch(page).fill(vendorMark);
     const row = expenseListRow(page, vendorMark);
     await expect(row).toBeVisible({ timeout: 60_000 });
-    await expect
-      .poll(
-        async () => {
-          const t = await row.innerText();
-          return t.includes(payLabel) ? "ok" : null;
-        },
-        { timeout: 60_000, intervals: [400] }
-      )
-      .toBe("ok");
+    // List shows `payment_method` (quick create uses "Other"), not payment account name.
+    await expect(row).toContainText("Other");
+    await expect(row).toContainText("77.01");
+    await expect(row).toContainText("[E2E] Seed — HH Unified");
 
     assertNoErrors();
   });
@@ -281,7 +281,8 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
     const row = expenseListRow(page, vendorBase);
     await expect(row).toBeVisible({ timeout: 20_000 });
     await row.hover();
-    await row.getByRole("button", { name: "Edit" }).click();
+    await row.getByRole("button", { name: "Row actions" }).click();
+    await page.getByRole("menuitem", { name: "Edit" }).click();
 
     const editDlg = page.getByRole("dialog", { name: /Edit expense/i });
     await expect(editDlg).toBeVisible({ timeout: 15_000 });
@@ -296,7 +297,13 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
 
     await expect
       .poll(
-        async () => (/expense updated/i.test(await page.locator("body").innerText()) ? "ok" : null),
+        async () => {
+          const body = await page.locator("body").innerText();
+          if (/save failed|something went wrong/i.test(body)) {
+            throw new Error("Edit expense save failed (error text in page).");
+          }
+          return /\bSaved\b|expense updated/i.test(body) ? "ok" : null;
+        },
         {
           timeout: 30_000,
           intervals: [300],

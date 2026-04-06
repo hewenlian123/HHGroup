@@ -5,6 +5,7 @@ import { getProjectById, getLaborEntriesWithJoins, getWorkers } from "@/lib/data
 import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
+import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 
 function fmtUsd(n: number): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -149,10 +150,7 @@ export default async function ProjectLaborPage({ params }: Props) {
                 </tr>
               ) : (
                 workerRows.map((r) => (
-                  <tr
-                    key={r.worker_id}
-                    className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
-                  >
+                  <tr key={r.worker_id} className={listTableRowStaticClassName}>
                     <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
                       {r.worker_name}
                     </td>
@@ -198,10 +196,7 @@ export default async function ProjectLaborPage({ params }: Props) {
                 </tr>
               ) : (
                 costCodeRows.map((r) => (
-                  <tr
-                    key={r.cost_code}
-                    className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
-                  >
+                  <tr key={r.cost_code} className={listTableRowStaticClassName}>
                     <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
                       {r.cost_code}
                     </td>

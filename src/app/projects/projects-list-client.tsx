@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TableShell, tableRawTdClass, tableRawThClass } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { listTableRowClassName } from "@/lib/list-table-interaction";
 import {
   deleteProjectAction,
   getProjectUsageAction,
@@ -224,7 +225,7 @@ export function ProjectsListClient({
         <Button
           asChild
           variant="outline"
-          className="h-10 shrink-0 rounded-md border-[0.5px] border-gray-300 bg-white px-4 text-[14px] font-medium text-text-primary shadow-none hover:bg-[#F5F7FA]"
+          className="h-10 shrink-0 rounded-md border-[0.5px] border-gray-300 bg-white px-4 text-[14px] font-medium text-text-primary shadow-none transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-50 active:scale-[0.97] active:duration-100 dark:hover:bg-muted/40"
         >
           <Link href="/projects/new">
             <Plus className="mr-2 h-4 w-4" />
@@ -304,7 +305,7 @@ export function ProjectsListClient({
             <Button
               asChild
               variant="outline"
-              className="mt-6 h-10 rounded-md border-[0.5px] border-gray-300 bg-white px-4 text-text-primary shadow-none hover:bg-[#F5F7FA]"
+              className="mt-6 h-10 rounded-md border-[0.5px] border-gray-300 bg-white px-4 text-text-primary shadow-none transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-50 active:scale-[0.97] active:duration-100 dark:hover:bg-muted/40"
             >
               <Link href="/projects/new">New Project</Link>
             </Button>
@@ -340,7 +341,7 @@ export function ProjectsListClient({
                     tabIndex={0}
                     role="link"
                     aria-label={`Open project ${r.name}`}
-                    className="cursor-pointer transition-colors hover:bg-[#F5F7FA]"
+                    className={listTableRowClassName}
                   >
                     <td className={cn(tableRawTdClass, "font-medium text-text-primary")}>
                       {r.name}

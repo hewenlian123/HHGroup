@@ -11,8 +11,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { InlineLoading } from "@/components/ui/skeleton";
 import type { Project } from "@/lib/data";
-import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const MODAL =
@@ -193,7 +193,7 @@ export function EditProjectModal({ open, onOpenChange, project, onSave }: Props)
             >
               {saving ? (
                 <>
-                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden />
+                  <InlineLoading className="mr-1.5" size="md" aria-hidden />
                   Saving…
                 </>
               ) : (

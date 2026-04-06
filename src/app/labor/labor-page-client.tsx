@@ -4,7 +4,7 @@ import * as React from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
+import { Select } from "@/components/ui/native-select";
 import { FilterBar } from "@/components/filter-bar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -15,6 +15,7 @@ import {
 } from "@/lib/data";
 import type { LaborEntryWithJoins } from "@/lib/daily-labor-db";
 import { cn } from "@/lib/utils";
+import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 import { useRegisterLaborOpenDailyEntry } from "@/contexts/labor-add-entry-context";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { invalidateDataCache } from "@/lib/client-data-cache";
@@ -550,8 +551,8 @@ export default function LaborPageClient() {
                         type="button"
                         onClick={() => setExpandedDate((prev) => (prev === date ? null : date))}
                         className={cn(
-                          "flex w-full items-center justify-between gap-3 rounded-none px-3 py-2 text-left transition-colors bg-[#fafafa] hover:bg-[#f6f6f6]",
-                          isExpanded && "bg-[#f6f6f6]"
+                          "flex w-full items-center justify-between gap-3 rounded-none px-3 py-2 text-left transition-all duration-150 ease-out hover:-translate-y-px bg-gray-50 hover:bg-gray-100 active:scale-[0.99] active:duration-100 dark:bg-muted/20 dark:hover:bg-muted/40",
+                          isExpanded && "bg-gray-100 dark:bg-muted/40"
                         )}
                       >
                         <div className="flex items-baseline gap-3 min-w-0">
@@ -616,7 +617,10 @@ export default function LaborPageClient() {
                                 return (
                                   <tr
                                     key={e.id}
-                                    className="group border-b border-border/30 last:border-b-0 hover:bg-[#fafafa]"
+                                    className={cn(
+                                      listTableRowStaticClassName,
+                                      "border-b border-border/30 last:border-b-0"
+                                    )}
                                   >
                                     <td className="py-2 px-3 font-semibold text-foreground">
                                       {e.worker_name ?? "—"}
@@ -822,7 +826,10 @@ export default function LaborPageClient() {
                         return (
                           <tr
                             key={e.id}
-                            className="group border-b border-border/60 last:border-b-0 hover:bg-[#fafafa]"
+                            className={cn(
+                              listTableRowStaticClassName,
+                              "border-b border-border/60 last:border-b-0"
+                            )}
                           >
                             <td className="py-2 px-3 font-semibold text-foreground">
                               {e.worker_name ?? "—"}

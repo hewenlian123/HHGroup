@@ -8,10 +8,11 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FilterBar } from "@/components/filter-bar";
-import { Select } from "@/components/ui/select";
+import { Select } from "@/components/ui/native-select";
 import { StatusBadge } from "@/components/status-badge";
 import { TableShell, tableRawTdClass, tableRawThClass } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 
 type VendorRow = {
   id: string;
@@ -369,10 +370,7 @@ export default function VendorsPage() {
                 </tr>
               ) : null}
               {filtered.map((row) => (
-                <tr
-                  key={row.id}
-                  className="group transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/20"
-                >
+                <tr key={row.id} className={listTableRowStaticClassName}>
                   <td className={cn(tableRawTdClass, "font-medium text-foreground")}>{row.name}</td>
                   <td className={cn(tableRawTdClass, "text-muted-foreground")}>
                     {row.contact_name || "—"}

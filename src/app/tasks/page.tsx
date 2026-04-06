@@ -24,6 +24,7 @@ import {
 import { createProjectTaskAction, updateProjectTaskAction } from "@/app/projects/actions";
 import { runOptimisticPersist } from "@/lib/optimistic-save";
 import { cn } from "@/lib/utils";
+import { listTableRowClassName } from "@/lib/list-table-interaction";
 import { flushSync } from "react-dom";
 import { MoreHorizontal } from "lucide-react";
 
@@ -666,7 +667,7 @@ export default function TasksPage() {
                         <tr
                           key={t.id}
                           onClick={() => openDrawer(t)}
-                          className="cursor-pointer transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
+                          className={listTableRowClassName}
                         >
                           <td
                             className="h-11 min-h-[44px] px-2 py-0 align-middle sm:px-3"

@@ -5,7 +5,7 @@ import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { PageLayout, PageHeader, SectionHeader } from "@/components/base";
 import { FilterBar } from "@/components/filter-bar";
-import { Select } from "@/components/ui/select";
+import { Select } from "@/components/ui/native-select";
 import { cn } from "@/lib/utils";
 import { listTableAmountCellClassName } from "@/lib/list-table-interaction";
 import { getProjects, getProjectCostCodeSummary, getProjectForecastSummary } from "@/lib/data";

@@ -11,6 +11,7 @@ import { Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
+import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 
 function fmtUsd(n: number): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -130,10 +131,7 @@ export default async function SubcontractorsPage() {
               </thead>
               <tbody>
                 {rows.map((r) => (
-                  <tr
-                    key={r.id}
-                    className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
-                  >
+                  <tr key={r.id} className={listTableRowStaticClassName}>
                     <td className="py-1.5 px-3">
                       <Link
                         href={`/subcontractors/${r.id}`}

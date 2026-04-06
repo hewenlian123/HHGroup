@@ -40,7 +40,7 @@ export function ReceiptPrintClientShell({ receiptNo, children }: Props) {
         <button
           type="button"
           onClick={() => window.print()}
-          className="rounded-sm border border-[#ddd] bg-white px-3 py-1.5 text-sm hover:bg-[#fafafa]"
+          className="rounded-md border border-[#ddd] bg-white px-3 py-1.5 text-sm transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-50 active:scale-[0.97] active:duration-100 dark:hover:bg-muted/40"
         >
           Print
         </button>
@@ -48,7 +48,7 @@ export function ReceiptPrintClientShell({ receiptNo, children }: Props) {
           type="button"
           disabled={pdfBusy}
           onClick={() => void handleDownloadPdf()}
-          className="rounded-sm border border-[#ddd] bg-white px-3 py-1.5 text-sm hover:bg-[#fafafa] disabled:opacity-60"
+          className="rounded-md border border-[#ddd] bg-white px-3 py-1.5 text-sm transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-50 active:scale-[0.97] active:duration-100 disabled:opacity-60 dark:hover:bg-muted/40"
         >
           {pdfBusy ? "Generating…" : "Download PDF"}
         </button>

@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { listFlexRowClassName } from "@/lib/list-table-interaction";
 
 export type DataTableColumn<T> = {
   key: string;
@@ -54,7 +55,7 @@ export function DataTable<T>({
       <div className={cn("relative w-full overflow-auto hidden md:block", className)}>
         <table className="w-full caption-bottom text-sm">
           <TableHeader>
-            <TableRow className="hover:bg-transparent">
+            <TableRow className="hover:!translate-y-0 hover:!bg-transparent active:!scale-100 dark:hover:!bg-transparent">
               {columns.map((col) => (
                 <TableHead key={col.key} className={cn(col.numeric && "text-right", col.className)}>
                   {col.header}
@@ -71,8 +72,11 @@ export function DataTable<T>({
                 <TableRow
                   key={id}
                   className={cn(
-                    "table-row-compact cursor-pointer border-b border-gray-300 transition-colors hover:bg-page",
-                    onRowClick && "cursor-pointer"
+                    "table-row-compact border-b border-gray-300 dark:border-border",
+                    listFlexRowClassName,
+                    onRowClick &&
+                      "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/30 focus-visible:ring-offset-0",
+                    !onRowClick && "cursor-default"
                   )}
                   onClick={(e) => {
                     const target = (e.target as HTMLElement).closest("button");
@@ -135,7 +139,11 @@ export function DataTable<T>({
           return (
             <div
               key={id}
-              className="rounded-lg border border-gray-300 bg-white p-3"
+              className={cn(
+                "rounded-lg border border-gray-300 bg-white p-3 transition-all duration-150 ease-out active:scale-[0.99] hover:-translate-y-px hover:bg-gray-50 dark:hover:bg-muted/40",
+                onRowClick &&
+                  "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/30 focus-visible:ring-offset-0"
+              )}
               role={onRowClick ? "button" : undefined}
               tabIndex={onRowClick ? 0 : undefined}
               onClick={onRowClick ? () => onRowClick(row) : undefined}

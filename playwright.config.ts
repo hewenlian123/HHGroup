@@ -33,8 +33,12 @@ export default defineConfig({
   globalTeardown: "./tests/global-teardown.ts",
   timeout: 30000,
   retries: 1,
-  /** Cursor/CI often sets `CI=true`; many parallel tabs against `next start` causes timeouts on main/gotos. */
-  workers: process.env.CI ? 2 : undefined,
+  /**
+   * Shared local Supabase state races when chromium + chromium-payments run in parallel (same seed worker).
+   * Override with PW_WORKERS=4 for speed when you accept occasional flakes.
+   */
+  workers:
+    process.env.PW_WORKERS !== undefined ? Number(process.env.PW_WORKERS) : process.env.CI ? 2 : 1,
   /**
    * Web server modes:
    * - CI (without E2E_WEB_SERVER=dev): expects build output, runs `next start`

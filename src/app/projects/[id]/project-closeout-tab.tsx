@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { CloseoutPunch, CloseoutWarranty, CloseoutCompletion } from "@/lib/data";
 import { cn } from "@/lib/utils";
+import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 
 const fmtUsd = (n: number) =>
   n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -320,10 +321,7 @@ export function ProjectCloseoutTab({
                   </thead>
                   <tbody>
                     {punchForm.items.map((row, idx) => (
-                      <tr
-                        key={idx}
-                        className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
-                      >
+                      <tr key={idx} className={listTableRowStaticClassName}>
                         <td className="min-h-[44px] px-2 py-1.5 align-middle">
                           <Input
                             value={row.item}

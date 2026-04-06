@@ -15,6 +15,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { ChangeOrder } from "@/lib/data";
+import { cn } from "@/lib/utils";
+import { listFlexRowClassName } from "@/lib/list-table-interaction";
 
 export type ProjectGroup = {
   project: { id: string; name: string };
@@ -145,7 +147,10 @@ export function ChangeOrdersView({
                     <Link
                       key={co.id}
                       href={`/projects/${co.projectId}/change-orders/${co.id}`}
-                      className="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-[#fafafa] border-b border-[#eee] last:border-b-0"
+                      className={cn(
+                        listFlexRowClassName,
+                        "flex items-center justify-between gap-4 px-5 py-4 border-b border-[#eee] last:border-b-0"
+                      )}
                     >
                       <div className="min-w-0 flex-1">
                         <div className="font-medium text-[#111] text-[15px]">{co.number}</div>

@@ -3,13 +3,14 @@
 import * as React from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { InlineLoading } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { createBrowserClient } from "@/lib/supabase";
 import { inferExpenseCategoryFromVendor } from "@/lib/receipt-infer-category";
 import { processReceiptQueueUpload } from "@/lib/receipt-queue-process-upload";
 import { insertReceiptQueueProcessing, notifyReceiptQueueChanged } from "@/lib/receipt-queue";
-import { Camera, Loader2, Upload } from "lucide-react";
+import { Camera, Upload } from "lucide-react";
 import { useToast } from "@/components/toast/toast-provider";
 
 type Props = {
@@ -232,7 +233,7 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
                   onClick={() => cameraInputRef.current?.click()}
                 >
                   {captureUploading ? (
-                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
+                    <InlineLoading className="mr-1.5" aria-hidden />
                   ) : (
                     <Camera className="mr-1.5 h-3.5 w-3.5" />
                   )}
@@ -247,7 +248,7 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
                   onClick={() => uploadInputRef.current?.click()}
                 >
                   {captureUploading ? (
-                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
+                    <InlineLoading className="mr-1.5" aria-hidden />
                   ) : (
                     <Upload className="mr-1.5 h-3.5 w-3.5" />
                   )}

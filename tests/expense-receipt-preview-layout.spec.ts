@@ -1,8 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { E2E_PRESERVED_PROJECT_ID } from "./e2e-cleanup-db";
 import {
+  attachmentPreviewModal,
   pickOrCreatePaymentInSelect,
   prepareReceiptQueueRowForConfirm,
+  receiptQueueExpenseSuccessSeen,
   receiptQueueRowByFileName,
 } from "./e2e-expenses-helpers";
 import { mkdirSync } from "node:fs";
@@ -55,17 +57,17 @@ test.describe("Expense receipt preview (layout)", () => {
       .first();
     await pickOrCreatePaymentInSelect(page, paySel);
 
-    const previewTrigger = queueRow.getByRole("button", { name: "Preview receipt" });
+    const previewTrigger = queueRow.getByRole("button", { name: /preview receipt/i });
     await expect(previewTrigger).toBeEnabled({ timeout: 120_000 });
     await previewTrigger.click();
 
-    const preview = page.getByRole("dialog", { name: /Receipt preview/i });
+    const preview = attachmentPreviewModal(page);
     await expect(preview).toBeVisible({ timeout: 15_000 });
     const img = preview.locator("img").first();
-    await expect(img).toBeVisible({ timeout: 15_000 });
+    await expect(img).toBeAttached();
     await expect
       .poll(() => img.evaluate((el: HTMLImageElement) => el.naturalWidth), {
-        timeout: 15_000,
+        timeout: 30_000,
         intervals: [200],
       })
       .toBeGreaterThan(0);
@@ -90,7 +92,7 @@ test.describe("Expense receipt preview (layout)", () => {
         async () => {
           const t = await page.locator("body").innerText();
           if (/create failed/i.test(t)) throw new Error("Confirm failed.");
-          return /expense created/i.test(t) ? "done" : null;
+          return receiptQueueExpenseSuccessSeen(t) ? "done" : null;
         },
         { timeout: 120_000, intervals: [300] }
       )

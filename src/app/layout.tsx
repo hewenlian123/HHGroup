@@ -5,13 +5,22 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ensureConstructionSchema } from "@/lib/ensure-construction-schema";
 import { DevUnregisterServiceWorker } from "@/components/dev-unregister-service-worker";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Providers } from "./providers";
 
 const AppShell = dynamic(() => import("@/components/layout/app-shell").then((m) => m.AppShell), {
   ssr: false,
   loading: () => (
-    <div className="flex min-h-screen items-center justify-center bg-page text-sm text-muted-foreground">
-      Loading…
+    <div className="flex min-h-screen bg-page">
+      <Skeleton
+        className="hidden w-[72px] shrink-0 rounded-none md:block lg:w-[210px]"
+        aria-hidden
+      />
+      <div className="flex min-w-0 flex-1 flex-col gap-4 p-4">
+        <Skeleton className="h-10 w-full max-w-xl rounded-md" />
+        <Skeleton className="h-9 w-48 rounded-md" />
+        <Skeleton className="min-h-[240px] w-full flex-1 rounded-md" />
+      </div>
     </div>
   ),
 });
@@ -62,7 +71,9 @@ export default async function RootLayout(
         <link rel="icon" href="/favicon.png" type="image/png" sizes="32x32" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} antialiased`}>
+      <body
+        className={`hh-motion-root ${geistSans.variable} ${geistMono.variable} ${inter.variable} antialiased`}
+      >
         {process.env.NODE_ENV === "development" ? <DevUnregisterServiceWorker /> : null}
         <Providers>
           <AppShell>{props.children}</AppShell>

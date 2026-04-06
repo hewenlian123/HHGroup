@@ -160,6 +160,15 @@ const config: Config = {
           "0%": { opacity: "1" },
           "100%": { opacity: "0" },
         },
+        /** Centered modal: opacity + scale 0.96 → 1 (desktop). */
+        "hh-dialog-in": {
+          from: { opacity: "0", transform: "translate(-50%, -50%) scale(0.96)" },
+          to: { opacity: "1", transform: "translate(-50%, -50%) scale(1)" },
+        },
+        "hh-dialog-out": {
+          from: { opacity: "1", transform: "translate(-50%, -50%) scale(1)" },
+          to: { opacity: "0", transform: "translate(-50%, -50%) scale(0.96)" },
+        },
       },
       animation: {
         "receipt-queue-badge": "receipt-queue-badge 220ms cubic-bezier(0.33, 1, 0.68, 1) both",
@@ -168,6 +177,8 @@ const config: Config = {
         "rq-confirm-shake": "rq-confirm-shake 340ms ease-in-out both",
         "toast-in": "toast-in 220ms cubic-bezier(0.34, 1.56, 0.64, 1) both",
         "toast-out": "toast-out 180ms ease both",
+        "hh-dialog-in": "hh-dialog-in 150ms cubic-bezier(0, 0, 0.2, 1) both",
+        "hh-dialog-out": "hh-dialog-out 120ms cubic-bezier(0, 0, 0.2, 1) both",
       },
       transitionDuration: {
         micro: "200ms",

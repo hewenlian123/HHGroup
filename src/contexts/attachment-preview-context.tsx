@@ -8,7 +8,7 @@ import {
   type AttachmentPreviewFileType,
 } from "@/components/attachment-preview-modal";
 
-const RESET_DELAY_MS = 200;
+const RESET_DELAY_MS = 160;
 
 export type { AttachmentPreviewFileItem };
 
@@ -127,6 +127,36 @@ type AttachmentPreviewContextValue = {
 };
 
 const AttachmentPreviewContext = React.createContext<AttachmentPreviewContextValue | null>(null);
+
+function GlobalMainImagePreviewOnClick() {
+  const { openPreview } = useAttachmentPreview();
+  React.useEffect(() => {
+    const onClickCapture = (e: MouseEvent) => {
+      const t = e.target;
+      if (!(t instanceof Element)) return;
+      const img = t.closest("img");
+      if (!img || !(img instanceof HTMLImageElement)) return;
+      const main = document.querySelector("main");
+      if (!main || !main.contains(img)) return;
+      if (img.closest("[data-no-image-preview],[data-attachment-preview-modal],[role='dialog']")) {
+        return;
+      }
+      if (img.closest("button, a[href]")) return;
+      if (img.dataset.noImagePreview === "true" || img.dataset.noPreview === "true") return;
+      const rect = img.getBoundingClientRect();
+      if (Math.min(rect.width, rect.height) < 44) return;
+      const src = (img.currentSrc || img.getAttribute("src") || "").trim();
+      if (!src) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const fileName = (img.alt && img.alt.trim()) || "Image";
+      openPreview({ url: src, fileName });
+    };
+    document.addEventListener("click", onClickCapture, true);
+    return () => document.removeEventListener("click", onClickCapture, true);
+  }, [openPreview]);
+  return null;
+}
 
 export function AttachmentPreviewProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = React.useState<ModalState>(() => emptyModalState());
@@ -320,6 +350,7 @@ export function AttachmentPreviewProvider({ children }: { children: React.ReactN
 
   return (
     <AttachmentPreviewContext.Provider value={value}>
+      <GlobalMainImagePreviewOnClick />
       {children}
       <AttachmentPreviewModal
         isOpen={state.isOpen}
