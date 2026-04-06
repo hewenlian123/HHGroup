@@ -414,8 +414,8 @@ export function ProjectCloseoutTab({
       </div>
 
       {/* 2. Warranty Information */}
-      <div className="rounded-xl border border-gray-300 bg-white shadow-sm overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-300">
+      <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100">
           <SectionHeader label="Warranty Information" />
         </div>
         <div className="p-4 space-y-4">
@@ -428,7 +428,7 @@ export function ProjectCloseoutTab({
                 type="date"
                 value={warrantyForm.start_date}
                 onChange={(e) => setWarrantyForm((p) => ({ ...p, start_date: e.target.value }))}
-                className="mt-1 h-10 rounded-lg border-gray-300"
+                className="mt-1 h-10 rounded-lg border-gray-100"
               />
             </div>
             <div>
@@ -445,7 +445,7 @@ export function ProjectCloseoutTab({
                     period_months: parseInt(e.target.value, 10) || 12,
                   }))
                 }
-                className="mt-1 h-10 rounded-lg border-gray-300"
+                className="mt-1 h-10 rounded-lg border-gray-100"
               />
             </div>
           </div>
@@ -464,7 +464,7 @@ export function ProjectCloseoutTab({
               onChange={(e) => setWarrantyForm((p) => ({ ...p, notes: e.target.value }))}
               placeholder="Notes"
               rows={2}
-              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-lg border border-gray-100 px-3 py-2 text-sm"
             />
           </div>
           <Button
@@ -480,8 +480,8 @@ export function ProjectCloseoutTab({
       </div>
 
       {/* 3. Final Invoice */}
-      <div className="rounded-xl border border-gray-300 bg-white shadow-sm overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-300">
+      <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100">
           <SectionHeader label="Final Invoice" />
         </div>
         <div className="p-4 space-y-3">
@@ -513,8 +513,8 @@ export function ProjectCloseoutTab({
       </div>
 
       {/* 4. Completion Certificate */}
-      <div className="rounded-xl border border-gray-300 bg-white shadow-sm overflow-hidden">
-        <div className="px-4 py-3 border-b border-gray-300">
+      <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100">
           <SectionHeader label="Completion Certificate" />
         </div>
         <div className="p-4 space-y-4">
@@ -534,7 +534,7 @@ export function ProjectCloseoutTab({
               onChange={(e) =>
                 setCompletionForm((p) => ({ ...p, completion_date: e.target.value }))
               }
-              className="mt-1 h-10 rounded-lg border-gray-300"
+              className="mt-1 h-10 rounded-lg border-gray-100"
             />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -548,7 +548,7 @@ export function ProjectCloseoutTab({
                   setCompletionForm((p) => ({ ...p, contractor_name: e.target.value }))
                 }
                 placeholder="Contractor"
-                className="mt-1 h-10 rounded-lg border-gray-300"
+                className="mt-1 h-10 rounded-lg border-gray-100"
               />
             </div>
             <div>
@@ -559,7 +559,7 @@ export function ProjectCloseoutTab({
                 value={completionForm.client_name}
                 onChange={(e) => setCompletionForm((p) => ({ ...p, client_name: e.target.value }))}
                 placeholder="Client"
-                className="mt-1 h-10 rounded-lg border-gray-300"
+                className="mt-1 h-10 rounded-lg border-gray-100"
               />
             </div>
           </div>
@@ -574,7 +574,7 @@ export function ProjectCloseoutTab({
                   setCompletionForm((p) => ({ ...p, contractor_signature: e.target.value }))
                 }
                 placeholder="Signature"
-                className="mt-1 h-10 rounded-lg border-gray-300"
+                className="mt-1 h-10 rounded-lg border-gray-100"
               />
             </div>
             <div>
@@ -587,7 +587,7 @@ export function ProjectCloseoutTab({
                   setCompletionForm((p) => ({ ...p, client_signature: e.target.value }))
                 }
                 placeholder="Signature"
-                className="mt-1 h-10 rounded-lg border-gray-300"
+                className="mt-1 h-10 rounded-lg border-gray-100"
               />
             </div>
           </div>

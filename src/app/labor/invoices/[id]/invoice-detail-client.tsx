@@ -321,12 +321,12 @@ export default function LaborInvoiceDetailClient() {
         </p>
       ) : null}
       {message ? (
-        <p className="border-b border-gray-300 pb-3 text-sm text-muted-foreground dark:border-border">
+        <p className="border-b border-gray-100 pb-3 text-sm text-muted-foreground dark:border-border">
           {message}
         </p>
       ) : null}
 
-      <section className="border-b border-gray-300 pb-6 dark:border-border">
+      <section className="border-b border-gray-100 pb-6 dark:border-border">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
             <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
@@ -428,7 +428,7 @@ export default function LaborInvoiceDetailClient() {
             value={invoice.memo ?? ""}
             onChange={(e) => handleHeaderSave({ memo: e.target.value })}
             disabled={isReadOnly}
-            className="min-h-[88px] rounded-sm border border-gray-300 bg-background px-3 py-2 text-sm dark:border-border"
+            className="min-h-[88px] rounded-sm border border-gray-100 bg-background px-3 py-2 text-sm dark:border-border"
           />
         </div>
         <p className="mt-3 text-xs text-amber-600 dark:text-amber-400">
@@ -436,7 +436,7 @@ export default function LaborInvoiceDetailClient() {
         </p>
       </section>
 
-      <section className="border-b border-gray-300 pb-6 dark:border-border">
+      <section className="border-b border-gray-100 pb-6 dark:border-border">
         <h2 className="mb-3 text-sm font-semibold text-foreground">Attachments</h2>
         <Button variant="outline" size="sm" className="rounded-sm" disabled={isReadOnly}>
           <Plus className="mr-2 h-4 w-4" />
@@ -448,7 +448,7 @@ export default function LaborInvoiceDetailClient() {
         ) : null}
       </section>
 
-      <section className="border-b border-gray-300 pb-6 dark:border-border">
+      <section className="border-b border-gray-100 pb-6 dark:border-border">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-foreground">Split Allocation</h2>
           <Button

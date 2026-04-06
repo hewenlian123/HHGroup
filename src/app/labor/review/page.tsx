@@ -157,17 +157,17 @@ export default function LaborReviewPage() {
       </div>
 
       {message ? (
-        <p className="border-b border-gray-300 pb-3 text-sm text-muted-foreground dark:border-border">
+        <p className="border-b border-gray-100 pb-3 text-sm text-muted-foreground dark:border-border">
           {message}
         </p>
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_440px]">
-        <div className="overflow-hidden rounded-sm border border-gray-300 dark:border-border">
+        <div className="overflow-hidden rounded-sm border border-gray-100 dark:border-border">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-300 bg-white dark:border-border/60 dark:bg-muted/30">
+                <tr className="border-b border-gray-100 bg-white dark:border-border/60 dark:bg-muted/30">
                   <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
                     Date
                   </th>
@@ -195,7 +195,7 @@ export default function LaborReviewPage() {
                 {filteredRows.map((row) => (
                   <tr
                     key={row.id}
-                    className="border-b border-gray-300/80 transition-colors hover:bg-[#F9FAFB] dark:border-border/40 dark:hover:bg-muted/20"
+                    className="border-b border-gray-100/80 transition-colors hover:bg-[#F9FAFB] dark:border-border/40 dark:hover:bg-muted/20"
                   >
                     <td className="py-3 px-4 tabular-nums">{row.date}</td>
                     <td className="py-3 px-4">{workers.get(row.workerId) ?? "Unknown worker"}</td>
@@ -245,7 +245,7 @@ export default function LaborReviewPage() {
           </div>
         </div>
 
-        <div className="border border-gray-300 p-5 dark:border-border">
+        <div className="border border-gray-100 p-5 dark:border-border">
           {!selected ? (
             <p className="text-sm text-muted-foreground">Select an entry and click Review.</p>
           ) : (

@@ -123,14 +123,14 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
         {/* Section 1 — Page header */}
         <header className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight text-text-primary dark:text-foreground">
+            <h1 className="text-xl font-medium tracking-tight text-text-primary dark:text-foreground">
               Dashboard
             </h1>
-            <p className="mt-0.5 text-xs text-[#9CA3AF] dark:text-muted-foreground">
+            <p className="mt-0.5 text-sm text-text-secondary dark:text-muted-foreground">
               Company overview
             </p>
           </div>
-          <span className="shrink-0 rounded-lg border-[0.5px] border-gray-300 bg-white px-2.5 py-1 text-[10px] uppercase tracking-[0.08em] text-[#9CA3AF] dark:border-border">
+          <span className="shrink-0 rounded-md border border-gray-100 bg-white px-2.5 py-1 text-xs font-medium uppercase tracking-wide text-text-secondary dark:border-border">
             {new Date().toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
@@ -258,7 +258,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
           {/* Left column (span 2): Recent Projects, Recent Activity */}
           <div className="space-y-6 lg:col-span-2">
             <section className="bg-white dark:bg-card rounded-card shadow-summary-card overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-300 dark:border-border">
+              <div className="px-4 py-3 border-b border-gray-100 dark:border-border">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-medium tracking-tight text-text-primary dark:text-foreground">
                     Recent Projects
@@ -277,7 +277,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
               <div className="table-responsive">
                 <table className="w-full min-w-[720px] text-sm md:min-w-0">
                   <thead>
-                    <tr className="border-b border-gray-300 bg-white dark:border-border dark:bg-muted/50">
+                    <tr className="border-b border-gray-100 bg-white dark:border-border dark:bg-muted/50">
                       <th className="min-w-[200px] py-2.5 px-4 text-left text-xs uppercase tracking-wide text-text-secondary dark:text-muted-foreground">
                         Project
                       </th>
@@ -333,7 +333,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                         return (
                           <tr
                             key={p.id}
-                            className="h-10 border-b border-gray-300 dark:border-border/60 transition-colors hover:bg-[#F9FAFB] dark:hover:bg-muted/20"
+                            className="h-10 border-b border-gray-100 dark:border-border/60 transition-colors hover:bg-[#F9FAFB] dark:hover:bg-muted/20"
                           >
                             <td className="max-w-[min(280px,40vw)] py-2 px-4">
                               <div className="min-w-[180px]">
@@ -428,7 +428,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
             </section>
 
             <section className="bg-white dark:bg-card rounded-card shadow-summary-card overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-300 dark:border-border">
+              <div className="px-4 py-3 border-b border-gray-100 dark:border-border">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-medium tracking-tight text-text-primary dark:text-foreground">
                     Recent Activity
@@ -444,7 +444,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                   Latest transactions.
                 </p>
               </div>
-              <div className="divide-y divide-gray-300 dark:divide-border/60">
+              <div className="divide-y divide-gray-100 dark:divide-border/60">
                 {recentActivity.length === 0 ? (
                   <div className="py-8 px-4 text-center text-sm text-text-secondary dark:text-muted-foreground">
                     No activity.
@@ -456,7 +456,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                       className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-[#F9FAFB] dark:hover:bg-muted/20"
                     >
                       <div
-                        className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-page dark:border-border dark:bg-muted"
+                        className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg border border-gray-100 bg-page dark:border-border dark:bg-muted"
                         aria-hidden
                       >
                         <svg
@@ -520,7 +520,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
           {/* Right column: Financial Summary, Bills Due */}
           <div className="space-y-6">
             <section className="bg-white dark:bg-card rounded-card shadow-summary-card overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-300 dark:border-border">
+              <div className="px-4 py-3 border-b border-gray-100 dark:border-border">
                 <h2 className="text-xl font-medium tracking-tight text-text-primary dark:text-foreground">
                   Financial Summary
                 </h2>
@@ -535,7 +535,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                       key={k.key}
                       className={cn(
                         "flex items-center justify-between py-2.5",
-                        i < kpis.length - 1 && "border-b border-gray-300 dark:border-border/60"
+                        i < kpis.length - 1 && "border-b border-gray-100 dark:border-border/60"
                       )}
                     >
                       <span className="text-xs text-text-secondary dark:text-muted-foreground flex items-center gap-1.5">
@@ -591,7 +591,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
             </section>
 
             <section className="bg-white dark:bg-card rounded-card shadow-summary-card overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-300 dark:border-border">
+              <div className="px-4 py-3 border-b border-gray-100 dark:border-border">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-medium tracking-tight text-text-primary dark:text-foreground">
                     Bills Due
@@ -608,7 +608,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                 </p>
               </div>
               <div className="p-4">
-                <div className="flex justify-between text-sm py-2.5 border-b border-gray-300 dark:border-border/60">
+                <div className="flex justify-between text-sm py-2.5 border-b border-gray-100 dark:border-border/60">
                   <span className="text-text-secondary dark:text-muted-foreground">
                     Outstanding
                   </span>
@@ -616,7 +616,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                     ${fmtUsd(apBillsSummary.totalOutstanding)}
                   </span>
                 </div>
-                <div className="flex justify-between text-sm py-2.5 border-b border-gray-300 dark:border-border/60">
+                <div className="flex justify-between text-sm py-2.5 border-b border-gray-100 dark:border-border/60">
                   <span className="text-text-secondary dark:text-muted-foreground">Overdue</span>
                   <span
                     className={cn(
@@ -638,7 +638,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                     {fmtUsd(apBillsSummary.dueThisWeekAmount)}
                   </span>
                 </div>
-                <div className="pt-3 border-t border-gray-300 dark:border-border">
+                <div className="pt-3 border-t border-gray-100 dark:border-border">
                   <Link
                     href="/bills/new"
                     className="inline-flex items-center justify-center rounded-full h-9 px-4 bg-black text-white text-sm font-medium transition hover:scale-[1.02]"
@@ -654,7 +654,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
         {/* Additional sections: Outstanding Subcontracts, Upcoming Tasks, Overdue Invoices */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <section className="bg-white dark:bg-card rounded-card shadow-summary-card overflow-hidden lg:col-span-2">
-            <div className="px-4 py-3 border-b border-gray-300 dark:border-border">
+            <div className="px-4 py-3 border-b border-gray-100 dark:border-border">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-medium tracking-tight text-text-primary dark:text-foreground">
                   Outstanding Subcontracts
@@ -671,7 +671,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
             <div className="table-responsive">
               <table className="w-full min-w-[400px] text-sm md:min-w-0">
                 <thead>
-                  <tr className="border-b border-gray-300 bg-white">
+                  <tr className="border-b border-gray-100 bg-white">
                     <th className="py-2.5 px-4 text-left text-xs uppercase tracking-wide text-text-secondary">
                       Subcontractor
                     </th>
@@ -716,7 +716,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
           </section>
 
           <section className="bg-white dark:bg-card rounded-card shadow-summary-card overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-300 dark:border-border">
+            <div className="px-4 py-3 border-b border-gray-100 dark:border-border">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-medium tracking-tight text-text-primary dark:text-foreground">
                   Overdue Invoices
@@ -735,7 +735,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
             <div className="table-responsive">
               <table className="w-full min-w-[400px] text-sm md:min-w-0">
                 <thead>
-                  <tr className="border-b border-gray-300 bg-white">
+                  <tr className="border-b border-gray-100 bg-white">
                     <th className="py-2.5 px-4 text-left text-xs uppercase tracking-wide text-text-secondary">
                       Project
                     </th>
@@ -789,7 +789,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
 
         {upcomingTasks.length > 0 ? (
           <section className="bg-white dark:bg-card rounded-card shadow-summary-card overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-300 dark:border-border">
+            <div className="px-4 py-3 border-b border-gray-100 dark:border-border">
               <h2 className="text-xl font-medium tracking-tight text-text-primary dark:text-foreground">
                 Upcoming Tasks
               </h2>
@@ -797,7 +797,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                 Auto-generated operational follow-ups.
               </p>
             </div>
-            <div className="divide-y divide-gray-300 dark:divide-border/60">
+            <div className="divide-y divide-gray-100 dark:divide-border/60">
               {upcomingTasks.map((t) => {
                 const isToday = /today/i.test(t.due);
                 const isThisWeek = /this week|week/i.test(t.due) && !isToday;

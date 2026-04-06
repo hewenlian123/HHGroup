@@ -418,7 +418,7 @@ export default function LaborPageClient() {
             </Select>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-3 border-t border-gray-300 pt-3 dark:border-border">
+        <div className="flex flex-wrap items-center gap-3 border-t border-gray-100 pt-3 dark:border-border">
           <Button
             size="sm"
             className="rounded-sm h-9"
@@ -427,7 +427,7 @@ export default function LaborPageClient() {
           >
             + Add Entry
           </Button>
-          <div className="flex h-9 shrink-0 overflow-hidden rounded-lg border border-gray-300 shadow-sm dark:border-border">
+          <div className="flex h-9 shrink-0 overflow-hidden rounded-lg border border-gray-100 shadow-sm dark:border-border">
             <button
               type="button"
               onClick={() => setView("list")}
@@ -444,7 +444,7 @@ export default function LaborPageClient() {
               type="button"
               onClick={() => setView("calendar")}
               className={cn(
-                "h-full border-l border-gray-300 px-3 text-xs font-medium transition-all duration-150 dark:border-border",
+                "h-full border-l border-gray-100 px-3 text-xs font-medium transition-all duration-150 dark:border-border",
                 view === "calendar"
                   ? "bg-[#111827] text-white dark:bg-foreground dark:text-background"
                   : "bg-white text-text-secondary hover:bg-[#F9FAFB] hover:text-text-primary dark:bg-card dark:hover:bg-muted"
@@ -464,9 +464,9 @@ export default function LaborPageClient() {
         <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
           Monthly Summary · {formatMonthLabel(selectedMonth)}
         </p>
-        <div className="overflow-hidden rounded-lg border border-gray-300 bg-white shadow-sm dark:border-border dark:bg-card dark:shadow-none">
+        <div className="overflow-hidden rounded-lg border border-gray-100 bg-white shadow-sm dark:border-border dark:bg-card dark:shadow-none">
           <div className="grid grid-cols-1 sm:grid-cols-3">
-            <div className="border-b border-gray-300 px-3 py-2.5 sm:border-b-0 sm:border-r sm:border-gray-300 dark:border-border">
+            <div className="border-b border-gray-100 px-3 py-2.5 sm:border-b-0 sm:border-r sm:border-gray-100 dark:border-border">
               <p className="text-[11px] text-muted-foreground/70 uppercase tracking-widest">
                 Total Labor Cost
               </p>
@@ -478,7 +478,7 @@ export default function LaborPageClient() {
                 })}
               </p>
             </div>
-            <div className="border-b border-gray-300 px-3 py-2.5 sm:border-b-0 sm:border-r sm:border-gray-300 dark:border-border">
+            <div className="border-b border-gray-100 px-3 py-2.5 sm:border-b-0 sm:border-r sm:border-gray-100 dark:border-border">
               <p className="text-[11px] text-muted-foreground/70 uppercase tracking-widest">
                 Work Days
               </p>
@@ -503,11 +503,11 @@ export default function LaborPageClient() {
             <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               PROJECT LABOR COST
             </p>
-            <div className="overflow-hidden rounded-lg border border-gray-300 bg-white shadow-sm dark:border-border dark:bg-card dark:shadow-none">
+            <div className="overflow-hidden rounded-lg border border-gray-100 bg-white shadow-sm dark:border-border dark:bg-card dark:shadow-none">
               {projectLaborCost.map(({ id, name, total }) => (
                 <div
                   key={id}
-                  className="flex items-center justify-between gap-3 border-b border-gray-300 px-2.5 py-2.5 last:border-b-0 hover:bg-[#F9FAFB] dark:border-border dark:hover:bg-muted/40"
+                  className="flex items-center justify-between gap-3 border-b border-gray-100 px-2.5 py-2.5 last:border-b-0 hover:bg-[#F9FAFB] dark:border-border dark:hover:bg-muted/40"
                 >
                   <span className="text-sm font-medium text-foreground truncate">{name}</span>
                   <span className="text-sm tabular-nums font-medium text-foreground shrink-0">

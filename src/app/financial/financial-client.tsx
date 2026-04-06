@@ -177,7 +177,7 @@ export function FinancialClient() {
             <Card key={label}>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
-                <div className="rounded-lg border border-gray-300 bg-white p-2 dark:border-border dark:bg-muted">
+                <div className="rounded-lg border border-gray-100 bg-white p-2 dark:border-border dark:bg-muted">
                   <Icon className="h-4 w-4 text-text-secondary dark:text-muted-foreground" />
                 </div>
               </CardHeader>
@@ -246,7 +246,7 @@ export function FinancialClient() {
                     recentUnreconciled.map((tx) => (
                       <TableRow
                         key={tx.id}
-                        className="border-b border-gray-300 dark:border-border/60"
+                        className="border-b border-gray-100 dark:border-border/60"
                       >
                         <TableCell className="tabular-nums">{tx.txn_date}</TableCell>
                         <TableCell>{tx.description}</TableCell>

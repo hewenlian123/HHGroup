@@ -275,7 +275,7 @@ export function ProjectsClient() {
             asChild
             variant="outline"
             size="sm"
-            className="rounded-md border-[0.5px] border-gray-300 bg-white text-text-primary shadow-none transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-50 active:scale-[0.97] active:duration-100 dark:border-border dark:bg-card dark:hover:bg-muted/40"
+            className="rounded-md border-[0.5px] border-gray-100 bg-white text-text-primary shadow-none transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-50 active:scale-[0.97] active:duration-100 dark:border-border dark:bg-card dark:hover:bg-muted/40"
           >
             <Link href="/projects/new">
               <Plus className="h-4 w-4" />
@@ -289,13 +289,13 @@ export function ProjectsClient() {
       </header>
 
       {error ? (
-        <div className="rounded-lg border border-gray-300 bg-background px-4 py-3 text-sm text-muted-foreground dark:border-border">
+        <div className="rounded-lg border border-gray-100 bg-background px-4 py-3 text-sm text-muted-foreground dark:border-border">
           {error}
         </div>
       ) : null}
 
       <div className="grid grid-cols-2 gap-[10px] sm:grid-cols-2 lg:grid-cols-5">
-        <div className="rounded-[10px] border-[0.5px] border-solid border-gray-300 bg-white px-4 py-[14px] dark:border-border">
+        <div className="rounded-[10px] border-[0.5px] border-solid border-gray-100 bg-white px-4 py-[14px] dark:border-border">
           <p className="kpi-metric-label">Total Projects</p>
           {loading ? (
             <Skeleton className="mt-2 h-7 w-16" />
@@ -305,7 +305,7 @@ export function ProjectsClient() {
             </p>
           )}
         </div>
-        <div className="rounded-[10px] border-[0.5px] border-solid border-gray-300 bg-white px-4 py-[14px] dark:border-border">
+        <div className="rounded-[10px] border-[0.5px] border-solid border-gray-100 bg-white px-4 py-[14px] dark:border-border">
           <p className="kpi-metric-label">Active</p>
           {loading ? (
             <Skeleton className="mt-2 h-7 w-16" />
@@ -315,7 +315,7 @@ export function ProjectsClient() {
             </p>
           )}
         </div>
-        <div className="rounded-[10px] border-[0.5px] border-solid border-gray-300 bg-white px-4 py-[14px] dark:border-border">
+        <div className="rounded-[10px] border-[0.5px] border-solid border-gray-100 bg-white px-4 py-[14px] dark:border-border">
           <p className="kpi-metric-label">Completed</p>
           {loading ? (
             <Skeleton className="mt-2 h-7 w-16" />
@@ -325,7 +325,7 @@ export function ProjectsClient() {
             </p>
           )}
         </div>
-        <div className="rounded-[10px] border-[0.5px] border-solid border-gray-300 bg-white px-4 py-[14px] dark:border-border">
+        <div className="rounded-[10px] border-[0.5px] border-solid border-gray-100 bg-white px-4 py-[14px] dark:border-border">
           <p className="kpi-metric-label">Total Budget</p>
           {loading ? (
             <Skeleton className="mt-2 h-7 w-28" />
@@ -335,7 +335,7 @@ export function ProjectsClient() {
             </p>
           )}
         </div>
-        <div className="rounded-[10px] border-[0.5px] border-solid border-gray-300 bg-white px-4 py-[14px] sm:col-span-2 lg:col-span-1 dark:border-border">
+        <div className="rounded-[10px] border-[0.5px] border-solid border-gray-100 bg-white px-4 py-[14px] sm:col-span-2 lg:col-span-1 dark:border-border">
           <p className="kpi-metric-label">Total Profit</p>
           {loading ? (
             <Skeleton className="mt-2 h-7 w-28" />

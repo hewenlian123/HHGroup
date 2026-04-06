@@ -5,7 +5,7 @@ import * as SelectPrimitive from "@radix-ui/react-select";
 import { Check, ChevronDown, ChevronUp } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { motionInputFocus, motionPopoverLayer } from "@/lib/motion-system";
+import { motionPopoverLayer } from "@/lib/motion-system";
 
 const Select = SelectPrimitive.Root;
 
@@ -20,8 +20,7 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-all duration-150 ease-out data-[placeholder]:text-muted-foreground hover:-translate-y-px hover:bg-gray-50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 max-md:min-h-[44px] max-md:text-base md:text-sm [&>span]:line-clamp-1 dark:hover:bg-muted/30",
-      motionInputFocus,
+      "flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-gray-100 bg-white px-3 py-2 text-sm shadow-none transition-all duration-150 ease-out data-[placeholder]:text-text-secondary hover:bg-gray-50/80 focus:outline-none focus-visible:border-brand-primary focus-visible:ring-1 focus-visible:ring-brand-primary disabled:cursor-not-allowed disabled:opacity-50 max-md:min-h-[44px] max-md:text-base md:text-sm [&>span]:line-clamp-1 dark:border-border dark:bg-card dark:hover:bg-muted/30",
       "active:scale-[0.97] active:duration-100 max-md:active:scale-[0.96]",
       className
     )}

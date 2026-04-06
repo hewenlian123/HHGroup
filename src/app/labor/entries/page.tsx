@@ -380,7 +380,7 @@ function DailyEntriesPageInner() {
         </div>
       </FilterBar>
       {selectedIds.size > 0 ? (
-        <div className="flex flex-wrap items-center gap-2 border-b border-gray-300 py-2 dark:border-border/60">
+        <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 py-2 dark:border-border/60">
           <span className="text-xs text-muted-foreground">{selectedIds.size} selected</span>
           <Button variant="outline" size="sm" onClick={handleBulkSubmit} disabled={!!bulkAction}>
             {bulkAction === "submit" ? "…" : "Submit"}
@@ -407,14 +407,14 @@ function DailyEntriesPageInner() {
         </div>
       ) : null}
       {message ? (
-        <div className="rounded-lg border border-gray-300 bg-background px-3 py-2 text-sm text-muted-foreground dark:border-border">
+        <div className="rounded-lg border border-gray-100 bg-background px-3 py-2 text-sm text-muted-foreground dark:border-border">
           {message}
         </div>
       ) : null}
-      <div className="overflow-x-auto border-t border-gray-300 dark:border-border/60">
+      <div className="overflow-x-auto border-t border-gray-100 dark:border-border/60">
         <table className="w-full text-sm border-collapse">
           <thead>
-            <tr className="border-b border-gray-300 bg-white dark:border-border/60 dark:bg-muted/30">
+            <tr className="border-b border-gray-100 bg-white dark:border-border/60 dark:bg-muted/30">
               <th className="w-8 px-1">
                 <input
                   type="checkbox"
@@ -479,7 +479,7 @@ function DailyEntriesPageInner() {
                   <tr
                     key={row.id}
                     className={cn(
-                      "border-b border-gray-300/80 dark:border-border/40",
+                      "border-b border-gray-100/80 dark:border-border/40",
                       !rowLocked && listTableRowClassName
                     )}
                     onClick={() => {

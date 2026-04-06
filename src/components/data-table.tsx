@@ -204,7 +204,7 @@ export function DataTable<T>({
             {Array.from({ length: 4 }, (_, i) => (
               <div
                 key={`msk-${i}`}
-                className="rounded-lg border border-border/60 bg-background px-3 py-3"
+                className="rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-none dark:border-border dark:bg-card"
               >
                 <Skeleton className="h-5 w-2/3 rounded-md" />
                 <div className="mt-3 space-y-2">
@@ -224,9 +224,9 @@ export function DataTable<T>({
             return (
               <div
                 key={keyExtractor(row)}
-                className="group rounded-lg border border-border/60 bg-background px-3 py-3 shadow-[var(--shadow-1)] transition-all duration-150 ease-out active:scale-[0.99] hover:-translate-y-px hover:bg-gray-50 dark:hover:bg-muted/40"
+                className="group rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-none transition-colors duration-150 ease-out active:scale-[0.99] hover:bg-gray-50 dark:border-border dark:hover:bg-muted/40"
               >
-                <div className="text-base font-medium text-foreground">
+                <div className="text-sm font-medium text-text-primary dark:text-foreground">
                   {titleCol ? getCellContent(row, titleCol) : null}
                 </div>
                 <dl className="mt-3 space-y-2">
@@ -234,7 +234,9 @@ export function DataTable<T>({
                     .filter((col) => col.key !== titleKey)
                     .map((col) => (
                       <div key={col.key} className="flex justify-between gap-2 text-sm">
-                        <dt className="text-muted-foreground">{col.header}</dt>
+                        <dt className="text-sm text-text-secondary dark:text-muted-foreground">
+                          {col.header}
+                        </dt>
                         <dd
                           className={cn(
                             "text-right tabular-nums",

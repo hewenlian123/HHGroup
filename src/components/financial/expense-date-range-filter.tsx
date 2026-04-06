@@ -217,7 +217,7 @@ export function ExpenseDateRangeFilter({
         <button
           type="button"
           className={cn(
-            "inline-flex h-8 min-w-[7.5rem] items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-2.5 text-left text-xs font-medium text-[#111827] shadow-none transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/30 dark:border-border dark:bg-card dark:text-foreground dark:hover:bg-muted/50",
+            "inline-flex h-8 min-w-[7.5rem] items-center justify-between gap-2 rounded-lg border border-gray-100 bg-white px-2.5 text-left text-xs font-medium text-[#111827] shadow-none transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/30 dark:border-border dark:bg-card dark:text-foreground dark:hover:bg-muted/50",
             className
           )}
         >
@@ -271,7 +271,7 @@ export function ExpenseDateRangeFilter({
           </div>
         ) : (
           <div className="flex flex-col gap-0 sm:flex-row">
-            <div className="expense-date-range-picker border-b border-gray-200 p-2 sm:border-b-0 sm:border-r dark:border-border">
+            <div className="expense-date-range-picker border-b border-gray-100 p-2 sm:border-b-0 sm:border-r dark:border-border">
               <DayPicker
                 mode="range"
                 month={month}
@@ -291,11 +291,11 @@ export function ExpenseDateRangeFilter({
                   nav: cn(rdp.nav, "flex items-center gap-1"),
                   button_previous: cn(
                     rdp.button_previous,
-                    "inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 bg-white hover:bg-gray-50 dark:border-border dark:bg-card"
+                    "inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-100 bg-white hover:bg-gray-50 dark:border-border dark:bg-card"
                   ),
                   button_next: cn(
                     rdp.button_next,
-                    "inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 bg-white hover:bg-gray-50 dark:border-border dark:bg-card"
+                    "inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-100 bg-white hover:bg-gray-50 dark:border-border dark:bg-card"
                   ),
                   month_grid: cn(rdp.month_grid, "w-full"),
                   weekdays: cn(rdp.weekdays, "flex"),
@@ -356,12 +356,12 @@ export function ExpenseDateRangeFilter({
                   This month
                 </button>
               </div>
-              <div className="flex flex-col gap-2 border-t border-gray-200 pt-3 dark:border-border">
+              <div className="flex flex-col gap-2 border-t border-gray-100 pt-3 dark:border-border">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-8 w-full rounded-lg border-gray-200 bg-white text-xs hover:bg-gray-50"
+                  className="h-8 w-full rounded-lg border-gray-100 bg-white text-xs hover:bg-gray-50"
                   onClick={() => setPanel("menu")}
                 >
                   <ChevronLeft className="mr-1 h-3.5 w-3.5" aria-hidden />
@@ -372,7 +372,7 @@ export function ExpenseDateRangeFilter({
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-8 flex-1 rounded-lg border-gray-200 bg-white text-xs hover:bg-gray-50"
+                    className="h-8 flex-1 rounded-lg border-gray-100 bg-white text-xs hover:bg-gray-50"
                     onClick={() => handleOpenChange(false)}
                   >
                     Cancel

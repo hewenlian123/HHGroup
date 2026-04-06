@@ -285,7 +285,7 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
           }
         />
       ) : (
-        <div className="border-t border-gray-300 pt-4 dark:border-border/60">
+        <div className="border-t border-gray-100 pt-4 dark:border-border/60">
           <div className="airtable-table-wrap airtable-table-wrap--ruled">
             <div className="airtable-table-scroll">
               <table className="w-full text-sm">

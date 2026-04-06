@@ -1,11 +1,11 @@
 import { cn } from "@/lib/utils";
-import { motionInputFocus, motionListRow } from "@/lib/motion-system";
+import { motionInputFocus, motionListRow, motionListTableRow } from "@/lib/motion-system";
 
 /** Clickable data row — shared list motion + focus ring. */
-export const listTableRowClassName = cn(motionListRow, "cursor-pointer border-0", motionInputFocus);
+export const listTableRowClassName = cn(motionListTableRow, "cursor-pointer", motionInputFocus);
 
 /** Non-clickable table row — same hover/active; `group` for row-action menus. */
-export const listTableRowStaticClassName = cn(motionListRow, "border-0");
+export const listTableRowStaticClassName = motionListTableRow;
 
 /** Flex / block list rows (e.g. change-order list) — same motion; no `border-0`. */
 export const listFlexRowClassName = motionListRow;
@@ -28,7 +28,7 @@ export const listRowActionsTriggerClassName = cn(
 );
 
 export const listRowActionsContentClassName = cn(
-  "min-w-[160px] border-[0.5px] border-gray-300 bg-white p-0 py-2 shadow-lg rounded-card",
+  "min-w-[160px] rounded-md border border-gray-100 bg-white p-0 py-2 shadow-sm",
   "dark:border-border dark:bg-popover dark:text-popover-foreground"
 );
 

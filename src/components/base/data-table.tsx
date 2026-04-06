@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { listFlexRowClassName } from "@/lib/list-table-interaction";
+import { motionListTableRow } from "@/lib/motion-system";
 
 export type DataTableColumn<T> = {
   key: string;
@@ -72,8 +72,8 @@ export function DataTable<T>({
                 <TableRow
                   key={id}
                   className={cn(
-                    "table-row-compact border-b border-gray-300 dark:border-border",
-                    listFlexRowClassName,
+                    "table-row-compact",
+                    motionListTableRow,
                     onRowClick &&
                       "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/30 focus-visible:ring-offset-0",
                     !onRowClick && "cursor-default"
@@ -140,7 +140,7 @@ export function DataTable<T>({
             <div
               key={id}
               className={cn(
-                "rounded-lg border border-gray-300 bg-white p-3 transition-all duration-150 ease-out active:scale-[0.99] hover:-translate-y-px hover:bg-gray-50 dark:hover:bg-muted/40",
+                "rounded-xl border border-gray-100 bg-white p-4 shadow-none transition-colors duration-150 ease-out active:scale-[0.99] hover:bg-gray-50 dark:border-border dark:hover:bg-muted/40",
                 onRowClick &&
                   "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/30 focus-visible:ring-offset-0"
               )}
@@ -149,7 +149,7 @@ export function DataTable<T>({
               onClick={onRowClick ? () => onRowClick(row) : undefined}
               onKeyDown={onRowClick ? (e) => e.key === "Enter" && onRowClick(row) : undefined}
             >
-              <div className="text-sm font-medium text-[#111111]">
+              <div className="text-sm font-medium text-text-primary">
                 {titleCol ? getCellContent(row, titleCol) : null}
               </div>
               <dl className="mt-3 space-y-2">

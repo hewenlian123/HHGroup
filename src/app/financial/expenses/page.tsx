@@ -1417,7 +1417,7 @@ function ExpensesPageInner() {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 rounded-sm border border-gray-300 bg-white text-gray-700 shadow-none hover:bg-gray-50 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted/50"
+                className="h-8 rounded-sm border border-gray-100 bg-white text-gray-700 shadow-none hover:bg-gray-50 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted/50"
                 aria-label="Quick expense"
                 onClick={() => setQuickExpenseOpen(true)}
               >
@@ -1436,7 +1436,7 @@ function ExpensesPageInner() {
           }
         />
 
-        <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 border-b border-gray-200/80 pb-3 text-sm text-gray-600 dark:border-border/60 dark:text-muted-foreground">
+        <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 border-b border-gray-100/80 pb-3 text-sm text-gray-600 dark:border-border/60 dark:text-muted-foreground">
           <span>
             Month{" "}
             <span className="ml-1 font-medium tabular-nums text-gray-900 dark:text-foreground">
@@ -1472,7 +1472,7 @@ function ExpensesPageInner() {
           </span>
         </div>
 
-        <div className="flex flex-col gap-1 border-b border-gray-200/80 pb-3 dark:border-border/60">
+        <div className="flex flex-col gap-1 border-b border-gray-100/80 pb-3 dark:border-border/60">
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
@@ -1481,7 +1481,7 @@ function ExpensesPageInner() {
               className={
                 listView === "all"
                   ? "h-8 rounded-sm border-transparent bg-blue-500 px-3 text-sm font-medium text-white shadow-none hover:bg-blue-600 hover:text-white"
-                  : "h-8 rounded-sm border-gray-200/80 bg-gray-100 px-3 text-sm font-medium text-gray-600 shadow-none hover:bg-blue-50 hover:text-gray-800 dark:border-border/60 dark:bg-muted dark:text-muted-foreground dark:hover:bg-muted/80"
+                  : "h-8 rounded-sm border-gray-100/80 bg-gray-100 px-3 text-sm font-medium text-gray-600 shadow-none hover:bg-blue-50 hover:text-gray-800 dark:border-border/60 dark:bg-muted dark:text-muted-foreground dark:hover:bg-muted/80"
               }
               onClick={() => setListView("all")}
             >
@@ -1494,7 +1494,7 @@ function ExpensesPageInner() {
               className={
                 listView === "unreviewed"
                   ? "h-8 rounded-sm border-transparent bg-blue-500 px-3 text-sm font-medium text-white shadow-none hover:bg-blue-600 hover:text-white"
-                  : "h-8 rounded-sm border-gray-200/80 bg-gray-100 px-3 text-sm font-medium text-gray-600 shadow-none hover:bg-blue-50 hover:text-gray-800 dark:border-border/60 dark:bg-muted dark:text-muted-foreground dark:hover:bg-muted/80"
+                  : "h-8 rounded-sm border-gray-100/80 bg-gray-100 px-3 text-sm font-medium text-gray-600 shadow-none hover:bg-blue-50 hover:text-gray-800 dark:border-border/60 dark:bg-muted dark:text-muted-foreground dark:hover:bg-muted/80"
               }
               onClick={() => setListView("unreviewed")}
             >
@@ -1514,14 +1514,14 @@ function ExpensesPageInner() {
             placeholder="Search…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-8 rounded-sm border border-gray-200/80 bg-white text-sm text-gray-900 shadow-none transition-all duration-200 placeholder:text-gray-600 focus-visible:border-gray-300 focus-visible:ring-2 focus-visible:ring-blue-400/30 dark:border-border/60 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground"
+            className="h-8 rounded-sm border border-gray-100/80 bg-white text-sm text-gray-900 shadow-none transition-all duration-200 placeholder:text-gray-600 focus-visible:border-gray-300 focus-visible:ring-2 focus-visible:ring-blue-400/30 dark:border-border/60 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground"
           />
           <div className="flex flex-wrap gap-2">
             <Select
               value={projectFilter === "" ? EXPENSE_FILTER_ALL : projectFilter}
               onValueChange={(v) => setProjectFilter(v === EXPENSE_FILTER_ALL ? "" : v)}
             >
-              <SelectTrigger className="h-8 min-w-[8rem] max-w-[14rem] border-gray-200/80 bg-white text-xs text-gray-900 dark:border-border/60 dark:bg-card dark:text-foreground">
+              <SelectTrigger className="h-8 min-w-[8rem] max-w-[14rem] border-gray-100/80 bg-white text-xs text-gray-900 dark:border-border/60 dark:bg-card dark:text-foreground">
                 <SelectValue placeholder="Project" />
               </SelectTrigger>
               <SelectContent>
@@ -1542,7 +1542,7 @@ function ExpensesPageInner() {
               value={categoryFilter === "" ? EXPENSE_FILTER_ALL : categoryFilter}
               onValueChange={(v) => setCategoryFilter(v === EXPENSE_FILTER_ALL ? "" : v)}
             >
-              <SelectTrigger className="h-8 min-w-[7rem] max-w-[12rem] border-gray-200/80 bg-white text-xs text-gray-900 dark:border-border/60 dark:bg-card dark:text-foreground">
+              <SelectTrigger className="h-8 min-w-[7rem] max-w-[12rem] border-gray-100/80 bg-white text-xs text-gray-900 dark:border-border/60 dark:bg-card dark:text-foreground">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
@@ -1560,7 +1560,7 @@ function ExpensesPageInner() {
               disabled={listView === "unreviewed"}
             >
               <SelectTrigger
-                className="h-8 min-w-[6.5rem] max-w-[10rem] border-gray-200/80 bg-white text-xs text-gray-900 disabled:opacity-50 dark:border-border/60 dark:bg-card dark:text-foreground"
+                className="h-8 min-w-[6.5rem] max-w-[10rem] border-gray-100/80 bg-white text-xs text-gray-900 disabled:opacity-50 dark:border-border/60 dark:bg-card dark:text-foreground"
                 title={
                   listView === "unreviewed" ? "Status filter applies in All view only" : undefined
                 }
@@ -1582,7 +1582,7 @@ function ExpensesPageInner() {
               value={sourceTypeFilter === "" ? EXPENSE_FILTER_ALL : sourceTypeFilter}
               onValueChange={(v) => setSourceTypeFilter(v === EXPENSE_FILTER_ALL ? "" : v)}
             >
-              <SelectTrigger className="h-8 min-w-[6.5rem] max-w-[9rem] border-gray-200/80 bg-white text-xs text-gray-900 dark:border-border/60 dark:bg-card dark:text-foreground">
+              <SelectTrigger className="h-8 min-w-[6.5rem] max-w-[9rem] border-gray-100/80 bg-white text-xs text-gray-900 dark:border-border/60 dark:bg-card dark:text-foreground">
                 <SelectValue placeholder="Source" />
               </SelectTrigger>
               <SelectContent>
@@ -1620,7 +1620,7 @@ function ExpensesPageInner() {
               }}
             >
               <SelectTrigger
-                className="h-8 min-w-[9.5rem] border-gray-200 bg-white text-xs font-medium text-gray-900 dark:border-border dark:bg-card dark:text-foreground"
+                className="h-8 min-w-[9.5rem] border-gray-100 bg-white text-xs font-medium text-gray-900 dark:border-border dark:bg-card dark:text-foreground"
                 aria-label="Sort expenses"
               >
                 <SelectValue />
@@ -1642,7 +1642,7 @@ function ExpensesPageInner() {
             <ExpensesListSkeleton rows={8} />
           ) : total === 0 ? (
             <div
-              className="flex min-h-[min(55vh,480px)] flex-col justify-center border-b border-gray-200/80 py-12 text-center transition-opacity duration-200 ease-out animate-in fade-in dark:border-border/60"
+              className="flex min-h-[min(55vh,480px)] flex-col justify-center border-b border-gray-100/80 py-12 text-center transition-opacity duration-200 ease-out animate-in fade-in dark:border-border/60"
               tabIndex={-1}
               data-expenses-empty
             >
@@ -1674,7 +1674,7 @@ function ExpensesPageInner() {
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-8 rounded-sm border border-gray-300 bg-white text-gray-700 shadow-none hover:bg-gray-50 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted/50"
+                    className="h-8 rounded-sm border border-gray-100 bg-white text-gray-700 shadow-none hover:bg-gray-50 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted/50"
                     onClick={() => setQuickExpenseOpen(true)}
                   >
                     Quick expense
@@ -1703,7 +1703,7 @@ function ExpensesPageInner() {
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="h-8 rounded-sm border border-gray-300 bg-white text-gray-700 shadow-none hover:bg-gray-50 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted/50"
+                    className="h-8 rounded-sm border border-gray-100 bg-white text-gray-700 shadow-none hover:bg-gray-50 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted/50"
                     onClick={() => setListView("all")}
                   >
                     View all expenses
@@ -1712,7 +1712,7 @@ function ExpensesPageInner() {
               ) : null}
             </div>
           ) : (
-            <div className="exp-list-card w-full overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-[0_4px_12px_rgba(0,0,0,0.06)] dark:border-border/60 dark:bg-card dark:shadow-none">
+            <div className="exp-list-card w-full overflow-hidden rounded-xl border border-gray-100/80 bg-white shadow-[0_4px_12px_rgba(0,0,0,0.06)] dark:border-border/60 dark:bg-card dark:shadow-none">
               <ul className="exp-divide">
                 {pageRows.map((row) => {
                   const rowTotal = getExpenseTotal(row);
@@ -1726,7 +1726,7 @@ function ExpensesPageInner() {
                       ref={(el) => {
                         rowElsRef.current[row.id] = el;
                       }}
-                      className={`group exp-row relative flex flex-col gap-3 border-b border-gray-200/80 bg-transparent px-3 py-3 pr-10 transition-all duration-150 ease-out last:border-b-0 hover:-translate-y-px hover:bg-gray-50 active:scale-[0.99] dark:border-border/60 dark:hover:bg-muted/40 md:flex-row md:justify-between md:items-start md:gap-4 md:px-4 md:py-2.5 md:pr-12 lg:pr-14 ${
+                      className={`group exp-row relative flex flex-col gap-3 border-b border-gray-100/80 bg-transparent px-3 py-3 pr-10 transition-all duration-150 ease-out last:border-b-0 hover:-translate-y-px hover:bg-gray-50 active:scale-[0.99] dark:border-border/60 dark:hover:bg-muted/40 md:flex-row md:justify-between md:items-start md:gap-4 md:px-4 md:py-2.5 md:pr-12 lg:pr-14 ${
                         paymentMethodFlashId === row.id ? "hh-row-flash-success" : ""
                       } ${
                         deletingExpenseId === row.id
@@ -1750,7 +1750,7 @@ function ExpensesPageInner() {
                               onClick={(e) => e.stopPropagation()}
                             >
                               <Input
-                                className="h-7 rounded-sm border-gray-300/60 text-[14px] text-text-primary transition-[box-shadow,border-color] duration-150 focus-visible:ring-2 focus-visible:ring-blue-400/30"
+                                className="h-7 rounded-sm border-gray-100/60 text-[14px] text-text-primary transition-[box-shadow,border-color] duration-150 focus-visible:ring-2 focus-visible:ring-blue-400/30"
                                 value={vendorDraft}
                                 autoFocus
                                 onChange={(e) => setVendorDraft(e.target.value)}
@@ -1798,7 +1798,7 @@ function ExpensesPageInner() {
                           {editingCategoryId === row.id ? (
                             <span data-inline-field className="inline-flex items-center gap-1">
                               <ExpenseCategorySelect
-                                className="h-7 max-w-[9rem] rounded-sm border border-gray-300/60 bg-white/90 px-1.5 text-xs text-text-primary backdrop-blur-sm"
+                                className="h-7 max-w-[9rem] rounded-sm border border-gray-100/60 bg-white/90 px-1.5 text-xs text-text-primary backdrop-blur-sm"
                                 value={categoryDraft}
                                 autoFocus
                                 onValueChange={setCategoryDraft}
@@ -1847,7 +1847,7 @@ function ExpensesPageInner() {
                                   setProjectDraft(v === EXPENSE_PROJECT_OVERHEAD ? "" : v)
                                 }
                               >
-                                <SelectTrigger className="h-7 max-w-[10rem] border-gray-300/60 bg-white/90 text-xs text-text-primary backdrop-blur-sm">
+                                <SelectTrigger className="h-7 max-w-[10rem] border-gray-100/60 bg-white/90 text-xs text-text-primary backdrop-blur-sm">
                                   <SelectValue placeholder="Project" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -1891,7 +1891,7 @@ function ExpensesPageInner() {
                             <span className="inline-flex items-center gap-1" data-inline-field>
                               <Input
                                 type="date"
-                                className="h-7 w-[9.5rem] rounded-sm border-gray-300/60 text-xs text-text-primary transition-[box-shadow,border-color] duration-150 focus-visible:ring-2 focus-visible:ring-blue-400/30"
+                                className="h-7 w-[9.5rem] rounded-sm border-gray-100/60 text-xs text-text-primary transition-[box-shadow,border-color] duration-150 focus-visible:ring-2 focus-visible:ring-blue-400/30"
                                 value={dateDraft}
                                 autoFocus
                                 onChange={(e) => setDateDraft(e.target.value)}
@@ -1956,7 +1956,7 @@ function ExpensesPageInner() {
                                   >
                                     <SelectTrigger
                                       data-inline-field
-                                      className="h-7 min-h-[28px] max-w-[9rem] border-gray-200 bg-white text-xs text-gray-900 dark:border-border dark:bg-card dark:text-foreground"
+                                      className="h-7 min-h-[28px] max-w-[9rem] border-gray-100 bg-white text-xs text-gray-900 dark:border-border dark:bg-card dark:text-foreground"
                                     >
                                       <SelectValue />
                                     </SelectTrigger>
@@ -2016,7 +2016,7 @@ function ExpensesPageInner() {
                                   setSourceTypeDraft(v as NonNullable<Expense["sourceType"]>)
                                 }
                               >
-                                <SelectTrigger className="h-7 border-gray-300/60 bg-white/90 text-xs text-text-primary backdrop-blur-sm">
+                                <SelectTrigger className="h-7 border-gray-100/60 bg-white/90 text-xs text-text-primary backdrop-blur-sm">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -2058,7 +2058,7 @@ function ExpensesPageInner() {
                           {editingAmountId === row.id ? (
                             <div className="flex items-center justify-end gap-1" data-inline-field>
                               <Input
-                                className="h-7 w-24 rounded-sm border-gray-200/80 text-right text-[15px] tabular-nums text-text-primary transition-[box-shadow,border-color] duration-150 focus-visible:ring-2 focus-visible:ring-blue-400/30"
+                                className="h-7 w-24 rounded-sm border-gray-100/80 text-right text-[15px] tabular-nums text-text-primary transition-[box-shadow,border-color] duration-150 focus-visible:ring-2 focus-visible:ring-blue-400/30"
                                 value={amountDraft}
                                 autoFocus
                                 inputMode="decimal"
@@ -2161,13 +2161,13 @@ function ExpensesPageInner() {
                   );
                 })}
               </ul>
-              <div className="border-t border-gray-200/80 px-4 py-2 dark:border-border/60">
+              <div className="border-t border-gray-100/80 px-4 py-2 dark:border-border/60">
                 <Pagination
                   page={curPage}
                   pageSize={pageSize}
                   total={total}
                   onPageChange={setPage}
-                  className="text-gray-600 [&_.text-muted-foreground]:text-gray-600 [&_button]:border [&_button]:border-gray-200/80 [&_button]:bg-white [&_button]:text-gray-700 [&_button]:shadow-none hover:[&_button]:bg-gray-50 dark:text-muted-foreground dark:[&_button]:border-border dark:[&_button]:bg-background dark:[&_button]:text-foreground dark:hover:[&_button]:bg-muted/50"
+                  className="text-gray-600 [&_.text-muted-foreground]:text-gray-600 [&_button]:border [&_button]:border-gray-100/80 [&_button]:bg-white [&_button]:text-gray-700 [&_button]:shadow-none hover:[&_button]:bg-gray-50 dark:text-muted-foreground dark:[&_button]:border-border dark:[&_button]:bg-background dark:[&_button]:text-foreground dark:hover:[&_button]:bg-muted/50"
                 />
               </div>
             </div>

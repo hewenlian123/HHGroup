@@ -265,7 +265,7 @@ export default function DailyLaborLogPage() {
             <select
               value={projectFilter}
               onChange={(e) => setProjectFilter(e.target.value)}
-              className="h-9 min-w-[200px] rounded-lg border border-gray-300 bg-white px-3 text-sm"
+              className="h-9 min-w-[200px] rounded-lg border border-gray-100 bg-white px-3 text-sm"
             >
               <option value="">All projects</option>
               {projects.map((p) => (
@@ -299,10 +299,10 @@ export default function DailyLaborLogPage() {
             No entries for this date. Use &quot;+ Add Entry&quot; to add workers.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-gray-300">
+          <div className="overflow-x-auto rounded-lg border border-gray-100">
             <table className="w-full text-sm border-collapse">
               <thead>
-                <tr className="border-b border-gray-300 bg-page">
+                <tr className="border-b border-gray-100 bg-page">
                   <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-text-secondary">
                     Worker
                   </th>
@@ -327,7 +327,7 @@ export default function DailyLaborLogPage() {
                   const sess = sessionFromFlags((e as any).morning, (e as any).afternoon);
                   const pay = e.cost_amount != null ? Number(e.cost_amount) : 0;
                   return (
-                    <tr key={e.id} className="group border-b border-gray-300 last:border-b-0">
+                    <tr key={e.id} className="group border-b border-gray-100 last:border-b-0">
                       <td className="py-2 px-3 font-medium text-[#111111]">
                         {e.worker_name ?? "—"}
                       </td>
@@ -534,7 +534,7 @@ const QuickTimesheetWorkerRow = React.memo(function QuickTimesheetWorkerRow({
         checked={checked}
         disabled={disabled}
         onChange={onToggle}
-        className="h-4 w-4 shrink-0 rounded border-gray-300"
+        className="h-4 w-4 shrink-0 rounded border-gray-100"
       />
       <div className="min-w-0 flex-1">
         <div className="text-sm font-medium text-[#111111]">{worker.name}</div>
@@ -864,7 +864,7 @@ function QuickTimesheetModal({
             return (
               <div
                 key={section.id}
-                className="space-y-3 rounded-md border border-gray-300 bg-white px-3 py-3"
+                className="space-y-3 rounded-md border border-gray-100 bg-white px-3 py-3"
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex flex-col gap-1">
@@ -872,7 +872,7 @@ function QuickTimesheetModal({
                     <select
                       value={section.projectId}
                       onChange={(e) => handleProjectChange(section.id, e.target.value)}
-                      className="h-9 min-w-[200px] rounded-lg border border-gray-300 bg-white px-3 text-sm"
+                      className="h-9 min-w-[200px] rounded-lg border border-gray-100 bg-white px-3 text-sm"
                     >
                       <option value="">Select project</option>
                       {projects.map((p) => (
@@ -933,7 +933,7 @@ function QuickTimesheetModal({
                       </Button>
                     </div>
                   </div>
-                  <div className="max-h-80 min-h-0 overflow-hidden rounded-lg border border-gray-300 bg-white">
+                  <div className="max-h-80 min-h-0 overflow-hidden rounded-lg border border-gray-100 bg-white">
                     {workers.length === 0 ? (
                       <p className="px-3 py-3 text-xs text-text-secondary">No workers found.</p>
                     ) : workers.length > QUICK_TIMESHEET_VIRTUAL_THRESHOLD ? (
@@ -946,7 +946,7 @@ function QuickTimesheetModal({
                           const w = workers[i];
                           if (!w) return null;
                           return (
-                            <div key={w.id} className="border-b border-gray-300 last:border-b-0">
+                            <div key={w.id} className="border-b border-gray-100 last:border-b-0">
                               <QuickTimesheetWorkerRow
                                 worker={w}
                                 sectionId={section.id}
@@ -987,7 +987,7 @@ function QuickTimesheetModal({
                     <select
                       value={section.dayType}
                       onChange={(e) => setDayTypeForSection(section.id, e.target.value as DayType)}
-                      className="h-9 rounded-lg border border-gray-300 bg-white px-3 text-sm"
+                      className="h-9 rounded-lg border border-gray-100 bg-white px-3 text-sm"
                     >
                       <option value="full_day">Full Day</option>
                       <option value="half_day">Half Day</option>
@@ -1013,10 +1013,10 @@ function QuickTimesheetModal({
                 {section.selectedWorkerIds.size > 0 ? (
                   <div className="flex flex-col gap-2">
                     <label className="text-xs font-medium text-text-secondary">Attendance</label>
-                    <div className="overflow-x-auto rounded-lg border border-gray-300">
+                    <div className="overflow-x-auto rounded-lg border border-gray-100">
                       <table className="w-full text-sm">
                         <thead>
-                          <tr className="border-b border-gray-300 bg-page">
+                          <tr className="border-b border-gray-100 bg-page">
                             <th className="py-2 px-3 text-left text-xs font-medium uppercase tracking-wide text-text-secondary">
                               Worker
                             </th>
@@ -1044,7 +1044,7 @@ function QuickTimesheetModal({
                             const otRate = (dailyRate / 8) * 1.5;
                             const pay = basePay + otNum * otRate;
                             return (
-                              <tr key={id} className="border-b border-gray-300 last:border-b-0">
+                              <tr key={id} className="border-b border-gray-100 last:border-b-0">
                                 <td className="py-2 px-3 font-medium text-[#111111]">
                                   {worker?.name ?? id}
                                 </td>

@@ -394,7 +394,7 @@ export default function BankReconcilePage() {
         <div
           ref={bankListRef}
           tabIndex={0}
-          className="overflow-hidden border border-gray-300 p-4 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:border-border"
+          className="overflow-hidden border border-gray-100 p-4 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:border-border"
           onKeyDown={handleBankListKeyDown}
         >
           <div className="mb-4 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
@@ -439,7 +439,7 @@ export default function BankReconcilePage() {
                   "rounded-sm border px-3 py-1.5 text-sm font-medium capitalize transition-colors",
                   tab === t
                     ? "border-[#111827]/25 bg-[#F9FAFB] text-text-primary dark:border-border dark:bg-muted/40 dark:text-foreground"
-                    : "border-gray-300 bg-background text-muted-foreground hover:bg-[#F9FAFB]/60 dark:border-border"
+                    : "border-gray-100 bg-background text-muted-foreground hover:bg-[#F9FAFB]/60 dark:border-border"
                 )}
               >
                 {t}
@@ -458,7 +458,7 @@ export default function BankReconcilePage() {
               </Button>
             )}
           </div>
-          <div className="overflow-x-auto rounded-sm border border-gray-300 dark:border-border">
+          <div className="overflow-x-auto rounded-sm border border-gray-100 dark:border-border">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
@@ -484,7 +484,7 @@ export default function BankReconcilePage() {
                   <TableRow
                     key={tx.id}
                     className={cn(
-                      "cursor-pointer border-b border-gray-300/80 transition-colors hover:bg-[#F9FAFB] dark:border-border/40 dark:hover:bg-muted/20",
+                      "cursor-pointer border-b border-gray-100/80 transition-colors hover:bg-[#F9FAFB] dark:border-border/40 dark:hover:bg-muted/20",
                       selectedIds.has(tx.id) && "bg-[#F9FAFB] dark:bg-muted/30"
                     )}
                     onClick={() => setSelectedIds(new Set([tx.id]))}
@@ -531,7 +531,7 @@ export default function BankReconcilePage() {
 
         {/* Right: Reconcile panel */}
         <div
-          className="overflow-hidden border border-gray-300 p-6 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:border-border"
+          className="overflow-hidden border border-gray-100 p-6 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:border-border"
           onKeyDown={handlePanelKeyDown}
           tabIndex={0}
         >
@@ -674,7 +674,7 @@ export default function BankReconcilePage() {
                 {reconcileType === "Expense" && (
                   <>
                     {suggestions.length > 0 && (
-                      <div className="mt-4 border border-gray-300 p-4 dark:border-border">
+                      <div className="mt-4 border border-gray-100 p-4 dark:border-border">
                         <h3 className="mb-3 text-sm font-semibold text-foreground">
                           Match Existing Expense
                         </h3>
@@ -685,7 +685,7 @@ export default function BankReconcilePage() {
                           {suggestions.map((s) => (
                             <div
                               key={s.expense.id}
-                              className="flex flex-wrap items-center gap-2 border border-gray-300 p-2 text-sm dark:border-border"
+                              className="flex flex-wrap items-center gap-2 border border-gray-100 p-2 text-sm dark:border-border"
                             >
                               <span className="tabular-nums text-muted-foreground w-20">
                                 {s.expense.date}

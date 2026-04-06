@@ -299,8 +299,8 @@ export function EditExpenseModal({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="expenses-ui-dialog max-w-md border-gray-300 p-6 sm:p-8">
-          <DialogHeader className="border-b border-gray-300 pb-2">
+        <DialogContent className="expenses-ui-dialog max-w-md border-gray-100 p-6 sm:p-8">
+          <DialogHeader className="border-b border-gray-100 pb-2">
             <DialogTitle className="text-sm font-medium text-text-primary">
               Edit expense
             </DialogTitle>
@@ -335,7 +335,7 @@ export function EditExpenseModal({
                   <Input
                     value={vendorName}
                     onChange={(e) => setVendorName(e.target.value)}
-                    className="mt-0.5 h-8 rounded-sm border-gray-300 text-sm text-text-primary"
+                    className="mt-0.5 h-8 rounded-sm border-gray-100 text-sm text-text-primary"
                     disabled={saving}
                   />
                 </div>
@@ -347,7 +347,7 @@ export function EditExpenseModal({
                     step="0.01"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    className="mt-0.5 h-8 rounded-sm border-gray-300 text-sm tabular-nums text-text-primary"
+                    className="mt-0.5 h-8 rounded-sm border-gray-100 text-sm tabular-nums text-text-primary"
                     disabled={saving}
                   />
                 </div>
@@ -357,7 +357,7 @@ export function EditExpenseModal({
                     type="date"
                     value={expenseDate}
                     onChange={(e) => setExpenseDate(e.target.value)}
-                    className="mt-0.5 h-8 rounded-sm border-gray-300 text-sm text-text-primary"
+                    className="mt-0.5 h-8 rounded-sm border-gray-100 text-sm text-text-primary"
                     disabled={saving}
                   />
                 </div>
@@ -366,7 +366,7 @@ export function EditExpenseModal({
                   <select
                     value={projectId ?? ""}
                     onChange={(e) => setProjectId(e.target.value || null)}
-                    className="mt-0.5 h-8 w-full rounded-sm border border-gray-300 bg-white px-2 text-xs text-text-primary"
+                    className="mt-0.5 h-8 w-full rounded-sm border border-gray-100 bg-white px-2 text-xs text-text-primary"
                     disabled={saving}
                   >
                     <option value="">—</option>
@@ -383,7 +383,7 @@ export function EditExpenseModal({
                     value={category}
                     onValueChange={setCategory}
                     disabled={saving}
-                    className="mt-0.5 h-8 w-full rounded-sm border border-gray-300 bg-white px-2 text-xs text-text-primary"
+                    className="mt-0.5 h-8 w-full rounded-sm border border-gray-100 bg-white px-2 text-xs text-text-primary"
                   />
                 </div>
                 <div>
@@ -397,7 +397,7 @@ export function EditExpenseModal({
                     }}
                     disabled={saving}
                     onAccountsUpdated={setPaymentAccountsLocal}
-                    className="mt-0.5 h-8 w-full rounded-sm border border-gray-300 bg-white px-2 text-xs text-text-primary"
+                    className="mt-0.5 h-8 w-full rounded-sm border border-gray-100 bg-white px-2 text-xs text-text-primary"
                   />
                 </div>
                 <div>
@@ -405,7 +405,7 @@ export function EditExpenseModal({
                   <select
                     value={workerId ?? ""}
                     onChange={(e) => setWorkerId(e.target.value || null)}
-                    className="mt-0.5 h-8 w-full rounded-sm border border-gray-300 bg-white px-2 text-xs text-text-primary"
+                    className="mt-0.5 h-8 w-full rounded-sm border border-gray-100 bg-white px-2 text-xs text-text-primary"
                     disabled={saving}
                   >
                     <option value="">—</option>
@@ -423,7 +423,7 @@ export function EditExpenseModal({
                     onChange={(e) =>
                       setSourceType(e.target.value as NonNullable<Expense["sourceType"]>)
                     }
-                    className="mt-0.5 h-8 w-full rounded-sm border border-gray-300 bg-white px-2 text-xs text-text-primary"
+                    className="mt-0.5 h-8 w-full rounded-sm border border-gray-100 bg-white px-2 text-xs text-text-primary"
                     disabled={saving}
                   >
                     <option value="company">Company</option>
@@ -436,7 +436,7 @@ export function EditExpenseModal({
                   <select
                     value={status}
                     onChange={(e) => setStatus(e.target.value as NonNullable<Expense["status"]>)}
-                    className="mt-0.5 h-8 w-full rounded-sm border border-gray-300 bg-white px-2 text-xs text-text-primary"
+                    className="mt-0.5 h-8 w-full rounded-sm border border-gray-100 bg-white px-2 text-xs text-text-primary"
                     disabled={saving}
                   >
                     <option value="pending">Pending</option>
@@ -453,14 +453,14 @@ export function EditExpenseModal({
                   <Input
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    className="mt-0.5 h-8 rounded-sm border-gray-300 text-sm text-text-primary"
+                    className="mt-0.5 h-8 rounded-sm border-gray-100 text-sm text-text-primary"
                     placeholder="Optional"
                     disabled={saving}
                   />
                 </div>
               </div>
 
-              <div className="border-t border-gray-300 pt-2">
+              <div className="border-t border-gray-100 pt-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="exp-dlg-muted text-[11px] font-medium">Attachments</span>
                   <div className="flex flex-wrap gap-2">
@@ -507,11 +507,11 @@ export function EditExpenseModal({
                       return (
                         <li
                           key={att.id}
-                          className="flex items-center gap-2 border-b border-gray-300/80 py-1.5 last:border-0"
+                          className="flex items-center gap-2 border-b border-gray-100/80 py-1.5 last:border-0"
                         >
                           <button
                             type="button"
-                            className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-sm border border-gray-300"
+                            className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-sm border border-gray-100"
                             onClick={() => void openAttachmentPreview(att)}
                             aria-label="Preview"
                           >
@@ -555,7 +555,7 @@ export function EditExpenseModal({
                 )}
               </div>
 
-              <div className="flex justify-end gap-2 border-t border-gray-300 pt-2">
+              <div className="flex justify-end gap-2 border-t border-gray-100 pt-2">
                 <Button
                   variant="outline"
                   size="sm"

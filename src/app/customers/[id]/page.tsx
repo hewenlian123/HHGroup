@@ -199,12 +199,12 @@ export default function CustomerDetailPage() {
       />
 
       {message ? (
-        <div className="rounded-lg border border-gray-300 bg-background px-3 py-2 text-sm text-muted-foreground dark:border-border">
+        <div className="rounded-lg border border-gray-100 bg-background px-3 py-2 text-sm text-muted-foreground dark:border-border">
           {message}
         </div>
       ) : null}
 
-      <Card className="border-gray-300 p-4 dark:border-border">
+      <Card className="border-gray-100 p-4 dark:border-border">
         <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-1">
             <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">

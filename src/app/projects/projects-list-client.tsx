@@ -48,9 +48,9 @@ export type ProjectsListRow = {
 
 const PAGE_BG = "bg-page";
 const FIELD =
-  "h-10 rounded-lg border-[0.5px] border-gray-300 bg-white text-[14px] focus-visible:border-[#111827] focus-visible:ring-2 focus-visible:ring-[#111827]/15";
+  "h-10 rounded-lg border-[0.5px] border-gray-100 bg-white text-[14px] focus-visible:border-[#111827] focus-visible:ring-2 focus-visible:ring-[#111827]/15";
 const MODAL =
-  "max-w-[480px] w-full gap-0 border-[0.5px] border-gray-300 p-8 shadow-modal rounded-modal sm:max-w-[480px]";
+  "max-w-[480px] w-full gap-0 border-[0.5px] border-gray-100 p-8 shadow-modal rounded-modal sm:max-w-[480px]";
 
 function fmtUsd0(n: number): string {
   return `$${Math.round(n).toLocaleString("en-US")}`;
@@ -205,7 +205,7 @@ export function ProjectsListClient({
   return (
     <div className={cn("page-container page-stack py-8 text-[14px] leading-normal", PAGE_BG)}>
       {dataLoadWarning ? (
-        <p className="border-b border-gray-300 pb-3 text-sm text-text-secondary" role="status">
+        <p className="border-b border-gray-100 pb-3 text-sm text-text-secondary" role="status">
           {dataLoadWarning}
         </p>
       ) : null}
@@ -225,7 +225,7 @@ export function ProjectsListClient({
         <Button
           asChild
           variant="outline"
-          className="h-10 shrink-0 rounded-md border-[0.5px] border-gray-300 bg-white px-4 text-[14px] font-medium text-text-primary shadow-none transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-50 active:scale-[0.97] active:duration-100 dark:hover:bg-muted/40"
+          className="h-10 shrink-0 rounded-md border-[0.5px] border-gray-100 bg-white px-4 text-[14px] font-medium text-text-primary shadow-none transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-50 active:scale-[0.97] active:duration-100 dark:hover:bg-muted/40"
         >
           <Link href="/projects/new">
             <Plus className="mr-2 h-4 w-4" />
@@ -245,7 +245,7 @@ export function ProjectsListClient({
         ).map(([label, value]) => (
           <div
             key={label}
-            className="rounded-[10px] border-[0.5px] border-solid border-gray-300 bg-white px-4 py-[14px]"
+            className="rounded-[10px] border-[0.5px] border-solid border-gray-100 bg-white px-4 py-[14px]"
           >
             <p className="kpi-metric-label">{label}</p>
             <p className="kpi-metric-value mt-0.5 font-mono tabular-nums text-text-primary">
@@ -305,7 +305,7 @@ export function ProjectsListClient({
             <Button
               asChild
               variant="outline"
-              className="mt-6 h-10 rounded-md border-[0.5px] border-gray-300 bg-white px-4 text-text-primary shadow-none transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-50 active:scale-[0.97] active:duration-100 dark:hover:bg-muted/40"
+              className="mt-6 h-10 rounded-md border-[0.5px] border-gray-100 bg-white px-4 text-text-primary shadow-none transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-50 active:scale-[0.97] active:duration-100 dark:hover:bg-muted/40"
             >
               <Link href="/projects/new">New Project</Link>
             </Button>
@@ -455,7 +455,7 @@ export function ProjectsListClient({
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-9 shrink-0 rounded-lg border-gray-300 text-[13px]"
+                        className="h-9 shrink-0 rounded-lg border-gray-100 text-[13px]"
                         asChild
                       >
                         <Link href={href} onClick={() => setDeleteBlockedOpen(false)}>
@@ -485,7 +485,7 @@ export function ProjectsListClient({
           <DialogFooter className="mt-4 flex-wrap gap-2 border-t border-[#F0EDE8] bg-transparent pt-4">
             <Button
               variant="outline"
-              className="h-10 rounded-lg border-gray-300 bg-white text-[14px] font-medium text-text-secondary"
+              className="h-10 rounded-lg border-gray-100 bg-white text-[14px] font-medium text-text-secondary"
               onClick={() => setDeleteBlockedOpen(false)}
               disabled={forceDeleteInProgress}
             >
@@ -495,7 +495,7 @@ export function ProjectsListClient({
               <>
                 <Button
                   variant="outline"
-                  className="h-10 rounded-lg border-gray-300 text-[14px] font-medium"
+                  className="h-10 rounded-lg border-gray-100 text-[14px] font-medium"
                   onClick={async () => {
                     if (!deleteBlockedProjectId) return;
                     const result = await archiveProjectAction(deleteBlockedProjectId);
