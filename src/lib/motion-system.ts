@@ -27,6 +27,14 @@ export const motionIconButtonActive = "active:scale-[0.95] active:duration-100";
 /** Table / dense list rows — subtler press than full click targets. */
 export const motionRowPress = "active:scale-[0.99] active:duration-100";
 
+/** Data table rows — no vertical nudge; Linear-style flat hover. */
+export const motionListTableRow = cn(
+  "group",
+  motionTransition,
+  "hover:bg-gray-50 dark:hover:bg-muted/30",
+  motionRowPress
+);
+
 /** Form controls — ring only, no layout jump. */
 export const motionInputFocus = cn(
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/30 focus-visible:ring-offset-0"

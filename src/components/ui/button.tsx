@@ -30,9 +30,9 @@ const buttonVariants = cva(
         default:
           "border border-transparent bg-black text-white hover:bg-gray-900 hover:opacity-100 dark:bg-black dark:hover:bg-gray-800 dark:hover:opacity-100",
         secondary:
-          "border border-transparent bg-brand-primary text-white shadow-none hover:bg-blue-700 hover:opacity-100 dark:bg-brand-primary dark:hover:bg-blue-600 dark:hover:opacity-100",
+          "border border-gray-200 bg-white text-text-primary shadow-none hover:bg-gray-50 dark:border-border dark:bg-card dark:text-foreground dark:hover:bg-muted",
         outline:
-          "border border-gray-300 bg-white text-text-primary shadow-none hover:bg-gray-50 dark:border-border dark:bg-card dark:text-foreground dark:hover:bg-muted",
+          "border border-gray-200 bg-white text-text-primary shadow-none hover:bg-gray-50 dark:border-border dark:bg-card dark:text-foreground dark:hover:bg-muted",
         ghost:
           "border-0 !border-transparent bg-transparent text-text-primary shadow-none hover:!translate-y-0 hover:bg-gray-50 hover:opacity-100 hover:!shadow-none active:!scale-[0.97] active:!duration-100 max-md:active:!scale-[0.96] dark:bg-transparent dark:text-foreground dark:hover:bg-muted/40",
       },

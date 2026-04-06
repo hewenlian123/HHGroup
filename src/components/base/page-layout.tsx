@@ -23,8 +23,8 @@ export function PageHeader({
     <header className={cn("flex flex-col gap-1", className)}>
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="text-xl font-semibold tracking-tight text-text-primary">{title}</h1>
-          {description ? <p className="mt-0.5 text-xs text-[#9CA3AF]">{description}</p> : null}
+          <h1 className="text-xl font-medium tracking-tight text-text-primary">{title}</h1>
+          {description ? <p className="mt-0.5 text-sm text-text-secondary">{description}</p> : null}
         </div>
         {rightContent}
       </div>
@@ -34,7 +34,7 @@ export function PageHeader({
 
 /** Horizontal divider using design tokens (border only). */
 export function Divider({ className }: { className?: string }) {
-  return <div className={cn("ui-divider border-b border-gray-300", className)} />;
+  return <div className={cn("ui-divider", className)} />;
 }
 
 /** Bar for primary page actions (left/right slots). Uses Phase 1 layout. */
@@ -52,7 +52,7 @@ export function ActionBar({
   return (
     <div
       className={cn(
-        "flex flex-col gap-2 border-b border-gray-300 pb-3 sm:flex-row sm:items-center sm:justify-between",
+        "flex flex-col gap-2 border-b border-gray-100 pb-3 sm:flex-row sm:items-center sm:justify-between",
         className
       )}
     >

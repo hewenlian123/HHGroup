@@ -4,22 +4,19 @@ import { cn } from "@/lib/utils";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 
 const tableShellClass =
-  "relative w-full overflow-hidden rounded-[10px] border-[0.5px] border-solid border-gray-300 bg-white dark:border-border";
+  "relative w-full overflow-hidden rounded-xl border border-gray-100 bg-white shadow-none dark:border-border dark:bg-card";
 
-/** Shared vertical rules + bottom line (last column has no right border). */
-export const tableCellBorderClass =
-  "border-b-[0.5px] border-r-[0.5px] border-solid border-gray-300 last:border-r-0 dark:border-border";
+/** Legacy raw table cell borders — light row dividers only (prefer `Table` primitives). */
+export const tableCellBorderClass = "border-b border-gray-100 last:border-b-0 dark:border-border";
 
-/** For legacy `<table>` markup — matches `TableHead`. */
 export const tableRawThClass = cn(
-  "h-8 bg-[#F9FAFB] px-3 text-left align-middle text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]",
-  tableCellBorderClass
+  "h-9 bg-white px-3 text-left align-middle text-xs font-medium uppercase tracking-wide text-text-secondary dark:bg-card",
+  "border-b border-gray-100 dark:border-border"
 );
 
-/** For legacy `<table>` body cells — matches `TableCell` rhythm. */
 export const tableRawTdClass = cn(
-  "min-h-[44px] px-3 py-3 align-middle text-[13px] text-[#374151] dark:text-foreground",
-  tableCellBorderClass
+  "h-9 max-md:min-h-[44px] px-3 py-0 align-middle text-sm text-text-primary dark:text-foreground",
+  "border-b border-gray-100 last:border-b-0 dark:border-border"
 );
 
 const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
@@ -29,7 +26,7 @@ const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableE
         <table
           ref={ref}
           className={cn(
-            "w-full caption-bottom border-collapse text-[13px] text-[#374151] dark:text-foreground",
+            "w-full caption-bottom border-collapse text-sm text-text-primary dark:text-foreground",
             className
           )}
           {...props}
@@ -61,7 +58,10 @@ const TableBody = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <tbody
     ref={ref}
-    className={cn("[&_tr:last-child>td]:border-b-0 [&_tr:last-child>th]:border-b-0", className)}
+    className={cn(
+      "[&>tr]:border-b [&>tr]:border-gray-100 [&>tr:last-child]:border-b-0 dark:[&>tr]:border-border",
+      className
+    )}
     {...props}
   />
 ));
@@ -74,7 +74,7 @@ const TableFooter = React.forwardRef<
   <tfoot
     ref={ref}
     className={cn(
-      "border-t border-gray-300 [border-top-width:0.5px] font-medium dark:border-border [&>tr]:last:border-b-0",
+      "border-t border-gray-100 font-medium dark:border-border [&>tr]:last:border-b-0",
       className
     )}
     {...props}
@@ -88,7 +88,8 @@ const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTML
       ref={ref}
       className={cn(
         listTableRowStaticClassName,
-        "data-[state=selected]:bg-muted",
+        "border-l-2 border-l-transparent transition-colors",
+        "data-[state=selected]:border-l-brand-primary data-[state=selected]:bg-blue-50 dark:data-[state=selected]:bg-blue-950/30",
         "[&>td:first-child]:font-medium",
         className
       )}
@@ -105,8 +106,8 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "h-8 bg-[#F9FAFB] px-3 text-left align-middle text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]",
-      tableCellBorderClass,
+      "h-9 bg-white px-3 text-left align-middle text-xs font-medium uppercase tracking-wide text-text-secondary dark:bg-card",
+      "border-b border-gray-100 dark:border-border",
       "[&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
       className
     )}
@@ -122,8 +123,7 @@ const TableCell = React.forwardRef<
   <td
     ref={ref}
     className={cn(
-      "h-11 min-h-[44px] px-3 py-0 align-middle",
-      tableCellBorderClass,
+      "h-9 max-md:min-h-[44px] px-3 py-0 align-middle text-sm text-text-primary dark:text-foreground",
       "[&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
       className
     )}

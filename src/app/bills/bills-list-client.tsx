@@ -294,7 +294,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                 <div key={bill.id} className="group relative">
                   <Link
                     href={`/bills/${bill.id}`}
-                    className="block rounded-sm border border-gray-300 bg-background p-4 transition-colors hover:bg-[#F9FAFB] active:bg-[#F9FAFB]/80 dark:border-border/60 dark:hover:bg-muted/30"
+                    className="block rounded-sm border border-gray-100 bg-background p-4 transition-colors hover:bg-[#F9FAFB] active:bg-[#F9FAFB]/80 dark:border-border/60 dark:hover:bg-muted/30"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1 pr-8">

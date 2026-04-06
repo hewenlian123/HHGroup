@@ -266,7 +266,7 @@ export function ProjectDetailTabsClient({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-9 rounded-lg border-gray-300 text-[13px] text-text-secondary"
+                    className="h-9 rounded-lg border-gray-100 text-[13px] text-text-secondary"
                     aria-label="Project actions"
                   >
                     <MoreHorizontal className="mr-1 h-4 w-4" />
@@ -332,8 +332,8 @@ export function ProjectDetailTabsClient({
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-            <div className="mt-6 border-t border-gray-300 pt-6">
-              <div className="rounded-lg border-[0.5px] border-gray-300 bg-white p-4 sm:p-5">
+            <div className="mt-6 border-t border-gray-100 pt-6">
+              <div className="rounded-lg border-[0.5px] border-gray-100 bg-white p-4 sm:p-5">
                 <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
@@ -400,7 +400,7 @@ export function ProjectDetailTabsClient({
             }}
             className="w-full"
           >
-            <div className="flex items-center justify-between gap-2 border-b-2 border-gray-300 pb-0">
+            <div className="flex items-center justify-between gap-2 border-b-2 border-gray-100 pb-0">
               <TabsList className="h-10 min-h-0 flex-1 justify-start gap-0 overflow-x-auto whitespace-nowrap rounded-none border-0 bg-transparent p-0">
                 {(
                   [

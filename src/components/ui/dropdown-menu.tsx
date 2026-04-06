@@ -47,7 +47,7 @@ const DropdownMenuSubContent = React.forwardRef<
   <DropdownMenuPrimitive.SubContent
     ref={ref}
     className={cn(
-      "z-[100] min-w-[8rem] overflow-hidden rounded-md border border-gray-300 bg-white p-1 py-2 text-text-primary shadow-lg origin-[--radix-dropdown-menu-content-transform-origin] dark:border-border dark:bg-popover dark:text-popover-foreground dark:shadow-md",
+      "z-[100] min-w-[8rem] overflow-hidden rounded-md border border-gray-100 bg-white p-1 py-2 text-text-primary shadow-lg origin-[--radix-dropdown-menu-content-transform-origin] dark:border-border dark:bg-popover dark:text-popover-foreground dark:shadow-md",
       motionPopoverLayer,
       "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
       className
@@ -66,7 +66,7 @@ const DropdownMenuContent = React.forwardRef<
       ref={ref}
       sideOffset={sideOffset}
       className={cn(
-        "z-[100] max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-md border border-gray-300 bg-white p-1 py-2 text-text-primary shadow-lg origin-[--radix-dropdown-menu-content-transform-origin] dark:border-border dark:bg-popover dark:text-popover-foreground dark:shadow-md",
+        "z-[100] max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-md border border-gray-100 bg-white p-1 py-2 text-text-primary shadow-lg origin-[--radix-dropdown-menu-content-transform-origin] dark:border-border dark:bg-popover dark:text-popover-foreground dark:shadow-md",
         motionPopoverLayer,
         "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
         className

@@ -408,7 +408,7 @@ export default function SubcontractorDetailPage() {
       </div>
 
       {tab === "profile" ? (
-        <section className="border-b border-gray-300 pb-6 dark:border-border">
+        <section className="border-b border-gray-100 pb-6 dark:border-border">
           <div className="mb-3 flex items-center gap-2">
             <StatusBadge status={row.status} />
             <span className="text-xs text-muted-foreground">
@@ -486,7 +486,7 @@ export default function SubcontractorDetailPage() {
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">W9 on file</p>
-              <label className="inline-flex items-center gap-2 border border-gray-300 bg-background px-3 py-2 text-sm dark:border-border">
+              <label className="inline-flex items-center gap-2 border border-gray-100 bg-background px-3 py-2 text-sm dark:border-border">
                 <input
                   type="checkbox"
                   checked={row.w9_on_file}
@@ -586,7 +586,7 @@ export default function SubcontractorDetailPage() {
       ) : null}
 
       {tab === "docs" ? (
-        <section className="border-b border-gray-300 pb-6 dark:border-border">
+        <section className="border-b border-gray-100 pb-6 dark:border-border">
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <Input
               type="file"
@@ -602,10 +602,10 @@ export default function SubcontractorDetailPage() {
               {uploading ? "Uploading..." : "Upload W9 / COI / contract PDF."}
             </span>
           </div>
-          <div className="overflow-x-auto rounded-sm border border-gray-300 dark:border-border">
+          <div className="overflow-x-auto rounded-sm border border-gray-100 dark:border-border">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-300 bg-white dark:border-border/60 dark:bg-muted/30">
+                <tr className="border-b border-gray-100 bg-white dark:border-border/60 dark:bg-muted/30">
                   <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">
                     File
                   </th>
@@ -627,7 +627,7 @@ export default function SubcontractorDetailPage() {
                 {attachments.map((item) => (
                   <tr
                     key={item.id}
-                    className="border-b border-gray-300/80 transition-colors hover:bg-[#F9FAFB] dark:border-border/40 dark:hover:bg-muted/20"
+                    className="border-b border-gray-100/80 transition-colors hover:bg-[#F9FAFB] dark:border-border/40 dark:hover:bg-muted/20"
                   >
                     <td className="px-4 py-3 text-foreground">{item.file_name}</td>
                     <td className="px-4 py-3 text-muted-foreground">{item.mime_type || "—"}</td>
@@ -719,10 +719,10 @@ export default function SubcontractorDetailPage() {
             </Button>
           </div>
 
-          <div className="overflow-x-auto rounded-sm border border-gray-300 dark:border-border">
+          <div className="overflow-x-auto rounded-sm border border-gray-100 dark:border-border">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-300 bg-white dark:border-border/60 dark:bg-muted/30">
+                <tr className="border-b border-gray-100 bg-white dark:border-border/60 dark:bg-muted/30">
                   <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">
                     Project
                   </th>
@@ -744,7 +744,7 @@ export default function SubcontractorDetailPage() {
                 {links.map((link) => (
                   <tr
                     key={link.id}
-                    className="border-b border-gray-300/80 transition-colors hover:bg-[#F9FAFB] dark:border-border/40 dark:hover:bg-muted/20"
+                    className="border-b border-gray-100/80 transition-colors hover:bg-[#F9FAFB] dark:border-border/40 dark:hover:bg-muted/20"
                   >
                     <td className="px-4 py-3 text-foreground">
                       {link.projects?.name || link.project_id}

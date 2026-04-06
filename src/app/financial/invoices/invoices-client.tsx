@@ -366,7 +366,7 @@ export function InvoicesClient() {
               <Button
                 variant="outline"
                 size="sm"
-                className="border-[0.5px] border-gray-300 bg-white"
+                className="border-[0.5px] border-gray-100 bg-white"
                 onClick={() => setVoidConfirmId(null)}
               >
                 Cancel

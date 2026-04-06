@@ -121,7 +121,7 @@ function ScheduleCalendarGrid({
           →
         </button>
       </div>
-      <div className="grid grid-cols-7 gap-px border border-gray-300 rounded-sm overflow-hidden bg-[#E5E7EB] dark:border-border/60 dark:bg-border/40">
+      <div className="grid grid-cols-7 gap-px border border-gray-100 rounded-sm overflow-hidden bg-[#E5E7EB] dark:border-border/60 dark:bg-border/40">
         {weekDays.map((w) => (
           <div
             key={w}
@@ -305,7 +305,7 @@ export default function SchedulePage() {
     >
       <div className="max-w-5xl space-y-3">
         {/* View switch: List | Calendar */}
-        <div className="flex items-center gap-1 p-0.5 rounded-sm border border-gray-300 bg-background w-fit dark:border-border/60">
+        <div className="flex items-center gap-1 p-0.5 rounded-sm border border-gray-100 bg-background w-fit dark:border-border/60">
           <button
             type="button"
             onClick={() => setViewMode("list")}
@@ -383,7 +383,7 @@ export default function SchedulePage() {
 
         {/* Calendar view — placeholder */}
         {viewMode === "calendar" && (
-          <div className="overflow-hidden border border-gray-300 bg-background dark:border-border/60">
+          <div className="overflow-hidden border border-gray-100 bg-background dark:border-border/60">
             {loading ? (
               <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>
             ) : error ? (

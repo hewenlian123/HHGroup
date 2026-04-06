@@ -34,7 +34,7 @@ export default function NewWorkerPage() {
         title="New Worker"
         description="Create a worker profile with default half-day rate."
       />
-      <section className="border-b border-gray-300 pb-6 dark:border-border">
+      <section className="border-b border-gray-100 pb-6 dark:border-border">
         <div className="grid gap-4">
           <div className="grid gap-1.5">
             <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
@@ -82,7 +82,7 @@ export default function NewWorkerPage() {
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="min-h-[88px] rounded-sm border border-gray-300 bg-background px-3 py-2 text-sm dark:border-border"
+              className="min-h-[88px] rounded-sm border border-gray-100 bg-background px-3 py-2 text-sm dark:border-border"
             />
           </div>
         </div>

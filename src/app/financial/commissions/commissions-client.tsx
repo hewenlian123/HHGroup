@@ -77,10 +77,10 @@ const COMMISSION_MODAL =
   "max-w-[480px] w-full gap-0 border-0 p-8 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-xl sm:rounded-xl sm:max-w-[480px]";
 const COMMISSION_LABEL = "mb-1.5 block text-[12px] font-medium text-text-secondary";
 const COMMISSION_FIELD =
-  "h-10 rounded-lg border border-gray-300 bg-white text-[14px] focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black";
+  "h-10 rounded-lg border border-gray-100 bg-white text-[14px] focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black";
 
 const RECEIPT_UPLOAD_MODAL =
-  "max-w-[480px] w-full gap-0 rounded-[14px] border-[0.5px] border-gray-300 bg-white p-8 shadow-[0_8px_30px_rgba(0,0,0,0.12)] sm:max-w-[480px]";
+  "max-w-[480px] w-full gap-0 rounded-[14px] border-[0.5px] border-gray-100 bg-white p-8 shadow-[0_8px_30px_rgba(0,0,0,0.12)] sm:max-w-[480px]";
 function PaymentStatusPill({ status }: { status: CommissionPaymentStatus }) {
   const map = {
     unpaid: { bg: "bg-[#F3F4F6]", text: "text-text-secondary", label: "Unpaid" },
@@ -811,7 +811,7 @@ export function CommissionsClient({
       />
 
       {loadError ? (
-        <p className="border-b border-gray-300 pb-3 text-sm text-destructive" role="alert">
+        <p className="border-b border-gray-100 pb-3 text-sm text-destructive" role="alert">
           {loadError}
         </p>
       ) : null}
@@ -877,7 +877,7 @@ export function CommissionsClient({
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-[14px]">
             <thead>
-              <tr className="border-b-2 border-gray-300">
+              <tr className="border-b-2 border-gray-100">
                 <th className="w-10 px-3 py-3" aria-label="Expand" />
                 <th className="px-3 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
                   Project
@@ -1218,7 +1218,7 @@ export function CommissionsClient({
               <Button
                 type="button"
                 variant="outline"
-                className="h-10 rounded-lg border-gray-300 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
+                className="h-10 rounded-lg border-gray-100 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
                 data-testid="financial-commission-edit-cancel"
                 onClick={() => setEditModalOpen(false)}
               >
@@ -1315,7 +1315,7 @@ export function CommissionsClient({
               <Button
                 type="button"
                 variant="outline"
-                className="h-10 rounded-lg border-gray-300 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
+                className="h-10 rounded-lg border-gray-100 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
                 data-testid="financial-payment-edit-cancel"
                 onClick={() => setPaymentEditOpen(false)}
               >
@@ -1408,7 +1408,7 @@ export function CommissionsClient({
               <Button
                 type="button"
                 variant="outline"
-                className="h-10 rounded-lg border-gray-300 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
+                className="h-10 rounded-lg border-gray-100 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
                 data-testid="financial-record-payment-cancel"
                 onClick={() => setPaymentModalOpen(false)}
               >
@@ -1446,7 +1446,7 @@ export function CommissionsClient({
             <Button
               type="button"
               variant="outline"
-              className="h-10 rounded-lg border-gray-300 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
+              className="h-10 rounded-lg border-gray-100 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
               onClick={() => setPaymentDeleteTarget(null)}
               disabled={paymentDeleteSubmitting}
             >
@@ -1487,7 +1487,7 @@ export function CommissionsClient({
             <Button
               type="button"
               variant="outline"
-              className="h-10 rounded-lg border-gray-300 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
+              className="h-10 rounded-lg border-gray-100 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
               onClick={() => setCommissionDeleteTarget(null)}
               disabled={commissionDeleteSubmitting}
             >
@@ -1600,7 +1600,7 @@ export function CommissionsClient({
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-10 rounded-lg border-gray-300 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
+                  className="h-10 rounded-lg border-gray-100 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
                   disabled={receiptUploadSubmitting}
                   onClick={() => resetReceiptUploadModal()}
                 >

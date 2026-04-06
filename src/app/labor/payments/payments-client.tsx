@@ -392,7 +392,7 @@ export default function LaborPaymentsClient() {
       </Card>
 
       {message ? (
-        <div className="rounded-lg border border-gray-300 dark:border-border bg-background px-3 py-2 text-sm text-muted-foreground">
+        <div className="rounded-lg border border-gray-100 dark:border-border bg-background px-3 py-2 text-sm text-muted-foreground">
           {message}
         </div>
       ) : null}
@@ -515,7 +515,7 @@ export default function LaborPaymentsClient() {
                           colSpan={6}
                         >
                           <div className="space-y-3">
-                            <div className="border-b border-gray-300 dark:border-border pb-3">
+                            <div className="border-b border-gray-100 dark:border-border pb-3">
                               <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">
                                 Pay Run Source
                               </p>
@@ -530,7 +530,7 @@ export default function LaborPaymentsClient() {
                                     }).format(row.confirmedDailyTotal)}
                                   </span>
                                 </div>
-                                <div className="flex justify-between gap-4 font-medium text-foreground pt-1 border-t border-gray-300 dark:border-border">
+                                <div className="flex justify-between gap-4 font-medium text-foreground pt-1 border-t border-gray-100 dark:border-border">
                                   <span>Confirmed total</span>
                                   <span className="tabular-nums">
                                     {new Intl.NumberFormat("en-US", {

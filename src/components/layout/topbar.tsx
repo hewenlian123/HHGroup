@@ -166,7 +166,7 @@ export function Topbar({
   return (
     <header
       className={cn(
-        "sticky top-0 z-40 flex h-11 shrink-0 items-center border-b border-gray-300 [border-bottom-width:0.5px] bg-white px-3 sm:px-4 lg:px-8 dark:border-border dark:bg-background",
+        "sticky top-0 z-40 flex h-11 shrink-0 items-center border-b border-gray-100 bg-white px-4 sm:px-6 dark:border-border dark:bg-background",
         "flex-row gap-3 sm:gap-4"
       )}
     >
@@ -219,7 +219,7 @@ export function Topbar({
             type="search"
             placeholder="Search projects, workers, invoices..."
             className={cn(
-              "h-[30px] w-full rounded-lg border-[0.5px] border-gray-300 bg-white pl-8 pr-2.5 text-[13px] text-[#374151] shadow-none dark:border-border dark:bg-card dark:text-foreground placeholder:text-[#9CA3AF] dark:placeholder:text-muted-foreground",
+              "h-[30px] w-full rounded-lg border-[0.5px] border-gray-100 bg-white pl-8 pr-2.5 text-[13px] text-[#374151] shadow-none dark:border-border dark:bg-card dark:text-foreground placeholder:text-[#9CA3AF] dark:placeholder:text-muted-foreground",
               "outline-none transition-colors duration-150 focus:border-[#111827] focus:ring-2 focus:ring-[#111827]/10 dark:focus:ring-ring/30",
               "min-w-0 max-sm:placeholder:opacity-0"
             )}

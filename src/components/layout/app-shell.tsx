@@ -81,7 +81,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
                   <SheetContent
                     side="left"
-                    className="w-[210px] max-w-[85vw] border-r border-gray-300 [border-right-width:0.5px] bg-white p-0 shadow-none transition-transform duration-200 data-[state=open]:slide-in-from-left data-[state=closed]:slide-out-to-left"
+                    className="w-[210px] max-w-[85vw] border-r border-gray-100 bg-white p-0 shadow-none transition-transform duration-200 data-[state=open]:slide-in-from-left data-[state=closed]:slide-out-to-left"
                   >
                     <Sidebar
                       className="h-full w-full border-none"

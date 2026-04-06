@@ -26,7 +26,7 @@ function SkeletonRow() {
 export function ExpensesListSkeleton({ rows = 8 }: { rows?: number }) {
   return (
     <div
-      className="exp-list-card overflow-hidden rounded-xl border border-gray-300/60 bg-white/70 backdrop-blur-md dark:border-border/60 dark:bg-card/75"
+      className="exp-list-card overflow-hidden rounded-xl border border-gray-100/60 bg-white/70 backdrop-blur-md dark:border-border/60 dark:bg-card/75"
       aria-hidden
     >
       <ul>
@@ -34,7 +34,7 @@ export function ExpensesListSkeleton({ rows = 8 }: { rows?: number }) {
           <SkeletonRow key={i} />
         ))}
       </ul>
-      <div className="border-t border-gray-300/60 px-4 py-2 dark:border-border/60">
+      <div className="border-t border-gray-100/60 px-4 py-2 dark:border-border/60">
         <Skeleton className="h-7 w-full max-w-xs rounded-sm" />
       </div>
     </div>

@@ -21,7 +21,7 @@ const COMMISSION_MODAL =
   "max-w-[480px] w-full gap-0 border-0 p-8 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-xl sm:rounded-xl sm:max-w-[480px]";
 const COMMISSION_LABEL = "mb-1.5 block text-[12px] font-medium text-text-secondary";
 const COMMISSION_FIELD =
-  "h-10 rounded-lg border border-gray-300 bg-white text-[14px] focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black";
+  "h-10 rounded-lg border border-gray-100 bg-white text-[14px] focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black";
 
 const fmtUsd = (n: number) =>
   n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -183,7 +183,7 @@ export function ProjectCommissionTab({
 
   return (
     <>
-      <div className="flex items-center justify-between border-b border-gray-300 pb-3">
+      <div className="flex items-center justify-between border-b border-gray-100 pb-3">
         <h3 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9CA3AF]">
           Commissions
         </h3>
@@ -317,7 +317,7 @@ export function ProjectCommissionTab({
             <Button
               type="button"
               variant="outline"
-              className="h-10 rounded-lg border-gray-300 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
+              className="h-10 rounded-lg border-gray-100 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
               data-testid="project-commission-delete-cancel"
               onClick={() => setPendingDelete(null)}
               disabled={deletingId != null}
@@ -450,7 +450,7 @@ export function ProjectCommissionTab({
             <Button
               type="button"
               variant="outline"
-              className="h-10 rounded-lg border-gray-300 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
+              className="h-10 rounded-lg border-gray-100 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
               data-testid="project-commission-cancel"
               onClick={() => setModalOpen(false)}
             >

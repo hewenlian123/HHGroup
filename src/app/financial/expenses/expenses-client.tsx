@@ -432,7 +432,7 @@ export function ExpensesClient() {
       />
 
       {error ? (
-        <div className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm text-text-secondary shadow-sm dark:border-border dark:bg-card dark:text-muted-foreground">
+        <div className="rounded-lg border border-gray-100 bg-white px-4 py-3 text-sm text-text-secondary shadow-sm dark:border-border dark:bg-card dark:text-muted-foreground">
           {error}
         </div>
       ) : null}

@@ -260,7 +260,7 @@ function AccountsPageInner() {
                     key={row.id}
                     className={cn(
                       listTableRowClassName,
-                      "group border-b border-gray-300/80 dark:border-border/30"
+                      "group border-b border-gray-100/80 dark:border-border/30"
                     )}
                     onClick={() => openEdit(row)}
                   >

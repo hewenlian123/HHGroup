@@ -165,15 +165,15 @@ export default function LaborInvoicesPage() {
         />
       </FilterBar>
       {message ? (
-        <p className="border-b border-gray-300 pb-3 text-sm text-muted-foreground dark:border-border">
+        <p className="border-b border-gray-100 pb-3 text-sm text-muted-foreground dark:border-border">
           {message}
         </p>
       ) : null}
-      <div className="overflow-hidden rounded-sm border border-gray-300 dark:border-border">
+      <div className="overflow-hidden rounded-sm border border-gray-100 dark:border-border">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-300 bg-white dark:border-border/60 dark:bg-muted/30">
+              <tr className="border-b border-gray-100 bg-white dark:border-border/60 dark:bg-muted/30">
                 <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
                   Invoice #
                 </th>
@@ -201,7 +201,7 @@ export default function LaborInvoicesPage() {
               {filtered.map((row) => (
                 <tr
                   key={row.id}
-                  className="group border-b border-gray-300/80 transition-colors hover:bg-[#F9FAFB] dark:border-border/40 dark:hover:bg-muted/20"
+                  className="group border-b border-gray-100/80 transition-colors hover:bg-[#F9FAFB] dark:border-border/40 dark:hover:bg-muted/20"
                 >
                   <td className="py-3 px-4 font-medium text-foreground">{row.invoiceNo}</td>
                   <td className="py-3 px-4">{workersMap.get(row.workerId) ?? "Unknown worker"}</td>

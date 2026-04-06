@@ -445,7 +445,7 @@ export default function ExpenseDetailPage() {
         </Link>
       </div>
 
-      <section className="border-b border-gray-300 pb-6 dark:border-border">
+      <section className="border-b border-gray-100 pb-6 dark:border-border">
         {toastMessage && (
           <p className="mb-4 text-sm text-text-primary dark:text-foreground">{toastMessage}</p>
         )}
@@ -619,7 +619,7 @@ export default function ExpenseDetailPage() {
           {expense.attachments.map((att) => (
             <li
               key={att.id}
-              className="flex items-center gap-3 border border-gray-300 p-3 dark:border-border"
+              className="flex items-center gap-3 border border-gray-100 p-3 dark:border-border"
             >
               <button
                 type="button"
@@ -669,7 +669,7 @@ export default function ExpenseDetailPage() {
       </section>
 
       <section>
-        <div className="overflow-hidden rounded-sm border border-gray-300 p-6 dark:border-border">
+        <div className="overflow-hidden rounded-sm border border-gray-100 p-6 dark:border-border">
           <SplitLinesEditor
             lines={expense.lines.map((l) => ({
               id: l.id,
@@ -703,7 +703,7 @@ export default function ExpenseDetailPage() {
         </div>
 
         <div className="mt-4 flex flex-col gap-4 sm:flex-row">
-          <div className="min-w-[200px] border border-gray-300 bg-background px-4 py-3 dark:border-border">
+          <div className="min-w-[200px] border border-gray-100 bg-background px-4 py-3 dark:border-border">
             <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Lines total
             </p>
@@ -711,7 +711,7 @@ export default function ExpenseDetailPage() {
               ${total.toLocaleString()}
             </p>
           </div>
-          <div className="flex-1 border border-gray-300 bg-background px-4 py-3 dark:border-border">
+          <div className="flex-1 border border-gray-100 bg-background px-4 py-3 dark:border-border">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
               Per project
             </p>
