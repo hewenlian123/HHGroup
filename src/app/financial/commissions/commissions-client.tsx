@@ -828,20 +828,20 @@ export function CommissionsClient({
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-        <div className="relative min-w-[200px] flex-1">
+        <div className="relative min-w-0 flex-1 sm:min-w-[200px]">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9CA3AF]" />
           <Input
             value={filterSearch}
             onChange={(e) => setFilterSearch(e.target.value)}
             placeholder="Search project, person, role…"
-            className={cn("pl-9", COMMISSION_FIELD)}
+            className={cn("max-md:min-h-11 pl-9", COMMISSION_FIELD)}
             aria-label="Search commissions"
           />
         </div>
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value as typeof filterStatus)}
-          className={cn("min-w-[140px] px-3", COMMISSION_FIELD)}
+          className={cn("w-full max-md:min-h-11 px-3 sm:w-auto sm:min-w-[140px]", COMMISSION_FIELD)}
           aria-label="Filter by status"
         >
           <option value="all">All statuses</option>
@@ -852,7 +852,7 @@ export function CommissionsClient({
         <select
           value={filterPerson}
           onChange={(e) => setFilterPerson(e.target.value)}
-          className={cn("min-w-[160px] px-3", COMMISSION_FIELD)}
+          className={cn("w-full max-md:min-h-11 px-3 sm:w-auto sm:min-w-[160px]", COMMISSION_FIELD)}
           aria-label="Filter by person"
         >
           <option value="all">All people</option>
@@ -866,7 +866,7 @@ export function CommissionsClient({
 
       <div className="overflow-hidden rounded-lg bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-[14px]">
+          <table className="w-full min-w-[640px] border-collapse text-[14px] lg:min-w-0">
             <thead>
               <tr className="border-b-2 border-gray-100">
                 <th className="w-10 px-3 py-3" aria-label="Expand" />
@@ -920,7 +920,7 @@ export function CommissionsClient({
                       <td className="px-3 py-4 align-middle" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
-                          className="flex h-8 w-8 items-center justify-center rounded-lg text-text-secondary hover:bg-[#F3F4F6]"
+                          className="flex h-8 w-8 max-md:h-11 max-md:w-11 items-center justify-center rounded-lg text-text-secondary hover:bg-[#F3F4F6]"
                           data-testid={`financial-commission-expand-${r.id}`}
                           aria-expanded={expandedIds.has(r.id)}
                           aria-label={
@@ -1010,7 +1010,7 @@ export function CommissionsClient({
                               </p>
                             ) : (
                               <div className="overflow-x-auto">
-                                <table className="w-full border-collapse text-[13px]">
+                                <table className="w-full min-w-[480px] border-collapse text-[13px] lg:min-w-0">
                                   <thead>
                                     <tr className="border-b border-[#D6D3CD] text-left text-[#9CA3AF]">
                                       <th className="py-2 pr-4 text-[11px] font-semibold uppercase tracking-wide">

@@ -216,7 +216,7 @@ function AccountsPageInner() {
         title="Accounts"
         description="Manage payment sources: credit cards, debit cards, bank accounts, cash."
         actions={
-          <Button size="sm" className="h-8" onClick={openModal}>
+          <Button size="sm" className="h-8 max-md:min-h-11 w-full sm:w-auto" onClick={openModal}>
             <Plus className="h-4 w-4 mr-2" />
             Add Account
           </Button>
@@ -231,73 +231,109 @@ function AccountsPageInner() {
           description="Add a payment source to use when creating expenses."
           icon={null}
           action={
-            <Button size="sm" className="h-8" onClick={openModal}>
+            <Button size="sm" className="h-8 max-md:min-h-11 w-full sm:w-auto" onClick={openModal}>
               <Plus className="h-4 w-4 mr-2" />
               Add Account
             </Button>
           }
         />
       ) : (
-        <Card className="overflow-hidden p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
-                    Account Name
-                  </TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
-                    Type
-                  </TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">
-                    Last 4
-                  </TableHead>
-                  <TableHead className="w-10" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {accounts.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    className={cn(
-                      listTableRowClassName,
-                      "group border-b border-gray-100/80 dark:border-border/30"
-                    )}
+        <>
+          <div className="flex flex-col gap-3 md:hidden">
+            {accounts.map((row) => (
+              <div
+                key={row.id}
+                className="rounded-sm border border-border/60 p-4 transition-colors hover:bg-muted/20"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <button
+                    type="button"
+                    className="min-w-0 flex-1 text-left"
                     onClick={() => openEdit(row)}
                   >
-                    <TableCell
-                      className={cn(
-                        "font-medium text-foreground",
-                        listTablePrimaryCellClassName,
-                        "hover:underline"
-                      )}
-                    >
-                      {row.name}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{row.type}</TableCell>
-                    <TableCell className="text-right tabular-nums text-muted-foreground">
-                      {row.lastFour ?? "—"}
-                    </TableCell>
-                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-end gap-2">
-                        <DeleteRowAction
-                          onDelete={async () => {
-                            await handleDelete(row);
-                          }}
-                        />
-                        <RowActionsMenu
-                          appearance="list"
-                          ariaLabel={`Actions for ${row.name}`}
-                          actions={[{ label: "Edit", onClick: () => openEdit(row) }]}
-                        />
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                    <p className="font-medium text-foreground">{row.name}</p>
+                    <p className="text-sm text-muted-foreground">{row.type}</p>
+                    <p className="mt-1 text-xs tabular-nums text-muted-foreground">
+                      Last 4: {row.lastFour ?? "—"}
+                    </p>
+                  </button>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <DeleteRowAction
+                      onDelete={async () => {
+                        await handleDelete(row);
+                      }}
+                    />
+                    <RowActionsMenu
+                      appearance="list"
+                      ariaLabel={`Actions for ${row.name}`}
+                      actions={[{ label: "Edit", onClick: () => openEdit(row) }]}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
-        </Card>
+          <Card className="hidden overflow-hidden p-0 md:block">
+            <div className="overflow-x-auto">
+              <Table className="min-w-[640px] lg:min-w-0">
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                      Account Name
+                    </TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                      Type
+                    </TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">
+                      Last 4
+                    </TableHead>
+                    <TableHead className="w-10" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {accounts.map((row) => (
+                    <TableRow
+                      key={row.id}
+                      className={cn(
+                        listTableRowClassName,
+                        "group border-b border-gray-100/80 dark:border-border/30"
+                      )}
+                      onClick={() => openEdit(row)}
+                    >
+                      <TableCell
+                        className={cn(
+                          "font-medium text-foreground",
+                          listTablePrimaryCellClassName,
+                          "hover:underline"
+                        )}
+                      >
+                        {row.name}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{row.type}</TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">
+                        {row.lastFour ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-2">
+                          <DeleteRowAction
+                            onDelete={async () => {
+                              await handleDelete(row);
+                            }}
+                          />
+                          <RowActionsMenu
+                            appearance="list"
+                            ariaLabel={`Actions for ${row.name}`}
+                            actions={[{ label: "Edit", onClick: () => openEdit(row) }]}
+                          />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
+        </>
       )}
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>

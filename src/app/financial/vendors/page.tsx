@@ -246,7 +246,7 @@ export default function VendorsPage() {
           placeholder="Search name, contact, phone, email"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          className="max-w-[360px]"
+          className="w-full max-w-none md:max-w-[360px]"
         />
       </FilterBar>
 
@@ -347,9 +347,49 @@ export default function VendorsPage() {
         </section>
       ) : null}
 
-      <TableShell>
-        <div className="table-responsive">
-          <table className="w-full min-w-[560px] border-collapse text-[13px] md:min-w-0">
+      <div className="flex flex-col gap-3 md:hidden">
+        {!loading &&
+          filtered.map((row) => (
+            <div
+              key={row.id}
+              className="rounded-sm border border-border/60 bg-background p-4 dark:bg-card"
+            >
+              <p className="font-medium text-foreground">{row.name}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{row.contact_name || "—"}</p>
+              <p className="text-xs text-muted-foreground">{row.phone || "—"}</p>
+              <p className="text-xs text-muted-foreground">{row.email || "—"}</p>
+              <div className="mt-2">
+                <StatusBadge status={row.status} />
+              </div>
+              <div className="mt-3 flex flex-col gap-2 border-t border-border/40 pt-3 sm:flex-row">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-11 w-full rounded-sm px-3 sm:h-8 sm:flex-1"
+                  onClick={() => openEdit(row)}
+                >
+                  Edit
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-11 w-full rounded-sm px-3 sm:h-8 sm:flex-1"
+                  onClick={() => void handleDelete(row)}
+                  disabled={deletingId === row.id}
+                >
+                  {deletingId === row.id ? "Deleting..." : "Delete"}
+                </Button>
+              </div>
+            </div>
+          ))}
+        {!loading && filtered.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">No vendors yet.</p>
+        ) : null}
+      </div>
+
+      <TableShell className="hidden md:block">
+        <div className="table-responsive overflow-x-auto">
+          <table className="w-full min-w-[640px] border-collapse text-[13px] lg:min-w-0">
             <thead>
               <tr>
                 <th className={tableRawThClass}>Name</th>

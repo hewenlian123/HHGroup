@@ -69,54 +69,89 @@ function DepositsPageInner() {
         />
       ) : (
         <section>
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                  Deposit Date
-                </TableHead>
-                <TableHead className="text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                  Customer
-                </TableHead>
-                <TableHead className="text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                  Project
-                </TableHead>
-                <TableHead className="text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                  Invoice #
-                </TableHead>
-                <TableHead className="text-right font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
-                  Amount
-                </TableHead>
-                <TableHead className="text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                  Payment Method
-                </TableHead>
-                <TableHead className="text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                  Account
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {deposits.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell className="font-medium font-mono tabular-nums text-foreground">
-                    {row.date ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-foreground">{row.description ?? "—"}</TableCell>
-                  <TableCell className="text-muted-foreground">{row.project_name ?? "—"}</TableCell>
-                  <TableCell className="font-mono text-muted-foreground tabular-nums">
-                    {row.invoice_no ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-right font-mono tabular-nums font-medium text-hh-profit-positive dark:text-hh-profit-positive">
-                    {money(row.amount)}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {row.payment_method ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{row.account ?? "—"}</TableCell>
+          <div className="flex flex-col gap-3 md:hidden">
+            {deposits.map((row) => (
+              <div key={row.id} className="rounded-sm border border-border/60 p-4">
+                <p className="font-mono text-sm font-medium tabular-nums text-foreground">
+                  {row.date ?? "—"}
+                </p>
+                <p className="mt-1 text-sm text-foreground">{row.description ?? "—"}</p>
+                <p className="text-sm text-muted-foreground">{row.project_name ?? "—"}</p>
+                <dl className="mt-3 space-y-2 text-xs">
+                  <div className="flex justify-between gap-2 tabular-nums">
+                    <dt className="text-muted-foreground">Invoice #</dt>
+                    <dd className="font-mono text-foreground">{row.invoice_no ?? "—"}</dd>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <dt className="text-muted-foreground">Amount</dt>
+                    <dd className="font-mono font-medium text-hh-profit-positive dark:text-hh-profit-positive">
+                      {money(row.amount)}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <dt className="text-muted-foreground">Method</dt>
+                    <dd className="text-right text-foreground">{row.payment_method ?? "—"}</dd>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <dt className="text-muted-foreground">Account</dt>
+                    <dd className="text-right text-foreground">{row.account ?? "—"}</dd>
+                  </div>
+                </dl>
+              </div>
+            ))}
+          </div>
+          <div className="hidden md:block">
+            <Table className="min-w-[640px] lg:min-w-0">
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                    Deposit Date
+                  </TableHead>
+                  <TableHead className="text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                    Customer
+                  </TableHead>
+                  <TableHead className="text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                    Project
+                  </TableHead>
+                  <TableHead className="text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                    Invoice #
+                  </TableHead>
+                  <TableHead className="text-right font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                    Amount
+                  </TableHead>
+                  <TableHead className="text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                    Payment Method
+                  </TableHead>
+                  <TableHead className="text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                    Account
+                  </TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {deposits.map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell className="font-medium font-mono tabular-nums text-foreground">
+                      {row.date ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-foreground">{row.description ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {row.project_name ?? "—"}
+                    </TableCell>
+                    <TableCell className="font-mono text-muted-foreground tabular-nums">
+                      {row.invoice_no ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-right font-mono tabular-nums font-medium text-hh-profit-positive dark:text-hh-profit-positive">
+                      {money(row.amount)}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {row.payment_method ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{row.account ?? "—"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </section>
       )}
     </div>

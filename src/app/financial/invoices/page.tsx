@@ -268,178 +268,207 @@ function InvoicesPageInner() {
           }
         />
       ) : (
-        <Card className="overflow-hidden p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                    Invoice #
-                  </TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                    Project
-                  </TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                    Client
-                  </TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
-                    Issue
-                  </TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
-                    Due
-                  </TableHead>
-                  <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
-                    Total
-                  </TableHead>
-                  <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
-                    Paid
-                  </TableHead>
-                  <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
-                    Balance
-                  </TableHead>
-                  <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                    Actions
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {tableInvoiceRows.map(({ invoice: inv, projectLabel }) => (
-                  <TableRow
-                    key={inv.id}
-                    className={cn(
-                      listTableRowClassName,
-                      "group border-b border-gray-100/80 dark:border-border/30"
-                    )}
-                    onClick={() =>
-                      startTransition(() => router.push(`/financial/invoices/${inv.id}`))
-                    }
-                  >
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={cn(
-                            "text-primary hover:underline",
-                            listTablePrimaryCellClassName
-                          )}
-                        >
-                          {inv.invoiceNo}
-                        </span>
-                        <InvoiceStatusBadge status={inv.computedStatus} />
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{projectLabel}</TableCell>
-                    <TableCell className="text-foreground">{inv.clientName}</TableCell>
-                    <TableCell className="tabular-nums text-muted-foreground">
-                      {inv.issueDate}
-                    </TableCell>
-                    <TableCell className="tabular-nums">
-                      {inv.computedStatus === "Overdue" ? (
-                        <span className="text-red-600 dark:text-red-400">{inv.dueDate}</span>
-                      ) : (
-                        <span className="text-muted-foreground">{inv.dueDate}</span>
-                      )}
-                    </TableCell>
-                    <TableCell
+        <>
+          <div className="flex flex-col gap-3 md:hidden">
+            {tableInvoiceRows.map(({ invoice: inv, projectLabel }) => (
+              <button
+                key={inv.id}
+                type="button"
+                className="w-full rounded-sm border border-gray-100 bg-white p-4 text-left transition-colors hover:bg-gray-50 active:bg-gray-100 dark:border-border dark:bg-card dark:hover:bg-muted/30 dark:active:bg-muted/40"
+                onClick={() => startTransition(() => router.push(`/financial/invoices/${inv.id}`))}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-foreground">{inv.invoiceNo}</p>
+                    <p className="mt-0.5 truncate text-sm text-muted-foreground">
+                      {inv.clientName}
+                    </p>
+                    <p className="mt-1 truncate text-xs text-muted-foreground">{projectLabel}</p>
+                  </div>
+                  <InvoiceStatusBadge status={inv.computedStatus} />
+                </div>
+                <div className="mt-3 flex flex-wrap items-baseline justify-between gap-2 border-t border-border/40 pt-3 text-sm tabular-nums">
+                  <span className="font-medium text-foreground">${inv.total.toLocaleString()}</span>
+                  <span className="text-muted-foreground">
+                    Balance ${inv.balanceDue.toLocaleString()}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+          <Card className="hidden overflow-hidden p-0 md:block">
+            <div className="overflow-x-auto lg:overflow-x-visible">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                      Invoice #
+                    </TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                      Project
+                    </TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                      Client
+                    </TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                      Issue
+                    </TableHead>
+                    <TableHead className="text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                      Due
+                    </TableHead>
+                    <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                      Total
+                    </TableHead>
+                    <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                      Paid
+                    </TableHead>
+                    <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                      Balance
+                    </TableHead>
+                    <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                      Actions
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {tableInvoiceRows.map(({ invoice: inv, projectLabel }) => (
+                    <TableRow
+                      key={inv.id}
                       className={cn(
-                        "text-right tabular-nums font-medium",
-                        listTableAmountCellClassName
+                        listTableRowClassName,
+                        "group border-b border-gray-100/80 dark:border-border/30"
                       )}
+                      onClick={() =>
+                        startTransition(() => router.push(`/financial/invoices/${inv.id}`))
+                      }
                     >
-                      ${inv.total.toLocaleString()}
-                    </TableCell>
-                    <TableCell
-                      className={cn(
-                        "text-right tabular-nums text-hh-profit-positive dark:text-hh-profit-positive",
-                        listTableAmountCellClassName
-                      )}
-                    >
-                      ${inv.paidTotal.toLocaleString()}
-                    </TableCell>
-                    <TableCell
-                      className={cn(
-                        "text-right tabular-nums font-medium",
-                        listTableAmountCellClassName
-                      )}
-                    >
-                      ${inv.balanceDue.toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          asChild
-                          variant="outline"
-                          size="sm"
-                          className="btn-outline-ghost h-8"
-                        >
-                          <Link href={`/financial/invoices/${inv.id}`}>
-                            <Eye className="h-4 w-4 mr-1" /> View
-                          </Link>
-                        </Button>
-                        {inv.computedStatus !== "Void" && inv.computedStatus !== "Paid" && (
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={cn(
+                              "text-primary hover:underline",
+                              listTablePrimaryCellClassName
+                            )}
+                          >
+                            {inv.invoiceNo}
+                          </span>
+                          <InvoiceStatusBadge status={inv.computedStatus} />
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{projectLabel}</TableCell>
+                      <TableCell className="text-foreground">{inv.clientName}</TableCell>
+                      <TableCell className="tabular-nums text-muted-foreground">
+                        {inv.issueDate}
+                      </TableCell>
+                      <TableCell className="tabular-nums">
+                        {inv.computedStatus === "Overdue" ? (
+                          <span className="text-red-600 dark:text-red-400">{inv.dueDate}</span>
+                        ) : (
+                          <span className="text-muted-foreground">{inv.dueDate}</span>
+                        )}
+                      </TableCell>
+                      <TableCell
+                        className={cn(
+                          "text-right tabular-nums font-medium",
+                          listTableAmountCellClassName
+                        )}
+                      >
+                        ${inv.total.toLocaleString()}
+                      </TableCell>
+                      <TableCell
+                        className={cn(
+                          "text-right tabular-nums text-hh-profit-positive dark:text-hh-profit-positive",
+                          listTableAmountCellClassName
+                        )}
+                      >
+                        ${inv.paidTotal.toLocaleString()}
+                      </TableCell>
+                      <TableCell
+                        className={cn(
+                          "text-right tabular-nums font-medium",
+                          listTableAmountCellClassName
+                        )}
+                      >
+                        ${inv.balanceDue.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-end gap-1">
                           <Button
                             asChild
                             variant="outline"
                             size="sm"
                             className="btn-outline-ghost h-8"
                           >
-                            <Link href={`/financial/invoices/${inv.id}?recordPayment=1`}>
-                              <CreditCard className="h-4 w-4 mr-1" /> Record Payment
+                            <Link href={`/financial/invoices/${inv.id}`}>
+                              <Eye className="h-4 w-4 mr-1" /> View
                             </Link>
                           </Button>
-                        )}
-                        {inv.computedStatus !== "Void" && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="btn-outline-ghost h-8"
-                            onClick={() => handleDuplicate(inv.id)}
-                            title="Duplicate"
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {inv.computedStatus !== "Void" &&
-                          (voidConfirmId === inv.id ? (
-                            <>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="btn-outline-destructive h-8"
-                                disabled={voidBusyId === inv.id}
-                                onClick={() => void handleVoid(inv.id)}
-                              >
-                                <SubmitSpinner loading={voidBusyId === inv.id} className="mr-2" />
-                                Confirm Void
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="btn-outline-ghost h-8"
-                                disabled={voidBusyId === inv.id}
-                                onClick={() => setVoidConfirmId(null)}
-                              >
-                                Cancel
-                              </Button>
-                            </>
-                          ) : (
+                          {inv.computedStatus !== "Void" && inv.computedStatus !== "Paid" && (
+                            <Button
+                              asChild
+                              variant="outline"
+                              size="sm"
+                              className="btn-outline-ghost h-8"
+                            >
+                              <Link href={`/financial/invoices/${inv.id}?recordPayment=1`}>
+                                <CreditCard className="h-4 w-4 mr-1" /> Record Payment
+                              </Link>
+                            </Button>
+                          )}
+                          {inv.computedStatus !== "Void" && (
                             <Button
                               variant="outline"
                               size="sm"
-                              className="btn-outline-ghost h-8 text-red-600 hover:text-red-700"
-                              onClick={() => setVoidConfirmId(inv.id)}
-                              title="Void"
+                              className="btn-outline-ghost h-8"
+                              onClick={() => handleDuplicate(inv.id)}
+                              title="Duplicate"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Copy className="h-4 w-4" />
                             </Button>
-                          ))}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </Card>
+                          )}
+                          {inv.computedStatus !== "Void" &&
+                            (voidConfirmId === inv.id ? (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="btn-outline-destructive h-8"
+                                  disabled={voidBusyId === inv.id}
+                                  onClick={() => void handleVoid(inv.id)}
+                                >
+                                  <SubmitSpinner loading={voidBusyId === inv.id} className="mr-2" />
+                                  Confirm Void
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="btn-outline-ghost h-8"
+                                  disabled={voidBusyId === inv.id}
+                                  onClick={() => setVoidConfirmId(null)}
+                                >
+                                  Cancel
+                                </Button>
+                              </>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="btn-outline-ghost h-8 text-red-600 hover:text-red-700"
+                                onClick={() => setVoidConfirmId(inv.id)}
+                                title="Void"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            ))}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
+        </>
       )}
 
       {total > 0 ? (

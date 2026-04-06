@@ -1368,7 +1368,7 @@ export function ReceiptQueueWorkspace() {
 
   return (
     <div className="rq-workspace w-full bg-[#f5f7fa] dark:bg-background">
-      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-3 py-6 sm:gap-8 sm:px-6 sm:py-8">
+      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-0 py-6 sm:gap-8 sm:px-6 sm:py-8">
         <PageHeader
           className="items-start gap-1 border-0 pb-0 sm:items-start [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:tracking-tight [&_h1]:text-[#111827] [&_p]:max-w-2xl [&_p]:text-sm [&_p]:leading-relaxed [&_p]:text-[#6b7280]"
           title="Receipt Queue"

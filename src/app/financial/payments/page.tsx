@@ -66,7 +66,11 @@ function PaymentsReceivedPageInner() {
         title="Payments Received"
         description="Record and view customer payments against invoices."
         actions={
-          <Button size="sm" className="h-8" onClick={() => setModalOpen(true)}>
+          <Button
+            size="sm"
+            className="h-8 max-md:min-h-11 w-full sm:w-auto"
+            onClick={() => setModalOpen(true)}
+          >
             <Plus className="h-4 w-4 mr-2" />
             Receive Payment
           </Button>
@@ -89,8 +93,67 @@ function PaymentsReceivedPageInner() {
         />
       ) : (
         <section className="border-b border-border/60">
-          <div className="overflow-x-auto">
-            <Table>
+          <div className="flex flex-col gap-3 md:hidden">
+            {payments.map((row) => (
+              <div key={row.id} className="rounded-sm border border-border/60 p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <span className="tabular-nums text-sm text-foreground">{row.payment_date}</span>
+                  <DeleteRowAction
+                    onDelete={async () => {
+                      const id = row.id;
+                      let snapshot: PaymentReceivedWithMeta[] | undefined;
+                      setPayments((prev) => {
+                        snapshot = prev;
+                        return prev.filter((p) => p.id !== id);
+                      });
+                      const res = await deletePaymentReceivedAction(id);
+                      if (!res.ok) {
+                        if (snapshot) setPayments(snapshot);
+                        toast({
+                          title: (res.error ?? "").includes("Cannot delete: void instead")
+                            ? "Cannot delete"
+                            : "Delete failed",
+                          description: res.error ?? "Could not delete payment.",
+                          variant: "error",
+                        });
+                        return;
+                      }
+                      toast({ title: "Payment voided", variant: "success" });
+                      void load();
+                    }}
+                  />
+                </div>
+                <p className="mt-1 font-medium text-foreground">{row.customer_name || "—"}</p>
+                <p className="text-sm text-muted-foreground">{row.project_name ?? "—"}</p>
+                <dl className="mt-3 space-y-2 text-xs">
+                  <div className="flex justify-between gap-2 tabular-nums">
+                    <dt className="text-muted-foreground">Invoice #</dt>
+                    <dd>{row.invoice_no ?? "—"}</dd>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <dt className="text-muted-foreground">Amount</dt>
+                    <dd className="font-medium text-hh-profit-positive dark:text-hh-profit-positive">
+                      {money(row.amount)}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <dt className="text-muted-foreground">Method</dt>
+                    <dd className="text-right">{row.payment_method ?? "—"}</dd>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <dt className="text-muted-foreground">Account</dt>
+                    <dd className="text-right">{row.deposit_account ?? "—"}</dd>
+                  </div>
+                  <div className="text-muted-foreground">
+                    <dt className="text-[10px] uppercase tracking-wide">Notes</dt>
+                    <dd className="mt-1">{row.notes ?? "—"}</dd>
+                  </div>
+                </dl>
+              </div>
+            ))}
+          </div>
+          <div className="hidden overflow-x-auto md:block">
+            <Table className="min-w-[640px] lg:min-w-0">
               <TableHeader>
                 <TableRow className="border-b border-border/60 hover:bg-transparent">
                   <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">

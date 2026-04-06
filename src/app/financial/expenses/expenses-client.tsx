@@ -459,7 +459,7 @@ export function ExpensesClient() {
       ) : null}
 
       <FilterBar>
-        <div className="grid w-full gap-4 sm:grid-cols-3">
+        <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-3">
           <div className="space-y-1">
             <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Search
@@ -522,10 +522,11 @@ export function ExpensesClient() {
               amountColumnKeys={["total", "line_count"]}
             />
             {hasMore && data.length > 0 && (
-              <div className="border-t border-border/60 p-3 flex justify-center">
+              <div className="flex justify-center border-t border-border/60 p-3">
                 <Button
                   variant="outline"
                   size="sm"
+                  className="min-h-11 w-full max-md:max-w-none md:min-h-8 md:w-auto"
                   disabled={loadingMore}
                   onClick={() => fetchPage(rows.length, true)}
                 >

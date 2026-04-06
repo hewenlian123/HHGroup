@@ -120,8 +120,66 @@ export default function WorkerBalancesPage() {
       {message ? (
         <p className="text-sm text-muted-foreground border-b border-border/60 pb-3">{message}</p>
       ) : null}
-      <div className="table-responsive border-b border-border/60">
-        <table className="w-full text-sm border-collapse min-w-[480px] sm:min-w-0">
+
+      <div className="flex flex-col gap-3 border-b border-border/60 pb-4 md:hidden">
+        {loading ? (
+          Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="rounded-sm border border-border/60 p-4">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="mt-3 h-4 w-full" />
+            </div>
+          ))
+        ) : rows.length === 0 ? (
+          <p className="py-6 text-center text-xs text-muted-foreground">No workers yet.</p>
+        ) : (
+          rows.map((r) => (
+            <div
+              key={r.workerId}
+              className="rounded-sm border border-border/60 bg-background p-4 dark:bg-card"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <Link
+                  href={`/labor/workers/${r.workerId}/balance`}
+                  className="min-w-0 flex-1 font-medium text-foreground hover:underline"
+                >
+                  {r.workerName}
+                </Link>
+                <span className="shrink-0 text-sm font-medium tabular-nums">
+                  {fmtUsd(r.balance)}
+                </span>
+              </div>
+              <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                <div>
+                  <dt className="text-[10px] uppercase tracking-wide">Labor owed</dt>
+                  <dd className="tabular-nums text-foreground">{fmtUsd(r.laborOwed)}</dd>
+                </div>
+                <div>
+                  <dt className="text-[10px] uppercase tracking-wide">Payments</dt>
+                  <dd className="tabular-nums text-foreground">{fmtUsd(r.payments)}</dd>
+                </div>
+              </dl>
+              {r.deletable ? (
+                <div className="mt-3 border-t border-border/40 pt-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="btn-outline-ghost w-full min-h-11 text-destructive sm:min-h-8"
+                    aria-label={`Delete ${r.workerName}`}
+                    onClick={() => setDeleteTarget(r)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete worker
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          ))
+        )}
+      </div>
+
+      <div className="table-responsive hidden border-b border-border/60 md:block">
+        <table className="w-full border-collapse text-sm min-w-[520px] lg:min-w-0">
           <thead>
             <tr className="border-b border-border/60">
               <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">

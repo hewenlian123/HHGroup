@@ -207,16 +207,16 @@ export default function WorkerInvoicesPage() {
         title="Worker Invoices"
         subtitle="Track invoices from 1099 workers or small subcontractors."
         actions={
-          <>
+          <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <Link
               href="/labor"
-              className="text-sm text-muted-foreground hover:text-foreground mr-2"
+              className="text-sm text-muted-foreground hover:text-foreground max-md:min-h-11 max-md:inline-flex max-md:items-center"
             >
               Labor
             </Link>
             <Button
               size="sm"
-              className="rounded-md"
+              className="w-full rounded-md max-md:min-h-11 sm:w-auto"
               onClick={() => {
                 resetForm();
                 setShowForm(true);
@@ -224,15 +224,15 @@ export default function WorkerInvoicesPage() {
             >
               + New Invoice
             </Button>
-          </>
+          </div>
         }
       />
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+      <div className="flex flex-col gap-3 border-b border-border/60 pb-3 md:flex-row md:flex-wrap md:items-center md:justify-between">
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search worker invoices…"
-          className="h-9 min-w-[220px]"
+          className="h-9 w-full min-w-0 md:min-w-[220px] md:max-w-md"
         />
         {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
       </div>
@@ -242,7 +242,10 @@ export default function WorkerInvoicesPage() {
           <h2 className="text-sm font-semibold text-foreground mb-3">
             {editingId ? "Edit Invoice" : "New Worker Invoice"}
           </h2>
-          <form onSubmit={handleSubmit} className="flex flex-wrap gap-3 items-end">
+          <form
+            onSubmit={handleSubmit}
+            className="flex flex-col gap-3 items-stretch max-md:[&_button]:min-h-11 md:flex-row md:flex-wrap md:items-end"
+          >
             <div>
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">
                 Worker
@@ -328,115 +331,180 @@ export default function WorkerInvoicesPage() {
         </div>
       )}
 
-      <div className="table-responsive border-b border-border/60">
-        <table className="w-full min-w-[560px] text-sm border-collapse md:min-w-0">
-          <thead>
-            <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Date
-              </th>
-              <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Worker
-              </th>
-              <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Project
-              </th>
-              <th
-                className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums cursor-pointer select-none"
-                onClick={() => toggleSort("amount")}
-              >
-                Amount
-              </th>
-              <th
-                className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer select-none"
-                onClick={() => toggleSort("status")}
-              >
-                Status
-              </th>
-              <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Invoice file
-              </th>
-              <th className="w-28" />
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr className="border-b border-border/40">
-                <td colSpan={7} className="py-6 px-4 text-center text-muted-foreground text-xs">
-                  Loading…
-                </td>
-              </tr>
-            ) : filtered.length === 0 ? (
-              <tr className="border-b border-border/40">
-                <td colSpan={7} className="py-6 px-4 text-center text-muted-foreground text-xs">
-                  No worker invoices yet.
-                </td>
-              </tr>
-            ) : (
-              paged.map((r) => (
-                <tr key={r.id} className="border-b border-border/40 hover:bg-muted/10">
-                  <td className="py-2 px-4 tabular-nums text-muted-foreground">
-                    {r.createdAt.slice(0, 10)}
-                  </td>
-                  <td className="py-2 px-4">{workerById.get(r.workerId) ?? r.workerId}</td>
-                  <td className="py-2 px-4 text-muted-foreground">
-                    {r.projectId ? (projectById.get(r.projectId) ?? r.projectId) : "—"}
-                  </td>
-                  <td className="py-2 px-4 text-right tabular-nums font-medium">
-                    ${fmtUsd(r.amount)}
-                  </td>
-                  <td className="py-2 px-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="btn-outline-ghost h-8"
-                      onClick={() => toggleStatus(r)}
-                    >
-                      {r.status}
-                    </Button>
-                  </td>
-                  <td className="py-2 px-4">
-                    {r.invoiceFile ? (
-                      <a
-                        href={r.invoiceFile}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline text-xs"
-                      >
-                        View
-                      </a>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td className="py-2 px-4">
-                    <div className="flex gap-1">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="btn-outline-ghost h-8"
-                        onClick={() => handleEdit(r)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="btn-outline-ghost h-8 text-red-600"
-                        onClick={() => handleDelete(r.id)}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+      <div className="flex flex-col gap-3 border-b border-border/60 pb-3 md:hidden">
+        {loading ? (
+          <p className="py-6 text-center text-xs text-muted-foreground">Loading…</p>
+        ) : paged.length === 0 ? (
+          <p className="py-6 text-center text-xs text-muted-foreground">No worker invoices yet.</p>
+        ) : (
+          paged.map((r) => (
+            <div key={r.id} className="rounded-sm border border-border/60 p-4">
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-xs tabular-nums text-muted-foreground">
+                  {r.createdAt.slice(0, 10)}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="btn-outline-ghost h-8 max-md:min-h-11"
+                  onClick={() => toggleStatus(r)}
+                >
+                  {r.status}
+                </Button>
+              </div>
+              <p className="mt-2 font-medium text-foreground">
+                {workerById.get(r.workerId) ?? r.workerId}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {r.projectId ? (projectById.get(r.projectId) ?? r.projectId) : "—"}
+              </p>
+              <p className="mt-2 text-sm font-medium tabular-nums">${fmtUsd(r.amount)}</p>
+              {r.invoiceFile ? (
+                <a
+                  href={r.invoiceFile}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-block text-xs text-primary hover:underline max-md:min-h-11 max-md:py-2"
+                >
+                  View invoice file
+                </a>
+              ) : (
+                <p className="mt-2 text-xs text-muted-foreground">No file</p>
+              )}
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="btn-outline-ghost h-8 max-md:min-h-11"
+                  onClick={() => handleEdit(r)}
+                >
+                  Edit
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="btn-outline-ghost h-8 max-md:min-h-11 text-red-600"
+                  onClick={() => handleDelete(r.id)}
+                >
+                  Delete
+                </Button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
-      <div className="flex items-center justify-between pt-3 text-sm text-muted-foreground">
+      <div className="hidden border-b border-border/60 md:block">
+        <div className="table-responsive overflow-x-auto">
+          <table className="w-full min-w-[640px] border-collapse text-sm lg:min-w-0">
+            <thead>
+              <tr className="border-b border-border/60">
+                <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Date
+                </th>
+                <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Worker
+                </th>
+                <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Project
+                </th>
+                <th
+                  className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums cursor-pointer select-none"
+                  onClick={() => toggleSort("amount")}
+                >
+                  Amount
+                </th>
+                <th
+                  className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer select-none"
+                  onClick={() => toggleSort("status")}
+                >
+                  Status
+                </th>
+                <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Invoice file
+                </th>
+                <th className="w-28" />
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr className="border-b border-border/40">
+                  <td colSpan={7} className="py-6 px-4 text-center text-muted-foreground text-xs">
+                    Loading…
+                  </td>
+                </tr>
+              ) : filtered.length === 0 ? (
+                <tr className="border-b border-border/40">
+                  <td colSpan={7} className="py-6 px-4 text-center text-muted-foreground text-xs">
+                    No worker invoices yet.
+                  </td>
+                </tr>
+              ) : (
+                paged.map((r) => (
+                  <tr key={r.id} className="border-b border-border/40 hover:bg-muted/10">
+                    <td className="py-2 px-4 tabular-nums text-muted-foreground">
+                      {r.createdAt.slice(0, 10)}
+                    </td>
+                    <td className="py-2 px-4">{workerById.get(r.workerId) ?? r.workerId}</td>
+                    <td className="py-2 px-4 text-muted-foreground">
+                      {r.projectId ? (projectById.get(r.projectId) ?? r.projectId) : "—"}
+                    </td>
+                    <td className="py-2 px-4 text-right tabular-nums font-medium">
+                      ${fmtUsd(r.amount)}
+                    </td>
+                    <td className="py-2 px-4">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="btn-outline-ghost h-8"
+                        onClick={() => toggleStatus(r)}
+                      >
+                        {r.status}
+                      </Button>
+                    </td>
+                    <td className="py-2 px-4">
+                      {r.invoiceFile ? (
+                        <a
+                          href={r.invoiceFile}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline text-xs"
+                        >
+                          View
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="py-2 px-4">
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="btn-outline-ghost h-8"
+                          onClick={() => handleEdit(r)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="btn-outline-ghost h-8 text-red-600"
+                          onClick={() => handleDelete(r.id)}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3 pt-3 text-sm text-muted-foreground max-md:[&_button]:min-h-11 sm:flex-row sm:items-center sm:justify-between">
         <span className="tabular-nums">
           {filtered.length === 0
             ? "0"
@@ -447,7 +515,7 @@ export default function WorkerInvoicesPage() {
           <Button
             size="sm"
             variant="outline"
-            className="h-8"
+            className="h-8 flex-1 sm:flex-none"
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
           >
@@ -456,7 +524,7 @@ export default function WorkerInvoicesPage() {
           <Button
             size="sm"
             variant="outline"
-            className="h-8"
+            className="h-8 flex-1 sm:flex-none"
             disabled={page >= totalPages}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
           >

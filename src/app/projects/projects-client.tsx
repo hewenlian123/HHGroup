@@ -270,19 +270,25 @@ export function ProjectsClient() {
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">Manage all construction projects.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 sm:flex-shrink-0">
+        <div className="flex w-full flex-col gap-2 max-md:[&_button]:min-h-11 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:flex-shrink-0">
           <Button
             asChild
             variant="outline"
             size="sm"
-            className="rounded-md border-[0.5px] border-gray-100 bg-white text-text-primary shadow-none transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-50 active:scale-[0.97] active:duration-100 dark:border-border dark:bg-card dark:hover:bg-muted/40"
+            className="w-full rounded-md border-[0.5px] border-gray-100 bg-white text-text-primary shadow-none transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-50 active:scale-[0.97] active:duration-100 dark:border-border dark:bg-card dark:hover:bg-muted/40 sm:w-auto"
           >
-            <Link href="/projects/new">
+            <Link href="/projects/new" className="inline-flex items-center justify-center gap-1">
               <Plus className="h-4 w-4" />
               New Project
             </Link>
           </Button>
-          <Button variant="outline" size="sm" onClick={() => void refresh()} disabled={loading}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full sm:w-auto"
+            onClick={() => void refresh()}
+            disabled={loading}
+          >
             Refresh
           </Button>
         </div>
@@ -294,7 +300,7 @@ export function ProjectsClient() {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-2 gap-[10px] sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-[10px] sm:grid-cols-2 lg:grid-cols-5">
         <div className="rounded-[10px] border-[0.5px] border-solid border-gray-100 bg-white px-4 py-[14px] dark:border-border">
           <p className="kpi-metric-label">Total Projects</p>
           {loading ? (
@@ -356,7 +362,7 @@ export function ProjectsClient() {
       </div>
 
       <FilterBar className="flex-col items-stretch sm:items-stretch">
-        <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1 sm:col-span-2 lg:col-span-3">
             <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Search

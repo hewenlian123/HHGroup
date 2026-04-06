@@ -104,72 +104,115 @@ export default async function SubcontractorsPage() {
           }
         />
       ) : (
-        <div className="airtable-table-wrap airtable-table-wrap--ruled">
-          <div className="airtable-table-scroll">
-            <table className="w-full text-sm">
-              <thead>
-                <tr>
-                  <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                    Subcontractor
-                  </th>
-                  <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                    Insurance
-                  </th>
-                  <th className="h-8 px-3 text-right text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
-                    Total Contracts
-                  </th>
-                  <th className="h-8 px-3 text-right text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
-                    Approved
-                  </th>
-                  <th className="h-8 px-3 text-right text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
-                    Paid
-                  </th>
-                  <th className="h-8 px-3 text-right text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
-                    Outstanding
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={r.id} className={listTableRowStaticClassName}>
-                    <td className="py-1.5 px-3">
-                      <Link
-                        href={`/subcontractors/${r.id}`}
-                        className="hover:text-foreground hover:underline"
-                      >
-                        {r.name}
-                      </Link>
-                    </td>
-                    <td className="py-1.5 px-3">
-                      {r.insurance_expiration_date ? (
-                        r.insurance_alert ? (
-                          <StatusBadge
-                            label={`Expires ${r.insurance_expiration_date}`}
-                            variant="warning"
-                          />
-                        ) : (
-                          <span className="text-muted-foreground text-xs">
-                            {r.insurance_expiration_date}
-                          </span>
-                        )
-                      ) : (
-                        <span className="text-muted-foreground text-xs">—</span>
-                      )}
-                    </td>
-                    <td className="py-1.5 px-3 text-right tabular-nums">
-                      ${fmtUsd(r.totalContracts)}
-                    </td>
-                    <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.approved)}</td>
-                    <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.paid)}</td>
-                    <td className="py-1.5 px-3 text-right tabular-nums">
-                      ${fmtUsd(r.outstanding)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <>
+          <div className="flex flex-col gap-3 md:hidden">
+            {rows.map((r) => (
+              <Link
+                key={r.id}
+                href={`/subcontractors/${r.id}`}
+                className="block rounded-sm border border-border/60 p-4 transition-colors hover:bg-muted/20 active:bg-muted/30"
+              >
+                <p className="font-medium text-foreground">{r.name}</p>
+                <div className="mt-2">
+                  {r.insurance_expiration_date ? (
+                    r.insurance_alert ? (
+                      <StatusBadge
+                        label={`Expires ${r.insurance_expiration_date}`}
+                        variant="warning"
+                      />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">
+                        {r.insurance_expiration_date}
+                      </span>
+                    )
+                  ) : (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  )}
+                </div>
+                <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs tabular-nums">
+                  <div>
+                    <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                      Contracts
+                    </dt>
+                    <dd className="text-foreground">${fmtUsd(r.totalContracts)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                      Outstanding
+                    </dt>
+                    <dd className="font-medium text-foreground">${fmtUsd(r.outstanding)}</dd>
+                  </div>
+                </dl>
+              </Link>
+            ))}
           </div>
-        </div>
+          <div className="airtable-table-wrap airtable-table-wrap--ruled hidden md:block">
+            <div className="airtable-table-scroll overflow-x-auto">
+              <table className="w-full min-w-[640px] text-sm lg:min-w-0">
+                <thead>
+                  <tr>
+                    <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                      Subcontractor
+                    </th>
+                    <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                      Insurance
+                    </th>
+                    <th className="h-8 px-3 text-right text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                      Total Contracts
+                    </th>
+                    <th className="h-8 px-3 text-right text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                      Approved
+                    </th>
+                    <th className="h-8 px-3 text-right text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                      Paid
+                    </th>
+                    <th className="h-8 px-3 text-right text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                      Outstanding
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r) => (
+                    <tr key={r.id} className={listTableRowStaticClassName}>
+                      <td className="py-1.5 px-3">
+                        <Link
+                          href={`/subcontractors/${r.id}`}
+                          className="hover:text-foreground hover:underline"
+                        >
+                          {r.name}
+                        </Link>
+                      </td>
+                      <td className="py-1.5 px-3">
+                        {r.insurance_expiration_date ? (
+                          r.insurance_alert ? (
+                            <StatusBadge
+                              label={`Expires ${r.insurance_expiration_date}`}
+                              variant="warning"
+                            />
+                          ) : (
+                            <span className="text-muted-foreground text-xs">
+                              {r.insurance_expiration_date}
+                            </span>
+                          )
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </td>
+                      <td className="py-1.5 px-3 text-right tabular-nums">
+                        ${fmtUsd(r.totalContracts)}
+                      </td>
+                      <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.approved)}</td>
+                      <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.paid)}</td>
+                      <td className="py-1.5 px-3 text-right tabular-nums">
+                        ${fmtUsd(r.outstanding)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
       )}
     </PageLayout>
   );

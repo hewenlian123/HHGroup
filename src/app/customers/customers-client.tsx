@@ -261,21 +261,25 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
           {dataLoadWarning}
         </p>
       ) : null}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
             Customers
           </p>
           <p className="text-sm text-muted-foreground">Manage your clients and contacts.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center md:w-auto">
           <Input
             placeholder="Search customers…"
             value={search}
             onChange={(e) => startTransition(() => setSearch(e.target.value))}
-            className="h-9 w-40 sm:w-64 text-sm"
+            className="h-11 w-full text-sm md:h-9 md:w-64"
           />
-          <Button type="button" className="h-9 rounded-sm px-3 text-sm" onClick={openNew}>
+          <Button
+            type="button"
+            className="h-11 w-full rounded-sm px-3 text-sm md:h-9 md:w-auto"
+            onClick={openNew}
+          >
             + New Customer
           </Button>
         </div>
@@ -308,89 +312,149 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
             </Button>
           </div>
         ) : (
-          <div className="airtable-table-wrap airtable-table-wrap--ruled">
-            <div className="airtable-table-scroll">
-              <table className="min-w-[720px] text-sm">
-                <thead>
-                  <tr>
-                    <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                      Name
-                    </th>
-                    <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                      Email
-                    </th>
-                    <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                      Phone
-                    </th>
-                    <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                      Address
-                    </th>
-                    <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                      Created
-                    </th>
-                    <th className="h-8 w-8 px-2 text-right text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((c) => (
-                    <tr key={c.id} className={listTableRowStaticClassName}>
-                      <td className="min-h-[44px] px-3 py-2 align-middle font-medium">
-                        <Link
-                          href={`/customers/${c.id}`}
-                          className="text-foreground hover:underline underline-offset-2"
+          <>
+            <div className="flex flex-col gap-3 border-b border-border/60 p-3 md:hidden">
+              {filtered.map((c) => (
+                <div
+                  key={c.id}
+                  className="rounded-sm border border-border/60 bg-background p-4 dark:bg-card"
+                >
+                  <Link
+                    href={`/customers/${c.id}`}
+                    className="block font-medium text-foreground hover:underline"
+                  >
+                    {c.name}
+                  </Link>
+                  <p className="mt-1 text-xs text-muted-foreground">{c.email ?? "—"}</p>
+                  <p className="text-xs text-muted-foreground">{c.phone ?? "—"}</p>
+                  <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
+                    {truncateText(c.address, 80)}
+                  </p>
+                  <div className="mt-3 flex justify-end border-t border-border/40 pt-3">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="btn-outline-ghost min-h-11 w-full sm:min-h-8 sm:w-auto"
                         >
-                          {c.name}
-                        </Link>
-                      </td>
-                      <td className="px-3 py-2 text-xs text-muted-foreground">{c.email ?? "—"}</td>
-                      <td className="px-3 py-2 text-xs text-muted-foreground">{c.phone ?? "—"}</td>
-                      <td className="px-3 py-2 text-xs text-muted-foreground">
-                        {truncateText(c.address, 36)}
-                      </td>
-                      <td className="px-3 py-2 text-xs text-muted-foreground">
-                        {c.created_at ? new Date(c.created_at).toLocaleDateString() : "—"}
-                      </td>
-                      <td className="px-2 py-2 text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="icon"
-                              className="btn-outline-ghost h-7 w-7 rounded-sm"
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="min-w-[160px]">
-                            <DropdownMenuItem
-                              onSelect={(e) => {
-                                e.preventDefault();
-                                openEdit(c);
-                              }}
-                            >
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onSelect={(e) => {
-                                e.preventDefault();
-                                confirmDelete(c);
-                              }}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              Delete…
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                          <MoreHorizontal className="mr-2 h-4 w-4" />
+                          Actions
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="min-w-[160px]">
+                        <DropdownMenuItem
+                          onSelect={(e) => {
+                            e.preventDefault();
+                            openEdit(c);
+                          }}
+                        >
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onSelect={(e) => {
+                            e.preventDefault();
+                            confirmDelete(c);
+                          }}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          Delete…
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
+            <div className="airtable-table-wrap airtable-table-wrap--ruled hidden md:block">
+              <div className="airtable-table-scroll overflow-x-auto">
+                <table className="min-w-[640px] w-full text-sm lg:min-w-0">
+                  <thead>
+                    <tr>
+                      <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                        Name
+                      </th>
+                      <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                        Email
+                      </th>
+                      <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                        Phone
+                      </th>
+                      <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                        Address
+                      </th>
+                      <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                        Created
+                      </th>
+                      <th className="h-8 w-8 px-2 text-right text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((c) => (
+                      <tr key={c.id} className={listTableRowStaticClassName}>
+                        <td className="min-h-[44px] px-3 py-2 align-middle font-medium">
+                          <Link
+                            href={`/customers/${c.id}`}
+                            className="text-foreground hover:underline underline-offset-2"
+                          >
+                            {c.name}
+                          </Link>
+                        </td>
+                        <td className="px-3 py-2 text-xs text-muted-foreground">
+                          {c.email ?? "—"}
+                        </td>
+                        <td className="px-3 py-2 text-xs text-muted-foreground">
+                          {c.phone ?? "—"}
+                        </td>
+                        <td className="px-3 py-2 text-xs text-muted-foreground">
+                          {truncateText(c.address, 36)}
+                        </td>
+                        <td className="px-3 py-2 text-xs text-muted-foreground">
+                          {c.created_at ? new Date(c.created_at).toLocaleDateString() : "—"}
+                        </td>
+                        <td className="px-2 py-2 text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className="btn-outline-ghost h-7 w-7 rounded-sm"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="min-w-[160px]">
+                              <DropdownMenuItem
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                  openEdit(c);
+                                }}
+                              >
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                  confirmDelete(c);
+                                }}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                Delete…
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
         )}
       </div>
 

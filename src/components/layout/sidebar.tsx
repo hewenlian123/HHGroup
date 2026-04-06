@@ -318,13 +318,13 @@ export function Sidebar({
   /** Nav row: active = soft surface + accent icon (Linear-style) */
   const navRowClass = (active: boolean) =>
     cn(
-      "group relative flex items-center rounded-md text-[13px] transition-colors duration-[120ms] ease-out",
+      "group relative flex items-center rounded-md text-[13px] transition-colors duration-[120ms] ease-out touch-manipulation",
       collapsed
-        ? "min-h-[44px] justify-center px-2 py-1.5 sm:min-h-0"
-        : "min-h-0 gap-2.5 px-2 py-1.5 sm:min-h-0",
+        ? "min-h-[44px] justify-center px-2 py-1.5 lg:min-h-0"
+        : "max-lg:min-h-[44px] min-h-0 gap-2.5 px-2 py-1.5 lg:min-h-0",
       active
         ? "bg-gray-100 font-medium text-text-primary dark:bg-muted/60 dark:text-foreground"
-        : "font-normal text-text-primary hover:bg-gray-50 dark:text-foreground/90 dark:hover:bg-muted/40"
+        : "font-normal text-text-primary hover:bg-gray-50 active:bg-gray-100 dark:text-foreground/90 dark:hover:bg-muted/40 dark:active:bg-muted/50"
     );
 
   const navIconClass = (active: boolean, extra?: string) =>
@@ -454,7 +454,7 @@ export function Sidebar({
                 <button
                   type="button"
                   onClick={() => setSectionOpen(section.key, !isOpen)}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs font-medium uppercase tracking-wide text-text-secondary transition-colors duration-150 ease-out hover:bg-gray-50 dark:text-muted-foreground dark:hover:bg-muted/40"
+                  className="flex min-h-[44px] w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs font-medium uppercase tracking-wide text-text-secondary transition-colors duration-150 ease-out hover:bg-gray-50 active:bg-gray-100 dark:text-muted-foreground dark:hover:bg-muted/40 dark:active:bg-muted/50 lg:min-h-0"
                   aria-expanded={isOpen}
                 >
                   {isOpen ? (

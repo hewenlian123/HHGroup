@@ -80,8 +80,8 @@ export function DataTable<T>({
     <>
       {loading ? <span className="sr-only">{loadingText}</span> : null}
       {/* Desktop/Tablet: table */}
-      <div className="table-responsive relative hidden w-full md:block">
-        <Table className={cn("min-w-[480px] md:min-w-0 border-0", className)}>
+      <div className="table-responsive relative hidden w-full overflow-x-auto md:block">
+        <Table className={cn("min-w-[640px] border-0 lg:min-w-0", className)}>
           <TableHeader>
             <TableRow
               className={cn(

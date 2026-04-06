@@ -121,8 +121,8 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
           </p>
         ) : null}
         {/* Section 1 — Page header */}
-        <header className="flex items-start justify-between gap-4">
-          <div>
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <div className="min-w-0">
             <h1 className="text-xl font-medium tracking-tight text-text-primary dark:text-foreground">
               Dashboard
             </h1>
@@ -130,7 +130,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
               Company overview
             </p>
           </div>
-          <span className="shrink-0 rounded-md border border-gray-100 bg-white px-2.5 py-1 text-xs font-medium uppercase tracking-wide text-text-secondary dark:border-border">
+          <span className="shrink-0 self-start rounded-md border border-gray-100 bg-white px-2.5 py-1 text-xs font-medium uppercase tracking-wide text-text-secondary dark:border-border sm:self-auto">
             {new Date().toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
@@ -140,7 +140,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
         </header>
 
         {/* Section 2 — KPI strip (4-col, 10px gap) */}
-        <div className="grid grid-cols-2 gap-[10px] lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-[10px] sm:grid-cols-2 lg:grid-cols-4">
           <div className="kpi-metric relative overflow-hidden">
             <p className="kpi-metric-label">Active Projects</p>
             <p className="kpi-metric-value mt-0.5 tabular-nums text-text-primary dark:text-foreground">

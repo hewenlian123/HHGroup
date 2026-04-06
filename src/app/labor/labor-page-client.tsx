@@ -592,86 +592,88 @@ export default function LaborPageClient() {
                         )}
                       >
                         <div className="border-t border-border/60 bg-background">
-                          <table className="w-full text-sm border-collapse">
-                            <thead>
-                              <tr className="border-b border-border/60">
-                                <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
-                                  Worker
-                                </th>
-                                <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
-                                  Project
-                                </th>
-                                <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
-                                  Session
-                                </th>
-                                <th className="text-right py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70 tabular-nums">
-                                  Total Pay
-                                </th>
-                                <th className="w-[84px] py-2 px-3" />
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {entries.map((e) => {
-                                const pay = e.cost_amount != null ? Number(e.cost_amount) : 0;
-                                const session = sessionFromFlags(e);
-                                return (
-                                  <tr
-                                    key={e.id}
-                                    className={cn(
-                                      listTableRowStaticClassName,
-                                      "border-b border-border/30 last:border-b-0"
-                                    )}
-                                  >
-                                    <td className="py-2 px-3 font-semibold text-foreground">
-                                      {e.worker_name ?? "—"}
-                                    </td>
-                                    <td className="py-2 px-3 text-muted-foreground/80">
-                                      {e.project_name ?? "—"}
-                                    </td>
-                                    <td className="py-2 px-3">
-                                      <span
-                                        className={cn(
-                                          "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
-                                          sessionBadgeClass(session)
-                                        )}
-                                      >
-                                        {sessionLabel(session)}
-                                      </span>
-                                    </td>
-                                    <td className="py-2 px-3 text-right tabular-nums font-semibold">
-                                      {pay > 0 ? `$${pay.toFixed(2)}` : "—"}
-                                    </td>
-                                    <td className="py-2 px-3 text-right">
-                                      <div className="flex items-center justify-end gap-2">
-                                        <button
-                                          type="button"
-                                          className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50/60"
-                                          onClick={() => openEdit(e)}
-                                          aria-label="Edit"
+                          <div className="overflow-x-auto">
+                            <table className="w-full min-w-[480px] border-collapse text-sm">
+                              <thead>
+                                <tr className="border-b border-border/60">
+                                  <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
+                                    Worker
+                                  </th>
+                                  <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
+                                    Project
+                                  </th>
+                                  <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
+                                    Session
+                                  </th>
+                                  <th className="text-right py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70 tabular-nums">
+                                    Total Pay
+                                  </th>
+                                  <th className="w-[84px] py-2 px-3" />
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {entries.map((e) => {
+                                  const pay = e.cost_amount != null ? Number(e.cost_amount) : 0;
+                                  const session = sessionFromFlags(e);
+                                  return (
+                                    <tr
+                                      key={e.id}
+                                      className={cn(
+                                        listTableRowStaticClassName,
+                                        "border-b border-border/30 last:border-b-0"
+                                      )}
+                                    >
+                                      <td className="py-2 px-3 font-semibold text-foreground">
+                                        {e.worker_name ?? "—"}
+                                      </td>
+                                      <td className="py-2 px-3 text-muted-foreground/80">
+                                        {e.project_name ?? "—"}
+                                      </td>
+                                      <td className="py-2 px-3">
+                                        <span
+                                          className={cn(
+                                            "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+                                            sessionBadgeClass(session)
+                                          )}
                                         >
-                                          <Pencil className="h-4 w-4" />
-                                        </button>
-                                        <button
-                                          type="button"
-                                          className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-red-600 hover:text-red-700 hover:bg-red-50/60"
-                                          onClick={() => void handleDelete(e)}
-                                          aria-label="Delete"
-                                          disabled={workerMode}
-                                          title={
-                                            workerMode
-                                              ? "Delete is available only on the main Labor page."
-                                              : "Delete entry"
-                                          }
-                                        >
-                                          <Trash2 className="h-4 w-4" />
-                                        </button>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
+                                          {sessionLabel(session)}
+                                        </span>
+                                      </td>
+                                      <td className="py-2 px-3 text-right tabular-nums font-semibold">
+                                        {pay > 0 ? `$${pay.toFixed(2)}` : "—"}
+                                      </td>
+                                      <td className="py-2 px-3 text-right">
+                                        <div className="flex items-center justify-end gap-2">
+                                          <button
+                                            type="button"
+                                            className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50/60"
+                                            onClick={() => openEdit(e)}
+                                            aria-label="Edit"
+                                          >
+                                            <Pencil className="h-4 w-4" />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-red-600 hover:text-red-700 hover:bg-red-50/60"
+                                            onClick={() => void handleDelete(e)}
+                                            aria-label="Delete"
+                                            disabled={workerMode}
+                                            title={
+                                              workerMode
+                                                ? "Delete is available only on the main Labor page."
+                                                : "Delete entry"
+                                            }
+                                          >
+                                            <Trash2 className="h-4 w-4" />
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -797,93 +799,95 @@ export default function LaborPageClient() {
                   );
                 }
                 return (
-                  <table className="w-full text-sm border-collapse">
-                    <thead>
-                      <tr className="border-b border-border/60">
-                        <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
-                          Worker
-                        </th>
-                        <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
-                          Project
-                        </th>
-                        <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
-                          Session
-                        </th>
-                        <th className="text-right py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70 tabular-nums">
-                          OT
-                        </th>
-                        <th className="text-right py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70 tabular-nums">
-                          Total Pay
-                        </th>
-                        <th className="w-[84px] py-2 px-3" />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {dayEntries.map((e) => {
-                        const { otHours } = parseDayTypeAndOt(e.notes);
-                        const pay = e.cost_amount != null ? Number(e.cost_amount) : 0;
-                        const session = sessionFromFlags(e);
-                        return (
-                          <tr
-                            key={e.id}
-                            className={cn(
-                              listTableRowStaticClassName,
-                              "border-b border-border/60 last:border-b-0"
-                            )}
-                          >
-                            <td className="py-2 px-3 font-semibold text-foreground">
-                              {e.worker_name ?? "—"}
-                            </td>
-                            <td className="py-2 px-3 text-muted-foreground/80">
-                              {e.project_name ?? "—"}
-                            </td>
-                            <td className="py-2 px-3">
-                              <span
-                                className={cn(
-                                  "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
-                                  sessionBadgeClass(session)
-                                )}
-                              >
-                                {sessionLabel(session)}
-                              </span>
-                            </td>
-                            <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">
-                              {otHours}
-                            </td>
-                            <td className="py-2 px-3 text-right tabular-nums font-semibold">
-                              {pay > 0 ? `$${pay.toFixed(2)}` : "—"}
-                            </td>
-                            <td className="py-2 px-3 text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <button
-                                  type="button"
-                                  className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50/60"
-                                  onClick={() => openEdit(e)}
-                                  aria-label="Edit"
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[480px] border-collapse text-sm">
+                      <thead>
+                        <tr className="border-b border-border/60">
+                          <th className="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
+                            Worker
+                          </th>
+                          <th className="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
+                            Project
+                          </th>
+                          <th className="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
+                            Session
+                          </th>
+                          <th className="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70 tabular-nums">
+                            OT
+                          </th>
+                          <th className="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70 tabular-nums">
+                            Total Pay
+                          </th>
+                          <th className="w-[84px] px-3 py-2" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dayEntries.map((e) => {
+                          const { otHours } = parseDayTypeAndOt(e.notes);
+                          const pay = e.cost_amount != null ? Number(e.cost_amount) : 0;
+                          const session = sessionFromFlags(e);
+                          return (
+                            <tr
+                              key={e.id}
+                              className={cn(
+                                listTableRowStaticClassName,
+                                "border-b border-border/60 last:border-b-0"
+                              )}
+                            >
+                              <td className="py-2 px-3 font-semibold text-foreground">
+                                {e.worker_name ?? "—"}
+                              </td>
+                              <td className="py-2 px-3 text-muted-foreground/80">
+                                {e.project_name ?? "—"}
+                              </td>
+                              <td className="py-2 px-3">
+                                <span
+                                  className={cn(
+                                    "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+                                    sessionBadgeClass(session)
+                                  )}
                                 >
-                                  <Pencil className="h-4 w-4" />
-                                </button>
-                                <button
-                                  type="button"
-                                  className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-red-600 hover:text-red-700 hover:bg-red-50/60"
-                                  onClick={() => void handleDelete(e)}
-                                  aria-label="Delete"
-                                  disabled={workerMode}
-                                  title={
-                                    workerMode
-                                      ? "Delete is available only on the main Labor page."
-                                      : "Delete entry"
-                                  }
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                                  {sessionLabel(session)}
+                                </span>
+                              </td>
+                              <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">
+                                {otHours}
+                              </td>
+                              <td className="py-2 px-3 text-right tabular-nums font-semibold">
+                                {pay > 0 ? `$${pay.toFixed(2)}` : "—"}
+                              </td>
+                              <td className="py-2 px-3 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  <button
+                                    type="button"
+                                    className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50/60"
+                                    onClick={() => openEdit(e)}
+                                    aria-label="Edit"
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-red-600 hover:text-red-700 hover:bg-red-50/60"
+                                    onClick={() => void handleDelete(e)}
+                                    aria-label="Delete"
+                                    disabled={workerMode}
+                                    title={
+                                      workerMode
+                                        ? "Delete is available only on the main Labor page."
+                                        : "Delete entry"
+                                    }
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 );
               })()}
           </div>

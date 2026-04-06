@@ -170,25 +170,92 @@ export default function WorkerPaymentsPage() {
         }
       />
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+      <div className="flex flex-col gap-3 border-b border-border/60 pb-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search payments…"
-          className="h-9 min-w-[220px]"
+          className="h-9 w-full min-w-0 sm:min-w-[220px]"
         />
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
           {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
-          <Button size="sm" variant="outline" className="h-9" onClick={load} disabled={loading}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-9 w-full sm:w-auto"
+            onClick={load}
+            disabled={loading}
+          >
             <SubmitSpinner loading={loading} className="mr-2" />
             Refresh
           </Button>
         </div>
       </div>
 
-      <div className="airtable-table-wrap airtable-table-wrap--ruled">
+      <div className="flex flex-col gap-3 md:hidden">
+        {loading ? (
+          Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="rounded-sm border border-border/60 p-4">
+              <Skeleton className="h-5 w-2/3" />
+              <Skeleton className="mt-2 h-4 w-1/2" />
+              <Skeleton className="mt-3 h-4 w-full" />
+            </div>
+          ))
+        ) : filtered.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">No payments yet.</p>
+        ) : (
+          paged.map((r) => (
+            <div
+              key={r.id}
+              className="rounded-sm border border-border/60 bg-background p-4 dark:bg-card"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-medium text-foreground">
+                    {workerNameById.get(r.workerId) ?? r.workerId}
+                  </p>
+                  <p className="mt-0.5 text-sm text-muted-foreground">
+                    {r.projectId ? (projectNameById.get(r.projectId) ?? r.projectId) : "—"}
+                  </p>
+                </div>
+                <span className="shrink-0 text-sm font-medium tabular-nums">
+                  {fmtUsd(r.amount)}
+                </span>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                <span>{r.paymentMethod ?? "—"}</span>
+                <span className="tabular-nums">{r.paymentDate}</span>
+              </div>
+              {r.notes ? (
+                <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{r.notes}</p>
+              ) : null}
+              <div className="mt-3 flex flex-wrap gap-2 border-t border-border/40 pt-3">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="btn-outline-ghost min-h-11 flex-1 sm:min-h-8 sm:flex-none"
+                  onClick={() => setReceiptPreviewId(r.id)}
+                >
+                  View Receipt
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="btn-outline-ghost min-h-11 flex-1 text-red-600 sm:min-h-8 sm:flex-none"
+                  onClick={() => handleDelete(r.id)}
+                >
+                  Delete
+                </Button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      <div className="hidden md:block airtable-table-wrap airtable-table-wrap--ruled">
         <div className="airtable-table-scroll">
-          <table className="w-full min-w-[560px] text-sm md:min-w-0">
+          <table className="w-full min-w-[560px] text-sm lg:min-w-0">
             <thead>
               <tr>
                 <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
@@ -290,18 +357,18 @@ export default function WorkerPaymentsPage() {
         </div>
       </div>
 
-      <div className="flex items-center justify-between border-t border-border/60 pt-3 text-sm text-muted-foreground">
+      <div className="flex flex-col gap-3 border-t border-border/60 pt-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
         <span className="tabular-nums">
           {filtered.length === 0
             ? "0"
             : String(Math.min(filtered.length, (page - 1) * pageSize + 1))}
           –{Math.min(filtered.length, page * pageSize)} of {filtered.length}
         </span>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full gap-2 sm:w-auto">
           <Button
             size="sm"
             variant="outline"
-            className="h-8"
+            className="h-11 min-h-11 flex-1 sm:h-8 sm:min-h-0 sm:flex-none"
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
           >
@@ -310,7 +377,7 @@ export default function WorkerPaymentsPage() {
           <Button
             size="sm"
             variant="outline"
-            className="h-8"
+            className="h-11 min-h-11 flex-1 sm:h-8 sm:min-h-0 sm:flex-none"
             disabled={page >= totalPages}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
           >

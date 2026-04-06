@@ -323,7 +323,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
           {/* Desktop/tablet: table */}
           <div className="hidden md:block airtable-table-wrap airtable-table-wrap--ruled">
             <div className="airtable-table-scroll">
-              <table className="min-w-[640px] w-full text-[13px] md:min-w-0">
+              <table className="w-full min-w-[640px] text-[13px] lg:min-w-0">
                 <thead>
                   <tr>
                     <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
