@@ -354,7 +354,7 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
           <>
             <div className="divide-y divide-gray-100 dark:divide-border/60 md:hidden">
               {filtered.map((c) => (
-                <div key={c.id} className="flex min-h-[56px] items-center gap-2 py-2.5">
+                <div key={c.id} className="flex min-h-[48px] items-center gap-2 py-2.5">
                   <Link
                     href={`/customers/${c.id}`}
                     className="flex min-w-0 flex-1 items-center gap-3 text-left active:bg-muted/30"

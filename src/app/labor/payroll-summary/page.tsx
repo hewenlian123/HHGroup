@@ -209,7 +209,7 @@ export default function PayrollSummaryPage() {
           <>
             <div className="divide-y divide-gray-100 dark:divide-border/60">
               {displayRows.map((r) => (
-                <div key={r.workerId} className="flex min-h-[56px] flex-col gap-2 py-2.5">
+                <div key={r.workerId} className="flex min-h-[48px] flex-col gap-2 py-2.5">
                   <Button
                     variant="outline"
                     size="sm"

@@ -105,7 +105,7 @@ const PunchListRow = React.memo(function PunchListRow({
       <button
         type="button"
         onClick={() => onOpenDrawer(item)}
-        className="w-full min-h-[56px] px-0 py-2.5 text-left transition-colors hover:bg-gray-50 dark:hover:bg-muted/40 md:px-3"
+        className="w-full min-h-[48px] px-0 py-2.5 text-left transition-colors hover:bg-gray-50 dark:hover:bg-muted/40 md:px-3"
       >
         <div className="text-sm font-medium text-foreground">{item.issue || "—"}</div>
         <div className="mt-0.5 text-xs text-text-secondary dark:text-muted-foreground">
@@ -427,7 +427,7 @@ export default function PunchListPage() {
   return (
     <PageLayout
       divider={false}
-      className={cn("max-w-5xl", mobileListPagePaddingClass, "max-md:!gap-3")}
+      className={cn("md:max-w-5xl", mobileListPagePaddingClass, "max-md:!gap-3")}
       header={
         <>
           <div className="hidden md:block">
@@ -454,7 +454,7 @@ export default function PunchListPage() {
         </>
       }
     >
-      <div className="max-w-5xl space-y-3 md:mx-auto">
+      <div className="w-full space-y-3">
         {/* Issue overview — compact cards */}
         <section className="hidden md:block">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">

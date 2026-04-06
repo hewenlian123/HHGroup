@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { ChevronDown, Paperclip } from "lucide-react";
 import { useToast } from "@/components/toast/toast-provider";
 import { uiActionLog, uiActionMark } from "@/lib/ui-action-perf";
+import { MatchStatusBadge } from "@/components/base";
 import { ExpenseCategorySelect } from "@/components/expense-category-select";
 import { PaymentAccountSelect } from "@/components/payment-account-select";
 import { AmountDiagnosticsPanel } from "@/components/ocr/amount-diagnostics-panel";
@@ -829,9 +830,12 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                       ))}
                     </select>
                     {projectId && projectId === suggestedProjectId ? (
-                      <p className="mt-0.5 text-[10px] text-muted-foreground">
-                        Suggested from recent.
-                      </p>
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <MatchStatusBadge kind="suggested" />
+                        <span className="text-[10px] text-muted-foreground">
+                          From recent activity.
+                        </span>
+                      </div>
                     ) : null}
                   </div>
                   <div className="min-w-0" ref={paymentFieldRef}>

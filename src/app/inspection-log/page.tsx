@@ -215,7 +215,7 @@ export default function InspectionLogPage() {
   return (
     <PageLayout
       divider={false}
-      className={cn("max-w-5xl", mobileListPagePaddingClass, "max-md:!gap-3")}
+      className={cn("md:max-w-5xl", mobileListPagePaddingClass, "max-md:!gap-3")}
       header={
         <>
           <div className="hidden md:block">
@@ -238,7 +238,7 @@ export default function InspectionLogPage() {
         </>
       }
     >
-      <div className="max-w-5xl space-y-3 md:mx-auto">
+      <div className="w-full space-y-3">
         <MobileSearchFiltersRow
           filterSheetOpen={filtersOpen}
           onOpenFilters={() => setFiltersOpen(true)}
@@ -367,7 +367,7 @@ export default function InspectionLogPage() {
                     key={row.id}
                     type="button"
                     onClick={() => openDrawer(row)}
-                    className="flex w-full min-h-[56px] flex-col gap-1 py-2.5 text-left"
+                    className="flex w-full min-h-[48px] flex-col gap-1 py-2.5 text-left"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">

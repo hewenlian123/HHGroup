@@ -711,7 +711,7 @@ function DailyEntriesPageInner() {
               const rate =
                 row.hours > 0 && row.cost_amount != null ? row.cost_amount / row.hours : null;
               return (
-                <div key={row.id} className="flex min-h-[56px] flex-col gap-2 py-2.5">
+                <div key={row.id} className="flex min-h-[48px] flex-col gap-2 py-2.5">
                   <div className="flex items-start gap-3">
                     <input
                       type="checkbox"

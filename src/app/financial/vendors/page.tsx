@@ -435,7 +435,7 @@ export default function VendorsPage() {
         ) : null}
         {!loading &&
           mobileRows.map((row) => (
-            <div key={row.id} className="flex min-h-[56px] flex-col justify-center gap-2 py-2">
+            <div key={row.id} className="flex min-h-[48px] flex-col justify-center gap-2 py-2">
               <div className="min-w-0">
                 <p className="font-medium text-foreground">{row.name}</p>
                 <p className="text-xs text-muted-foreground">{row.contact_name || "—"}</p>

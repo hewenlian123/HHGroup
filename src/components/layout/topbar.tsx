@@ -166,7 +166,7 @@ export function Topbar({
   return (
     <header
       className={cn(
-        "sticky top-0 z-40 flex h-12 min-h-12 shrink-0 items-center border-b border-gray-100 bg-white px-3 sm:h-11 sm:min-h-0 sm:px-6 dark:border-border dark:bg-background",
+        "sticky top-0 z-40 flex h-11 min-h-11 shrink-0 items-center border-b border-border/60 bg-white/80 px-3 backdrop-blur-md backdrop-saturate-150 sm:min-h-0 sm:px-6 dark:border-border dark:bg-background/80",
         "flex-row gap-3 sm:gap-4"
       )}
     >

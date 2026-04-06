@@ -417,10 +417,10 @@ export function ProjectsListClient({
         <>
           <div className="divide-y divide-gray-100 dark:divide-border/60 md:hidden">
             {filtered.map((r) => (
-              <div key={r.id} className="flex min-h-[56px] items-center gap-2 py-2.5">
+              <div key={r.id} className="flex min-h-[48px] items-center gap-2 py-2">
                 <Link
                   href={`/projects/${r.id}`}
-                  className="flex min-w-0 flex-1 items-center gap-3 text-left active:bg-muted/30"
+                  className="hh-row-interactive flex min-w-0 flex-1 items-center gap-3 rounded-sm text-left"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-text-primary">{r.name}</p>
@@ -428,7 +428,7 @@ export function ProjectsListClient({
                       {(r.clientName ?? "—") + " · " + r.updatedAt}
                     </p>
                   </div>
-                  <div className="flex shrink-0 flex-col items-end gap-1">
+                  <div className="flex min-w-[4.5rem] shrink-0 flex-col items-end gap-1 text-right">
                     <span className={cn("text-sm font-medium tabular-nums", profitClass(r.profit))}>
                       {fmtUsd0(r.profit)}
                     </span>

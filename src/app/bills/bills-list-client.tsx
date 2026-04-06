@@ -409,7 +409,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
             {localBills.map((bill) => {
               const s = statusPill(bill);
               return (
-                <div key={bill.id} className="group relative flex min-h-[56px] items-center py-2.5">
+                <div key={bill.id} className="group relative flex min-h-[48px] items-center py-2.5">
                   <Link
                     href={`/bills/${bill.id}`}
                     className="flex min-w-0 flex-1 items-center gap-3 pr-10 text-left"

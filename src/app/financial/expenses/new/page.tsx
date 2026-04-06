@@ -252,7 +252,7 @@ export default function NewExpensePage() {
   };
 
   return (
-    <div className="page-container page-stack flex justify-center px-8 py-8">
+    <div className="page-container page-stack flex justify-center py-6 md:py-8">
       <div className="w-full max-w-3xl space-y-7">
         <PageHeader
           title="New expense"

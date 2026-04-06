@@ -1086,7 +1086,7 @@ export function CommissionsClient({
           <div className="divide-y divide-gray-100 dark:divide-border/60">
             {filteredRows.map((r) => (
               <div key={r.id} className="py-2.5">
-                <div className="flex min-h-[56px] items-start gap-2">
+                <div className="flex min-h-[48px] items-start gap-2">
                   <button
                     type="button"
                     className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-text-secondary hover:bg-[#F3F4F6]"

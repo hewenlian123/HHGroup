@@ -537,7 +537,7 @@ export default function TasksPage() {
   return (
     <PageLayout
       divider={false}
-      className={cn("max-w-5xl", mobileListPagePaddingClass, "max-md:!gap-3")}
+      className={cn("md:max-w-5xl", mobileListPagePaddingClass, "max-md:!gap-3")}
       header={
         <>
           <div className="hidden md:block">
@@ -564,7 +564,7 @@ export default function TasksPage() {
         </>
       }
     >
-      <div className="max-w-5xl space-y-3 md:mx-auto">
+      <div className="w-full space-y-3">
         <MobileSearchFiltersRow
           filterSheetOpen={filtersOpen}
           onOpenFilters={() => setFiltersOpen(true)}
@@ -662,7 +662,7 @@ export default function TasksPage() {
                 {filtered.map((t) => (
                   <div
                     key={t.id}
-                    className="flex min-h-[56px] w-full touch-manipulation items-center gap-2 border-0 bg-transparent px-0 py-2.5 transition-colors active:bg-muted/50"
+                    className="flex min-h-[48px] w-full touch-manipulation items-center gap-2 border-0 bg-transparent px-0 py-2.5 transition-colors active:bg-muted/50"
                   >
                     <button
                       type="button"

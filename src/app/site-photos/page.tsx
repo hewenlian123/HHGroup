@@ -429,7 +429,7 @@ export default function SitePhotosPage() {
   return (
     <PageLayout
       divider={false}
-      className={cn("max-w-5xl", mobileListPagePaddingClass, "max-md:!gap-3")}
+      className={cn("md:max-w-5xl", mobileListPagePaddingClass, "max-md:!gap-3")}
       header={
         <>
           <div className="hidden md:block">
@@ -496,7 +496,7 @@ export default function SitePhotosPage() {
         </>
       }
     >
-      <div className="max-w-5xl space-y-3 md:mx-auto">
+      <div className="w-full space-y-3">
         <MobileSearchFiltersRow
           filterSheetOpen={filtersOpen}
           onOpenFilters={() => setFiltersOpen(true)}
@@ -631,7 +631,7 @@ export default function SitePhotosPage() {
           <>
             <div className="divide-y divide-gray-100 dark:divide-border/60 md:hidden">
               {filteredPhotos.map((p) => (
-                <div key={p.id} className="flex min-h-[56px] gap-3 py-2.5">
+                <div key={p.id} className="flex min-h-[48px] gap-3 py-2.5">
                   <button
                     type="button"
                     onClick={() => {

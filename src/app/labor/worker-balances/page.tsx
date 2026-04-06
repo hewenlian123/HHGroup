@@ -205,7 +205,7 @@ export default function WorkerBalancesPage() {
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-border/60">
             {filteredRows.map((r) => (
-              <div key={r.workerId} className="flex min-h-[56px] flex-col gap-2 py-2.5">
+              <div key={r.workerId} className="flex min-h-[48px] flex-col gap-2 py-2.5">
                 <div className="flex items-start justify-between gap-2">
                   <Link
                     href={`/labor/workers/${r.workerId}/balance`}

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Plus,
   Camera,
@@ -11,11 +11,14 @@ import {
   AlertTriangle,
   FilePen,
   DollarSign,
+  FolderKanban,
 } from "lucide-react";
+import { motion } from "framer-motion";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useLaborAddEntry } from "@/contexts/labor-add-entry-context";
 import { prefetchRoutes, QUICK_ACTION_ROUTES, runWhenIdle } from "@/lib/route-prefetch";
+import { shouldHideFloatingQuickActionFab } from "@/lib/floating-fab-visibility";
 
 /**
  * FAB: mobile and tablet only (screen width < 1024px).
@@ -29,6 +32,7 @@ const LINK_ACTIONS_TOP = [
 ] as const;
 
 const LINK_ACTIONS_REST = [
+  { label: "New Project", href: "/projects/new", icon: FolderKanban },
   { label: "New Task", href: "/tasks/new", icon: CheckCircle },
   { label: "New Punch Issue", href: "/punch-list/new", icon: AlertTriangle },
   /** Project-scoped create lives under `/projects/[id]/change-orders/new`; hub is `/change-orders`. */
@@ -42,11 +46,12 @@ function logQuickAction(label: string, detail?: string) {
   }
 }
 
+const FAB_SPRING = { type: "spring" as const, stiffness: 260, damping: 20 };
+
 const quickActionRowClass = cn(
-  "flex min-h-[48px] w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium text-foreground",
+  "hh-row-interactive flex min-h-[48px] w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-foreground max-lg:py-3",
   "cursor-pointer touch-manipulation relative z-[1] select-none border-0 bg-transparent",
-  "rounded-none transition-[background-color,transform] duration-75",
-  "hover:bg-muted/30 active:bg-muted/60 max-lg:active:scale-[0.99]"
+  "rounded-none transition-[transform] duration-75 max-lg:active:scale-[0.99]"
 );
 
 function QuickActionNavButton({
@@ -84,7 +89,9 @@ function QuickActionNavButton({
 export function FloatingActionButton() {
   const [open, setOpen] = React.useState(false);
   const router = useRouter();
+  const pathname = usePathname();
   const laborAddEntry = useLaborAddEntry();
+  const hiddenForPage = shouldHideFloatingQuickActionFab(pathname);
 
   React.useEffect(() => {
     return runWhenIdle(() => prefetchRoutes(router, [...QUICK_ACTION_ROUTES]));
@@ -95,30 +102,37 @@ export function FloatingActionButton() {
     prefetchRoutes(router, [...QUICK_ACTION_ROUTES, "/labor"]);
   }, [open, router]);
 
+  if (hiddenForPage) {
+    return null;
+  }
+
   return (
     <>
       <div
         className={cn(
           "fixed z-40 right-4 lg:hidden",
-          "bottom-[calc(3.5rem+env(safe-area-inset-bottom,0px)+0.5rem)] md:bottom-6"
+          /* bottom-20 (5rem) + safe area — clears bottom tab bar */
+          "bottom-[calc(5rem+env(safe-area-inset-bottom,0px))]"
         )}
         aria-label="Quick actions"
       >
-        <button
+        <motion.button
           type="button"
           onClick={() => {
             logQuickAction("FAB open sheet");
             setOpen(true);
           }}
+          whileTap={{ scale: 0.9 }}
+          transition={FAB_SPRING}
           className={cn(
             "flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-black text-white shadow-lg",
-            "cursor-pointer touch-manipulation transition-opacity hover:bg-black/90 active:opacity-90 active:scale-[0.97]",
+            "cursor-pointer touch-manipulation hover:bg-black/90",
             "focus:outline-none focus:ring-2 focus:ring-black/30 focus:ring-offset-2"
           )}
           aria-label="Open quick actions"
         >
           <Plus className="h-6 w-6 pointer-events-none" aria-hidden />
-        </button>
+        </motion.button>
       </div>
 
       <Sheet open={open} onOpenChange={setOpen}>
@@ -131,58 +145,65 @@ export function FloatingActionButton() {
             "[&>button]:max-lg:min-h-[44px] [&>button]:max-lg:min-w-[44px]"
           )}
         >
-          <SheetHeader className="border-b border-border/60 px-4 py-3 text-left">
-            <SheetTitle className="text-base font-semibold">Quick actions</SheetTitle>
-          </SheetHeader>
-          <nav
-            className="relative z-[1] flex flex-col py-2 touch-manipulation"
-            aria-label="Quick actions"
+          <motion.div
+            className="flex max-h-[inherit] flex-col"
+            initial={{ opacity: 0, scale: 0.96, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={FAB_SPRING}
           >
-            {LINK_ACTIONS_TOP.map(({ label, href, icon }) => (
-              <QuickActionNavButton
-                key={href}
-                label={label}
-                href={href}
-                icon={icon}
-                onClose={() => setOpen(false)}
-                router={router}
-              />
-            ))}
-            <button
-              type="button"
-              className={quickActionRowClass}
-              onPointerDown={() => router.prefetch("/labor")}
-              onClick={() => {
-                logQuickAction("Add Labor Entry", "/labor?addDaily=1");
-                const handled = laborAddEntry?.triggerOpenDailyEntry() ?? false;
-                setOpen(false);
-                if (!handled) {
-                  try {
-                    window.sessionStorage.setItem("hh.openLaborEntryFromFab", "1");
-                  } catch {
-                    // ignore storage failures; fallback path still navigates
-                  }
-                  requestAnimationFrame(() => router.push("/labor?addDaily=1"));
-                }
-              }}
+            <SheetHeader className="border-b border-border/60 px-4 py-3 text-left">
+              <SheetTitle className="text-base font-medium">Quick actions</SheetTitle>
+            </SheetHeader>
+            <nav
+              className="relative z-[1] flex flex-col py-1.5 touch-manipulation max-lg:py-2"
+              aria-label="Quick actions"
             >
-              <Hammer
-                className="h-5 w-5 shrink-0 text-muted-foreground pointer-events-none"
-                aria-hidden
-              />
-              Add Labor Entry
-            </button>
-            {LINK_ACTIONS_REST.map(({ label, href, icon }) => (
-              <QuickActionNavButton
-                key={href}
-                label={label}
-                href={href}
-                icon={icon}
-                onClose={() => setOpen(false)}
-                router={router}
-              />
-            ))}
-          </nav>
+              {LINK_ACTIONS_TOP.map(({ label, href, icon }) => (
+                <QuickActionNavButton
+                  key={href}
+                  label={label}
+                  href={href}
+                  icon={icon}
+                  onClose={() => setOpen(false)}
+                  router={router}
+                />
+              ))}
+              <button
+                type="button"
+                className={quickActionRowClass}
+                onPointerDown={() => router.prefetch("/labor")}
+                onClick={() => {
+                  logQuickAction("Add Labor Entry", "/labor?addDaily=1");
+                  const handled = laborAddEntry?.triggerOpenDailyEntry() ?? false;
+                  setOpen(false);
+                  if (!handled) {
+                    try {
+                      window.sessionStorage.setItem("hh.openLaborEntryFromFab", "1");
+                    } catch {
+                      // ignore storage failures; fallback path still navigates
+                    }
+                    requestAnimationFrame(() => router.push("/labor?addDaily=1"));
+                  }
+                }}
+              >
+                <Hammer
+                  className="h-5 w-5 shrink-0 text-muted-foreground pointer-events-none"
+                  aria-hidden
+                />
+                Add Labor Entry
+              </button>
+              {LINK_ACTIONS_REST.map(({ label, href, icon }) => (
+                <QuickActionNavButton
+                  key={href}
+                  label={label}
+                  href={href}
+                  icon={icon}
+                  onClose={() => setOpen(false)}
+                  router={router}
+                />
+              ))}
+            </nav>
+          </motion.div>
         </SheetContent>
       </Sheet>
     </>

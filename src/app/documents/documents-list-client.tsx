@@ -430,7 +430,7 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
                 key={doc.id}
                 type="button"
                 onClick={() => void handlePreview(doc)}
-                className="flex min-h-[56px] w-full items-center gap-3 px-4 py-2.5 text-left active:bg-muted/30"
+                className="flex min-h-[48px] w-full items-center gap-3 px-4 py-2.5 text-left active:bg-muted/30"
               >
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-text-primary dark:text-foreground">

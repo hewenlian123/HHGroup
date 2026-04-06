@@ -9,6 +9,13 @@ export { PageLayout, PageHeader, ActionBar, Divider, MainContent } from "./page-
 
 export { StatusBadge, type StatusBadgeProps, type StatusBadgeVariant } from "./status-badge";
 
+export {
+  MatchStatusBadge,
+  bankTransactionMatchKind,
+  type MatchStatusBadgeProps,
+  type MatchStatusKind,
+} from "./match-status-badge";
+
 export { Drawer, type DrawerProps } from "./drawer";
 
 export { ConfirmDialog, type ConfirmDialogProps } from "./confirm-dialog";

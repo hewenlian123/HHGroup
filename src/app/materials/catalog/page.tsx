@@ -257,7 +257,7 @@ export default function MaterialCatalogPage() {
   return (
     <PageLayout
       divider={false}
-      className={cn("max-w-5xl", mobileListPagePaddingClass, "max-md:!gap-3")}
+      className={cn("md:max-w-5xl", mobileListPagePaddingClass, "max-md:!gap-3")}
       header={
         <>
           <div className="hidden md:block">
@@ -284,7 +284,7 @@ export default function MaterialCatalogPage() {
         </>
       }
     >
-      <div className="max-w-5xl space-y-3 md:mx-auto">
+      <div className="w-full space-y-3">
         <MobileSearchFiltersRow
           filterSheetOpen={filtersOpen}
           onOpenFilters={() => setFiltersOpen(true)}
@@ -381,7 +381,7 @@ export default function MaterialCatalogPage() {
                     key={m.id}
                     type="button"
                     onClick={() => handleEdit(m)}
-                    className="flex min-h-[56px] w-full items-center gap-3 py-2.5 text-left"
+                    className="flex min-h-[48px] w-full items-center gap-3 py-2.5 text-left"
                   >
                     <div className="h-12 w-12 shrink-0 overflow-hidden rounded-sm border border-border/60 bg-muted/30">
                       {m.photo_url ? (

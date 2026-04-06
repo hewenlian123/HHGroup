@@ -7,15 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
-/** Outer padding for list pages on small screens (desktop unchanged). */
-export const mobileListPagePaddingClass = "max-md:!px-4 max-md:!py-3";
+/** Vertical rhythm on small screens; horizontal padding comes from `.page-container`. */
+export const mobileListPagePaddingClass = "max-md:!py-2.5";
 
 export function MobileListHeader({ title, fab }: { title: string; fab: React.ReactNode }) {
   return (
-    <div className="flex h-14 shrink-0 items-center justify-between gap-3 md:hidden">
-      <h1 className="text-lg font-semibold tracking-tight text-text-primary dark:text-foreground">
-        {title}
-      </h1>
+    <div className="flex h-11 shrink-0 items-center justify-between gap-2 md:hidden">
+      <h1 className="text-base font-medium tracking-tight text-foreground">{title}</h1>
       {fab}
     </div>
   );

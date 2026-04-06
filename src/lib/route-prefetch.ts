@@ -12,6 +12,7 @@ export const BOTTOM_NAV_ROUTES = [
 export const QUICK_ACTION_ROUTES = [
   "/site-photos/upload",
   "/upload-receipt",
+  "/projects/new",
   "/tasks/new",
   "/punch-list/new",
   "/change-orders",
