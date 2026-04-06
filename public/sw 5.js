@@ -1,0 +1,929 @@
+if (!self.define) {
+  let e,
+    s = {};
+  const n = (n, a) => (
+    (n = new URL(n + ".js", a).href),
+    s[n] ||
+      new Promise((s) => {
+        if ("document" in self) {
+          const e = document.createElement("script");
+          ((e.src = n), (e.onload = s), document.head.appendChild(e));
+        } else ((e = n), importScripts(n), s());
+      }).then(() => {
+        let e = s[n];
+        if (!e) throw new Error(`Module ${n} didn’t register its module`);
+        return e;
+      })
+  );
+  self.define = (a, c) => {
+    const i = e || ("document" in self ? document.currentScript.src : "") || location.href;
+    if (s[i]) return;
+    let r = {};
+    const t = (e) => n(e, i),
+      u = { module: { uri: i }, exports: r, require: t };
+    s[i] = Promise.all(a.map((e) => u[e] || t(e))).then((e) => (c(...e), r));
+  };
+}
+define(["./workbox-f1770938"], function (e) {
+  "use strict";
+  (importScripts("/fallback-ce627215c0e4a9af.js"),
+    self.skipWaiting(),
+    e.clientsClaim(),
+    e.precacheAndRoute(
+      [
+        { url: "/_next/static/chunks/1428-ad75d893d7fe495d.js", revision: "lJRBuTCJCrIAXb16Ic1yn" },
+        { url: "/_next/static/chunks/1497-a8dbd65d597c42c2.js", revision: "lJRBuTCJCrIAXb16Ic1yn" },
+        { url: "/_next/static/chunks/2173-a8a19a8b59b47528.js", revision: "lJRBuTCJCrIAXb16Ic1yn" },
+        { url: "/_next/static/chunks/2972-7dff33f647027e0a.js", revision: "lJRBuTCJCrIAXb16Ic1yn" },
+        { url: "/_next/static/chunks/3169-e6a3067c65fe54c8.js", revision: "lJRBuTCJCrIAXb16Ic1yn" },
+        { url: "/_next/static/chunks/3878-011d9acbd7cb9583.js", revision: "lJRBuTCJCrIAXb16Ic1yn" },
+        { url: "/_next/static/chunks/4313-7a8dcba9bd4b9eda.js", revision: "lJRBuTCJCrIAXb16Ic1yn" },
+        { url: "/_next/static/chunks/4475-51a0c59fa4468b97.js", revision: "lJRBuTCJCrIAXb16Ic1yn" },
+        { url: "/_next/static/chunks/4647-f42d13ae17f3aebb.js", revision: "lJRBuTCJCrIAXb16Ic1yn" },
+        { url: "/_next/static/chunks/5152-a37603cbe72c1e91.js", revision: "lJRBuTCJCrIAXb16Ic1yn" },
+        { url: "/_next/static/chunks/5350-8687b35a109d4cc5.js", revision: "lJRBuTCJCrIAXb16Ic1yn" },
+        { url: "/_next/static/chunks/5462-aa1c6a64e800a685.js", revision: "lJRBuTCJCrIAXb16Ic1yn" },
+        { url: "/_next/static/chunks/6137-4dc78bf963e49844.js", revision: "lJRBuTCJCrIAXb16Ic1yn" },
+        { url: "/_next/static/chunks/6244-04805ea15d60fde6.js", revision: "lJRBuTCJCrIAXb16Ic1yn" },
+        { url: "/_next/static/chunks/6535-eef9881510f69e37.js", revision: "lJRBuTCJCrIAXb16Ic1yn" },
+        { url: "/_next/static/chunks/6712-6393b62af8254ca6.js", revision: "lJRBuTCJCrIAXb16Ic1yn" },
+        { url: "/_next/static/chunks/6875-3fc4d63f62429fb4.js", revision: "lJRBuTCJCrIAXb16Ic1yn" },
+        { url: "/_next/static/chunks/6997-0c88d428ed6bca23.js", revision: "lJRBuTCJCrIAXb16Ic1yn" },
+        { url: "/_next/static/chunks/7373-dfd2b9c9bcb8e072.js", revision: "lJRBuTCJCrIAXb16Ic1yn" },
+        { url: "/_next/static/chunks/7529-439a4e5fbb631fd5.js", revision: "lJRBuTCJCrIAXb16Ic1yn" },
+        { url: "/_next/static/chunks/7582-397c234f3a01989d.js", revision: "lJRBuTCJCrIAXb16Ic1yn" },
+        { url: "/_next/static/chunks/7710-74a48f42e601daf3.js", revision: "lJRBuTCJCrIAXb16Ic1yn" },
+        { url: "/_next/static/chunks/7782-1a29335f03907118.js", revision: "lJRBuTCJCrIAXb16Ic1yn" },
+        { url: "/_next/static/chunks/8280-ce4089d56c846796.js", revision: "lJRBuTCJCrIAXb16Ic1yn" },
+        { url: "/_next/static/chunks/849-6f137eaac5411b55.js", revision: "lJRBuTCJCrIAXb16Ic1yn" },
+        { url: "/_next/static/chunks/8828-6abfd03277d05223.js", revision: "lJRBuTCJCrIAXb16Ic1yn" },
+        { url: "/_next/static/chunks/9351-f7338a702e25686e.js", revision: "lJRBuTCJCrIAXb16Ic1yn" },
+        {
+          url: "/_next/static/chunks/app/_not-found/page-8a44a9941a2de336.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/auth/callback/page-167a48e0dfbe587f.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/bills/%5Bid%5D/edit/page-057a89d705781220.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/bills/%5Bid%5D/page-f9276d00e88a9dac.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/bills/new/page-0b6715e0c27ec056.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/bills/page-c801668134b708f9.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/change-orders/page-c538e33f52ff743f.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/customers/%5Bid%5D/page-fba996a17964aa4b.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/customers/page-8d2a02c77e839313.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/dashboard/cashflow/page-49dad1af51a8bcd9.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/dashboard/loading-6963a18d08a36e4a.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/dashboard/page-a5b3685573adc121.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/design-system/page-baa728ffe4aae1b7.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/documents/page-f63e3ae3c9bff7d3.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/error-10b023a2ec147a28.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/estimates/%5Bid%5D/page-8c34d3e651e16b24.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/estimates/%5Bid%5D/preview/page-47b7ea2f41ab3b85.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/estimates/%5Bid%5D/print/page-ea0ed2ef316cd691.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/estimates/%5Bid%5D/snapshot/%5Bversion%5D/page-df21db48ac45e72a.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/estimates/%5Bid%5D/snapshot/page-36d8eb568eef82cc.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/estimates/new/page-657a1e49e9a057a0.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/estimates/page-9248cef83797b742.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/estimating/cost-codes/page-55f5b89113ef852e.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/finance/bills/page-c51f05b0114626e7.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/finance/cost-allocation/page-c313e5374439aa0a.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/finance/expenses/page-2195940fe38dd232.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/finance/invoices/page-402881eac5c5ac90.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/finance/labor-cost/page-660bdbe25bef3f16.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/finance/page-e2dd3ffa4752ee4a.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/financial/accounts/page-d7625de7382610fe.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/financial/ar/page-9c8cedc4010c0ee0.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/financial/bank/page-340b20395403e862.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/financial/bills/%5Bid%5D/page-27d9fc677b833f35.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/financial/bills/new/page-c71852f5d42771d6.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/financial/bills/page-3c67881ed0a7e7df.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/financial/commissions/page-8c67f4f473884601.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/financial/dashboard/page-45dfcd72a5c9ea9c.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/financial/deposits/page-9f71e6de741af62a.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/financial/expenses/%5Bid%5D/page-adf29a33c2424fbb.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/financial/expenses/new/page-fd321306252076b3.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/financial/expenses/page-f0c9e9594f2fe516.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/financial/invoices/%5Bid%5D/loading-9c5dc332659aade1.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/financial/invoices/%5Bid%5D/page-bf25bc45cf99d56e.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/financial/invoices/%5Bid%5D/print/page-39c1377e0f3fb17f.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/financial/invoices/new/page-58226594066270a0.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/financial/invoices/page-58754c22810bcf72.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/financial/page-dca150e08daade74.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/financial/payments/page-6ccfd5d4db13ccf0.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/financial/reimbursements/page-74d0f16575fe9ba1.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/financial/vendors/page-fa38d6959e33f619.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/financial/workers/page-44787c8222521d5f.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/inspection-log/page-319a47a6999db15e.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/labor/cost-allocation/page-574f89bd31e34638.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/labor/daily/page-afb0a65d2ea109e9.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/labor/entries/page-1f46ba8dbd4627c8.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/labor/invoices/%5Bid%5D/page-b439247bbcff7b76.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/labor/invoices/new/page-4ca382a747caa94a.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/labor/invoices/page-c43f55e217b41216.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/labor/layout-720028889719e9c7.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/labor/monthly/page-b1fb9cae2708a891.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/labor/page-98835d12d3d7e17a.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/labor/payments/%5Bid%5D/receipt/page-bdaab689e338f5e3.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/labor/payments/page-9ba434f33d55bbae.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/labor/payroll-summary/page-45f0d73e6b781070.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/labor/payroll/page-46cfb69e955ddd44.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/labor/receipts/page-f4a9ff4adeb661b5.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/labor/reimbursements/page-71b4337f31139d12.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/labor/review/page-b9340d1f73b376ec.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/labor/subcontractors/%5Bid%5D/page-5156bb02bcf38b28.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/labor/subcontractors/page-e91bb817061c55da.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/labor/timesheets/page-6baabdce2cb27429.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/labor/worker-balances/page-371620363b143445.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/labor/worker-invoices/page-aac7dc6ca752a43d.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/labor/workers/%5Bid%5D/balance/page-335f1d3a3e517217.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/labor/workers/%5Bid%5D/page-86f105948a48a8c5.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/labor/workers/%5Bid%5D/statement/page-d6b2e6a7761bcd0f.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/labor/workers/%5Bid%5D/statement/print/page-091511382d8a5648.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/labor/workers/new/page-bc328f332e06d24b.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/labor/workers/page-93070f1453577025.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/layout-7d88d759033a9c32.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/login/page-16545a23e10f39f6.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/logout/page-0e2d1c0f11cad525.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/materials/catalog/page-07eb321baa5c1e4a.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/not-found-78031612dfeb7373.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/offline/page-611b37872c03bda7.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/owner/page-bbfa2a2e2da153a0.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/page-231d978df2e474a9.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/procurement/purchase-orders/page-92b624df21908930.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/projects/%5Bid%5D/change-orders/%5BcoId%5D/edit/page-3f8ff2c48f96388b.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/projects/%5Bid%5D/change-orders/%5BcoId%5D/page-e0cc0f03b52dadb6.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/projects/%5Bid%5D/change-orders/new/page-07499bdb67af57d6.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/projects/%5Bid%5D/labor/page-5252a4afdd30ef67.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/projects/%5Bid%5D/page-e6efb4bb75483d0a.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/projects/%5Bid%5D/profit/page-ee3ab7c46736c8c1.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/projects/%5Bid%5D/subcontracts/%5BsubId%5D/bills/page-5063570599805a47.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/projects/%5Bid%5D/subcontracts/%5BsubId%5D/page-dd40891fbeb9785f.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/projects/%5Bid%5D/subcontracts/page-16c0a44c32513d03.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/projects/daily-logs/page-ef4eb3983a2f63fd.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/projects/documents/page-2d03f004ff993cbd.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/projects/new/page-dc4505df74044797.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/projects/page-210ca9f73b981eac.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/projects/schedule/page-7d16e537511f3abb.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/punch-list/new/page-05f1631ef7bc5ad6.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/punch-list/page-6b5204518d8b266b.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/receipt/page-2b81baacb39d7635.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/schedule/page-b76915c2c262347b.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/settings/account/page-cbe34766b0efb35d.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/settings/categories/page-eba9dbf43d7079c5.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/settings/company/page-535910f513a38b3c.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/settings/lists/page-01726fabdc50f10f.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/settings/page-c5a00adbce0ea859.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/settings/permissions/page-c6791c1700933570.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/settings/subcontractors/page-07ce181345fdece0.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/settings/users/page-cd2b1697cdb45c3a.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/site-photos/page-0f1c4764231877c6.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/site-photos/upload/page-683c7541d9af1acd.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/subcontractors/%5Bid%5D/page-e3a3c97315f2c957.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/subcontractors/page-528f0978c81a5dd8.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/system-health/page-ec35eeda3ad60203.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/system-logs/page-6ea003013484b0e0.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/system-metrics/page-269b6918af6adc5d.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/system-tests/page-5c9a8cd2c1e71200.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/system-tests/ui/page-3068a2861e7cccb6.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/system/backups/page-fb46f3f99759b3ea.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/tasks/new/page-db56390e845d3b02.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/tasks/page-bc849b1e4535b282.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/upload-receipt/page-442c2673f54e4ff7.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/app/workers/page-dc7e2f5efadf6268.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/fd9d1056-e8ab1e239197c1a4.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/framework-8e0e0f4a6b83a956.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/main-app-7691ad3584d91f8b.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        { url: "/_next/static/chunks/main-f6e4c569013b44e8.js", revision: "lJRBuTCJCrIAXb16Ic1yn" },
+        {
+          url: "/_next/static/chunks/pages/_app-3c9ca398d360b709.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/pages/_error-cf5ca766ac8f493f.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        {
+          url: "/_next/static/chunks/polyfills-42372ed130431b0a.js",
+          revision: "846118c33b2c0e922d7b3a7676f81f6f",
+        },
+        {
+          url: "/_next/static/chunks/webpack-adf6532065f37012.js",
+          revision: "lJRBuTCJCrIAXb16Ic1yn",
+        },
+        { url: "/_next/static/css/d103ec9c5c59a2d2.css", revision: "d103ec9c5c59a2d2" },
+        {
+          url: "/_next/static/lJRBuTCJCrIAXb16Ic1yn/_buildManifest.js",
+          revision: "6310079bf1ae7bebeb6a2135896e4564",
+        },
+        {
+          url: "/_next/static/lJRBuTCJCrIAXb16Ic1yn/_ssgManifest.js",
+          revision: "b6652df95db52feb4daf4eca35380933",
+        },
+        {
+          url: "/_next/static/media/19cfc7226ec3afaa-s.woff2",
+          revision: "9dda5cfc9a46f256d0e131bb535e46f8",
+        },
+        {
+          url: "/_next/static/media/21350d82a1f187e9-s.woff2",
+          revision: "4e2553027f1d60eff32898367dd4d541",
+        },
+        {
+          url: "/_next/static/media/4473ecc91f70f139-s.p.woff",
+          revision: "78e6fc13ea317b55ab0bd6dc4849c110",
+        },
+        {
+          url: "/_next/static/media/463dafcda517f24f-s.p.woff",
+          revision: "cbeb6d2d96eaa268b4b5beb0b46d9632",
+        },
+        {
+          url: "/_next/static/media/8e9860b6e62d6359-s.woff2",
+          revision: "01ba6c2a184b8cba08b0d57167664d75",
+        },
+        {
+          url: "/_next/static/media/ba9851c3c22cd980-s.woff2",
+          revision: "9e494903d6b0ffec1a1e14d34427d44d",
+        },
+        {
+          url: "/_next/static/media/c5fe6dc8356a8c31-s.woff2",
+          revision: "027a89e9ab733a145db70f09b8a18b42",
+        },
+        {
+          url: "/_next/static/media/df0a9ae256c0569c-s.woff2",
+          revision: "d54db44de5ccb18886ece2fda72bdfe0",
+        },
+        {
+          url: "/_next/static/media/e4af272ccee01ff0-s.p.woff2",
+          revision: "65850a373e258f1c897a2b3d75eb74de",
+        },
+        { url: "/fallback-ce627215c0e4a9af.js", revision: "4f20e76600cac989810927f2e95e5b79" },
+        { url: "/favicon.png", revision: "6630b11844e57e2428939b20f3ad57a9" },
+        { url: "/icons/icon-192.png", revision: "3afc847bfceaae90fdf247b86a50b79a" },
+        { url: "/icons/icon-512.png", revision: "1a9bde0e31159e0df005e4e9f882bfce" },
+        { url: "/logo.png", revision: "6d85f36f8b880b57837c9476c436d53e" },
+        { url: "/manifest.json", revision: "1ed948487cd83d4233132473a4d46e82" },
+        { url: "/offline", revision: "lJRBuTCJCrIAXb16Ic1yn" },
+        { url: "/sw 2.js", revision: "f3f7d568a550c33911c6338b6f9aa9fc" },
+        { url: "/sw 3.js", revision: "1dac8afa02d6964fac2dfe1b76a2c66c" },
+        { url: "/sw 4.js", revision: "4da3cdd47b8f85dd89203c77c4e2c37d" },
+        { url: "/swe-worker-5c72df51bb1f6ee0.js", revision: "5a47d90db13bb1309b25bdf7b363570e" },
+      ],
+      { ignoreURLParametersMatching: [/^utm_/, /^fbclid$/] }
+    ),
+    e.cleanupOutdatedCaches(),
+    e.registerRoute(
+      "/",
+      new e.NetworkFirst({
+        cacheName: "start-url",
+        plugins: [
+          {
+            cacheWillUpdate: async ({ response: e }) =>
+              e && "opaqueredirect" === e.type
+                ? new Response(e.body, { status: 200, statusText: "OK", headers: e.headers })
+                : e,
+          },
+          {
+            handlerDidError: async ({ request: e }) =>
+              "undefined" != typeof self ? self.fallback(e) : Response.error(),
+          },
+        ],
+      }),
+      "GET"
+    ),
+    e.registerRoute(
+      /^https:\/\/fonts\.(?:gstatic)\.com\/.*/i,
+      new e.CacheFirst({
+        cacheName: "google-fonts-webfonts",
+        plugins: [
+          new e.ExpirationPlugin({ maxEntries: 4, maxAgeSeconds: 31536e3 }),
+          {
+            handlerDidError: async ({ request: e }) =>
+              "undefined" != typeof self ? self.fallback(e) : Response.error(),
+          },
+        ],
+      }),
+      "GET"
+    ),
+    e.registerRoute(
+      /^https:\/\/fonts\.(?:googleapis)\.com\/.*/i,
+      new e.StaleWhileRevalidate({
+        cacheName: "google-fonts-stylesheets",
+        plugins: [
+          new e.ExpirationPlugin({ maxEntries: 4, maxAgeSeconds: 604800 }),
+          {
+            handlerDidError: async ({ request: e }) =>
+              "undefined" != typeof self ? self.fallback(e) : Response.error(),
+          },
+        ],
+      }),
+      "GET"
+    ),
+    e.registerRoute(
+      /\.(?:eot|otf|ttc|ttf|woff|woff2|font.css)$/i,
+      new e.StaleWhileRevalidate({
+        cacheName: "static-font-assets",
+        plugins: [
+          new e.ExpirationPlugin({ maxEntries: 4, maxAgeSeconds: 604800 }),
+          {
+            handlerDidError: async ({ request: e }) =>
+              "undefined" != typeof self ? self.fallback(e) : Response.error(),
+          },
+        ],
+      }),
+      "GET"
+    ),
+    e.registerRoute(
+      /\.(?:jpg|jpeg|gif|png|svg|ico|webp)$/i,
+      new e.StaleWhileRevalidate({
+        cacheName: "static-image-assets",
+        plugins: [
+          new e.ExpirationPlugin({ maxEntries: 64, maxAgeSeconds: 2592e3 }),
+          {
+            handlerDidError: async ({ request: e }) =>
+              "undefined" != typeof self ? self.fallback(e) : Response.error(),
+          },
+        ],
+      }),
+      "GET"
+    ),
+    e.registerRoute(
+      /\/_next\/static.+\.js$/i,
+      new e.CacheFirst({
+        cacheName: "next-static-js-assets",
+        plugins: [
+          new e.ExpirationPlugin({ maxEntries: 64, maxAgeSeconds: 86400 }),
+          {
+            handlerDidError: async ({ request: e }) =>
+              "undefined" != typeof self ? self.fallback(e) : Response.error(),
+          },
+        ],
+      }),
+      "GET"
+    ),
+    e.registerRoute(
+      /\/_next\/image\?url=.+$/i,
+      new e.StaleWhileRevalidate({
+        cacheName: "next-image",
+        plugins: [
+          new e.ExpirationPlugin({ maxEntries: 64, maxAgeSeconds: 86400 }),
+          {
+            handlerDidError: async ({ request: e }) =>
+              "undefined" != typeof self ? self.fallback(e) : Response.error(),
+          },
+        ],
+      }),
+      "GET"
+    ),
+    e.registerRoute(
+      /\.(?:mp3|wav|ogg)$/i,
+      new e.CacheFirst({
+        cacheName: "static-audio-assets",
+        plugins: [
+          new e.RangeRequestsPlugin(),
+          new e.ExpirationPlugin({ maxEntries: 32, maxAgeSeconds: 86400 }),
+          {
+            handlerDidError: async ({ request: e }) =>
+              "undefined" != typeof self ? self.fallback(e) : Response.error(),
+          },
+        ],
+      }),
+      "GET"
+    ),
+    e.registerRoute(
+      /\.(?:mp4|webm)$/i,
+      new e.CacheFirst({
+        cacheName: "static-video-assets",
+        plugins: [
+          new e.RangeRequestsPlugin(),
+          new e.ExpirationPlugin({ maxEntries: 32, maxAgeSeconds: 86400 }),
+          {
+            handlerDidError: async ({ request: e }) =>
+              "undefined" != typeof self ? self.fallback(e) : Response.error(),
+          },
+        ],
+      }),
+      "GET"
+    ),
+    e.registerRoute(
+      /\.(?:js)$/i,
+      new e.StaleWhileRevalidate({
+        cacheName: "static-js-assets",
+        plugins: [
+          new e.ExpirationPlugin({ maxEntries: 48, maxAgeSeconds: 86400 }),
+          {
+            handlerDidError: async ({ request: e }) =>
+              "undefined" != typeof self ? self.fallback(e) : Response.error(),
+          },
+        ],
+      }),
+      "GET"
+    ),
+    e.registerRoute(
+      /\.(?:css|less)$/i,
+      new e.StaleWhileRevalidate({
+        cacheName: "static-style-assets",
+        plugins: [
+          new e.ExpirationPlugin({ maxEntries: 32, maxAgeSeconds: 86400 }),
+          {
+            handlerDidError: async ({ request: e }) =>
+              "undefined" != typeof self ? self.fallback(e) : Response.error(),
+          },
+        ],
+      }),
+      "GET"
+    ),
+    e.registerRoute(
+      /\/_next\/data\/.+\/.+\.json$/i,
+      new e.StaleWhileRevalidate({
+        cacheName: "next-data",
+        plugins: [
+          new e.ExpirationPlugin({ maxEntries: 32, maxAgeSeconds: 86400 }),
+          {
+            handlerDidError: async ({ request: e }) =>
+              "undefined" != typeof self ? self.fallback(e) : Response.error(),
+          },
+        ],
+      }),
+      "GET"
+    ),
+    e.registerRoute(
+      /\.(?:json|xml|csv)$/i,
+      new e.NetworkFirst({
+        cacheName: "static-data-assets",
+        plugins: [
+          new e.ExpirationPlugin({ maxEntries: 32, maxAgeSeconds: 86400 }),
+          {
+            handlerDidError: async ({ request: e }) =>
+              "undefined" != typeof self ? self.fallback(e) : Response.error(),
+          },
+        ],
+      }),
+      "GET"
+    ),
+    e.registerRoute(
+      ({ sameOrigin: e, url: { pathname: s } }) =>
+        !(!e || s.startsWith("/api/auth/callback") || !s.startsWith("/api/")),
+      new e.NetworkFirst({
+        cacheName: "apis",
+        networkTimeoutSeconds: 10,
+        plugins: [
+          new e.ExpirationPlugin({ maxEntries: 16, maxAgeSeconds: 86400 }),
+          {
+            handlerDidError: async ({ request: e }) =>
+              "undefined" != typeof self ? self.fallback(e) : Response.error(),
+          },
+        ],
+      }),
+      "GET"
+    ),
+    e.registerRoute(
+      ({ request: e, url: { pathname: s }, sameOrigin: n }) =>
+        "1" === e.headers.get("RSC") &&
+        "1" === e.headers.get("Next-Router-Prefetch") &&
+        n &&
+        !s.startsWith("/api/"),
+      new e.NetworkFirst({
+        cacheName: "pages-rsc-prefetch",
+        plugins: [
+          new e.ExpirationPlugin({ maxEntries: 32, maxAgeSeconds: 86400 }),
+          {
+            handlerDidError: async ({ request: e }) =>
+              "undefined" != typeof self ? self.fallback(e) : Response.error(),
+          },
+        ],
+      }),
+      "GET"
+    ),
+    e.registerRoute(
+      ({ request: e, url: { pathname: s }, sameOrigin: n }) =>
+        "1" === e.headers.get("RSC") && n && !s.startsWith("/api/"),
+      new e.NetworkFirst({
+        cacheName: "pages-rsc",
+        plugins: [
+          new e.ExpirationPlugin({ maxEntries: 32, maxAgeSeconds: 86400 }),
+          {
+            handlerDidError: async ({ request: e }) =>
+              "undefined" != typeof self ? self.fallback(e) : Response.error(),
+          },
+        ],
+      }),
+      "GET"
+    ),
+    e.registerRoute(
+      ({ url: { pathname: e }, sameOrigin: s }) => s && !e.startsWith("/api/"),
+      new e.NetworkFirst({
+        cacheName: "pages",
+        plugins: [
+          new e.ExpirationPlugin({ maxEntries: 32, maxAgeSeconds: 86400 }),
+          {
+            handlerDidError: async ({ request: e }) =>
+              "undefined" != typeof self ? self.fallback(e) : Response.error(),
+          },
+        ],
+      }),
+      "GET"
+    ),
+    e.registerRoute(
+      ({ sameOrigin: e }) => !e,
+      new e.NetworkFirst({
+        cacheName: "cross-origin",
+        networkTimeoutSeconds: 10,
+        plugins: [
+          new e.ExpirationPlugin({ maxEntries: 32, maxAgeSeconds: 3600 }),
+          {
+            handlerDidError: async ({ request: e }) =>
+              "undefined" != typeof self ? self.fallback(e) : Response.error(),
+          },
+        ],
+      }),
+      "GET"
+    ));
+});
