@@ -5,8 +5,8 @@ import {
   HH_APP_SYNC_EVENT,
   HH_PROJECT_EDIT_OPTIMISTIC_REASON,
   syncClientsThenRefreshInBackground,
-  syncRouterAndClients,
 } from "@/lib/sync-router-client";
+import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import * as React from "react";
 import { flushSync } from "react-dom";
 import Link from "next/link";
@@ -181,7 +181,7 @@ export function ProjectDetailTabsClient({
       if (t != null) clearTimeout(t);
       t = setTimeout(() => {
         t = null;
-        void syncRouterAndClients(router);
+        syncRouterNonBlocking(router);
       }, 80);
     };
     window.addEventListener(HH_APP_SYNC_EVENT, handler);
@@ -294,7 +294,7 @@ export function ProjectDetailTabsClient({
                         });
                       } else {
                         toast({ title: "Project archived" });
-                        void syncRouterAndClients(router);
+                        syncRouterNonBlocking(router);
                       }
                     }}
                   >

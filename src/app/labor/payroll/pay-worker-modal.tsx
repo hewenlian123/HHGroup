@@ -1,9 +1,11 @@
 "use client";
 
 import * as React from "react";
+import { startTransition } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import {
   createWorkerPayment,
   markWorkerReimbursementsPaid,
@@ -44,6 +46,7 @@ export function PayWorkerModal({
   const [notes, setNotes] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
+  const [busyPhase, setBusyPhase] = React.useState<null | "payment" | "finalize">(null);
   const [advances, setAdvances] = React.useState<WorkerAdvanceOption[]>([]);
   const [selectedAdvanceIds, setSelectedAdvanceIds] = React.useState<string[]>([]);
 
@@ -99,6 +102,7 @@ export function PayWorkerModal({
     }
     setError(null);
     setBusy(true);
+    setBusyPhase("payment");
     try {
       const totalSelectedAdvances = advances
         .filter((a) => selectedAdvanceIds.includes(a.id))
@@ -113,6 +117,7 @@ export function PayWorkerModal({
         notes: notes.trim() || null,
       });
 
+      setBusyPhase("finalize");
       await Promise.all([
         markWorkerReimbursementsPaid(workerId, projectId || null),
         markWorkerInvoicesPaid(workerId, projectId || null),
@@ -127,12 +132,15 @@ export function PayWorkerModal({
           : []),
       ]);
 
-      onOpenChange(false);
-      onSuccess();
+      startTransition(() => {
+        onOpenChange(false);
+        onSuccess();
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to record payment.");
     } finally {
       setBusy(false);
+      setBusyPhase(null);
     }
   };
 
@@ -224,6 +232,13 @@ export function PayWorkerModal({
           </div>
 
           {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
+          {busy && busyPhase ? (
+            <p className="text-xs text-muted-foreground" role="status" aria-live="polite">
+              {busyPhase === "payment"
+                ? "Recording payment…"
+                : "Applying to reimbursements, invoices, and advances…"}
+            </p>
+          ) : null}
 
           <div className="flex justify-end gap-2 pt-2 border-t border-border/40">
             <Button
@@ -232,11 +247,13 @@ export function PayWorkerModal({
               size="sm"
               className="h-9"
               onClick={() => onOpenChange(false)}
+              disabled={busy}
             >
               Cancel
             </Button>
             <Button type="submit" size="sm" className="h-9" disabled={busy}>
-              {busy ? "Saving…" : "Confirm Payment"}
+              <SubmitSpinner loading={busy} className="mr-2" />
+              {busy ? (busyPhase === "finalize" ? "Finalizing…" : "Recording…") : "Confirm Payment"}
             </Button>
           </div>
         </form>

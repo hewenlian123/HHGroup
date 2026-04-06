@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { startTransition } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PageLayout, PageHeader } from "@/components/base";
@@ -33,6 +34,8 @@ import {
 } from "@/lib/data";
 import { StatusBadge } from "@/components/base";
 import { Pagination } from "@/components/ui/pagination";
+import { Skeleton } from "@/components/ui/skeleton";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import {
   getLaborPaymentStatus,
@@ -40,9 +43,28 @@ import {
   type LaborPaymentStatus,
 } from "@/lib/labor-balance-shared";
 
+function DailyEntriesSuspenseFallback() {
+  return (
+    <PageLayout
+      header={
+        <PageHeader
+          title="Daily Entries"
+          description="View and manage labor entries with worker and project allocation."
+        />
+      }
+    >
+      <div className="space-y-3 border-t border-gray-100 dark:border-border/60 pt-4">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <Skeleton key={i} className="h-10 w-full" />
+        ))}
+      </div>
+    </PageLayout>
+  );
+}
+
 export default function DailyEntriesPage() {
   return (
-    <React.Suspense fallback={<div className="page-container py-6" />}>
+    <React.Suspense fallback={<DailyEntriesSuspenseFallback />}>
       <DailyEntriesPageInner />
     </React.Suspense>
   );
@@ -65,6 +87,107 @@ function laborEntryPayrollStatusBadgeVariant(
   if (s === "partial") return "warning";
   return "muted";
 }
+
+type LaborEntryRowProps = {
+  row: LaborEntryWithJoins;
+  isSelected: boolean;
+  isDeleting: boolean;
+  payrollStatus: LaborPaymentStatus;
+  rowLocked: boolean;
+  onToggleSelect: (id: string) => void;
+  onOpenEdit: (row: LaborEntryWithJoins) => void;
+  onDelete: (row: LaborEntryWithJoins) => void;
+};
+
+const LaborEntryTableRow = React.memo(function LaborEntryTableRow({
+  row,
+  isSelected,
+  isDeleting,
+  payrollStatus,
+  rowLocked,
+  onToggleSelect,
+  onOpenEdit,
+  onDelete,
+}: LaborEntryRowProps) {
+  const rate = row.hours > 0 && row.cost_amount != null ? row.cost_amount / row.hours : null;
+  const cost = row.cost_amount ?? 0;
+  return (
+    <tr
+      className={cn(
+        "border-b border-gray-100/80 dark:border-border/40",
+        !rowLocked && listTableRowClassName
+      )}
+      onClick={() => {
+        if (rowLocked) return;
+        onOpenEdit(row);
+      }}
+    >
+      <td className="py-1.5 px-1" onClick={(e) => e.stopPropagation()}>
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={() => onToggleSelect(row.id)}
+          disabled={rowLocked}
+          className="h-4 w-4 rounded border-input"
+        />
+      </td>
+      <td className="py-1.5 px-3 tabular-nums text-muted-foreground">{row.work_date}</td>
+      <td className="py-1.5 px-3">{row.worker_name ?? "—"}</td>
+      <td className="py-1.5 px-3">{row.project_name ?? "—"}</td>
+      <td className={cn("py-1.5 px-3 text-right tabular-nums", listTableAmountCellClassName)}>
+        {row.hours}
+      </td>
+      <td
+        className={cn(
+          "py-1.5 px-3 text-right tabular-nums text-muted-foreground",
+          listTableAmountCellClassName
+        )}
+      >
+        {rate != null ? `$${rate.toFixed(2)}` : "—"}
+      </td>
+      <td
+        className={cn(
+          "py-1.5 px-3 text-right tabular-nums font-medium",
+          listTableAmountCellClassName
+        )}
+      >
+        ${cost.toFixed(2)}
+      </td>
+      <td className="py-1.5 px-3">
+        <StatusBadge
+          label={laborPaymentStatusUiLabel(payrollStatus)}
+          variant={laborEntryPayrollStatusBadgeVariant(payrollStatus)}
+        />
+      </td>
+      <td className="py-1.5 px-3 max-w-[160px] truncate" title={row.notes ?? ""}>
+        {row.notes ?? "—"}
+      </td>
+      <td className="py-1.5 px-1" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            className="btn-outline-ghost h-7 text-xs"
+            onClick={() => onOpenEdit(row)}
+            disabled={rowLocked}
+          >
+            Edit
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="btn-outline-ghost h-7 text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+            onClick={() => onDelete(row)}
+            disabled={rowLocked || isDeleting}
+          >
+            <SubmitSpinner loading={isDeleting} className="mr-1" />
+            {isDeleting ? "…" : "Delete"}
+          </Button>
+        </div>
+      </td>
+    </tr>
+  );
+});
 
 function DailyEntriesPageInner() {
   const router = useRouter();
@@ -106,11 +229,14 @@ function DailyEntriesPageInner() {
     return filteredEntries.slice(start, start + pageSize);
   }, [curPage, filteredEntries]);
 
-  const setPage = (nextPage: number) => {
-    const sp = new URLSearchParams(searchParams);
-    sp.set("page", String(nextPage));
-    router.push(`/labor/entries?${sp.toString()}`, { scroll: false });
-  };
+  const setPage = React.useCallback(
+    (nextPage: number) => {
+      const sp = new URLSearchParams(searchParams);
+      sp.set("page", String(nextPage));
+      startTransition(() => router.push(`/labor/entries?${sp.toString()}`, { scroll: false }));
+    },
+    [router, searchParams]
+  );
 
   const loadMeta = React.useCallback(async () => {
     const [p, w] = await Promise.all([getProjects(), getLaborWorkersList()]);
@@ -148,7 +274,7 @@ function DailyEntriesPageInner() {
     [loadMeta, loadEntries]
   );
 
-  const openEdit = (row: LaborEntryWithJoins) => {
+  const openEdit = React.useCallback((row: LaborEntryWithJoins) => {
     if (row.status === "Locked" || laborEntryPayrollLocked(row)) return;
     setEditEntry(row);
     setEditDraft({
@@ -158,14 +284,14 @@ function DailyEntriesPageInner() {
       cost_code: row.cost_code,
       notes: row.notes,
     });
-  };
+  }, []);
 
-  const closeEdit = () => {
+  const closeEdit = React.useCallback(() => {
     setEditEntry(null);
     setEditDraft(null);
-  };
+  }, []);
 
-  const handleEditSave = async () => {
+  const handleEditSave = React.useCallback(async () => {
     if (!editEntry || !editDraft) return;
     setSaving(true);
     setError(null);
@@ -185,37 +311,42 @@ function DailyEntriesPageInner() {
     } finally {
       setSaving(false);
     }
-  };
+  }, [editEntry, editDraft, closeEdit, loadEntries]);
 
-  const handleDelete = async (row: LaborEntryWithJoins) => {
-    if (row.status === "Locked" || laborEntryPayrollLocked(row)) return;
-    if (!window.confirm("Delete this labor entry?")) return;
-    setDeletingId(row.id);
-    setError(null);
-    try {
-      await deleteDailyLaborEntry(row.id);
-      setMessage("Entry deleted.");
-      await loadEntries();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to delete entry.");
-    } finally {
-      setDeletingId(null);
-    }
-  };
+  const handleDelete = React.useCallback(
+    async (row: LaborEntryWithJoins) => {
+      if (row.status === "Locked" || laborEntryPayrollLocked(row)) return;
+      if (!window.confirm("Delete this labor entry?")) return;
+      setDeletingId(row.id);
+      setError(null);
+      try {
+        await deleteDailyLaborEntry(row.id);
+        setMessage("Entry deleted.");
+        await loadEntries();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to delete entry.");
+      } finally {
+        setDeletingId(null);
+      }
+    },
+    [loadEntries]
+  );
 
-  const toggleSelect = (id: string) => {
+  const toggleSelect = React.useCallback((id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
-  };
+  }, []);
 
-  const toggleSelectAll = () => {
-    if (selectedIds.size === filteredEntries.length) setSelectedIds(new Set());
-    else setSelectedIds(new Set(filteredEntries.map((e) => e.id)));
-  };
+  const toggleSelectAll = React.useCallback(() => {
+    setSelectedIds((prev) => {
+      if (prev.size === filteredEntries.length && filteredEntries.length > 0) return new Set();
+      return new Set(filteredEntries.map((e) => e.id));
+    });
+  }, [filteredEntries]);
 
   const handleBulkSubmit = async () => {
     const ids = Array.from(selectedIds);
@@ -383,13 +514,16 @@ function DailyEntriesPageInner() {
         <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 py-2 dark:border-border/60">
           <span className="text-xs text-muted-foreground">{selectedIds.size} selected</span>
           <Button variant="outline" size="sm" onClick={handleBulkSubmit} disabled={!!bulkAction}>
-            {bulkAction === "submit" ? "…" : "Submit"}
+            <SubmitSpinner loading={bulkAction === "submit"} className="mr-2" />
+            Submit
           </Button>
           <Button variant="outline" size="sm" onClick={handleBulkApprove} disabled={!!bulkAction}>
-            {bulkAction === "approve" ? "…" : "Approve"}
+            <SubmitSpinner loading={bulkAction === "approve"} className="mr-2" />
+            Approve
           </Button>
           <Button variant="outline" size="sm" onClick={handleBulkLock} disabled={!!bulkAction}>
-            {bulkAction === "lock" ? "…" : "Lock"}
+            <SubmitSpinner loading={bulkAction === "lock"} className="mr-2" />
+            Lock
           </Button>
           <Button
             variant="outline"
@@ -452,11 +586,13 @@ function DailyEntriesPageInner() {
           </thead>
           <tbody>
             {loading ? (
-              <tr className="border-b border-border/40">
-                <td colSpan={11} className="py-6 px-3 text-center text-muted-foreground text-xs">
-                  Loading…
-                </td>
-              </tr>
+              Array.from({ length: 8 }).map((_, i) => (
+                <tr key={i} className="border-b border-border/40">
+                  <td colSpan={11} className="py-2 px-3">
+                    <Skeleton className="h-9 w-full" />
+                  </td>
+                </tr>
+              ))
             ) : filteredEntries.length === 0 ? (
               <tr className="border-b border-border/40">
                 <td colSpan={11} className="py-6 px-3 text-center text-muted-foreground text-xs">
@@ -465,9 +601,6 @@ function DailyEntriesPageInner() {
               </tr>
             ) : (
               pageRows.map((row) => {
-                const rate =
-                  row.hours > 0 && row.cost_amount != null ? row.cost_amount / row.hours : null;
-                const cost = row.cost_amount ?? 0;
                 const payrollStatus = getLaborPaymentStatus(
                   row.worker_payment_id ?? null,
                   row.workflowStatusRaw ?? null,
@@ -476,87 +609,17 @@ function DailyEntriesPageInner() {
                 const payrollLocked = payrollStatus === "paid";
                 const rowLocked = row.status === "Locked" || payrollLocked;
                 return (
-                  <tr
+                  <LaborEntryTableRow
                     key={row.id}
-                    className={cn(
-                      "border-b border-gray-100/80 dark:border-border/40",
-                      !rowLocked && listTableRowClassName
-                    )}
-                    onClick={() => {
-                      if (rowLocked) return;
-                      openEdit(row);
-                    }}
-                  >
-                    <td className="py-1.5 px-1" onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(row.id)}
-                        onChange={() => toggleSelect(row.id)}
-                        disabled={rowLocked}
-                        className="h-4 w-4 rounded border-input"
-                      />
-                    </td>
-                    <td className="py-1.5 px-3 tabular-nums text-muted-foreground">
-                      {row.work_date}
-                    </td>
-                    <td className="py-1.5 px-3">{row.worker_name ?? "—"}</td>
-                    <td className="py-1.5 px-3">{row.project_name ?? "—"}</td>
-                    <td
-                      className={cn(
-                        "py-1.5 px-3 text-right tabular-nums",
-                        listTableAmountCellClassName
-                      )}
-                    >
-                      {row.hours}
-                    </td>
-                    <td
-                      className={cn(
-                        "py-1.5 px-3 text-right tabular-nums text-muted-foreground",
-                        listTableAmountCellClassName
-                      )}
-                    >
-                      {rate != null ? `$${rate.toFixed(2)}` : "—"}
-                    </td>
-                    <td
-                      className={cn(
-                        "py-1.5 px-3 text-right tabular-nums font-medium",
-                        listTableAmountCellClassName
-                      )}
-                    >
-                      ${cost.toFixed(2)}
-                    </td>
-                    <td className="py-1.5 px-3">
-                      <StatusBadge
-                        label={laborPaymentStatusUiLabel(payrollStatus)}
-                        variant={laborEntryPayrollStatusBadgeVariant(payrollStatus)}
-                      />
-                    </td>
-                    <td className="py-1.5 px-3 max-w-[160px] truncate" title={row.notes ?? ""}>
-                      {row.notes ?? "—"}
-                    </td>
-                    <td className="py-1.5 px-1" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="btn-outline-ghost h-7 text-xs"
-                          onClick={() => openEdit(row)}
-                          disabled={rowLocked}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="btn-outline-ghost h-7 text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                          onClick={() => handleDelete(row)}
-                          disabled={rowLocked || deletingId === row.id}
-                        >
-                          {deletingId === row.id ? "…" : "Delete"}
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
+                    row={row}
+                    isSelected={selectedIds.has(row.id)}
+                    isDeleting={deletingId === row.id}
+                    payrollStatus={payrollStatus}
+                    rowLocked={rowLocked}
+                    onToggleSelect={toggleSelect}
+                    onOpenEdit={openEdit}
+                    onDelete={handleDelete}
+                  />
                 );
               })
             )}
@@ -654,6 +717,7 @@ function DailyEntriesPageInner() {
               Cancel
             </Button>
             <Button size="sm" onClick={handleEditSave} disabled={saving || !editDraft?.worker_id}>
+              <SubmitSpinner loading={saving} className="mr-2" />
               {saving ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>

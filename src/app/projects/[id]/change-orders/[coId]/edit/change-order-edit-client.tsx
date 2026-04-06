@@ -1,6 +1,6 @@
 "use client";
 
-import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { useRouter } from "next/navigation";
 import { useTransition, useState, useCallback, type FormEvent } from "react";
@@ -34,7 +34,7 @@ export function ChangeOrderEditClient({
 
   useOnAppSync(
     useCallback(() => {
-      void syncRouterAndClients(router);
+      syncRouterNonBlocking(router);
     }, [router]),
     [router]
   );
@@ -45,7 +45,7 @@ export function ChangeOrderEditClient({
     const formData = new FormData(form);
     startTransition(async () => {
       await updateChangeOrderAction(changeOrderId, projectId, formData);
-      void syncRouterAndClients(router);
+      syncRouterNonBlocking(router);
     });
   };
 
@@ -91,7 +91,7 @@ export function ChangeOrderEditClient({
         unit,
         unitPrice,
       });
-      void syncRouterAndClients(router);
+      syncRouterNonBlocking(router);
       form.reset();
     });
   };
@@ -99,7 +99,7 @@ export function ChangeOrderEditClient({
   const handleDelete = (itemId: string) => {
     startTransition(async () => {
       await deleteChangeOrderItemAction(changeOrderId, projectId, itemId);
-      void syncRouterAndClients(router);
+      syncRouterNonBlocking(router);
     });
   };
 

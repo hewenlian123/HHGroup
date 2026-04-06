@@ -6,6 +6,7 @@ import Link from "next/link";
 import { createBrowserClient } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import { FilterBar } from "@/components/filter-bar";
 import { Select } from "@/components/ui/native-select";
@@ -335,6 +336,7 @@ export default function VendorsPage() {
               onClick={() => void handleSave()}
               disabled={submitting}
             >
+              <SubmitSpinner loading={submitting} className="mr-2" />
               {submitting
                 ? "Saving..."
                 : editorMode === "create"

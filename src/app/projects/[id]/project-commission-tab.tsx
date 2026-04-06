@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -463,6 +464,7 @@ export function ProjectCommissionTab({
               disabled={submitting}
               data-testid="project-commission-save"
             >
+              <SubmitSpinner loading={submitting} className="mr-2" />
               {submitting ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>

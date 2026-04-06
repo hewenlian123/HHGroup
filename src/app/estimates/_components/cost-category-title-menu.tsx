@@ -1,6 +1,6 @@
 "use client";
 
-import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import * as React from "react";
 import {
   DropdownMenu,
@@ -17,6 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
@@ -101,7 +102,7 @@ function AddCategoryModal({
       const res = await createEstimateCategoryWithCodeAction(estimateId, code, name);
       if (res.ok && res.costCode) {
         onCategoryCreated(res.costCode, name);
-        void syncRouterAndClients(router);
+        syncRouterNonBlocking(router);
         onOpenChange(false);
         toast({ title: "Category created", variant: "success" });
       } else {
@@ -193,6 +194,7 @@ function AddCategoryModal({
             disabled={addSaving}
             onClick={() => void commitAddCategory()}
           >
+            <SubmitSpinner loading={addSaving} className="mr-2" />
             {addSaving ? "Saving…" : "Save"}
           </Button>
         </DialogFooter>
@@ -411,6 +413,7 @@ export function CostCategoryTitleMenu({
               disabled={renameSaving}
               onClick={() => void commitRename()}
             >
+              <SubmitSpinner loading={renameSaving} className="mr-2" />
               {renameSaving ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>

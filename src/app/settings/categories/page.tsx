@@ -7,6 +7,7 @@ import { createBrowserClient } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/native-select";
 import { FilterBar } from "@/components/filter-bar";
@@ -324,6 +325,7 @@ export default function CategoriesPage() {
               Cancel
             </Button>
             <Button size="sm" onClick={() => void handleSave()} disabled={submitting}>
+              <SubmitSpinner loading={submitting} className="mr-2" />
               {submitting
                 ? "Saving..."
                 : editorMode === "create"

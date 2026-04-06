@@ -6,6 +6,8 @@ import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { WorkerPaymentReceiptPreviewModal } from "@/components/labor/worker-payment-receipt-preview-modal";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import {
   deleteWorkerPayment,
@@ -178,6 +180,7 @@ export default function WorkerPaymentsPage() {
         <div className="flex items-center gap-2">
           {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
           <Button size="sm" variant="outline" className="h-9" onClick={load} disabled={loading}>
+            <SubmitSpinner loading={loading} className="mr-2" />
             Refresh
           </Button>
         </div>
@@ -220,14 +223,13 @@ export default function WorkerPaymentsPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr>
-                  <td
-                    colSpan={7}
-                    className="h-11 min-h-[44px] px-3 py-0 text-center text-xs text-muted-foreground"
-                  >
-                    Loading…
-                  </td>
-                </tr>
+                Array.from({ length: 8 }).map((_, i) => (
+                  <tr key={i}>
+                    <td className="h-11 px-3 py-1" colSpan={7}>
+                      <Skeleton className="h-9 w-full" />
+                    </td>
+                  </tr>
+                ))
               ) : filtered.length === 0 ? (
                 <tr>
                   <td

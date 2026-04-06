@@ -1,6 +1,6 @@
 "use client";
 
-import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import { useRouter } from "next/navigation";
@@ -241,7 +241,7 @@ export default function NewExpensePage() {
       }
       toast({ title: "Created", description: "Expense created.", variant: "success" });
       router.push("/financial/expenses");
-      void syncRouterAndClients(router);
+      syncRouterNonBlocking(router);
     } catch (e2: unknown) {
       const msg = e2 instanceof Error ? e2.message : "Failed to create expense.";
       setError(msg);

@@ -1,10 +1,12 @@
 "use client";
 
-import { dispatchClientDataSync, syncRouterAndClients } from "@/lib/sync-router-client";
+import { dispatchClientDataSync } from "@/lib/sync-router-client";
+import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -60,7 +62,7 @@ export function SubcontractorsTableClient({
 
   useOnAppSync(
     React.useCallback(() => {
-      void syncRouterAndClients(router);
+      syncRouterNonBlocking(router);
     }, [router]),
     [router]
   );
@@ -285,6 +287,7 @@ export function SubcontractorsTableClient({
               onClick={() => void onSave()}
               disabled={busy || !name.trim()}
             >
+              <SubmitSpinner loading={busy} className="mr-2" />
               {busy ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>

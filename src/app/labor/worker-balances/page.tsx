@@ -14,6 +14,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Trash2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 
 function fmtUsd(n: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -110,6 +112,7 @@ export default function WorkerBalancesPage() {
             onClick={load}
             disabled={loading}
           >
+            <SubmitSpinner loading={loading} className="mr-2" />
             {loading ? "Loading…" : "Refresh"}
           </Button>
         }
@@ -146,11 +149,31 @@ export default function WorkerBalancesPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr className="border-b border-border/40">
-                <td colSpan={7} className="py-6 px-4 text-center text-muted-foreground text-xs">
-                  Loading…
-                </td>
-              </tr>
+              Array.from({ length: 8 }).map((_, i) => (
+                <tr key={i} className="border-b border-border/40">
+                  <td className="py-2 px-4">
+                    <Skeleton className="h-4 w-36" />
+                  </td>
+                  <td className="py-2 px-4 text-right">
+                    <Skeleton className="ml-auto h-4 w-16" />
+                  </td>
+                  <td className="py-2 px-4 text-right">
+                    <Skeleton className="ml-auto h-4 w-16" />
+                  </td>
+                  <td className="py-2 px-4 text-right">
+                    <Skeleton className="ml-auto h-4 w-16" />
+                  </td>
+                  <td className="py-2 px-4 text-right">
+                    <Skeleton className="ml-auto h-4 w-16" />
+                  </td>
+                  <td className="py-2 px-4 text-right">
+                    <Skeleton className="ml-auto h-4 w-16" />
+                  </td>
+                  <td className="py-2 px-2 text-right">
+                    <Skeleton className="ml-auto h-8 w-8" />
+                  </td>
+                </tr>
+              ))
             ) : rows.length === 0 ? (
               <tr className="border-b border-border/40">
                 <td colSpan={7} className="py-6 px-4 text-center text-muted-foreground text-xs">
@@ -224,6 +247,7 @@ export default function WorkerBalancesPage() {
               Cancel
             </Button>
             <Button variant="outline" size="sm" onClick={confirmDelete} disabled={deleteBusy}>
+              <SubmitSpinner loading={deleteBusy} className="mr-2" />
               {deleteBusy ? "Deleting…" : "Delete"}
             </Button>
           </DialogFooter>

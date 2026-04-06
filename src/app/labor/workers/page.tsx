@@ -4,6 +4,7 @@ import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/native-select";
 import { FilterBar } from "@/components/filter-bar";
@@ -345,6 +346,7 @@ export default function LaborWorkersPage() {
               onClick={handleSave}
               disabled={submitting}
             >
+              <SubmitSpinner loading={submitting} className="mr-2" />
               {submitting ? "Saving…" : editorMode === "create" ? "Create Worker" : "Save Changes"}
             </Button>
           </div>

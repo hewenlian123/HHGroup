@@ -1,8 +1,9 @@
 "use client";
 
-import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
+import { startTransition } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { StatusBadge, ConfirmDialog, DeleteRowAction } from "@/components/base";
@@ -83,7 +84,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
 
   useOnAppSync(
     React.useCallback(() => {
-      void syncRouterAndClients(router);
+      syncRouterNonBlocking(router);
     }, [router]),
     [router]
   );
@@ -100,33 +101,25 @@ export function BillsListClient({ bills, summary, projects }: Props) {
     [router, searchParams]
   );
 
-  const handleVoid = React.useCallback(
-    async (id: string) => {
-      const result = await voidBillAction(id);
-      if (result.ok) {
-        setVoidConfirmId(null);
-        void syncRouterAndClients(router);
-      }
-    },
-    [router]
-  );
+  const handleVoid = React.useCallback(async (id: string) => {
+    const result = await voidBillAction(id);
+    if (result.ok) {
+      setVoidConfirmId(null);
+      setLocalBills((prev) =>
+        prev.map((b) => (b.id === id ? { ...b, status: "Void" as const } : b))
+      );
+    }
+  }, []);
 
-  const handleDeleteDraft = React.useCallback(
-    async (id: string) => {
-      let snapshot: ApBillWithProject[] | undefined;
-      setLocalBills((prev) => {
-        snapshot = prev;
-        return prev.filter((b) => b.id !== id);
-      });
-      const result = await deleteBillDraftAction(id);
-      if (result.ok) {
-        void syncRouterAndClients(router);
-      } else {
-        if (snapshot) setLocalBills(snapshot);
-      }
-    },
-    [router]
-  );
+  const handleDeleteDraft = React.useCallback(async (id: string) => {
+    let snapshot: ApBillWithProject[] | undefined;
+    setLocalBills((prev) => {
+      snapshot = prev;
+      return prev.filter((b) => b.id !== id);
+    });
+    const result = await deleteBillDraftAction(id);
+    if (!result.ok && snapshot) setLocalBills(snapshot);
+  }, []);
 
   const statusPill = React.useCallback(
     (
@@ -356,7 +349,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                     <tr
                       key={bill.id}
                       className={listTableRowClassName}
-                      onClick={() => router.push(`/bills/${bill.id}`)}
+                      onClick={() => startTransition(() => router.push(`/bills/${bill.id}`))}
                     >
                       <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">
                         <span

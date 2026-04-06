@@ -1,6 +1,6 @@
 "use client";
 
-import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import Link from "next/link";
@@ -168,7 +168,7 @@ export function ReceiptsClient({
       const res = await fetch(`/api/worker-receipts/${id}`, { method: "DELETE" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.message ?? "Delete failed");
-      void syncRouterAndClients(router);
+      syncRouterNonBlocking(router);
     } catch (e) {
       const errMsg = e instanceof Error ? e.message : "Delete failed";
       console.error("Receipt delete failed:", e);

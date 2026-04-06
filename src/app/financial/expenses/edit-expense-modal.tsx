@@ -6,6 +6,7 @@ import { flushSync } from "react-dom";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { InlineLoading } from "@/components/ui/skeleton";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -572,14 +573,8 @@ export function EditExpenseModal({
                   disabled={saving}
                   aria-busy={saving}
                 >
-                  {saving ? (
-                    <>
-                      <InlineLoading className="mr-1.5" aria-hidden />
-                      Saving…
-                    </>
-                  ) : (
-                    "Save"
-                  )}
+                  <SubmitSpinner loading={saving} className="mr-2" />
+                  {saving ? "Saving…" : "Save"}
                 </Button>
               </div>
             </div>

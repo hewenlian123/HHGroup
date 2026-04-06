@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { InlineLoading } from "@/components/ui/skeleton";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
@@ -948,16 +949,8 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                     className="h-8"
                     disabled={saving || saveFlash || !supabase}
                   >
-                    {saving ? (
-                      <>
-                        <InlineLoading className="mr-1.5" aria-hidden />
-                        Saving…
-                      </>
-                    ) : saveFlash ? (
-                      "✔ Done"
-                    ) : (
-                      "Save"
-                    )}
+                    <SubmitSpinner loading={saving} className="mr-2" />
+                    {saving ? "Saving…" : saveFlash ? "✔ Done" : "Save"}
                   </Button>
                 </div>
               </div>

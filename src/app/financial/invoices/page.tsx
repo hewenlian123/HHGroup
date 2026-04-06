@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { startTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
@@ -38,6 +39,7 @@ import { useSearchParams } from "next/navigation";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { useToast } from "@/components/toast/toast-provider";
 import { voidInvoiceFromClient } from "@/lib/invoice-void-client";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 
 const STATUS_OPTIONS: { value: "" | InvoiceComputedStatus; label: string }[] = [
   { value: "", label: "All" },
@@ -65,6 +67,7 @@ function InvoicesPageInner() {
   const [statusFilter, setStatusFilter] = React.useState<"" | InvoiceComputedStatus>("");
   const [projectFilter, setProjectFilter] = React.useState("");
   const [voidConfirmId, setVoidConfirmId] = React.useState<string | null>(null);
+  const [voidBusyId, setVoidBusyId] = React.useState<string | null>(null);
   const [projects, setProjects] = React.useState<Awaited<ReturnType<typeof getProjects>>>([]);
   const { toast } = useToast();
 
@@ -119,11 +122,23 @@ function InvoicesPageInner() {
     return filtered.slice(start, start + pageSize);
   }, [curPage, filtered]);
 
-  const setPage = (nextPage: number) => {
-    const sp = new URLSearchParams(searchParams);
-    sp.set("page", String(nextPage));
-    router.push(`/financial/invoices?${sp.toString()}`, { scroll: false });
-  };
+  const tableInvoiceRows = React.useMemo(
+    () =>
+      pageRows.map((inv) => ({
+        invoice: inv,
+        projectLabel: projectNameById.get(inv.projectId) ?? inv.projectId,
+      })),
+    [pageRows, projectNameById]
+  );
+
+  const setPage = React.useCallback(
+    (nextPage: number) => {
+      const sp = new URLSearchParams(searchParams);
+      sp.set("page", String(nextPage));
+      startTransition(() => router.push(`/financial/invoices?${sp.toString()}`, { scroll: false }));
+    },
+    [router, searchParams]
+  );
 
   const refresh = React.useCallback(async () => {
     const list = await getInvoicesWithDerived();
@@ -144,24 +159,35 @@ function InvoicesPageInner() {
     [refresh, reloadProjects]
   );
 
-  const handleVoid = async (id: string) => {
-    const result = await voidInvoiceFromClient(id);
-    if (!result.ok) {
-      toast({
-        title: "Could not void invoice",
-        description: result.message,
-        variant: "error",
-      });
-      return;
-    }
-    toast({ title: "Invoice voided", variant: "success" });
-    await refresh();
-  };
+  const handleVoid = React.useCallback(
+    async (id: string) => {
+      setVoidBusyId(id);
+      try {
+        const result = await voidInvoiceFromClient(id);
+        if (!result.ok) {
+          toast({
+            title: "Could not void invoice",
+            description: result.message,
+            variant: "error",
+          });
+          return;
+        }
+        toast({ title: "Invoice voided", variant: "success" });
+        await refresh();
+      } finally {
+        setVoidBusyId(null);
+      }
+    },
+    [toast, refresh]
+  );
 
-  const handleDuplicate = async (id: string) => {
-    const dup = await duplicateInvoice(id);
-    if (dup) router.push(`/financial/invoices/${dup.id}`);
-  };
+  const handleDuplicate = React.useCallback(
+    async (id: string) => {
+      const dup = await duplicateInvoice(id);
+      if (dup) startTransition(() => router.push(`/financial/invoices/${dup.id}`));
+    },
+    [router]
+  );
 
   return (
     <div className="page-container page-stack py-6">
@@ -277,14 +303,16 @@ function InvoicesPageInner() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {pageRows.map((inv) => (
+                {tableInvoiceRows.map(({ invoice: inv, projectLabel }) => (
                   <TableRow
                     key={inv.id}
                     className={cn(
                       listTableRowClassName,
                       "group border-b border-gray-100/80 dark:border-border/30"
                     )}
-                    onClick={() => router.push(`/financial/invoices/${inv.id}`)}
+                    onClick={() =>
+                      startTransition(() => router.push(`/financial/invoices/${inv.id}`))
+                    }
                   >
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
@@ -299,9 +327,7 @@ function InvoicesPageInner() {
                         <InvoiceStatusBadge status={inv.computedStatus} />
                       </div>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {projectNameById.get(inv.projectId) ?? inv.projectId}
-                    </TableCell>
+                    <TableCell className="text-muted-foreground">{projectLabel}</TableCell>
                     <TableCell className="text-foreground">{inv.clientName}</TableCell>
                     <TableCell className="tabular-nums text-muted-foreground">
                       {inv.issueDate}
@@ -379,14 +405,17 @@ function InvoicesPageInner() {
                                 variant="outline"
                                 size="sm"
                                 className="btn-outline-destructive h-8"
-                                onClick={() => handleVoid(inv.id)}
+                                disabled={voidBusyId === inv.id}
+                                onClick={() => void handleVoid(inv.id)}
                               >
+                                <SubmitSpinner loading={voidBusyId === inv.id} className="mr-2" />
                                 Confirm Void
                               </Button>
                               <Button
                                 variant="outline"
                                 size="sm"
                                 className="btn-outline-ghost h-8"
+                                disabled={voidBusyId === inv.id}
                                 onClick={() => setVoidConfirmId(null)}
                               >
                                 Cancel

@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
 import { Button } from "@/components/ui/button";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import {
   getProjects,
@@ -473,6 +474,7 @@ export default function DailyLaborLogPage() {
               onClick={() => void handleSaveEdit()}
               disabled={editBusy}
             >
+              <SubmitSpinner loading={editBusy} className="mr-2" />
               {editBusy ? "Saving…" : "Save Changes"}
             </Button>
           </DialogFooter>
@@ -1099,6 +1101,7 @@ function QuickTimesheetModal({
             onClick={handleSave}
             disabled={submitting}
           >
+            <SubmitSpinner loading={submitting} className="mr-2" />
             {submitting ? "Saving…" : `Save Entries · $${totalPayPreview.toFixed(2)} total`}
           </Button>
         </DialogFooter>

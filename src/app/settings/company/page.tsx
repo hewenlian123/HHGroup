@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/page-header";
 import { SectionHeader } from "@/components/section-header";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { useToast } from "@/components/toast/toast-provider";
 import { createBrowserClient } from "@/lib/supabase";
 import {
@@ -724,6 +725,7 @@ export default function SettingsCompanyPage() {
             className="gap-2 rounded-sm"
             data-testid="company-save-button"
           >
+            <SubmitSpinner loading={saving} className="mr-2" />
             <Upload className="h-4 w-4" />
             {saving ? "Saving..." : "Save Profile"}
           </Button>

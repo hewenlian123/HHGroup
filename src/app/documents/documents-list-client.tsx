@@ -1,6 +1,6 @@
 "use client";
 
-import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import Link from "next/link";
@@ -99,7 +99,7 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
 
   useOnAppSync(
     React.useCallback(() => {
-      void syncRouterAndClients(router);
+      syncRouterNonBlocking(router);
     }, [router]),
     [router]
   );
@@ -162,7 +162,7 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
           setDeleteError(res.error ?? "Delete failed.");
           return;
         }
-        void syncRouterAndClients(router);
+        syncRouterNonBlocking(router);
       } finally {
         setDeletingId(null);
       }
@@ -187,7 +187,7 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
         if (result.ok) {
           uploadFormRef.current?.reset();
           setUploadOpen(false);
-          void syncRouterAndClients(router);
+          syncRouterNonBlocking(router);
         } else {
           setUploadError(result.error ?? "Upload failed.");
         }

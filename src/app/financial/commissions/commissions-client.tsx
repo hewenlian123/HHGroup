@@ -13,11 +13,15 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import { syncRouterAndClients } from "@/lib/sync-router-client";
+import {
+  refreshRscNonBlocking,
+  syncRouterNonBlocking,
+} from "@/components/perf/sync-router-non-blocking";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { InlineLoading } from "@/components/ui/skeleton";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/native-select";
 import { cn } from "@/lib/utils";
@@ -118,7 +122,6 @@ export function CommissionsClient({
   loadError?: string | null;
 }) {
   const router = useRouter();
-  const [, startTransition] = React.useTransition();
   const [paymentModalOpen, setPaymentModalOpen] = React.useState(false);
   const [selectedCommission, setSelectedCommission] = React.useState<Row | null>(null);
   const [editModalOpen, setEditModalOpen] = React.useState(false);
@@ -232,10 +235,10 @@ export function CommissionsClient({
     });
   }, [rows, filterSearch, filterStatus, filterPerson]);
 
-  // Rows come from RSC props — refresh only, do not call syncRouterAndClients here (would re-dispatch hh:app-sync).
+  // Rows come from RSC props — refresh only, no full sync (avoids duplicate hh:app-sync).
   useOnAppSync(
     React.useCallback(() => {
-      void Promise.resolve(router.refresh());
+      refreshRscNonBlocking(router);
     }, [router]),
     [router]
   );
@@ -357,9 +360,7 @@ export function CommissionsClient({
       if (expandedIds.has(paymentEditParent.id)) {
         void loadPaymentsForCommission(paymentEditParent.project_id, paymentEditParent.id);
       }
-      startTransition(() => {
-        void syncRouterAndClients(router);
-      });
+      syncRouterNonBlocking(router);
     } catch (err) {
       setPaymentEditError(err instanceof Error ? err.message : "Failed to save");
     } finally {
@@ -435,9 +436,7 @@ export function CommissionsClient({
         });
       }
       resetReceiptUploadModal();
-      startTransition(() => {
-        void syncRouterAndClients(router);
-      });
+      syncRouterNonBlocking(router);
     } catch (err) {
       setReceiptUploadError(err instanceof Error ? err.message : "Failed to upload receipt");
     } finally {
@@ -621,9 +620,7 @@ export function CommissionsClient({
         });
       }
       setReceiptPreview((prev) => (prev?.payment.id === p.id ? null : prev));
-      startTransition(() => {
-        void syncRouterAndClients(router);
-      });
+      syncRouterNonBlocking(router);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to remove receipt");
     } finally {
@@ -648,9 +645,7 @@ export function CommissionsClient({
       if (expandedIds.has(parent.id)) {
         void loadPaymentsForCommission(parent.project_id, parent.id);
       }
-      startTransition(() => {
-        void syncRouterAndClients(router);
-      });
+      syncRouterNonBlocking(router);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to delete");
     } finally {
@@ -681,9 +676,7 @@ export function CommissionsClient({
         return next;
       });
       invalidatePaymentsCache(row.id);
-      startTransition(() => {
-        void syncRouterAndClients(router);
-      });
+      syncRouterNonBlocking(router);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to delete");
     } finally {
@@ -743,7 +736,7 @@ export function CommissionsClient({
       if (expandedIds.has(commissionId)) {
         void loadPaymentsForCommission(projectId, commissionId);
       }
-      await syncRouterAndClients(router);
+      syncRouterNonBlocking(router);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
     } finally {
@@ -787,9 +780,7 @@ export function CommissionsClient({
       if (data.ok === false) throw new Error(data.message ?? "Failed to update commission");
       setEditModalOpen(false);
       setEditRow(null);
-      startTransition(() => {
-        void syncRouterAndClients(router);
-      });
+      syncRouterNonBlocking(router);
     } catch (err) {
       setEditError(err instanceof Error ? err.message : "Failed to save");
     } finally {
@@ -1230,6 +1221,7 @@ export function CommissionsClient({
                 disabled={editSubmitting}
                 data-testid="financial-commission-edit-save"
               >
+                <SubmitSpinner loading={editSubmitting} className="mr-2" />
                 {editSubmitting ? "Saving…" : "Save"}
               </Button>
             </DialogFooter>
@@ -1327,6 +1319,7 @@ export function CommissionsClient({
                 disabled={paymentEditSubmitting}
                 data-testid="financial-payment-edit-save"
               >
+                <SubmitSpinner loading={paymentEditSubmitting} className="mr-2" />
                 {paymentEditSubmitting ? "Saving…" : "Save"}
               </Button>
             </DialogFooter>
@@ -1420,6 +1413,7 @@ export function CommissionsClient({
                 disabled={submitting}
                 data-testid="financial-record-payment-save"
               >
+                <SubmitSpinner loading={submitting} className="mr-2" />
                 {submitting ? "Saving…" : "Save"}
               </Button>
             </DialogFooter>

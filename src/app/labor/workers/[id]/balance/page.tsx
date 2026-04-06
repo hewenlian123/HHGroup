@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -259,6 +260,7 @@ export default function WorkerBalanceDetailPage() {
               onClick={openPayModal}
               disabled={loading || (unpaidLabor.length === 0 && unpaidReimb.length === 0)}
             >
+              <SubmitSpinner loading={paySubmitting} className="mr-2" />
               {paySubmitting ? "Saving…" : "Pay Worker"}
             </Button>
           </div>

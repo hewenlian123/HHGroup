@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { recordPaymentAction } from "./actions";
 
 const METHODS = ["Cash", "Check", "Bank"] as const;
@@ -125,8 +126,9 @@ export function RecordPaymentModal({ open, onOpenChange, workerId, onSuccess }: 
             <button
               type="submit"
               disabled={busy}
-              className="h-9 rounded-md border border-input bg-foreground text-background px-3 text-sm hover:bg-foreground/90 disabled:opacity-50"
+              className="inline-flex h-9 items-center rounded-md border border-input bg-foreground px-3 text-sm text-background hover:bg-foreground/90 disabled:opacity-50"
             >
+              <SubmitSpinner loading={busy} className="mr-2" />
               {busy ? "Saving…" : "Record Payment"}
             </button>
           </div>

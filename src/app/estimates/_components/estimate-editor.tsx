@@ -1,12 +1,13 @@
 "use client";
 
-import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import * as React from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { InlineLoading } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -401,7 +402,7 @@ export function EstimateEditor({
       }
       const res = await reorderEstimateCategoriesAction(estimateId, nextOrder, nameMap);
       if (res.ok) {
-        void syncRouterAndClients(router);
+        syncRouterNonBlocking(router);
       } else {
         toast({
           title: "Could not save category order",
@@ -1039,6 +1040,7 @@ export function EstimateEditor({
                   disabled={descModalSaving}
                   onClick={() => void handleSaveItemDescription()}
                 >
+                  <SubmitSpinner loading={descModalSaving} className="mr-2" />
                   {descModalSaving ? "Saving…" : "Save"}
                 </Button>
               </DialogFooter>
@@ -1518,7 +1520,7 @@ function AddCategoryBlock({
           setCustomCategoryLabel(trimmed);
           setSearch("");
           setOpen(false);
-          void syncRouterAndClients(router);
+          syncRouterNonBlocking(router);
           toast({ title: "Category created", variant: "success" });
         } else {
           toast({
@@ -1558,7 +1560,7 @@ function AddCategoryBlock({
           setSelectedCode(null);
           setCustomCategoryLabel(null);
           setOpen(false);
-          void syncRouterAndClients(router);
+          syncRouterNonBlocking(router);
           toast({ title: "Category added", variant: "success" });
         } else {
           toast({

@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { startTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
@@ -222,6 +223,10 @@ export function ReceiptQueueWorkspace() {
   const [workers, setWorkers] = React.useState<WorkerRow[]>(() => readCachedWorkers() ?? []);
   const [dragOver, setDragOver] = React.useState(false);
   const [captureUploading, setCaptureUploading] = React.useState(false);
+  const [uploadBatchProgress, setUploadBatchProgress] = React.useState<{
+    done: number;
+    total: number;
+  } | null>(null);
   const [bulkAdding, setBulkAdding] = React.useState(false);
   const [previewUrls, setPreviewUrls] = React.useState<Record<string, string>>({});
   const previewUrlsRef = React.useRef(previewUrls);
@@ -481,13 +486,13 @@ export function ReceiptQueueWorkspace() {
 
   const loadRows = React.useCallback(async () => {
     if (!supabase) {
-      setRows([]);
+      startTransition(() => setRows([]));
       return;
     }
     try {
       await flushPendingDebouncedPatches();
       const list = await fetchReceiptQueue(supabase);
-      setRows(list);
+      startTransition(() => setRows(list));
       queryClient.setQueryData(receiptQueueQueryKey, list);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to load queue";
@@ -519,9 +524,11 @@ export function ReceiptQueueWorkspace() {
     }
     const w = settled[2];
     if (w.status === "fulfilled") workerList = w.value as WorkerRow[];
-    setRows(list);
-    setExpenses(expList);
-    setWorkers(workerList);
+    startTransition(() => {
+      setRows(list);
+      setExpenses(expList);
+      setWorkers(workerList);
+    });
     queryClient.setQueryData(receiptQueueQueryKey, list);
     queryClient.setQueryData(buildExpensesQueryKey(defaultExpenseListSort), expList);
     queryClient.setQueryData(workersQueryKey, workerList);
@@ -535,7 +542,7 @@ export function ReceiptQueueWorkspace() {
     try {
       await flushPendingDebouncedPatches();
       list = await fetchReceiptQueue(supabase);
-      setRows(list);
+      startTransition(() => setRows(list));
       queryClient.setQueryData(receiptQueueQueryKey, list);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to load queue";
@@ -543,7 +550,7 @@ export function ReceiptQueueWorkspace() {
     }
     try {
       const expList = await getExpenses(defaultExpenseListSort);
-      setExpenses(expList);
+      startTransition(() => setExpenses(expList));
       queryClient.setQueryData(buildExpensesQueryKey(defaultExpenseListSort), expList);
     } catch {
       /* keep previous expenses for duplicate hints */
@@ -630,7 +637,9 @@ export function ReceiptQueueWorkspace() {
       if (inflight) await inflight;
       try {
         await patchQueueRowMutation.mutateAsync({ id, patch });
-        setRows((r) => r.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+        startTransition(() => {
+          setRows((r) => r.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+        });
         const now = Date.now();
         if (now - hotSavedCooldownRef.current > 1400) {
           hotToast.success("Saved");
@@ -872,6 +881,7 @@ export function ReceiptQueueWorkspace() {
       if (!fileList.length) return;
 
       setCaptureUploading(true);
+      setUploadBatchProgress({ done: 0, total: fileList.length });
       let ok = 0;
       let fail = 0;
       let firstFailDetail: string | undefined;
@@ -879,20 +889,26 @@ export function ReceiptQueueWorkspace() {
       try {
         const outcomes = await Promise.all(
           fileList.map(async (file) => {
-            let qid: string;
             try {
-              qid = await insertReceiptQueueProcessing(supabase, file);
-            } catch (e) {
-              const msg = e instanceof Error ? e.message : "Enqueue failed";
-              return { ok: false as const, detail: msg };
+              let qid: string;
+              try {
+                qid = await insertReceiptQueueProcessing(supabase, file);
+              } catch (e) {
+                const msg = e instanceof Error ? e.message : "Enqueue failed";
+                return { ok: false as const, detail: msg };
+              }
+              notifyReceiptQueueChanged();
+              const r = await runUploadForRow(qid, file, { skipRefresh: true });
+              if (r?.storageSaved) return { ok: true as const, rowId: qid };
+              return {
+                ok: false as const,
+                detail: "Could not save file to storage.",
+              };
+            } finally {
+              setUploadBatchProgress((p) =>
+                p ? { ...p, done: Math.min(p.total, p.done + 1) } : p
+              );
             }
-            notifyReceiptQueueChanged();
-            const r = await runUploadForRow(qid, file, { skipRefresh: true });
-            if (r?.storageSaved) return { ok: true as const, rowId: qid };
-            return {
-              ok: false as const,
-              detail: "Could not save file to storage.",
-            };
           })
         );
 
@@ -906,17 +922,21 @@ export function ReceiptQueueWorkspace() {
 
         const queueList = await refreshAll();
 
-        if (ok > 0) {
-          const addedRowIds = outcomes
-            .filter((o): o is { ok: true; rowId: string } => o.ok && "rowId" in o)
-            .map((o) => o.rowId);
-          const targetId = newestAddedQueueRowId(queueList, addedRowIds);
-          setListFilter("all");
-          scrollQueueToNewest();
-          flashNewRowHighlights(addedRowIds);
-          if (targetId) {
-            focusQueueRowVendor(targetId);
+        startTransition(() => {
+          if (ok > 0) {
+            const addedRowIds = outcomes
+              .filter((o): o is { ok: true; rowId: string } => o.ok && "rowId" in o)
+              .map((o) => o.rowId);
+            const targetId = newestAddedQueueRowId(queueList, addedRowIds);
+            setListFilter("all");
+            scrollQueueToNewest();
+            flashNewRowHighlights(addedRowIds);
+            if (targetId) {
+              focusQueueRowVendor(targetId);
+            }
           }
+        });
+        if (ok > 0) {
           hotToast.success(ok === 1 ? "Uploaded" : `${ok} uploaded`);
         }
         if (fail > 0) {
@@ -955,19 +975,21 @@ export function ReceiptQueueWorkspace() {
             },
           });
           notifyReceiptQueueChanged();
-          setRows((r) =>
-            r.map((x) =>
-              x.id === rowId
-                ? {
-                    ...x,
-                    status: "processing",
-                    error_message: null,
-                    storage_path: null,
-                    receipt_public_url: null,
-                  }
-                : x
-            )
-          );
+          startTransition(() => {
+            setRows((r) =>
+              r.map((x) =>
+                x.id === rowId
+                  ? {
+                      ...x,
+                      status: "processing",
+                      error_message: null,
+                      storage_path: null,
+                      receipt_public_url: null,
+                    }
+                  : x
+              )
+            );
+          });
           const r = await runUploadForRow(rowId, file);
           if (r?.storageSaved) {
             focusQueueRowVendor(rowId);
@@ -1387,6 +1409,16 @@ export function ReceiptQueueWorkspace() {
           }
         />
 
+        {rows.some((r) => r.status === "processing") ? (
+          <p
+            className="text-xs text-[#6b7280] dark:text-muted-foreground"
+            role="status"
+            aria-live="polite"
+          >
+            Receipt OCR is running in the background — you can keep working; rows update when ready.
+          </p>
+        ) : null}
+
         {!supabase ? (
           <p className="text-sm text-[#6b7280] dark:text-muted-foreground">
             Configure Supabase to upload.
@@ -1475,7 +1507,9 @@ export function ReceiptQueueWorkspace() {
                 role="status"
                 aria-live="polite"
               >
-                Uploading…
+                {uploadBatchProgress
+                  ? `Upload progress: ${uploadBatchProgress.done} / ${uploadBatchProgress.total} (OCR continues in background)`
+                  : "Uploading…"}
               </p>
             ) : null}
             <div
@@ -1504,7 +1538,11 @@ export function ReceiptQueueWorkspace() {
             >
               <Upload className="h-8 w-8 text-[#9ca3af]" aria-hidden />
               <span className="text-sm font-medium text-[#6b7280]">
-                {captureUploading ? "Uploading…" : "Drop files here to add to the queue"}
+                {captureUploading
+                  ? uploadBatchProgress
+                    ? `Uploading ${uploadBatchProgress.done} / ${uploadBatchProgress.total}…`
+                    : "Uploading…"
+                  : "Drop files here to add to the queue"}
               </span>
             </div>
           </>

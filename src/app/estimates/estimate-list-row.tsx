@@ -1,7 +1,7 @@
 "use client";
 
-import { syncRouterAndClients } from "@/lib/sync-router-client";
-import { useCallback, useTransition } from "react";
+import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
+import { memo, startTransition, useCallback, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { TableCell, TableRow } from "@/components/ui/table";
@@ -11,7 +11,7 @@ import { EstimateStatusBadge } from "./_components/estimate-status-badge";
 
 type DeleteAction = (formData: FormData) => Promise<void>;
 
-export function EstimateListRow({
+export const EstimateListRow = memo(function EstimateListRow({
   row,
   deleteAction,
 }: {
@@ -28,13 +28,16 @@ export function EstimateListRow({
     formData.set("estimateId", row.id);
     startTransition(async () => {
       await deleteAction(formData);
-      void syncRouterAndClients(router);
+      syncRouterNonBlocking(router);
     });
   }, [row.id, deleteAction, router]);
 
   return (
     <TableRow>
-      <TableCell className="font-medium cursor-pointer" onClick={() => router.push(href)}>
+      <TableCell
+        className="font-medium cursor-pointer"
+        onClick={() => startTransition(() => router.push(href))}
+      >
         <Link
           href={href}
           className="block w-full text-foreground hover:underline focus:outline-none focus:underline"
@@ -56,11 +59,11 @@ export function EstimateListRow({
         <RowActionsMenu
           ariaLabel={`Actions for estimate ${row.number}`}
           actions={[
-            { label: "View", onClick: () => router.push(href) },
+            { label: "View", onClick: () => startTransition(() => router.push(href)) },
             { label: "Delete", onClick: handleDelete, destructive: true, disabled: isPending },
           ]}
         />
       </TableCell>
     </TableRow>
   );
-}
+});

@@ -10,6 +10,7 @@ import { runOptimisticPersist } from "@/lib/optimistic-save";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/native-select";
 
@@ -192,6 +193,7 @@ export default function CustomerDetailPage() {
               Back
             </Button>
             <Button size="sm" onClick={handleSave} disabled={saving}>
+              <SubmitSpinner loading={saving} className="mr-2" />
               {saving ? "Saving..." : "Save Changes"}
             </Button>
           </div>
