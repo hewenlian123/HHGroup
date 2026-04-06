@@ -33,7 +33,7 @@ export function EstimateListRow({
   }, [row.id, deleteAction, router]);
 
   return (
-    <TableRow className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/20">
+    <TableRow>
       <TableCell className="font-medium cursor-pointer" onClick={() => router.push(href)}>
         <Link
           href={href}

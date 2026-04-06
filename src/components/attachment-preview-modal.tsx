@@ -3,9 +3,10 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion, type PanInfo, type Variants } from "framer-motion";
-import { ChevronLeft, ChevronRight, Download, Loader2, RefreshCw, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, RefreshCw, X } from "lucide-react";
 import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch";
 import { Button } from "@/components/ui/button";
+import { InlineLoading, Skeleton } from "@/components/ui/skeleton";
 
 export type AttachmentPreviewFileType = "image" | "pdf";
 
@@ -223,209 +224,232 @@ export function AttachmentPreviewModal({
   const showNav = itemCount > 1;
   const enableMotionDrag = showNav && (fileType === "pdf" || pinchScale <= 1.02);
 
+  const dialogTransition = {
+    opacity: { duration: 0.18, ease: "easeOut" as const },
+    scale: { type: "spring" as const, stiffness: 420, damping: 34, mass: 0.85 },
+  };
+  const dialogExitTransition = {
+    opacity: { duration: 0.15, ease: "easeOut" as const },
+    scale: { duration: 0.15, ease: "easeOut" as const },
+  };
+
   return createPortal(
     <AnimatePresence>
-      {isOpen ? (
-        <motion.div
-          key="attachment-preview-root"
-          className="fixed inset-0 z-[200] flex items-center justify-center p-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.18, ease: "easeOut" }}
-        >
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            aria-hidden
-            onClick={onClose}
-          />
-          <motion.div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="attachment-preview-title"
-            className="relative z-10 flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-sm border border-border/60 bg-background"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.18, ease: "easeOut" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <header className="relative flex shrink-0 flex-col gap-1 border-b border-border/60 px-4 py-3 pr-12">
-              <div className="flex min-w-0 items-center gap-2">
-                <h2
-                  id="attachment-preview-title"
-                  className="min-w-0 flex-1 truncate text-sm font-medium text-foreground"
-                  title={title}
-                >
-                  <span className="sr-only">Receipt preview — </span>
-                  {titleBase}
-                </h2>
-                {showNav ? (
-                  <span
-                    className="shrink-0 tabular-nums text-xs text-muted-foreground"
-                    aria-live="polite"
-                  >
-                    {safeIndex + 1} / {itemCount}
-                  </span>
-                ) : null}
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="btn-outline-ghost absolute right-2 top-2 h-9 w-9 shrink-0 rounded-sm"
-                aria-label="Close"
-                onClick={onClose}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </header>
-
-            <div
-              className="relative flex min-h-0 min-w-0 flex-1 flex-col px-4 py-2"
-              onTouchStartCapture={onTouchStartCapture}
-              onTouchEndCapture={onTouchEndCapture}
+      {isOpen
+        ? [
+            <motion.div
+              key="attachment-preview-backdrop"
+              className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-sm"
+              aria-hidden
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0, transition: { duration: 0.15, ease: "easeOut" } }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+              onClick={onClose}
+            />,
+            <motion.div
+              key="attachment-preview-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="attachment-preview-title"
+              data-attachment-preview-modal
+              className="fixed left-1/2 top-1/2 z-[201] flex max-h-[90vh] w-full max-w-[90vw] flex-col overflow-hidden rounded-sm border border-border/60 bg-background shadow-none"
+              style={{ transformOrigin: "center center" }}
+              initial={{ opacity: 0, scale: 0.95, x: "-50%", y: "-50%" }}
+              animate={{ opacity: 1, scale: 1, x: "-50%", y: "-50%" }}
+              exit={{
+                opacity: 0,
+                scale: 0.95,
+                x: "-50%",
+                y: "-50%",
+                transition: dialogExitTransition,
+              }}
+              transition={dialogTransition}
+              onClick={(e) => e.stopPropagation()}
             >
-              {showNav ? (
-                <>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="btn-outline-ghost absolute left-1 top-1/2 z-20 h-9 w-9 -translate-y-1/2 rounded-sm"
-                    aria-label="Previous attachment"
-                    onClick={goPrev}
+              <header className="relative flex shrink-0 flex-col gap-1 border-b border-border/60 px-4 py-3 pr-12">
+                <div className="flex min-w-0 items-center gap-2">
+                  <h2
+                    id="attachment-preview-title"
+                    className="min-w-0 flex-1 truncate text-sm font-medium text-foreground"
+                    title={title}
                   >
-                    <ChevronLeft className="h-5 w-5" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="btn-outline-ghost absolute right-1 top-1/2 z-20 h-9 w-9 -translate-y-1/2 rounded-sm"
-                    aria-label="Next attachment"
-                    onClick={goNext}
-                  >
-                    <ChevronRight className="h-5 w-5" />
-                  </Button>
-                </>
-              ) : null}
+                    <span className="sr-only">Receipt preview — </span>
+                    {titleBase}
+                  </h2>
+                  {showNav ? (
+                    <span
+                      className="shrink-0 tabular-nums text-xs text-muted-foreground"
+                      aria-live="polite"
+                    >
+                      {safeIndex + 1} / {itemCount}
+                    </span>
+                  ) : null}
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="btn-outline-ghost absolute right-2 top-2 h-9 w-9 shrink-0 rounded-sm"
+                  aria-label="Close"
+                  onClick={onClose}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </header>
 
-              <div className="flex h-[85vh] max-h-[calc(90vh-7.5rem)] w-full min-h-[200px] items-center justify-center overflow-hidden">
-                {sessionIsLoading ? (
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-hidden />
-                ) : unsupported ? (
-                  <p className="px-4 text-center text-sm text-muted-foreground">
-                    Preview not available for this file type.
-                  </p>
-                ) : !fileUrl ? (
-                  <p className="text-sm text-muted-foreground">Preview not available.</p>
-                ) : (
-                  <div className="relative h-full w-full">
-                    <AnimatePresence initial={false} custom={navDirection} mode="popLayout">
-                      <motion.div
-                        key={`${safeIndex}-${fileUrl}`}
-                        custom={navDirection}
-                        variants={slideVariants}
-                        initial="enter"
-                        animate="center"
-                        exit="exit"
-                        transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-                        drag={enableMotionDrag ? "x" : false}
-                        dragConstraints={{ left: 0, right: 0 }}
-                        dragElastic={0.12}
-                        onDragEnd={handleDragEnd}
-                        className="absolute inset-0 flex items-center justify-center"
-                      >
-                        {fileType === "pdf" ? (
-                          <iframe
-                            title={fileName}
-                            src={fileUrl}
-                            className="h-full w-full border-0"
-                          />
-                        ) : (
-                          <TransformWrapper
-                            key={`${safeIndex}-${fileUrl}`}
-                            initialScale={1}
-                            initialPositionX={0}
-                            initialPositionY={0}
-                            minScale={0.35}
-                            maxScale={8}
-                            wheel={{ step: 0.12 }}
-                            panning={{ velocityDisabled: true }}
-                            pinch={{ step: 5 }}
-                            doubleClick={{ mode: "toggle", step: 0.85 }}
-                            onTransformed={(_ref, st) => setPinchScale(st.scale)}
-                          >
-                            <TransformComponent
-                              wrapperClass="!flex !h-full !w-full !items-center !justify-center"
-                              contentClass="!flex !h-full !w-full !items-center !justify-center"
-                            >
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={fileUrl}
-                                alt=""
-                                className="max-h-full max-w-full object-contain"
-                                draggable={false}
-                              />
-                            </TransformComponent>
-                          </TransformWrapper>
-                        )}
-                      </motion.div>
-                    </AnimatePresence>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <footer className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-border/60 px-4 py-3">
-              {extraFooter}
-              {showReplace && replaceInputRef && onReplaceClick && onReplaceInputChange ? (
-                <>
-                  <input
-                    ref={replaceInputRef}
-                    type="file"
-                    className="hidden"
-                    accept={replaceAccept}
-                    capture="environment"
-                    onChange={onReplaceInputChange}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-8"
-                    disabled={replaceBusy}
-                    onClick={onReplaceClick}
-                  >
-                    <RefreshCw className="mr-2 h-3.5 w-3.5" />
-                    {replaceBusy ? "Replacing…" : "Replace"}
-                  </Button>
-                </>
-              ) : null}
-              <Button
-                type="button"
-                size="sm"
-                className="h-8"
-                disabled={!fileUrl || sessionIsLoading || unsupported || downloadBusy}
-                onClick={() => void handleDownload()}
+              <div
+                className="relative flex min-h-0 min-w-0 flex-1 flex-col px-4 py-2"
+                onTouchStartCapture={onTouchStartCapture}
+                onTouchEndCapture={onTouchEndCapture}
               >
-                {downloadBusy ? (
+                {showNav ? (
                   <>
-                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" aria-hidden />
-                    Downloading…
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="btn-outline-ghost absolute left-1 top-1/2 z-20 h-9 w-9 -translate-y-1/2 rounded-sm"
+                      aria-label="Previous attachment"
+                      onClick={goPrev}
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="btn-outline-ghost absolute right-1 top-1/2 z-20 h-9 w-9 -translate-y-1/2 rounded-sm"
+                      aria-label="Next attachment"
+                      onClick={goNext}
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </Button>
                   </>
-                ) : (
+                ) : null}
+
+                <div className="flex min-h-0 w-full flex-1 max-h-[min(85vh,calc(90vh-8rem))] items-center justify-center overflow-hidden">
+                  {sessionIsLoading ? (
+                    <div
+                      className="flex w-full flex-col items-center justify-center gap-3 px-6 py-8"
+                      aria-busy
+                    >
+                      <Skeleton className="h-[min(50vh,280px)] w-full max-w-2xl rounded-md" />
+                      <span className="sr-only">Loading preview</span>
+                    </div>
+                  ) : unsupported ? (
+                    <p className="px-4 text-center text-sm text-muted-foreground">
+                      Preview not available for this file type.
+                    </p>
+                  ) : !fileUrl ? (
+                    <p className="text-sm text-muted-foreground">Preview not available.</p>
+                  ) : (
+                    <div className="relative h-full w-full">
+                      <AnimatePresence initial={false} custom={navDirection} mode="popLayout">
+                        <motion.div
+                          key={`${safeIndex}-${fileUrl}`}
+                          custom={navDirection}
+                          variants={slideVariants}
+                          initial="enter"
+                          animate="center"
+                          exit="exit"
+                          transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                          drag={enableMotionDrag ? "x" : false}
+                          dragConstraints={{ left: 0, right: 0 }}
+                          dragElastic={0.12}
+                          onDragEnd={handleDragEnd}
+                          className="absolute inset-0 flex items-center justify-center"
+                        >
+                          {fileType === "pdf" ? (
+                            <iframe
+                              title={fileName}
+                              src={fileUrl}
+                              className="h-full w-full border-0"
+                            />
+                          ) : (
+                            <TransformWrapper
+                              key={`${safeIndex}-${fileUrl}`}
+                              initialScale={1}
+                              initialPositionX={0}
+                              initialPositionY={0}
+                              minScale={0.35}
+                              maxScale={8}
+                              wheel={{ step: 0.12 }}
+                              panning={{ velocityDisabled: true }}
+                              pinch={{ step: 5 }}
+                              doubleClick={{ mode: "toggle", step: 0.85 }}
+                              onTransformed={(_ref, st) => setPinchScale(st.scale)}
+                            >
+                              <TransformComponent
+                                wrapperClass="!flex !h-full !w-full !items-center !justify-center"
+                                contentClass="!flex !h-full !w-full !items-center !justify-center"
+                              >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={fileUrl}
+                                  alt=""
+                                  data-no-image-preview
+                                  className="max-h-full max-w-full object-contain"
+                                  draggable={false}
+                                />
+                              </TransformComponent>
+                            </TransformWrapper>
+                          )}
+                        </motion.div>
+                      </AnimatePresence>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <footer className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-border/60 px-4 py-3">
+                {extraFooter}
+                {showReplace && replaceInputRef && onReplaceClick && onReplaceInputChange ? (
                   <>
-                    <Download className="mr-2 h-3.5 w-3.5" />
-                    Download
+                    <input
+                      ref={replaceInputRef}
+                      type="file"
+                      className="hidden"
+                      accept={replaceAccept}
+                      capture="environment"
+                      onChange={onReplaceInputChange}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8"
+                      disabled={replaceBusy}
+                      onClick={onReplaceClick}
+                    >
+                      <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                      {replaceBusy ? "Replacing…" : "Replace"}
+                    </Button>
                   </>
-                )}
-              </Button>
-            </footer>
-          </motion.div>
-        </motion.div>
-      ) : null}
+                ) : null}
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-8"
+                  disabled={!fileUrl || sessionIsLoading || unsupported || downloadBusy}
+                  onClick={() => void handleDownload()}
+                >
+                  {downloadBusy ? (
+                    <>
+                      <InlineLoading className="mr-2" size="md" aria-hidden />
+                      Downloading…
+                    </>
+                  ) : (
+                    <>
+                      <Download className="mr-2 h-3.5 w-3.5" />
+                      Download
+                    </>
+                  )}
+                </Button>
+              </footer>
+            </motion.div>,
+          ]
+        : null}
     </AnimatePresence>,
     document.body
   );

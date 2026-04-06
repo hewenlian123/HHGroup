@@ -5,7 +5,7 @@ import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { PageLayout, PageHeader } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { Select } from "@/components/ui/native-select";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 
 type ViewMode = "list" | "calendar";
 type ScheduleRow = {
@@ -170,7 +171,7 @@ const ScheduleTableRow = React.memo(function ScheduleTableRow({
   statusLabel: (s: string) => string;
 }) {
   return (
-    <tr className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30">
+    <tr className={listTableRowStaticClassName}>
       <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium text-foreground">
         {item.title || "—"}
       </td>

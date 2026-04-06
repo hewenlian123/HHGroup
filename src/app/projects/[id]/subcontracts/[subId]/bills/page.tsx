@@ -6,6 +6,7 @@ import { AddBillButton } from "./add-bill-button";
 import { ApproveBillButton } from "./approve-bill-button";
 import { BillRowActions } from "./bill-row-actions";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
+import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 
 function fmtUsd(n: number): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -91,10 +92,7 @@ export default async function SubcontractBillsPage({ params }: Props) {
                       r.status !== "Paid" &&
                       r.status !== "Void";
                     return (
-                      <tr
-                        key={r.id}
-                        className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
-                      >
+                      <tr key={r.id} className={listTableRowStaticClassName}>
                         <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] font-medium tabular-nums">
                           {r.bill_date}
                         </td>

@@ -1,13 +1,20 @@
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
+import { motionCardHover } from "@/lib/motion-system";
 
-const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, ...props }, ref) => (
+export type CardProps = React.HTMLAttributes<HTMLDivElement> & {
+  /** Lift + shadow on hover (use for tappable cards / previews). */
+  interactive?: boolean;
+};
+
+const Card = React.forwardRef<HTMLDivElement, CardProps>(
+  ({ className, interactive, ...props }, ref) => (
     <div
       ref={ref}
       className={cn(
         "rounded-lg border border-gray-300 bg-white text-foreground shadow-sm dark:border-border dark:bg-card dark:shadow-none",
+        interactive && motionCardHover,
         className
       )}
       {...props}

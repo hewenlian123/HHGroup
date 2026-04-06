@@ -1,12 +1,14 @@
 import { cn } from "@/lib/utils";
+import { motionInputFocus, motionListRow } from "@/lib/motion-system";
 
-/** Clickable data row — Airtable-style flat hover (no lift). */
-export const listTableRowClassName = cn(
-  "group cursor-pointer border-0 transition-colors duration-150",
-  "hover:bg-[#F5F7FA]",
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#111827]/10 dark:focus-visible:ring-border/60",
-  "dark:hover:bg-muted/40"
-);
+/** Clickable data row — shared list motion + focus ring. */
+export const listTableRowClassName = cn(motionListRow, "cursor-pointer border-0", motionInputFocus);
+
+/** Non-clickable table row — same hover/active; `group` for row-action menus. */
+export const listTableRowStaticClassName = cn(motionListRow, "border-0");
+
+/** Flex / block list rows (e.g. change-order list) — same motion; no `border-0`. */
+export const listFlexRowClassName = motionListRow;
 
 /** Primary title / name column */
 export const listTablePrimaryCellClassName =
@@ -17,12 +19,12 @@ export const listTableAmountCellClassName = cn(
   "transition-colors duration-200 group-hover:!text-text-primary dark:group-hover:!text-foreground"
 );
 
-/** Row actions trigger: always visible (keyboard, screen readers, E2E); hover still styles the control. */
+/** Row actions trigger: hidden until row hover/focus on desktop; always visible on touch (<md). */
 export const listRowActionsTriggerClassName = cn(
-  "h-auto w-auto min-h-0 min-w-0 shrink-0 p-2 rounded-lg text-muted-foreground",
-  "opacity-100 transition-opacity duration-200",
-  "hover:bg-white hover:text-foreground hover:shadow-sm",
-  "data-[state=open]:opacity-100 data-[state=open]:bg-white data-[state=open]:shadow-sm dark:data-[state=open]:bg-popover"
+  "h-auto w-auto min-h-0 min-w-0 shrink-0 rounded-lg p-2 text-muted-foreground",
+  "opacity-0 transition-all duration-150 ease-out group-hover:opacity-100 group-focus-within:opacity-100 max-md:opacity-100",
+  "hover:-translate-y-px hover:bg-white hover:text-foreground hover:shadow-sm active:scale-[0.97] active:duration-100 max-md:active:scale-[0.96]",
+  "data-[state=open]:!opacity-100 data-[state=open]:bg-white data-[state=open]:shadow-sm dark:data-[state=open]:bg-popover"
 );
 
 export const listRowActionsContentClassName = cn(

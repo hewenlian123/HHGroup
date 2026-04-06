@@ -5,6 +5,7 @@ import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 
 const REFRESH_INTERVAL_MS = 30_000;
 
@@ -241,10 +242,7 @@ export default function SystemHealthPage() {
                   </tr>
                 ) : (
                   result?.checks.map((ch) => (
-                    <tr
-                      key={ch.name}
-                      className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
-                    >
+                    <tr key={ch.name} className={listTableRowStaticClassName}>
                       <td className="py-2.5 pr-6 font-medium">{ch.name}</td>
                       <td className="py-2.5 pr-6">
                         <StatusLabel ok={ch.ok} />
@@ -286,7 +284,7 @@ export default function SystemHealthPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30">
+                  <tr className={listTableRowStaticClassName}>
                     <td className="py-2.5 pr-6 font-medium">Orphaned tasks</td>
                     <td className="py-2.5 pr-6">
                       <StatusLabel ok={!(integrity?.orphanedTasks.count ?? 0)} />
@@ -312,7 +310,7 @@ export default function SystemHealthPage() {
                       )}
                     </td>
                   </tr>
-                  <tr className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30">
+                  <tr className={listTableRowStaticClassName}>
                     <td className="py-2.5 pr-6 font-medium">Ghost tasks</td>
                     <td className="py-2.5 pr-6">
                       <StatusLabel ok={!(integrity?.ghostTasks.count ?? 0)} />
@@ -336,7 +334,7 @@ export default function SystemHealthPage() {
                       )}
                     </td>
                   </tr>
-                  <tr className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30">
+                  <tr className={listTableRowStaticClassName}>
                     <td className="py-2.5 pr-6 font-medium">Duplicate tasks</td>
                     <td className="py-2.5 pr-6">
                       <StatusLabel ok={!(integrity?.duplicateTasks.count ?? 0)} />
@@ -362,7 +360,7 @@ export default function SystemHealthPage() {
                       )}
                     </td>
                   </tr>
-                  <tr className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30">
+                  <tr className={listTableRowStaticClassName}>
                     <td className="py-2.5 pr-6 font-medium">Overdue not completed</td>
                     <td className="py-2.5 pr-6">
                       <StatusLabel ok={(integrity?.overdueNotCompleted.count ?? 0) === 0} />
@@ -373,7 +371,7 @@ export default function SystemHealthPage() {
                         : "—"}
                     </td>
                   </tr>
-                  <tr className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30">
+                  <tr className={listTableRowStaticClassName}>
                     <td className="py-2.5 pr-6 font-medium">Stale test data</td>
                     <td className="py-2.5 pr-6">
                       <StatusLabel

@@ -5,9 +5,12 @@ import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { Select } from "@/components/ui/native-select";
 import { FilterBar } from "@/components/filter-bar";
+import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/status-badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { listTableRowClassName } from "@/lib/list-table-interaction";
 
 type WorkerRow = {
   id: string;
@@ -374,23 +377,28 @@ export default function LaborWorkersPage() {
               </tr>
             </thead>
             <tbody>
-              {loading ? (
-                <tr>
-                  <td
-                    className="h-11 min-h-[44px] px-3 py-0 text-center text-muted-foreground"
-                    colSpan={6}
-                  >
-                    Loading workers...
-                  </td>
-                </tr>
-              ) : null}
+              {loading
+                ? Array.from({ length: 5 }, (_, i) => (
+                    <tr
+                      key={`sk-${i}`}
+                      className="pointer-events-none border-0 hover:!translate-y-0 hover:!bg-transparent active:!scale-100"
+                    >
+                      {Array.from({ length: 6 }, (__, j) => (
+                        <td key={j} className="h-11 min-h-[44px] px-3 py-0 align-middle">
+                          <Skeleton
+                            className={cn(
+                              "h-4 rounded-md",
+                              j === 4 ? "w-16" : j === 5 ? "ml-auto w-24" : "max-w-[10rem]"
+                            )}
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                : null}
               {filtered.map((w) => {
                 return (
-                  <tr
-                    key={w.id}
-                    className="group cursor-pointer transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
-                    onClick={() => openEdit(w)}
-                  >
+                  <tr key={w.id} className={listTableRowClassName} onClick={() => openEdit(w)}>
                     <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium text-foreground">
                       {w.name || "—"}
                     </td>

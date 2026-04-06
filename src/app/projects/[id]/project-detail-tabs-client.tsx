@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, MoreHorizontal } from "lucide-react";
 import { PageLayout, Divider, SectionHeader } from "@/components/base";
 import { cn } from "@/lib/utils";
+import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import {
@@ -728,10 +729,7 @@ export function ProjectDetailTabsClient({
                         </thead>
                         <tbody>
                           {scheduleItems.map((s) => (
-                            <tr
-                              key={s.id}
-                              className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
-                            >
+                            <tr key={s.id} className={listTableRowStaticClassName}>
                               <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
                                 {s.title}
                               </td>
@@ -800,10 +798,7 @@ export function ProjectDetailTabsClient({
                       </thead>
                       <tbody>
                         {projectInvoices.map((inv) => (
-                          <tr
-                            key={inv.id}
-                            className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
-                          >
+                          <tr key={inv.id} className={listTableRowStaticClassName}>
                             <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">
                               <Link
                                 href={`/financial/invoices/${inv.id}`}
@@ -889,10 +884,7 @@ export function ProjectDetailTabsClient({
                       </thead>
                       <tbody>
                         {budgetItems.map((b) => (
-                          <tr
-                            key={b.id}
-                            className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
-                          >
+                          <tr key={b.id} className={listTableRowStaticClassName}>
                             <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
                               {b.costCode ?? "—"}
                             </td>
@@ -958,10 +950,7 @@ export function ProjectDetailTabsClient({
                       </thead>
                       <tbody>
                         {changeOrders.map((co) => (
-                          <tr
-                            key={co.id}
-                            className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
-                          >
+                          <tr key={co.id} className={listTableRowStaticClassName}>
                             <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
                               {co.number ?? "—"}
                             </td>
@@ -1049,10 +1038,7 @@ export function ProjectDetailTabsClient({
                       </thead>
                       <tbody>
                         {subcontracts.map((s) => (
-                          <tr
-                            key={s.id}
-                            className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
-                          >
+                          <tr key={s.id} className={listTableRowStaticClassName}>
                             <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
                               {s.subcontractor_name ?? "—"}
                             </td>
@@ -1094,10 +1080,7 @@ export function ProjectDetailTabsClient({
                       </thead>
                       <tbody>
                         {bills.map((b) => (
-                          <tr
-                            key={b.id}
-                            className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
-                          >
+                          <tr key={b.id} className={listTableRowStaticClassName}>
                             <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
                               {b.vendor_name ?? "—"}
                             </td>
@@ -1145,10 +1128,7 @@ export function ProjectDetailTabsClient({
                         </thead>
                         <tbody>
                           {laborEntries.slice(0, 20).map((e) => (
-                            <tr
-                              key={e.id}
-                              className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
-                            >
+                            <tr key={e.id} className={listTableRowStaticClassName}>
                               <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
                                 {e.worker_name ?? "—"}
                               </td>

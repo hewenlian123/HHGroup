@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { Customer } from "@/lib/customers-db";
 import { runOptimisticPersist } from "@/lib/optimistic-save";
+import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 
 type Props = {
   initialCustomers: Customer[];
@@ -330,10 +331,7 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
                 </thead>
                 <tbody>
                   {filtered.map((c) => (
-                    <tr
-                      key={c.id}
-                      className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
-                    >
+                    <tr key={c.id} className={listTableRowStaticClassName}>
                       <td className="min-h-[44px] px-3 py-2 align-middle font-medium">
                         <Link
                           href={`/customers/${c.id}`}

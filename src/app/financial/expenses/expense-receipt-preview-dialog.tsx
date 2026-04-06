@@ -3,7 +3,8 @@
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { motion } from "framer-motion";
-import { Download, Loader2, X } from "lucide-react";
+import { Download, X } from "lucide-react";
+import { InlineLoading, Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -174,8 +175,11 @@ export function ExpenseReceiptPreviewDialog({
               ) : (
                 <>
                   {loadPhase === "loading" ? (
-                    <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-background/70 backdrop-blur-[1px] dark:bg-background/80">
-                      <Loader2 className="h-9 w-9 animate-spin text-muted-foreground" aria-hidden />
+                    <div
+                      className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-background/70 px-6 backdrop-blur-sm dark:bg-background/80"
+                      aria-busy
+                    >
+                      <Skeleton className="h-[min(50vh,320px)] w-full max-w-lg rounded-md" />
                       <span className="sr-only">Loading preview</span>
                     </div>
                   ) : null}
@@ -261,7 +265,7 @@ export function ExpenseReceiptPreviewDialog({
                 >
                   {downloading ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                      <InlineLoading className="mr-2" size="md" aria-hidden />
                       Downloading…
                     </>
                   ) : (

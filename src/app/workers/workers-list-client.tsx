@@ -6,6 +6,7 @@ import { syncRouterAndClients } from "@/lib/sync-router-client";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { runOptimisticPersist } from "@/lib/optimistic-save";
 import { Button } from "@/components/ui/button";
+import { InlineLoading } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -25,7 +26,7 @@ import {
   listTablePrimaryCellClassName,
   listTableRowClassName,
 } from "@/lib/list-table-interaction";
-import { Loader2, UserPlus } from "lucide-react";
+import { UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function fmtRate(n: number): string {
@@ -415,7 +416,7 @@ export function WorkersListClient({
             >
               {busy ? (
                 <>
-                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
+                  <InlineLoading className="mr-1.5" aria-hidden />
                   Saving…
                 </>
               ) : (

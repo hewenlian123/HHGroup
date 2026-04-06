@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 export { allowWorkerPaymentMutations } from "./e2e-env-helpers";
 
@@ -32,4 +32,42 @@ export async function deleteAllWorkerPaymentsForWorker(
     await delDone;
     await page.getByText("Loading…").first().waitFor({ state: "hidden", timeout: 15_000 });
   }
+}
+
+/** Clicks View Receipt on a payments table row; waits for preview API; asserts server returned labor lines. */
+export async function openWorkerPaymentReceiptPreviewAndAssertLaborLines(
+  page: Page,
+  payRow: Locator
+): Promise<void> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    if (attempt > 0) {
+      const dlg = page.getByRole("dialog", { name: /Receipt preview/i });
+      const closer = dlg.getByRole("button", { name: "Close" });
+      if (await closer.isVisible().catch(() => false)) {
+        await closer.click();
+      } else {
+        await page.keyboard.press("Escape");
+      }
+      await dlg.waitFor({ state: "hidden", timeout: 15_000 }).catch(() => {});
+      await page.waitForTimeout(400);
+    }
+
+    const previewDone = page.waitForResponse(
+      (r) =>
+        r.url().includes("/api/labor/worker-payments/") &&
+        r.url().includes("/receipt-preview") &&
+        r.request().method() === "GET",
+      { timeout: 90_000 }
+    );
+    await payRow.getByRole("button", { name: "View Receipt" }).click();
+    const res = await previewDone;
+    const bodyText = await res.text();
+    expect(res.ok(), `receipt-preview HTTP ${res.status()}: ${bodyText.slice(0, 400)}`).toBe(true);
+    const dto = JSON.parse(bodyText) as { receipt?: { laborLines?: unknown[] } | null };
+    const n = dto.receipt?.laborLines?.length ?? 0;
+    if (n > 0) return;
+  }
+  expect(false, "receipt-preview JSON has no laborLines after retries (server still empty).").toBe(
+    true
+  );
 }

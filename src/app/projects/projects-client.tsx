@@ -8,7 +8,7 @@ import { Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FilterBar } from "@/components/filter-bar";
-import { Select } from "@/components/ui/select";
+import { Select } from "@/components/ui/native-select";
 import { DataTable, type Column } from "@/components/data-table";
 import { StatusBadge } from "@/components/status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -275,7 +275,7 @@ export function ProjectsClient() {
             asChild
             variant="outline"
             size="sm"
-            className="border-[0.5px] border-gray-300 bg-white text-text-primary shadow-none hover:bg-[#F5F7FA] dark:border-border dark:bg-card"
+            className="rounded-md border-[0.5px] border-gray-300 bg-white text-text-primary shadow-none transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-50 active:scale-[0.97] active:duration-100 dark:border-border dark:bg-card dark:hover:bg-muted/40"
           >
             <Link href="/projects/new">
               <Plus className="h-4 w-4" />

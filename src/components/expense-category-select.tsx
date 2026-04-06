@@ -4,6 +4,13 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogFooter,
@@ -23,7 +30,7 @@ export type ExpenseCategorySelectProps = {
   className?: string;
   id?: string;
   autoFocus?: boolean;
-  onKeyDown?: React.KeyboardEventHandler<HTMLSelectElement>;
+  onKeyDown?: React.KeyboardEventHandler<HTMLElement>;
   /** Notified with refreshed names after load or after creating a category */
   onCategoriesUpdated?: (names: string[]) => void;
   /** Forwarded to the native select for keyboard / focus navigation (e.g. receipt queue). */
@@ -93,15 +100,6 @@ export function ExpenseCategorySelect({
 
   const merged = React.useMemo(() => mergeOptions(options, value), [options, value]);
 
-  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const v = e.target.value;
-    if (v === ADD_NEW_VALUE) {
-      setAddOpen(true);
-      return;
-    }
-    onValueChange(v);
-  };
-
   const handleCreate = async () => {
     const trimmed = newName.trim();
     if (!trimmed) {
@@ -146,25 +144,37 @@ export function ExpenseCategorySelect({
 
   return (
     <>
-      <select
-        id={id}
+      <Select
         value={value}
         disabled={disabled || loading}
-        onChange={handleSelectChange}
-        onKeyDown={onKeyDown}
-        className={cn(className)}
-        autoFocus={autoFocus}
-        aria-busy={loading}
-        data-queue-row-id={dataQueueRowId}
-        data-queue-field={dataQueueField}
+        onValueChange={(v) => {
+          if (v === ADD_NEW_VALUE) {
+            setAddOpen(true);
+            return;
+          }
+          onValueChange(v);
+        }}
       >
-        {merged.map((c) => (
-          <option key={c} value={c}>
-            {c}
-          </option>
-        ))}
-        <option value={ADD_NEW_VALUE}>+ Add new category</option>
-      </select>
+        <SelectTrigger
+          id={id}
+          className={cn("h-9", className)}
+          aria-busy={loading}
+          data-queue-row-id={dataQueueRowId}
+          data-queue-field={dataQueueField}
+          autoFocus={autoFocus}
+          onKeyDown={onKeyDown as React.KeyboardEventHandler<HTMLButtonElement>}
+        >
+          <SelectValue placeholder="Category" />
+        </SelectTrigger>
+        <SelectContent>
+          {merged.map((c) => (
+            <SelectItem key={c} value={c}>
+              {c}
+            </SelectItem>
+          ))}
+          <SelectItem value={ADD_NEW_VALUE}>+ Add new category</SelectItem>
+        </SelectContent>
+      </Select>
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="max-w-sm rounded-sm border-border/60">

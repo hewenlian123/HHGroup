@@ -7,11 +7,12 @@ import { FilterBar } from "@/components/filter-bar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { Select } from "@/components/ui/native-select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { DeleteRowAction } from "@/components/base";
 import { createBrowserClient } from "@/lib/supabase";
+import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 
 type PayRunRow = {
   workerId: string;
@@ -442,7 +443,7 @@ export default function LaborPaymentsClient() {
               ) : (
                 rows.map((row) => (
                   <React.Fragment key={row.workerId}>
-                    <tr className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30">
+                    <tr className={listTableRowStaticClassName}>
                       <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium text-foreground">
                         <button
                           type="button"

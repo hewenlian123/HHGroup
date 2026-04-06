@@ -8,10 +8,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   listTableAmountCellClassName,
   listTablePrimaryCellClassName,
   listTableRowClassName,
+  listTableRowStaticClassName,
 } from "@/lib/list-table-interaction";
 
 export interface Column<T> {
@@ -76,11 +78,17 @@ export function DataTable<T>({
 
   return (
     <>
+      {loading ? <span className="sr-only">{loadingText}</span> : null}
       {/* Desktop/Tablet: table */}
       <div className="table-responsive relative hidden w-full md:block">
         <Table className={cn("min-w-[480px] md:min-w-0 border-0", className)}>
           <TableHeader>
-            <TableRow className={cn("hover:bg-transparent", headerClassName)}>
+            <TableRow
+              className={cn(
+                "hover:!translate-y-0 hover:!bg-transparent active:!scale-100 dark:hover:!bg-transparent",
+                headerClassName
+              )}
+            >
               {columns.map((col) => (
                 <TableHead
                   key={col.key}
@@ -95,16 +103,25 @@ export function DataTable<T>({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="py-8 text-center text-muted-foreground"
-                >
-                  {loadingText}
-                </TableCell>
-              </TableRow>
-            ) : null}
+            {loading
+              ? Array.from({ length: Math.min(6, Math.max(3, data.length || 5)) }, (_, i) => (
+                  <TableRow
+                    key={`sk-${i}`}
+                    className="pointer-events-none border-0 hover:!translate-y-0 hover:!bg-transparent active:!scale-100"
+                  >
+                    {columns.map((col) => (
+                      <TableCell key={col.key} className="py-3">
+                        <Skeleton
+                          className={cn(
+                            "h-4 rounded-md",
+                            col.align === "right" ? "ml-auto w-20" : "w-full max-w-[10rem]"
+                          )}
+                        />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              : null}
             {!loading && data.length === 0 ? (
               <TableRow>
                 <TableCell
@@ -146,9 +163,7 @@ export function DataTable<T>({
                       : undefined
                   }
                   className={cn(
-                    onRowClick
-                      ? listTableRowClassName
-                      : "border-0 transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30",
+                    onRowClick ? listTableRowClassName : listTableRowStaticClassName,
                     zebra && index % 2 === 1 && !onRowClick && "bg-[#FAFAFA]/80 dark:bg-muted/10",
                     rowClassName
                   )}
@@ -185,8 +200,19 @@ export function DataTable<T>({
       {/* Mobile: card layout */}
       <div className="grid gap-3 md:hidden">
         {loading ? (
-          <div className="rounded-lg border border-border/60 bg-muted/20 px-4 py-6 text-center text-sm text-muted-foreground">
-            {loadingText}
+          <div className="grid gap-3">
+            {Array.from({ length: 4 }, (_, i) => (
+              <div
+                key={`msk-${i}`}
+                className="rounded-lg border border-border/60 bg-background px-3 py-3"
+              >
+                <Skeleton className="h-5 w-2/3 rounded-md" />
+                <div className="mt-3 space-y-2">
+                  <Skeleton className="h-4 w-full rounded-md" />
+                  <Skeleton className="h-4 w-5/6 rounded-md" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : data.length === 0 ? (
           <div className="rounded-lg border border-border/60 bg-muted/20 px-4 py-6 text-center text-sm text-muted-foreground">
@@ -198,7 +224,7 @@ export function DataTable<T>({
             return (
               <div
                 key={keyExtractor(row)}
-                className="rounded-lg border border-border/60 bg-background p-4 shadow-[var(--shadow-1)]"
+                className="group rounded-lg border border-border/60 bg-background px-3 py-3 shadow-[var(--shadow-1)] transition-all duration-150 ease-out active:scale-[0.99] hover:-translate-y-px hover:bg-gray-50 dark:hover:bg-muted/40"
               >
                 <div className="text-base font-medium text-foreground">
                   {titleCol ? getCellContent(row, titleCol) : null}

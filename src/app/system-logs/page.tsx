@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { PageHeader } from "@/components/page-header";
+import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 
 type LogEntry = {
   time: string;
@@ -93,10 +94,7 @@ export default function SystemLogsPage() {
                 </tr>
               ) : (
                 logs.map((entry, i) => (
-                  <tr
-                    key={`${entry.time}-${i}`}
-                    className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
-                  >
+                  <tr key={`${entry.time}-${i}`} className={listTableRowStaticClassName}>
                     <td className="py-2 pr-4 tabular-nums text-muted-foreground">{entry.time}</td>
                     <td className="py-2 pr-4">{entry.module}</td>
                     <td className="py-2 pr-4">

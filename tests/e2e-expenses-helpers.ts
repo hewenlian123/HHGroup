@@ -154,3 +154,13 @@ export async function waitForReceiptQueueEditableVendor(
   await vendor.waitFor({ state: "visible", timeout: timeoutMs });
   return vendor;
 }
+
+/** Queue confirm uses hotToast "Confirmed"; list elsewhere may say "Expense created". */
+export function receiptQueueExpenseSuccessSeen(bodyText: string): boolean {
+  return /expense created|confirmed/i.test(bodyText);
+}
+
+/** Global attachment preview portal (dialog title is the file name, not "Receipt preview"). */
+export function attachmentPreviewModal(page: Page): Locator {
+  return page.locator("[data-attachment-preview-modal]");
+}

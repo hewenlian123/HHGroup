@@ -98,7 +98,7 @@ const PunchListRow = React.memo(function PunchListRow({
       <button
         type="button"
         onClick={() => onOpenDrawer(item)}
-        className="w-full text-left py-2.5 px-3 hover:bg-[#fafafa] transition-colors"
+        className="w-full text-left py-2.5 px-3 transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-50 dark:hover:bg-muted/40"
       >
         <div className="font-medium text-foreground">{item.issue || "—"}</div>
         <div className="text-xs text-muted-foreground mt-0.5">
@@ -463,7 +463,7 @@ export default function PunchListPage() {
               "px-3 py-1.5 text-sm font-medium rounded-[6px] transition-colors",
               viewMode === "list"
                 ? "bg-foreground text-background"
-                : "text-muted-foreground hover:text-foreground hover:bg-[#fafafa]"
+                : "text-muted-foreground hover:text-foreground hover:bg-gray-50 dark:hover:bg-muted/40"
             )}
           >
             List View
@@ -475,7 +475,7 @@ export default function PunchListPage() {
               "px-3 py-1.5 text-sm font-medium rounded-[6px] transition-colors",
               viewMode === "kanban"
                 ? "bg-foreground text-background"
-                : "text-muted-foreground hover:text-foreground hover:bg-[#fafafa]"
+                : "text-muted-foreground hover:text-foreground hover:bg-gray-50 dark:hover:bg-muted/40"
             )}
           >
             Kanban Board

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { PageLayout, PageHeader, Divider } from "@/components/base";
 import { getFinanceOverviewStats, getRecentTransactions } from "@/lib/data";
 import { DollarSign, Banknote, ShoppingCart, Clock, TrendingUp, Activity } from "lucide-react";
+import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 
 export const dynamic = "force-dynamic";
 
@@ -139,10 +140,7 @@ export default async function FinanceOverviewPage() {
                 </thead>
                 <tbody>
                   {recent.map((tx) => (
-                    <tr
-                      key={`${tx.type}-${tx.id}`}
-                      className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
-                    >
+                    <tr key={`${tx.type}-${tx.id}`} className={listTableRowStaticClassName}>
                       <td className="px-3 py-1.5 text-muted-foreground capitalize">{tx.type}</td>
                       <td className="px-3 py-1.5">{tx.description}</td>
                       <td className="px-3 py-1.5 text-muted-foreground">{tx.projectName ?? "—"}</td>

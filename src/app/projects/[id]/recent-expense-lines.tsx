@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { listTableRowClassName } from "@/lib/list-table-interaction";
 
 export type RecentExpenseLineRow = {
   id: string;
@@ -62,7 +63,7 @@ export function RecentExpenseLines({ rows }: { rows: RecentExpenseLineRow[] }) {
                 rows.map((row) => (
                   <tr
                     key={row.id}
-                    className="cursor-pointer transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
+                    className={listTableRowClassName}
                     onClick={() => openRow(row)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {

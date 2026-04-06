@@ -229,7 +229,7 @@ export function Topbar({
           <Button
             variant="outline"
             size="icon"
-            className="btn-outline-ghost flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg border-[0.5px] border-gray-300 bg-white shadow-none transition-colors duration-150 hover:bg-[#F5F7FA] dark:border-border dark:bg-card dark:hover:bg-muted"
+            className="btn-outline-ghost flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-md border-[0.5px] border-gray-300 bg-white shadow-none transition-all duration-150 ease-out dark:border-border dark:bg-card"
             aria-label="Notifications"
           >
             <Bell className="h-4 w-4 text-text-secondary dark:text-muted-foreground" />
@@ -250,7 +250,7 @@ export function Topbar({
             <Button
               variant="outline"
               size="sm"
-              className="h-9 min-h-[44px] rounded-md border-[0.5px] border-gray-300 bg-white px-3.5 py-2.5 text-sm font-medium text-text-primary shadow-none hover:bg-[#F5F7FA] hover:text-text-primary sm:min-h-0 dark:border-border dark:bg-card dark:text-foreground dark:hover:bg-muted"
+              className="h-9 min-h-[44px] rounded-md border-[0.5px] border-gray-300 bg-white px-3.5 py-2.5 text-sm font-medium text-text-primary shadow-none transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-50 hover:text-text-primary active:scale-[0.97] active:duration-100 sm:min-h-0 dark:border-border dark:bg-card dark:text-foreground dark:hover:bg-muted/40"
             >
               <Plus className="mr-2 h-4 w-4" />
               New

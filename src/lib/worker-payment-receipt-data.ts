@@ -67,6 +67,23 @@ function mergeLaborRowsById(rows: LaborRowRaw[]): LaborRowRaw[] {
   });
 }
 
+/** Local seed uses `project_id`; older schemas use AM/PM project columns. */
+const LABOR_RECEIPT_SELECT_VARIANTS = [
+  "id, work_date, project_id, project_am_id, project_pm_id, cost_amount, total, morning, afternoon, worker_payment_id",
+  "id, work_date, project_id, project_am_id, project_pm_id, cost_amount, total, worker_payment_id",
+  "id, work_date, project_id, cost_amount, total, morning, afternoon, worker_payment_id",
+  "id, work_date, project_id, cost_amount, total, worker_payment_id",
+  "id, work_date, project_am_id, project_pm_id, cost_amount, total, morning, afternoon, worker_payment_id",
+  "id, work_date, project_am_id, project_pm_id, cost_amount, total, worker_payment_id",
+  "id, work_date, cost_amount, total, morning, afternoon, worker_payment_id",
+  "id, work_date, cost_amount, total, worker_payment_id",
+] as const;
+
+function isRetryableLaborSelectError(err: { message?: string } | null): boolean {
+  const m = (err?.message ?? "").toLowerCase();
+  return /column|schema cache|could not find|pgrst204/i.test(m);
+}
+
 /**
  * Load labor + reimb rows tied to this worker_payments row and current balance snapshot.
  * Labor lines: union of rows with worker_payment_id = paymentId and rows listed in
@@ -89,36 +106,67 @@ export async function getWorkerPaymentReceiptPayload(
     projectNameById.set(p.id, p.name ?? null);
   }
 
-  const laborRes = await c
-    .from("labor_entries")
-    .select(
-      "id, work_date, project_am_id, project_pm_id, cost_amount, total, morning, afternoon, worker_payment_id"
-    )
-    .eq("worker_payment_id", paymentId)
-    .eq("worker_id", workerId);
+  const loadLaborRows = async (): Promise<LaborRowRaw[]> => {
+    let laborFromLink: LaborRowRaw[] = [];
+    for (const sel of LABOR_RECEIPT_SELECT_VARIANTS) {
+      const laborRes = await c
+        .from("labor_entries")
+        .select(sel)
+        .eq("worker_payment_id", paymentId)
+        .eq("worker_id", workerId);
+      if (!laborRes.error) {
+        laborFromLink = (laborRes.data ?? []) as unknown as LaborRowRaw[];
+        break;
+      }
+      if (!isRetryableLaborSelectError(laborRes.error)) break;
+    }
 
-  const laborFromLink = (!laborRes.error ? (laborRes.data ?? []) : []) as LaborRowRaw[];
+    let extraIds = Array.from(
+      new Set(
+        (options?.laborEntryIdsFromPayment ?? []).filter(
+          (x): x is string => typeof x === "string" && x.length > 0
+        )
+      )
+    );
+    if (extraIds.length === 0) {
+      const payMeta = await c
+        .from("worker_payments")
+        .select("labor_entry_ids")
+        .eq("id", paymentId)
+        .maybeSingle();
+      if (!payMeta.error && payMeta.data) {
+        const raw = (payMeta.data as { labor_entry_ids?: unknown }).labor_entry_ids;
+        if (Array.isArray(raw)) {
+          extraIds = Array.from(
+            new Set(raw.filter((x): x is string => typeof x === "string" && x.length > 0))
+          );
+        }
+      }
+    }
+    let laborFromIds: LaborRowRaw[] = [];
+    if (extraIds.length > 0) {
+      for (const sel of LABOR_RECEIPT_SELECT_VARIANTS) {
+        const byIdsRes = await c
+          .from("labor_entries")
+          .select(sel)
+          .eq("worker_id", workerId)
+          .in("id", extraIds);
+        if (!byIdsRes.error) {
+          laborFromIds = (byIdsRes.data ?? []) as unknown as LaborRowRaw[];
+          break;
+        }
+        if (!isRetryableLaborSelectError(byIdsRes.error)) break;
+      }
+    }
 
-  const extraIds = Array.from(
-    new Set(
-      (options?.laborEntryIdsFromPayment ?? []).filter(
-        (x): x is string => typeof x === "string" && x.length > 0
-      )
-    )
-  );
-  let laborFromIds: LaborRowRaw[] = [];
-  if (extraIds.length > 0) {
-    const byIdsRes = await c
-      .from("labor_entries")
-      .select(
-        "id, work_date, project_am_id, project_pm_id, cost_amount, total, morning, afternoon, worker_payment_id"
-      )
-      .eq("worker_id", workerId)
-      .in("id", extraIds);
-    laborFromIds = (!byIdsRes.error ? (byIdsRes.data ?? []) : []) as LaborRowRaw[];
+    return mergeLaborRowsById([...laborFromLink, ...laborFromIds]);
+  };
+
+  let laborRaw = await loadLaborRows();
+  for (let bump = 0; bump < 8 && laborRaw.length === 0 && paymentAmount > 0.05; bump++) {
+    await new Promise((r) => setTimeout(r, 200));
+    laborRaw = await loadLaborRows();
   }
-
-  const laborRaw = mergeLaborRowsById([...laborFromLink, ...laborFromIds]);
 
   const laborLines: ReceiptLaborLine[] = laborRaw.map((r) => {
     const pid = r.project_id ?? r.project_am_id ?? r.project_pm_id ?? null;

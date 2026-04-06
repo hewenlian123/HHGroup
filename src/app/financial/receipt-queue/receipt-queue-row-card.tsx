@@ -8,8 +8,9 @@ import { StatusBadge } from "@/components/base";
 import { ExpenseCategorySelect } from "@/components/expense-category-select";
 import { PaymentAccountSelect } from "@/components/payment-account-select";
 import { cn } from "@/lib/utils";
+import { InlineLoading } from "@/components/ui/skeleton";
 import type { ReceiptQueueRow } from "@/lib/receipt-queue";
-import { Check, Loader2, Trash2 } from "lucide-react";
+import { Check, Trash2 } from "lucide-react";
 import type { RqLayout } from "./use-rq-layout";
 
 export type RowMotionPhase = "success_check" | "fade" | "collapse";
@@ -23,7 +24,7 @@ const RQ_BTN =
 function fieldClass(layout: RqLayout, extra?: string): string {
   return cn(
     "w-full min-w-0 border border-[#e5e7eb] bg-[#ffffff] text-[#111827] shadow-none transition-[border-color,box-shadow,background-color] duration-150 ease-out",
-    "hover:border-[#d1d5db] focus-visible:border-[#2563eb] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]/25",
+    "hover:border-[#d1d5db] focus-visible:border-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/30",
     layout === "mobile"
       ? "min-h-10 rounded-xl px-3 py-2 text-base leading-snug"
       : "h-9 rounded-lg text-xs",
@@ -167,7 +168,7 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
       aria-label="Preview receipt"
       data-queue-row-id={id}
       className={cn(
-        "relative overflow-hidden border border-[#e5e7eb] text-left transition-[opacity,box-shadow] duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]/35",
+        "relative overflow-hidden border border-[#e5e7eb] text-left transition-[opacity,box-shadow] duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/30",
         thumbSize,
         busy || !prev
           ? "cursor-not-allowed opacity-60"
@@ -189,7 +190,7 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
       )}
       {busy ? (
         <div className="absolute inset-0 flex items-center justify-center bg-white/70">
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          <InlineLoading className="h-4 w-4" size="md" aria-label="Processing" />
         </div>
       ) : null}
     </button>
@@ -395,16 +396,7 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
   );
 
   const rowHoverMotion =
-    !motion && !rowLocked
-      ? layout === "mobile"
-        ? ({ whileTap: { scale: 0.98 } } as const)
-        : ({
-            whileHover: {
-              y: -1,
-              transition: { duration: 0.15, ease: "easeOut" },
-            },
-          } as const)
-      : {};
+    !motion && !rowLocked && layout === "mobile" ? ({ whileTap: { scale: 0.99 } } as const) : {};
 
   const outerClass = cn(
     "relative shrink-0 overflow-hidden bg-[#ffffff] dark:bg-card",
@@ -412,11 +404,12 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
       ? "max-h-none rounded-xl border border-[#e5e7eb] shadow-sm dark:border-border"
       : "max-h-[520px] rounded-lg border border-[#e5e7eb] shadow-sm dark:border-border",
     !!motion && "pointer-events-none will-change-[opacity,transform,max-height]",
-    "transition-[transform,opacity,background-color,max-height,margin,padding,box-shadow] duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]",
+    motion
+      ? "transition-[transform,opacity,background-color,max-height,margin,padding,box-shadow] duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]"
+      : "transition-all duration-150 ease-out",
     !motion &&
       !rowLocked &&
-      layout !== "mobile" &&
-      "hover:bg-[#fafafa] hover:shadow-sm dark:hover:bg-muted/35",
+      "hover:-translate-y-px hover:bg-gray-50 active:scale-[0.99] dark:hover:bg-muted/40",
     motion === "success_check" && "bg-emerald-50 shadow-sm ring-1 ring-emerald-200/80",
     motion === "fade" && "translate-x-2 opacity-0 !duration-200 !ease-[cubic-bezier(0.4,0,0.2,1)]",
     motion === "collapse" &&
@@ -427,11 +420,7 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
     needsHighlight &&
       !motion &&
       "bg-[#f8fafc] shadow-[inset_3px_0_0_0_#2563eb] dark:bg-slate-950/40 dark:shadow-[inset_3px_0_0_0_rgb(37,99,235)]",
-    needsHighlight &&
-      !motion &&
-      !rowLocked &&
-      layout !== "mobile" &&
-      "hover:bg-[#f1f5f9] hover:shadow-sm dark:hover:bg-slate-950/55"
+    needsHighlight && !motion && !rowLocked && "dark:hover:bg-slate-950/55"
   );
 
   const successOverlayRounded = layout === "mobile" ? "rounded-xl" : "rounded-lg";

@@ -2,13 +2,79 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  .hh-motion-root {
+    --hh-duration: 150ms;
+    --hh-duration-slow: 180ms;
+    --hh-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  }
+
+  .hh-motion-root main :where(input, textarea, select, button):focus-visible {
+    scroll-margin-block: 0.75rem;
+  }
+
+  @keyframes hh-row-flash-success {
+    0%,
+    100% {
+      background-color: transparent;
+    }
+    40% {
+      background-color: rgb(220 252 231 / 0.85);
+    }
+  }
+
+  @keyframes hh-row-flash-success-dark {
+    0%,
+    100% {
+      background-color: transparent;
+    }
+    40% {
+      background-color: rgb(6 78 59 / 0.35);
+    }
+  }
+}
+
 @layer components {
+  .hh-motion-root .exp-row.hh-row-flash-success {
+    animation: hh-row-flash-success 0.65s ease-out;
+  }
+
+  .dark .hh-motion-root .exp-row.hh-row-flash-success {
+    animation: hh-row-flash-success-dark 0.65s ease-out;
+  }
+
   /**
    * Button `variant="outline"` companions (former ghost / destructive).
    * Use with outline for toolbar icons, cancel, or dangerous actions.
    */
   .btn-outline-ghost {
-    @apply !border-0 bg-transparent shadow-none hover:bg-gray-50 dark:!border-transparent dark:bg-transparent dark:hover:bg-muted/40;
+    @apply rounded-md !border-0 bg-transparent shadow-none transition-all duration-150 ease-out hover:!translate-y-0 hover:!bg-gray-100 hover:!scale-100 hover:!shadow-none active:!scale-[0.95] active:!duration-100 dark:!border-transparent dark:bg-transparent dark:hover:!bg-muted/50;
+  }
+  @media (max-width: 767px) {
+    .btn-outline-ghost:active {
+      transform: scale(0.95) !important;
+    }
+  }
+  /** Inline text controls (payment, date, etc.): subtle fill, no layout shift */
+  .hh-inline-tap {
+    @apply rounded-md transition-all duration-150 ease-out;
+  }
+  .hh-inline-tap:hover {
+    @apply -translate-y-px bg-gray-50 dark:hover:bg-muted/40;
+  }
+  .hh-inline-tap:active {
+    @apply scale-[0.97] duration-100;
+  }
+  @media (max-width: 767px) {
+    .hh-inline-tap:active {
+      transform: scale(0.96);
+    }
+  }
+  .hh-motion-root main img:not([data-no-image-preview]):not([data-no-tap-scale]) {
+    @apply cursor-zoom-in transition-[transform,box-shadow] duration-150 ease-out;
+  }
+  .hh-motion-root main img:not([data-no-image-preview]):not([data-no-tap-scale]):hover {
+    @apply scale-[1.02] shadow-md;
   }
   .btn-outline-destructive {
     @apply text-status-error border-status-error hover:bg-red-50 dark:border-status-error dark:hover:bg-red-950/30;

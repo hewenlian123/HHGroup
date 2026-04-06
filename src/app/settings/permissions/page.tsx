@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FilterBar } from "@/components/filter-bar";
-import { Select } from "@/components/ui/select";
+import { Select } from "@/components/ui/native-select";
 import {
   DEFAULT_ROLE_PERMISSIONS,
   PERMISSION_GROUPS,

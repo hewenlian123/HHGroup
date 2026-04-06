@@ -17,6 +17,8 @@ import {
 } from "@/lib/data";
 import { getCanonicalProjectProfit } from "@/lib/profit-engine";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
+import { cn } from "@/lib/utils";
+import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 
 function fmtUsd(n: number): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -276,10 +278,7 @@ export default async function ProjectProfitPage({ params }: Props) {
                     ? "text-destructive"
                     : "text-hh-profit-positive dark:text-hh-profit-positive";
                   return (
-                    <tr
-                      key={r.costCode}
-                      className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
-                    >
+                    <tr key={r.costCode} className={listTableRowStaticClassName}>
                       <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
                         {r.costCode}
                       </td>
@@ -334,10 +333,7 @@ export default async function ProjectProfitPage({ params }: Props) {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr
-                  key={r.category}
-                  className="transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30"
-                >
+                <tr key={r.category} className={listTableRowStaticClassName}>
                   <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
                     {r.category}
                   </td>
@@ -402,10 +398,7 @@ export default async function ProjectProfitPage({ params }: Props) {
                       ? "bg-orange-500/10 dark:bg-orange-500/10"
                       : "";
                   return (
-                    <tr
-                      key={s.id}
-                      className={`transition-colors hover:bg-[#F5F7FA] dark:hover:bg-muted/30 ${rowClass}`}
-                    >
+                    <tr key={s.id} className={cn(listTableRowStaticClassName, rowClass)}>
                       <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
                         {s.subcontractor_name}
                       </td>

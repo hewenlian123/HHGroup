@@ -8,21 +8,42 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   getExpenses,
   getExpenseCategories,
   getExpenseTotal,
   getWorkers,
   deleteExpense,
+  updateExpense,
   updateExpenseReceiptUrl,
   updateExpenseForReview,
   type Expense,
 } from "@/lib/data";
 import { createBrowserClient } from "@/lib/supabase";
-import { Check, Loader2, Paperclip, Pencil, Plus, Trash2, Upload, X } from "lucide-react";
+import { Check, MoreHorizontal, Paperclip, Pencil, Plus, Trash2, Upload, X } from "lucide-react";
 import { uiActionLog, uiActionMark, uiNavLog, uiNavMark } from "@/lib/ui-action-perf";
+import {
+  afterLayout,
+  focusFirstFocusableInContainer,
+  neighborRowIdAfterRemove,
+  scrollElementIntoViewNearest,
+} from "@/lib/list-flow";
 import { Pagination } from "@/components/ui/pagination";
 import { useSearchParams } from "next/navigation";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
+import { InlineLoading } from "@/components/ui/skeleton";
 import { QuickExpenseModal } from "./quick-expense-modal";
 import { UploadReceiptsQueueModal } from "./upload-receipts-queue-modal";
 import { EditExpenseModal, type ExpenseReviewSavePatch } from "./edit-expense-modal";
@@ -30,16 +51,25 @@ import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { useDelayedPending } from "@/hooks/use-delayed-pending";
 import hotToast from "react-hot-toast";
 import { useToast } from "@/components/toast/toast-provider";
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  buildExpensesQueryKey,
+  defaultExpenseListSort,
   expenseCategoriesQueryKey,
-  expensesQueryKey,
+  expensesQueryKeyRoot,
   fetchExpenseCategories,
   fetchExpenses,
   fetchWorkers,
+  type ExpenseListSort,
   workersQueryKey,
 } from "@/lib/queries/expenses";
+import { isDefaultExpenseListSort } from "@/lib/expenses-db";
 import { ExpensesListSkeleton } from "@/components/financial/expenses-list-skeleton";
+import {
+  ExpenseDateRangeFilter,
+  expenseDateInFilter,
+  type ExpenseDateFilterValue,
+} from "@/components/financial/expense-date-range-filter";
 import { ExpenseCategorySelect } from "@/components/expense-category-select";
 import {
   persistLastExpensePaymentAccountId,
@@ -170,7 +200,7 @@ function ExpenseAttachmentTrigger({ row, onPreview }: { row: Expense; onPreview:
   return (
     <button
       type="button"
-      className="inline-flex max-w-full cursor-pointer items-center gap-1.5 text-[11px] text-text-secondary hover:underline"
+      className="inline-flex max-w-full cursor-pointer items-center gap-1.5 text-[12px] text-text-secondary hover:underline"
       onClick={(e) => {
         e.stopPropagation();
         onPreview();
@@ -215,6 +245,17 @@ function sourceTypeLabel(t: Expense["sourceType"]): string {
   if (t === "reimbursement") return "Reimbursement";
   if (t === "receipt_upload") return "Receipt";
   return "Company";
+}
+
+const PAYMENT_METHOD_OPTIONS = ["Amex", "Visa", "Cash", "Company"] as const;
+
+/** Radix Select cannot use `""` as a value — map “all / placeholder” filters to this sentinel. */
+const EXPENSE_FILTER_ALL = "__hh_all__";
+const EXPENSE_PROJECT_OVERHEAD = "__hh_overhead__";
+
+function paymentMethodDisplayLabel(pm: string | undefined): string {
+  const v = (pm ?? "").trim();
+  return v !== "" ? v : "—";
 }
 
 function primaryCategory(e: Expense): string {
@@ -265,12 +306,34 @@ function extractExpenseTags(expense: Expense): string[] {
   return Array.from(new Set(expense.lines.map((l) => l.category).filter(Boolean))).slice(0, 3);
 }
 
+const EXPENSE_SORT_STORAGE_KEY = "hh-expenses-sort-v1";
+
+function readStoredExpenseSort(): ExpenseListSort {
+  if (typeof window === "undefined") return defaultExpenseListSort;
+  try {
+    const raw = localStorage.getItem(EXPENSE_SORT_STORAGE_KEY);
+    if (!raw) return defaultExpenseListSort;
+    const p = JSON.parse(raw) as Partial<ExpenseListSort>;
+    if (
+      (p.field === "date" || p.field === "amount" || p.field === "vendor") &&
+      (p.order === "asc" || p.order === "desc")
+    ) {
+      return { field: p.field, order: p.order };
+    }
+  } catch {
+    /* ignore */
+  }
+  return defaultExpenseListSort;
+}
+
 export default function ExpensesPage() {
   return (
     <React.Suspense
       fallback={
-        <div className="expenses-ui mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
-          <ExpensesListSkeleton rows={6} />
+        <div className="expenses-ui">
+          <div className="expenses-ui-content mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
+            <ExpensesListSkeleton rows={6} />
+          </div>
         </div>
       }
     >
@@ -292,9 +355,13 @@ function ExpensesPageInner() {
     [configured, url, anon]
   );
 
+  const [expenseSort, setExpenseSort] = React.useState<ExpenseListSort>(() =>
+    readStoredExpenseSort()
+  );
+
   const readCachedExpenses = React.useCallback(
-    () => queryClient.getQueryData<Expense[]>(expensesQueryKey),
-    [queryClient]
+    () => queryClient.getQueryData<Expense[]>(buildExpensesQueryKey(expenseSort)),
+    [queryClient, expenseSort]
   );
   const readCachedCategories = React.useCallback(
     () => queryClient.getQueryData<string[]>(expenseCategoriesQueryKey),
@@ -307,7 +374,9 @@ function ExpensesPageInner() {
   const [projects, setProjects] = React.useState<ProjectRow[]>([]);
   const [workers, setWorkers] = React.useState<WorkerRow[]>(() => readCachedWorkers() ?? []);
   const [projectsError, setProjectsError] = React.useState<string | null>(null);
-  const [expenses, setExpenses] = React.useState<Expense[]>(() => readCachedExpenses() ?? []);
+  const [expenses, setExpenses] = React.useState<Expense[]>(
+    () => queryClient.getQueryData<Expense[]>(buildExpensesQueryKey(readStoredExpenseSort())) ?? []
+  );
   const [categoriesList, setCategoriesList] = React.useState<string[]>(
     () => readCachedCategories() ?? []
   );
@@ -317,10 +386,18 @@ function ExpensesPageInner() {
     isPending: expensesQueryPending,
     isError: expensesQueryError,
   } = useQuery({
-    queryKey: expensesQueryKey,
-    queryFn: fetchExpenses,
+    queryKey: buildExpensesQueryKey(expenseSort),
+    queryFn: () => fetchExpenses(expenseSort),
     placeholderData: keepPreviousData,
   });
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem(EXPENSE_SORT_STORAGE_KEY, JSON.stringify(expenseSort));
+    } catch {
+      /* ignore */
+    }
+  }, [expenseSort]);
   const { data: categoriesQueryData } = useQuery({
     queryKey: expenseCategoriesQueryKey,
     queryFn: fetchExpenseCategories,
@@ -351,7 +428,9 @@ function ExpensesPageInner() {
   const [projectFilter, setProjectFilter] = React.useState("");
   const [categoryFilter, setCategoryFilter] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState("");
-  const [dateRangeFilter, setDateRangeFilter] = React.useState<"all" | "week" | "month">("all");
+  const [expenseDateFilter, setExpenseDateFilter] = React.useState<ExpenseDateFilterValue>({
+    kind: "all",
+  });
   const [sourceTypeFilter, setSourceTypeFilter] = React.useState("");
   const [editingVendorId, setEditingVendorId] = React.useState<string | null>(null);
   const [vendorDraft, setVendorDraft] = React.useState("");
@@ -367,7 +446,10 @@ function ExpensesPageInner() {
   const [editingSourceId, setEditingSourceId] = React.useState<string | null>(null);
   const [sourceTypeDraft, setSourceTypeDraft] =
     React.useState<NonNullable<Expense["sourceType"]>>("company");
+  const [editingPaymentMethodId, setEditingPaymentMethodId] = React.useState<string | null>(null);
+  const [paymentMethodFlashId, setPaymentMethodFlashId] = React.useState<string | null>(null);
   const rowElsRef = React.useRef<Record<string, HTMLLIElement | null>>({});
+  const emptyExpensesRef = React.useRef<HTMLDivElement>(null);
   const listView: "all" | "unreviewed" =
     searchParams.get("view") === "unreviewed" ? "unreviewed" : "all";
   const setListView = React.useCallback(
@@ -504,17 +586,10 @@ function ExpensesPageInner() {
     }
     if (sourceTypeFilter)
       list = list.filter((e) => (e.sourceType ?? "company") === sourceTypeFilter);
-    if (dateRangeFilter !== "all") {
-      const now = new Date();
-      const start = new Date(now);
-      if (dateRangeFilter === "week") start.setDate(now.getDate() - 7);
-      if (dateRangeFilter === "month") start.setDate(1);
-      list = list.filter((e) => {
-        const d = new Date(e.date);
-        return Number.isFinite(d.getTime()) && d >= start && d <= now;
-      });
+    if (expenseDateFilter.kind === "range") {
+      list = list.filter((e) => expenseDateInFilter(e.date, expenseDateFilter));
     }
-    if (listView === "unreviewed") {
+    if (listView === "unreviewed" && isDefaultExpenseListSort(expenseSort)) {
       list = [...list].sort((a, b) => {
         const ha = expenseHasReceipt(a) ? 1 : 0;
         const hb = expenseHasReceipt(b) ? 1 : 0;
@@ -534,11 +609,12 @@ function ExpensesPageInner() {
     projectFilter,
     categoryFilter,
     statusFilter,
-    dateRangeFilter,
+    expenseDateFilter,
     sourceTypeFilter,
     projectNameById,
     workerNameById,
     listView,
+    expenseSort,
   ]);
 
   const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
@@ -553,6 +629,8 @@ function ExpensesPageInner() {
 
   const pageRowsRef = React.useRef(pageRows);
   pageRowsRef.current = pageRows;
+  const listViewRef = React.useRef(listView);
+  listViewRef.current = listView;
 
   const pageRowIdsKey = React.useMemo(() => pageRows.map((r) => r.id).join("|"), [pageRows]);
 
@@ -563,7 +641,31 @@ function ExpensesPageInner() {
     setEditingProjectId(null);
     setEditingCategoryId(null);
     setEditingSourceId(null);
+    setEditingPaymentMethodId(null);
   }, []);
+
+  const paymentMethodMutation = useMutation({
+    mutationFn: async (vars: { id: string; paymentMethod: string }) => {
+      const next = await updateExpense(vars.id, { paymentMethod: vars.paymentMethod });
+      if (!next) throw new Error("Failed to update payment method");
+      return { next, id: vars.id };
+    },
+    onSuccess: ({ next, id }) => {
+      setExpenses((list) => list.map((e) => (e.id === id ? next : e)));
+      queryClient.setQueryData<Expense[]>(buildExpensesQueryKey(expenseSort), (old) =>
+        old ? old.map((e) => (e.id === id ? next : e)) : old
+      );
+      hotToast.success("Saved");
+      setEditingPaymentMethodId(null);
+      setPaymentMethodFlashId(id);
+      window.setTimeout(() => {
+        setPaymentMethodFlashId((cur) => (cur === id ? null : cur));
+      }, 1200);
+    },
+    onError: () => {
+      hotToast.error("Something went wrong");
+    },
+  });
 
   React.useEffect(() => {
     if (listView !== "unreviewed") {
@@ -592,17 +694,17 @@ function ExpensesPageInner() {
 
   const refresh = React.useCallback(async () => {
     const [ex, cat, w] = await Promise.all([
-      fetchExpenses(),
+      fetchExpenses(expenseSort),
       fetchExpenseCategories(),
       fetchWorkers(),
     ]);
     setExpenses(ex);
     setCategoriesList(cat);
     setWorkers(w as WorkerRow[]);
-    queryClient.setQueryData(expensesQueryKey, ex);
+    queryClient.setQueryData(buildExpensesQueryKey(expenseSort), ex);
     queryClient.setQueryData(expenseCategoriesQueryKey, cat);
     queryClient.setQueryData(workersQueryKey, w);
-  }, [queryClient]);
+  }, [queryClient, expenseSort]);
 
   const openReceiptPreview = React.useCallback(
     async (row: Expense) => {
@@ -726,7 +828,7 @@ function ExpensesPageInner() {
 
   useOnAppSync(
     React.useCallback(() => {
-      void queryClient.invalidateQueries({ queryKey: expensesQueryKey });
+      void queryClient.invalidateQueries({ queryKey: expensesQueryKeyRoot });
       void queryClient.invalidateQueries({ queryKey: expenseCategoriesQueryKey });
       void queryClient.invalidateQueries({ queryKey: workersQueryKey });
     }, [queryClient]),
@@ -743,6 +845,8 @@ function ExpensesPageInner() {
     (expense: Expense) => {
       if (typeof window === "undefined" || !window.confirm("Delete this expense?")) return;
       const prev = expensesRef.current;
+      const rowsBefore = pageRowsRef.current;
+      const nextId = neighborRowIdAfterRemove(rowsBefore, expense.id);
       const t0 = uiActionMark();
       setDeletingExpenseId(expense.id);
       setExpenses((list) => list.filter((e) => e.id !== expense.id));
@@ -753,6 +857,30 @@ function ExpensesPageInner() {
       void (async () => {
         try {
           await deleteExpense(expense.id);
+          afterLayout(() => {
+            const li = nextId ? rowElsRef.current[nextId] : null;
+            scrollElementIntoViewNearest(li ?? undefined);
+            if (listViewRef.current === "unreviewed") {
+              if (nextId) {
+                setActiveExpenseId(nextId);
+                focusFirstFocusableInContainer(li);
+              } else {
+                const first = pageRowsRef.current[0];
+                setActiveExpenseId(first?.id ?? null);
+                if (first) {
+                  const firstLi = rowElsRef.current[first.id];
+                  scrollElementIntoViewNearest(firstLi ?? undefined);
+                  focusFirstFocusableInContainer(firstLi);
+                } else {
+                  emptyExpensesRef.current?.focus({ preventScroll: true });
+                }
+              }
+            } else if (nextId) {
+              focusFirstFocusableInContainer(li);
+            } else {
+              emptyExpensesRef.current?.focus({ preventScroll: true });
+            }
+          });
         } catch {
           setExpenses(prev);
           toast({ title: "Delete failed", variant: "error" });
@@ -1094,6 +1222,13 @@ function ExpensesPageInner() {
         clearInlineEdits();
         return;
       }
+      const ix = INLINE_EDIT_FIELDS.indexOf(field);
+      const hasNextFieldInRow = ix >= 0 && ix < INLINE_EDIT_FIELDS.length - 1;
+      if (hasNextFieldInRow) {
+        clearInlineEdits();
+        openInlineField(row.id, INLINE_EDIT_FIELDS[ix + 1]);
+        return;
+      }
       clearInlineEdits();
       const rows = pageRowsRef.current;
       const idx = rows.findIndex((r) => r.id === row.id);
@@ -1105,6 +1240,10 @@ function ExpensesPageInner() {
         if (nextRow) {
           setActiveExpenseId(nextRow.id);
           openInlineField(nextRow.id, "vendor");
+          afterLayout(() => {
+            const el = rowElsRef.current[nextRow.id];
+            scrollElementIntoViewNearest(el ?? undefined);
+          });
         } else {
           setActiveExpenseId(null);
         }
@@ -1119,7 +1258,8 @@ function ExpensesPageInner() {
     Boolean(editingDateId) ||
     Boolean(editingProjectId) ||
     Boolean(editingCategoryId) ||
-    Boolean(editingSourceId);
+    Boolean(editingSourceId) ||
+    Boolean(editingPaymentMethodId);
 
   const kbRef = React.useRef({
     listView,
@@ -1250,14 +1390,14 @@ function ExpensesPageInner() {
     Boolean(categoryFilter) ||
     Boolean(listView === "all" && statusFilter) ||
     Boolean(sourceTypeFilter) ||
-    dateRangeFilter !== "all";
+    expenseDateFilter.kind !== "all";
 
   const showEmptyOnboardingCtas =
     listView === "all" && !hasNarrowingFilters && expenses.length === 0;
 
   return (
-    <div className="expenses-ui w-full">
-      <div className="expenses-ui-content mx-auto flex max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6">
+    <div className="expenses-ui">
+      <div className="expenses-ui-content mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6">
         <PageHeader
           className="[&_h1]:font-semibold [&_h1]:text-gray-900 [&_p]:text-sm [&_p]:text-gray-600 dark:[&_h1]:text-foreground dark:[&_p]:text-muted-foreground"
           title="Expenses"
@@ -1332,7 +1472,7 @@ function ExpensesPageInner() {
           </span>
         </div>
 
-        <div className="flex w-full flex-col gap-1 border-b border-gray-200/80 pb-3 dark:border-border/60">
+        <div className="flex flex-col gap-1 border-b border-gray-200/80 pb-3 dark:border-border/60">
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
@@ -1377,74 +1517,123 @@ function ExpensesPageInner() {
             className="h-8 rounded-sm border border-gray-200/80 bg-white text-sm text-gray-900 shadow-none transition-all duration-200 placeholder:text-gray-600 focus-visible:border-gray-300 focus-visible:ring-2 focus-visible:ring-blue-400/30 dark:border-border/60 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground"
           />
           <div className="flex flex-wrap gap-2">
-            <select
-              className="h-8 min-w-[8rem] rounded-sm border border-gray-200/80 bg-white px-2 text-xs text-gray-900 shadow-none dark:border-border/60 dark:bg-card dark:text-foreground"
-              value={projectFilter}
-              onChange={(e) => setProjectFilter(e.target.value)}
+            <Select
+              value={projectFilter === "" ? EXPENSE_FILTER_ALL : projectFilter}
+              onValueChange={(v) => setProjectFilter(v === EXPENSE_FILTER_ALL ? "" : v)}
             >
-              <option value="">Project</option>
-              {safeProjects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name ?? p.id}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="h-8 min-w-[8rem] max-w-[14rem] border-gray-200/80 bg-white text-xs text-gray-900 dark:border-border/60 dark:bg-card dark:text-foreground">
+                <SelectValue placeholder="Project" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={EXPENSE_FILTER_ALL}>Project</SelectItem>
+                {safeProjects.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name ?? p.id}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             {projectsError ? (
               <span className="self-center text-[11px] text-amber-600 dark:text-amber-400">
                 {projectsError}
               </span>
             ) : null}
-            <select
-              className="h-8 min-w-[7rem] rounded-sm border border-gray-200/80 bg-white px-2 text-xs text-gray-900 shadow-none dark:border-border/60 dark:bg-card dark:text-foreground"
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
+            <Select
+              value={categoryFilter === "" ? EXPENSE_FILTER_ALL : categoryFilter}
+              onValueChange={(v) => setCategoryFilter(v === EXPENSE_FILTER_ALL ? "" : v)}
             >
-              <option value="">Category</option>
-              {categoriesList.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-            <select
-              className="h-8 min-w-[6.5rem] rounded-sm border border-gray-200/80 bg-white px-2 text-xs text-gray-900 shadow-none disabled:cursor-not-allowed disabled:opacity-50 dark:border-border/60 dark:bg-card dark:text-foreground"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              <SelectTrigger className="h-8 min-w-[7rem] max-w-[12rem] border-gray-200/80 bg-white text-xs text-gray-900 dark:border-border/60 dark:bg-card dark:text-foreground">
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={EXPENSE_FILTER_ALL}>Category</SelectItem>
+                {categoriesList.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {c}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={statusFilter === "" ? EXPENSE_FILTER_ALL : statusFilter}
+              onValueChange={(v) => setStatusFilter(v === EXPENSE_FILTER_ALL ? "" : v)}
               disabled={listView === "unreviewed"}
-              title={
-                listView === "unreviewed" ? "Status filter applies in All view only" : undefined
-              }
             >
-              <option value="">Status</option>
-              <option value="pending">Pending</option>
-              <option value="needs_review">Needs review</option>
-              <option value="reviewed">Reviewed</option>
-              <option value="reimbursable">Reimbursable</option>
-              <option value="approved">Approved</option>
-              <option value="paid">Paid</option>
-              <option value="reimbursed">Reimbursed</option>
-            </select>
-            <select
-              className="h-8 min-w-[6.5rem] rounded-sm border border-gray-200/80 bg-white px-2 text-xs text-gray-900 shadow-none dark:border-border/60 dark:bg-card dark:text-foreground"
-              value={sourceTypeFilter}
-              onChange={(e) => setSourceTypeFilter(e.target.value)}
+              <SelectTrigger
+                className="h-8 min-w-[6.5rem] max-w-[10rem] border-gray-200/80 bg-white text-xs text-gray-900 disabled:opacity-50 dark:border-border/60 dark:bg-card dark:text-foreground"
+                title={
+                  listView === "unreviewed" ? "Status filter applies in All view only" : undefined
+                }
+              >
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={EXPENSE_FILTER_ALL}>Status</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="needs_review">Needs review</SelectItem>
+                <SelectItem value="reviewed">Reviewed</SelectItem>
+                <SelectItem value="reimbursable">Reimbursable</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
+                <SelectItem value="paid">Paid</SelectItem>
+                <SelectItem value="reimbursed">Reimbursed</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
+              value={sourceTypeFilter === "" ? EXPENSE_FILTER_ALL : sourceTypeFilter}
+              onValueChange={(v) => setSourceTypeFilter(v === EXPENSE_FILTER_ALL ? "" : v)}
             >
-              <option value="">Source</option>
-              <option value="company">Company</option>
-              <option value="receipt_upload">Receipt</option>
-              <option value="reimbursement">Reimbursement</option>
-            </select>
-            <select
-              className="h-8 min-w-[6rem] rounded-sm border border-gray-200/80 bg-white px-2 text-xs text-gray-900 shadow-none dark:border-border/60 dark:bg-card dark:text-foreground"
-              value={dateRangeFilter}
-              onChange={(e) =>
-                setDateRangeFilter((e.target.value as "all" | "week" | "month") ?? "all")
-              }
+              <SelectTrigger className="h-8 min-w-[6.5rem] max-w-[9rem] border-gray-200/80 bg-white text-xs text-gray-900 dark:border-border/60 dark:bg-card dark:text-foreground">
+                <SelectValue placeholder="Source" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={EXPENSE_FILTER_ALL}>Source</SelectItem>
+                <SelectItem value="company">Company</SelectItem>
+                <SelectItem value="receipt_upload">Receipt</SelectItem>
+                <SelectItem value="reimbursement">Reimbursement</SelectItem>
+              </SelectContent>
+            </Select>
+            <ExpenseDateRangeFilter
+              value={expenseDateFilter}
+              onChange={(next) => {
+                setExpenseDateFilter(next);
+                const sp = new URLSearchParams(searchParams.toString());
+                sp.set("page", "1");
+                router.push(`/financial/expenses?${sp.toString()}`, { scroll: false });
+              }}
+            />
+            <Select
+              value={`${expenseSort.field}|${expenseSort.order}`}
+              onValueChange={(v) => {
+                const [field, order] = v.split("|") as [
+                  ExpenseListSort["field"],
+                  ExpenseListSort["order"],
+                ];
+                if (
+                  (field === "date" || field === "amount" || field === "vendor") &&
+                  (order === "asc" || order === "desc")
+                ) {
+                  setExpenseSort({ field, order });
+                  const sp = new URLSearchParams(searchParams.toString());
+                  sp.set("page", "1");
+                  router.push(`/financial/expenses?${sp.toString()}`, { scroll: false });
+                }
+              }}
             >
-              <option value="all">All dates</option>
-              <option value="week">7 days</option>
-              <option value="month">Month</option>
-            </select>
+              <SelectTrigger
+                className="h-8 min-w-[9.5rem] border-gray-200 bg-white text-xs font-medium text-gray-900 dark:border-border dark:bg-card dark:text-foreground"
+                aria-label="Sort expenses"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="date|desc">Sort: Date ↓</SelectItem>
+                <SelectItem value="date|asc">Sort: Date ↑</SelectItem>
+                <SelectItem value="amount|desc">Sort: Amount ↓</SelectItem>
+                <SelectItem value="amount|asc">Sort: Amount ↑</SelectItem>
+                <SelectItem value="vendor|asc">Sort: Vendor A–Z</SelectItem>
+                <SelectItem value="vendor|desc">Sort: Vendor Z–A</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -1452,7 +1641,11 @@ function ExpensesPageInner() {
           {showExpensesSkeleton && expenses.length === 0 ? (
             <ExpensesListSkeleton rows={8} />
           ) : total === 0 ? (
-            <div className="border-b border-gray-200/80 py-12 text-center dark:border-border/60">
+            <div
+              className="flex min-h-[min(55vh,480px)] flex-col justify-center border-b border-gray-200/80 py-12 text-center transition-opacity duration-200 ease-out animate-in fade-in dark:border-border/60"
+              tabIndex={-1}
+              data-expenses-empty
+            >
               <p className="text-sm font-semibold text-gray-900 dark:text-foreground">
                 {listView === "unreviewed"
                   ? hasNarrowingFilters
@@ -1464,7 +1657,7 @@ function ExpensesPageInner() {
                     ? "No matches"
                     : "No expenses yet"}
               </p>
-              <p className="mt-1 text-sm text-gray-600 dark:text-muted-foreground">
+              <p className="mt-0.5 text-sm text-gray-600 dark:text-muted-foreground">
                 {listView === "unreviewed"
                   ? hasNarrowingFilters
                     ? "Try clearing filters or switch to All."
@@ -1519,8 +1712,8 @@ function ExpensesPageInner() {
               ) : null}
             </div>
           ) : (
-            <div className="exp-list-card overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-[0_4px_12px_rgba(0,0,0,0.06)] dark:border-border/60 dark:bg-card dark:shadow-none">
-              <ul className="exp-divide divide-y divide-gray-200/80 dark:divide-border/60">
+            <div className="exp-list-card w-full overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-[0_4px_12px_rgba(0,0,0,0.06)] dark:border-border/60 dark:bg-card dark:shadow-none">
+              <ul className="exp-divide">
                 {pageRows.map((row) => {
                   const rowTotal = getExpenseTotal(row);
                   const projLabel = projectLabel(row, projectNameById);
@@ -1533,16 +1726,22 @@ function ExpensesPageInner() {
                       ref={(el) => {
                         rowElsRef.current[row.id] = el;
                       }}
-                      className={`group exp-row relative flex flex-col gap-2 rounded-lg bg-transparent px-4 py-4 pr-12 transition-all duration-150 ease-out hover:-translate-y-[1px] hover:bg-white hover:shadow-[0_6px_14px_rgba(0,0,0,0.06)] active:scale-[0.98] dark:hover:bg-muted/35 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:pr-14 ${
+                      className={`group exp-row relative flex flex-col gap-3 border-b border-gray-200/80 bg-transparent px-3 py-3 pr-10 transition-all duration-150 ease-out last:border-b-0 hover:-translate-y-px hover:bg-gray-50 active:scale-[0.99] dark:border-border/60 dark:hover:bg-muted/40 md:flex-row md:justify-between md:items-start md:gap-4 md:px-4 md:py-2.5 md:pr-12 lg:pr-14 ${
+                        paymentMethodFlashId === row.id ? "hh-row-flash-success" : ""
+                      } ${
+                        deletingExpenseId === row.id
+                          ? "pointer-events-none !duration-300 opacity-0 ease-out scale-[0.98]"
+                          : ""
+                      } ${
                         listView === "unreviewed" && activeExpenseId === row.id
-                          ? "bg-white shadow-sm ring-1 ring-inset ring-gray-200/80 dark:bg-white/10 dark:ring-border/60"
+                          ? "bg-white/95 ring-1 ring-inset ring-gray-200/80 dark:bg-white/10 dark:ring-border/60"
                           : ""
                       }`}
                       onClick={() => {
                         if (listView === "unreviewed") setActiveExpenseId(row.id);
                       }}
                     >
-                      <div className="min-w-0 flex-1 space-y-0.5">
+                      <div className="order-2 flex min-w-0 w-full flex-1 flex-col gap-1 md:order-1">
                         <div className="min-w-0">
                           {editingVendorId === row.id ? (
                             <div
@@ -1551,16 +1750,16 @@ function ExpensesPageInner() {
                               onClick={(e) => e.stopPropagation()}
                             >
                               <Input
-                                className="h-7 rounded-sm border-gray-300/60 text-sm text-text-primary transition-[box-shadow,border-color] duration-150 focus-visible:ring-2 focus-visible:ring-blue-400/30"
+                                className="h-7 rounded-sm border-gray-300/60 text-[14px] text-text-primary transition-[box-shadow,border-color] duration-150 focus-visible:ring-2 focus-visible:ring-blue-400/30"
                                 value={vendorDraft}
                                 autoFocus
                                 onChange={(e) => setVendorDraft(e.target.value)}
                                 onKeyDown={onInlineKeyDown(row, "vendor")}
                               />
                               <Button
-                                variant="outline"
+                                variant="ghost"
                                 size="icon"
-                                className="btn-outline-ghost exp-icon-btn h-7 w-7 shrink-0"
+                                className="exp-icon-btn h-7 w-7 shrink-0"
                                 aria-label="Save vendor"
                                 onMouseDown={(e) => e.preventDefault()}
                                 onClick={() => void handleVendorInlineSave(row.id)}
@@ -1568,9 +1767,9 @@ function ExpensesPageInner() {
                                 <Check className="h-3.5 w-3.5" />
                               </Button>
                               <Button
-                                variant="outline"
+                                variant="ghost"
                                 size="icon"
-                                className="btn-outline-ghost exp-icon-btn h-7 w-7 shrink-0"
+                                className="exp-icon-btn h-7 w-7 shrink-0"
                                 aria-label="Cancel"
                                 onMouseDown={(e) => e.preventDefault()}
                                 onClick={() => clearInlineEdits()}
@@ -1581,7 +1780,7 @@ function ExpensesPageInner() {
                           ) : (
                             <button
                               type="button"
-                              className="truncate text-left text-sm font-semibold text-gray-900 hover:underline dark:text-foreground"
+                              className="truncate text-left text-[14px] font-semibold text-gray-900 hover:underline dark:text-foreground"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setActiveExpenseId(row.id);
@@ -1593,7 +1792,7 @@ function ExpensesPageInner() {
                           )}
                         </div>
                         <div
-                          className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-sm leading-snug text-gray-600 dark:text-muted-foreground"
+                          className="flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 text-[12px] leading-snug text-gray-600 dark:text-muted-foreground"
                           onClick={(e) => e.stopPropagation()}
                         >
                           {editingCategoryId === row.id ? (
@@ -1607,9 +1806,9 @@ function ExpensesPageInner() {
                                 onKeyDown={onInlineKeyDown(row, "category")}
                               />
                               <Button
-                                variant="outline"
+                                variant="ghost"
                                 size="icon"
-                                className="btn-outline-ghost exp-icon-btn h-7 w-7"
+                                className="exp-icon-btn h-7 w-7"
                                 onMouseDown={(e) => e.preventDefault()}
                                 onClick={() => void handleCategoryInlineSave(row.id)}
                               >
@@ -1638,25 +1837,32 @@ function ExpensesPageInner() {
                             <span
                               data-inline-field
                               className="inline-flex min-w-0 items-center gap-1"
+                              onKeyDown={onInlineKeyDown(row, "project")}
                             >
-                              <select
-                                className="h-7 max-w-[10rem] rounded-sm border border-gray-300/60 bg-white/90 px-1.5 text-xs text-text-primary backdrop-blur-sm"
-                                value={projectDraft}
-                                autoFocus
-                                onChange={(e) => setProjectDraft(e.target.value)}
-                                onKeyDown={onInlineKeyDown(row, "project")}
+                              <Select
+                                value={
+                                  projectDraft === "" ? EXPENSE_PROJECT_OVERHEAD : projectDraft
+                                }
+                                onValueChange={(v) =>
+                                  setProjectDraft(v === EXPENSE_PROJECT_OVERHEAD ? "" : v)
+                                }
                               >
-                                <option value="">Overhead</option>
-                                {safeProjects.map((p) => (
-                                  <option key={p.id} value={p.id}>
-                                    {p.name ?? p.id}
-                                  </option>
-                                ))}
-                              </select>
+                                <SelectTrigger className="h-7 max-w-[10rem] border-gray-300/60 bg-white/90 text-xs text-text-primary backdrop-blur-sm">
+                                  <SelectValue placeholder="Project" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value={EXPENSE_PROJECT_OVERHEAD}>Overhead</SelectItem>
+                                  {safeProjects.map((p) => (
+                                    <SelectItem key={p.id} value={p.id}>
+                                      {p.name ?? p.id}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
                               <Button
-                                variant="outline"
+                                variant="ghost"
                                 size="icon"
-                                className="btn-outline-ghost exp-icon-btn h-7 w-7 shrink-0"
+                                className="exp-icon-btn h-7 w-7 shrink-0"
                                 onMouseDown={(e) => e.preventDefault()}
                                 onClick={() => void handleProjectInlineSave(row.id)}
                               >
@@ -1666,7 +1872,7 @@ function ExpensesPageInner() {
                           ) : (
                             <button
                               type="button"
-                              className="min-w-0 max-w-[10rem] truncate hover:text-text-primary hover:underline"
+                              className="hh-inline-tap min-w-0 max-w-[10rem] truncate hover:text-text-primary hover:underline"
                               onClick={() => {
                                 setActiveExpenseId(row.id);
                                 openInlineField(row.id, "project");
@@ -1692,9 +1898,9 @@ function ExpensesPageInner() {
                                 onKeyDown={onInlineKeyDown(row, "date")}
                               />
                               <Button
-                                variant="outline"
+                                variant="ghost"
                                 size="icon"
-                                className="btn-outline-ghost exp-icon-btn h-7 w-7"
+                                className="exp-icon-btn h-7 w-7"
                                 onMouseDown={(e) => e.preventDefault()}
                                 onClick={() => void handleDateInlineSave(row.id)}
                               >
@@ -1704,7 +1910,7 @@ function ExpensesPageInner() {
                           ) : (
                             <button
                               type="button"
-                              className="hover:text-text-primary hover:underline"
+                              className="hh-inline-tap hover:text-text-primary hover:underline"
                               onClick={() => {
                                 setActiveExpenseId(row.id);
                                 openInlineField(row.id, "date");
@@ -1719,18 +1925,78 @@ function ExpensesPageInner() {
                           >
                             ·
                           </span>
-                          <span className="inline-flex min-w-0 max-w-[8rem] items-center gap-1">
-                            <span className="sr-only">Payment </span>
-                            <span
-                              className="truncate"
-                              title={
-                                row.paymentAccountName
-                                  ? `Payment: ${row.paymentAccountName}`
-                                  : "Payment: —"
-                              }
-                            >
-                              {row.paymentAccountName ?? "—"}
-                            </span>
+                          <span className="inline-flex min-w-0 max-w-[9rem] items-center gap-1">
+                            <span className="sr-only">Payment method </span>
+                            {editingPaymentMethodId === row.id ? (
+                              (() => {
+                                const pmInList = (
+                                  PAYMENT_METHOD_OPTIONS as readonly string[]
+                                ).includes(row.paymentMethod);
+                                const pmValue = pmInList
+                                  ? row.paymentMethod
+                                  : row.paymentMethod?.trim()
+                                    ? row.paymentMethod
+                                    : PAYMENT_METHOD_OPTIONS[0];
+                                return (
+                                  <Select
+                                    value={pmValue}
+                                    disabled={paymentMethodMutation.isPending}
+                                    onValueChange={(v) => {
+                                      if (v === row.paymentMethod) return;
+                                      paymentMethodMutation.mutate({
+                                        id: row.id,
+                                        paymentMethod: v,
+                                      });
+                                    }}
+                                    onOpenChange={(open) => {
+                                      if (!open && !paymentMethodMutation.isPending) {
+                                        setEditingPaymentMethodId(null);
+                                      }
+                                    }}
+                                  >
+                                    <SelectTrigger
+                                      data-inline-field
+                                      className="h-7 min-h-[28px] max-w-[9rem] border-gray-200 bg-white text-xs text-gray-900 dark:border-border dark:bg-card dark:text-foreground"
+                                    >
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {!pmInList && row.paymentMethod?.trim() ? (
+                                        <SelectItem value={row.paymentMethod}>
+                                          {row.paymentMethod}
+                                        </SelectItem>
+                                      ) : null}
+                                      {PAYMENT_METHOD_OPTIONS.map((opt) => (
+                                        <SelectItem key={opt} value={opt}>
+                                          {opt}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                );
+                              })()
+                            ) : (
+                              <button
+                                type="button"
+                                className="hh-inline-tap inline-flex min-h-[28px] max-w-[9rem] items-center gap-1 px-2 py-1 text-left text-[12px] text-gray-700 dark:text-foreground"
+                                title={`Payment method: ${paymentMethodDisplayLabel(row.paymentMethod)}`}
+                                onClick={() => {
+                                  clearInlineEdits();
+                                  setActiveExpenseId(row.id);
+                                  setEditingPaymentMethodId(row.id);
+                                }}
+                              >
+                                <span className="truncate">
+                                  {paymentMethodDisplayLabel(row.paymentMethod)}
+                                </span>
+                                {paymentMethodFlashId === row.id ? (
+                                  <Check
+                                    className="h-3.5 w-3.5 shrink-0 text-emerald-600 opacity-90 animate-in fade-in zoom-in-95 duration-200 dark:text-emerald-500"
+                                    aria-hidden
+                                  />
+                                ) : null}
+                              </button>
+                            )}
                           </span>
                           <span
                             className="text-text-secondary/60 dark:text-text-secondary"
@@ -1739,26 +2005,30 @@ function ExpensesPageInner() {
                             ·
                           </span>
                           {editingSourceId === row.id ? (
-                            <span data-inline-field className="inline-flex items-center gap-1">
-                              <select
-                                className="h-7 rounded-sm border border-gray-300/60 bg-white/90 px-1.5 text-xs text-text-primary backdrop-blur-sm"
-                                value={sourceTypeDraft}
-                                autoFocus
-                                onChange={(e) =>
-                                  setSourceTypeDraft(
-                                    e.target.value as NonNullable<Expense["sourceType"]>
-                                  )
+                            <span
+                              data-inline-field
+                              className="inline-flex items-center gap-1"
+                              onKeyDown={onInlineKeyDown(row, "source")}
+                            >
+                              <Select
+                                value={sourceTypeDraft ?? "company"}
+                                onValueChange={(v) =>
+                                  setSourceTypeDraft(v as NonNullable<Expense["sourceType"]>)
                                 }
-                                onKeyDown={onInlineKeyDown(row, "source")}
                               >
-                                <option value="company">Company</option>
-                                <option value="receipt_upload">Receipt</option>
-                                <option value="reimbursement">Reimbursement</option>
-                              </select>
+                                <SelectTrigger className="h-7 border-gray-300/60 bg-white/90 text-xs text-text-primary backdrop-blur-sm">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="company">Company</SelectItem>
+                                  <SelectItem value="receipt_upload">Receipt</SelectItem>
+                                  <SelectItem value="reimbursement">Reimbursement</SelectItem>
+                                </SelectContent>
+                              </Select>
                               <Button
-                                variant="outline"
+                                variant="ghost"
                                 size="icon"
-                                className="btn-outline-ghost exp-icon-btn h-7 w-7"
+                                className="exp-icon-btn h-7 w-7"
                                 onMouseDown={(e) => e.preventDefault()}
                                 onClick={() => void handleSourceInlineSave(row.id)}
                               >
@@ -1781,15 +2051,12 @@ function ExpensesPageInner() {
                       </div>
 
                       <div
-                        className="flex shrink-0 flex-col gap-2 sm:items-end"
+                        className="order-1 flex w-full shrink-0 flex-col items-end gap-1 md:order-2 md:w-auto"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <div className="flex w-full items-center justify-between sm:block sm:w-auto sm:text-right">
+                        <div className="flex justify-end">
                           {editingAmountId === row.id ? (
-                            <div
-                              className="flex items-center justify-end gap-1 sm:ml-auto"
-                              data-inline-field
-                            >
+                            <div className="flex items-center justify-end gap-1" data-inline-field>
                               <Input
                                 className="h-7 w-24 rounded-sm border-gray-200/80 text-right text-[15px] tabular-nums text-text-primary transition-[box-shadow,border-color] duration-150 focus-visible:ring-2 focus-visible:ring-blue-400/30"
                                 value={amountDraft}
@@ -1799,9 +2066,9 @@ function ExpensesPageInner() {
                                 onKeyDown={onInlineKeyDown(row, "amount")}
                               />
                               <Button
-                                variant="outline"
+                                variant="ghost"
                                 size="icon"
-                                className="btn-outline-ghost exp-icon-btn h-7 w-7"
+                                className="exp-icon-btn h-7 w-7"
                                 onMouseDown={(e) => e.preventDefault()}
                                 onClick={() => void handleAmountInlineSave(row.id)}
                               >
@@ -1826,59 +2093,69 @@ function ExpensesPageInner() {
                             </button>
                           )}
                         </div>
-                        <div className="flex items-center justify-end gap-2 text-[11px]">
-                          <ExpenseAttachmentTrigger
-                            row={row}
-                            onPreview={() => void openReceiptPreview(row)}
+                        <button
+                          type="button"
+                          className={`flex items-center gap-1 text-xs font-medium ${statusStyle.text}`}
+                          onClick={() => void toggleStatus(row)}
+                          title={
+                            listView === "unreviewed" ? "Mark reviewed" : "Toggle review status"
+                          }
+                        >
+                          <span
+                            className={`h-2 w-2 shrink-0 rounded-full ${statusStyle.dot}`}
+                            aria-hidden
                           />
-                          <button
-                            type="button"
-                            className={`inline-flex cursor-pointer items-center gap-1.5 text-[11px] font-medium ${statusStyle.text}`}
-                            onClick={() => void toggleStatus(row)}
-                            title={
-                              listView === "unreviewed" ? "Mark reviewed" : "Toggle review status"
-                            }
-                          >
-                            <span
-                              className={`h-1.5 w-1.5 shrink-0 rounded-full ${statusStyle.dot}`}
-                              aria-hidden
-                            />
-                            {statusDisplayLabel(status)}
-                          </button>
-                        </div>
+                          {statusDisplayLabel(status)}
+                        </button>
+                        <ExpenseAttachmentTrigger
+                          row={row}
+                          onPreview={() => void openReceiptPreview(row)}
+                        />
                       </div>
 
-                      <div className="absolute right-1.5 top-3 z-[1] flex items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100 max-sm:opacity-100 sm:top-1/2 sm:-translate-y-1/2">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="btn-outline-ghost exp-icon-btn h-7 w-7"
-                          title="Edit"
-                          aria-label="Edit"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditExpense(row);
-                            setEditModalOpen(true);
-                          }}
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="btn-outline-ghost exp-icon-danger h-7 w-7"
-                          aria-label="Delete"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(row);
-                          }}
-                        >
-                          {deletingExpenseId === row.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                          ) : (
-                            <Trash2 className="h-3.5 w-3.5" />
-                          )}
-                        </Button>
+                      <div className="absolute right-2 top-3 z-[1] opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-focus-within:opacity-100 max-md:opacity-100 md:right-1.5 md:top-1/2 md:-translate-y-1/2">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="exp-icon-btn h-7 w-7"
+                              aria-label="Row actions"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            align="end"
+                            className="w-44"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <DropdownMenuItem
+                              className="gap-2"
+                              onClick={() => {
+                                setEditExpense(row);
+                                setEditModalOpen(true);
+                              }}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="gap-2 text-red-600 focus:bg-red-50 focus:text-red-700 dark:focus:bg-red-950/30 dark:focus:text-red-400"
+                              disabled={deletingExpenseId === row.id}
+                              onClick={() => handleDelete(row)}
+                            >
+                              {deletingExpenseId === row.id ? (
+                                <InlineLoading className="shrink-0" aria-hidden />
+                              ) : (
+                                <Trash2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                              )}
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </li>
                   );

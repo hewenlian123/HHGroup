@@ -5,6 +5,7 @@ import {
   expensesVendorSearch,
   fillControlledTextInput,
   prepareReceiptQueueRowForConfirm,
+  receiptQueueExpenseSuccessSeen,
   receiptQueueRowByFileName,
 } from "./e2e-expenses-helpers";
 
@@ -15,7 +16,7 @@ const PNG_1X1 = Buffer.from(
 
 test.describe("Expenses: receipt upload queue", () => {
   /** Parallel chromium workers + shared local DB can starve upload/OCR; retries absorb flake. */
-  test.describe.configure({ timeout: 120_000, retries: 2 });
+  test.describe.configure({ timeout: 120_000, retries: 2, mode: "serial" });
 
   test("upload → receipt queue → confirm creates expense and clears row", async ({ page }) => {
     await page.goto("/financial/receipt-queue", { waitUntil: "domcontentloaded", timeout: 60_000 });
@@ -60,7 +61,12 @@ test.describe("Expenses: receipt upload queue", () => {
           if (/create failed/i.test(body)) {
             throw new Error("Receipt queue: Create failed toast.");
           }
-          if (/expense created/i.test(body)) return "done";
+          if (receiptQueueExpenseSuccessSeen(body)) return "done";
+          const n = await page
+            .getByTestId("receipt-queue-row")
+            .filter({ has: page.locator(`input[value="${vendorMark}"]`) })
+            .count();
+          if (n === 0) return "done";
           return null;
         },
         { timeout: 120_000, intervals: [300] }

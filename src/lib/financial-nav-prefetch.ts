@@ -1,8 +1,9 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  buildExpensesQueryKey,
+  defaultExpenseListSort,
   expenseCategoriesQueryKey,
-  expensesQueryKey,
   fetchExpenseCategories,
   fetchExpenses,
   fetchWorkers,
@@ -20,8 +21,8 @@ const prefetchStale = 30_000;
 export function prefetchExpensesPageData(queryClient: QueryClient): Promise<void> {
   return Promise.all([
     queryClient.prefetchQuery({
-      queryKey: expensesQueryKey,
-      queryFn: fetchExpenses,
+      queryKey: buildExpensesQueryKey(defaultExpenseListSort),
+      queryFn: () => fetchExpenses(defaultExpenseListSort),
       staleTime: prefetchStale,
     }),
     queryClient.prefetchQuery({
@@ -49,8 +50,8 @@ export function prefetchReceiptQueuePageData(
       staleTime: prefetchStale,
     }),
     queryClient.prefetchQuery({
-      queryKey: expensesQueryKey,
-      queryFn: fetchExpenses,
+      queryKey: buildExpensesQueryKey(defaultExpenseListSort),
+      queryFn: () => fetchExpenses(defaultExpenseListSort),
       staleTime: prefetchStale,
     }),
     queryClient.prefetchQuery({

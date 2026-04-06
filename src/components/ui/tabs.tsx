@@ -3,6 +3,7 @@
 import * as React from "react";
 import * as TabsPrimitive from "@radix-ui/react-tabs";
 import { cn } from "@/lib/utils";
+import { motionInputFocus } from "@/lib/motion-system";
 
 const Tabs = TabsPrimitive.Root;
 
@@ -28,7 +29,8 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium touch-manipulation transition-colors duration-75 ease-out focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/40 focus-visible:ring-offset-0 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=inactive]:hover:bg-muted/40 active:opacity-90",
+      "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium touch-manipulation transition-all duration-150 ease-out disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=inactive]:hover:-translate-y-px data-[state=inactive]:hover:bg-gray-50 dark:data-[state=inactive]:hover:bg-muted/40 active:scale-[0.97] active:duration-100 max-md:active:scale-[0.96]",
+      motionInputFocus,
       className
     )}
     {...props}

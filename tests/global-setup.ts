@@ -18,6 +18,7 @@ import {
 } from "./e2e-cleanup-db";
 import { runSchemaAutoRepair } from "../src/lib/ensure-schema-auto-repair";
 import { ensureE2EPreservedSeed } from "./e2e-ensure-seed";
+import { resetE2ESeedWorkerPayrollStateWithClient } from "./e2e-reset-worker-payroll";
 
 export default async function globalSetup(_config: FullConfig): Promise<void> {
   if (process.env.E2E_SKIP_DB_SEED === "1") {
@@ -47,6 +48,7 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
   }
 
   const supabase = createClient(url, key);
+  await resetE2ESeedWorkerPayrollStateWithClient(supabase);
   await ensureE2EPreservedSeed(supabase);
 
   const rqPurged = await purgeE2EReceiptQueueRows(supabase);
