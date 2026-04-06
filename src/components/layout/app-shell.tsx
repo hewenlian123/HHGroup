@@ -15,10 +15,12 @@ import { LaborAddEntryProvider } from "@/contexts/labor-add-entry-context";
 import { AttachmentPreviewProvider } from "@/contexts/attachment-preview-context";
 import { SystemHealthPoller } from "@/components/system-health/system-health-poller";
 import { cn } from "@/lib/utils";
+import { useIsTabletNav } from "@/hooks/use-is-tablet-nav";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const isTabletNav = useIsTabletNav();
   const modeParam = searchParams?.get("mode")?.toLowerCase() ?? "";
   const workerModeUrl =
     (pathname === "/labor/daily-entry" || pathname === "/labor/daily") && modeParam === "worker";
@@ -30,6 +32,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     workerModeUrl;
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [collapsed, setCollapsed] = React.useState(false);
+  /** When true on tablet, sidebar shows labels; when false, icon rail only. */
+  const [tabletSidebarExpanded, setTabletSidebarExpanded] = React.useState(false);
 
   React.useEffect(() => {
     try {
@@ -47,6 +51,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       // ignore
     }
   }, [collapsed]);
+
+  React.useEffect(() => {
+    setTabletSidebarExpanded(false);
+  }, [pathname]);
+
+  const effectiveCollapsed = isTabletNav ? !tabletSidebarExpanded : collapsed;
+
+  const handleToggleSidebar = React.useCallback(() => {
+    if (isTabletNav) {
+      setTabletSidebarExpanded((e) => !e);
+    } else {
+      setCollapsed((c) => !c);
+    }
+  }, [isTabletNav]);
 
   if (barePage) {
     const printReceiptBg = pathname?.startsWith("/receipt/print/");
@@ -92,7 +110,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <div data-app-main-column className="flex min-w-0 flex-1 flex-col overflow-hidden">
                   <Topbar
                     onOpenSidebar={() => setMobileOpen(true)}
-                    onToggleSidebar={() => setCollapsed((c) => !c)}
+                    onToggleSidebar={handleToggleSidebar}
                   />
                   <main
                     className={cn(

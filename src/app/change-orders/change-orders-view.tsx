@@ -81,7 +81,7 @@ export function ChangeOrdersView({
               <DropdownMenuTrigger asChild>
                 <Button
                   size="sm"
-                  className="h-9 rounded-lg bg-[#111] text-white hover:bg-[#333] px-4 font-medium"
+                  className="h-9 max-md:min-h-11 rounded-lg bg-[#111] text-white hover:bg-[#333] px-4 font-medium"
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   New Change Order
@@ -129,7 +129,7 @@ export function ChangeOrdersView({
               <Button
                 asChild
                 size="sm"
-                className="mt-6 rounded-lg bg-[#111] text-white hover:bg-[#333]"
+                className="mt-6 max-md:min-h-11 rounded-lg bg-[#111] text-white hover:bg-[#333]"
               >
                 <Link href={`/projects/${projects[0].id}/change-orders/new`}>New Change Order</Link>
               </Button>
@@ -149,16 +149,16 @@ export function ChangeOrdersView({
                       href={`/projects/${co.projectId}/change-orders/${co.id}`}
                       className={cn(
                         listFlexRowClassName,
-                        "flex items-center justify-between gap-4 px-5 py-4 border-b border-[#eee] last:border-b-0"
+                        "flex min-h-11 items-center justify-between gap-4 border-b border-[#eee] px-5 py-4 last:border-b-0 max-md:flex-col max-md:items-stretch max-md:gap-3"
                       )}
                     >
                       <div className="min-w-0 flex-1">
                         <div className="font-medium text-[#111] text-[15px]">{co.number}</div>
-                        <div className="text-sm text-text-secondary truncate mt-0.5">
+                        <div className="mt-0.5 truncate text-sm text-text-secondary">
                           {co.title || "Untitled"}
                         </div>
                       </div>
-                      <div className="flex items-center gap-4 shrink-0">
+                      <div className="flex shrink-0 items-center justify-between gap-4 max-md:w-full">
                         <span
                           className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-medium ${statusClass(co.status)}`}
                         >

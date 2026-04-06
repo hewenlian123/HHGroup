@@ -6,7 +6,7 @@ import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Plus, FlaskConical } from "lucide-react";
-import { EstimateListRow } from "./estimate-list-row";
+import { EstimateListRow, EstimateMobileList } from "./estimate-list-row";
 import { deleteEstimateAction, createTestEstimateAction } from "./actions";
 import { EstimateSuccessBanner } from "./[id]/estimate-success-banner";
 import { EmptyState } from "@/components/empty-state";
@@ -83,7 +83,7 @@ export default async function EstimatesListPage({
         </p>
       )}
       {list.length > 0 ? (
-        <div className="grid grid-cols-2 gap-[10px] lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-[10px] sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-[10px] border-[0.5px] border-solid border-gray-100 bg-white px-4 py-[14px] dark:border-border">
             <p className="kpi-metric-label">Total Estimates</p>
             <p className="kpi-metric-value mt-0.5 tabular-nums">{totalEstimates}</p>
@@ -124,24 +124,29 @@ export default async function EstimatesListPage({
           }
         />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead>Estimate #</TableHead>
-              <TableHead>Client</TableHead>
-              <TableHead>Project</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right tabular-nums">Total</TableHead>
-              <TableHead>Updated</TableHead>
-              <TableHead className="w-0">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {list.map((row) => (
-              <EstimateListRow key={row.id} row={row} deleteAction={deleteEstimateAction} />
-            ))}
-          </TableBody>
-        </Table>
+        <>
+          <EstimateMobileList list={list} deleteAction={deleteEstimateAction} />
+          <div className="hidden md:block">
+            <Table className="min-w-[640px] lg:min-w-0">
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Estimate #</TableHead>
+                  <TableHead>Client</TableHead>
+                  <TableHead>Project</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right tabular-nums">Total</TableHead>
+                  <TableHead>Updated</TableHead>
+                  <TableHead className="w-0">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {list.map((row) => (
+                  <EstimateListRow key={row.id} row={row} deleteAction={deleteEstimateAction} />
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
       )}
     </div>
   );

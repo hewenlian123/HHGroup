@@ -4,6 +4,7 @@ import "./expenses-ui-theme.css";
 import * as React from "react";
 import { startTransition } from "react";
 import { flushSync } from "react-dom";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -1511,8 +1512,8 @@ function ExpensesPageInner() {
               size="sm"
               className={
                 listView === "all"
-                  ? "h-8 rounded-sm border-transparent bg-blue-500 px-3 text-sm font-medium text-white shadow-none hover:bg-blue-600 hover:text-white"
-                  : "h-8 rounded-sm border-gray-100/80 bg-gray-100 px-3 text-sm font-medium text-gray-600 shadow-none hover:bg-blue-50 hover:text-gray-800 dark:border-border/60 dark:bg-muted dark:text-muted-foreground dark:hover:bg-muted/80"
+                  ? "h-8 max-md:min-h-11 rounded-sm border-transparent bg-blue-500 px-3 text-sm font-medium text-white shadow-none hover:bg-blue-600 hover:text-white"
+                  : "h-8 max-md:min-h-11 rounded-sm border-gray-100/80 bg-gray-100 px-3 text-sm font-medium text-gray-600 shadow-none hover:bg-blue-50 hover:text-gray-800 dark:border-border/60 dark:bg-muted dark:text-muted-foreground dark:hover:bg-muted/80"
               }
               onClick={() => setListView("all")}
             >
@@ -1524,8 +1525,8 @@ function ExpensesPageInner() {
               size="sm"
               className={
                 listView === "unreviewed"
-                  ? "h-8 rounded-sm border-transparent bg-blue-500 px-3 text-sm font-medium text-white shadow-none hover:bg-blue-600 hover:text-white"
-                  : "h-8 rounded-sm border-gray-100/80 bg-gray-100 px-3 text-sm font-medium text-gray-600 shadow-none hover:bg-blue-50 hover:text-gray-800 dark:border-border/60 dark:bg-muted dark:text-muted-foreground dark:hover:bg-muted/80"
+                  ? "h-8 max-md:min-h-11 rounded-sm border-transparent bg-blue-500 px-3 text-sm font-medium text-white shadow-none hover:bg-blue-600 hover:text-white"
+                  : "h-8 max-md:min-h-11 rounded-sm border-gray-100/80 bg-gray-100 px-3 text-sm font-medium text-gray-600 shadow-none hover:bg-blue-50 hover:text-gray-800 dark:border-border/60 dark:bg-muted dark:text-muted-foreground dark:hover:bg-muted/80"
               }
               onClick={() => setListView("unreviewed")}
             >
@@ -1540,14 +1541,14 @@ function ExpensesPageInner() {
           ) : null}
         </div>
 
-        <div className="space-y-2 pt-0">
+        <div className="flex flex-col gap-3 pt-0 md:gap-2">
           <Input
             placeholder="Search…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="h-8 rounded-sm border border-gray-100/80 bg-white text-sm text-gray-900 shadow-none transition-all duration-200 placeholder:text-gray-600 focus-visible:border-gray-300 focus-visible:ring-2 focus-visible:ring-blue-400/30 dark:border-border/60 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground"
           />
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col gap-2 md:flex-row md:flex-wrap">
             <Select
               value={projectFilter === "" ? EXPENSE_FILTER_ALL : projectFilter}
               onValueChange={(v) => setProjectFilter(v === EXPENSE_FILTER_ALL ? "" : v)}
@@ -1744,460 +1745,517 @@ function ExpensesPageInner() {
             </div>
           ) : (
             <div className="exp-list-card w-full overflow-hidden rounded-xl border border-gray-100/80 bg-white shadow-[0_4px_12px_rgba(0,0,0,0.06)] dark:border-border/60 dark:bg-card dark:shadow-none">
-              <ul className="exp-divide">
-                {pageRows.map((row) => {
-                  const rowTotal = getExpenseTotal(row);
-                  const projLabel = projectLabel(row, projectNameById);
-                  const status = row.status ?? "pending";
-                  const statusStyle = expenseStatusDotTextClass(status);
-                  const catLabel = primaryCategory(row);
-                  return (
-                    <li
-                      key={row.id}
-                      ref={(el) => {
-                        rowElsRef.current[row.id] = el;
-                      }}
-                      className={`group exp-row relative flex flex-col gap-3 border-b border-gray-100/80 bg-transparent px-3 py-3 pr-10 transition-all duration-150 ease-out last:border-b-0 hover:-translate-y-px hover:bg-gray-50 active:scale-[0.99] dark:border-border/60 dark:hover:bg-muted/40 md:flex-row md:justify-between md:items-start md:gap-4 md:px-4 md:py-2.5 md:pr-12 lg:pr-14 ${
-                        paymentMethodFlashId === row.id ? "hh-row-flash-success" : ""
-                      } ${
-                        deletingExpenseId === row.id
-                          ? "pointer-events-none !duration-300 opacity-0 ease-out scale-[0.98]"
-                          : ""
-                      } ${
-                        listView === "unreviewed" && activeExpenseId === row.id
-                          ? "bg-white/95 ring-1 ring-inset ring-gray-200/80 dark:bg-white/10 dark:ring-border/60"
-                          : ""
-                      }`}
-                      onClick={() => {
-                        if (listView === "unreviewed") setActiveExpenseId(row.id);
-                      }}
-                    >
-                      <div className="order-2 flex min-w-0 w-full flex-1 flex-col gap-1 md:order-1">
-                        <div className="min-w-0">
-                          {editingVendorId === row.id ? (
-                            <div
-                              className="flex max-w-md items-center gap-1"
-                              data-inline-field
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <Input
-                                className="h-7 rounded-sm border-gray-100/60 text-[14px] text-text-primary transition-[box-shadow,border-color] duration-150 focus-visible:ring-2 focus-visible:ring-blue-400/30"
-                                value={vendorDraft}
-                                autoFocus
-                                onChange={(e) => setVendorDraft(e.target.value)}
-                                onKeyDown={onInlineKeyDown(row, "vendor")}
-                              />
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="exp-icon-btn h-7 w-7 shrink-0"
-                                aria-label="Save vendor"
-                                onMouseDown={(e) => e.preventDefault()}
-                                onClick={() => void handleVendorInlineSave(row.id)}
-                              >
-                                <Check className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="exp-icon-btn h-7 w-7 shrink-0"
-                                aria-label="Cancel"
-                                onMouseDown={(e) => e.preventDefault()}
-                                onClick={() => clearInlineEdits()}
-                              >
-                                <X className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              className="truncate text-left text-[14px] font-semibold text-gray-900 hover:underline dark:text-foreground"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveExpenseId(row.id);
-                                openInlineField(row.id, "vendor");
-                              }}
-                            >
-                              {normalizedVendorLabel(row.vendorName)}
-                            </button>
-                          )}
-                        </div>
-                        <div
-                          className="flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 text-[12px] leading-snug text-gray-600 dark:text-muted-foreground"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {editingCategoryId === row.id ? (
-                            <span data-inline-field className="inline-flex items-center gap-1">
-                              <ExpenseCategorySelect
-                                className="h-7 max-w-[9rem] rounded-sm border border-gray-100/60 bg-white/90 px-1.5 text-xs text-text-primary backdrop-blur-sm"
-                                value={categoryDraft}
-                                autoFocus
-                                onValueChange={setCategoryDraft}
-                                onCategoriesUpdated={setCategoriesList}
-                                onKeyDown={onInlineKeyDown(row, "category")}
-                              />
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="exp-icon-btn h-7 w-7"
-                                onMouseDown={(e) => e.preventDefault()}
-                                onClick={() => void handleCategoryInlineSave(row.id)}
-                              >
-                                <Check className="h-3.5 w-3.5" />
-                              </Button>
-                            </span>
-                          ) : (
-                            <button
-                              type="button"
-                              className="hover:text-text-primary hover:underline"
-                              onClick={() => {
-                                setActiveExpenseId(row.id);
-                                openInlineField(row.id, "category");
-                              }}
-                            >
-                              {catLabel}
-                            </button>
-                          )}
-                          <span
-                            className="text-text-secondary/60 dark:text-text-secondary"
-                            aria-hidden
-                          >
-                            ·
-                          </span>
-                          {editingProjectId === row.id ? (
-                            <span
-                              data-inline-field
-                              className="inline-flex min-w-0 items-center gap-1"
-                              onKeyDown={onInlineKeyDown(row, "project")}
-                            >
-                              <Select
-                                value={
-                                  projectDraft === "" ? EXPENSE_PROJECT_OVERHEAD : projectDraft
-                                }
-                                onValueChange={(v) =>
-                                  setProjectDraft(v === EXPENSE_PROJECT_OVERHEAD ? "" : v)
-                                }
-                              >
-                                <SelectTrigger className="h-7 max-w-[10rem] border-gray-100/60 bg-white/90 text-xs text-text-primary backdrop-blur-sm">
-                                  <SelectValue placeholder="Project" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value={EXPENSE_PROJECT_OVERHEAD}>Overhead</SelectItem>
-                                  {safeProjects.map((p) => (
-                                    <SelectItem key={p.id} value={p.id}>
-                                      {p.name ?? p.id}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="exp-icon-btn h-7 w-7 shrink-0"
-                                onMouseDown={(e) => e.preventDefault()}
-                                onClick={() => void handleProjectInlineSave(row.id)}
-                              >
-                                <Check className="h-3.5 w-3.5" />
-                              </Button>
-                            </span>
-                          ) : (
-                            <button
-                              type="button"
-                              className="hh-inline-tap min-w-0 max-w-[10rem] truncate hover:text-text-primary hover:underline"
-                              onClick={() => {
-                                setActiveExpenseId(row.id);
-                                openInlineField(row.id, "project");
-                              }}
-                            >
-                              {projLabel}
-                            </button>
-                          )}
-                          <span
-                            className="text-text-secondary/60 dark:text-text-secondary"
-                            aria-hidden
-                          >
-                            ·
-                          </span>
-                          {editingDateId === row.id ? (
-                            <span className="inline-flex items-center gap-1" data-inline-field>
-                              <Input
-                                type="date"
-                                className="h-7 w-[9.5rem] rounded-sm border-gray-100/60 text-xs text-text-primary transition-[box-shadow,border-color] duration-150 focus-visible:ring-2 focus-visible:ring-blue-400/30"
-                                value={dateDraft}
-                                autoFocus
-                                onChange={(e) => setDateDraft(e.target.value)}
-                                onKeyDown={onInlineKeyDown(row, "date")}
-                              />
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="exp-icon-btn h-7 w-7"
-                                onMouseDown={(e) => e.preventDefault()}
-                                onClick={() => void handleDateInlineSave(row.id)}
-                              >
-                                <Check className="h-3.5 w-3.5" />
-                              </Button>
-                            </span>
-                          ) : (
-                            <button
-                              type="button"
-                              className="hh-inline-tap hover:text-text-primary hover:underline"
-                              onClick={() => {
-                                setActiveExpenseId(row.id);
-                                openInlineField(row.id, "date");
-                              }}
-                            >
-                              {row.date || "—"}
-                            </button>
-                          )}
-                          <span
-                            className="text-text-secondary/60 dark:text-text-secondary"
-                            aria-hidden
-                          >
-                            ·
-                          </span>
-                          <span className="inline-flex min-w-0 max-w-[9rem] items-center gap-1">
-                            <span className="sr-only">Payment method </span>
-                            {editingPaymentMethodId === row.id ? (
-                              (() => {
-                                const pmInList = (
-                                  PAYMENT_METHOD_OPTIONS as readonly string[]
-                                ).includes(row.paymentMethod);
-                                const pmValue = pmInList
-                                  ? row.paymentMethod
-                                  : row.paymentMethod?.trim()
-                                    ? row.paymentMethod
-                                    : PAYMENT_METHOD_OPTIONS[0];
-                                return (
-                                  <Select
-                                    value={pmValue}
-                                    disabled={paymentMethodMutation.isPending}
-                                    onValueChange={(v) => {
-                                      if (v === row.paymentMethod) return;
-                                      paymentMethodMutation.mutate({
-                                        id: row.id,
-                                        paymentMethod: v,
-                                      });
-                                    }}
-                                    onOpenChange={(open) => {
-                                      if (!open && !paymentMethodMutation.isPending) {
-                                        setEditingPaymentMethodId(null);
-                                      }
-                                    }}
-                                  >
-                                    <SelectTrigger
-                                      data-inline-field
-                                      className="flex h-7 min-h-[28px] max-w-[9rem] items-center border-gray-100 bg-white text-xs text-gray-900 dark:border-border dark:bg-card dark:text-foreground"
-                                    >
-                                      <SelectValue />
-                                      <SubmitSpinner
-                                        loading={paymentMethodMutation.isPending}
-                                        className="ml-1 shrink-0"
-                                      />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {!pmInList && row.paymentMethod?.trim() ? (
-                                        <SelectItem value={row.paymentMethod}>
-                                          {row.paymentMethod}
-                                        </SelectItem>
-                                      ) : null}
-                                      {PAYMENT_METHOD_OPTIONS.map((opt) => (
-                                        <SelectItem key={opt} value={opt}>
-                                          {opt}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                );
-                              })()
-                            ) : (
-                              <button
-                                type="button"
-                                className="hh-inline-tap inline-flex min-h-[28px] max-w-[9rem] items-center gap-1 px-2 py-1 text-left text-[12px] text-gray-700 dark:text-foreground"
-                                title={`Payment method: ${paymentMethodDisplayLabel(row.paymentMethod)}`}
-                                onClick={() => {
-                                  clearInlineEdits();
-                                  setActiveExpenseId(row.id);
-                                  setEditingPaymentMethodId(row.id);
-                                }}
-                              >
-                                <span className="truncate">
-                                  {paymentMethodDisplayLabel(row.paymentMethod)}
-                                </span>
-                                {paymentMethodFlashId === row.id ? (
-                                  <Check
-                                    className="h-3.5 w-3.5 shrink-0 text-emerald-600 opacity-90 animate-in fade-in zoom-in-95 duration-200 dark:text-emerald-500"
-                                    aria-hidden
-                                  />
-                                ) : null}
-                              </button>
-                            )}
-                          </span>
-                          <span
-                            className="text-text-secondary/60 dark:text-text-secondary"
-                            aria-hidden
-                          >
-                            ·
-                          </span>
-                          {editingSourceId === row.id ? (
-                            <span
-                              data-inline-field
-                              className="inline-flex items-center gap-1"
-                              onKeyDown={onInlineKeyDown(row, "source")}
-                            >
-                              <Select
-                                value={sourceTypeDraft ?? "company"}
-                                onValueChange={(v) =>
-                                  setSourceTypeDraft(v as NonNullable<Expense["sourceType"]>)
-                                }
-                              >
-                                <SelectTrigger className="h-7 border-gray-100/60 bg-white/90 text-xs text-text-primary backdrop-blur-sm">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="company">Company</SelectItem>
-                                  <SelectItem value="receipt_upload">Receipt</SelectItem>
-                                  <SelectItem value="reimbursement">Reimbursement</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="exp-icon-btn h-7 w-7"
-                                onMouseDown={(e) => e.preventDefault()}
-                                onClick={() => void handleSourceInlineSave(row.id)}
-                              >
-                                <Check className="h-3.5 w-3.5" />
-                              </Button>
-                            </span>
-                          ) : (
-                            <button
-                              type="button"
-                              className="hover:text-text-primary hover:underline"
-                              onClick={() => {
-                                setActiveExpenseId(row.id);
-                                openInlineField(row.id, "source");
-                              }}
-                            >
-                              {sourceTypeLabel(row.sourceType)}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      <div
-                        className="order-1 flex w-full shrink-0 flex-col items-end gap-1 md:order-2 md:w-auto"
-                        onClick={(e) => e.stopPropagation()}
+              {listView === "all" ? (
+                <div className="flex flex-col gap-3 border-b border-gray-100/80 p-3 dark:border-border/60 md:hidden">
+                  {pageRows.map((row) => {
+                    const rowTotal = getExpenseTotal(row);
+                    const projLabel = projectLabel(row, projectNameById);
+                    const status = row.status ?? "pending";
+                    const statusStyle = expenseStatusDotTextClass(status);
+                    return (
+                      <Link
+                        key={row.id}
+                        href={`/financial/expenses/${row.id}`}
+                        className="block rounded-sm border border-gray-100/80 bg-white p-4 text-left transition-colors hover:bg-gray-50 active:bg-gray-100 dark:border-border/60 dark:bg-card dark:hover:bg-muted/30 dark:active:bg-muted/40"
                       >
-                        <div className="flex justify-end">
-                          {editingAmountId === row.id ? (
-                            <div className="flex items-center justify-end gap-1" data-inline-field>
-                              <Input
-                                className="h-7 w-24 rounded-sm border-gray-100/80 text-right text-[15px] tabular-nums text-text-primary transition-[box-shadow,border-color] duration-150 focus-visible:ring-2 focus-visible:ring-blue-400/30"
-                                value={amountDraft}
-                                autoFocus
-                                inputMode="decimal"
-                                onChange={(e) => setAmountDraft(e.target.value)}
-                                onKeyDown={onInlineKeyDown(row, "amount")}
-                              />
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="exp-icon-btn h-7 w-7"
-                                onMouseDown={(e) => e.preventDefault()}
-                                onClick={() => void handleAmountInlineSave(row.id)}
-                              >
-                                <Check className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              className="text-[15px] font-semibold tabular-nums tracking-tight text-[#d92d20] transition-opacity duration-200 group-hover:opacity-90 hover:underline"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveExpenseId(row.id);
-                                openInlineField(row.id, "amount");
-                              }}
-                            >
-                              −$
-                              {rowTotal.toLocaleString(undefined, {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })}
-                            </button>
-                          )}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-semibold text-gray-900 dark:text-foreground">
+                              {normalizedVendorLabel(row.vendorName)}
+                            </p>
+                            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                              {projLabel} · {row.date ?? "—"}
+                            </p>
+                          </div>
+                          <span className="shrink-0 text-sm font-semibold tabular-nums text-[#d92d20] dark:text-red-400">
+                            −$
+                            {rowTotal.toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
+                          </span>
                         </div>
-                        <button
-                          type="button"
-                          className={`flex items-center gap-1 text-xs font-medium ${statusStyle.text}`}
-                          onClick={() => void toggleStatus(row)}
-                          title={
-                            listView === "unreviewed" ? "Mark reviewed" : "Toggle review status"
-                          }
-                        >
+                        <div className="mt-2 flex items-center gap-1.5 text-xs">
                           <span
                             className={`h-2 w-2 shrink-0 rounded-full ${statusStyle.dot}`}
                             aria-hidden
                           />
-                          {statusDisplayLabel(status)}
-                        </button>
-                        <ExpenseAttachmentTrigger
-                          row={row}
-                          onPreview={() => void openReceiptPreview(row)}
-                        />
-                      </div>
-
-                      <div className="absolute right-2 top-3 z-[1] opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-focus-within:opacity-100 max-md:opacity-100 md:right-1.5 md:top-1/2 md:-translate-y-1/2">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="exp-icon-btn h-7 w-7"
-                              aria-label="Row actions"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            align="end"
-                            className="w-44"
+                          <span className={statusStyle.text}>{statusDisplayLabel(status)}</span>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              ) : null}
+              <div
+                className={
+                  listView === "all" ? "hidden overflow-x-auto md:block" : "overflow-x-auto"
+                }
+              >
+                <ul
+                  className={
+                    listView === "all" ? "exp-divide w-full min-w-[640px] lg:min-w-0" : "exp-divide"
+                  }
+                >
+                  {pageRows.map((row) => {
+                    const rowTotal = getExpenseTotal(row);
+                    const projLabel = projectLabel(row, projectNameById);
+                    const status = row.status ?? "pending";
+                    const statusStyle = expenseStatusDotTextClass(status);
+                    const catLabel = primaryCategory(row);
+                    return (
+                      <li
+                        key={row.id}
+                        ref={(el) => {
+                          rowElsRef.current[row.id] = el;
+                        }}
+                        className={`group exp-row relative flex flex-col gap-3 border-b border-gray-100/80 bg-transparent px-3 py-3 pr-10 transition-all duration-150 ease-out last:border-b-0 hover:-translate-y-px hover:bg-gray-50 active:scale-[0.99] dark:border-border/60 dark:hover:bg-muted/40 md:flex-row md:justify-between md:items-start md:gap-4 md:px-4 md:py-2.5 md:pr-12 lg:pr-14 ${
+                          paymentMethodFlashId === row.id ? "hh-row-flash-success" : ""
+                        } ${
+                          deletingExpenseId === row.id
+                            ? "pointer-events-none !duration-300 opacity-0 ease-out scale-[0.98]"
+                            : ""
+                        } ${
+                          listView === "unreviewed" && activeExpenseId === row.id
+                            ? "bg-white/95 ring-1 ring-inset ring-gray-200/80 dark:bg-white/10 dark:ring-border/60"
+                            : ""
+                        }`}
+                        onClick={() => {
+                          if (listView === "unreviewed") setActiveExpenseId(row.id);
+                        }}
+                      >
+                        <div className="order-2 flex min-w-0 w-full flex-1 flex-col gap-1 md:order-1">
+                          <div className="min-w-0">
+                            {editingVendorId === row.id ? (
+                              <div
+                                className="flex max-w-md items-center gap-1"
+                                data-inline-field
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Input
+                                  className="h-7 rounded-sm border-gray-100/60 text-[14px] text-text-primary transition-[box-shadow,border-color] duration-150 focus-visible:ring-2 focus-visible:ring-blue-400/30"
+                                  value={vendorDraft}
+                                  autoFocus
+                                  onChange={(e) => setVendorDraft(e.target.value)}
+                                  onKeyDown={onInlineKeyDown(row, "vendor")}
+                                />
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="exp-icon-btn h-7 w-7 shrink-0"
+                                  aria-label="Save vendor"
+                                  onMouseDown={(e) => e.preventDefault()}
+                                  onClick={() => void handleVendorInlineSave(row.id)}
+                                >
+                                  <Check className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="exp-icon-btn h-7 w-7 shrink-0"
+                                  aria-label="Cancel"
+                                  onMouseDown={(e) => e.preventDefault()}
+                                  onClick={() => clearInlineEdits()}
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                className="truncate text-left text-[14px] font-semibold text-gray-900 hover:underline dark:text-foreground"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveExpenseId(row.id);
+                                  openInlineField(row.id, "vendor");
+                                }}
+                              >
+                                {normalizedVendorLabel(row.vendorName)}
+                              </button>
+                            )}
+                          </div>
+                          <div
+                            className="flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 text-[12px] leading-snug text-gray-600 dark:text-muted-foreground"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <DropdownMenuItem
-                              className="gap-2"
-                              onClick={() => {
-                                setEditExpense(row);
-                                setEditModalOpen(true);
-                              }}
+                            {editingCategoryId === row.id ? (
+                              <span data-inline-field className="inline-flex items-center gap-1">
+                                <ExpenseCategorySelect
+                                  className="h-7 max-w-[9rem] rounded-sm border border-gray-100/60 bg-white/90 px-1.5 text-xs text-text-primary backdrop-blur-sm"
+                                  value={categoryDraft}
+                                  autoFocus
+                                  onValueChange={setCategoryDraft}
+                                  onCategoriesUpdated={setCategoriesList}
+                                  onKeyDown={onInlineKeyDown(row, "category")}
+                                />
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="exp-icon-btn h-7 w-7"
+                                  onMouseDown={(e) => e.preventDefault()}
+                                  onClick={() => void handleCategoryInlineSave(row.id)}
+                                >
+                                  <Check className="h-3.5 w-3.5" />
+                                </Button>
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                className="hover:text-text-primary hover:underline"
+                                onClick={() => {
+                                  setActiveExpenseId(row.id);
+                                  openInlineField(row.id, "category");
+                                }}
+                              >
+                                {catLabel}
+                              </button>
+                            )}
+                            <span
+                              className="text-text-secondary/60 dark:text-text-secondary"
+                              aria-hidden
                             >
-                              <Pencil className="h-3.5 w-3.5" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="gap-2 text-red-600 focus:bg-red-50 focus:text-red-700 dark:focus:bg-red-950/30 dark:focus:text-red-400"
-                              disabled={deletingExpenseId === row.id}
-                              onClick={() => handleDelete(row)}
+                              ·
+                            </span>
+                            {editingProjectId === row.id ? (
+                              <span
+                                data-inline-field
+                                className="inline-flex min-w-0 items-center gap-1"
+                                onKeyDown={onInlineKeyDown(row, "project")}
+                              >
+                                <Select
+                                  value={
+                                    projectDraft === "" ? EXPENSE_PROJECT_OVERHEAD : projectDraft
+                                  }
+                                  onValueChange={(v) =>
+                                    setProjectDraft(v === EXPENSE_PROJECT_OVERHEAD ? "" : v)
+                                  }
+                                >
+                                  <SelectTrigger className="h-7 max-w-[10rem] border-gray-100/60 bg-white/90 text-xs text-text-primary backdrop-blur-sm">
+                                    <SelectValue placeholder="Project" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value={EXPENSE_PROJECT_OVERHEAD}>
+                                      Overhead
+                                    </SelectItem>
+                                    {safeProjects.map((p) => (
+                                      <SelectItem key={p.id} value={p.id}>
+                                        {p.name ?? p.id}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="exp-icon-btn h-7 w-7 shrink-0"
+                                  onMouseDown={(e) => e.preventDefault()}
+                                  onClick={() => void handleProjectInlineSave(row.id)}
+                                >
+                                  <Check className="h-3.5 w-3.5" />
+                                </Button>
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                className="hh-inline-tap min-w-0 max-w-[10rem] truncate hover:text-text-primary hover:underline"
+                                onClick={() => {
+                                  setActiveExpenseId(row.id);
+                                  openInlineField(row.id, "project");
+                                }}
+                              >
+                                {projLabel}
+                              </button>
+                            )}
+                            <span
+                              className="text-text-secondary/60 dark:text-text-secondary"
+                              aria-hidden
                             >
-                              <SubmitSpinner
-                                loading={deletingExpenseId === row.id}
-                                className="shrink-0"
-                              />
-                              {deletingExpenseId !== row.id ? (
-                                <Trash2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                              ) : null}
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
+                              ·
+                            </span>
+                            {editingDateId === row.id ? (
+                              <span className="inline-flex items-center gap-1" data-inline-field>
+                                <Input
+                                  type="date"
+                                  className="h-7 w-[9.5rem] rounded-sm border-gray-100/60 text-xs text-text-primary transition-[box-shadow,border-color] duration-150 focus-visible:ring-2 focus-visible:ring-blue-400/30"
+                                  value={dateDraft}
+                                  autoFocus
+                                  onChange={(e) => setDateDraft(e.target.value)}
+                                  onKeyDown={onInlineKeyDown(row, "date")}
+                                />
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="exp-icon-btn h-7 w-7"
+                                  onMouseDown={(e) => e.preventDefault()}
+                                  onClick={() => void handleDateInlineSave(row.id)}
+                                >
+                                  <Check className="h-3.5 w-3.5" />
+                                </Button>
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                className="hh-inline-tap hover:text-text-primary hover:underline"
+                                onClick={() => {
+                                  setActiveExpenseId(row.id);
+                                  openInlineField(row.id, "date");
+                                }}
+                              >
+                                {row.date || "—"}
+                              </button>
+                            )}
+                            <span
+                              className="text-text-secondary/60 dark:text-text-secondary"
+                              aria-hidden
+                            >
+                              ·
+                            </span>
+                            <span className="inline-flex min-w-0 max-w-[9rem] items-center gap-1">
+                              <span className="sr-only">Payment method </span>
+                              {editingPaymentMethodId === row.id ? (
+                                (() => {
+                                  const pmInList = (
+                                    PAYMENT_METHOD_OPTIONS as readonly string[]
+                                  ).includes(row.paymentMethod);
+                                  const pmValue = pmInList
+                                    ? row.paymentMethod
+                                    : row.paymentMethod?.trim()
+                                      ? row.paymentMethod
+                                      : PAYMENT_METHOD_OPTIONS[0];
+                                  return (
+                                    <Select
+                                      value={pmValue}
+                                      disabled={paymentMethodMutation.isPending}
+                                      onValueChange={(v) => {
+                                        if (v === row.paymentMethod) return;
+                                        paymentMethodMutation.mutate({
+                                          id: row.id,
+                                          paymentMethod: v,
+                                        });
+                                      }}
+                                      onOpenChange={(open) => {
+                                        if (!open && !paymentMethodMutation.isPending) {
+                                          setEditingPaymentMethodId(null);
+                                        }
+                                      }}
+                                    >
+                                      <SelectTrigger
+                                        data-inline-field
+                                        className="flex h-7 min-h-[28px] max-w-[9rem] items-center border-gray-100 bg-white text-xs text-gray-900 dark:border-border dark:bg-card dark:text-foreground"
+                                      >
+                                        <SelectValue />
+                                        <SubmitSpinner
+                                          loading={paymentMethodMutation.isPending}
+                                          className="ml-1 shrink-0"
+                                        />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {!pmInList && row.paymentMethod?.trim() ? (
+                                          <SelectItem value={row.paymentMethod}>
+                                            {row.paymentMethod}
+                                          </SelectItem>
+                                        ) : null}
+                                        {PAYMENT_METHOD_OPTIONS.map((opt) => (
+                                          <SelectItem key={opt} value={opt}>
+                                            {opt}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  );
+                                })()
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="hh-inline-tap inline-flex min-h-[28px] max-w-[9rem] items-center gap-1 px-2 py-1 text-left text-[12px] text-gray-700 dark:text-foreground"
+                                  title={`Payment method: ${paymentMethodDisplayLabel(row.paymentMethod)}`}
+                                  onClick={() => {
+                                    clearInlineEdits();
+                                    setActiveExpenseId(row.id);
+                                    setEditingPaymentMethodId(row.id);
+                                  }}
+                                >
+                                  <span className="truncate">
+                                    {paymentMethodDisplayLabel(row.paymentMethod)}
+                                  </span>
+                                  {paymentMethodFlashId === row.id ? (
+                                    <Check
+                                      className="h-3.5 w-3.5 shrink-0 text-emerald-600 opacity-90 animate-in fade-in zoom-in-95 duration-200 dark:text-emerald-500"
+                                      aria-hidden
+                                    />
+                                  ) : null}
+                                </button>
+                              )}
+                            </span>
+                            <span
+                              className="text-text-secondary/60 dark:text-text-secondary"
+                              aria-hidden
+                            >
+                              ·
+                            </span>
+                            {editingSourceId === row.id ? (
+                              <span
+                                data-inline-field
+                                className="inline-flex items-center gap-1"
+                                onKeyDown={onInlineKeyDown(row, "source")}
+                              >
+                                <Select
+                                  value={sourceTypeDraft ?? "company"}
+                                  onValueChange={(v) =>
+                                    setSourceTypeDraft(v as NonNullable<Expense["sourceType"]>)
+                                  }
+                                >
+                                  <SelectTrigger className="h-7 border-gray-100/60 bg-white/90 text-xs text-text-primary backdrop-blur-sm">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="company">Company</SelectItem>
+                                    <SelectItem value="receipt_upload">Receipt</SelectItem>
+                                    <SelectItem value="reimbursement">Reimbursement</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="exp-icon-btn h-7 w-7"
+                                  onMouseDown={(e) => e.preventDefault()}
+                                  onClick={() => void handleSourceInlineSave(row.id)}
+                                >
+                                  <Check className="h-3.5 w-3.5" />
+                                </Button>
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                className="hover:text-text-primary hover:underline"
+                                onClick={() => {
+                                  setActiveExpenseId(row.id);
+                                  openInlineField(row.id, "source");
+                                }}
+                              >
+                                {sourceTypeLabel(row.sourceType)}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div
+                          className="order-1 flex w-full shrink-0 flex-col items-end gap-1 md:order-2 md:w-auto"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="flex justify-end">
+                            {editingAmountId === row.id ? (
+                              <div
+                                className="flex items-center justify-end gap-1"
+                                data-inline-field
+                              >
+                                <Input
+                                  className="h-7 w-24 rounded-sm border-gray-100/80 text-right text-[15px] tabular-nums text-text-primary transition-[box-shadow,border-color] duration-150 focus-visible:ring-2 focus-visible:ring-blue-400/30"
+                                  value={amountDraft}
+                                  autoFocus
+                                  inputMode="decimal"
+                                  onChange={(e) => setAmountDraft(e.target.value)}
+                                  onKeyDown={onInlineKeyDown(row, "amount")}
+                                />
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="exp-icon-btn h-7 w-7"
+                                  onMouseDown={(e) => e.preventDefault()}
+                                  onClick={() => void handleAmountInlineSave(row.id)}
+                                >
+                                  <Check className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                className="text-[15px] font-semibold tabular-nums tracking-tight text-[#d92d20] transition-opacity duration-200 group-hover:opacity-90 hover:underline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActiveExpenseId(row.id);
+                                  openInlineField(row.id, "amount");
+                                }}
+                              >
+                                −$
+                                {rowTotal.toLocaleString(undefined, {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}
+                              </button>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            className={`flex items-center gap-1 text-xs font-medium ${statusStyle.text}`}
+                            onClick={() => void toggleStatus(row)}
+                            title={
+                              listView === "unreviewed" ? "Mark reviewed" : "Toggle review status"
+                            }
+                          >
+                            <span
+                              className={`h-2 w-2 shrink-0 rounded-full ${statusStyle.dot}`}
+                              aria-hidden
+                            />
+                            {statusDisplayLabel(status)}
+                          </button>
+                          <ExpenseAttachmentTrigger
+                            row={row}
+                            onPreview={() => void openReceiptPreview(row)}
+                          />
+                        </div>
+
+                        <div className="absolute right-2 top-3 z-[1] opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-focus-within:opacity-100 max-md:opacity-100 md:right-1.5 md:top-1/2 md:-translate-y-1/2">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="exp-icon-btn h-7 w-7"
+                                aria-label="Row actions"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                              align="end"
+                              className="w-44"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <DropdownMenuItem
+                                className="gap-2"
+                                onClick={() => {
+                                  setEditExpense(row);
+                                  setEditModalOpen(true);
+                                }}
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="gap-2 text-red-600 focus:bg-red-50 focus:text-red-700 dark:focus:bg-red-950/30 dark:focus:text-red-400"
+                                disabled={deletingExpenseId === row.id}
+                                onClick={() => handleDelete(row)}
+                              >
+                                <SubmitSpinner
+                                  loading={deletingExpenseId === row.id}
+                                  className="shrink-0"
+                                />
+                                {deletingExpenseId !== row.id ? (
+                                  <Trash2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                                ) : null}
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
               <div className="border-t border-gray-100/80 px-4 py-2 dark:border-border/60">
                 <Pagination
                   page={curPage}

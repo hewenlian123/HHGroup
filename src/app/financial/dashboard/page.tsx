@@ -61,7 +61,7 @@ export default async function CompanyFinancialDashboardPage() {
         </p>
       ) : null}
       <SectionHeader label="Metrics" />
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 mt-2">
+      <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
         {metrics.map((m) => (
           <div key={m.label} className="kpi-metric">
             <span className="kpi-metric-label">{m.label}</span>

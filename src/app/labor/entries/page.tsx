@@ -416,7 +416,7 @@ function DailyEntriesPageInner() {
       }
     >
       <FilterBar>
-        <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-6">
+        <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-6">
           <div className="space-y-1">
             <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               From
@@ -511,28 +511,48 @@ function DailyEntriesPageInner() {
         </div>
       </FilterBar>
       {selectedIds.size > 0 ? (
-        <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 py-2 dark:border-border/60">
+        <div className="flex flex-col gap-2 border-b border-gray-100 py-2 dark:border-border/60 md:flex-row md:flex-wrap md:items-center">
           <span className="text-xs text-muted-foreground">{selectedIds.size} selected</span>
-          <Button variant="outline" size="sm" onClick={handleBulkSubmit} disabled={!!bulkAction}>
-            <SubmitSpinner loading={bulkAction === "submit"} className="mr-2" />
-            Submit
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleBulkApprove} disabled={!!bulkAction}>
-            <SubmitSpinner loading={bulkAction === "approve"} className="mr-2" />
-            Approve
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleBulkLock} disabled={!!bulkAction}>
-            <SubmitSpinner loading={bulkAction === "lock"} className="mr-2" />
-            Lock
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="btn-outline-ghost"
-            onClick={() => setSelectedIds(new Set())}
-          >
-            Clear
-          </Button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <Button
+              variant="outline"
+              size="sm"
+              className="min-h-11 w-full sm:min-h-8 sm:w-auto"
+              onClick={handleBulkSubmit}
+              disabled={!!bulkAction}
+            >
+              <SubmitSpinner loading={bulkAction === "submit"} className="mr-2" />
+              Submit
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="min-h-11 w-full sm:min-h-8 sm:w-auto"
+              onClick={handleBulkApprove}
+              disabled={!!bulkAction}
+            >
+              <SubmitSpinner loading={bulkAction === "approve"} className="mr-2" />
+              Approve
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="min-h-11 w-full sm:min-h-8 sm:w-auto"
+              onClick={handleBulkLock}
+              disabled={!!bulkAction}
+            >
+              <SubmitSpinner loading={bulkAction === "lock"} className="mr-2" />
+              Lock
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="btn-outline-ghost min-h-11 w-full sm:min-h-8 sm:w-auto"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              Clear
+            </Button>
+          </div>
         </div>
       ) : null}
       {error ? (
@@ -545,8 +565,108 @@ function DailyEntriesPageInner() {
           {message}
         </div>
       ) : null}
-      <div className="overflow-x-auto border-t border-gray-100 dark:border-border/60">
-        <table className="w-full text-sm border-collapse">
+      <div className="flex flex-col gap-3 border-t border-gray-100 dark:border-border/60 md:hidden">
+        {loading
+          ? Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="rounded-sm border border-border/60 p-4">
+                <Skeleton className="h-5 w-2/3" />
+                <Skeleton className="mt-2 h-4 w-full" />
+              </div>
+            ))
+          : filteredEntries.length === 0
+            ? null
+            : pageRows.map((row) => {
+                const payrollStatus = getLaborPaymentStatus(
+                  row.worker_payment_id ?? null,
+                  row.workflowStatusRaw ?? null,
+                  row.usesPaymentLinkForPayroll ? "payment_link" : "status_fallback"
+                );
+                const payrollLocked = payrollStatus === "paid";
+                const rowLocked = row.status === "Locked" || payrollLocked;
+                const cost = row.cost_amount ?? 0;
+                const rate =
+                  row.hours > 0 && row.cost_amount != null ? row.cost_amount / row.hours : null;
+                return (
+                  <div
+                    key={row.id}
+                    className="rounded-sm border border-border/60 bg-background p-4 dark:bg-card"
+                  >
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(row.id)}
+                        onChange={() => toggleSelect(row.id)}
+                        disabled={rowLocked}
+                        className="mt-1 h-4 w-4 shrink-0 rounded border-input"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <button
+                        type="button"
+                        className="min-w-0 flex-1 text-left disabled:opacity-60"
+                        disabled={rowLocked}
+                        onClick={() => {
+                          if (!rowLocked) openEdit(row);
+                        }}
+                      >
+                        <p className="tabular-nums text-xs text-muted-foreground">
+                          {row.work_date}
+                        </p>
+                        <p className="font-medium text-foreground">{row.worker_name ?? "—"}</p>
+                        <p className="mt-0.5 truncate text-sm text-muted-foreground">
+                          {row.project_name ?? "—"}
+                        </p>
+                        <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm tabular-nums">
+                          <span>{row.hours}h</span>
+                          <span className="text-muted-foreground">
+                            {rate != null ? `$${rate.toFixed(2)}/h` : "—"}
+                          </span>
+                          <span className="font-medium">${cost.toFixed(2)}</span>
+                        </div>
+                        <div className="mt-2">
+                          <StatusBadge
+                            label={laborPaymentStatusUiLabel(payrollStatus)}
+                            variant={laborEntryPayrollStatusBadgeVariant(payrollStatus)}
+                          />
+                        </div>
+                        {row.notes ? (
+                          <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
+                            {row.notes}
+                          </p>
+                        ) : null}
+                      </button>
+                    </div>
+                    <div className="mt-3 flex flex-col gap-2 border-t border-border/40 pt-3 sm:flex-row">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="btn-outline-ghost min-h-11 w-full sm:min-h-8 sm:flex-1"
+                        onClick={() => openEdit(row)}
+                        disabled={rowLocked}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="btn-outline-ghost min-h-11 w-full text-red-600 sm:min-h-8 sm:flex-1 dark:text-red-400"
+                        onClick={() => handleDelete(row)}
+                        disabled={rowLocked || deletingId === row.id}
+                      >
+                        <SubmitSpinner loading={deletingId === row.id} className="mr-1" />
+                        {deletingId === row.id ? "…" : "Delete"}
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+        {loading || filteredEntries.length > 0 ? null : (
+          <p className="py-6 text-center text-xs text-muted-foreground">
+            No entries match the filters.
+          </p>
+        )}
+      </div>
+      <div className="hidden overflow-x-auto border-t border-gray-100 dark:border-border/60 md:block">
+        <table className="w-full min-w-[640px] border-collapse text-sm lg:min-w-0">
           <thead>
             <tr className="border-b border-gray-100 bg-white dark:border-border/60 dark:bg-muted/30">
               <th className="w-8 px-1">

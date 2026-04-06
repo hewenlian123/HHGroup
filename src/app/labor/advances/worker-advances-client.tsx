@@ -281,17 +281,20 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
         title="Worker Advances"
         subtitle="Track salary advances and deductions for workers."
         actions={
-          <Button onClick={openCreate} className="h-9 rounded-lg px-3 text-sm">
+          <Button
+            onClick={openCreate}
+            className="h-9 max-md:min-h-11 max-md:w-full rounded-lg px-3 text-sm sm:w-auto"
+          >
             + Create Advance
           </Button>
         }
       />
 
-      <div className="flex flex-wrap items-center gap-2 border-b border-border/60 pb-3">
+      <div className="grid grid-cols-1 gap-2 border-b border-border/60 pb-3 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-center">
         <select
           value={workerFilter}
           onChange={(e) => setWorkerFilter(e.target.value)}
-          className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+          className="h-9 max-md:min-h-11 w-full rounded-md border border-input bg-background px-3 text-sm lg:w-auto"
         >
           <option value="">All workers</option>
           {workers.map((w) => (
@@ -303,7 +306,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
         <select
           value={projectFilter}
           onChange={(e) => setProjectFilter(e.target.value)}
-          className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+          className="h-9 max-md:min-h-11 w-full rounded-md border border-input bg-background px-3 text-sm lg:w-auto"
         >
           <option value="">All projects</option>
           {projects.map((p) => (
@@ -315,7 +318,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as any)}
-          className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+          className="h-9 max-md:min-h-11 w-full rounded-md border border-input bg-background px-3 text-sm lg:w-auto"
         >
           <option value="">All statuses</option>
           <option value="pending">Pending</option>
@@ -326,25 +329,25 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
           type="date"
           value={dateFrom}
           onChange={(e) => setDateFrom(e.target.value)}
-          className="h-9 w-[140px] text-sm"
+          className="h-9 max-md:min-h-11 w-full text-sm sm:w-[140px]"
         />
         <Input
           type="date"
           value={dateTo}
           onChange={(e) => setDateTo(e.target.value)}
-          className="h-9 w-[140px] text-sm"
+          className="h-9 max-md:min-h-11 w-full text-sm sm:w-[140px]"
         />
         <Input
           placeholder="Search notes…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          className="h-9 max-w-[220px] text-sm"
+          className="h-9 max-md:min-h-11 w-full max-w-none text-sm sm:max-w-[220px] lg:max-w-[220px]"
         />
-        <div className="flex-1" />
+        <div className="hidden flex-1 lg:block" />
         <Button
           variant="outline"
           size="sm"
-          className="h-9"
+          className="h-9 max-md:min-h-11 w-full lg:w-auto"
           disabled={loading}
           onClick={() => load()}
         >
@@ -355,8 +358,41 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
       {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
 
       <Card className="overflow-hidden">
-        <div className="table-responsive">
-          <table className="w-full min-w-[720px] border-collapse text-sm md:min-w-0">
+        <div className="flex flex-col gap-3 p-3 md:hidden">
+          {loading ? (
+            <p className="py-6 text-center text-xs text-muted-foreground">Loading…</p>
+          ) : filtered.length === 0 ? (
+            <p className="py-6 text-center text-xs text-muted-foreground">No advances yet.</p>
+          ) : (
+            filtered.map((row) => (
+              <div key={row.id} className="rounded-sm border border-border/60 p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-medium text-foreground">{row.workerName}</p>
+                    <p className="text-sm text-muted-foreground">{row.projectName ?? "—"}</p>
+                  </div>
+                  <StatusBadge status={row.status} />
+                </div>
+                <p className="mt-2 text-sm font-medium tabular-nums">${row.amount.toFixed(2)}</p>
+                <p className="text-xs tabular-nums text-muted-foreground">{row.advanceDate}</p>
+                <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
+                  {row.notes ?? "—"}
+                </p>
+                <div className="mt-3 flex justify-end">
+                  <WorkerAdvanceActionsMenu
+                    advance={row}
+                    onEdit={() => openEdit(row)}
+                    onMarkDeducted={() => handleMarkDeducted(row)}
+                    onDelete={() => handleDelete(row)}
+                    disabled={busyId === row.id}
+                  />
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+        <div className="table-responsive hidden overflow-x-auto md:block">
+          <table className="w-full min-w-[640px] border-collapse text-sm lg:min-w-0">
             <thead>
               <tr className="border-b border-border/60 bg-muted/40">
                 <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">

@@ -21,12 +21,16 @@ export function PageHeader({
   const rightContent = children ?? actions;
   return (
     <header className={cn("flex flex-col gap-1", className)}>
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-4">
         <div className="min-w-0">
           <h1 className="text-xl font-medium tracking-tight text-text-primary">{title}</h1>
           {description ? <p className="mt-0.5 text-sm text-text-secondary">{description}</p> : null}
         </div>
-        {rightContent}
+        {rightContent ? (
+          <div className="flex w-full flex-col gap-2 lg:w-auto lg:flex-row lg:flex-wrap lg:items-center lg:justify-end [&_a]:w-full [&_button]:w-full lg:[&_a]:w-auto lg:[&_button]:w-auto">
+            {rightContent}
+          </div>
+        ) : null}
       </div>
     </header>
   );

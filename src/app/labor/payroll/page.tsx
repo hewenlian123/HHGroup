@@ -200,237 +200,347 @@ export default function PayrollSummaryPage() {
         title="Payroll Summary"
         subtitle="Labor pay + unpaid reimbursements + unpaid worker invoices."
         actions={
-          <Link href="/labor" className="text-sm text-muted-foreground hover:text-foreground">
+          <Link
+            href="/labor"
+            className="text-sm text-muted-foreground hover:text-foreground max-md:min-h-11 max-md:inline-flex max-md:items-center"
+          >
             Labor
           </Link>
         }
       />
 
-      <div className="flex flex-wrap items-center gap-3 border-b border-border/60 pb-3">
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          From
-        </label>
-        <Input
-          type="date"
-          value={fromDate}
-          onChange={(e) => setFromDate(e.target.value)}
-          className="h-9 w-[152px]"
-        />
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          To
-        </label>
-        <Input
-          type="date"
-          value={toDate}
-          onChange={(e) => setToDate(e.target.value)}
-          className="h-9 w-[152px]"
-        />
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          Project
-        </label>
-        <select
-          value={projectId}
-          onChange={(e) => setProjectId(e.target.value)}
-          className="h-9 rounded-md border border-input bg-transparent px-3 text-sm min-w-[180px]"
-        >
-          <option value="">All projects</option>
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-        <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search worker…"
-          className="h-9 min-w-[180px]"
-        />
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-9 ml-auto"
-          onClick={load}
-          disabled={loading}
-        >
-          Refresh
-        </Button>
+      <div className="grid grid-cols-1 gap-3 border-b border-border/60 pb-3 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-end">
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            From
+          </label>
+          <Input
+            type="date"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+            className="h-9 max-md:min-h-11 w-full sm:w-[152px]"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            To
+          </label>
+          <Input
+            type="date"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+            className="h-9 max-md:min-h-11 w-full sm:w-[152px]"
+          />
+        </div>
+        <div className="flex flex-col gap-1 sm:col-span-2 lg:col-span-1">
+          <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Project
+          </label>
+          <select
+            value={projectId}
+            onChange={(e) => setProjectId(e.target.value)}
+            className="h-9 max-md:min-h-11 w-full rounded-md border border-input bg-transparent px-3 text-sm lg:w-auto lg:min-w-[180px]"
+          >
+            <option value="">All projects</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1 sm:col-span-2 lg:col-span-1 lg:flex-1">
+          <label className="sr-only">Search worker</label>
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search worker…"
+            className="h-9 max-md:min-h-11 w-full min-w-0 lg:min-w-[180px]"
+          />
+        </div>
+        <div className="sm:col-span-2 lg:col-span-1 lg:flex lg:justify-end">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-9 max-md:min-h-11 w-full lg:w-auto"
+            onClick={load}
+            disabled={loading}
+          >
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
 
-      <div className="overflow-x-auto border-b border-border/60">
-        <table className="w-full text-sm border-separate border-spacing-y-1.5 border-spacing-x-0">
-          <thead>
-            <tr className="border-b border-border/60">
-              <th
-                className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer select-none"
-                onClick={() => toggleSort("workerName")}
+      <div className="flex flex-col gap-3 border-b border-border/60 pb-3 md:hidden">
+        {loading ? (
+          <p className="py-6 text-center text-xs text-muted-foreground">Loading…</p>
+        ) : filtered.length === 0 ? (
+          <p className="py-6 text-center text-xs text-muted-foreground">No results.</p>
+        ) : (
+          paged.map((r) => (
+            <div key={r.workerId} className="rounded-sm border border-border/60 p-4">
+              <button
+                type="button"
+                className="w-full text-left"
+                onClick={() => router.push(`/workers/${r.workerId}`)}
               >
-                Worker
-              </th>
-              <th
-                className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums cursor-pointer select-none"
-                onClick={() => toggleSort("laborPay")}
-              >
-                Labor Pay
-              </th>
-              <th
-                className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums cursor-pointer select-none"
-                onClick={() => toggleSort("reimbursements")}
-              >
-                Reimbursements
-              </th>
-              <th
-                className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums cursor-pointer select-none"
-                onClick={() => toggleSort("invoices")}
-              >
-                Invoices
-              </th>
-              <th
-                className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums cursor-pointer select-none"
-                onClick={() => toggleSort("totalPayable")}
-              >
-                Total Payable
-              </th>
-              <th className="w-28 px-4 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Pay
-              </th>
-              <th className="w-12 px-4 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr className="border-b border-border/40">
-                <td colSpan={7} className="py-6 px-4 text-center text-muted-foreground text-xs">
-                  Loading…
-                </td>
-              </tr>
-            ) : filtered.length === 0 ? (
-              <tr className="border-b border-border/40">
-                <td colSpan={7} className="py-6 px-4 text-center text-muted-foreground text-xs">
-                  No results.
-                </td>
-              </tr>
-            ) : (
-              paged.map((r) => (
-                <tr
-                  key={r.workerId}
-                  className={listTableRowClassName}
-                  tabIndex={0}
-                  role="link"
-                  aria-label={`Open ${r.workerName}`}
-                  onClick={() => router.push(`/workers/${r.workerId}`)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      router.push(`/workers/${r.workerId}`);
-                    }
+                <span className="font-medium text-foreground underline-offset-2 hover:underline">
+                  {r.workerName}
+                </span>
+              </button>
+              <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs tabular-nums">
+                <div>
+                  <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Labor
+                  </dt>
+                  <dd>{fmtUsd(r.laborPay)}</dd>
+                </div>
+                <div>
+                  <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Reimb.
+                  </dt>
+                  <dd>{fmtUsd(r.reimbursements)}</dd>
+                </div>
+                <div>
+                  <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Invoices
+                  </dt>
+                  <dd>{fmtUsd(r.invoices)}</dd>
+                </div>
+                <div>
+                  <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Total
+                  </dt>
+                  <dd className="font-medium text-foreground">{fmtUsd(r.totalPayable)}</dd>
+                </div>
+              </dl>
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 max-md:min-h-11"
+                  onClick={() => {
+                    setPayTarget(r);
+                    setPayOpen(true);
                   }}
                 >
-                  <td
-                    className={cn(
-                      "first:rounded-l-xl py-2 px-4 font-medium",
-                      listTablePrimaryCellClassName
-                    )}
-                  >
-                    {r.workerName}
-                  </td>
-                  <td
-                    className={cn(
-                      "py-2 px-4 text-right tabular-nums",
-                      listTableAmountCellClassName
-                    )}
-                  >
-                    {fmtUsd(r.laborPay)}
-                  </td>
-                  <td
-                    className={cn(
-                      "py-2 px-4 text-right tabular-nums",
-                      listTableAmountCellClassName
-                    )}
-                  >
-                    {fmtUsd(r.reimbursements)}
-                  </td>
-                  <td
-                    className={cn(
-                      "py-2 px-4 text-right tabular-nums",
-                      listTableAmountCellClassName
-                    )}
-                  >
-                    {fmtUsd(r.invoices)}
-                  </td>
-                  <td
-                    className={cn(
-                      "py-2 px-4 text-right tabular-nums font-medium",
-                      listTableAmountCellClassName
-                    )}
-                  >
-                    {fmtUsd(r.totalPayable)}
-                  </td>
-                  <td className="py-2 px-4 text-right" onClick={(e) => e.stopPropagation()}>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-8"
-                      onClick={() => {
-                        setPayTarget(r);
-                        setPayOpen(true);
-                      }}
-                    >
-                      Pay Worker
-                    </Button>
-                  </td>
-                  <td
-                    className="last:rounded-r-xl py-2 px-4 text-right"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <RowActionsMenu
-                      appearance="list"
-                      ariaLabel={`Actions for ${r.workerName}`}
-                      actions={[
-                        { label: "View", onClick: () => router.push(`/workers/${r.workerId}`) },
-                        { label: "Edit", onClick: () => router.push("/workers") },
-                        {
-                          label: "Delete",
-                          onClick: async () => {
-                            if (deletingId) return;
-                            if (
-                              !window.confirm(
-                                `Delete worker "${r.workerName}"? This cannot be undone.`
-                              )
-                            )
-                              return;
-                            setDeletingId(r.workerId);
-                            const res = await deleteWorkerAction(r.workerId);
-                            if (!res.ok) {
-                              toast({
-                                title: "Delete failed",
-                                description: res.error,
-                                variant: "error",
-                              });
-                            } else {
-                              toast({ title: "Deleted", variant: "success" });
-                            }
-                            setDeletingId(null);
-                            await load();
-                          },
-                          destructive: true,
-                          disabled: deletingId === r.workerId,
-                        },
-                      ]}
-                    />
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+                  Pay Worker
+                </Button>
+                <RowActionsMenu
+                  appearance="list"
+                  ariaLabel={`Actions for ${r.workerName}`}
+                  actions={[
+                    { label: "View", onClick: () => router.push(`/workers/${r.workerId}`) },
+                    { label: "Edit", onClick: () => router.push("/workers") },
+                    {
+                      label: "Delete",
+                      onClick: async () => {
+                        if (deletingId) return;
+                        if (
+                          !window.confirm(`Delete worker "${r.workerName}"? This cannot be undone.`)
+                        )
+                          return;
+                        setDeletingId(r.workerId);
+                        const res = await deleteWorkerAction(r.workerId);
+                        if (!res.ok) {
+                          toast({
+                            title: "Delete failed",
+                            description: res.error,
+                            variant: "error",
+                          });
+                        } else {
+                          toast({ title: "Deleted", variant: "success" });
+                        }
+                        setDeletingId(null);
+                        await load();
+                      },
+                      destructive: true,
+                      disabled: deletingId === r.workerId,
+                    },
+                  ]}
+                />
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
-      <div className="flex items-center justify-between pt-3 text-sm text-muted-foreground">
+      <div className="hidden border-b border-border/60 md:block">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px] border-separate border-spacing-x-0 border-spacing-y-1.5 text-sm lg:min-w-0">
+            <thead>
+              <tr className="border-b border-border/60">
+                <th
+                  className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider cursor-pointer select-none"
+                  onClick={() => toggleSort("workerName")}
+                >
+                  Worker
+                </th>
+                <th
+                  className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums cursor-pointer select-none"
+                  onClick={() => toggleSort("laborPay")}
+                >
+                  Labor Pay
+                </th>
+                <th
+                  className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums cursor-pointer select-none"
+                  onClick={() => toggleSort("reimbursements")}
+                >
+                  Reimbursements
+                </th>
+                <th
+                  className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums cursor-pointer select-none"
+                  onClick={() => toggleSort("invoices")}
+                >
+                  Invoices
+                </th>
+                <th
+                  className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums cursor-pointer select-none"
+                  onClick={() => toggleSort("totalPayable")}
+                >
+                  Total Payable
+                </th>
+                <th className="w-28 px-4 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Pay
+                </th>
+                <th className="w-12 px-4 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr className="border-b border-border/40">
+                  <td colSpan={7} className="py-6 px-4 text-center text-muted-foreground text-xs">
+                    Loading…
+                  </td>
+                </tr>
+              ) : filtered.length === 0 ? (
+                <tr className="border-b border-border/40">
+                  <td colSpan={7} className="py-6 px-4 text-center text-muted-foreground text-xs">
+                    No results.
+                  </td>
+                </tr>
+              ) : (
+                paged.map((r) => (
+                  <tr
+                    key={r.workerId}
+                    className={listTableRowClassName}
+                    tabIndex={0}
+                    role="link"
+                    aria-label={`Open ${r.workerName}`}
+                    onClick={() => router.push(`/workers/${r.workerId}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        router.push(`/workers/${r.workerId}`);
+                      }
+                    }}
+                  >
+                    <td
+                      className={cn(
+                        "first:rounded-l-xl py-2 px-4 font-medium",
+                        listTablePrimaryCellClassName
+                      )}
+                    >
+                      {r.workerName}
+                    </td>
+                    <td
+                      className={cn(
+                        "py-2 px-4 text-right tabular-nums",
+                        listTableAmountCellClassName
+                      )}
+                    >
+                      {fmtUsd(r.laborPay)}
+                    </td>
+                    <td
+                      className={cn(
+                        "py-2 px-4 text-right tabular-nums",
+                        listTableAmountCellClassName
+                      )}
+                    >
+                      {fmtUsd(r.reimbursements)}
+                    </td>
+                    <td
+                      className={cn(
+                        "py-2 px-4 text-right tabular-nums",
+                        listTableAmountCellClassName
+                      )}
+                    >
+                      {fmtUsd(r.invoices)}
+                    </td>
+                    <td
+                      className={cn(
+                        "py-2 px-4 text-right tabular-nums font-medium",
+                        listTableAmountCellClassName
+                      )}
+                    >
+                      {fmtUsd(r.totalPayable)}
+                    </td>
+                    <td className="py-2 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8"
+                        onClick={() => {
+                          setPayTarget(r);
+                          setPayOpen(true);
+                        }}
+                      >
+                        Pay Worker
+                      </Button>
+                    </td>
+                    <td
+                      className="last:rounded-r-xl py-2 px-4 text-right"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <RowActionsMenu
+                        appearance="list"
+                        ariaLabel={`Actions for ${r.workerName}`}
+                        actions={[
+                          { label: "View", onClick: () => router.push(`/workers/${r.workerId}`) },
+                          { label: "Edit", onClick: () => router.push("/workers") },
+                          {
+                            label: "Delete",
+                            onClick: async () => {
+                              if (deletingId) return;
+                              if (
+                                !window.confirm(
+                                  `Delete worker "${r.workerName}"? This cannot be undone.`
+                                )
+                              )
+                                return;
+                              setDeletingId(r.workerId);
+                              const res = await deleteWorkerAction(r.workerId);
+                              if (!res.ok) {
+                                toast({
+                                  title: "Delete failed",
+                                  description: res.error,
+                                  variant: "error",
+                                });
+                              } else {
+                                toast({ title: "Deleted", variant: "success" });
+                              }
+                              setDeletingId(null);
+                              await load();
+                            },
+                            destructive: true,
+                            disabled: deletingId === r.workerId,
+                          },
+                        ]}
+                      />
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3 pt-3 text-sm text-muted-foreground max-md:[&_button]:min-h-11 sm:flex-row sm:items-center sm:justify-between">
         <span className="tabular-nums">
           {filtered.length === 0
             ? "0"
@@ -441,7 +551,7 @@ export default function PayrollSummaryPage() {
           <Button
             size="sm"
             variant="outline"
-            className="h-8"
+            className="h-8 flex-1 sm:flex-none"
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
           >
@@ -450,7 +560,7 @@ export default function PayrollSummaryPage() {
           <Button
             size="sm"
             variant="outline"
-            className="h-8"
+            className="h-8 flex-1 sm:flex-none"
             disabled={page >= totalPages}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
           >

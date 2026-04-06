@@ -452,28 +452,28 @@ export default function WorkerReimbursementsPage() {
         title="Worker Reimbursements"
         subtitle="Construction finance: approve, pay, and track worker reimbursements."
         actions={
-          <>
+          <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             <Link
               href="/financial/workers"
-              className="mr-2 text-sm text-muted-foreground hover:text-foreground"
+              className="text-sm text-muted-foreground hover:text-foreground max-md:min-h-11 max-md:inline-flex max-md:items-center sm:mr-2"
             >
               Worker Balances
             </Link>
             <Link
               href="/labor/receipts"
-              className="mr-2 text-sm text-muted-foreground hover:text-foreground"
+              className="text-sm text-muted-foreground hover:text-foreground max-md:min-h-11 max-md:inline-flex max-md:items-center sm:mr-2"
             >
               Receipt Uploads
             </Link>
             <Link
               href="/labor"
-              className="mr-2 text-sm text-muted-foreground hover:text-foreground"
+              className="text-sm text-muted-foreground hover:text-foreground max-md:min-h-11 max-md:inline-flex max-md:items-center sm:mr-2"
             >
               Labor
             </Link>
             <Button
               size="sm"
-              className="w-full sm:w-auto"
+              className="w-full max-md:min-h-11 sm:w-auto"
               onClick={() => {
                 setEditingId(null);
                 setShowForm(true);
@@ -481,7 +481,7 @@ export default function WorkerReimbursementsPage() {
             >
               + New Reimbursement
             </Button>
-          </>
+          </div>
         }
       />
       {schemaWarning ? (
@@ -505,6 +505,7 @@ export default function WorkerReimbursementsPage() {
           <Button
             size="sm"
             variant="outline"
+            className="w-full max-md:min-h-11 sm:w-auto"
             disabled={selectedIds.size === 0 || !selectedSameWorker || selectedRows.length === 0}
             onClick={openCreateWorkerPayment}
           >
@@ -682,8 +683,8 @@ export default function WorkerReimbursementsPage() {
       </div>
 
       {/* Desktop: table */}
-      <div className="table-responsive hidden border-b border-gray-100 md:block dark:border-border/60">
-        <table className="w-full min-w-[640px] text-sm border-collapse table-row-compact md:min-w-0">
+      <div className="table-responsive hidden overflow-x-auto border-b border-gray-100 md:block dark:border-border/60">
+        <table className="w-full min-w-[640px] border-collapse text-sm table-row-compact lg:min-w-0">
           <thead>
             <tr className="border-b border-gray-100 bg-white dark:border-border/60 dark:bg-muted/30">
               <th className="w-10 py-2 px-2 text-center">
