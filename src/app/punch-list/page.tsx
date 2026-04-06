@@ -15,6 +15,13 @@ import {
 import { createPunchListItemAction, updatePunchListItemAction } from "./actions";
 import { cn } from "@/lib/utils";
 import { Search } from "lucide-react";
+import {
+  MobileFabButton,
+  MobileFilterSheet,
+  MobileListHeader,
+  MobileSearchFiltersRow,
+  mobileListPagePaddingClass,
+} from "@/components/mobile/mobile-list-chrome";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 
@@ -98,10 +105,10 @@ const PunchListRow = React.memo(function PunchListRow({
       <button
         type="button"
         onClick={() => onOpenDrawer(item)}
-        className="w-full text-left py-2.5 px-3 transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-50 dark:hover:bg-muted/40"
+        className="w-full min-h-[56px] px-0 py-2.5 text-left transition-colors hover:bg-gray-50 dark:hover:bg-muted/40 md:px-3"
       >
-        <div className="font-medium text-foreground">{item.issue || "—"}</div>
-        <div className="text-xs text-muted-foreground mt-0.5">
+        <div className="text-sm font-medium text-foreground">{item.issue || "—"}</div>
+        <div className="mt-0.5 text-xs text-text-secondary dark:text-muted-foreground">
           {[item.project_name, item.location].filter(Boolean).join(" · ") || "—"}
         </div>
         <div className="flex flex-wrap items-center gap-2 mt-1.5">
@@ -159,6 +166,7 @@ export default function PunchListPage() {
   const [priorityFilter, setPriorityFilter] = React.useState<string>("");
   const [searchQuery, setSearchQuery] = React.useState("");
   const [viewMode, setViewMode] = React.useState<ViewMode>("list");
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
   const [modalOpen, setModalOpen] = React.useState(false);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [selectedItem, setSelectedItem] = React.useState<PunchRow | null>(null);
@@ -410,27 +418,45 @@ export default function PunchListPage() {
     [load]
   );
 
+  const activeDrawerFilterCount =
+    (projectFilter ? 1 : 0) +
+    (statusFilter ? 1 : 0) +
+    (priorityFilter ? 1 : 0) +
+    (viewMode !== "list" ? 1 : 0);
+
   return (
     <PageLayout
+      divider={false}
+      className={cn("max-w-5xl", mobileListPagePaddingClass, "max-md:!gap-3")}
       header={
-        <PageHeader
-          title="Punch List"
-          description="Track and resolve construction issues."
-          actions={
-            <Button
-              size="touch"
-              className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90 min-h-[44px]"
-              onClick={openModal}
-            >
-              + Add Issue
-            </Button>
-          }
-        />
+        <>
+          <div className="hidden md:block">
+            <PageHeader
+              title="Punch List"
+              description="Track and resolve construction issues."
+              actions={
+                <Button
+                  size="sm"
+                  className="h-9 rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90"
+                  onClick={openModal}
+                >
+                  + Add Issue
+                </Button>
+              }
+            />
+          </div>
+          <div className="md:hidden">
+            <MobileListHeader
+              title="Punch List"
+              fab={<MobileFabButton ariaLabel="Add issue" onClick={openModal} />}
+            />
+          </div>
+        </>
       }
     >
-      <div className="max-w-5xl space-y-3">
+      <div className="max-w-5xl space-y-3 md:mx-auto">
         {/* Issue overview — compact cards */}
-        <section>
+        <section className="hidden md:block">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
             Issue Overview
           </p>
@@ -454,8 +480,102 @@ export default function PunchListPage() {
           </div>
         </section>
 
+        <MobileSearchFiltersRow
+          filterSheetOpen={filtersOpen}
+          onOpenFilters={() => setFiltersOpen(true)}
+          activeFilterCount={activeDrawerFilterCount}
+          searchSlot={
+            <div className="relative w-full">
+              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search issues…"
+                className="h-10 pl-8 text-sm"
+              />
+            </div>
+          }
+        />
+        <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
+          <div className="space-y-3">
+            <div>
+              <p className="mb-1 text-xs font-medium text-muted-foreground">View</p>
+              <div className="flex gap-1 rounded-md border border-[#eee] bg-white p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("list")}
+                  className={cn(
+                    "flex-1 rounded-[6px] px-2 py-1.5 text-sm font-medium",
+                    viewMode === "list" ? "bg-foreground text-background" : "text-muted-foreground"
+                  )}
+                >
+                  List
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("kanban")}
+                  className={cn(
+                    "flex-1 rounded-[6px] px-2 py-1.5 text-sm font-medium",
+                    viewMode === "kanban"
+                      ? "bg-foreground text-background"
+                      : "text-muted-foreground"
+                  )}
+                >
+                  Kanban
+                </button>
+              </div>
+            </div>
+            <div>
+              <p className="mb-1 text-xs font-medium text-muted-foreground">Project</p>
+              <select
+                value={projectFilter}
+                onChange={(e) => setProjectFilter(e.target.value)}
+                className="h-10 w-full rounded-sm border border-[#eee] bg-background px-2.5 text-sm"
+              >
+                <option value="">All projects</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <p className="mb-1 text-xs font-medium text-muted-foreground">Status</p>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+                className="h-10 w-full rounded-sm border border-[#eee] bg-background px-2.5 text-sm"
+              >
+                <option value="">All</option>
+                <option value="open">Open</option>
+                <option value="assigned">In Progress</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+            <div>
+              <p className="mb-1 text-xs font-medium text-muted-foreground">Priority</p>
+              <select
+                value={priorityFilter}
+                onChange={(e) => setPriorityFilter(e.target.value)}
+                className="h-10 w-full rounded-sm border border-[#eee] bg-background px-2.5 text-sm"
+              >
+                <option value="">All</option>
+                {PRIORITIES.map((pr) => (
+                  <option key={pr} value={pr}>
+                    {pr}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
+            Done
+          </Button>
+        </MobileFilterSheet>
+
         {/* View switch: List | Kanban */}
-        <div className="flex items-center gap-0 rounded-md border border-[#eee] bg-white p-0.5 w-fit">
+        <div className="hidden w-fit items-center gap-0 rounded-md border border-[#eee] bg-white p-0.5 md:flex">
           <button
             type="button"
             onClick={() => setViewMode("list")}
@@ -482,8 +602,8 @@ export default function PunchListPage() {
           </button>
         </div>
 
-        {/* Filters: stacked on mobile, row on desktop */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-2">
+        {/* Filters: desktop */}
+        <div className="hidden flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-2 md:flex">
           <div className="w-full min-w-0 sm:w-auto">
             <label className="block text-xs font-medium text-muted-foreground mb-1">Project</label>
             <select
@@ -543,7 +663,7 @@ export default function PunchListPage() {
 
         {/* List view — compact issue list */}
         {viewMode === "list" && (
-          <div className="rounded-lg border border-[#eee] bg-white overflow-hidden">
+          <div className="overflow-hidden rounded-lg border border-[#eee] bg-white max-md:rounded-none max-md:border-0 dark:bg-background">
             {loading ? (
               <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>
             ) : error && items.length === 0 ? (
@@ -556,7 +676,7 @@ export default function PunchListPage() {
                 </Button>
               </div>
             ) : (
-              <ul className="divide-y divide-[#eee]">
+              <ul className="divide-y divide-gray-100 dark:divide-border/60">
                 {filteredItems.map((r) => (
                   <PunchListRow key={r.id} item={r} onOpenDrawer={openDrawer} />
                 ))}
@@ -567,7 +687,7 @@ export default function PunchListPage() {
 
         {/* Kanban board — 3 columns with drag and drop */}
         {viewMode === "kanban" && (
-          <div className="rounded-lg border border-[#eee] bg-white overflow-hidden">
+          <div className="overflow-hidden rounded-lg border border-[#eee] bg-white max-md:rounded-none max-md:border-0 dark:bg-background">
             {loading ? (
               <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>
             ) : error && items.length === 0 ? (

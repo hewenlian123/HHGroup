@@ -5,7 +5,7 @@ import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Plus, Search, Trash2 } from "lucide-react";
+import { MoreHorizontal, Plus, Search, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -33,6 +33,20 @@ import {
   type DeleteBlockedCounts,
 } from "./delete-blocked-config";
 import { useToast } from "@/components/toast/toast-provider";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  MobileEmptyState,
+  MobileFabPlus,
+  MobileFilterSheet,
+  MobileListHeader,
+  MobileSearchFiltersRow,
+  mobileListPagePaddingClass,
+} from "@/components/mobile/mobile-list-chrome";
 
 export type ProjectsListRow = {
   id: string;
@@ -115,6 +129,9 @@ export function ProjectsListClient({
   );
   const [deleteBlockedProjectId, setDeleteBlockedProjectId] = React.useState<string | null>(null);
   const [forceDeleteInProgress, setForceDeleteInProgress] = React.useState(false);
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
+
+  const activeDrawerFilterCount = (statusFilter !== "all" ? 1 : 0) + (sortBy !== "updated" ? 1 : 0);
 
   useOnAppSync(
     React.useCallback(() => {
@@ -203,14 +220,26 @@ export function ProjectsListClient({
   );
 
   return (
-    <div className={cn("page-container page-stack py-8 text-[14px] leading-normal", PAGE_BG)}>
+    <div
+      className={cn(
+        "page-container page-stack py-8 text-[14px] leading-normal",
+        PAGE_BG,
+        mobileListPagePaddingClass,
+        "max-md:!gap-3"
+      )}
+    >
       {dataLoadWarning ? (
         <p className="border-b border-gray-100 pb-3 text-sm text-text-secondary" role="status">
           {dataLoadWarning}
         </p>
       ) : null}
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <MobileListHeader
+        title="Projects"
+        fab={<MobileFabPlus href="/projects/new" ariaLabel="New project" />}
+      />
+
+      <div className="hidden flex-col gap-3 sm:flex-row sm:items-end sm:justify-between md:flex">
         <div>
           <h1
             data-testid="projects-page-heading"
@@ -234,7 +263,7 @@ export function ProjectsListClient({
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 gap-[10px] sm:grid-cols-2 lg:grid-cols-4">
+      <div className="hidden grid-cols-2 gap-[10px] sm:grid-cols-2 lg:grid-cols-4 md:grid">
         {(
           [
             ["TOTAL PROJECTS", summary.total],
@@ -255,11 +284,30 @@ export function ProjectsListClient({
         ))}
       </div>
 
-      <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
+      <MobileSearchFiltersRow
+        filterSheetOpen={filtersOpen}
+        onOpenFilters={() => setFiltersOpen(true)}
+        activeFilterCount={activeDrawerFilterCount}
+        searchSlot={
+          <div className="relative w-full">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9CA3AF]" />
+            <Input
+              data-testid="projects-list-search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search projects…"
+              className={cn("pl-9", FIELD)}
+              aria-label="Search projects"
+            />
+          </div>
+        }
+      />
+
+      <div className="hidden flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center md:flex">
         <div className="relative min-w-[200px] flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9CA3AF]" />
           <Input
-            data-testid="projects-list-search"
+            data-testid="projects-list-search-desktop"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search projects…"
@@ -292,134 +340,240 @@ export function ProjectsListClient({
         </select>
       </div>
 
-      {filtered.length === 0 ? (
-        <div className="rounded-lg bg-white px-8 py-14 text-center shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
-          <p className="text-[14px] font-medium text-text-secondary">
-            {dataLoadWarning
-              ? "Could not load projects."
-              : query.trim() || statusFilter !== "all"
-                ? "No projects match your filter."
-                : "No projects yet."}
-          </p>
-          {!query.trim() && statusFilter === "all" ? (
-            <Button
-              asChild
-              variant="outline"
-              className="mt-6 h-10 rounded-md border-[0.5px] border-gray-100 bg-white px-4 text-text-primary shadow-none transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-50 active:scale-[0.97] active:duration-100 dark:hover:bg-muted/40"
-            >
-              <Link href="/projects/new">New Project</Link>
-            </Button>
-          ) : null}
+      <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-text-secondary">Status</p>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as ProjectListStatusFilter)}
+            className={cn("w-full px-3", FIELD)}
+            aria-label="Filter projects by status"
+          >
+            <option value="all">All statuses</option>
+            <option value="active">Active</option>
+            <option value="completed">Completed</option>
+            <option value="pending">Pending</option>
+            <option value="on_hold">On hold</option>
+          </select>
         </div>
-      ) : (
-        <TableShell>
-          <div className="airtable-table-scroll">
-            <table className="w-full min-w-[880px] border-collapse text-[13px]">
-              <thead>
-                <tr>
-                  <th className={tableRawThClass}>Project</th>
-                  <th className={tableRawThClass}>Client</th>
-                  <th className={tableRawThClass}>Status</th>
-                  <th className={cn(tableRawThClass, "text-right tabular-nums")}>Revenue</th>
-                  <th className={cn(tableRawThClass, "text-right tabular-nums")}>Labor</th>
-                  <th className={cn(tableRawThClass, "text-right tabular-nums")}>Profit</th>
-                  <th className={tableRawThClass}>Updated</th>
-                  <th className={cn(tableRawThClass, "text-right")}>Actions</th>
-                </tr>
-              </thead>
-              <tbody className="[&_tr:last-child>td]:border-b-0">
-                {filtered.map((r) => (
-                  <tr
-                    key={r.id}
-                    onClick={() => handleNavigate(r.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        handleNavigate(r.id);
-                      }
-                    }}
-                    tabIndex={0}
-                    role="link"
-                    aria-label={`Open project ${r.name}`}
-                    className={listTableRowClassName}
-                  >
-                    <td className={cn(tableRawTdClass, "font-medium text-text-primary")}>
-                      {r.name}
-                    </td>
-                    <td className={tableRawTdClass}>{r.clientName ?? "—"}</td>
-                    <td className={tableRawTdClass}>
-                      <ProjectListStatusPill status={r.status} />
-                    </td>
-                    <td
-                      className={cn(
-                        tableRawTdClass,
-                        "text-right font-mono tabular-nums text-text-primary"
-                      )}
-                    >
-                      {fmtUsd0(r.revenue)}
-                    </td>
-                    <td
-                      className={cn(
-                        tableRawTdClass,
-                        "text-right font-mono tabular-nums text-text-secondary"
-                      )}
-                    >
-                      {fmtUsd0(r.laborCost)}
-                    </td>
-                    <td
-                      className={cn(
-                        tableRawTdClass,
-                        "text-right font-mono text-base font-semibold tabular-nums",
-                        profitClass(r.profit)
-                      )}
-                    >
-                      {fmtUsd0(r.profit)}
-                    </td>
-                    <td
-                      className={cn(tableRawTdClass, "font-mono text-[13px] text-text-secondary")}
-                    >
-                      {r.updatedAt}
-                    </td>
-                    <td
-                      className={cn(tableRawTdClass, "text-right")}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div
-                        className="inline-flex flex-wrap items-center justify-end gap-3"
-                        role="group"
-                        aria-label={`Actions for ${r.name}`}
-                      >
-                        <button
-                          type="button"
-                          className="text-[14px] font-medium text-text-primary hover:underline"
-                          onClick={() => handleNavigate(r.id)}
-                        >
-                          View
-                        </button>
-                        <button
-                          type="button"
-                          className="text-[14px] font-medium text-text-secondary hover:text-text-primary hover:underline"
-                          onClick={() => router.push(`/projects/${r.id}/edit`)}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          className="rounded-md p-1.5 text-red-600 hover:bg-red-50 disabled:opacity-50"
-                          aria-label={`Delete ${r.name}`}
-                          disabled={deletingId === r.id}
-                          onClick={() => void handleDelete(r.id, r.name)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-text-secondary">Sort</p>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+            className={cn("w-full px-3", FIELD)}
+            aria-label="Sort projects"
+          >
+            <option value="updated">Updated (newest)</option>
+            <option value="name">Name (A–Z)</option>
+            <option value="revenue">Revenue (high)</option>
+            <option value="profit">Profit (high)</option>
+          </select>
+        </div>
+        <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
+          Done
+        </Button>
+      </MobileFilterSheet>
+
+      {filtered.length === 0 ? (
+        <>
+          <MobileEmptyState
+            icon={<Search className="h-8 w-8 opacity-80" aria-hidden />}
+            message={
+              dataLoadWarning
+                ? "Could not load projects."
+                : query.trim() || statusFilter !== "all"
+                  ? "No projects match your filters."
+                  : "No projects yet."
+            }
+            action={
+              !query.trim() && statusFilter === "all" && !dataLoadWarning ? (
+                <Button asChild size="sm" variant="outline">
+                  <Link href="/projects/new">New project</Link>
+                </Button>
+              ) : undefined
+            }
+          />
+          <div className="hidden rounded-lg bg-white px-8 py-14 text-center shadow-[0_1px_3px_rgba(0,0,0,0.06)] md:block dark:bg-card">
+            <p className="text-[14px] font-medium text-text-secondary">
+              {dataLoadWarning
+                ? "Could not load projects."
+                : query.trim() || statusFilter !== "all"
+                  ? "No projects match your filter."
+                  : "No projects yet."}
+            </p>
+            {!query.trim() && statusFilter === "all" ? (
+              <Button
+                asChild
+                variant="outline"
+                className="mt-6 h-10 rounded-md border-[0.5px] border-gray-100 bg-white px-4 text-text-primary shadow-none transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-50 active:scale-[0.97] active:duration-100 dark:hover:bg-muted/40"
+              >
+                <Link href="/projects/new">New Project</Link>
+              </Button>
+            ) : null}
           </div>
-        </TableShell>
+        </>
+      ) : (
+        <>
+          <div className="divide-y divide-gray-100 dark:divide-border/60 md:hidden">
+            {filtered.map((r) => (
+              <div key={r.id} className="flex min-h-[56px] items-center gap-2 py-2.5">
+                <Link
+                  href={`/projects/${r.id}`}
+                  className="flex min-w-0 flex-1 items-center gap-3 text-left active:bg-muted/30"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-text-primary">{r.name}</p>
+                    <p className="truncate text-xs text-text-secondary dark:text-muted-foreground">
+                      {(r.clientName ?? "—") + " · " + r.updatedAt}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <span className={cn("text-sm font-medium tabular-nums", profitClass(r.profit))}>
+                      {fmtUsd0(r.profit)}
+                    </span>
+                    <ProjectListStatusPill status={r.status} />
+                  </div>
+                </Link>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 shrink-0 rounded-sm"
+                      aria-label={`More actions for ${r.name}`}
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="min-w-[160px]">
+                    <DropdownMenuItem asChild>
+                      <Link href={`/projects/${r.id}`}>View</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href={`/projects/${r.id}/edit`}>Edit</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onSelect={() => void handleDelete(r.id, r.name)}
+                    >
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            ))}
+          </div>
+          <TableShell className="hidden md:block">
+            <div className="airtable-table-scroll">
+              <table className="w-full min-w-[880px] border-collapse text-[13px]">
+                <thead>
+                  <tr>
+                    <th className={tableRawThClass}>Project</th>
+                    <th className={tableRawThClass}>Client</th>
+                    <th className={tableRawThClass}>Status</th>
+                    <th className={cn(tableRawThClass, "text-right tabular-nums")}>Revenue</th>
+                    <th className={cn(tableRawThClass, "text-right tabular-nums")}>Labor</th>
+                    <th className={cn(tableRawThClass, "text-right tabular-nums")}>Profit</th>
+                    <th className={tableRawThClass}>Updated</th>
+                    <th className={cn(tableRawThClass, "text-right")}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="[&_tr:last-child>td]:border-b-0">
+                  {filtered.map((r) => (
+                    <tr
+                      key={r.id}
+                      onClick={() => handleNavigate(r.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleNavigate(r.id);
+                        }
+                      }}
+                      tabIndex={0}
+                      role="link"
+                      aria-label={`Open project ${r.name}`}
+                      className={listTableRowClassName}
+                    >
+                      <td className={cn(tableRawTdClass, "font-medium text-text-primary")}>
+                        {r.name}
+                      </td>
+                      <td className={tableRawTdClass}>{r.clientName ?? "—"}</td>
+                      <td className={tableRawTdClass}>
+                        <ProjectListStatusPill status={r.status} />
+                      </td>
+                      <td
+                        className={cn(
+                          tableRawTdClass,
+                          "text-right font-mono tabular-nums text-text-primary"
+                        )}
+                      >
+                        {fmtUsd0(r.revenue)}
+                      </td>
+                      <td
+                        className={cn(
+                          tableRawTdClass,
+                          "text-right font-mono tabular-nums text-text-secondary"
+                        )}
+                      >
+                        {fmtUsd0(r.laborCost)}
+                      </td>
+                      <td
+                        className={cn(
+                          tableRawTdClass,
+                          "text-right font-mono text-base font-semibold tabular-nums",
+                          profitClass(r.profit)
+                        )}
+                      >
+                        {fmtUsd0(r.profit)}
+                      </td>
+                      <td
+                        className={cn(tableRawTdClass, "font-mono text-[13px] text-text-secondary")}
+                      >
+                        {r.updatedAt}
+                      </td>
+                      <td
+                        className={cn(tableRawTdClass, "text-right")}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div
+                          className="inline-flex flex-wrap items-center justify-end gap-3"
+                          role="group"
+                          aria-label={`Actions for ${r.name}`}
+                        >
+                          <button
+                            type="button"
+                            className="text-[14px] font-medium text-text-primary hover:underline"
+                            onClick={() => handleNavigate(r.id)}
+                          >
+                            View
+                          </button>
+                          <button
+                            type="button"
+                            className="text-[14px] font-medium text-text-secondary hover:text-text-primary hover:underline"
+                            onClick={() => router.push(`/projects/${r.id}/edit`)}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded-md p-1.5 text-red-600 hover:bg-red-50 disabled:opacity-50"
+                            aria-label={`Delete ${r.name}`}
+                            disabled={deletingId === r.id}
+                            onClick={() => void handleDelete(r.id, r.name)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </TableShell>
+        </>
       )}
 
       <Dialog open={deleteBlockedOpen} onOpenChange={setDeleteBlockedOpen}>

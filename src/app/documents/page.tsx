@@ -1,4 +1,4 @@
-import { PageLayout, PageHeader } from "@/components/base";
+import { PageLayout, PageHeader, Divider } from "@/components/base";
 import { getDocumentsPaged, getProjectsDashboard } from "@/lib/data";
 import { DocumentsListClient } from "./documents-list-client";
 
@@ -33,11 +33,15 @@ export default async function DocumentsPage({ searchParams }: Props) {
 
   return (
     <PageLayout
+      divider={false}
       header={
-        <PageHeader
-          title="Documents"
-          description="Project files, receipts, PDFs, subcontract documents, and photos."
-        />
+        <div className="hidden md:block">
+          <PageHeader
+            title="Documents"
+            description="Project files, receipts, PDFs, subcontract documents, and photos."
+          />
+          <Divider />
+        </div>
       }
     >
       <DocumentsListClient documents={documents} projects={projectOptions} total={total} />

@@ -20,7 +20,8 @@ import {
 } from "@/components/ui/dialog";
 import { DocumentPreviewModal } from "@/components/documents/document-preview-modal";
 import { EmptyState } from "@/components/empty-state";
-import { FileUp } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { FileUp, Filter, Plus } from "lucide-react";
 import { Pagination } from "@/components/ui/pagination";
 import {
   getDocumentPreviewUrl,
@@ -105,6 +106,7 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
   );
 
   const [uploadOpen, setUploadOpen] = React.useState(false);
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
   const [uploading, setUploading] = React.useState(false);
   const [uploadError, setUploadError] = React.useState<string | null>(null);
   const uploadFormRef = React.useRef<HTMLFormElement>(null);
@@ -170,6 +172,9 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
     [router]
   );
 
+  const activeFilterCount =
+    (projectId ? 1 : 0) + (fileType ? 1 : 0) + (dateFrom ? 1 : 0) + (dateTo ? 1 : 0);
+
   const handleUploadSubmit = React.useCallback(
     async (e: React.FormEvent<HTMLFormElement>) => {
       e.preventDefault();
@@ -200,93 +205,253 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
 
   return (
     <>
-      <FilterBar>
-        <div className="flex w-full flex-col gap-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setUploadOpen(true)}>
-              Upload
-            </Button>
-          </div>
-          <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-6">
-            <div className="space-y-1 sm:col-span-2">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-                Search
-              </p>
-              <Input
-                type="text"
-                placeholder="File name…"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                onBlur={() => setFilters({ search: searchInput })}
-                onKeyDown={(e) => e.key === "Enter" && setFilters({ search: searchInput })}
-              />
-            </div>
-            <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-                Project
-              </p>
-              <Select
-                value={projectId}
-                onChange={(e) => setFilters({ project_id: e.target.value })}
-              >
-                <option value="">All projects</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-                Type
-              </p>
-              <Select value={fileType} onChange={(e) => setFilters({ file_type: e.target.value })}>
-                <option value="">All types</option>
-                {DOCUMENT_FILE_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-                From
-              </p>
-              <Input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setFilters({ date_from: e.target.value })}
-              />
-            </div>
-            <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-                To
-              </p>
-              <Input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setFilters({ date_to: e.target.value })}
-              />
-            </div>
-          </div>
+      {/* Mobile: iOS-style header + search + filter drawer */}
+      <div className="md:hidden">
+        <div className="flex h-14 items-center justify-between gap-3 border-b border-gray-100 px-4 dark:border-border/60">
+          <h1 className="text-lg font-semibold text-text-primary dark:text-foreground">
+            Documents
+          </h1>
+          <button
+            type="button"
+            onClick={() => setUploadOpen(true)}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black text-white dark:bg-foreground dark:text-background"
+            aria-label="Upload document"
+          >
+            <Plus className="h-5 w-5" strokeWidth={2} />
+          </button>
         </div>
-      </FilterBar>
+        <div className="flex items-center gap-2 px-4 py-3">
+          <Input
+            type="search"
+            placeholder="Search files…"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onBlur={() => setFilters({ search: searchInput })}
+            onKeyDown={(e) => e.key === "Enter" && setFilters({ search: searchInput })}
+            className="h-10 flex-1 border-gray-100 dark:border-border/60"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="relative h-10 shrink-0 gap-1.5 border-gray-100 px-2.5 dark:border-border/60"
+            onClick={() => setFiltersOpen(true)}
+          >
+            <Filter className="h-4 w-4" />
+            <span className="text-xs font-medium">Filters</span>
+            {activeFilterCount > 0 ? (
+              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-black px-1 text-[10px] font-medium text-white dark:bg-foreground dark:text-background">
+                {activeFilterCount}
+              </span>
+            ) : null}
+          </Button>
+        </div>
+        <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+          <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-lg p-4">
+            <SheetHeader className="text-left">
+              <SheetTitle className="text-base font-semibold">Filters</SheetTitle>
+            </SheetHeader>
+            <div className="mt-4 flex flex-col gap-4 pb-6">
+              <div className="space-y-1">
+                <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+                  Project
+                </p>
+                <Select
+                  value={projectId}
+                  onChange={(e) => {
+                    setFilters({ project_id: e.target.value });
+                  }}
+                >
+                  <option value="">All projects</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+                  Type
+                </p>
+                <Select
+                  value={fileType}
+                  onChange={(e) => setFilters({ file_type: e.target.value })}
+                >
+                  <option value="">All types</option>
+                  {DOCUMENT_FILE_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+                  From
+                </p>
+                <Input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setFilters({ date_from: e.target.value })}
+                  className="h-10"
+                />
+              </div>
+              <div className="space-y-1">
+                <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+                  To
+                </p>
+                <Input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setFilters({ date_to: e.target.value })}
+                  className="h-10"
+                />
+              </div>
+              <Button type="button" className="w-full" onClick={() => setFiltersOpen(false)}>
+                Done
+              </Button>
+            </div>
+          </SheetContent>
+        </Sheet>
+      </div>
+
+      <div className="hidden md:block">
+        <FilterBar>
+          <div className="flex w-full flex-col gap-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setUploadOpen(true)}>
+                Upload
+              </Button>
+            </div>
+            <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-6">
+              <div className="space-y-1 sm:col-span-2">
+                <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+                  Search
+                </p>
+                <Input
+                  type="text"
+                  placeholder="File name…"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onBlur={() => setFilters({ search: searchInput })}
+                  onKeyDown={(e) => e.key === "Enter" && setFilters({ search: searchInput })}
+                />
+              </div>
+              <div className="space-y-1">
+                <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+                  Project
+                </p>
+                <Select
+                  value={projectId}
+                  onChange={(e) => setFilters({ project_id: e.target.value })}
+                >
+                  <option value="">All projects</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+                  Type
+                </p>
+                <Select
+                  value={fileType}
+                  onChange={(e) => setFilters({ file_type: e.target.value })}
+                >
+                  <option value="">All types</option>
+                  {DOCUMENT_FILE_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+                  From
+                </p>
+                <Input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setFilters({ date_from: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1">
+                <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+                  To
+                </p>
+                <Input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setFilters({ date_to: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+        </FilterBar>
+      </div>
       {localDocuments.length === 0 ? (
-        <EmptyState
-          title="No documents found"
-          description="Upload a document or adjust filters."
-          icon={<FileUp className="h-5 w-5" />}
-          action={
-            <Button size="sm" className="h-8" onClick={() => setUploadOpen(true)}>
+        <>
+          <div className="hidden md:block">
+            <EmptyState
+              title="No documents found"
+              description="Upload a document or adjust filters."
+              icon={<FileUp className="h-5 w-5" />}
+              action={
+                <Button size="sm" className="h-8" onClick={() => setUploadOpen(true)}>
+                  Upload document
+                </Button>
+              }
+            />
+          </div>
+          <div className="flex flex-col items-center px-4 py-10 md:hidden">
+            <FileUp
+              className="h-8 w-8 text-text-secondary dark:text-muted-foreground"
+              aria-hidden
+            />
+            <p className="mt-3 text-center text-sm text-text-secondary dark:text-muted-foreground">
+              No documents found. Upload or adjust filters.
+            </p>
+            <Button size="sm" className="mt-4" onClick={() => setUploadOpen(true)}>
               Upload document
             </Button>
-          }
-        />
+          </div>
+        </>
       ) : (
-        <div className="border-t border-gray-100 pt-4 dark:border-border/60">
-          <div className="airtable-table-wrap airtable-table-wrap--ruled">
+        <div className="border-t border-gray-100 pt-0 dark:border-border/60 md:pt-4">
+          {/* Mobile list */}
+          <div className="divide-y divide-gray-100 dark:divide-border/60 md:hidden">
+            {localDocuments.map((doc) => (
+              <button
+                key={doc.id}
+                type="button"
+                onClick={() => void handlePreview(doc)}
+                className="flex min-h-[56px] w-full items-center gap-3 px-4 py-2.5 text-left active:bg-muted/30"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-text-primary dark:text-foreground">
+                    {doc.file_name}
+                  </p>
+                  <p className="truncate text-xs text-text-secondary dark:text-muted-foreground">
+                    {doc.project_name ?? "—"} · {formatDate(doc.uploaded_at)}
+                  </p>
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  <span className="text-sm font-medium tabular-nums text-text-primary dark:text-foreground">
+                    {formatBytes(doc.size_bytes)}
+                  </span>
+                  <span className="max-w-[7rem] truncate text-[10px] font-medium uppercase tracking-wide text-text-secondary dark:text-muted-foreground">
+                    {doc.file_type}
+                  </span>
+                </div>
+              </button>
+            ))}
+          </div>
+          <div className="airtable-table-wrap airtable-table-wrap--ruled hidden md:block">
             <div className="airtable-table-scroll">
               <table className="w-full text-sm">
                 <thead>
@@ -388,7 +553,9 @@ export function DocumentsListClient({ documents, projects, total }: Props) {
         </div>
       )}
 
-      <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} />
+      <div className="px-4 py-3 md:px-0 md:py-0">
+        <Pagination page={page} pageSize={pageSize} total={total} onPageChange={setPage} />
+      </div>
 
       <DocumentPreviewModal
         open={!!previewDoc}

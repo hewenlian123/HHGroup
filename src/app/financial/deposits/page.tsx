@@ -3,6 +3,10 @@
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { PageHeader } from "@/components/page-header";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/native-select";
+import { cn } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -13,6 +17,14 @@ import {
 } from "@/components/ui/table";
 import { getDeposits, type DepositWithMeta } from "@/lib/data";
 import { EmptyState } from "@/components/empty-state";
+import { Search } from "lucide-react";
+import {
+  MobileEmptyState,
+  MobileFilterSheet,
+  MobileListHeader,
+  MobileSearchFiltersRow,
+  mobileListPagePaddingClass,
+} from "@/components/mobile/mobile-list-chrome";
 
 function money(n: number): string {
   return `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -29,6 +41,9 @@ export default function DepositsPage() {
 function DepositsPageInner() {
   const [deposits, setDeposits] = React.useState<DepositWithMeta[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [projectFilter, setProjectFilter] = React.useState("");
 
   const load = React.useCallback(async () => {
     const list = await getDeposits();
@@ -52,54 +67,139 @@ function DepositsPageInner() {
     [load]
   );
 
+  const projectOptions = React.useMemo(() => {
+    const set = new Set<string>();
+    for (const d of deposits) {
+      const n = (d.project_name ?? "").trim();
+      if (n) set.add(n);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [deposits]);
+
+  const filteredDeposits = React.useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return deposits.filter((row) => {
+      if (projectFilter && (row.project_name ?? "").trim() !== projectFilter) return false;
+      if (!q) return true;
+      const hay = [
+        row.date,
+        row.description,
+        row.project_name,
+        row.invoice_no,
+        row.payment_method,
+        row.account,
+        String(row.amount),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [deposits, searchQuery, projectFilter]);
+
+  const activeDrawerFilterCount = projectFilter ? 1 : 0;
+
   return (
-    <div className="page-container page-stack py-6">
-      <PageHeader
+    <div
+      className={cn("page-container page-stack py-6", mobileListPagePaddingClass, "max-md:!gap-3")}
+    >
+      <div className="hidden md:block">
+        <PageHeader
+          title="Deposits"
+          description="Deposit records created when payments are received. Used for Cash In on the dashboard."
+        />
+      </div>
+      <MobileListHeader
         title="Deposits"
-        description="Deposit records created when payments are received. Used for Cash In on the dashboard."
+        fab={<span className="inline-block h-10 w-10 shrink-0" aria-hidden />}
       />
+      <MobileSearchFiltersRow
+        filterSheetOpen={filtersOpen}
+        onOpenFilters={() => setFiltersOpen(true)}
+        activeFilterCount={activeDrawerFilterCount}
+        searchSlot={
+          <div className="relative w-full">
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search deposits…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-10 pl-8 text-sm"
+              aria-label="Search deposits"
+            />
+          </div>
+        }
+      />
+      <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Project</p>
+          <Select
+            value={projectFilter}
+            onChange={(e) => setProjectFilter(e.target.value)}
+            className="w-full"
+          >
+            <option value="">All projects</option>
+            {projectOptions.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
+          Done
+        </Button>
+      </MobileFilterSheet>
 
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : deposits.length === 0 ? (
-        <EmptyState
-          title="No deposits yet"
-          description="Deposits are created automatically when you receive a payment."
-          icon={null}
-        />
+        <>
+          <MobileEmptyState
+            icon={<Search className="h-8 w-8 opacity-80" aria-hidden />}
+            message="No deposits yet. Deposits are created when you receive a payment."
+          />
+          <div className="hidden md:block">
+            <EmptyState
+              title="No deposits yet"
+              description="Deposits are created automatically when you receive a payment."
+              icon={null}
+            />
+          </div>
+        </>
       ) : (
         <section>
-          <div className="flex flex-col gap-3 md:hidden">
-            {deposits.map((row) => (
-              <div key={row.id} className="rounded-sm border border-border/60 p-4">
-                <p className="font-mono text-sm font-medium tabular-nums text-foreground">
-                  {row.date ?? "—"}
-                </p>
-                <p className="mt-1 text-sm text-foreground">{row.description ?? "—"}</p>
-                <p className="text-sm text-muted-foreground">{row.project_name ?? "—"}</p>
-                <dl className="mt-3 space-y-2 text-xs">
-                  <div className="flex justify-between gap-2 tabular-nums">
-                    <dt className="text-muted-foreground">Invoice #</dt>
-                    <dd className="font-mono text-foreground">{row.invoice_no ?? "—"}</dd>
-                  </div>
-                  <div className="flex justify-between gap-2">
-                    <dt className="text-muted-foreground">Amount</dt>
-                    <dd className="font-mono font-medium text-hh-profit-positive dark:text-hh-profit-positive">
+          {filteredDeposits.length === 0 ? (
+            <MobileEmptyState
+              icon={<Search className="h-8 w-8 opacity-80" aria-hidden />}
+              message="No deposits match your filters."
+            />
+          ) : (
+            <div className="divide-y divide-gray-100 dark:divide-border/60 md:hidden">
+              {filteredDeposits.map((row) => (
+                <div key={row.id} className="flex min-h-[56px] flex-col gap-0.5 py-2.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-mono text-sm font-medium tabular-nums text-foreground">
+                        {row.date ?? "—"}
+                      </p>
+                      <p className="truncate text-sm text-foreground">{row.description ?? "—"}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {row.project_name ?? "—"}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-sm font-medium tabular-nums text-hh-profit-positive dark:text-hh-profit-positive">
                       {money(row.amount)}
-                    </dd>
+                    </span>
                   </div>
-                  <div className="flex justify-between gap-2">
-                    <dt className="text-muted-foreground">Method</dt>
-                    <dd className="text-right text-foreground">{row.payment_method ?? "—"}</dd>
-                  </div>
-                  <div className="flex justify-between gap-2">
-                    <dt className="text-muted-foreground">Account</dt>
-                    <dd className="text-right text-foreground">{row.account ?? "—"}</dd>
-                  </div>
-                </dl>
-              </div>
-            ))}
-          </div>
+                  <p className="text-xs text-muted-foreground">
+                    Inv {row.invoice_no ?? "—"} ·{" "}
+                    {(row.payment_method ?? "—") + " · " + (row.account ?? "—")}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="hidden md:block">
             <Table className="min-w-[640px] lg:min-w-0">
               <TableHeader>

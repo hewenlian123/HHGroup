@@ -8,6 +8,17 @@ import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/native-select";
+import { cn } from "@/lib/utils";
+import { Search } from "lucide-react";
+import {
+  MobileEmptyState,
+  MobileFabButton,
+  MobileFilterSheet,
+  MobileListHeader,
+  MobileSearchFiltersRow,
+  mobileListPagePaddingClass,
+} from "@/components/mobile/mobile-list-chrome";
 import { StatusBadge } from "@/components/status-badge";
 import { WorkerAdvanceFormDialog } from "./worker-advance-form-dialog";
 import { WorkerAdvanceActionsMenu } from "./worker-advance-actions-menu";
@@ -50,6 +61,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
   const [editing, setEditing] = React.useState<AdvanceRow | null>(null);
 
   const [busyId, setBusyId] = React.useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -111,6 +123,13 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
       return true;
     });
   }, [rows, workerFilter, projectFilter, statusFilter, dateFrom, dateTo, query]);
+
+  const activeDrawerFilterCount =
+    (workerFilter ? 1 : 0) +
+    (projectFilter ? 1 : 0) +
+    (statusFilter ? 1 : 0) +
+    (dateFrom ? 1 : 0) +
+    (dateTo ? 1 : 0);
 
   const openCreate = () => {
     setEditorMode("create");
@@ -276,21 +295,123 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
   };
 
   return (
-    <div className="space-y-4">
-      <PageHeader
+    <div className={cn("space-y-4", mobileListPagePaddingClass, "max-md:!gap-3 max-md:!space-y-3")}>
+      <div className="hidden md:block">
+        <PageHeader
+          title="Worker Advances"
+          subtitle="Track salary advances and deductions for workers."
+          actions={
+            <Button
+              onClick={openCreate}
+              className="h-9 max-md:min-h-11 max-md:w-full rounded-lg px-3 text-sm sm:w-auto"
+            >
+              + Create Advance
+            </Button>
+          }
+        />
+      </div>
+      <MobileListHeader
         title="Worker Advances"
-        subtitle="Track salary advances and deductions for workers."
-        actions={
-          <Button
-            onClick={openCreate}
-            className="h-9 max-md:min-h-11 max-md:w-full rounded-lg px-3 text-sm sm:w-auto"
-          >
-            + Create Advance
-          </Button>
+        fab={<MobileFabButton ariaLabel="Create advance" onClick={openCreate} />}
+      />
+      <MobileSearchFiltersRow
+        filterSheetOpen={filtersOpen}
+        onOpenFilters={() => setFiltersOpen(true)}
+        activeFilterCount={activeDrawerFilterCount}
+        searchSlot={
+          <div className="relative w-full">
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search notes…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="h-10 pl-8 text-sm"
+              aria-label="Search advances"
+            />
+          </div>
         }
       />
+      <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Worker</p>
+          <Select
+            value={workerFilter}
+            onChange={(e) => setWorkerFilter(e.target.value)}
+            className="w-full"
+          >
+            <option value="">All workers</option>
+            {workers.map((w) => (
+              <option key={w.id} value={w.id}>
+                {w.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Project</p>
+          <Select
+            value={projectFilter}
+            onChange={(e) => setProjectFilter(e.target.value)}
+            className="w-full"
+          >
+            <option value="">All projects</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Status</p>
+          <Select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as "" | AdvanceRow["status"])}
+            className="w-full"
+          >
+            <option value="">All statuses</option>
+            <option value="pending">Pending</option>
+            <option value="deducted">Deducted</option>
+            <option value="cancelled">Cancelled</option>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">From</p>
+          <Input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="w-full"
+          />
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">To</p>
+          <Input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="w-full"
+          />
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="w-full rounded-sm"
+          disabled={loading}
+          onClick={() => {
+            void load();
+            setFiltersOpen(false);
+          }}
+        >
+          Refresh
+        </Button>
+        <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
+          Done
+        </Button>
+      </MobileFilterSheet>
 
-      <div className="grid grid-cols-1 gap-2 border-b border-border/60 pb-3 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-center">
+      <div className="hidden grid-cols-1 gap-2 border-b border-border/60 pb-3 sm:grid-cols-2 md:grid lg:flex lg:flex-wrap lg:items-center">
         <select
           value={workerFilter}
           onChange={(e) => setWorkerFilter(e.target.value)}
@@ -357,28 +478,34 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
 
       {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
 
-      <Card className="overflow-hidden">
-        <div className="flex flex-col gap-3 p-3 md:hidden">
-          {loading ? (
-            <p className="py-6 text-center text-xs text-muted-foreground">Loading…</p>
-          ) : filtered.length === 0 ? (
-            <p className="py-6 text-center text-xs text-muted-foreground">No advances yet.</p>
-          ) : (
-            filtered.map((row) => (
-              <div key={row.id} className="rounded-sm border border-border/60 p-4">
+      <div className="md:hidden">
+        {loading ? (
+          <p className="py-6 text-center text-xs text-muted-foreground">Loading…</p>
+        ) : filtered.length === 0 ? (
+          <MobileEmptyState
+            icon={<Search className="h-8 w-8 opacity-80" aria-hidden />}
+            message="No advances yet."
+          />
+        ) : (
+          <div className="divide-y divide-gray-100 dark:divide-border/60">
+            {filtered.map((row) => (
+              <div key={row.id} className="flex min-h-[56px] flex-col gap-2 py-2.5">
                 <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="font-medium text-foreground">{row.workerName}</p>
-                    <p className="text-sm text-muted-foreground">{row.projectName ?? "—"}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground">{row.workerName}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {row.projectName ?? "—"} · {row.advanceDate}
+                    </p>
+                    <p className="mt-1 text-sm font-medium tabular-nums">
+                      ${row.amount.toFixed(2)}
+                    </p>
+                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                      {row.notes ?? "—"}
+                    </p>
                   </div>
                   <StatusBadge status={row.status} />
                 </div>
-                <p className="mt-2 text-sm font-medium tabular-nums">${row.amount.toFixed(2)}</p>
-                <p className="text-xs tabular-nums text-muted-foreground">{row.advanceDate}</p>
-                <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
-                  {row.notes ?? "—"}
-                </p>
-                <div className="mt-3 flex justify-end">
+                <div className="flex justify-end">
                   <WorkerAdvanceActionsMenu
                     advance={row}
                     onEdit={() => openEdit(row)}
@@ -388,10 +515,13 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                   />
                 </div>
               </div>
-            ))
-          )}
-        </div>
-        <div className="table-responsive hidden overflow-x-auto md:block">
+            ))}
+          </div>
+        )}
+      </div>
+
+      <Card className="hidden overflow-hidden md:block">
+        <div className="table-responsive overflow-x-auto">
           <table className="w-full min-w-[640px] border-collapse text-sm lg:min-w-0">
             <thead>
               <tr className="border-b border-border/60 bg-muted/40">

@@ -9,6 +9,17 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/native-select";
+import { cn } from "@/lib/utils";
+import { Search } from "lucide-react";
+import {
+  MobileEmptyState,
+  MobileFabPlus,
+  MobileFilterSheet,
+  MobileListHeader,
+  MobileSearchFiltersRow,
+  mobileListPagePaddingClass,
+} from "@/components/mobile/mobile-list-chrome";
 import {
   deleteWorkerPayment,
   getProjects,
@@ -46,6 +57,7 @@ export default function WorkerPaymentsPage() {
     dir: "desc",
   });
   const [receiptPreviewId, setReceiptPreviewId] = React.useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -148,8 +160,12 @@ export default function WorkerPaymentsPage() {
     }
   };
 
+  const sortFilterActive = sort.key !== "paymentDate" || sort.dir !== "desc" ? 1 : 0;
+
   return (
-    <div className="page-container page-stack py-6">
+    <div
+      className={cn("page-container page-stack py-6", mobileListPagePaddingClass, "max-md:!gap-3")}
+    >
       <WorkerPaymentReceiptPreviewModal
         paymentId={receiptPreviewId}
         open={receiptPreviewId != null}
@@ -157,20 +173,90 @@ export default function WorkerPaymentsPage() {
           if (!o) setReceiptPreviewId(null);
         }}
       />
-      <PageHeader
+      <div className="hidden md:block">
+        <PageHeader
+          title="Worker Payments"
+          subtitle="Payment history for worker payouts."
+          actions={
+            <Link
+              href="/labor/payroll"
+              className="text-sm text-muted-foreground hover:text-foreground"
+            >
+              Payroll Summary
+            </Link>
+          }
+        />
+      </div>
+      <MobileListHeader
         title="Worker Payments"
-        subtitle="Payment history for worker payouts."
-        actions={
-          <Link
-            href="/labor/payroll"
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            Payroll Summary
-          </Link>
+        fab={<MobileFabPlus href="/labor/payroll" ariaLabel="Payroll summary" />}
+      />
+      <MobileSearchFiltersRow
+        filterSheetOpen={filtersOpen}
+        onOpenFilters={() => setFiltersOpen(true)}
+        activeFilterCount={sortFilterActive}
+        searchSlot={
+          <div className="relative w-full">
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search payments…"
+              className="h-10 pl-8 text-sm"
+              aria-label="Search payments"
+            />
+          </div>
         }
       />
+      <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Sort by</p>
+          <Select
+            value={sort.key}
+            onChange={(e) =>
+              setSort((s) => ({
+                ...s,
+                key: e.target.value as "paymentDate" | "amount" | "method",
+              }))
+            }
+            className="w-full"
+          >
+            <option value="paymentDate">Payment date</option>
+            <option value="amount">Amount</option>
+            <option value="method">Payment method</option>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Order</p>
+          <Select
+            value={sort.dir}
+            onChange={(e) => setSort((s) => ({ ...s, dir: e.target.value as "asc" | "desc" }))}
+            className="w-full"
+          >
+            <option value="desc">Newest / high first</option>
+            <option value="asc">Oldest / low first</option>
+          </Select>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="w-full rounded-sm"
+          onClick={() => {
+            void load();
+            setFiltersOpen(false);
+          }}
+          disabled={loading}
+        >
+          <SubmitSpinner loading={loading} className="mr-2" />
+          Refresh
+        </Button>
+        <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
+          Done
+        </Button>
+      </MobileFilterSheet>
 
-      <div className="flex flex-col gap-3 border-b border-border/60 pb-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+      <div className="hidden flex-col gap-3 border-b border-border/60 pb-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between md:flex">
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -191,65 +277,69 @@ export default function WorkerPaymentsPage() {
           </Button>
         </div>
       </div>
+      {message ? <p className="text-sm text-muted-foreground md:hidden">{message}</p> : null}
 
-      <div className="flex flex-col gap-3 md:hidden">
+      <div className="md:hidden">
         {loading ? (
-          Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="rounded-sm border border-border/60 p-4">
-              <Skeleton className="h-5 w-2/3" />
-              <Skeleton className="mt-2 h-4 w-1/2" />
-              <Skeleton className="mt-3 h-4 w-full" />
-            </div>
-          ))
+          <div className="flex flex-col gap-2 py-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="py-2">
+                <Skeleton className="h-5 w-2/3" />
+                <Skeleton className="mt-2 h-4 w-1/2" />
+                <Skeleton className="mt-2 h-4 w-full" />
+              </div>
+            ))}
+          </div>
         ) : filtered.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">No payments yet.</p>
+          <MobileEmptyState
+            icon={<Search className="h-8 w-8 opacity-80" aria-hidden />}
+            message="No payments yet."
+          />
         ) : (
-          paged.map((r) => (
-            <div
-              key={r.id}
-              className="rounded-sm border border-border/60 bg-background p-4 dark:bg-card"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="font-medium text-foreground">
-                    {workerNameById.get(r.workerId) ?? r.workerId}
-                  </p>
-                  <p className="mt-0.5 text-sm text-muted-foreground">
-                    {r.projectId ? (projectNameById.get(r.projectId) ?? r.projectId) : "—"}
-                  </p>
+          <div className="divide-y divide-gray-100 dark:divide-border/60">
+            {paged.map((r) => (
+              <div key={r.id} className="flex min-h-[56px] flex-col gap-2 py-2.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-foreground">
+                      {workerNameById.get(r.workerId) ?? r.workerId}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {r.projectId ? (projectNameById.get(r.projectId) ?? r.projectId) : "—"}
+                    </p>
+                    <p className="mt-1 text-xs tabular-nums text-muted-foreground">
+                      {(r.paymentMethod ?? "—") + " · " + r.paymentDate}
+                    </p>
+                    {r.notes ? (
+                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{r.notes}</p>
+                    ) : null}
+                  </div>
+                  <span className="shrink-0 text-sm font-medium tabular-nums">
+                    {fmtUsd(r.amount)}
+                  </span>
                 </div>
-                <span className="shrink-0 text-sm font-medium tabular-nums">
-                  {fmtUsd(r.amount)}
-                </span>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="btn-outline-ghost h-8 flex-1 rounded-sm"
+                    onClick={() => setReceiptPreviewId(r.id)}
+                  >
+                    Receipt
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="btn-outline-ghost h-8 flex-1 rounded-sm text-red-600"
+                    onClick={() => handleDelete(r.id)}
+                  >
+                    Delete
+                  </Button>
+                </div>
               </div>
-              <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                <span>{r.paymentMethod ?? "—"}</span>
-                <span className="tabular-nums">{r.paymentDate}</span>
-              </div>
-              {r.notes ? (
-                <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{r.notes}</p>
-              ) : null}
-              <div className="mt-3 flex flex-wrap gap-2 border-t border-border/40 pt-3">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="btn-outline-ghost min-h-11 flex-1 sm:min-h-8 sm:flex-none"
-                  onClick={() => setReceiptPreviewId(r.id)}
-                >
-                  View Receipt
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="btn-outline-ghost min-h-11 flex-1 text-red-600 sm:min-h-8 sm:flex-none"
-                  onClick={() => handleDelete(r.id)}
-                >
-                  Delete
-                </Button>
-              </div>
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </div>
 

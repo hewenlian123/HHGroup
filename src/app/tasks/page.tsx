@@ -27,8 +27,16 @@ import { runOptimisticPersist } from "@/lib/optimistic-save";
 import { cn } from "@/lib/utils";
 import { listTableRowClassName } from "@/lib/list-table-interaction";
 import { flushSync } from "react-dom";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, Search } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  MobileEmptyState,
+  MobileFabButton,
+  MobileFilterSheet,
+  MobileListHeader,
+  MobileSearchFiltersRow,
+  mobileListPagePaddingClass,
+} from "@/components/mobile/mobile-list-chrome";
 
 type TaskRow = {
   id: string;
@@ -109,6 +117,8 @@ export default function TasksPage() {
     priority: "medium" as "low" | "medium" | "high",
     status: "todo" as "todo" | "in_progress" | "done",
   });
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
 
   const load = React.useCallback(async (opts?: { silent?: boolean }) => {
     const silent = Boolean(opts?.silent);
@@ -171,14 +181,25 @@ export default function TasksPage() {
   }, [tasks, selectedTask, clearStaleTask]);
 
   const filtered = React.useMemo(() => {
-    if (filter === "completed") return tasks.filter((t) => t.status === "done");
-    if (filter === "today") return tasks.filter((t) => t.status !== "done" && isToday(t.due_date));
-    if (filter === "this_week")
-      return tasks.filter((t) => t.status !== "done" && isThisWeek(t.due_date));
-    if (filter === "overdue")
-      return tasks.filter((t) => t.status !== "done" && isOverdue(t.due_date));
-    return tasks;
-  }, [tasks, filter]);
+    let list = tasks;
+    if (filter === "completed") list = tasks.filter((t) => t.status === "done");
+    else if (filter === "today")
+      list = tasks.filter((t) => t.status !== "done" && isToday(t.due_date));
+    else if (filter === "this_week")
+      list = tasks.filter((t) => t.status !== "done" && isThisWeek(t.due_date));
+    else if (filter === "overdue")
+      list = tasks.filter((t) => t.status !== "done" && isOverdue(t.due_date));
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return list;
+    return list.filter(
+      (t) =>
+        (t.title ?? "").toLowerCase().includes(q) ||
+        (t.description ?? "").toLowerCase().includes(q) ||
+        (t.project_name ?? "").toLowerCase().includes(q)
+    );
+  }, [tasks, filter, searchQuery]);
+
+  const activeDrawerFilterCount = filter !== "all" ? 1 : 0;
 
   const openModal = () => {
     setForm({
@@ -515,30 +536,89 @@ export default function TasksPage() {
 
   return (
     <PageLayout
+      divider={false}
+      className={cn("max-w-5xl", mobileListPagePaddingClass, "max-md:!gap-3")}
       header={
-        <PageHeader
-          title="Tasks"
-          description="Construction tasks across all projects."
-          actions={
-            <Button
-              size="touch"
-              className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90 min-h-[44px]"
-              onClick={openModal}
-            >
-              + New Task
-            </Button>
-          }
-        />
+        <>
+          <div className="hidden md:block">
+            <PageHeader
+              title="Tasks"
+              description="Construction tasks across all projects."
+              actions={
+                <Button
+                  size="sm"
+                  className="h-9 rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90"
+                  onClick={openModal}
+                >
+                  + New Task
+                </Button>
+              }
+            />
+          </div>
+          <div className="md:hidden">
+            <MobileListHeader
+              title="Tasks"
+              fab={<MobileFabButton ariaLabel="New task" onClick={openModal} />}
+            />
+          </div>
+        </>
       }
     >
-      <div className="max-w-5xl space-y-3">
-        <div className="flex flex-wrap items-center gap-2 border-b border-border/60 pb-3">
+      <div className="max-w-5xl space-y-3 md:mx-auto">
+        <MobileSearchFiltersRow
+          filterSheetOpen={filtersOpen}
+          onOpenFilters={() => setFiltersOpen(true)}
+          activeFilterCount={activeDrawerFilterCount}
+          searchSlot={
+            <Input
+              placeholder="Search tasks…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-10 text-sm"
+            />
+          }
+        />
+        <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
+          <div className="flex flex-col gap-2">
+            {filterTabs.map((f) => (
+              <Button
+                key={f.value}
+                type="button"
+                variant={filter === f.value ? "default" : "outline"}
+                size="sm"
+                className="h-10 w-full justify-start rounded-sm"
+                onClick={() => {
+                  startTransition(() => setFilter(f.value));
+                }}
+              >
+                {f.label}
+              </Button>
+            ))}
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full rounded-sm"
+            onClick={() => setFiltersOpen(false)}
+          >
+            Done
+          </Button>
+        </MobileFilterSheet>
+
+        <div className="hidden flex-wrap items-center gap-2 border-b border-border/60 pb-3 md:flex">
+          <Input
+            placeholder="Search tasks…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-9 w-full max-w-xs text-sm"
+          />
           {filterTabs.map((f) => (
             <button
               key={f.value}
+              type="button"
               onClick={() => startTransition(() => setFilter(f.value))}
               className={cn(
-                "min-h-[44px] min-w-[44px] rounded-sm border px-3 py-2 text-sm font-medium transition-colors touch-manipulation md:min-h-0 md:min-w-0 md:px-2.5 md:py-1.5 md:text-xs",
+                "rounded-sm border px-2.5 py-1.5 text-xs font-medium transition-colors",
                 filter === f.value
                   ? "border-[#111111] bg-[#111111] text-white"
                   : "border-border/60 bg-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground"
@@ -549,7 +629,7 @@ export default function TasksPage() {
           ))}
         </div>
 
-        <div className="border border-border/60 rounded-sm overflow-hidden">
+        <div className="overflow-hidden rounded-sm border border-border/60 max-md:rounded-none max-md:border-0">
           {loading ? (
             <div className="space-y-2 px-4 py-6" aria-busy="true" aria-label="Loading tasks">
               {Array.from({ length: 8 }).map((_, i) => (
@@ -559,24 +639,30 @@ export default function TasksPage() {
           ) : error ? (
             <div className="py-10 text-center text-sm text-destructive">{error}</div>
           ) : filtered.length === 0 ? (
-            <div className="py-10 text-center">
-              <p className="text-sm text-muted-foreground">No tasks match the filter.</p>
-              <Button
-                onClick={openModal}
-                className="mt-4 max-md:min-h-[44px] max-md:w-full max-md:max-w-[280px]"
-                size="sm"
-              >
-                Create Task
-              </Button>
-            </div>
+            <>
+              <MobileEmptyState
+                icon={<Search className="h-8 w-8 opacity-80" aria-hidden />}
+                message="No tasks match your search or filters."
+                action={
+                  <Button onClick={openModal} size="sm" variant="outline">
+                    New task
+                  </Button>
+                }
+              />
+              <div className="hidden py-10 text-center md:block">
+                <p className="text-sm text-muted-foreground">No tasks match the filter.</p>
+                <Button onClick={openModal} className="mt-4" size="sm">
+                  Create Task
+                </Button>
+              </div>
+            </>
           ) : (
             <>
-              {/* Mobile: card layout */}
-              <div className="flex flex-col gap-2 md:hidden divide-y divide-border/60">
+              <div className="divide-y divide-gray-100 dark:divide-border/60 md:hidden">
                 {filtered.map((t) => (
                   <div
                     key={t.id}
-                    className="flex min-h-[44px] w-full touch-manipulation items-center gap-3 border-0 bg-transparent px-4 py-3 transition-colors active:bg-muted/50"
+                    className="flex min-h-[56px] w-full touch-manipulation items-center gap-2 border-0 bg-transparent px-0 py-2.5 transition-colors active:bg-muted/50"
                   >
                     <button
                       type="button"
@@ -600,13 +686,13 @@ export default function TasksPage() {
                       <div className="min-w-0 flex-1">
                         <p
                           className={cn(
-                            "font-medium truncate",
+                            "truncate text-sm font-medium",
                             t.status === "done" && "text-muted-foreground line-through"
                           )}
                         >
                           {t.title || "—"}
                         </p>
-                        <p className="text-xs text-muted-foreground truncate">
+                        <p className="truncate text-xs text-text-secondary dark:text-muted-foreground">
                           {t.project_name ?? "—"} · Due{" "}
                           {t.due_date ? new Date(t.due_date).toLocaleDateString() : "—"}
                         </p>

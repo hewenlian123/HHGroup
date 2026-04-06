@@ -34,7 +34,17 @@ import {
   type Expense,
 } from "@/lib/data";
 import { createBrowserClient } from "@/lib/supabase";
-import { Check, MoreHorizontal, Paperclip, Pencil, Plus, Trash2, Upload, X } from "lucide-react";
+import {
+  Check,
+  Filter,
+  MoreHorizontal,
+  Paperclip,
+  Pencil,
+  Plus,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
 import { uiActionLog, uiActionMark, uiNavLog, uiNavMark } from "@/lib/ui-action-perf";
 import {
   afterLayout,
@@ -67,6 +77,7 @@ import {
 } from "@/lib/queries/expenses";
 import { isDefaultExpenseListSort } from "@/lib/expenses-db";
 import { ExpensesListSkeleton } from "@/components/financial/expenses-list-skeleton";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   ExpenseDateRangeFilter,
   expenseDateInFilter,
@@ -480,6 +491,7 @@ function ExpensesPageInner() {
   } | null>(null);
   const [quickExpenseOpen, setQuickExpenseOpen] = React.useState(false);
   const [uploadReceiptsOpen, setUploadReceiptsOpen] = React.useState(false);
+  const [filtersDrawerOpen, setFiltersDrawerOpen] = React.useState(false);
   const receiptReplaceRef = React.useRef<HTMLInputElement>(null);
   const [receiptReplacing, setReceiptReplacing] = React.useState(false);
   const [editExpense, setEditExpense] = React.useState<Expense | null>(null);
@@ -1424,51 +1436,73 @@ function ExpensesPageInner() {
     Boolean(sourceTypeFilter) ||
     expenseDateFilter.kind !== "all";
 
+  const activeDrawerFilterCount =
+    (projectFilter ? 1 : 0) +
+    (categoryFilter ? 1 : 0) +
+    (listView === "all" && statusFilter ? 1 : 0) +
+    (sourceTypeFilter ? 1 : 0) +
+    (expenseDateFilter.kind !== "all" ? 1 : 0) +
+    (!isDefaultExpenseListSort(expenseSort) ? 1 : 0);
+
   const showEmptyOnboardingCtas =
     listView === "all" && !hasNarrowingFilters && expenses.length === 0;
 
   return (
     <div className="expenses-ui">
-      <div className="expenses-ui-content mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6">
-        <PageHeader
-          className="[&_h1]:font-semibold [&_h1]:text-gray-900 [&_p]:text-sm [&_p]:text-gray-600 dark:[&_h1]:text-foreground dark:[&_p]:text-muted-foreground"
-          title="Expenses"
-          description="Spend, receipts, reimbursements"
-          actions={
-            <div className="flex flex-wrap items-center justify-end gap-1.5">
-              <Button
-                type="button"
-                size="sm"
-                className="h-8 rounded-sm border-0 bg-blue-500 text-white shadow-none hover:bg-blue-600"
-                onClick={() => setUploadReceiptsOpen(true)}
-              >
-                <Upload className="mr-1 h-3.5 w-3.5" />
-                Upload
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 rounded-sm border border-gray-100 bg-white text-gray-700 shadow-none hover:bg-gray-50 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted/50"
-                aria-label="Quick expense"
-                onClick={() => setQuickExpenseOpen(true)}
-              >
-                Quick
-              </Button>
-              <Button
-                type="button"
-                onClick={handleNew}
-                size="sm"
-                className="h-8 rounded-sm border-0 bg-black text-white shadow-none hover:bg-gray-800"
-              >
-                <Plus className="mr-1 h-3.5 w-3.5" />
-                New
-              </Button>
-            </div>
-          }
-        />
+      <div className="expenses-ui-content mx-auto flex w-full max-w-5xl flex-col gap-3 px-4 py-3 sm:px-6 md:gap-6 md:py-6">
+        <div className="flex h-14 items-center justify-between gap-3 border-b border-gray-100/80 dark:border-border/60 md:hidden">
+          <h1 className="text-lg font-semibold text-gray-900 dark:text-foreground">Expenses</h1>
+          <button
+            type="button"
+            onClick={handleNew}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black text-white dark:bg-foreground dark:text-background"
+            aria-label="New expense"
+          >
+            <Plus className="h-5 w-5" strokeWidth={2} />
+          </button>
+        </div>
 
-        <div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 border-b border-gray-100/80 pb-3 text-sm text-gray-600 dark:border-border/60 dark:text-muted-foreground">
+        <div className="hidden md:block">
+          <PageHeader
+            className="[&_h1]:font-semibold [&_h1]:text-gray-900 [&_p]:text-sm [&_p]:text-gray-600 dark:[&_h1]:text-foreground dark:[&_p]:text-muted-foreground"
+            title="Expenses"
+            description="Spend, receipts, reimbursements"
+            actions={
+              <div className="flex flex-wrap items-center justify-end gap-1.5">
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-8 rounded-sm border-0 bg-blue-500 text-white shadow-none hover:bg-blue-600"
+                  onClick={() => setUploadReceiptsOpen(true)}
+                >
+                  <Upload className="mr-1 h-3.5 w-3.5" />
+                  Upload
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 rounded-sm border border-gray-100 bg-white text-gray-700 shadow-none hover:bg-gray-50 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted/50"
+                  aria-label="Quick expense"
+                  onClick={() => setQuickExpenseOpen(true)}
+                >
+                  Quick
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleNew}
+                  size="sm"
+                  className="h-8 rounded-sm border-0 bg-black text-white shadow-none hover:bg-gray-800"
+                >
+                  <Plus className="mr-1 h-3.5 w-3.5" />
+                  New
+                </Button>
+              </div>
+            }
+          />
+        </div>
+
+        <div className="hidden flex-wrap items-baseline gap-x-6 gap-y-1 border-b border-gray-100/80 pb-3 text-sm text-gray-600 dark:border-border/60 dark:text-muted-foreground md:flex">
           <span>
             Month{" "}
             <span className="ml-1 font-medium tabular-nums text-gray-900 dark:text-foreground">
@@ -1534,14 +1568,199 @@ function ExpensesPageInner() {
             </Button>
           </div>
           {listView === "unreviewed" ? (
-            <p className="text-sm text-gray-600 dark:text-muted-foreground">
+            <p className="hidden text-sm text-gray-600 dark:text-muted-foreground md:block">
               Enter: save, mark reviewed, next row · Shift+Enter: save only · Tab: next field · ↑↓:
               row · D: delete · Esc: cancel
             </p>
           ) : null}
         </div>
 
-        <div className="flex flex-col gap-3 pt-0 md:gap-2">
+        {/* Mobile: search + filters drawer */}
+        <div className="flex flex-col gap-2 md:hidden">
+          <div className="flex items-center gap-2">
+            <Input
+              placeholder="Search…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-10 flex-1 rounded-sm border border-gray-100/80 bg-white text-sm text-gray-900 shadow-none dark:border-border/60 dark:bg-card dark:text-foreground"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="relative h-10 shrink-0 gap-1.5 border-gray-100/80 px-2.5 dark:border-border/60"
+              onClick={() => setFiltersDrawerOpen(true)}
+            >
+              <Filter className="h-4 w-4" />
+              <span className="text-xs font-medium">Filters</span>
+              {activeDrawerFilterCount > 0 ? (
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-black px-1 text-[10px] font-medium text-white dark:bg-foreground dark:text-background">
+                  {activeDrawerFilterCount}
+                </span>
+              ) : null}
+            </Button>
+          </div>
+        </div>
+        <Sheet open={filtersDrawerOpen} onOpenChange={setFiltersDrawerOpen}>
+          <SheetContent
+            side="bottom"
+            className="max-h-[90vh] overflow-y-auto rounded-t-lg p-4 md:hidden"
+          >
+            <SheetHeader className="text-left">
+              <SheetTitle className="text-base font-semibold">Filters & more</SheetTitle>
+            </SheetHeader>
+            <div className="mt-4 flex flex-col gap-4 pb-8">
+              <div className="flex flex-col gap-2 border-b border-gray-100/80 pb-4 dark:border-border/60">
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-10 w-full rounded-sm border-0 bg-blue-500 text-white"
+                  onClick={() => {
+                    setUploadReceiptsOpen(true);
+                    setFiltersDrawerOpen(false);
+                  }}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload receipts
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-10 w-full"
+                  onClick={() => {
+                    setQuickExpenseOpen(true);
+                    setFiltersDrawerOpen(false);
+                  }}
+                >
+                  Quick expense
+                </Button>
+              </div>
+              <Select
+                value={projectFilter === "" ? EXPENSE_FILTER_ALL : projectFilter}
+                onValueChange={(v) => setProjectFilter(v === EXPENSE_FILTER_ALL ? "" : v)}
+              >
+                <SelectTrigger className="h-10 w-full border-gray-100/80 bg-white text-xs dark:border-border/60 dark:bg-card">
+                  <SelectValue placeholder="Project" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={EXPENSE_FILTER_ALL}>Project</SelectItem>
+                  {safeProjects.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name ?? p.id}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {projectsError ? (
+                <span className="text-[11px] text-amber-600 dark:text-amber-400">
+                  {projectsError}
+                </span>
+              ) : null}
+              <Select
+                value={categoryFilter === "" ? EXPENSE_FILTER_ALL : categoryFilter}
+                onValueChange={(v) => setCategoryFilter(v === EXPENSE_FILTER_ALL ? "" : v)}
+              >
+                <SelectTrigger className="h-10 w-full border-gray-100/80 bg-white text-xs dark:border-border/60 dark:bg-card">
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={EXPENSE_FILTER_ALL}>Category</SelectItem>
+                  {categoriesList.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={statusFilter === "" ? EXPENSE_FILTER_ALL : statusFilter}
+                onValueChange={(v) => setStatusFilter(v === EXPENSE_FILTER_ALL ? "" : v)}
+                disabled={listView === "unreviewed"}
+              >
+                <SelectTrigger
+                  className="h-10 w-full border-gray-100/80 bg-white text-xs disabled:opacity-50 dark:border-border/60 dark:bg-card"
+                  title={
+                    listView === "unreviewed" ? "Status filter applies in All view only" : undefined
+                  }
+                >
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={EXPENSE_FILTER_ALL}>Status</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="needs_review">Needs review</SelectItem>
+                  <SelectItem value="reviewed">Reviewed</SelectItem>
+                  <SelectItem value="reimbursable">Reimbursable</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="reimbursed">Reimbursed</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={sourceTypeFilter === "" ? EXPENSE_FILTER_ALL : sourceTypeFilter}
+                onValueChange={(v) => setSourceTypeFilter(v === EXPENSE_FILTER_ALL ? "" : v)}
+              >
+                <SelectTrigger className="h-10 w-full border-gray-100/80 bg-white text-xs dark:border-border/60 dark:bg-card">
+                  <SelectValue placeholder="Source" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={EXPENSE_FILTER_ALL}>Source</SelectItem>
+                  <SelectItem value="company">Company</SelectItem>
+                  <SelectItem value="receipt_upload">Receipt</SelectItem>
+                  <SelectItem value="reimbursement">Reimbursement</SelectItem>
+                </SelectContent>
+              </Select>
+              <ExpenseDateRangeFilter
+                value={expenseDateFilter}
+                onChange={(next) => {
+                  setExpenseDateFilter(next);
+                  const sp = new URLSearchParams(searchParams.toString());
+                  sp.set("page", "1");
+                  router.push(`/financial/expenses?${sp.toString()}`, { scroll: false });
+                }}
+              />
+              <Select
+                value={`${expenseSort.field}|${expenseSort.order}`}
+                onValueChange={(v) => {
+                  const [field, order] = v.split("|") as [
+                    ExpenseListSort["field"],
+                    ExpenseListSort["order"],
+                  ];
+                  if (
+                    (field === "date" || field === "amount" || field === "vendor") &&
+                    (order === "asc" || order === "desc")
+                  ) {
+                    setExpenseSort({ field, order });
+                    const sp = new URLSearchParams(searchParams.toString());
+                    sp.set("page", "1");
+                    router.push(`/financial/expenses?${sp.toString()}`, { scroll: false });
+                  }
+                }}
+              >
+                <SelectTrigger
+                  className="h-10 w-full border-gray-100 bg-white text-xs font-medium dark:border-border dark:bg-card"
+                  aria-label="Sort expenses"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="date|desc">Sort: Date ↓</SelectItem>
+                  <SelectItem value="date|asc">Sort: Date ↑</SelectItem>
+                  <SelectItem value="amount|desc">Sort: Amount ↓</SelectItem>
+                  <SelectItem value="amount|asc">Sort: Amount ↑</SelectItem>
+                  <SelectItem value="vendor|asc">Sort: Vendor A–Z</SelectItem>
+                  <SelectItem value="vendor|desc">Sort: Vendor Z–A</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button type="button" className="w-full" onClick={() => setFiltersDrawerOpen(false)}>
+                Done
+              </Button>
+            </div>
+          </SheetContent>
+        </Sheet>
+
+        <div className="hidden flex-col gap-3 pt-0 md:flex md:gap-2">
           <Input
             placeholder="Search…"
             value={search}
@@ -1669,84 +1888,122 @@ function ExpensesPageInner() {
           </div>
         </div>
 
-        <section className="mt-4">
+        <section className="mt-2 md:mt-4">
           {showExpensesSkeleton && expenses.length === 0 ? (
             <ExpensesListSkeleton rows={8} />
           ) : total === 0 ? (
-            <div
-              className="flex min-h-[min(55vh,480px)] flex-col justify-center border-b border-gray-100/80 py-12 text-center transition-opacity duration-200 ease-out animate-in fade-in dark:border-border/60"
-              tabIndex={-1}
-              data-expenses-empty
-            >
-              <p className="text-sm font-semibold text-gray-900 dark:text-foreground">
-                {listView === "unreviewed"
-                  ? hasNarrowingFilters
-                    ? "No unreviewed matches"
-                    : expenses.length === 0
-                      ? "No expenses yet"
-                      : "You're all caught up"
-                  : hasNarrowingFilters
-                    ? "No matches"
-                    : "No expenses yet"}
-              </p>
-              <p className="mt-0.5 text-sm text-gray-600 dark:text-muted-foreground">
-                {listView === "unreviewed"
-                  ? hasNarrowingFilters
-                    ? "Try clearing filters or switch to All."
-                    : expenses.length === 0
-                      ? "Add an expense to get started."
-                      : "No pending or needs-review items right now."
-                  : hasNarrowingFilters
-                    ? "Adjust filters or search."
-                    : "Add an expense to get started."}
-              </p>
-              {showEmptyOnboardingCtas ? (
-                <div className="mt-4 flex flex-wrap justify-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-8 rounded-sm border border-gray-100 bg-white text-gray-700 shadow-none hover:bg-gray-50 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted/50"
-                    onClick={() => setQuickExpenseOpen(true)}
-                  >
-                    Quick expense
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="h-8 rounded-sm border-0 bg-blue-500 text-white shadow-none hover:bg-blue-600"
-                    onClick={() => setUploadReceiptsOpen(true)}
-                  >
-                    <Upload className="mr-1.5 h-3.5 w-3.5" />
-                    Upload
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="h-8 rounded-sm border-0 bg-black text-white shadow-none hover:bg-gray-800"
-                    onClick={handleNew}
-                  >
+            <>
+              <div
+                className="hidden min-h-[min(55vh,480px)] flex-col justify-center border-b border-gray-100/80 py-12 text-center transition-opacity duration-200 ease-out animate-in fade-in dark:border-border/60 md:flex"
+                tabIndex={-1}
+                data-expenses-empty
+              >
+                <p className="text-sm font-semibold text-gray-900 dark:text-foreground">
+                  {listView === "unreviewed"
+                    ? hasNarrowingFilters
+                      ? "No unreviewed matches"
+                      : expenses.length === 0
+                        ? "No expenses yet"
+                        : "You're all caught up"
+                    : hasNarrowingFilters
+                      ? "No matches"
+                      : "No expenses yet"}
+                </p>
+                <p className="mt-0.5 text-sm text-gray-600 dark:text-muted-foreground">
+                  {listView === "unreviewed"
+                    ? hasNarrowingFilters
+                      ? "Try clearing filters or switch to All."
+                      : expenses.length === 0
+                        ? "Add an expense to get started."
+                        : "No pending or needs-review items right now."
+                    : hasNarrowingFilters
+                      ? "Adjust filters or search."
+                      : "Add an expense to get started."}
+                </p>
+                {showEmptyOnboardingCtas ? (
+                  <div className="mt-4 flex flex-wrap justify-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 rounded-sm border border-gray-100 bg-white text-gray-700 shadow-none hover:bg-gray-50 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted/50"
+                      onClick={() => setQuickExpenseOpen(true)}
+                    >
+                      Quick expense
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="h-8 rounded-sm border-0 bg-blue-500 text-white shadow-none hover:bg-blue-600"
+                      onClick={() => setUploadReceiptsOpen(true)}
+                    >
+                      <Upload className="mr-1.5 h-3.5 w-3.5" />
+                      Upload
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="h-8 rounded-sm border-0 bg-black text-white shadow-none hover:bg-gray-800"
+                      onClick={handleNew}
+                    >
+                      New expense
+                    </Button>
+                  </div>
+                ) : listView === "unreviewed" && !hasNarrowingFilters && expenses.length > 0 ? (
+                  <div className="mt-4">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-8 rounded-sm border border-gray-100 bg-white text-gray-700 shadow-none hover:bg-gray-50 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted/50"
+                      onClick={() => setListView("all")}
+                    >
+                      View all expenses
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+              <div
+                className="flex flex-col items-center border-b border-gray-100/80 py-10 md:hidden dark:border-border/60"
+                tabIndex={-1}
+                data-expenses-empty-mobile
+              >
+                <Upload
+                  className="h-8 w-8 text-text-secondary dark:text-muted-foreground"
+                  aria-hidden
+                />
+                <p className="mt-3 text-center text-sm text-text-secondary dark:text-muted-foreground">
+                  {listView === "unreviewed"
+                    ? hasNarrowingFilters
+                      ? "No unreviewed matches. Try filters or All."
+                      : expenses.length === 0
+                        ? "No expenses yet."
+                        : "You're all caught up."
+                    : hasNarrowingFilters
+                      ? "No matches. Adjust filters or search."
+                      : "No expenses yet."}
+                </p>
+                {showEmptyOnboardingCtas ? (
+                  <Button type="button" size="sm" className="mt-4" onClick={handleNew}>
                     New expense
                   </Button>
-                </div>
-              ) : listView === "unreviewed" && !hasNarrowingFilters && expenses.length > 0 ? (
-                <div className="mt-4">
+                ) : listView === "unreviewed" && !hasNarrowingFilters && expenses.length > 0 ? (
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="h-8 rounded-sm border border-gray-100 bg-white text-gray-700 shadow-none hover:bg-gray-50 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted/50"
+                    className="mt-4"
                     onClick={() => setListView("all")}
                   >
                     View all expenses
                   </Button>
-                </div>
-              ) : null}
-            </div>
+                ) : null}
+              </div>
+            </>
           ) : (
-            <div className="exp-list-card w-full overflow-hidden rounded-xl border border-gray-100/80 bg-white shadow-[0_4px_12px_rgba(0,0,0,0.06)] dark:border-border/60 dark:bg-card dark:shadow-none">
+            <div className="exp-list-card w-full overflow-hidden rounded-none border-0 bg-transparent shadow-none dark:bg-transparent md:rounded-xl md:border md:border-gray-100/80 md:bg-white md:shadow-[0_4px_12px_rgba(0,0,0,0.06)] dark:md:border-border/60 dark:md:bg-card dark:md:shadow-none">
               {listView === "all" ? (
-                <div className="flex flex-col gap-3 border-b border-gray-100/80 p-3 dark:border-border/60 md:hidden">
+                <div className="divide-y divide-gray-100 dark:divide-border/60 md:hidden">
                   {pageRows.map((row) => {
                     const rowTotal = getExpenseTotal(row);
                     const projLabel = projectLabel(row, projectNameById);
@@ -1756,31 +2013,31 @@ function ExpensesPageInner() {
                       <Link
                         key={row.id}
                         href={`/financial/expenses/${row.id}`}
-                        className="block rounded-sm border border-gray-100/80 bg-white p-4 text-left transition-colors hover:bg-gray-50 active:bg-gray-100 dark:border-border/60 dark:bg-card dark:hover:bg-muted/30 dark:active:bg-muted/40"
+                        className="flex min-h-[56px] w-full items-center gap-3 px-0 py-2.5 text-left active:bg-muted/30"
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate font-semibold text-gray-900 dark:text-foreground">
-                              {normalizedVendorLabel(row.vendorName)}
-                            </p>
-                            <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                              {projLabel} · {row.date ?? "—"}
-                            </p>
-                          </div>
-                          <span className="shrink-0 text-sm font-semibold tabular-nums text-[#d92d20] dark:text-red-400">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-gray-900 dark:text-foreground">
+                            {normalizedVendorLabel(row.vendorName)}
+                          </p>
+                          <p className="truncate text-xs text-text-secondary dark:text-muted-foreground">
+                            {projLabel} · {row.date ?? "—"}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 flex-col items-end gap-1">
+                          <span className="text-sm font-medium tabular-nums text-[#d92d20] dark:text-red-400">
                             −$
                             {rowTotal.toLocaleString(undefined, {
                               minimumFractionDigits: 2,
                               maximumFractionDigits: 2,
                             })}
                           </span>
-                        </div>
-                        <div className="mt-2 flex items-center gap-1.5 text-xs">
-                          <span
-                            className={`h-2 w-2 shrink-0 rounded-full ${statusStyle.dot}`}
-                            aria-hidden
-                          />
-                          <span className={statusStyle.text}>{statusDisplayLabel(status)}</span>
+                          <span className="flex items-center gap-1 text-xs font-medium">
+                            <span
+                              className={`h-2 w-2 shrink-0 rounded-full ${statusStyle.dot}`}
+                              aria-hidden
+                            />
+                            <span className={statusStyle.text}>{statusDisplayLabel(status)}</span>
+                          </span>
                         </div>
                       </Link>
                     );

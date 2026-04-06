@@ -5,6 +5,7 @@ import type { WorkerRow, WorkerStatus } from "@/lib/workers-db";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { WorkersListClient } from "./workers-list-client";
 import { WorkersActions } from "./workers-actions";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -44,15 +45,20 @@ export default async function WorkersPage() {
   }
   return (
     <PageLayout
+      className={cn("max-md:!px-4 max-md:!py-3", "max-md:!gap-3")}
       header={
-        <PageHeader
-          title="Workers"
-          description="Manage workers: trades, daily rate, default OT rate, and status."
-        />
+        <div className="hidden md:block">
+          <PageHeader
+            title="Workers"
+            description="Manage workers: trades, daily rate, default OT rate, and status."
+          />
+        </div>
       }
     >
-      <SectionHeader label="Workers" action={<WorkersActions />} />
-      <Divider />
+      <div className="hidden md:block">
+        <SectionHeader label="Workers" action={<WorkersActions />} />
+        <Divider />
+      </div>
 
       <WorkersListClient rows={rows} dataLoadWarning={dataLoadWarning} />
     </PageLayout>

@@ -6,6 +6,17 @@ import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/native-select";
+import { cn } from "@/lib/utils";
+import { Search } from "lucide-react";
+import {
+  MobileEmptyState,
+  MobileFabButton,
+  MobileFilterSheet,
+  MobileListHeader,
+  MobileSearchFiltersRow,
+  mobileListPagePaddingClass,
+} from "@/components/mobile/mobile-list-chrome";
 import {
   getWorkers,
   getProjects,
@@ -46,6 +57,7 @@ export default function WorkerInvoicesPage() {
     status: "unpaid" as WorkerInvoiceStatus,
     invoiceFile: "",
   });
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -201,33 +213,95 @@ export default function WorkerInvoicesPage() {
     );
   };
 
+  const sortFilterActive = sort.key !== "createdAt" || sort.dir !== "desc" ? 1 : 0;
+
+  const openNewInvoice = () => {
+    resetForm();
+    setShowForm(true);
+  };
+
   return (
-    <div className="page-container page-stack py-6">
-      <PageHeader
+    <div
+      className={cn("page-container page-stack py-6", mobileListPagePaddingClass, "max-md:!gap-3")}
+    >
+      <div className="hidden md:block">
+        <PageHeader
+          title="Worker Invoices"
+          subtitle="Track invoices from 1099 workers or small subcontractors."
+          actions={
+            <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+              <Link
+                href="/labor"
+                className="text-sm text-muted-foreground hover:text-foreground max-md:min-h-11 max-md:inline-flex max-md:items-center"
+              >
+                Labor
+              </Link>
+              <Button
+                size="sm"
+                className="w-full rounded-md max-md:min-h-11 sm:w-auto"
+                onClick={openNewInvoice}
+              >
+                + New Invoice
+              </Button>
+            </div>
+          }
+        />
+      </div>
+      <MobileListHeader
         title="Worker Invoices"
-        subtitle="Track invoices from 1099 workers or small subcontractors."
-        actions={
-          <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-            <Link
-              href="/labor"
-              className="text-sm text-muted-foreground hover:text-foreground max-md:min-h-11 max-md:inline-flex max-md:items-center"
-            >
-              Labor
-            </Link>
-            <Button
-              size="sm"
-              className="w-full rounded-md max-md:min-h-11 sm:w-auto"
-              onClick={() => {
-                resetForm();
-                setShowForm(true);
-              }}
-            >
-              + New Invoice
-            </Button>
+        fab={<MobileFabButton ariaLabel="New invoice" onClick={openNewInvoice} />}
+      />
+      <MobileSearchFiltersRow
+        filterSheetOpen={filtersOpen}
+        onOpenFilters={() => setFiltersOpen(true)}
+        activeFilterCount={sortFilterActive}
+        searchSlot={
+          <div className="relative w-full">
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search worker invoices…"
+              className="h-10 pl-8 text-sm"
+              aria-label="Search invoices"
+            />
           </div>
         }
       />
-      <div className="flex flex-col gap-3 border-b border-border/60 pb-3 md:flex-row md:flex-wrap md:items-center md:justify-between">
+      <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Sort by</p>
+          <Select
+            value={sort.key}
+            onChange={(e) =>
+              setSort((s) => ({
+                ...s,
+                key: e.target.value as "createdAt" | "amount" | "status",
+              }))
+            }
+            className="w-full"
+          >
+            <option value="createdAt">Date</option>
+            <option value="amount">Amount</option>
+            <option value="status">Status</option>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Order</p>
+          <Select
+            value={sort.dir}
+            onChange={(e) => setSort((s) => ({ ...s, dir: e.target.value as "asc" | "desc" }))}
+            className="w-full"
+          >
+            <option value="desc">Newest / high first</option>
+            <option value="asc">Oldest / low first</option>
+          </Select>
+        </div>
+        <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
+          Done
+        </Button>
+      </MobileFilterSheet>
+      <div className="hidden flex-col gap-3 border-b border-border/60 pb-3 md:flex md:flex-row md:flex-wrap md:items-center md:justify-between">
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -236,6 +310,7 @@ export default function WorkerInvoicesPage() {
         />
         {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
       </div>
+      {message ? <p className="text-sm text-muted-foreground md:hidden">{message}</p> : null}
 
       {showForm && (
         <div className="border-b border-border/60 pb-4">
@@ -331,66 +406,73 @@ export default function WorkerInvoicesPage() {
         </div>
       )}
 
-      <div className="flex flex-col gap-3 border-b border-border/60 pb-3 md:hidden">
+      <div className="md:hidden">
         {loading ? (
           <p className="py-6 text-center text-xs text-muted-foreground">Loading…</p>
         ) : paged.length === 0 ? (
-          <p className="py-6 text-center text-xs text-muted-foreground">No worker invoices yet.</p>
+          <MobileEmptyState
+            icon={<Search className="h-8 w-8 opacity-80" aria-hidden />}
+            message="No worker invoices yet."
+          />
         ) : (
-          paged.map((r) => (
-            <div key={r.id} className="rounded-sm border border-border/60 p-4">
-              <div className="flex items-start justify-between gap-2">
-                <span className="text-xs tabular-nums text-muted-foreground">
-                  {r.createdAt.slice(0, 10)}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="btn-outline-ghost h-8 max-md:min-h-11"
-                  onClick={() => toggleStatus(r)}
-                >
-                  {r.status}
-                </Button>
+          <div className="divide-y divide-gray-100 dark:divide-border/60">
+            {paged.map((r) => (
+              <div key={r.id} className="flex min-h-[56px] flex-col gap-2 py-2.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs tabular-nums text-muted-foreground">
+                      {r.createdAt.slice(0, 10)}
+                    </p>
+                    <p className="truncate text-sm font-medium text-foreground">
+                      {workerById.get(r.workerId) ?? r.workerId}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {r.projectId ? (projectById.get(r.projectId) ?? r.projectId) : "—"}
+                    </p>
+                    <p className="mt-1 text-sm font-medium tabular-nums">${fmtUsd(r.amount)}</p>
+                    {r.invoiceFile ? (
+                      <a
+                        href={r.invoiceFile}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1 inline-block text-xs text-primary hover:underline"
+                      >
+                        View invoice file
+                      </a>
+                    ) : (
+                      <p className="mt-1 text-xs text-muted-foreground">No file</p>
+                    )}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="btn-outline-ghost h-8 shrink-0 rounded-sm"
+                    onClick={() => toggleStatus(r)}
+                  >
+                    {r.status}
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="btn-outline-ghost h-8 flex-1 rounded-sm"
+                    onClick={() => handleEdit(r)}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="btn-outline-ghost h-8 flex-1 rounded-sm text-red-600"
+                    onClick={() => handleDelete(r.id)}
+                  >
+                    Delete
+                  </Button>
+                </div>
               </div>
-              <p className="mt-2 font-medium text-foreground">
-                {workerById.get(r.workerId) ?? r.workerId}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {r.projectId ? (projectById.get(r.projectId) ?? r.projectId) : "—"}
-              </p>
-              <p className="mt-2 text-sm font-medium tabular-nums">${fmtUsd(r.amount)}</p>
-              {r.invoiceFile ? (
-                <a
-                  href={r.invoiceFile}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-2 inline-block text-xs text-primary hover:underline max-md:min-h-11 max-md:py-2"
-                >
-                  View invoice file
-                </a>
-              ) : (
-                <p className="mt-2 text-xs text-muted-foreground">No file</p>
-              )}
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="btn-outline-ghost h-8 max-md:min-h-11"
-                  onClick={() => handleEdit(r)}
-                >
-                  Edit
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="btn-outline-ghost h-8 max-md:min-h-11 text-red-600"
-                  onClick={() => handleDelete(r.id)}
-                >
-                  Delete
-                </Button>
-              </div>
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </div>
 

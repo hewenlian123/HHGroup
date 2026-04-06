@@ -33,9 +33,18 @@ import {
   type DailyLaborEntryOldForReallocate,
 } from "@/lib/data";
 import { StatusBadge } from "@/components/base";
+import {
+  MobileEmptyState,
+  MobileFabPlus,
+  MobileFilterSheet,
+  MobileListHeader,
+  MobileSearchFiltersRow,
+  mobileListPagePaddingClass,
+} from "@/components/mobile/mobile-list-chrome";
 import { Pagination } from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
+import { Search } from "lucide-react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import {
   getLaborPaymentStatus,
@@ -206,6 +215,14 @@ function DailyEntriesPageInner() {
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
   const [bulkAction, setBulkAction] = React.useState<"submit" | "approve" | "lock" | null>(null);
   const [searchInput, setSearchInput] = React.useState("");
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
+
+  const activeDrawerFilterCount =
+    (filters.date_from ? 1 : 0) +
+    (filters.date_to ? 1 : 0) +
+    (filters.worker_id ? 1 : 0) +
+    (filters.project_id ? 1 : 0) +
+    (filters.status ? 1 : 0);
 
   const filteredEntries = React.useMemo(() => {
     if (!searchInput.trim()) return entries;
@@ -401,21 +418,121 @@ function DailyEntriesPageInner() {
 
   return (
     <PageLayout
+      className={cn(mobileListPagePaddingClass, "max-md:!gap-3")}
       header={
-        <PageHeader
-          title="Daily Entries"
-          description="View and manage labor entries with worker and project allocation."
-          actions={
-            <Link href="/labor/daily">
-              <Button variant="outline" size="sm">
-                Add entries
-              </Button>
-            </Link>
-          }
-        />
+        <div className="hidden md:block">
+          <PageHeader
+            title="Daily Entries"
+            description="View and manage labor entries with worker and project allocation."
+            actions={
+              <Link href="/labor/daily">
+                <Button variant="outline" size="sm">
+                  Add entries
+                </Button>
+              </Link>
+            }
+          />
+        </div>
       }
     >
-      <FilterBar>
+      <MobileListHeader
+        title="Daily Entries"
+        fab={<MobileFabPlus href="/labor/daily" ariaLabel="Add entries" />}
+      />
+      <MobileSearchFiltersRow
+        filterSheetOpen={filtersOpen}
+        onOpenFilters={() => setFiltersOpen(true)}
+        activeFilterCount={activeDrawerFilterCount}
+        searchSlot={
+          <div className="relative w-full">
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Notes, code, worker, project…"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="h-10 pl-8 text-sm"
+              aria-label="Search entries"
+            />
+          </div>
+        }
+      />
+      <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">From</p>
+          <Input
+            type="date"
+            value={filters.date_from ?? ""}
+            onChange={(e) => setFilters((f) => ({ ...f, date_from: e.target.value || undefined }))}
+            max={new Date().toISOString().slice(0, 10)}
+            className="w-full"
+          />
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">To</p>
+          <Input
+            type="date"
+            value={filters.date_to ?? ""}
+            onChange={(e) => setFilters((f) => ({ ...f, date_to: e.target.value || undefined }))}
+            max={new Date().toISOString().slice(0, 10)}
+            className="w-full"
+          />
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Worker</p>
+          <Select
+            value={filters.worker_id ?? ""}
+            onChange={(e) => setFilters((f) => ({ ...f, worker_id: e.target.value || undefined }))}
+            className="w-full"
+          >
+            <option value="">All workers</option>
+            {workers.map((w) => (
+              <option key={w.id} value={w.id}>
+                {w.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Project</p>
+          <Select
+            value={filters.project_id ?? ""}
+            onChange={(e) => setFilters((f) => ({ ...f, project_id: e.target.value || undefined }))}
+            className="w-full"
+          >
+            <option value="">All projects</option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Status</p>
+          <Select
+            value={filters.status ?? ""}
+            onChange={(e) =>
+              setFilters((f) => ({
+                ...f,
+                status: (e.target.value || undefined) as LaborEntriesFilters["status"],
+              }))
+            }
+            className="w-full"
+          >
+            <option value="">All statuses</option>
+            <option value="Draft">Draft</option>
+            <option value="Submitted">Submitted</option>
+            <option value="Approved">Approved</option>
+            <option value="Locked">Locked</option>
+          </Select>
+        </div>
+        <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
+          Done
+        </Button>
+      </MobileFilterSheet>
+
+      <FilterBar className="hidden md:block">
         <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-6">
           <div className="space-y-1">
             <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
@@ -565,104 +682,103 @@ function DailyEntriesPageInner() {
           {message}
         </div>
       ) : null}
-      <div className="flex flex-col gap-3 border-t border-gray-100 dark:border-border/60 md:hidden">
-        {loading
-          ? Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="rounded-sm border border-border/60 p-4">
+      <div className="border-t border-gray-100 dark:border-border/60 md:hidden">
+        {loading ? (
+          <div className="flex flex-col gap-3 py-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="py-2">
                 <Skeleton className="h-5 w-2/3" />
                 <Skeleton className="mt-2 h-4 w-full" />
               </div>
-            ))
-          : filteredEntries.length === 0
-            ? null
-            : pageRows.map((row) => {
-                const payrollStatus = getLaborPaymentStatus(
-                  row.worker_payment_id ?? null,
-                  row.workflowStatusRaw ?? null,
-                  row.usesPaymentLinkForPayroll ? "payment_link" : "status_fallback"
-                );
-                const payrollLocked = payrollStatus === "paid";
-                const rowLocked = row.status === "Locked" || payrollLocked;
-                const cost = row.cost_amount ?? 0;
-                const rate =
-                  row.hours > 0 && row.cost_amount != null ? row.cost_amount / row.hours : null;
-                return (
-                  <div
-                    key={row.id}
-                    className="rounded-sm border border-border/60 bg-background p-4 dark:bg-card"
-                  >
-                    <div className="flex items-start gap-3">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(row.id)}
-                        onChange={() => toggleSelect(row.id)}
-                        disabled={rowLocked}
-                        className="mt-1 h-4 w-4 shrink-0 rounded border-input"
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      <button
-                        type="button"
-                        className="min-w-0 flex-1 text-left disabled:opacity-60"
-                        disabled={rowLocked}
-                        onClick={() => {
-                          if (!rowLocked) openEdit(row);
-                        }}
-                      >
-                        <p className="tabular-nums text-xs text-muted-foreground">
-                          {row.work_date}
+            ))}
+          </div>
+        ) : filteredEntries.length === 0 ? (
+          <MobileEmptyState
+            icon={<Search className="h-8 w-8 opacity-80" aria-hidden />}
+            message="No entries match the filters."
+          />
+        ) : (
+          <div className="divide-y divide-gray-100 dark:divide-border/60">
+            {pageRows.map((row) => {
+              const payrollStatus = getLaborPaymentStatus(
+                row.worker_payment_id ?? null,
+                row.workflowStatusRaw ?? null,
+                row.usesPaymentLinkForPayroll ? "payment_link" : "status_fallback"
+              );
+              const payrollLocked = payrollStatus === "paid";
+              const rowLocked = row.status === "Locked" || payrollLocked;
+              const cost = row.cost_amount ?? 0;
+              const rate =
+                row.hours > 0 && row.cost_amount != null ? row.cost_amount / row.hours : null;
+              return (
+                <div key={row.id} className="flex min-h-[56px] flex-col gap-2 py-2.5">
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(row.id)}
+                      onChange={() => toggleSelect(row.id)}
+                      disabled={rowLocked}
+                      className="mt-1 h-4 w-4 shrink-0 rounded border-input"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <button
+                      type="button"
+                      className="min-w-0 flex-1 text-left disabled:opacity-60"
+                      disabled={rowLocked}
+                      onClick={() => {
+                        if (!rowLocked) openEdit(row);
+                      }}
+                    >
+                      <p className="tabular-nums text-xs text-muted-foreground">{row.work_date}</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {row.worker_name ?? "—"}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {row.project_name ?? "—"}
+                      </p>
+                      <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-xs tabular-nums text-muted-foreground">
+                        <span>{row.hours}h</span>
+                        <span>{rate != null ? `$${rate.toFixed(2)}/h` : "—"}</span>
+                        <span className="font-medium text-foreground">${cost.toFixed(2)}</span>
+                      </div>
+                      <div className="mt-1.5">
+                        <StatusBadge
+                          label={laborPaymentStatusUiLabel(payrollStatus)}
+                          variant={laborEntryPayrollStatusBadgeVariant(payrollStatus)}
+                        />
+                      </div>
+                      {row.notes ? (
+                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                          {row.notes}
                         </p>
-                        <p className="font-medium text-foreground">{row.worker_name ?? "—"}</p>
-                        <p className="mt-0.5 truncate text-sm text-muted-foreground">
-                          {row.project_name ?? "—"}
-                        </p>
-                        <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm tabular-nums">
-                          <span>{row.hours}h</span>
-                          <span className="text-muted-foreground">
-                            {rate != null ? `$${rate.toFixed(2)}/h` : "—"}
-                          </span>
-                          <span className="font-medium">${cost.toFixed(2)}</span>
-                        </div>
-                        <div className="mt-2">
-                          <StatusBadge
-                            label={laborPaymentStatusUiLabel(payrollStatus)}
-                            variant={laborEntryPayrollStatusBadgeVariant(payrollStatus)}
-                          />
-                        </div>
-                        {row.notes ? (
-                          <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">
-                            {row.notes}
-                          </p>
-                        ) : null}
-                      </button>
-                    </div>
-                    <div className="mt-3 flex flex-col gap-2 border-t border-border/40 pt-3 sm:flex-row">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="btn-outline-ghost min-h-11 w-full sm:min-h-8 sm:flex-1"
-                        onClick={() => openEdit(row)}
-                        disabled={rowLocked}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="btn-outline-ghost min-h-11 w-full text-red-600 sm:min-h-8 sm:flex-1 dark:text-red-400"
-                        onClick={() => handleDelete(row)}
-                        disabled={rowLocked || deletingId === row.id}
-                      >
-                        <SubmitSpinner loading={deletingId === row.id} className="mr-1" />
-                        {deletingId === row.id ? "…" : "Delete"}
-                      </Button>
-                    </div>
+                      ) : null}
+                    </button>
                   </div>
-                );
-              })}
-        {loading || filteredEntries.length > 0 ? null : (
-          <p className="py-6 text-center text-xs text-muted-foreground">
-            No entries match the filters.
-          </p>
+                  <div className="flex gap-2 pl-7">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="btn-outline-ghost h-8 flex-1 rounded-sm"
+                      onClick={() => openEdit(row)}
+                      disabled={rowLocked}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="btn-outline-ghost h-8 flex-1 rounded-sm text-red-600 dark:text-red-400"
+                      onClick={() => handleDelete(row)}
+                      disabled={rowLocked || deletingId === row.id}
+                    >
+                      <SubmitSpinner loading={deletingId === row.id} className="mr-1" />
+                      {deletingId === row.id ? "…" : "Delete"}
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
       <div className="hidden overflow-x-auto border-t border-gray-100 dark:border-border/60 md:block">

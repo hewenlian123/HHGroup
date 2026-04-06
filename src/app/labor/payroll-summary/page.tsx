@@ -6,6 +6,16 @@ import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { Search } from "lucide-react";
+import {
+  MobileEmptyState,
+  MobileFabPlus,
+  MobileFilterSheet,
+  MobileListHeader,
+  MobileSearchFiltersRow,
+  mobileListPagePaddingClass,
+} from "@/components/mobile/mobile-list-chrome";
 import {
   getPayrollSummary,
   getDailyWorkEntriesForWorker,
@@ -39,6 +49,8 @@ export default function PayrollSummaryPage() {
   const [detailEntries, setDetailEntries] = React.useState<
     (DailyWorkEntry & { projectName?: string })[]
   >([]);
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState("");
 
   const load = React.useCallback(async () => {
     if (!fromDate || !toDate) return;
@@ -76,25 +88,86 @@ export default function PayrollSummaryPage() {
     }
   };
 
+  const displayRows = React.useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((r) => r.workerName.toLowerCase().includes(q));
+  }, [rows, searchQuery]);
+
   const totalDays = rows.reduce((s, r) => s + r.daysWorked, 0);
   const totalOt = rows.reduce((s, r) => s + r.otTotal, 0);
   const totalPay = rows.reduce((s, r) => s + r.totalPay, 0);
 
+  const mobileTotalDays = displayRows.reduce((s, r) => s + r.daysWorked, 0);
+  const mobileTotalOt = displayRows.reduce((s, r) => s + r.otTotal, 0);
+  const mobileTotalPay = displayRows.reduce((s, r) => s + r.totalPay, 0);
+
+  const activeDrawerFilterCount =
+    (fromDate !== defaults.from || toDate !== defaults.to ? 1 : 0) + (searchQuery.trim() ? 1 : 0);
+
   return (
-    <div className="page-container page-stack py-6">
-      <PageHeader
+    <div
+      className={cn("page-container page-stack py-6", mobileListPagePaddingClass, "max-md:!gap-3")}
+    >
+      <div className="hidden md:block">
+        <PageHeader
+          title="Payroll Summary"
+          subtitle="Summarize labor entries by worker for a date range."
+          actions={
+            <Link
+              href="/labor"
+              className="text-sm text-muted-foreground hover:text-foreground max-md:min-h-11 max-md:inline-flex max-md:items-center"
+            >
+              Labor
+            </Link>
+          }
+        />
+      </div>
+      <MobileListHeader
         title="Payroll Summary"
-        subtitle="Summarize labor entries by worker for a date range."
-        actions={
-          <Link
-            href="/labor"
-            className="text-sm text-muted-foreground hover:text-foreground max-md:min-h-11 max-md:inline-flex max-md:items-center"
-          >
-            Labor
-          </Link>
+        fab={<MobileFabPlus href="/labor" ariaLabel="Labor home" />}
+      />
+      <MobileSearchFiltersRow
+        filterSheetOpen={filtersOpen}
+        onOpenFilters={() => setFiltersOpen(true)}
+        activeFilterCount={activeDrawerFilterCount}
+        searchSlot={
+          <div className="relative w-full">
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search workers…"
+              className="h-10 pl-8 text-sm"
+              aria-label="Search workers"
+            />
+          </div>
         }
       />
-      <div className="grid grid-cols-1 gap-3 border-b border-border/60 pb-3 sm:grid-cols-2 sm:items-end lg:flex lg:flex-wrap">
+      <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">From</p>
+          <Input
+            type="date"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+            className="w-full"
+          />
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">To</p>
+          <Input
+            type="date"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+            className="w-full"
+          />
+        </div>
+        <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
+          Done
+        </Button>
+      </MobileFilterSheet>
+      <div className="hidden grid-cols-1 gap-3 border-b border-border/60 pb-3 sm:grid-cols-2 sm:items-end md:grid lg:flex lg:flex-wrap">
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             From
@@ -119,57 +192,65 @@ export default function PayrollSummaryPage() {
         </div>
       </div>
       {error ? <p className="py-2 text-sm text-red-600 dark:text-red-400">{error}</p> : null}
-      <div className="flex flex-col gap-3 border-b border-border/60 pb-3 md:hidden">
+      <div className="border-b border-border/60 pb-3 md:hidden">
         {loading ? (
           <p className="py-6 text-center text-xs text-muted-foreground">Loading…</p>
         ) : rows.length === 0 ? (
-          <p className="py-6 text-center text-xs text-muted-foreground">
-            No labor entries for this range.
-          </p>
+          <MobileEmptyState
+            icon={<Search className="h-8 w-8 opacity-80" aria-hidden />}
+            message="No labor entries for this range."
+          />
+        ) : displayRows.length === 0 ? (
+          <MobileEmptyState
+            icon={<Search className="h-8 w-8 opacity-80" aria-hidden />}
+            message="No workers match your search."
+          />
         ) : (
-          rows.map((r) => (
-            <div key={r.workerId} className="rounded-sm border border-border/60 p-4">
-              <Button
-                variant="outline"
-                size="sm"
-                className="btn-outline-ghost h-8 max-md:min-h-11 -ml-2 font-medium text-foreground"
-                onClick={() => openWorkerDetail(r.workerId)}
-              >
-                {r.workerName}
-              </Button>
-              <dl className="mt-3 grid grid-cols-3 gap-2 text-xs tabular-nums">
-                <div>
-                  <dt className="text-muted-foreground">Days</dt>
-                  <dd className="font-medium">{r.daysWorked}</dd>
+          <>
+            <div className="divide-y divide-gray-100 dark:divide-border/60">
+              {displayRows.map((r) => (
+                <div key={r.workerId} className="flex min-h-[56px] flex-col gap-2 py-2.5">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="btn-outline-ghost h-8 w-fit -ml-2 rounded-sm font-medium text-foreground"
+                    onClick={() => openWorkerDetail(r.workerId)}
+                  >
+                    {r.workerName}
+                  </Button>
+                  <dl className="grid grid-cols-3 gap-2 text-xs tabular-nums">
+                    <div>
+                      <dt className="text-muted-foreground">Days</dt>
+                      <dd className="font-medium">{r.daysWorked}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">OT</dt>
+                      <dd>${fmtUsd(r.otTotal)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">Pay</dt>
+                      <dd className="font-medium">${fmtUsd(r.totalPay)}</dd>
+                    </div>
+                  </dl>
                 </div>
-                <div>
-                  <dt className="text-muted-foreground">OT</dt>
-                  <dd>${fmtUsd(r.otTotal)}</dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">Pay</dt>
-                  <dd className="font-medium">${fmtUsd(r.totalPay)}</dd>
-                </div>
-              </dl>
+              ))}
             </div>
-          ))
+            <div className="mt-3 border-t border-border/60 pt-3 text-xs font-medium tabular-nums">
+              <div className="flex justify-between border-b border-border/60 pb-2">
+                <span>Total days</span>
+                <span>{mobileTotalDays}</span>
+              </div>
+              <div className="flex justify-between py-2">
+                <span>Total OT</span>
+                <span>${fmtUsd(mobileTotalOt)}</span>
+              </div>
+              <div className="flex justify-between border-t border-border/60 pt-2">
+                <span>Total pay</span>
+                <span>${fmtUsd(mobileTotalPay)}</span>
+              </div>
+            </div>
+          </>
         )}
-        {!loading && rows.length > 0 ? (
-          <div className="rounded-sm border border-border/60 p-3 text-xs font-medium tabular-nums">
-            <div className="flex justify-between border-b border-border/60 pb-2">
-              <span>Total days</span>
-              <span>{totalDays}</span>
-            </div>
-            <div className="flex justify-between py-2">
-              <span>Total OT</span>
-              <span>${fmtUsd(totalOt)}</span>
-            </div>
-            <div className="flex justify-between border-t border-border/60 pt-2">
-              <span>Total pay</span>
-              <span>${fmtUsd(totalPay)}</span>
-            </div>
-          </div>
-        ) : null}
       </div>
 
       <div className="hidden overflow-x-auto border-b border-border/60 md:block">

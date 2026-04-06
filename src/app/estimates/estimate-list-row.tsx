@@ -19,7 +19,7 @@ export function EstimateMobileList({
   deleteAction: DeleteAction;
 }) {
   return (
-    <div className="flex flex-col gap-3 md:hidden">
+    <div className="divide-y divide-gray-100 dark:divide-border/60 md:hidden">
       {list.map((row) => (
         <EstimateListRowMobile key={row.id} row={row} deleteAction={deleteAction} />
       ))}
@@ -49,31 +49,31 @@ const EstimateListRowMobile = memo(function EstimateListRowMobile({
   }, [row.id, deleteAction, router]);
 
   return (
-    <div className="rounded-sm border border-border/60 p-4">
-      <div className="flex items-start justify-between gap-2">
-        <Link
-          href={href}
-          className="font-medium text-foreground hover:underline min-h-11 inline-flex items-center"
-        >
-          {row.number}
-        </Link>
-        <RowActionsMenu
-          ariaLabel={`Actions for estimate ${row.number}`}
-          actions={[
-            { label: "View", onClick: () => startTransition(() => router.push(href)) },
-            { label: "Delete", onClick: handleDelete, destructive: true, disabled: isPending },
-          ]}
-        />
-      </div>
-      <p className="mt-1 text-sm text-muted-foreground">{row.client}</p>
-      <p className="text-sm text-foreground">{row.project}</p>
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-        <EstimateStatusBadge status={row.status} />
-        <span className="text-sm font-medium tabular-nums text-foreground">
-          ${row.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-        </span>
-      </div>
-      <p className="mt-2 text-xs text-muted-foreground">Updated {row.updatedAt}</p>
+    <div className="flex min-h-[56px] items-center gap-2 py-2.5">
+      <Link
+        href={href}
+        className="flex min-w-0 flex-1 items-center gap-3 text-left active:bg-muted/30"
+      >
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium text-foreground">{row.number}</p>
+          <p className="truncate text-xs text-text-secondary dark:text-muted-foreground">
+            {row.client} · {row.project}
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <span className="text-sm font-medium tabular-nums text-foreground">
+            ${row.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          </span>
+          <EstimateStatusBadge status={row.status} />
+        </div>
+      </Link>
+      <RowActionsMenu
+        ariaLabel={`Actions for estimate ${row.number}`}
+        actions={[
+          { label: "View", onClick: () => startTransition(() => router.push(href)) },
+          { label: "Delete", onClick: handleDelete, destructive: true, disabled: isPending },
+        ]}
+      />
     </div>
   );
 });

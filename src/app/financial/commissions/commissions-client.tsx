@@ -19,6 +19,13 @@ import {
 } from "@/components/perf/sync-router-non-blocking";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { PageHeader } from "@/components/page-header";
+import {
+  MobileEmptyState,
+  MobileFilterSheet,
+  MobileListHeader,
+  MobileSearchFiltersRow,
+  mobileListPagePaddingClass,
+} from "@/components/mobile/mobile-list-chrome";
 import { Button } from "@/components/ui/button";
 import { InlineLoading } from "@/components/ui/skeleton";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
@@ -165,6 +172,7 @@ export function CommissionsClient({
   const [filterSearch, setFilterSearch] = React.useState("");
   const [filterStatus, setFilterStatus] = React.useState<"all" | CommissionPaymentStatus>("all");
   const [filterPerson, setFilterPerson] = React.useState<string>("all");
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
   const [paymentDeleteTarget, setPaymentDeleteTarget] = React.useState<{
     parent: Row;
     record: CommissionPaymentRecord;
@@ -788,18 +796,214 @@ export function CommissionsClient({
     }
   };
 
+  const activeDrawerFilterCount =
+    (filterStatus !== "all" ? 1 : 0) + (filterPerson !== "all" ? 1 : 0);
+
+  function CommissionPaymentDetailsPanel({ r }: { r: Row }) {
+    return (
+      <>
+        {paymentsLoadingId === r.id ? (
+          <p className="text-[12px] text-text-secondary">Loading payments…</p>
+        ) : (paymentsByCommission[r.id] ?? []).length === 0 ? (
+          <p className="text-[12px] text-text-secondary">No payments recorded.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[480px] border-collapse text-[13px] lg:min-w-0">
+              <thead>
+                <tr className="border-b border-[#D6D3CD] text-left text-[#9CA3AF]">
+                  <th className="py-2 pr-4 text-[11px] font-semibold uppercase tracking-wide">
+                    Date
+                  </th>
+                  <th className="py-2 pr-4 text-right text-[11px] font-semibold uppercase tracking-wide">
+                    Amount
+                  </th>
+                  <th className="py-2 pr-4 text-[11px] font-semibold uppercase tracking-wide">
+                    Method
+                  </th>
+                  <th className="min-w-[8rem] py-2 pr-4 text-[11px] font-semibold uppercase tracking-wide">
+                    Note
+                  </th>
+                  <th className="min-w-[11rem] py-2 text-right text-[11px] font-semibold uppercase tracking-wide">
+                    {/* actions */}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {(paymentsByCommission[r.id] ?? []).map((p) => (
+                  <tr
+                    key={p.id}
+                    className="border-b border-[#D6D3CD]/80 last:border-b-0"
+                    data-testid={`financial-payment-row-${p.id}`}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <td className="py-2.5 pr-4 font-mono tabular-nums text-text-secondary">
+                      {p.payment_date || "—"}
+                    </td>
+                    <td className="py-2.5 pr-4 text-right font-mono tabular-nums text-text-primary">
+                      ${fmtUsd(p.amount)}
+                    </td>
+                    <td className="py-2.5 pr-4 text-[#374151]">{p.payment_method}</td>
+                    <td className="max-w-[16rem] truncate py-2.5 pr-4 text-text-secondary">
+                      {p.note || "—"}
+                    </td>
+                    <td className="py-2.5 text-right">
+                      <div className="inline-flex items-center justify-end gap-1">
+                        {p.receipt_url ? (
+                          <>
+                            <button
+                              type="button"
+                              disabled={receiptViewLoading?.payment.id === p.id}
+                              className="rounded-md p-1.5 text-blue-600 transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-100 hover:text-blue-700 active:scale-[0.95] active:duration-100 disabled:opacity-50 dark:hover:bg-muted/50"
+                              data-testid={`financial-payment-receipt-view-${p.id}`}
+                              aria-label="View uploaded receipt"
+                              onClick={(e) => openReceiptPreview(r, p, e)}
+                            >
+                              {receiptViewLoading?.payment.id === p.id ? (
+                                <InlineLoading size="md" aria-hidden />
+                              ) : (
+                                <FileText className="h-4 w-4" />
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={receiptDeletingPaymentId === p.id}
+                              className="rounded-md p-1.5 text-red-600 transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-100 hover:text-red-700 active:scale-[0.95] active:duration-100 disabled:opacity-50 dark:hover:bg-muted/50"
+                              data-testid={`financial-payment-receipt-remove-${p.id}`}
+                              aria-label="Remove uploaded receipt"
+                              onClick={(e) => void deleteCommissionPaymentReceipt(r, p, e)}
+                            >
+                              {receiptDeletingPaymentId === p.id ? (
+                                <InlineLoading size="md" aria-hidden />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            className="rounded-md p-1.5 text-[#9CA3AF] transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-100 hover:text-text-secondary active:scale-[0.95] active:duration-100 dark:hover:bg-muted/50"
+                            data-testid={`financial-payment-receipt-upload-${p.id}`}
+                            aria-label="Upload receipt"
+                            onClick={(e) => openReceiptUploadModal(r, p, e)}
+                          >
+                            <Paperclip className="h-4 w-4" />
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="rounded-md p-1.5 text-text-secondary hover:bg-white hover:text-text-primary"
+                          data-testid={`financial-payment-view-pdf-${p.id}`}
+                          aria-label="View payment receipt PDF"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPaymentReceiptPdfOpenId(p.id);
+                          }}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-md p-1.5 text-text-secondary hover:bg-white hover:text-text-primary"
+                          data-testid={`financial-payment-edit-${p.id}`}
+                          aria-label="Edit payment"
+                          onClick={(e) => openPaymentRecordEdit(r, p, e)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-md p-1.5 text-red-600 hover:bg-white hover:text-red-700"
+                          data-testid={`financial-payment-delete-${p.id}`}
+                          aria-label="Delete payment"
+                          onClick={(e) => openPaymentDelete(r, p, e)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </>
+    );
+  }
+
   return (
     <div
       className={cn(
         "page-container page-stack py-8 text-[14px] leading-normal",
-        COMMISSION_PAGE_BG
+        COMMISSION_PAGE_BG,
+        mobileListPagePaddingClass,
+        "max-md:!gap-3 max-md:!py-4"
       )}
     >
-      <PageHeader
-        className="text-text-primary"
-        title="Commission Payments"
-        description="Track commissions and record payments."
+      <div className="hidden md:block">
+        <PageHeader
+          className="text-text-primary"
+          title="Commission Payments"
+          description="Track commissions and record payments."
+        />
+      </div>
+      <MobileListHeader
+        title="Commissions"
+        fab={<span className="inline-block h-10 w-10 shrink-0" aria-hidden />}
       />
+      <MobileSearchFiltersRow
+        filterSheetOpen={filtersOpen}
+        onOpenFilters={() => setFiltersOpen(true)}
+        activeFilterCount={activeDrawerFilterCount}
+        searchSlot={
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9CA3AF]" />
+            <Input
+              value={filterSearch}
+              onChange={(e) => setFilterSearch(e.target.value)}
+              placeholder="Search project, person, role…"
+              className={cn("h-10 pl-8 text-sm", COMMISSION_FIELD)}
+              aria-label="Search commissions"
+            />
+          </div>
+        }
+      />
+      <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-text-secondary">Status</p>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value as typeof filterStatus)}
+            className={cn("w-full px-3", COMMISSION_FIELD)}
+            aria-label="Filter by status"
+          >
+            <option value="all">All statuses</option>
+            <option value="unpaid">Unpaid</option>
+            <option value="partial">Partial</option>
+            <option value="paid">Paid</option>
+          </select>
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-text-secondary">Person</p>
+          <select
+            value={filterPerson}
+            onChange={(e) => setFilterPerson(e.target.value)}
+            className={cn("w-full px-3", COMMISSION_FIELD)}
+            aria-label="Filter by person"
+          >
+            <option value="all">All people</option>
+            {personOptions.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
+          Done
+        </Button>
+      </MobileFilterSheet>
 
       {loadError ? (
         <p className="border-b border-gray-100 pb-3 text-sm text-destructive" role="alert">
@@ -807,7 +1011,7 @@ export function CommissionsClient({
         </p>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="hidden gap-4 md:grid md:grid-cols-2 lg:grid-cols-4">
         {(
           [
             ["TOTAL COMMISSION", summary.totalCommission],
@@ -827,7 +1031,7 @@ export function CommissionsClient({
         ))}
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+      <div className="hidden md:flex md:flex-row md:flex-wrap md:items-center md:gap-3">
         <div className="relative min-w-0 flex-1 sm:min-w-[200px]">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9CA3AF]" />
           <Input
@@ -864,7 +1068,109 @@ export function CommissionsClient({
         </select>
       </div>
 
-      <div className="overflow-hidden rounded-lg bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+      {!loadError && rows.length === 0 ? (
+        <MobileEmptyState
+          icon={<FileText className="h-8 w-8 opacity-80" aria-hidden />}
+          message="No commissions."
+        />
+      ) : null}
+      {!loadError && rows.length > 0 && filteredRows.length === 0 ? (
+        <MobileEmptyState
+          icon={<Search className="h-8 w-8 opacity-80" aria-hidden />}
+          message="No rows match your filters."
+        />
+      ) : null}
+
+      <div className="md:hidden">
+        {!loadError && filteredRows.length > 0 ? (
+          <div className="divide-y divide-gray-100 dark:divide-border/60">
+            {filteredRows.map((r) => (
+              <div key={r.id} className="py-2.5">
+                <div className="flex min-h-[56px] items-start gap-2">
+                  <button
+                    type="button"
+                    className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-text-secondary hover:bg-[#F3F4F6]"
+                    data-testid={`financial-commission-expand-${r.id}`}
+                    aria-expanded={expandedIds.has(r.id)}
+                    aria-label={expandedIds.has(r.id) ? "Collapse payments" : "Expand payments"}
+                    onClick={(e) => toggleExpanded(r, e)}
+                  >
+                    {expandedIds.has(r.id) ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    className="min-w-0 flex-1 text-left"
+                    data-testid={`financial-commission-row-${r.id}`}
+                    onClick={() => router.push(`/projects/${r.project_id}`)}
+                  >
+                    <p className="truncate text-sm font-medium text-text-primary">
+                      {r.project_name || "—"}
+                    </p>
+                    <p className="truncate text-xs text-text-secondary">
+                      {r.person_name || "—"} · {r.role}
+                    </p>
+                    <p className="mt-1 text-xs font-mono tabular-nums text-text-secondary">
+                      Out ${fmtUsd(r.outstanding_amount)} · Paid ${fmtUsd(r.paid_amount)}
+                    </p>
+                  </button>
+                  <div className="shrink-0 pt-0.5">
+                    <PaymentStatusPill status={r.payment_status} />
+                  </div>
+                </div>
+                <div
+                  className="mt-2 flex flex-wrap justify-end gap-2 border-t border-gray-100/80 pt-2 dark:border-border/40"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {r.payment_status !== "paid" ? (
+                    <button
+                      type="button"
+                      className="text-[13px] font-medium text-text-primary hover:underline"
+                      data-testid={`financial-commission-record-payment-${r.id}`}
+                      onClick={() => openPaymentModal(r)}
+                    >
+                      Pay
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="text-[13px] font-medium text-text-secondary hover:underline"
+                    data-testid={`financial-commission-view-pdf-${r.id}`}
+                    onClick={() => setCommissionPdfOpenId(r.id)}
+                  >
+                    View
+                  </button>
+                  <button
+                    type="button"
+                    className="text-[13px] font-medium text-text-secondary hover:underline"
+                    data-testid={`financial-commission-edit-${r.id}`}
+                    onClick={() => openEditModal(r)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="text-[13px] font-medium text-red-600 hover:underline"
+                    onClick={() => setCommissionDeleteTarget(r)}
+                  >
+                    Delete
+                  </button>
+                </div>
+                {expandedIds.has(r.id) ? (
+                  <div className="mt-2 border-t border-gray-100 bg-[#EDE9E1]/50 px-2 py-3 dark:border-border/40">
+                    <CommissionPaymentDetailsPanel r={r} />
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="hidden overflow-hidden rounded-lg bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)] md:block">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px] border-collapse text-[14px] lg:min-w-0">
             <thead>
@@ -1002,138 +1308,7 @@ export function CommissionsClient({
                       <tr className="border-b border-[#E8E4DD]">
                         <td colSpan={9} className="bg-[#EDE9E1]/90 p-0">
                           <div className="px-6 py-4 pl-14">
-                            {paymentsLoadingId === r.id ? (
-                              <p className="text-[12px] text-text-secondary">Loading payments…</p>
-                            ) : (paymentsByCommission[r.id] ?? []).length === 0 ? (
-                              <p className="text-[12px] text-text-secondary">
-                                No payments recorded.
-                              </p>
-                            ) : (
-                              <div className="overflow-x-auto">
-                                <table className="w-full min-w-[480px] border-collapse text-[13px] lg:min-w-0">
-                                  <thead>
-                                    <tr className="border-b border-[#D6D3CD] text-left text-[#9CA3AF]">
-                                      <th className="py-2 pr-4 text-[11px] font-semibold uppercase tracking-wide">
-                                        Date
-                                      </th>
-                                      <th className="py-2 pr-4 text-right text-[11px] font-semibold uppercase tracking-wide">
-                                        Amount
-                                      </th>
-                                      <th className="py-2 pr-4 text-[11px] font-semibold uppercase tracking-wide">
-                                        Method
-                                      </th>
-                                      <th className="min-w-[8rem] py-2 pr-4 text-[11px] font-semibold uppercase tracking-wide">
-                                        Note
-                                      </th>
-                                      <th className="min-w-[11rem] py-2 text-right text-[11px] font-semibold uppercase tracking-wide">
-                                        {/* actions */}
-                                      </th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {(paymentsByCommission[r.id] ?? []).map((p) => (
-                                      <tr
-                                        key={p.id}
-                                        className="border-b border-[#D6D3CD]/80 last:border-b-0"
-                                        data-testid={`financial-payment-row-${p.id}`}
-                                        onClick={(e) => e.stopPropagation()}
-                                      >
-                                        <td className="py-2.5 pr-4 font-mono tabular-nums text-text-secondary">
-                                          {p.payment_date || "—"}
-                                        </td>
-                                        <td className="py-2.5 pr-4 text-right font-mono tabular-nums text-text-primary">
-                                          ${fmtUsd(p.amount)}
-                                        </td>
-                                        <td className="py-2.5 pr-4 text-[#374151]">
-                                          {p.payment_method}
-                                        </td>
-                                        <td className="max-w-[16rem] truncate py-2.5 pr-4 text-text-secondary">
-                                          {p.note || "—"}
-                                        </td>
-                                        <td className="py-2.5 text-right">
-                                          <div className="inline-flex items-center justify-end gap-1">
-                                            {p.receipt_url ? (
-                                              <>
-                                                <button
-                                                  type="button"
-                                                  disabled={receiptViewLoading?.payment.id === p.id}
-                                                  className="rounded-md p-1.5 text-blue-600 transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-100 hover:text-blue-700 active:scale-[0.95] active:duration-100 disabled:opacity-50 dark:hover:bg-muted/50"
-                                                  data-testid={`financial-payment-receipt-view-${p.id}`}
-                                                  aria-label="View uploaded receipt"
-                                                  onClick={(e) => openReceiptPreview(r, p, e)}
-                                                >
-                                                  {receiptViewLoading?.payment.id === p.id ? (
-                                                    <InlineLoading size="md" aria-hidden />
-                                                  ) : (
-                                                    <FileText className="h-4 w-4" />
-                                                  )}
-                                                </button>
-                                                <button
-                                                  type="button"
-                                                  disabled={receiptDeletingPaymentId === p.id}
-                                                  className="rounded-md p-1.5 text-red-600 transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-100 hover:text-red-700 active:scale-[0.95] active:duration-100 disabled:opacity-50 dark:hover:bg-muted/50"
-                                                  data-testid={`financial-payment-receipt-remove-${p.id}`}
-                                                  aria-label="Remove uploaded receipt"
-                                                  onClick={(e) =>
-                                                    void deleteCommissionPaymentReceipt(r, p, e)
-                                                  }
-                                                >
-                                                  {receiptDeletingPaymentId === p.id ? (
-                                                    <InlineLoading size="md" aria-hidden />
-                                                  ) : (
-                                                    <Trash2 className="h-4 w-4" />
-                                                  )}
-                                                </button>
-                                              </>
-                                            ) : (
-                                              <button
-                                                type="button"
-                                                className="rounded-md p-1.5 text-[#9CA3AF] transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-100 hover:text-text-secondary active:scale-[0.95] active:duration-100 dark:hover:bg-muted/50"
-                                                data-testid={`financial-payment-receipt-upload-${p.id}`}
-                                                aria-label="Upload receipt"
-                                                onClick={(e) => openReceiptUploadModal(r, p, e)}
-                                              >
-                                                <Paperclip className="h-4 w-4" />
-                                              </button>
-                                            )}
-                                            <button
-                                              type="button"
-                                              className="rounded-md p-1.5 text-text-secondary hover:bg-white hover:text-text-primary"
-                                              data-testid={`financial-payment-view-pdf-${p.id}`}
-                                              aria-label="View payment receipt PDF"
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                setPaymentReceiptPdfOpenId(p.id);
-                                              }}
-                                            >
-                                              <Eye className="h-4 w-4" />
-                                            </button>
-                                            <button
-                                              type="button"
-                                              className="rounded-md p-1.5 text-text-secondary hover:bg-white hover:text-text-primary"
-                                              data-testid={`financial-payment-edit-${p.id}`}
-                                              aria-label="Edit payment"
-                                              onClick={(e) => openPaymentRecordEdit(r, p, e)}
-                                            >
-                                              <Pencil className="h-4 w-4" />
-                                            </button>
-                                            <button
-                                              type="button"
-                                              className="rounded-md p-1.5 text-red-600 hover:bg-white hover:text-red-700"
-                                              data-testid={`financial-payment-delete-${p.id}`}
-                                              aria-label="Delete payment"
-                                              onClick={(e) => openPaymentDelete(r, p, e)}
-                                            >
-                                              <Trash2 className="h-4 w-4" />
-                                            </button>
-                                          </div>
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            )}
+                            <CommissionPaymentDetailsPanel r={r} />
                           </div>
                         </td>
                       </tr>
