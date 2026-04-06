@@ -310,7 +310,7 @@ export default function SchedulePage() {
   return (
     <PageLayout
       divider={false}
-      className={cn("max-w-5xl", mobileListPagePaddingClass, "max-md:!gap-3")}
+      className={cn("md:max-w-5xl", mobileListPagePaddingClass, "max-md:!gap-3")}
       header={
         <>
           <div className="hidden md:block">
@@ -337,7 +337,7 @@ export default function SchedulePage() {
         </>
       }
     >
-      <div className="max-w-5xl space-y-3 md:mx-auto">
+      <div className="w-full space-y-3">
         <MobileSearchFiltersRow
           filterSheetOpen={filtersOpen}
           onOpenFilters={() => setFiltersOpen(true)}
@@ -442,7 +442,7 @@ export default function SchedulePage() {
               <>
                 <div className="divide-y divide-gray-100 dark:divide-border/60 md:hidden">
                   {filteredSchedule.map((s) => (
-                    <div key={s.id} className="flex min-h-[56px] flex-col gap-1 py-2.5">
+                    <div key={s.id} className="flex min-h-[48px] flex-col gap-1 py-2.5">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium text-foreground">{s.title || "—"}</p>
@@ -522,7 +522,7 @@ export default function SchedulePage() {
                   {filteredSchedule.map((s) => (
                     <div
                       key={s.id}
-                      className="flex min-h-[56px] flex-col gap-1 px-0 py-2.5 sm:px-4"
+                      className="flex min-h-[48px] flex-col gap-1 px-0 py-2.5 sm:px-4"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">

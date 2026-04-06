@@ -45,7 +45,7 @@ export default async function WorkersPage() {
   }
   return (
     <PageLayout
-      className={cn("max-md:!px-4 max-md:!py-3", "max-md:!gap-3")}
+      className={cn("max-md:!py-3", "max-md:!gap-3")}
       header={
         <div className="hidden md:block">
           <PageHeader

@@ -337,7 +337,7 @@ function AccountsPageInner() {
               {filteredAccounts.map((row) => (
                 <div
                   key={row.id}
-                  className="flex min-h-[56px] items-start justify-between gap-2 py-2.5"
+                  className="flex min-h-[48px] items-start justify-between gap-2 py-2.5"
                 >
                   <button
                     type="button"

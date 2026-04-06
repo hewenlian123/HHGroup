@@ -10,7 +10,7 @@ export default async function WorkerAdvancesPage() {
 
   return (
     <PageLayout header={null}>
-      <div className="page-container page-stack py-6">
+      <div className="page-stack py-6">
         <WorkerAdvancesClient
           workers={workers.map((w) => ({ id: w.id, name: w.name }))}
           projects={projects.map((p) => ({ id: p.id, name: p.name }))}

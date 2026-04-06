@@ -365,7 +365,7 @@ function InvoicesPageInner() {
               <button
                 key={inv.id}
                 type="button"
-                className="flex min-h-[56px] w-full items-center gap-3 py-2.5 text-left"
+                className="flex min-h-[48px] w-full items-center gap-3 py-2.5 text-left"
                 onClick={() => startTransition(() => router.push(`/financial/invoices/${inv.id}`))}
               >
                 <div className="min-w-0 flex-1">

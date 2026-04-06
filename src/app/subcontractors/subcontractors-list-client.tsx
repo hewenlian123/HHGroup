@@ -120,7 +120,7 @@ export function SubcontractorsListClient({
                 <Link
                   key={r.id}
                   href={`/subcontractors/${r.id}`}
-                  className="flex min-h-[56px] flex-col justify-center gap-1 py-2"
+                  className="flex min-h-[48px] flex-col justify-center gap-1 py-2"
                 >
                   <p className="font-medium text-foreground">{r.name}</p>
                   <div>

@@ -18,6 +18,7 @@ import {
 import { SplitLinesEditor, type SplitLineRow } from "@/components/split-lines-editor";
 import { CreatableSelect } from "@/components/ui/creatable-select";
 import { Upload, CheckSquare } from "lucide-react";
+import { MatchStatusBadge, bankTransactionMatchKind } from "@/components/base";
 import { cn } from "@/lib/utils";
 import { createBrowserClient } from "@/lib/supabase";
 
@@ -908,7 +909,7 @@ export default function BankReconcileClient() {
                   <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">
                     Amount
                   </TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                  <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground">
                     Status
                   </TableHead>
                 </TableRow>
@@ -927,53 +928,47 @@ export default function BankReconcileClient() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filtered.map((tx) => (
-                    <TableRow
-                      key={tx.id}
-                      className={cn(
-                        "cursor-pointer border-b border-zinc-100/50 dark:border-border/30",
-                        selectedIds.has(tx.id) && "bg-primary/10"
-                      )}
-                      onClick={() => setSelectedIds(new Set([tx.id]))}
-                    >
-                      <TableCell
-                        className="w-10 p-2 text-center"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.has(tx.id)}
-                          onChange={() => toggleSelectedId(tx.id)}
-                          className="h-4 w-4 rounded border-input"
-                        />
-                      </TableCell>
-                      <TableCell className="tabular-nums">{tx.date}</TableCell>
-                      <TableCell className="font-medium">{tx.description}</TableCell>
-                      <TableCell
+                  filtered.map((tx) => {
+                    const matchSt = bankTransactionMatchKind(tx.status);
+                    return (
+                      <TableRow
+                        key={tx.id}
                         className={cn(
-                          "text-right tabular-nums font-medium",
-                          tx.amount >= 0
-                            ? "text-hh-profit-positive dark:text-hh-profit-positive"
-                            : "text-red-600/90 dark:text-red-400/90"
+                          "hh-row-interactive cursor-pointer border-b border-zinc-100/50 dark:border-border/30",
+                          selectedIds.has(tx.id) && "bg-primary/10"
                         )}
+                        onClick={() => setSelectedIds(new Set([tx.id]))}
                       >
-                        {tx.amount >= 0 ? "+" : ""}$
-                        {tx.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                      </TableCell>
-                      <TableCell>
-                        <span
+                        <TableCell
+                          className="w-10 p-2 text-center"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(tx.id)}
+                            onChange={() => toggleSelectedId(tx.id)}
+                            className="h-4 w-4 rounded border-input"
+                          />
+                        </TableCell>
+                        <TableCell className="tabular-nums">{tx.date}</TableCell>
+                        <TableCell className="font-medium">{tx.description}</TableCell>
+                        <TableCell
                           className={cn(
-                            "text-xs font-medium",
-                            tx.status === "reconciled"
-                              ? "text-hh-profit-positive"
-                              : "text-amber-600"
+                            "text-right tabular-nums font-medium",
+                            tx.amount >= 0
+                              ? "text-hh-profit-positive dark:text-hh-profit-positive"
+                              : "text-red-600/90 dark:text-red-400/90"
                           )}
                         >
-                          {tx.status}
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                          {tx.amount >= 0 ? "+" : ""}$
+                          {tx.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <MatchStatusBadge kind={matchSt.kind} />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>

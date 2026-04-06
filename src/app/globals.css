@@ -99,15 +99,15 @@
   .text-balance {
     text-wrap: balance;
   }
-  /* Page shell — SaaS rhythm (Linear / Apple) */
+  /* Page shell — app column width; sm widens slightly before md full layout */
   .page-container {
-    @apply mx-auto w-full max-w-6xl px-0 py-4 pb-6 sm:px-6 sm:py-4 lg:max-w-6xl lg:px-6 lg:pb-8 lg:pt-4;
+    @apply mx-auto w-full max-w-[430px] px-4 py-3 pb-5 sm:max-w-[460px] md:max-w-6xl md:px-6 md:py-4 md:pb-8 md:pt-4;
   }
   .section-padding {
     @apply px-4 py-3;
   }
   .page-stack {
-    @apply flex flex-col gap-6;
+    @apply flex flex-col gap-3 md:gap-6;
   }
   .section-stack {
     @apply flex flex-col gap-3;
@@ -129,15 +129,15 @@
   .date-text {
     @apply tabular-nums text-text-secondary;
   }
-  /* Summary / KPI strip */
+  /* Summary / KPI — dense on mobile (muted tint), card on md+ */
   .kpi-metric {
-    @apply rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-none;
+    @apply rounded-lg bg-muted/30 px-3 py-2 shadow-none md:rounded-xl md:border md:border-gray-100 md:bg-white md:px-4 md:py-3 dark:md:border-border dark:md:bg-card;
   }
   .kpi-metric-label {
-    @apply text-xs font-medium uppercase tracking-wide text-text-secondary;
+    @apply text-sm text-muted-foreground;
   }
   .kpi-metric-value {
-    @apply text-xl font-medium text-text-primary;
+    @apply text-lg font-semibold tabular-nums text-foreground md:text-xl;
   }
   /** Filter bar: native inputs / selects */
   .filter-field {
@@ -171,6 +171,23 @@
     @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium;
     background-color: #fee2e2;
     color: #d92d20;
+  }
+  /**
+   * Interactive list rows / links: desktop hover, mobile press.
+   * Use on touch lists and dense tables (Linear-style feedback).
+   */
+  .hh-row-interactive {
+    @apply transition-colors duration-100 ease-out;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .hh-row-interactive:hover {
+      background-color: hsl(var(--muted) / 0.4);
+    }
+  }
+  @media (max-width: 767px) {
+    .hh-row-interactive:active {
+      background-color: hsl(var(--muted) / 0.6);
+    }
   }
   .hh-modal-shell {
     @apply w-full max-w-[480px] rounded-xl border border-gray-100 bg-white p-6 shadow-sm;

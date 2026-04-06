@@ -49,7 +49,7 @@ const EstimateListRowMobile = memo(function EstimateListRowMobile({
   }, [row.id, deleteAction, router]);
 
   return (
-    <div className="flex min-h-[56px] items-center gap-2 py-2.5">
+    <div className="flex min-h-[48px] items-center gap-2 py-2.5">
       <Link
         href={href}
         className="flex min-w-0 flex-1 items-center gap-3 text-left active:bg-muted/30"

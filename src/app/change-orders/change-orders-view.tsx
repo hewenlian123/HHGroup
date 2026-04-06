@@ -265,7 +265,7 @@ export function ChangeOrdersView({
                         href={`/projects/${co.projectId}/change-orders/${co.id}`}
                         className={cn(
                           listFlexRowClassName,
-                          "flex min-h-[56px] items-center justify-between gap-3 px-0 py-2.5 md:gap-4 md:px-5 md:py-4"
+                          "flex min-h-[48px] items-center justify-between gap-3 px-0 py-2.5 md:gap-4 md:px-5 md:py-4"
                         )}
                       >
                         <div className="min-w-0 flex-1">

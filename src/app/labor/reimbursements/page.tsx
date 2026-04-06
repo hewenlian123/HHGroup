@@ -741,7 +741,7 @@ export default function WorkerReimbursementsPage() {
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-border/60">
             {paged.map((r) => (
-              <div key={r.id} className="flex min-h-[56px] flex-col gap-2 py-2.5">
+              <div key={r.id} className="flex min-h-[48px] flex-col gap-2 py-2.5">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex min-w-0 flex-1 items-start gap-2">
                     {r.status === "pending" ? (

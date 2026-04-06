@@ -344,7 +344,7 @@ export default function ExpensesPage() {
     <React.Suspense
       fallback={
         <div className="expenses-ui">
-          <div className="expenses-ui-content mx-auto w-full max-w-5xl px-4 py-6 sm:px-6">
+          <div className="expenses-ui-content mx-auto w-full max-w-[430px] sm:max-w-[460px] px-4 py-6 md:max-w-5xl md:px-6">
             <ExpensesListSkeleton rows={6} />
           </div>
         </div>
@@ -1449,8 +1449,8 @@ function ExpensesPageInner() {
 
   return (
     <div className="expenses-ui">
-      <div className="expenses-ui-content mx-auto flex w-full max-w-5xl flex-col gap-3 px-4 py-3 sm:px-6 md:gap-6 md:py-6">
-        <div className="flex h-14 items-center justify-between gap-3 border-b border-gray-100/80 dark:border-border/60 md:hidden">
+      <div className="expenses-ui-content mx-auto flex w-full max-w-[430px] sm:max-w-[460px] flex-col gap-3 px-4 py-3 md:max-w-5xl md:gap-6 md:px-6 md:py-6">
+        <div className="flex h-11 items-center justify-between gap-3 border-b border-gray-100/80 dark:border-border/60 md:hidden">
           <h1 className="text-lg font-semibold text-gray-900 dark:text-foreground">Expenses</h1>
           <button
             type="button"
@@ -2013,7 +2013,7 @@ function ExpensesPageInner() {
                       <Link
                         key={row.id}
                         href={`/financial/expenses/${row.id}`}
-                        className="flex min-h-[56px] w-full items-center gap-3 px-0 py-2.5 text-left active:bg-muted/30"
+                        className="hh-row-interactive flex min-h-[48px] w-full items-center gap-3 px-0 py-2 text-left"
                       >
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm font-medium text-gray-900 dark:text-foreground">
@@ -2023,7 +2023,7 @@ function ExpensesPageInner() {
                             {projLabel} · {row.date ?? "—"}
                           </p>
                         </div>
-                        <div className="flex shrink-0 flex-col items-end gap-1">
+                        <div className="flex min-w-[5.5rem] shrink-0 flex-col items-end gap-1 text-right">
                           <span className="text-sm font-medium tabular-nums text-[#d92d20] dark:text-red-400">
                             −$
                             {rowTotal.toLocaleString(undefined, {

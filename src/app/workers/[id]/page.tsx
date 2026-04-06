@@ -234,7 +234,7 @@ export default function WorkerDashboardPage() {
 
   if (!id) {
     return (
-      <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6">
+      <div className="mx-auto flex w-full max-w-[430px] sm:max-w-[460px] flex-col gap-6 px-4 py-6 md:max-w-5xl md:p-6">
         <PageHeader title="Worker Not Found" description="This worker does not exist." />
         <Link href="/workers">
           <Button variant="outline" className="w-fit rounded-sm">
@@ -247,7 +247,7 @@ export default function WorkerDashboardPage() {
 
   if (worker === undefined) {
     return (
-      <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6">
+      <div className="mx-auto flex w-full max-w-[430px] sm:max-w-[460px] flex-col gap-6 px-4 py-6 md:max-w-5xl md:p-6">
         <p className="text-muted-foreground">Loading…</p>
         <Link href="/workers">
           <Button variant="outline" className="w-fit rounded-sm">
@@ -260,7 +260,7 @@ export default function WorkerDashboardPage() {
 
   if (worker === null) {
     return (
-      <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6">
+      <div className="mx-auto flex w-full max-w-[430px] sm:max-w-[460px] flex-col gap-6 px-4 py-6 md:max-w-5xl md:p-6">
         <PageHeader title="Worker Not Found" description="This worker does not exist." />
         <Link href="/workers">
           <Button variant="outline" className="w-fit rounded-sm">
@@ -274,7 +274,7 @@ export default function WorkerDashboardPage() {
   const usageRes = usage ?? { used: false };
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6">
+    <div className="mx-auto flex w-full max-w-[430px] sm:max-w-[460px] flex-col gap-6 px-4 py-6 md:max-w-5xl md:p-6">
       <PageHeader
         title={worker.name}
         description="Worker dashboard — labor ledger, financial overview, and quick links."

@@ -416,7 +416,7 @@ export default function WorkerSummaryPage() {
               key={r.workerId}
               role="button"
               tabIndex={0}
-              className="flex min-h-[56px] cursor-pointer flex-col justify-center gap-1 py-2 text-left"
+              className="flex min-h-[48px] cursor-pointer flex-col justify-center gap-1 py-2 text-left"
               onClick={() => router.push(`/workers/${r.workerId}`)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {

@@ -304,7 +304,7 @@ export function WorkersListClient({
               key={r.id}
               role="button"
               tabIndex={0}
-              className="flex min-h-[56px] cursor-pointer items-center justify-between gap-2 py-2 text-left"
+              className="hh-row-interactive flex min-h-[48px] cursor-pointer items-center justify-between gap-2 py-2 text-left"
               onClick={() => router.push(`/workers/${r.id}`)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
