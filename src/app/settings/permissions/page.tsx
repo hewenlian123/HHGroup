@@ -6,6 +6,7 @@ import { createBrowserClient } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { FilterBar } from "@/components/filter-bar";
 import { Select } from "@/components/ui/native-select";
 import {
@@ -130,6 +131,7 @@ export default function SettingsPermissionsPage() {
         subtitle="Owner-only permission matrix for admin and assistant roles."
         actions={
           <Button size="sm" onClick={() => void save()} disabled={saving || loading}>
+            <SubmitSpinner loading={saving} className="mr-2" />
             {saving ? "Saving..." : "Save"}
           </Button>
         }

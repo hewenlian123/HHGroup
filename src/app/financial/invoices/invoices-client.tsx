@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { startTransition } from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -26,6 +27,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Plus, Search } from "lucide-react";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Pagination } from "@/components/ui/pagination";
 import { FILTER_CONTROL_CLASS } from "@/lib/native-field-classes";
 
@@ -223,8 +225,16 @@ export function InvoicesClient() {
               appearance="list"
               ariaLabel={`Actions for ${row.invoice_no}`}
               actions={[
-                { label: "View", onClick: () => router.push(`/financial/invoices/${row.id}`) },
-                { label: "Edit", onClick: () => router.push(`/financial/invoices/${row.id}`) },
+                {
+                  label: "View",
+                  onClick: () =>
+                    startTransition(() => router.push(`/financial/invoices/${row.id}`)),
+                },
+                {
+                  label: "Edit",
+                  onClick: () =>
+                    startTransition(() => router.push(`/financial/invoices/${row.id}`)),
+                },
                 {
                   label: "Delete",
                   onClick: async () => {
@@ -234,7 +244,12 @@ export function InvoicesClient() {
                     setError(null);
                     const result = await deleteInvoiceAction(row.id);
                     if (result.error) setError(result.error);
-                    await refresh();
+                    else {
+                      startTransition(() => {
+                        setInvoices((prev) => prev.filter((i) => i.id !== row.id));
+                        setTotal((t) => Math.max(0, t - 1));
+                      });
+                    }
                     setBusyId(null);
                   },
                   destructive: true,
@@ -246,7 +261,7 @@ export function InvoicesClient() {
         },
       },
     ];
-  }, [busyId, refresh, router]);
+  }, [busyId, router]);
 
   return (
     <div className="page-container page-stack">
@@ -338,7 +353,7 @@ export function InvoicesClient() {
             data={invoices}
             keyExtractor={(r) => r.id}
             emptyText={configured ? "No data yet." : "Supabase is not configured."}
-            onRowClick={(r) => router.push(`/financial/invoices/${r.id}`)}
+            onRowClick={(r) => startTransition(() => router.push(`/financial/invoices/${r.id}`))}
             primaryColumnKey="invoice_no"
             amountColumnKeys={["total", "paidTotal", "balanceDue"]}
           />
@@ -385,11 +400,20 @@ export function InvoicesClient() {
                     .update({ status: "Void" })
                     .eq("id", voidConfirmId);
                   if (updateError) setError(updateError.message);
-                  await refresh();
+                  else {
+                    startTransition(() => {
+                      setInvoices((prev) =>
+                        prev.map((inv) =>
+                          inv.id === voidConfirmId ? { ...inv, status: "Void" } : inv
+                        )
+                      );
+                    });
+                  }
                   setBusyId(null);
                   setVoidConfirmId(null);
                 }}
               >
+                <SubmitSpinner loading={busyId === voidConfirmId} className="mr-2" />
                 Void
               </Button>
             </DialogFooter>

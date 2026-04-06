@@ -3,6 +3,7 @@
 import * as React from "react";
 import { SectionHeader, Divider } from "@/components/base";
 import { Button } from "@/components/ui/button";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import type { CloseoutPunch, CloseoutWarranty, CloseoutCompletion } from "@/lib/data";
 import { cn } from "@/lib/utils";
@@ -399,6 +400,7 @@ export function ProjectCloseoutTab({
               onClick={savePunch}
               disabled={saving === "punch"}
             >
+              <SubmitSpinner loading={saving === "punch"} className="mr-2" />
               {saving === "punch" ? "Saving…" : "Save"}
             </Button>
             <Button
@@ -474,6 +476,7 @@ export function ProjectCloseoutTab({
             onClick={saveWarranty}
             disabled={saving === "warranty"}
           >
+            <SubmitSpinner loading={saving === "warranty"} className="mr-2" />
             {saving === "warranty" ? "Saving…" : "Save"}
           </Button>
         </div>
@@ -599,6 +602,7 @@ export function ProjectCloseoutTab({
               onClick={saveCompletion}
               disabled={saving === "completion"}
             >
+              <SubmitSpinner loading={saving === "completion"} className="mr-2" />
               {saving === "completion" ? "Saving…" : "Save"}
             </Button>
             <Button

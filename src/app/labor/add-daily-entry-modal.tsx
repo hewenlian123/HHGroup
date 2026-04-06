@@ -9,6 +9,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import {
   getProjects,
@@ -453,6 +454,7 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
             disabled={busy}
             className="rounded-sm h-9"
           >
+            <SubmitSpinner loading={busy} className="mr-2" />
             {busy ? "Saving…" : "Save"}
           </Button>
         </DialogFooter>

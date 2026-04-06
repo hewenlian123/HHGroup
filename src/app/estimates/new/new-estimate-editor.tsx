@@ -4,6 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -420,6 +421,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                   onClick={() => void handleSave()}
                   disabled={saving}
                 >
+                  <SubmitSpinner loading={saving} className="mr-2" />
                   {saving ? "Saving…" : "Save"}
                 </Button>
               </>
@@ -1106,6 +1108,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
       {/* F. Actions */}
       <div className="flex flex-wrap items-center gap-3 pt-2">
         <Button onClick={handleSave} disabled={saving} className="rounded-md h-9 px-4">
+          <SubmitSpinner loading={saving} className="mr-2" />
           {saving ? "Saving…" : "Save Estimate"}
         </Button>
         <Button type="button" variant="outline" asChild className="rounded-md h-9 px-4">

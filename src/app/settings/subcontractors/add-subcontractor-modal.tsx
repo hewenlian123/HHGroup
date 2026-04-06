@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { addSubcontractorAction } from "./actions";
 
 type Props = {
@@ -139,8 +140,9 @@ export function AddSubcontractorModal({ open, onOpenChange, onSuccess }: Props) 
             <button
               type="submit"
               disabled={busy}
-              className="h-9 rounded-md border border-input bg-foreground text-background px-3 text-sm hover:bg-foreground/90 disabled:opacity-50"
+              className="inline-flex h-9 items-center rounded-md border border-input bg-foreground px-3 text-sm text-background hover:bg-foreground/90 disabled:opacity-50"
             >
+              <SubmitSpinner loading={busy} className="mr-2" />
               {busy ? "Saving…" : "Add Subcontractor"}
             </button>
           </div>

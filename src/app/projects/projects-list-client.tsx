@@ -1,6 +1,6 @@
 "use client";
 
-import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import Link from "next/link";
@@ -118,7 +118,7 @@ export function ProjectsListClient({
 
   useOnAppSync(
     React.useCallback(() => {
-      void syncRouterAndClients(router);
+      syncRouterNonBlocking(router);
     }, [router]),
     [router]
   );
@@ -193,7 +193,7 @@ export function ProjectsListClient({
           if (snapshot) setLocalRows(snapshot);
           toast({ title: "Error", description: result.error, variant: "error" });
         } else {
-          void syncRouterAndClients(router);
+          syncRouterNonBlocking(router);
         }
       } finally {
         setDeletingId(null);
@@ -504,7 +504,7 @@ export function ProjectsListClient({
                     } else {
                       setDeleteBlockedOpen(false);
                       setDeleteBlockedProjectId(null);
-                      void syncRouterAndClients(router);
+                      syncRouterNonBlocking(router);
                     }
                   }}
                   disabled={forceDeleteInProgress}
@@ -532,7 +532,7 @@ export function ProjectsListClient({
                         setLocalRows((prev) => prev.filter((r) => r.id !== pid));
                         setDeleteBlockedOpen(false);
                         setDeleteBlockedProjectId(null);
-                        void syncRouterAndClients(router);
+                        syncRouterNonBlocking(router);
                         toast({ title: "Project deleted", variant: "success" });
                       }
                     } finally {

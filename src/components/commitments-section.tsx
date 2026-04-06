@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import { startTransition } from "react";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,6 +60,7 @@ export function CommitmentsSection({
   const [status, setStatus] = React.useState<CommitmentStatus>("Open");
   const [notes, setNotes] = React.useState("");
   const [attachments, setAttachments] = React.useState<ExpenseAttachment[]>([]);
+  const [saving, setSaving] = React.useState(false);
   const uploadRef = React.useRef<HTMLInputElement>(null);
   const cameraRef = React.useRef<HTMLInputElement>(null);
 
@@ -115,31 +118,38 @@ export function CommitmentsSection({
   const handleSave = async () => {
     const parsedAmount = parseFloat(amount);
     if (!date || !vendorName.trim() || Number.isNaN(parsedAmount) || parsedAmount < 0) return;
-    if (editing) {
-      await updateCommitment(editing.id, {
-        date,
-        vendorName: vendorName.trim(),
-        type,
-        amount: parsedAmount,
-        status,
-        notes: notes.trim() || undefined,
-        attachments,
+    setSaving(true);
+    try {
+      if (editing) {
+        await updateCommitment(editing.id, {
+          date,
+          vendorName: vendorName.trim(),
+          type,
+          amount: parsedAmount,
+          status,
+          notes: notes.trim() || undefined,
+          attachments,
+        });
+      } else {
+        await createCommitment({
+          projectId,
+          date,
+          vendorName: vendorName.trim(),
+          type,
+          amount: parsedAmount,
+          status,
+          notes: notes.trim() || undefined,
+          attachments,
+        });
+      }
+      await refresh();
+      startTransition(() => {
+        setOpen(false);
+        resetForm();
       });
-    } else {
-      await createCommitment({
-        projectId,
-        date,
-        vendorName: vendorName.trim(),
-        type,
-        amount: parsedAmount,
-        status,
-        notes: notes.trim() || undefined,
-        attachments,
-      });
+    } finally {
+      setSaving(false);
     }
-    setOpen(false);
-    resetForm();
-    await refresh();
   };
 
   const handleUploadFiles = (files: FileList | null) => {
@@ -507,9 +517,10 @@ export function CommitmentsSection({
               <Button
                 className="rounded-lg"
                 onClick={handleSave}
-                disabled={!vendorName.trim() || !amount}
+                disabled={!vendorName.trim() || !amount || saving}
               >
-                Save
+                <SubmitSpinner loading={saving} className="mr-2" />
+                {saving ? "Saving…" : "Save"}
               </Button>
               <Button variant="outline" className="rounded-lg" onClick={() => setOpen(false)}>
                 Cancel

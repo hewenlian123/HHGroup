@@ -1,11 +1,12 @@
 "use client";
 
-import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Divider, SectionHeader, StatusBadge } from "@/components/base";
 import { Button } from "@/components/ui/button";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -77,7 +78,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
       setPaymentRef("");
       setPaymentNotes("");
       setAddPaymentOpen(false);
-      void syncRouterAndClients(router);
+      syncRouterNonBlocking(router);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add payment.");
     } finally {
@@ -89,7 +90,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
     const result = await voidBillAction(bill.id);
     if (result.ok) {
       setVoidConfirm(false);
-      void syncRouterAndClients(router);
+      syncRouterNonBlocking(router);
     }
   };
 
@@ -97,7 +98,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
     const result = await deleteBillDraftAction(bill.id);
     if (result.ok) {
       router.push("/bills");
-      void syncRouterAndClients(router);
+      syncRouterNonBlocking(router);
     } else {
       setError(result.error ?? "Failed to delete bill.");
     }
@@ -336,6 +337,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
                 Cancel
               </Button>
               <Button type="submit" size="sm" disabled={submitting}>
+                <SubmitSpinner loading={submitting} className="mr-2" />
                 {submitting ? "Saving…" : "Add payment"}
               </Button>
             </DialogFooter>

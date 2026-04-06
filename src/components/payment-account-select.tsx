@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -211,6 +212,7 @@ export function PaymentAccountSelect({
               disabled={creating}
               onClick={() => void handleCreate()}
             >
+              <SubmitSpinner loading={creating} className="mr-2" />
               {creating ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>

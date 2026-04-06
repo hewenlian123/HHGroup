@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { InlineLoading } from "@/components/ui/skeleton";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import type { Project } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
@@ -191,14 +191,8 @@ export function EditProjectModal({ open, onOpenChange, project, onSave }: Props)
               disabled={saving}
               aria-busy={saving}
             >
-              {saving ? (
-                <>
-                  <InlineLoading className="mr-1.5" size="md" aria-hidden />
-                  Saving…
-                </>
-              ) : (
-                "Save"
-              )}
+              <SubmitSpinner loading={saving} className="mr-2" />
+              {saving ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>
         </form>

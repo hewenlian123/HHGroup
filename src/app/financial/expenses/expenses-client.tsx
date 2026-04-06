@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { startTransition } from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { useRouter } from "next/navigation";
 import { Plus, Search } from "lucide-react";
@@ -12,6 +13,7 @@ import { Select } from "@/components/ui/native-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { createBrowserClient } from "@/lib/supabase";
 import { DataTable, type Column } from "@/components/data-table";
 
@@ -105,6 +107,15 @@ export function ExpensesClient() {
   const [query, setQuery] = React.useState("");
   const [projectFilter, setProjectFilter] = React.useState("");
   const [categoryFilter, setCategoryFilter] = React.useState("");
+
+  const rowsRef = React.useRef(rows);
+  const linesRef = React.useRef(lines);
+  React.useEffect(() => {
+    rowsRef.current = rows;
+  }, [rows]);
+  React.useEffect(() => {
+    linesRef.current = lines;
+  }, [lines]);
 
   const fetchPage = React.useCallback(
     async (offset: number, append: boolean) => {
@@ -291,26 +302,29 @@ export function ExpensesClient() {
     });
   }, [categoryFilter, expenseMeta, lines, projectFilter, query, rows]);
 
-  const handleNew = async () => {
-    router.push("/financial/expenses/new");
-  };
+  const handleNew = React.useCallback(() => {
+    startTransition(() => router.push("/financial/expenses/new"));
+  }, [router]);
 
-  const handleDelete = async (id: string) => {
-    if (!supabase) return;
-    if (!window.confirm("Delete this expense?")) return;
-    const prevRows = rows;
-    const prevLines = lines;
-    setRows((r) => r.filter((e) => e.id !== id));
-    setLines((l) => l.filter((line) => line.expense_id !== id));
-    setError(null);
-    const { error: delError } = await supabase.from("expenses").delete().eq("id", id);
-    if (delError) {
-      setError(delError.message || "Failed to delete expense.");
-      setRows(prevRows);
-      setLines(prevLines);
-      return;
-    }
-  };
+  const handleDelete = React.useCallback(
+    async (id: string) => {
+      if (!supabase) return;
+      if (!window.confirm("Delete this expense?")) return;
+      const prevRows = rowsRef.current;
+      const prevLines = linesRef.current;
+      setRows((r) => r.filter((e) => e.id !== id));
+      setLines((l) => l.filter((line) => line.expense_id !== id));
+      setError(null);
+      const { error: delError } = await supabase.from("expenses").delete().eq("id", id);
+      if (delError) {
+        setError(delError.message || "Failed to delete expense.");
+        setRows(prevRows);
+        setLines(prevLines);
+        return;
+      }
+    },
+    [supabase]
+  );
 
   type Row = ExpenseRow & { summary: string };
   const data: Row[] = React.useMemo(() => {
@@ -329,81 +343,90 @@ export function ExpensesClient() {
     });
   }, [expenseMeta, filtered, linesByExpense, projectNameById]);
 
-  const columns: Column<Row>[] = [
-    {
-      key: "expense_date",
-      header: "Date",
-      render: (row) => (
-        <span className="font-mono tabular-nums text-foreground">
-          {(row.expense_date ?? row.created_at ?? "").slice(0, 10) || "—"}
-        </span>
-      ),
-    },
-    {
-      key: "vendor_name",
-      header: "Vendor",
-      render: (row) => (
-        <span className="font-medium text-foreground">
-          {row.vendor_name?.trim() || "Untitled Expense"}
-        </span>
-      ),
-    },
-    {
-      key: "worker",
-      header: "Worker",
-      render: (row) => (
-        <span className="text-muted-foreground">{row.workers?.name?.trim() ?? "—"}</span>
-      ),
-    },
-    {
-      key: "payment_method",
-      header: "Payment",
-      render: (row) => <span className="text-muted-foreground">{row.payment_method || "—"}</span>,
-    },
-    {
-      key: "total",
-      header: "Total",
-      align: "right",
-      className: "tabular-nums",
-      render: (row) => (
-        <span className="font-mono tabular-nums font-medium text-red-600">
-          −{money(safeNumber(row.total))}
-        </span>
-      ),
-    },
-    {
-      key: "line_count",
-      header: "#Lines",
-      align: "right",
-      className: "tabular-nums",
-      render: (row) => (
-        <span className="font-mono tabular-nums text-muted-foreground">
-          {safeNumber(row.line_count)}
-        </span>
-      ),
-    },
-    {
-      key: "summary",
-      header: "Project / Category",
-      render: (row) => <span className="text-muted-foreground">{row.summary}</span>,
-    },
-    {
-      key: "actions",
-      header: "",
-      align: "right",
-      render: (row) => (
-        <RowActionsMenu
-          appearance="list"
-          ariaLabel={`Actions for ${row.vendor_name?.trim() || "expense"}`}
-          actions={[
-            { label: "View", onClick: () => router.push(`/financial/expenses/${row.id}`) },
-            { label: "Edit", onClick: () => router.push(`/financial/expenses/${row.id}`) },
-            { label: "Delete", onClick: () => void handleDelete(row.id), destructive: true },
-          ]}
-        />
-      ),
-    },
-  ];
+  const columns = React.useMemo<Column<Row>[]>(
+    () => [
+      {
+        key: "expense_date",
+        header: "Date",
+        render: (row) => (
+          <span className="font-mono tabular-nums text-foreground">
+            {(row.expense_date ?? row.created_at ?? "").slice(0, 10) || "—"}
+          </span>
+        ),
+      },
+      {
+        key: "vendor_name",
+        header: "Vendor",
+        render: (row) => (
+          <span className="font-medium text-foreground">
+            {row.vendor_name?.trim() || "Untitled Expense"}
+          </span>
+        ),
+      },
+      {
+        key: "worker",
+        header: "Worker",
+        render: (row) => (
+          <span className="text-muted-foreground">{row.workers?.name?.trim() ?? "—"}</span>
+        ),
+      },
+      {
+        key: "payment_method",
+        header: "Payment",
+        render: (row) => <span className="text-muted-foreground">{row.payment_method || "—"}</span>,
+      },
+      {
+        key: "total",
+        header: "Total",
+        align: "right",
+        className: "tabular-nums",
+        render: (row) => (
+          <span className="font-mono tabular-nums font-medium text-red-600">
+            −{money(safeNumber(row.total))}
+          </span>
+        ),
+      },
+      {
+        key: "line_count",
+        header: "#Lines",
+        align: "right",
+        className: "tabular-nums",
+        render: (row) => (
+          <span className="font-mono tabular-nums text-muted-foreground">
+            {safeNumber(row.line_count)}
+          </span>
+        ),
+      },
+      {
+        key: "summary",
+        header: "Project / Category",
+        render: (row) => <span className="text-muted-foreground">{row.summary}</span>,
+      },
+      {
+        key: "actions",
+        header: "",
+        align: "right",
+        render: (row) => (
+          <RowActionsMenu
+            appearance="list"
+            ariaLabel={`Actions for ${row.vendor_name?.trim() || "expense"}`}
+            actions={[
+              {
+                label: "View",
+                onClick: () => startTransition(() => router.push(`/financial/expenses/${row.id}`)),
+              },
+              {
+                label: "Edit",
+                onClick: () => startTransition(() => router.push(`/financial/expenses/${row.id}`)),
+              },
+              { label: "Delete", onClick: () => void handleDelete(row.id), destructive: true },
+            ]}
+          />
+        ),
+      },
+    ],
+    [handleDelete, router]
+  );
 
   return (
     <div className="page-container page-stack">
@@ -412,10 +435,7 @@ export function ExpensesClient() {
         subtitle="Track vendor receipts and split costs across projects."
         actions={
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <Button
-              onClick={() => void handleNew()}
-              className="min-h-[44px] sm:min-h-0 w-full sm:w-auto"
-            >
+            <Button onClick={handleNew} className="min-h-[44px] sm:min-h-0 w-full sm:w-auto">
               <Plus className="h-4 w-4" />
               New Expense
             </Button>
@@ -425,6 +445,7 @@ export function ExpensesClient() {
               disabled={loading}
               className="min-h-[44px] sm:min-h-0 w-full sm:w-auto"
             >
+              <SubmitSpinner loading={loading} className="mr-2" />
               {loading ? "Loading…" : "Refresh"}
             </Button>
           </div>
@@ -496,7 +517,7 @@ export function ExpensesClient() {
               data={data}
               keyExtractor={(r) => r.id}
               emptyText="No data yet."
-              onRowClick={(r) => router.push(`/financial/expenses/${r.id}`)}
+              onRowClick={(r) => startTransition(() => router.push(`/financial/expenses/${r.id}`))}
               primaryColumnKey="vendor_name"
               amountColumnKeys={["total", "line_count"]}
             />
@@ -508,6 +529,7 @@ export function ExpensesClient() {
                   disabled={loadingMore}
                   onClick={() => fetchPage(rows.length, true)}
                 >
+                  <SubmitSpinner loading={loadingMore} className="mr-2" />
                   {loadingMore ? "Loading…" : "Load more"}
                 </Button>
               </div>

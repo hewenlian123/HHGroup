@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import type { LaborEntryWithJoins } from "@/lib/daily-labor-db";
 import { updateLaborEntry } from "@/lib/data";
@@ -183,6 +184,7 @@ export function EditEntryModal(props: {
             onClick={handleSave}
             disabled={busy}
           >
+            <SubmitSpinner loading={busy} className="mr-2" />
             {busy ? "Saving…" : "Save Changes"}
           </Button>
         </DialogFooter>

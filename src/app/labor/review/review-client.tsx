@@ -5,6 +5,7 @@ import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { PageHeader } from "@/components/page-header";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { createBrowserClient } from "@/lib/supabase";
@@ -425,6 +426,7 @@ export default function LaborReviewClient() {
                   disabled={busy}
                   className="min-h-[44px] sm:min-h-0"
                 >
+                  <SubmitSpinner loading={busy} className="mr-2" />
                   {busy ? "Saving…" : "Save changes"}
                 </Button>
               </div>

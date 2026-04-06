@@ -1,6 +1,6 @@
 "use client";
 
-import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { RecordPaymentModal } from "./record-payment-modal";
@@ -12,7 +12,7 @@ export function RecordPaymentButton({ workerId }: Props) {
   const [open, setOpen] = React.useState(false);
 
   const handleSuccess = () => {
-    void syncRouterAndClients(router);
+    syncRouterNonBlocking(router);
   };
 
   return (

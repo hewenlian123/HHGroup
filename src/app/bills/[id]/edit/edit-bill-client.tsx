@@ -1,11 +1,12 @@
 "use client";
 
-import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Divider, SectionHeader } from "@/components/base";
 import { Button } from "@/components/ui/button";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import { updateApBill } from "@/lib/data";
 import { AP_BILL_TYPES } from "@/lib/data";
@@ -56,7 +57,7 @@ export function EditBillClient({ bill, projects }: Props) {
         attachment_url: attachmentUrl.trim() || null,
       });
       router.push(`/bills/${bill.id}`);
-      void syncRouterAndClients(router);
+      syncRouterNonBlocking(router);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update bill.");
     } finally {
@@ -167,6 +168,7 @@ export function EditBillClient({ bill, projects }: Props) {
         {error && <p className="text-sm text-destructive">{error}</p>}
         <div className="flex gap-2 pt-2">
           <Button type="submit" size="sm" disabled={submitting}>
+            <SubmitSpinner loading={submitting} className="mr-2" />
             {submitting ? "Saving…" : "Save"}
           </Button>
           <Button type="button" variant="outline" size="sm" asChild>

@@ -1,6 +1,6 @@
 "use client";
 
-import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { CreatableSelect } from "@/components/ui/creatable-select";
 import { SplitLinesEditor, type SplitLineRow } from "@/components/split-lines-editor";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
@@ -519,11 +520,7 @@ export function ExpenseDetailClient({ id }: { id: string }) {
           <ArrowLeft className="h-4 w-4" />
           Expenses
         </Link>
-        <Button
-          variant="outline"
-          onClick={() => void syncRouterAndClients(router)}
-          disabled={saving}
-        >
+        <Button variant="outline" onClick={() => syncRouterNonBlocking(router)} disabled={saving}>
           Refresh
         </Button>
       </div>
@@ -622,7 +619,8 @@ export function ExpenseDetailClient({ id }: { id: string }) {
                 placeholder="Optional"
               />
             </div>
-            <div className="flex justify-end text-xs text-muted-foreground">
+            <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
+              <SubmitSpinner loading={saving} className="shrink-0" />
               {saving ? "Saving…" : message === "Saved." ? "Saved" : null}
             </div>
           </div>

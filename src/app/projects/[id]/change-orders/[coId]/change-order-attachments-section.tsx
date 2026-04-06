@@ -1,6 +1,6 @@
 "use client";
 
-import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import { useTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Paperclip, Trash2 } from "lucide-react";
@@ -38,7 +38,7 @@ export function ChangeOrderAttachmentsSection({
     startTransition(async () => {
       const result = await addChangeOrderAttachmentAction(changeOrderId, projectId, formData);
       if (result.ok) {
-        void syncRouterAndClients(router);
+        syncRouterNonBlocking(router);
         input.value = "";
       } else {
         setError(result.error ?? "Upload failed.");
@@ -53,7 +53,7 @@ export function ChangeOrderAttachmentsSection({
         projectId,
         changeOrderId
       );
-      if (ok) void syncRouterAndClients(router);
+      if (ok) syncRouterNonBlocking(router);
     });
   };
 

@@ -2,6 +2,7 @@
 
 import "./expenses-ui-theme.css";
 import * as React from "react";
+import { startTransition } from "react";
 import { flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
@@ -43,7 +44,7 @@ import {
 import { Pagination } from "@/components/ui/pagination";
 import { useSearchParams } from "next/navigation";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
-import { InlineLoading } from "@/components/ui/skeleton";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { QuickExpenseModal } from "./quick-expense-modal";
 import { UploadReceiptsQueueModal } from "./upload-receipts-queue-modal";
 import { EditExpenseModal, type ExpenseReviewSavePatch } from "./edit-expense-modal";
@@ -550,7 +551,7 @@ function ExpensesPageInner() {
     return { monthTotal, allTotal, unreviewed, reimbursementCount, topCategory };
   }, [expenses]);
 
-  const filtered = React.useMemo(() => {
+  const baseFilteredExpenses = React.useMemo(() => {
     let list = expenses;
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -589,6 +590,22 @@ function ExpensesPageInner() {
     if (expenseDateFilter.kind === "range") {
       list = list.filter((e) => expenseDateInFilter(e.date, expenseDateFilter));
     }
+    return list;
+  }, [
+    expenses,
+    search,
+    projectFilter,
+    categoryFilter,
+    statusFilter,
+    expenseDateFilter,
+    sourceTypeFilter,
+    projectNameById,
+    workerNameById,
+    listView,
+  ]);
+
+  const filteredSortedExpenses = React.useMemo(() => {
+    let list = baseFilteredExpenses;
     if (listView === "unreviewed" && isDefaultExpenseListSort(expenseSort)) {
       list = [...list].sort((a, b) => {
         const ha = expenseHasReceipt(a) ? 1 : 0;
@@ -603,29 +620,17 @@ function ExpensesPageInner() {
       });
     }
     return list;
-  }, [
-    expenses,
-    search,
-    projectFilter,
-    categoryFilter,
-    statusFilter,
-    expenseDateFilter,
-    sourceTypeFilter,
-    projectNameById,
-    workerNameById,
-    listView,
-    expenseSort,
-  ]);
+  }, [baseFilteredExpenses, listView, expenseSort]);
 
   const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
   const pageSize = 20;
-  const total = filtered.length;
+  const total = filteredSortedExpenses.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const curPage = Math.min(page, totalPages);
   const pageRows = React.useMemo(() => {
     const start = (curPage - 1) * pageSize;
-    return filtered.slice(start, start + pageSize);
-  }, [curPage, filtered]);
+    return filteredSortedExpenses.slice(start, start + pageSize);
+  }, [curPage, filteredSortedExpenses]);
 
   const pageRowsRef = React.useRef(pageRows);
   pageRowsRef.current = pageRows;
@@ -686,11 +691,14 @@ function ExpensesPageInner() {
     el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, [activeExpenseId, listView, pageRowIdsKey]);
 
-  const setPage = (nextPage: number) => {
-    const sp = new URLSearchParams(searchParams);
-    sp.set("page", String(nextPage));
-    router.push(`/financial/expenses?${sp.toString()}`, { scroll: false });
-  };
+  const setPage = React.useCallback(
+    (nextPage: number) => {
+      const sp = new URLSearchParams(searchParams);
+      sp.set("page", String(nextPage));
+      startTransition(() => router.push(`/financial/expenses?${sp.toString()}`, { scroll: false }));
+    },
+    [router, searchParams]
+  );
 
   const refresh = React.useCallback(async () => {
     const [ex, cat, w] = await Promise.all([
@@ -835,11 +843,13 @@ function ExpensesPageInner() {
     []
   );
 
-  const handleNew = () => {
+  const handleNew = React.useCallback(() => {
     const t0 = uiNavMark();
-    router.push("/financial/expenses/new");
-    requestAnimationFrame(() => uiNavLog("expenses->new-expense", t0, 200));
-  };
+    startTransition(() => {
+      router.push("/financial/expenses/new");
+      requestAnimationFrame(() => uiNavLog("expenses->new-expense", t0, 200));
+    });
+  }, [router]);
 
   const handleDelete = React.useCallback(
     (expense: Expense) => {
@@ -1066,35 +1076,53 @@ function ExpensesPageInner() {
     [vendorDraft, amountDraft, dateDraft, projectDraft, categoryDraft, sourceTypeDraft]
   );
 
-  const handleVendorInlineSave = (expenseId: string) => {
-    persistInlineField(expenseId, "vendor");
-    clearInlineEdits();
-  };
+  const handleVendorInlineSave = React.useCallback(
+    (expenseId: string) => {
+      persistInlineField(expenseId, "vendor");
+      clearInlineEdits();
+    },
+    [persistInlineField, clearInlineEdits]
+  );
 
-  const handleAmountInlineSave = (expenseId: string) => {
-    if (!persistInlineField(expenseId, "amount")) return;
-    clearInlineEdits();
-  };
+  const handleAmountInlineSave = React.useCallback(
+    (expenseId: string) => {
+      if (!persistInlineField(expenseId, "amount")) return;
+      clearInlineEdits();
+    },
+    [persistInlineField, clearInlineEdits]
+  );
 
-  const handleDateInlineSave = (expenseId: string) => {
-    if (!persistInlineField(expenseId, "date")) return;
-    clearInlineEdits();
-  };
+  const handleDateInlineSave = React.useCallback(
+    (expenseId: string) => {
+      if (!persistInlineField(expenseId, "date")) return;
+      clearInlineEdits();
+    },
+    [persistInlineField, clearInlineEdits]
+  );
 
-  const handleProjectInlineSave = (expenseId: string) => {
-    persistInlineField(expenseId, "project");
-    clearInlineEdits();
-  };
+  const handleProjectInlineSave = React.useCallback(
+    (expenseId: string) => {
+      persistInlineField(expenseId, "project");
+      clearInlineEdits();
+    },
+    [persistInlineField, clearInlineEdits]
+  );
 
-  const handleCategoryInlineSave = (expenseId: string) => {
-    persistInlineField(expenseId, "category");
-    clearInlineEdits();
-  };
+  const handleCategoryInlineSave = React.useCallback(
+    (expenseId: string) => {
+      persistInlineField(expenseId, "category");
+      clearInlineEdits();
+    },
+    [persistInlineField, clearInlineEdits]
+  );
 
-  const handleSourceInlineSave = (expenseId: string) => {
-    persistInlineField(expenseId, "source");
-    clearInlineEdits();
-  };
+  const handleSourceInlineSave = React.useCallback(
+    (expenseId: string) => {
+      persistInlineField(expenseId, "source");
+      clearInlineEdits();
+    },
+    [persistInlineField, clearInlineEdits]
+  );
 
   const openInlineField = React.useCallback(
     (expenseId: string, field: InlineEditField) => {
@@ -1333,33 +1361,36 @@ function ExpensesPageInner() {
     return () => window.removeEventListener("keydown", onKey, true);
   }, [clearInlineEdits, handleDelete]);
 
-  const toggleStatus = (expense: Expense) => {
-    const current = expense.status ?? "pending";
-    const next = isUnreviewedStatus(current) ? "reviewed" : "needs_review";
-    const prev = expensesRef.current;
-    const t0 = uiActionMark();
-    setExpenses((list) => list.map((e) => (e.id === expense.id ? { ...e, status: next } : e)));
-    uiActionLog("expense-toggle-status-ui", t0, 100);
-    void (async () => {
-      try {
-        const saved = await updateExpenseForReview(expense.id, { status: next });
-        if (!saved) throw new Error("Failed");
-        const persisted = (saved.status ?? "pending") === next;
-        if (persisted) {
-          setExpenses((list) => list.map((e) => (e.id === expense.id ? saved : e)));
-        } else {
-          toast({
-            title: "Status changed locally",
-            description: "This environment does not persist status updates yet.",
-            variant: "default",
-          });
+  const toggleStatus = React.useCallback(
+    (expense: Expense) => {
+      const current = expense.status ?? "pending";
+      const next = isUnreviewedStatus(current) ? "reviewed" : "needs_review";
+      const prev = expensesRef.current;
+      const t0 = uiActionMark();
+      setExpenses((list) => list.map((e) => (e.id === expense.id ? { ...e, status: next } : e)));
+      uiActionLog("expense-toggle-status-ui", t0, 100);
+      void (async () => {
+        try {
+          const saved = await updateExpenseForReview(expense.id, { status: next });
+          if (!saved) throw new Error("Failed");
+          const persisted = (saved.status ?? "pending") === next;
+          if (persisted) {
+            setExpenses((list) => list.map((e) => (e.id === expense.id ? saved : e)));
+          } else {
+            toast({
+              title: "Status changed locally",
+              description: "This environment does not persist status updates yet.",
+              variant: "default",
+            });
+          }
+        } catch {
+          setExpenses(prev);
+          toast({ title: "Status update failed", variant: "error" });
         }
-      } catch {
-        setExpenses(prev);
-        toast({ title: "Status update failed", variant: "error" });
-      }
-    })();
-  };
+      })();
+    },
+    [toast]
+  );
 
   const onInlineKeyDown = React.useCallback(
     (row: Expense, field: InlineEditField) => (e: React.KeyboardEvent) => {
@@ -1956,9 +1987,13 @@ function ExpensesPageInner() {
                                   >
                                     <SelectTrigger
                                       data-inline-field
-                                      className="h-7 min-h-[28px] max-w-[9rem] border-gray-100 bg-white text-xs text-gray-900 dark:border-border dark:bg-card dark:text-foreground"
+                                      className="flex h-7 min-h-[28px] max-w-[9rem] items-center border-gray-100 bg-white text-xs text-gray-900 dark:border-border dark:bg-card dark:text-foreground"
                                     >
                                       <SelectValue />
+                                      <SubmitSpinner
+                                        loading={paymentMethodMutation.isPending}
+                                        className="ml-1 shrink-0"
+                                      />
                                     </SelectTrigger>
                                     <SelectContent>
                                       {!pmInList && row.paymentMethod?.trim() ? (
@@ -2147,11 +2182,13 @@ function ExpensesPageInner() {
                               disabled={deletingExpenseId === row.id}
                               onClick={() => handleDelete(row)}
                             >
-                              {deletingExpenseId === row.id ? (
-                                <InlineLoading className="shrink-0" aria-hidden />
-                              ) : (
+                              <SubmitSpinner
+                                loading={deletingExpenseId === row.id}
+                                className="shrink-0"
+                              />
+                              {deletingExpenseId !== row.id ? (
                                 <Trash2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                              )}
+                              ) : null}
                               Delete
                             </DropdownMenuItem>
                           </DropdownMenuContent>

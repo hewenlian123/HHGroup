@@ -1,6 +1,6 @@
 "use client";
 
-import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { AddBillModal } from "./add-bill-modal";
@@ -11,7 +11,7 @@ export function AddBillButton({ projectId, subcontractId }: Props) {
   const router = useRouter();
   const [modalOpen, setModalOpen] = React.useState(false);
 
-  const handleSuccess = () => void syncRouterAndClients(router);
+  const handleSuccess = () => syncRouterNonBlocking(router);
 
   return (
     <>

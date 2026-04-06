@@ -1,13 +1,15 @@
 "use client";
 
 import * as React from "react";
+import { startTransition } from "react";
 import { flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -69,7 +71,7 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
 
   useOnAppSync(
     React.useCallback(() => {
-      void syncRouterAndClients(router);
+      syncRouterNonBlocking(router);
     }, [router]),
     [router]
   );
@@ -142,11 +144,13 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
             setError(data?.message ?? "Failed to create customer.");
             return;
           }
-          setItems((prev) =>
-            [...prev, data as Customer].sort((a, b) => a.name.localeCompare(b.name))
-          );
-          setModalOpen(false);
-          setDraft(null);
+          startTransition(() => {
+            setItems((prev) =>
+              [...prev, data as Customer].sort((a, b) => a.name.localeCompare(b.name))
+            );
+            setModalOpen(false);
+            setDraft(null);
+          });
         } finally {
           setBusy(false);
         }
@@ -268,7 +272,7 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
           <Input
             placeholder="Search customers…"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => startTransition(() => setSearch(e.target.value))}
             className="h-9 w-40 sm:w-64 text-sm"
           />
           <Button type="button" className="h-9 rounded-sm px-3 text-sm" onClick={openNew}>
@@ -470,6 +474,7 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
                   Cancel
                 </Button>
                 <Button type="submit" size="sm" className="h-9 rounded-sm" disabled={busy}>
+                  <SubmitSpinner loading={busy} className="mr-2" />
                   {busy ? "Saving…" : "Save"}
                 </Button>
               </DialogFooter>

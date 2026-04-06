@@ -2,11 +2,11 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { runOptimisticPersist } from "@/lib/optimistic-save";
 import { Button } from "@/components/ui/button";
-import { InlineLoading } from "@/components/ui/skeleton";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -64,7 +64,7 @@ export function WorkersListClient({
 
   useOnAppSync(
     React.useCallback(() => {
-      void syncRouterAndClients(router);
+      syncRouterNonBlocking(router);
     }, [router]),
     [router]
   );
@@ -414,14 +414,8 @@ export function WorkersListClient({
               disabled={busy || !name.trim()}
               aria-busy={busy}
             >
-              {busy ? (
-                <>
-                  <InlineLoading className="mr-1.5" aria-hidden />
-                  Saving…
-                </>
-              ) : (
-                "Save"
-              )}
+              <SubmitSpinner loading={busy} className="mr-2" />
+              {busy ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>
         </DialogContent>

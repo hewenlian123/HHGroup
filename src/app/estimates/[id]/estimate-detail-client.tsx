@@ -1,6 +1,6 @@
 "use client";
 
-import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import { useRouter } from "next/navigation";
@@ -73,7 +73,7 @@ export function EstimateDetailClient({
 
   useOnAppSync(
     React.useCallback(() => {
-      void syncRouterAndClients(router);
+      syncRouterNonBlocking(router);
     }, [router]),
     [router]
   );
@@ -92,7 +92,7 @@ export function EstimateDetailClient({
           toast({ title: "Saved", description: "Estimate updated.", variant: "success" });
           setInfoCollapseNonce((n) => n + 1);
           setCostBreakdownCollapseNonce((n) => n + 1);
-          void syncRouterAndClients(router);
+          syncRouterNonBlocking(router);
           setEditing(false);
         } else {
           toast({

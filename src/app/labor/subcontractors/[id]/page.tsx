@@ -7,6 +7,7 @@ import { useParams } from "next/navigation";
 import { createBrowserClient } from "@/lib/supabase";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/native-select";
 import { StatusBadge } from "@/components/status-badge";
@@ -371,6 +372,7 @@ export default function SubcontractorDetailPage() {
               onClick={() => void handleSave()}
               disabled={saving}
             >
+              <SubmitSpinner loading={saving} className="mr-2" />
               {saving ? "Saving..." : "Save Changes"}
             </Button>
           </div>

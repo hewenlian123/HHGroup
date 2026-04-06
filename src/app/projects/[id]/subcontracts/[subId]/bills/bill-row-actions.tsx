@@ -1,9 +1,10 @@
 "use client";
 
-import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -72,7 +73,7 @@ export function BillRowActions({
     });
     if (res.ok) {
       setEditOpen(false);
-      void syncRouterAndClients(router);
+      syncRouterNonBlocking(router);
     } else {
       setError(res.error ?? "Failed to update.");
     }
@@ -85,7 +86,7 @@ export function BillRowActions({
     setBusy(true);
     setError(null);
     const res = await deleteSubcontractBillDraftAction(projectId, subcontractId, bill.id);
-    if (res.ok) void syncRouterAndClients(router);
+    if (res.ok) syncRouterNonBlocking(router);
     else setError(res.error ?? "Failed to delete.");
     setBusy(false);
   };
@@ -96,7 +97,7 @@ export function BillRowActions({
     setBusy(true);
     setError(null);
     const res = await voidSubcontractBillAction(projectId, subcontractId, bill.id);
-    if (res.ok) void syncRouterAndClients(router);
+    if (res.ok) syncRouterNonBlocking(router);
     else setError(res.error ?? "Failed to void.");
     setBusy(false);
   };
@@ -123,7 +124,7 @@ export function BillRowActions({
       setPaymentAmount("");
       setPaymentMethod("");
       setPaymentNote("");
-      void syncRouterAndClients(router);
+      syncRouterNonBlocking(router);
     } else {
       setError(res.error ?? "Failed to record payment.");
     }
@@ -233,6 +234,7 @@ export function BillRowActions({
               Cancel
             </Button>
             <Button type="button" size="sm" onClick={handleEditSave} disabled={busy}>
+              <SubmitSpinner loading={busy} className="mr-2" />
               {busy ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>
@@ -296,6 +298,7 @@ export function BillRowActions({
               Cancel
             </Button>
             <Button type="button" size="sm" onClick={handleRecordPayment} disabled={busy}>
+              <SubmitSpinner loading={busy} className="mr-2" />
               {busy ? "Saving…" : "Record"}
             </Button>
           </DialogFooter>

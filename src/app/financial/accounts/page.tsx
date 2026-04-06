@@ -1,11 +1,12 @@
 "use client";
 
-import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/native-select";
@@ -124,7 +125,7 @@ function AccountsPageInner() {
       return;
     }
     void load();
-    void syncRouterAndClients(router);
+    syncRouterNonBlocking(router);
     toast({ title: "Account deleted", variant: "success" });
   };
 
@@ -154,7 +155,7 @@ function AccountsPageInner() {
         setModalOpen(false);
         setEditingId(null);
         await load();
-        void syncRouterAndClients(router);
+        syncRouterNonBlocking(router);
         toast({ title: "Account updated", variant: "success" });
       } else {
         const result = await createAccountAction({
@@ -195,7 +196,7 @@ function AccountsPageInner() {
         }
         // Refresh from server so the list reflects canonical data.
         await load();
-        void syncRouterAndClients(router);
+        syncRouterNonBlocking(router);
         toast({ title: "Account created", variant: "success" });
       }
     } catch (err) {
@@ -369,6 +370,7 @@ function AccountsPageInner() {
                 Cancel
               </Button>
               <Button type="submit" size="sm" className="h-8" disabled={saving}>
+                <SubmitSpinner loading={saving} className="mr-2" />
                 {saving ? "Saving…" : editingId ? "Save changes" : "Save account"}
               </Button>
             </div>

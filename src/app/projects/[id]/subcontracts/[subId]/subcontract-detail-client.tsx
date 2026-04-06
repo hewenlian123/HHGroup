@@ -1,6 +1,6 @@
 "use client";
 
-import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import Link from "next/link";
@@ -32,7 +32,7 @@ export function SubcontractDetailClient({
 
   useOnAppSync(
     React.useCallback(() => {
-      void syncRouterAndClients(router);
+      syncRouterNonBlocking(router);
     }, [router]),
     [router]
   );
@@ -44,7 +44,7 @@ export function SubcontractDetailClient({
     const res = await updateSubcontractStatusAction(projectId, subcontract.id, next);
     if (res.ok) {
       setStatus(next);
-      void syncRouterAndClients(router);
+      syncRouterNonBlocking(router);
     } else {
       setError(res.error ?? "Failed to update status.");
     }

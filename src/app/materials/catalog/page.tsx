@@ -4,6 +4,7 @@ import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { PageLayout, PageHeader } from "@/components/base";
 import { Button } from "@/components/ui/button";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -438,6 +439,7 @@ export default function MaterialCatalogPage() {
               onClick={() => void handleSave()}
               disabled={submitting}
             >
+              <SubmitSpinner loading={submitting} className="mr-2" />
               {submitting ? "Saving…" : editingMaterial ? "Save" : "Add"}
             </Button>
           </DialogFooter>

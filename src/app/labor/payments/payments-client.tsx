@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { startTransition } from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { PageHeader } from "@/components/page-header";
 import { FilterBar } from "@/components/filter-bar";
@@ -9,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/native-select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { DeleteRowAction } from "@/components/base";
 import { createBrowserClient } from "@/lib/supabase";
@@ -65,6 +67,7 @@ export default function LaborPaymentsClient() {
   const [memo, setMemo] = React.useState("");
   const [modalWarning, setModalWarning] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
+  const [backgroundRefreshing, setBackgroundRefreshing] = React.useState(false);
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -74,139 +77,147 @@ export default function LaborPaymentsClient() {
     [configured, url, anon]
   );
 
-  const refresh = React.useCallback(async () => {
-    if (!supabase) {
-      setLoading(false);
-      setError(configured ? "Supabase client unavailable." : "Supabase is not configured.");
-      setRows([]);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-
-    const [workersRes, entriesRes, paymentsRes, projectsRes, methodsRes] = await Promise.all([
-      supabase
-        .from("workers")
-        .select("id,name,half_day_rate")
-        .order("created_at", { ascending: false })
-        .limit(500),
-      supabase
-        .from("labor_entries")
-        .select(
-          "id,entry_date,worker_id,total,am_worked,am_project_id,pm_worked,pm_project_id,ot_amount,ot_project_id"
-        )
-        .eq("status", "confirmed")
-        .gte("entry_date", startDate)
-        .lte("entry_date", endDate)
-        .limit(2000),
-      supabase
-        .from("labor_payments")
-        .select("id,worker_id,payment_date,amount,method,memo,applied_start_date,applied_end_date")
-        .or(
-          `and(applied_start_date.eq.${startDate},applied_end_date.eq.${endDate}),and(payment_date.gte.${startDate},payment_date.lte.${endDate})`
-        )
-        .limit(2000),
-      supabase
-        .from("projects")
-        .select("id,name")
-        .order("created_at", { ascending: false })
-        .limit(500),
-      supabase
-        .from("payment_methods")
-        .select("name,status")
-        .eq("status", "active")
-        .order("name")
-        .limit(100),
-    ]);
-
-    const workers = (workersRes.data ?? []) as Array<{
-      id: string;
-      name: string;
-      half_day_rate?: number | null;
-    }>;
-    const entries = (entriesRes.data ?? []) as Array<{
-      entry_date: string;
-      worker_id: string;
-      total: number | null;
-      am_project_id: string | null;
-      pm_project_id: string | null;
-      ot_project_id: string | null;
-    }>;
-    const payments = (paymentsRes.data ?? []) as Array<{
-      id: string;
-      worker_id: string;
-      payment_date: string;
-      amount: number | null;
-      method: string | null;
-      memo: string | null;
-      applied_start_date: string | null;
-      applied_end_date: string | null;
-    }>;
-
-    if (projectsRes.data)
-      setProjects((projectsRes.data ?? []) as Array<{ id: string; name: string }>);
-    if (methodsRes.data) {
-      const names = (methodsRes.data as Array<{ name: string }>).map((r) => r.name).filter(Boolean);
-      setPaymentMethods(names.length ? names : ["ACH"]);
-    }
-
-    const inRange = (d: string) => d >= startDate && d <= endDate;
-    const payRunRows: PayRunRow[] = workers.map((w) => {
-      const workerEntries = entries.filter((e) => e.worker_id === w.id && inRange(e.entry_date));
-      const rate = safeNumber(w.half_day_rate);
-      const projectFilter = projectId.trim();
-      let confirmedTotal: number;
-      if (projectFilter) {
-        confirmedTotal = workerEntries.reduce((sum, e) => {
-          const ent = e as {
-            am_worked?: boolean;
-            am_project_id?: string | null;
-            pm_worked?: boolean;
-            pm_project_id?: string | null;
-            ot_amount?: number | null;
-            ot_project_id?: string | null;
-          };
-          const am = ent.am_worked && ent.am_project_id === projectFilter ? rate : 0;
-          const pm = ent.pm_worked && ent.pm_project_id === projectFilter ? rate : 0;
-          const ot = ent.ot_project_id === projectFilter ? safeNumber(ent.ot_amount) : 0;
-          return sum + am + pm + ot;
-        }, 0);
-      } else {
-        confirmedTotal = workerEntries.reduce((sum, e) => sum + safeNumber(e.total), 0);
+  const refresh = React.useCallback(
+    async (opts?: { silent?: boolean }) => {
+      const silent = opts?.silent ?? false;
+      if (!supabase) {
+        if (!silent) setLoading(false);
+        setError(configured ? "Supabase client unavailable." : "Supabase is not configured.");
+        setRows([]);
+        return;
       }
-      const workerPayments = payments.filter(
-        (p) =>
-          p.worker_id === w.id &&
-          (inRange(p.payment_date) ||
-            (p.applied_start_date === startDate && p.applied_end_date === endDate))
-      );
-      const paidTotal = workerPayments.reduce((s, p) => s + safeNumber(p.amount), 0);
-      const balance = Math.max(0, confirmedTotal - paidTotal);
-      return {
-        workerId: w.id,
-        workerName: w.name ?? w.id,
-        confirmedDailyTotal: confirmedTotal,
-        confirmedInvoiceTotal: 0,
-        confirmedTotal,
-        paidTotal,
-        balance,
-        payments: workerPayments.map((p) => ({
-          id: p.id,
-          paymentDate: p.payment_date,
-          amount: safeNumber(p.amount),
-          method: p.method ?? "—",
-          memo: p.memo ?? undefined,
-        })),
-      };
-    });
+      if (!silent) setLoading(true);
+      setError(null);
 
-    setRows(payRunRows);
-    if (entriesRes.error && !isMissingTableError(entriesRes.error))
-      setError(entriesRes.error.message);
-    if (workersRes.error && !isMissingTableError(workersRes.error))
-      setError((e) => e ?? workersRes.error?.message ?? null);
-    setLoading(false);
-  }, [configured, startDate, endDate, projectId, supabase]);
+      const [workersRes, entriesRes, paymentsRes, projectsRes, methodsRes] = await Promise.all([
+        supabase
+          .from("workers")
+          .select("id,name,half_day_rate")
+          .order("created_at", { ascending: false })
+          .limit(500),
+        supabase
+          .from("labor_entries")
+          .select(
+            "id,entry_date,worker_id,total,am_worked,am_project_id,pm_worked,pm_project_id,ot_amount,ot_project_id"
+          )
+          .eq("status", "confirmed")
+          .gte("entry_date", startDate)
+          .lte("entry_date", endDate)
+          .limit(2000),
+        supabase
+          .from("labor_payments")
+          .select(
+            "id,worker_id,payment_date,amount,method,memo,applied_start_date,applied_end_date"
+          )
+          .or(
+            `and(applied_start_date.eq.${startDate},applied_end_date.eq.${endDate}),and(payment_date.gte.${startDate},payment_date.lte.${endDate})`
+          )
+          .limit(2000),
+        supabase
+          .from("projects")
+          .select("id,name")
+          .order("created_at", { ascending: false })
+          .limit(500),
+        supabase
+          .from("payment_methods")
+          .select("name,status")
+          .eq("status", "active")
+          .order("name")
+          .limit(100),
+      ]);
+
+      const workers = (workersRes.data ?? []) as Array<{
+        id: string;
+        name: string;
+        half_day_rate?: number | null;
+      }>;
+      const entries = (entriesRes.data ?? []) as Array<{
+        entry_date: string;
+        worker_id: string;
+        total: number | null;
+        am_project_id: string | null;
+        pm_project_id: string | null;
+        ot_project_id: string | null;
+      }>;
+      const payments = (paymentsRes.data ?? []) as Array<{
+        id: string;
+        worker_id: string;
+        payment_date: string;
+        amount: number | null;
+        method: string | null;
+        memo: string | null;
+        applied_start_date: string | null;
+        applied_end_date: string | null;
+      }>;
+
+      if (projectsRes.data)
+        setProjects((projectsRes.data ?? []) as Array<{ id: string; name: string }>);
+      if (methodsRes.data) {
+        const names = (methodsRes.data as Array<{ name: string }>)
+          .map((r) => r.name)
+          .filter(Boolean);
+        setPaymentMethods(names.length ? names : ["ACH"]);
+      }
+
+      const inRange = (d: string) => d >= startDate && d <= endDate;
+      const payRunRows: PayRunRow[] = workers.map((w) => {
+        const workerEntries = entries.filter((e) => e.worker_id === w.id && inRange(e.entry_date));
+        const rate = safeNumber(w.half_day_rate);
+        const projectFilter = projectId.trim();
+        let confirmedTotal: number;
+        if (projectFilter) {
+          confirmedTotal = workerEntries.reduce((sum, e) => {
+            const ent = e as {
+              am_worked?: boolean;
+              am_project_id?: string | null;
+              pm_worked?: boolean;
+              pm_project_id?: string | null;
+              ot_amount?: number | null;
+              ot_project_id?: string | null;
+            };
+            const am = ent.am_worked && ent.am_project_id === projectFilter ? rate : 0;
+            const pm = ent.pm_worked && ent.pm_project_id === projectFilter ? rate : 0;
+            const ot = ent.ot_project_id === projectFilter ? safeNumber(ent.ot_amount) : 0;
+            return sum + am + pm + ot;
+          }, 0);
+        } else {
+          confirmedTotal = workerEntries.reduce((sum, e) => sum + safeNumber(e.total), 0);
+        }
+        const workerPayments = payments.filter(
+          (p) =>
+            p.worker_id === w.id &&
+            (inRange(p.payment_date) ||
+              (p.applied_start_date === startDate && p.applied_end_date === endDate))
+        );
+        const paidTotal = workerPayments.reduce((s, p) => s + safeNumber(p.amount), 0);
+        const balance = Math.max(0, confirmedTotal - paidTotal);
+        return {
+          workerId: w.id,
+          workerName: w.name ?? w.id,
+          confirmedDailyTotal: confirmedTotal,
+          confirmedInvoiceTotal: 0,
+          confirmedTotal,
+          paidTotal,
+          balance,
+          payments: workerPayments.map((p) => ({
+            id: p.id,
+            paymentDate: p.payment_date,
+            amount: safeNumber(p.amount),
+            method: p.method ?? "—",
+            memo: p.memo ?? undefined,
+          })),
+        };
+      });
+
+      setRows(payRunRows);
+      if (entriesRes.error && !isMissingTableError(entriesRes.error))
+        setError(entriesRes.error.message);
+      if (workersRes.error && !isMissingTableError(workersRes.error))
+        setError((e) => e ?? workersRes.error?.message ?? null);
+      if (!silent) setLoading(false);
+    },
+    [configured, startDate, endDate, projectId, supabase]
+  );
 
   React.useEffect(() => {
     void refresh();
@@ -254,13 +265,18 @@ export default function LaborPaymentsClient() {
       applied_start_date: startDate,
       applied_end_date: endDate,
     });
-    if (insErr) setError(insErr.message);
-    else {
+    if (insErr) {
+      setError(insErr.message);
+      setBusy(false);
+      return;
+    }
+    startTransition(() => {
       setMessage("Payment recorded.");
       setModalWorkerId(null);
-    }
-    await refresh();
+    });
     setBusy(false);
+    setBackgroundRefreshing(true);
+    void refresh({ silent: true }).finally(() => setBackgroundRefreshing(false));
   };
 
   const deletePayment = async (paymentId: string) => {
@@ -290,9 +306,17 @@ export default function LaborPaymentsClient() {
     setBusy(false);
   };
 
-  const kpiTotalDue = rows.reduce((sum, r) => sum + r.confirmedTotal, 0);
-  const kpiTotalPaid = rows.reduce((sum, r) => sum + r.paidTotal, 0);
-  const kpiOutstanding = rows.reduce((sum, r) => sum + r.balance, 0);
+  const { kpiTotalDue, kpiTotalPaid, kpiOutstanding } = React.useMemo(() => {
+    let due = 0;
+    let paid = 0;
+    let out = 0;
+    for (const r of rows) {
+      due += r.confirmedTotal;
+      paid += r.paidTotal;
+      out += r.balance;
+    }
+    return { kpiTotalDue: due, kpiTotalPaid: paid, kpiOutstanding: out };
+  }, [rows]);
   const modalWorker = rows.find((r) => r.workerId === modalWorkerId);
 
   return (
@@ -395,6 +419,11 @@ export default function LaborPaymentsClient() {
         <div className="rounded-lg border border-gray-100 dark:border-border bg-background px-3 py-2 text-sm text-muted-foreground">
           {message}
         </div>
+      ) : null}
+      {backgroundRefreshing ? (
+        <p className="text-xs text-muted-foreground" role="status">
+          Updating pay run totals…
+        </p>
       ) : null}
 
       <div className="airtable-table-wrap airtable-table-wrap--ruled">
@@ -664,7 +693,8 @@ export default function LaborPaymentsClient() {
                 Cancel
               </Button>
               <Button size="sm" onClick={savePayment} disabled={amount <= 0 || busy}>
-                Save Payment
+                <SubmitSpinner loading={busy} className="mr-2" />
+                {busy ? "Recording…" : "Save Payment"}
               </Button>
             </div>
           </Card>

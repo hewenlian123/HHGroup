@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -271,6 +272,7 @@ export function ReceivePaymentModal({
               Cancel
             </Button>
             <Button type="submit" size="sm" className="h-8" disabled={saving}>
+              <SubmitSpinner loading={saving} className="mr-2" />
               {saving ? "Saving…" : "Record Payment"}
             </Button>
           </div>

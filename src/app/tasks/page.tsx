@@ -3,6 +3,7 @@
 import { dispatchClientDataSync } from "@/lib/sync-router-client";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
+import { startTransition } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { PageLayout, PageHeader, Drawer } from "@/components/base";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { listTableRowClassName } from "@/lib/list-table-interaction";
 import { flushSync } from "react-dom";
 import { MoreHorizontal } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type TaskRow = {
   id: string;
@@ -153,7 +155,9 @@ export default function TasksPage() {
       setDrawerOpen(false);
       setError("Task no longer exists.");
       if (typeof window !== "undefined" && window.location.search) {
-        router.replace(pathname ?? "/tasks");
+        startTransition(() => {
+          router.replace(pathname ?? "/tasks");
+        });
       }
       if (typeof window !== "undefined") window.setTimeout(() => setError(null), 4000);
     },
@@ -222,65 +226,69 @@ export default function TasksPage() {
     const formSnap = { ...form };
 
     type NewSnap = { tasks: TaskRow[]; modalOpen: boolean };
-    runOptimisticPersist<NewSnap>({
-      setBusy: setSubmitting,
-      getSnapshot: () => ({ tasks: [...tasksRef.current], modalOpen: true }),
-      apply: () => {
-        const optimisticRow: TaskRow = {
-          id: tempId,
-          project_id: projectId,
-          project_name,
-          title: rawTitle || "Untitled",
-          description: formSnap.description || null,
-          status: formSnap.status,
-          assigned_worker_id: assigned,
-          worker_name,
-          due_date: formSnap.due_date || null,
-          priority: formSnap.priority,
-          created_at: nowIso,
-        };
-        setTasks((prev) => [optimisticRow, ...prev]);
-        setModalOpen(false);
-        setError(null);
-      },
-      rollback: (s) => {
-        setTasks(s.tasks);
-        setModalOpen(s.modalOpen);
-      },
-      persist: () =>
-        createProjectTaskAction(projectId, {
-          title: rawTitle || "Untitled",
-          description: formSnap.description || null,
-          assigned_worker_id: assigned,
-          due_date: formSnap.due_date || null,
-          priority: formSnap.priority,
-          status: formSnap.status,
-        }).then((result) => {
-          if (result.error) return { error: result.error };
-          const t = result.task;
-          if (!t) return { error: "Task was not returned." };
-          const row: TaskRow = {
-            id: t.id,
-            project_id: t.project_id,
+    startTransition(() => {
+      runOptimisticPersist<NewSnap>({
+        setBusy: setSubmitting,
+        getSnapshot: () => ({ tasks: [...tasksRef.current], modalOpen: true }),
+        apply: () => {
+          const optimisticRow: TaskRow = {
+            id: tempId,
+            project_id: projectId,
             project_name,
-            title: t.title,
-            description: t.description,
-            status: t.status,
-            assigned_worker_id: t.assigned_worker_id,
-            worker_name: t.assigned_worker_id
-              ? (workers.find((w) => w.id === t.assigned_worker_id)?.name ?? null)
-              : null,
-            due_date: t.due_date,
-            priority: t.priority,
-            created_at: t.created_at,
+            title: rawTitle || "Untitled",
+            description: formSnap.description || null,
+            status: formSnap.status,
+            assigned_worker_id: assigned,
+            worker_name,
+            due_date: formSnap.due_date || null,
+            priority: formSnap.priority,
+            created_at: nowIso,
           };
-          flushSync(() => {
-            setTasks((prev) => prev.map((x) => (x.id === tempId ? row : x)));
-          });
-          dispatchClientDataSync({ reason: "task-created" });
-          return undefined;
-        }),
-      onError: (msg) => setError(msg),
+          setTasks((prev) => [optimisticRow, ...prev]);
+          setModalOpen(false);
+          setError(null);
+        },
+        rollback: (s) => {
+          setTasks(s.tasks);
+          setModalOpen(s.modalOpen);
+        },
+        persist: () =>
+          createProjectTaskAction(projectId, {
+            title: rawTitle || "Untitled",
+            description: formSnap.description || null,
+            assigned_worker_id: assigned,
+            due_date: formSnap.due_date || null,
+            priority: formSnap.priority,
+            status: formSnap.status,
+          }).then((result) => {
+            if (result.error) return { error: result.error };
+            const t = result.task;
+            if (!t) return { error: "Task was not returned." };
+            const row: TaskRow = {
+              id: t.id,
+              project_id: t.project_id,
+              project_name,
+              title: t.title,
+              description: t.description,
+              status: t.status,
+              assigned_worker_id: t.assigned_worker_id,
+              worker_name: t.assigned_worker_id
+                ? (workers.find((w) => w.id === t.assigned_worker_id)?.name ?? null)
+                : null,
+              due_date: t.due_date,
+              priority: t.priority,
+              created_at: t.created_at,
+            };
+            flushSync(() => {
+              setTasks((prev) => prev.map((x) => (x.id === tempId ? row : x)));
+            });
+            startTransition(() => {
+              dispatchClientDataSync({ reason: "task-created" });
+            });
+            return undefined;
+          }),
+        onError: (msg) => setError(msg),
+      });
     });
   };
 
@@ -292,41 +300,49 @@ export default function TasksPage() {
     const df = { ...drawerForm };
 
     type ToggleSnap = { tasks: TaskRow[]; selected: TaskRow | null; drawerForm: typeof drawerForm };
-    runOptimisticPersist<ToggleSnap>({
-      setBusy: () => {},
-      getSnapshot: () => ({
-        tasks: [...tasksRef.current],
-        selected: sel,
-        drawerForm: df,
-      }),
-      apply: () => {
-        setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, status: nextStatus } : t)));
-        if (sel?.id === task.id) {
-          setSelectedTask((prev) =>
-            prev?.id === task.id ? { ...prev, status: nextStatus } : prev
+    startTransition(() => {
+      runOptimisticPersist<ToggleSnap>({
+        setBusy: () => {},
+        getSnapshot: () => ({
+          tasks: [...tasksRef.current],
+          selected: sel,
+          drawerForm: df,
+        }),
+        apply: () => {
+          setTasks((prev) =>
+            prev.map((t) => (t.id === task.id ? { ...t, status: nextStatus } : t))
           );
-          setDrawerForm((prev) => ({ ...prev, status: nextStatus }));
-        }
-        setError(null);
-      },
-      rollback: (s) => {
-        setTasks(s.tasks);
-        setSelectedTask(s.selected);
-        setDrawerForm(s.drawerForm);
-      },
-      persist: () =>
-        updateProjectTaskAction(task.project_id, task.id, { status: nextStatus }).then((result) => {
-          if (result.error) {
-            if (/not found|already deleted/i.test(result.error)) {
-              clearStaleTask(task.id);
+          if (sel?.id === task.id) {
+            setSelectedTask((prev) =>
+              prev?.id === task.id ? { ...prev, status: nextStatus } : prev
+            );
+            setDrawerForm((prev) => ({ ...prev, status: nextStatus }));
+          }
+          setError(null);
+        },
+        rollback: (s) => {
+          setTasks(s.tasks);
+          setSelectedTask(s.selected);
+          setDrawerForm(s.drawerForm);
+        },
+        persist: () =>
+          updateProjectTaskAction(task.project_id, task.id, { status: nextStatus }).then(
+            (result) => {
+              if (result.error) {
+                if (/not found|already deleted/i.test(result.error)) {
+                  clearStaleTask(task.id);
+                  return undefined;
+                }
+                return { error: result.error };
+              }
+              startTransition(() => {
+                dispatchClientDataSync({ reason: "task-toggle-done" });
+              });
               return undefined;
             }
-            return { error: result.error };
-          }
-          dispatchClientDataSync({ reason: "task-toggle-done" });
-          return undefined;
-        }),
-      onError: (msg) => setError(msg),
+          ),
+        onError: (msg) => setError(msg),
+      });
     });
   };
 
@@ -363,61 +379,65 @@ export default function TasksPage() {
       drawerOpen: boolean;
       drawerForm: typeof drawerForm;
     };
-    runOptimisticPersist<DrawerSnap>({
-      setBusy: setSubmitting,
-      getSnapshot: () => ({
-        tasks: [...tasksRef.current],
-        selected: st,
-        drawerOpen: true,
-        drawerForm: df,
-      }),
-      apply: () => {
-        setTasks((prev) => prev.map((t) => (t.id === st.id ? updatedRow : t)));
-        setSelectedTask(updatedRow);
-        setDrawerOpen(false);
-        setError(null);
-      },
-      rollback: (s) => {
-        setTasks(s.tasks);
-        setSelectedTask(s.selected);
-        setDrawerOpen(s.drawerOpen);
-        setDrawerForm(s.drawerForm);
-      },
-      persist: () =>
-        updateProjectTaskAction(st.project_id, st.id, patch).then((result) => {
-          if (result.error) {
-            if (/not found|already deleted/i.test(result.error)) {
-              clearStaleTask(st.id);
-              return undefined;
-            }
-            return { error: result.error };
-          }
-          const t = result.task;
-          if (t) {
-            const row: TaskRow = {
-              id: t.id,
-              project_id: t.project_id,
-              project_name: st.project_name,
-              title: t.title,
-              description: t.description,
-              status: t.status,
-              assigned_worker_id: t.assigned_worker_id,
-              worker_name: t.assigned_worker_id
-                ? (workers.find((w) => w.id === t.assigned_worker_id)?.name ?? null)
-                : null,
-              due_date: t.due_date,
-              priority: t.priority,
-              created_at: t.created_at,
-            };
-            flushSync(() => {
-              setTasks((prev) => prev.map((x) => (x.id === row.id ? row : x)));
-              setSelectedTask((prev) => (prev?.id === row.id ? row : prev));
-            });
-          }
-          dispatchClientDataSync({ reason: "task-drawer-save" });
-          return undefined;
+    startTransition(() => {
+      runOptimisticPersist<DrawerSnap>({
+        setBusy: setSubmitting,
+        getSnapshot: () => ({
+          tasks: [...tasksRef.current],
+          selected: st,
+          drawerOpen: true,
+          drawerForm: df,
         }),
-      onError: (msg) => setError(msg),
+        apply: () => {
+          setTasks((prev) => prev.map((t) => (t.id === st.id ? updatedRow : t)));
+          setSelectedTask(updatedRow);
+          setDrawerOpen(false);
+          setError(null);
+        },
+        rollback: (s) => {
+          setTasks(s.tasks);
+          setSelectedTask(s.selected);
+          setDrawerOpen(s.drawerOpen);
+          setDrawerForm(s.drawerForm);
+        },
+        persist: () =>
+          updateProjectTaskAction(st.project_id, st.id, patch).then((result) => {
+            if (result.error) {
+              if (/not found|already deleted/i.test(result.error)) {
+                clearStaleTask(st.id);
+                return undefined;
+              }
+              return { error: result.error };
+            }
+            const t = result.task;
+            if (t) {
+              const row: TaskRow = {
+                id: t.id,
+                project_id: t.project_id,
+                project_name: st.project_name,
+                title: t.title,
+                description: t.description,
+                status: t.status,
+                assigned_worker_id: t.assigned_worker_id,
+                worker_name: t.assigned_worker_id
+                  ? (workers.find((w) => w.id === t.assigned_worker_id)?.name ?? null)
+                  : null,
+                due_date: t.due_date,
+                priority: t.priority,
+                created_at: t.created_at,
+              };
+              flushSync(() => {
+                setTasks((prev) => prev.map((x) => (x.id === row.id ? row : x)));
+                setSelectedTask((prev) => (prev?.id === row.id ? row : prev));
+              });
+            }
+            startTransition(() => {
+              dispatchClientDataSync({ reason: "task-drawer-save" });
+            });
+            return undefined;
+          }),
+        onError: (msg) => setError(msg),
+      });
     });
   };
 
@@ -435,49 +455,53 @@ export default function TasksPage() {
     const selectedId = selectedTask?.id;
 
     type DelSnap = { tasks: TaskRow[]; drawerOpen: boolean; selected: TaskRow | null };
-    runOptimisticPersist<DelSnap>({
-      setBusy: setSubmitting,
-      getSnapshot: () => ({
-        tasks: [...tasksRef.current],
-        drawerOpen,
-        selected: selectedTask,
-      }),
-      apply: () => {
-        setTasks((prev) => prev.filter((t) => t.id !== taskId));
-        if (selectedId === taskId) {
-          setDrawerOpen(false);
-          setSelectedTask(null);
-        }
-        setError(null);
-      },
-      rollback: (s) => {
-        setTasks(s.tasks);
-        setDrawerOpen(s.drawerOpen);
-        setSelectedTask(s.selected);
-      },
-      persist: () =>
-        fetch(`/api/tasks/${taskId}`, { method: "DELETE", cache: "no-store" })
-          .then(async (res) => {
-            const data = await res.json().catch(() => ({}));
-            if (res.status === 404) {
-              clearStaleTask(taskId);
+    startTransition(() => {
+      runOptimisticPersist<DelSnap>({
+        setBusy: setSubmitting,
+        getSnapshot: () => ({
+          tasks: [...tasksRef.current],
+          drawerOpen,
+          selected: selectedTask,
+        }),
+        apply: () => {
+          setTasks((prev) => prev.filter((t) => t.id !== taskId));
+          if (selectedId === taskId) {
+            setDrawerOpen(false);
+            setSelectedTask(null);
+          }
+          setError(null);
+        },
+        rollback: (s) => {
+          setTasks(s.tasks);
+          setDrawerOpen(s.drawerOpen);
+          setSelectedTask(s.selected);
+        },
+        persist: () =>
+          fetch(`/api/tasks/${taskId}`, { method: "DELETE", cache: "no-store" })
+            .then(async (res) => {
+              const data = await res.json().catch(() => ({}));
+              if (res.status === 404) {
+                clearStaleTask(taskId);
+                return undefined;
+              }
+              if (!res.ok) {
+                const msg = (data as { message?: string }).message ?? "Failed to delete task.";
+                console.error("[Tasks] Delete failed:", res.status, msg, data);
+                return { error: msg };
+              }
+              startTransition(() => {
+                dispatchClientDataSync({ reason: "task-deleted" });
+              });
               return undefined;
-            }
-            if (!res.ok) {
-              const msg = (data as { message?: string }).message ?? "Failed to delete task.";
-              console.error("[Tasks] Delete failed:", res.status, msg, data);
-              return { error: msg };
-            }
-            dispatchClientDataSync({ reason: "task-deleted" });
-            return undefined;
-          })
-          .catch((e) => ({
-            error: e instanceof Error ? e.message : "Failed to delete task.",
-          })),
-      onError: (msg) => {
-        console.error("[Tasks] Delete error:", msg);
-        setError(msg);
-      },
+            })
+            .catch((e) => ({
+              error: e instanceof Error ? e.message : "Failed to delete task.",
+            })),
+        onError: (msg) => {
+          console.error("[Tasks] Delete error:", msg);
+          setError(msg);
+        },
+      });
     });
   };
 
@@ -512,7 +536,7 @@ export default function TasksPage() {
           {filterTabs.map((f) => (
             <button
               key={f.value}
-              onClick={() => setFilter(f.value)}
+              onClick={() => startTransition(() => setFilter(f.value))}
               className={cn(
                 "min-h-[44px] min-w-[44px] rounded-sm border px-3 py-2 text-sm font-medium transition-colors touch-manipulation md:min-h-0 md:min-w-0 md:px-2.5 md:py-1.5 md:text-xs",
                 filter === f.value
@@ -527,7 +551,11 @@ export default function TasksPage() {
 
         <div className="border border-border/60 rounded-sm overflow-hidden">
           {loading ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">Loading…</div>
+            <div className="space-y-2 px-4 py-6" aria-busy="true" aria-label="Loading tasks">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
+            </div>
           ) : error ? (
             <div className="py-10 text-center text-sm text-destructive">{error}</div>
           ) : filtered.length === 0 ? (

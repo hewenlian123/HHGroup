@@ -1,10 +1,11 @@
 "use client";
 
-import { syncRouterAndClients } from "@/lib/sync-router-client";
+import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -42,7 +43,7 @@ export function SubcontractorDetailClient({ subcontractor }: { subcontractor: Su
 
   useOnAppSync(
     React.useCallback(() => {
-      void syncRouterAndClients(router);
+      syncRouterNonBlocking(router);
     }, [router]),
     [router]
   );
@@ -61,7 +62,7 @@ export function SubcontractorDetailClient({ subcontractor }: { subcontractor: Su
     });
     if (res.ok) {
       setEditOpen(false);
-      void syncRouterAndClients(router);
+      syncRouterNonBlocking(router);
     } else {
       setError(res.error ?? "Failed to update.");
     }
@@ -76,7 +77,7 @@ export function SubcontractorDetailClient({ subcontractor }: { subcontractor: Su
     const res = await deleteSubcontractorAction(subcontractor.id);
     if (res.ok) {
       router.push("/subcontractors");
-      void syncRouterAndClients(router);
+      syncRouterNonBlocking(router);
       return;
     }
     setError(res.error ?? "Failed to delete.");
@@ -175,6 +176,7 @@ export function SubcontractorDetailClient({ subcontractor }: { subcontractor: Su
               Cancel
             </Button>
             <Button type="button" size="sm" onClick={handleSave} disabled={busy}>
+              <SubmitSpinner loading={busy} className="mr-2" />
               {busy ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>

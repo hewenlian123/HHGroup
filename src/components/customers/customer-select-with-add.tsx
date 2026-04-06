@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import {
   Dialog,
@@ -286,6 +287,7 @@ export function CustomerSelectWithAdd({ label = "Customer", value, onChange }: P
               onClick={handleCreate}
               disabled={addBusy}
             >
+              <SubmitSpinner loading={addBusy} className="mr-2" />
               {addBusy ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>

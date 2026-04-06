@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 
 type WorkerOption = { id: string; name: string };
 type ProjectOption = { id: string; name: string };
@@ -186,6 +187,7 @@ export function WorkerAdvanceFormDialog({
               Cancel
             </Button>
             <Button type="submit" size="sm" className="h-9 rounded-sm" disabled={submitting}>
+              <SubmitSpinner loading={submitting} className="mr-2" />
               {submitting ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>
