@@ -662,16 +662,49 @@ function ExpensesPageInner() {
     setEditingPaymentMethodId(null);
   }, []);
 
+  /** Latest sort for mutation callbacks (avoid stale closure vs. `buildExpensesQueryKey`). */
+  const expenseSortRef = React.useRef(expenseSort);
+  expenseSortRef.current = expenseSort;
+
   const paymentMethodMutation = useMutation({
     mutationFn: async (vars: { id: string; paymentMethod: string }) => {
       const next = await updateExpense(vars.id, { paymentMethod: vars.paymentMethod });
       if (!next) throw new Error("Failed to update payment method");
       return { next, id: vars.id };
     },
-    onSuccess: ({ next, id }) => {
-      setExpenses((list) => list.map((e) => (e.id === id ? next : e)));
-      queryClient.setQueryData<Expense[]>(buildExpensesQueryKey(expenseSort), (old) =>
-        old ? old.map((e) => (e.id === id ? next : e)) : old
+    onMutate: async (vars) => {
+      const key = buildExpensesQueryKey(expenseSortRef.current);
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<Expense[]>(key);
+      queryClient.setQueryData<Expense[]>(key, (old) =>
+        old
+          ? old.map((e) => (e.id === vars.id ? { ...e, paymentMethod: vars.paymentMethod } : e))
+          : old
+      );
+      setExpenses((prev) =>
+        prev.map((e) => (e.id === vars.id ? { ...e, paymentMethod: vars.paymentMethod } : e))
+      );
+      return { previous, key } as {
+        previous: Expense[] | undefined;
+        key: ReturnType<typeof buildExpensesQueryKey>;
+      };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous !== undefined) {
+        queryClient.setQueryData(ctx.key, ctx.previous);
+        setExpenses(ctx.previous);
+      }
+      hotToast.error("Something went wrong");
+    },
+    onSuccess: ({ next, id }, vars) => {
+      const key = buildExpensesQueryKey(expenseSortRef.current);
+      const merged =
+        next && typeof vars?.paymentMethod === "string"
+          ? { ...next, paymentMethod: vars.paymentMethod }
+          : next;
+      setExpenses((list) => list.map((e) => (e.id === id ? merged : e)));
+      queryClient.setQueryData<Expense[]>(key, (old) =>
+        old ? old.map((e) => (e.id === id ? merged : e)) : old
       );
       hotToast.success("Saved");
       setEditingPaymentMethodId(null);
@@ -679,9 +712,6 @@ function ExpensesPageInner() {
       window.setTimeout(() => {
         setPaymentMethodFlashId((cur) => (cur === id ? null : cur));
       }, 1200);
-    },
-    onError: () => {
-      hotToast.error("Something went wrong");
     },
   });
 

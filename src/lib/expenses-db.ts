@@ -3,6 +3,7 @@
  * Tables: expenses, expense_lines, attachments (entity_type = 'expense').
  */
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
 
 export type ExpenseAttachment = {
@@ -113,6 +114,37 @@ function client() {
   const c = getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
+}
+
+const PAYMENT_METHOD_LIST_HYDRATE_CHUNK = 120;
+
+/** Narrow follow-up select: some PostgREST wide selects omit `payment_method` for anon clients while `id,payment_method` still returns it. */
+async function hydrateExpenseListPaymentMethods(
+  c: SupabaseClient,
+  rowModels: ExpenseRow[]
+): Promise<void> {
+  if (rowModels.length === 0) return;
+  const ids = rowModels.map((r) => r.id).filter(Boolean);
+  for (let i = 0; i < ids.length; i += PAYMENT_METHOD_LIST_HYDRATE_CHUNK) {
+    const slice = ids.slice(i, i + PAYMENT_METHOD_LIST_HYDRATE_CHUNK);
+    const { data: pmRows, error } = await c
+      .from("expenses")
+      .select("id,payment_method")
+      .in("id", slice);
+    if (error || !pmRows?.length) continue;
+    const byId = new Map(
+      (pmRows as { id: string; payment_method?: string | null }[]).map((pr) => [
+        pr.id,
+        pr.payment_method,
+      ])
+    );
+    for (const r of rowModels) {
+      const pm = byId.get(r.id);
+      if (pm != null && String(pm).trim() !== "") {
+        r.payment_method = String(pm).trim();
+      }
+    }
+  }
 }
 
 function isMissingTable(err: { message?: string } | null): boolean {
@@ -353,12 +385,22 @@ const EXPENSE_COLS_NO_TOTAL_LEGACY = "id,expense_date,vendor,notes,payment_accou
 
 function isMissingColumn(err: { message?: string } | null): boolean {
   const m = err?.message ?? "";
-  return /column .* does not exist|schema cache/i.test(m);
+  return (
+    /column .* does not exist/i.test(m) ||
+    /could not find the '[^']+' column of '[^']+' in the schema cache/i.test(m) ||
+    /column.*not.*schema cache/i.test(m)
+  );
 }
 
-function isPaymentEmbedUnsupported(err: { message?: string } | null): boolean {
-  const m = err?.message ?? "";
-  return isMissingColumn(err) || /relationship|Could not find a relationship|PGRST200/i.test(m);
+/** Only strip a specific column from UPDATE when the error clearly refers to that column (not any "schema cache" string). */
+function errorSuggestsMissingNamedColumn(
+  err: { message?: string } | null,
+  columnSnake: string
+): boolean {
+  const m = (err?.message ?? "").toLowerCase();
+  const col = columnSnake.toLowerCase();
+  if (!m.includes(col)) return false;
+  return /does not exist|schema cache/i.test(m);
 }
 
 function statusPriorityKey(status: string | null | undefined): number {
@@ -430,17 +472,8 @@ export async function getExpenses(
 ): Promise<Expense[]> {
   const c = client();
   let rows: unknown[] = [];
-  const resEmbed = await applyExpenseOrderToQuery(
-    c.from("expenses").select(`${EXPENSE_COLS_FULL}, payment_accounts ( name )`),
-    sort
-  );
-
-  const resFlat =
-    resEmbed.error && isPaymentEmbedUnsupported(resEmbed.error)
-      ? await applyExpenseOrderToQuery(c.from("expenses").select(EXPENSE_COLS_FULL), sort)
-      : null;
-
-  const res = resFlat ?? resEmbed;
+  /** Flat select only: embedded `payment_accounts` can omit or skew columns in some PostgREST responses; names come from `fetchPaymentAccountNameMap`. */
+  const res = await applyExpenseOrderToQuery(c.from("expenses").select(EXPENSE_COLS_FULL), sort);
 
   if (!res.error) {
     rows = res.data ?? [];
@@ -518,6 +551,7 @@ export async function getExpenses(
   }
 
   const rowModels = rows as ExpenseRow[];
+  await hydrateExpenseListPaymentMethods(c, rowModels);
   sortExpenseRowsInPlace(rowModels, sort);
 
   const paymentNameMap = await fetchPaymentAccountNameMap(
@@ -1318,7 +1352,9 @@ export async function updateExpense(
   const updates: Record<string, unknown> = {};
   if (patch.date != null) updates.expense_date = patch.date.slice(0, 10);
   if (patch.vendorName != null) updates.vendor = patch.vendorName;
-  if (patch.paymentMethod != null) updates.payment_method = patch.paymentMethod;
+  if (patch.paymentMethod !== undefined) {
+    updates.payment_method = patch.paymentMethod;
+  }
   if (patch.referenceNo !== undefined) updates.reference_no = patch.referenceNo || null;
   if (patch.notes !== undefined) updates.notes = patch.notes || null;
   if (patch.cardName !== undefined) updates.card_name = patch.cardName?.trim() || null;
@@ -1326,27 +1362,41 @@ export async function updateExpense(
   if (patch.paymentAccountId !== undefined)
     updates.payment_account_id = patch.paymentAccountId ?? null;
   if (Object.keys(updates).length > 0) {
-    let res = await c.from("expenses").update(updates).eq("id", expenseId);
+    let res = await c.from("expenses").update(updates).eq("id", expenseId).select("id");
     let err: { message?: string } | null = res.error;
-    if (err && isMissingColumn(err) && updates.payment_method !== undefined) {
+    if (
+      err &&
+      errorSuggestsMissingNamedColumn(err, "payment_method") &&
+      updates.payment_method !== undefined
+    ) {
       delete updates.payment_method;
       if (Object.keys(updates).length > 0) {
-        res = await c.from("expenses").update(updates).eq("id", expenseId);
+        res = await c.from("expenses").update(updates).eq("id", expenseId).select("id");
         err = res.error;
       } else {
         err = null;
       }
     }
-    if (err && isMissingColumn(err) && updates.payment_account_id !== undefined) {
+    if (
+      err &&
+      errorSuggestsMissingNamedColumn(err, "payment_account_id") &&
+      updates.payment_account_id !== undefined
+    ) {
       delete updates.payment_account_id;
       if (Object.keys(updates).length > 0) {
-        res = await c.from("expenses").update(updates).eq("id", expenseId);
+        res = await c.from("expenses").update(updates).eq("id", expenseId).select("id");
         err = res.error;
       } else {
         err = null;
       }
     }
     if (err) return null;
+  }
+  if (patch.paymentMethod !== undefined) {
+    const ver = await c.from("expenses").select("payment_method").eq("id", expenseId).maybeSingle();
+    if (ver.error) return null;
+    const got = (ver.data as { payment_method?: string | null } | null)?.payment_method;
+    if (got !== patch.paymentMethod) return null;
   }
   return getExpenseById(expenseId);
 }

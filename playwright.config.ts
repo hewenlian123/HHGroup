@@ -14,6 +14,8 @@ if (!process.env.E2E_BASE_URL) {
   process.env.E2E_BASE_URL = resolvedBase;
 }
 
+const isLocalE2eBase = /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?$/i.test(resolvedBase);
+
 /**
  * Worker-payment + delete-mutation files must **always** have a matching project.
  * If `CI=true` (Cursor/VS Code often sets this) and we omit `chromium-delete-mutations`,
@@ -38,25 +40,35 @@ export default defineConfig({
    * Override with PW_WORKERS=4 for speed when you accept occasional flakes.
    */
   workers:
-    process.env.PW_WORKERS !== undefined ? Number(process.env.PW_WORKERS) : process.env.CI ? 2 : 1,
+    process.env.PW_WORKERS !== undefined
+      ? Number(process.env.PW_WORKERS)
+      : process.env.CI === "true"
+        ? 2
+        : 1,
   /**
-   * Web server modes:
-   * - CI (without E2E_WEB_SERVER=dev): expects build output, runs `next start`
-   * - E2E_WEB_SERVER=dev: always runs `next dev` (even if CI=true — Cursor often sets CI)
+   * Web server (always on unless `E2E_WEB_SERVER=off`):
+   * - `CI=true` (GitHub Actions): `next start` — requires a prior `next build`
+   * - Otherwise: `next dev` — default for local/Cursor (`CI=1` is *not* treated as pipeline CI)
+   * - `E2E_WEB_SERVER=dev` with `CI=true` forces `next dev` in CI if needed
+   * - Readiness uses `/financial/expenses` so a broken dev that only serves `/` is not treated as healthy
    *
    * Port is derived from E2E_BASE_URL (defaults to :3000).
    */
   webServer:
-    process.env.CI || process.env.E2E_WEB_SERVER === "dev"
-      ? (() => {
+    process.env.E2E_WEB_SERVER === "off" || !isLocalE2eBase
+      ? undefined
+      : (() => {
           const u = new URL(resolvedBase);
           const port = u.port || "3000";
-          const isDev = process.env.E2E_WEB_SERVER === "dev";
+          const pipelineCi = process.env.CI === "true";
+          const forceDev = process.env.E2E_WEB_SERVER === "dev";
+          const useStart = pipelineCi && !forceDev;
           return {
-            command: isDev ? `npm run dev:safe -- -p ${port}` : `PORT=${port} npm run start`,
-            url: resolvedBase,
-            reuseExistingServer: !process.env.CI,
-            timeout: isDev ? 180_000 : 120_000,
+            command: useStart ? `PORT=${port} npm run start` : `npm run dev:safe -- -p ${port}`,
+            url: `${resolvedBase}/financial/expenses`,
+            /** Only pipeline CI must own the port; local/Cursor often sets `CI=1`. */
+            reuseExistingServer: !pipelineCi,
+            timeout: useStart ? 120_000 : 180_000,
             env: {
               ...process.env,
               NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
@@ -64,8 +76,7 @@ export default defineConfig({
               SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
             },
           };
-        })()
-      : undefined,
+        })(),
   use: {
     baseURL: (process.env.E2E_BASE_URL || "http://localhost:3000").replace(/\/$/, ""),
     headless: true,
