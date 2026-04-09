@@ -13,11 +13,19 @@ import {
   getDailyWorkEntriesInRange,
   getWorkerReimbursements,
   getWorkerInvoices,
-  totalPayForEntry,
+  getLaborInvoices,
+  getWorkerPayments,
+  getWorkerAdvances,
+  includeLaborInvoicesInProjectLabor,
   type DailyWorkEntry,
   type WorkerReimbursement,
   type WorkerInvoice,
 } from "@/lib/data";
+import {
+  balanceStatusLabel,
+  buildPayrollSummaryRows,
+  type PayrollSummaryComputeRow,
+} from "./compute-payroll-summary-rows";
 import { PayWorkerModal } from "./pay-worker-modal";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { deleteWorkerAction } from "@/app/workers/actions";
@@ -38,14 +46,7 @@ function fmtUsd(n: number): string {
   }).format(n);
 }
 
-type Row = {
-  workerId: string;
-  workerName: string;
-  laborPay: number;
-  reimbursements: number;
-  invoices: number;
-  totalPayable: number;
-};
+type Row = PayrollSummaryComputeRow;
 
 export default function PayrollSummaryPage() {
   const router = useRouter();
@@ -61,7 +62,7 @@ export default function PayrollSummaryPage() {
   const [query, setQuery] = React.useState("");
   const [sort, setSort] = React.useState<{ key: keyof Omit<Row, "workerId">; dir: "asc" | "desc" }>(
     {
-      key: "totalPayable",
+      key: "balance",
       dir: "desc",
     }
   );
@@ -80,71 +81,41 @@ export default function PayrollSummaryPage() {
     setLoading(true);
     setMessage(null);
     try {
-      const [w, p, laborEntries, reimbursementsAll, invoicesAll] = await Promise.all([
+      const [
+        w,
+        p,
+        laborEntries,
+        reimbursementsAll,
+        invoicesAll,
+        laborInvoicesAll,
+        paymentsAll,
+        advancesAll,
+      ] = await Promise.all([
         getWorkers(),
         getProjects(),
         getDailyWorkEntriesInRange(fromDate, toDate),
         getWorkerReimbursements(),
         getWorkerInvoices(),
+        getLaborInvoices(),
+        getWorkerPayments({ fromDate, toDate }),
+        getWorkerAdvances({ fromDate, toDate }),
       ]);
       setProjects(p);
 
       const projectFilter = projectId || null;
 
-      const labor = (laborEntries as DailyWorkEntry[]).filter((e) =>
-        projectFilter ? e.projectId === projectFilter : true
-      );
-
-      const reimbursements = (reimbursementsAll as WorkerReimbursement[]).filter((r) => {
-        if (projectFilter && r.projectId !== projectFilter) return false;
-        // createdAt is timestamptz; compare date prefix
-        const d = r.createdAt?.slice(0, 10) ?? "";
-        if (d && (d < fromDate || d > toDate)) return false;
-        return String(r.status ?? "").toLowerCase() !== "paid";
-      });
-
-      const invoices = (invoicesAll as WorkerInvoice[]).filter((inv) => {
-        if (projectFilter && inv.projectId !== projectFilter) return false;
-        const d = inv.createdAt?.slice(0, 10) ?? "";
-        if (d && (d < fromDate || d > toDate)) return false;
-        return String(inv.status ?? "").toLowerCase() !== "paid";
-      });
-
-      const workerNameById = new Map(w.map((x) => [x.id, x.name] as const));
-
-      const laborSum = new Map<string, number>();
-      for (const e of labor) {
-        laborSum.set(e.workerId, (laborSum.get(e.workerId) ?? 0) + totalPayForEntry(e));
-      }
-
-      const reimbSum = new Map<string, number>();
-      for (const r of reimbursements) {
-        reimbSum.set(r.workerId, (reimbSum.get(r.workerId) ?? 0) + (Number(r.amount) || 0));
-      }
-
-      const invSum = new Map<string, number>();
-      for (const inv of invoices) {
-        invSum.set(inv.workerId, (invSum.get(inv.workerId) ?? 0) + (Number(inv.amount) || 0));
-      }
-
-      const allWorkerIds = new Set<string>([
-        ...Array.from(laborSum.keys()),
-        ...Array.from(reimbSum.keys()),
-        ...Array.from(invSum.keys()),
-      ]);
-
-      const out: Row[] = Array.from(allWorkerIds).map((workerId) => {
-        const laborPay = laborSum.get(workerId) ?? 0;
-        const reimbursementsAmt = reimbSum.get(workerId) ?? 0;
-        const invoicesAmt = invSum.get(workerId) ?? 0;
-        return {
-          workerId,
-          workerName: workerNameById.get(workerId) ?? workerId,
-          laborPay,
-          reimbursements: reimbursementsAmt,
-          invoices: invoicesAmt,
-          totalPayable: laborPay + reimbursementsAmt + invoicesAmt,
-        };
+      const out = buildPayrollSummaryRows({
+        fromDate,
+        toDate,
+        projectFilter,
+        includeLaborInvoices: includeLaborInvoicesInProjectLabor,
+        workers: w,
+        laborEntries: laborEntries as DailyWorkEntry[],
+        reimbursementsAll: reimbursementsAll as WorkerReimbursement[],
+        workerInvoicesAll: invoicesAll as WorkerInvoice[],
+        laborInvoicesAll,
+        paymentsAll,
+        advancesAll,
       });
 
       setRows(out);
@@ -198,7 +169,7 @@ export default function PayrollSummaryPage() {
     <div className="page-container page-stack py-6">
       <PageHeader
         title="Payroll Summary"
-        subtitle="Labor pay + unpaid reimbursements + unpaid worker invoices."
+        subtitle="Earned (labor + invoices) + reimbursements vs payments + advances in range."
         actions={
           <Link
             href="/labor"
@@ -280,40 +251,54 @@ export default function PayrollSummaryPage() {
           <p className="py-6 text-center text-xs text-muted-foreground">No results.</p>
         ) : (
           paged.map((r) => (
-            <div key={r.workerId} className="rounded-sm border border-border/60 p-4">
+            <div
+              key={r.workerId}
+              className="min-w-0 overflow-hidden rounded-sm border border-border/60 p-4"
+            >
               <button
                 type="button"
-                className="w-full text-left"
+                className="w-full min-w-0 text-left"
                 onClick={() => router.push(`/workers/${r.workerId}`)}
               >
-                <span className="font-medium text-foreground underline-offset-2 hover:underline">
+                <span className="block min-w-0 truncate font-medium text-foreground underline-offset-2 hover:underline">
                   {r.workerName}
                 </span>
               </button>
-              <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs tabular-nums">
-                <div>
+              <dl className="mt-3 grid min-w-0 grid-cols-2 gap-x-3 gap-y-2 text-xs tabular-nums">
+                <div className="min-w-0">
                   <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                    Labor
+                    Earned
                   </dt>
-                  <dd>{fmtUsd(r.laborPay)}</dd>
+                  <dd className="min-w-0 break-words">{fmtUsd(r.earned)}</dd>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
                     Reimb.
                   </dt>
-                  <dd>{fmtUsd(r.reimbursements)}</dd>
+                  <dd className="min-w-0 break-words">{fmtUsd(r.reimbursements)}</dd>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                    Invoices
+                    Should pay
                   </dt>
-                  <dd>{fmtUsd(r.invoices)}</dd>
+                  <dd className="min-w-0 break-words">{fmtUsd(r.shouldPay)}</dd>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                    Total
+                    Paid
                   </dt>
-                  <dd className="font-medium text-foreground">{fmtUsd(r.totalPayable)}</dd>
+                  <dd className="min-w-0 break-words">{fmtUsd(r.paid)}</dd>
+                </div>
+                <div className="col-span-2 min-w-0">
+                  <dt className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Balance
+                  </dt>
+                  <dd className="min-w-0 font-medium text-foreground leading-snug">
+                    <span className="block break-words">{fmtUsd(r.balance)}</span>
+                    <span className="mt-0.5 block text-[11px] font-normal text-muted-foreground">
+                      {balanceStatusLabel(r.balance)}
+                    </span>
+                  </dd>
                 </div>
               </dl>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
@@ -369,7 +354,7 @@ export default function PayrollSummaryPage() {
 
       <div className="hidden border-b border-border/60 md:block">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] border-separate border-spacing-x-0 border-spacing-y-1.5 text-sm lg:min-w-0">
+          <table className="w-full min-w-[760px] border-separate border-spacing-x-0 border-spacing-y-1.5 text-sm lg:min-w-0">
             <thead>
               <tr className="border-b border-border/60">
                 <th
@@ -380,9 +365,9 @@ export default function PayrollSummaryPage() {
                 </th>
                 <th
                   className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums cursor-pointer select-none"
-                  onClick={() => toggleSort("laborPay")}
+                  onClick={() => toggleSort("earned")}
                 >
-                  Labor Pay
+                  Earned
                 </th>
                 <th
                   className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums cursor-pointer select-none"
@@ -392,15 +377,21 @@ export default function PayrollSummaryPage() {
                 </th>
                 <th
                   className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums cursor-pointer select-none"
-                  onClick={() => toggleSort("invoices")}
+                  onClick={() => toggleSort("shouldPay")}
                 >
-                  Invoices
+                  Should Pay
                 </th>
                 <th
                   className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums cursor-pointer select-none"
-                  onClick={() => toggleSort("totalPayable")}
+                  onClick={() => toggleSort("paid")}
                 >
-                  Total Payable
+                  Paid
+                </th>
+                <th
+                  className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums cursor-pointer select-none"
+                  onClick={() => toggleSort("balance")}
+                >
+                  Balance
                 </th>
                 <th className="w-28 px-4 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Pay
@@ -413,13 +404,13 @@ export default function PayrollSummaryPage() {
             <tbody>
               {loading ? (
                 <tr className="border-b border-border/40">
-                  <td colSpan={7} className="py-6 px-4 text-center text-muted-foreground text-xs">
+                  <td colSpan={8} className="py-6 px-4 text-center text-muted-foreground text-xs">
                     Loading…
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr className="border-b border-border/40">
-                  <td colSpan={7} className="py-6 px-4 text-center text-muted-foreground text-xs">
+                  <td colSpan={8} className="py-6 px-4 text-center text-muted-foreground text-xs">
                     No results.
                   </td>
                 </tr>
@@ -453,7 +444,7 @@ export default function PayrollSummaryPage() {
                         listTableAmountCellClassName
                       )}
                     >
-                      {fmtUsd(r.laborPay)}
+                      {fmtUsd(r.earned)}
                     </td>
                     <td
                       className={cn(
@@ -469,15 +460,26 @@ export default function PayrollSummaryPage() {
                         listTableAmountCellClassName
                       )}
                     >
-                      {fmtUsd(r.invoices)}
+                      {fmtUsd(r.shouldPay)}
                     </td>
                     <td
                       className={cn(
-                        "py-2 px-4 text-right tabular-nums font-medium",
+                        "py-2 px-4 text-right tabular-nums",
                         listTableAmountCellClassName
                       )}
                     >
-                      {fmtUsd(r.totalPayable)}
+                      {fmtUsd(r.paid)}
+                    </td>
+                    <td
+                      className={cn(
+                        "py-2 px-3 text-right tabular-nums font-medium",
+                        listTableAmountCellClassName
+                      )}
+                    >
+                      <div>{fmtUsd(r.balance)}</div>
+                      <div className="text-[10px] font-normal text-muted-foreground normal-case tracking-normal">
+                        {balanceStatusLabel(r.balance)}
+                      </div>
                     </td>
                     <td className="py-2 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                       <Button
@@ -575,7 +577,7 @@ export default function PayrollSummaryPage() {
           onOpenChange={setPayOpen}
           workerId={payTarget.workerId}
           workerName={payTarget.workerName}
-          defaultAmount={payTarget.totalPayable}
+          defaultAmount={Math.max(0, payTarget.balance)}
           onSuccess={load}
         />
       ) : null}
