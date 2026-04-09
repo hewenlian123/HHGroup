@@ -113,8 +113,15 @@ export async function resolveLaborWorkerForBalance(
 
 export function normWorkerBalanceName(s: string | null | undefined): string {
   return String(s ?? "")
+    .replace(/\u3000/g, " ")
+    .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
+}
+
+/** Escape `%` / `_` for Postgres ILIKE when embedding a user-provided substring. */
+function escapeIlikeSubstring(s: string): string {
+  return s.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
 }
 
 /**
@@ -182,8 +189,12 @@ export async function createWorkersFkToLaborIdResolver(
  * and makes Worker Balances list show $0 reimbursements while the detail page (same helper) would
  * also miss unless the full `workers` scan happened to include the other row within PostgREST limits.
  *
- * Query workers by exact name (then case-insensitive fallback), not unbounded `select *` which is
- * capped by default row limits.
+ * Resolution order:
+ * 1) Name from `labor_workers`, else from `workers` by id (financial-only rows may lack labor_workers).
+ * 2) `workers` with `name` eq / ilike (exact string).
+ * 3) If still no second id besides `laborWorkerId`, a bounded `ilike('%…%')` plus **normalized name**
+ *    equality so rows like full-width spaces / odd spacing still match (detail page used to see data
+ *    while the list showed $0 when only one UUID was queried).
  */
 export async function workerIdsForLaborBalanceFinancialQueries(
   c: SupabaseClient,
@@ -196,23 +207,42 @@ export async function workerIdsForLaborBalanceFinancialQueries(
   ids.add(lid);
 
   const lw = await c.from("labor_workers").select("name").eq("id", lid).maybeSingle();
-  const rawName = (lw.data as { name?: string | null } | null)?.name;
-  const lname = String(rawName ?? "").trim();
-  if (!lname) return [...ids];
+  let rawName = (lw.data as { name?: string | null } | null)?.name;
+  let lname = String(rawName ?? "").trim();
 
-  const exact = await c.from("workers").select("id, name").eq("name", lname);
-  let rows = (exact.data ?? []) as { id: string; name: string | null }[];
-
-  if (exact.error || rows.length === 0) {
-    const fb = await c.from("workers").select("id, name").ilike("name", lname);
-    if (!fb.error && fb.data?.length) {
-      rows = fb.data as { id: string; name: string | null }[];
-    }
+  if (!lname) {
+    const wn = await c.from("workers").select("name").eq("id", lid).maybeSingle();
+    lname = String((wn.data as { name?: string | null } | null)?.name ?? "").trim();
   }
 
-  for (const r of rows) {
-    const id = String(r.id ?? "").trim();
-    if (id) ids.add(id);
+  if (!lname) return [...ids];
+
+  const mergeRows = (list: { id: string; name: string | null }[] | null | undefined) => {
+    for (const r of list ?? []) {
+      const id = String(r.id ?? "").trim();
+      if (id) ids.add(id);
+    }
+  };
+
+  const exact = await c.from("workers").select("id, name").eq("name", lname);
+  if (!exact.error && exact.data?.length) {
+    mergeRows(exact.data as { id: string; name: string | null }[]);
+  }
+
+  const ilExact = await c.from("workers").select("id, name").ilike("name", lname);
+  if (!ilExact.error && ilExact.data?.length) {
+    mergeRows(ilExact.data as { id: string; name: string | null }[]);
+  }
+
+  const hasSiblingId = [...ids].some((id) => id !== lid);
+  if (!hasSiblingId) {
+    const esc = escapeIlikeSubstring(lname);
+    const loose = await c.from("workers").select("id, name").ilike("name", `%${esc}%`);
+    const nk = normWorkerBalanceName(lname);
+    const filtered = (loose.data ?? []).filter(
+      (r: { id: string; name: string | null }) => normWorkerBalanceName(r.name) === nk
+    );
+    mergeRows(filtered);
   }
 
   return [...ids];
