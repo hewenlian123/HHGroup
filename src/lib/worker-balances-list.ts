@@ -47,9 +47,21 @@ export async function fetchWorkerBalanceRowForDelete(
 export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBalanceRow[]> {
   // Canonical source is labor_workers, but some environments still write entries using workers(id).
   // To avoid missing rows in Worker Balances, include any worker_id that appears in labor_entries.
-  const [workersRes, entryWorkerIdsRes, workersNameRes] = await Promise.all([
+  // Also include any worker_id that appears in financial tables (reimbursements/payments/advances),
+  // otherwise balances can show all $0 while money exists for workers not present in labor tables.
+  const [
+    workersRes,
+    entryWorkerIdsRes,
+    reimbWorkerIdsRes,
+    paymentWorkerIdsRes,
+    advanceWorkerIdsRes,
+    workersNameRes,
+  ] = await Promise.all([
     c.from("labor_workers").select("id, name").order("name"),
     c.from("labor_entries").select("worker_id"),
+    c.from("worker_reimbursements").select("worker_id"),
+    c.from("worker_payments").select("worker_id"),
+    c.from("worker_advances").select("worker_id"),
     c.from("workers").select("id, name"),
   ]);
 
@@ -72,6 +84,39 @@ export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBala
     const id = String(r.worker_id ?? "").trim();
     if (!id || workersById.has(id)) continue;
     workersById.set(id, { id, name: workersNameById.get(id) ?? null });
+  }
+
+  for (const src of [reimbWorkerIdsRes, paymentWorkerIdsRes, advanceWorkerIdsRes] as const) {
+    for (const r of (src.data ?? []) as Array<{ worker_id?: string | null }>) {
+      const id = String(r.worker_id ?? "").trim();
+      if (!id || workersById.has(id)) continue;
+      workersById.set(id, { id, name: workersNameById.get(id) ?? null });
+    }
+  }
+
+  // `workers` can be large; a full-table select may be paginated by PostgREST.
+  // Backfill any missing names by fetching the specific ids we care about.
+  const missingNameIds = [...workersById.values()]
+    .filter(
+      (w) => w.id && (w.name == null || String(w.name).trim() === "") && !workersNameById.has(w.id)
+    )
+    .map((w) => w.id);
+  if (missingNameIds.length > 0) {
+    const { data: nameRows, error } = await c
+      .from("workers")
+      .select("id, name")
+      .in("id", missingNameIds);
+    if (!error && nameRows) {
+      for (const row of nameRows as Array<{ id: string; name: string | null }>) {
+        const id = String(row.id ?? "").trim();
+        if (!id) continue;
+        workersNameById.set(id, row.name ?? null);
+        const cur = workersById.get(id);
+        if (cur && (!cur.name || String(cur.name).trim() === "")) {
+          workersById.set(id, { id, name: row.name ?? null });
+        }
+      }
+    }
   }
 
   const workers = [...workersById.values()].sort((a, b) =>
