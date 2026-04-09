@@ -744,6 +744,8 @@ export async function createExpense(payload: {
         notes: notes,
         reference_no: payload.referenceNo?.trim() || null,
         total: totalGroupAmount,
+        /** Some remotes enforce NOT NULL `amount` on expenses (mirror `total`). */
+        amount: totalGroupAmount,
         line_count: group.length,
         card_name: payload.cardName?.trim() || null,
         account_id: payload.accountId ?? null,
@@ -758,6 +760,22 @@ export async function createExpense(payload: {
         .single();
       if (ins.error && isMissingColumn(ins.error)) {
         ins = await c.from("expenses").insert(insertPayload).select("id").single();
+      }
+      if (ins.error && isMissingColumn(ins.error)) {
+        ins = await c
+          .from("expenses")
+          .insert({
+            expense_date: date,
+            vendor: vendor,
+            notes: notes,
+            reference_no: payload.referenceNo?.trim() || null,
+            total: totalGroupAmount,
+            amount: totalGroupAmount,
+            line_count: group.length,
+            payment_method: payload.paymentMethod ?? "Card",
+          })
+          .select("id")
+          .single();
       }
       if (ins.error && isMissingColumn(ins.error)) {
         ins = await c

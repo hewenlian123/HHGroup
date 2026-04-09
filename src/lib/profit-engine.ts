@@ -40,7 +40,9 @@ function devLogFail(label: string, err: unknown): void {
 
 function isMissingColumn(err: { message?: string } | null): boolean {
   const m = err?.message ?? "";
-  return /column .* does not exist|does not exist.*column/i.test(m);
+  return /column .* does not exist|does not exist.*column|could not find the .* column|schema cache|pgrst204/i.test(
+    m
+  );
 }
 
 /**
@@ -110,27 +112,20 @@ function laborLineAmountForProject(row: LaborCostRow, projectId: string): number
 
 async function fetchLaborCostForProject(projectId: string): Promise<number> {
   const c = client();
-  const modern = await c
+  // Prefer project_id (current schema). Many remotes dropped project_am_id / project_pm_id.
+  const byProjectId = await c
     .from("labor_entries")
-    .select("project_id, project_am_id, project_pm_id, cost_amount, total, status")
-    .or(`project_am_id.eq.${projectId},project_pm_id.eq.${projectId}`);
+    .select("project_id, cost_amount, total, status")
+    .eq("project_id", projectId);
 
   let rows: LaborCostRow[] = [];
-  if (!modern.error && Array.isArray(modern.data)) {
-    rows = modern.data as LaborCostRow[];
-  } else if (modern.error && isMissingColumn(modern.error)) {
-    const legacy = await c
-      .from("labor_entries")
-      .select("project_id, cost_amount, total, status")
-      .eq("project_id", projectId);
-    if (!legacy.error && Array.isArray(legacy.data)) {
-      rows = legacy.data as LaborCostRow[];
-    } else if (legacy.error && !isMissingColumn(legacy.error)) {
-      devLogFail("labor_entries", legacy.error);
-      return 0;
-    }
-  } else if (modern.error) {
-    devLogFail("labor_entries", modern.error);
+  if (!byProjectId.error && Array.isArray(byProjectId.data)) {
+    rows = byProjectId.data as LaborCostRow[];
+  } else if (byProjectId.error && isMissingColumn(byProjectId.error)) {
+    // No `project_id` on labor_entries (sparse daily labor) — cannot attribute rows to a project here.
+    return 0;
+  } else if (byProjectId.error) {
+    devLogFail("labor_entries", byProjectId.error);
     return 0;
   }
 
@@ -150,27 +145,18 @@ async function fetchLaborCostBatch(projectIds: string[]): Promise<Map<string, nu
   if (!idList) return map;
 
   const c = client();
-  const modern = await c
+  const byProjectId = await c
     .from("labor_entries")
-    .select("project_id, project_am_id, project_pm_id, cost_amount, total, status")
-    .or(`project_am_id.in.(${idList}),project_pm_id.in.(${idList})`);
+    .select("project_id, cost_amount, total, status")
+    .in("project_id", projectIds);
 
   let list: LaborCostRow[] = [];
-  if (!modern.error && Array.isArray(modern.data)) {
-    list = modern.data as LaborCostRow[];
-  } else if (modern.error && isMissingColumn(modern.error)) {
-    const legacy = await c
-      .from("labor_entries")
-      .select("project_id, cost_amount, total, status")
-      .in("project_id", projectIds);
-    if (!legacy.error && Array.isArray(legacy.data)) {
-      list = legacy.data as LaborCostRow[];
-    } else if (legacy.error && !isMissingColumn(legacy.error)) {
-      devLogFail("labor_entries batch", legacy.error);
-      return map;
-    }
-  } else if (modern.error) {
-    devLogFail("labor_entries batch", modern.error);
+  if (!byProjectId.error && Array.isArray(byProjectId.data)) {
+    list = byProjectId.data as LaborCostRow[];
+  } else if (byProjectId.error && isMissingColumn(byProjectId.error)) {
+    return map;
+  } else if (byProjectId.error) {
+    devLogFail("labor_entries batch", byProjectId.error);
     return map;
   }
 
