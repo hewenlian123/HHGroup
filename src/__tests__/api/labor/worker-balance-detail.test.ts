@@ -27,12 +27,31 @@ function createBalanceMock(
     },
   });
 
+  const resolved = <T>(data: T) => Promise.resolve({ data, error: null as null });
+
   const from = (table: string) => {
-    if (table === "labor_workers" || table === "workers") {
+    if (table === "labor_workers") {
       const row = worker === null ? null : { id: worker.id, name: worker.name };
       return {
         select: () => ({
           eq: () => ({ maybeSingle: () => thenable(row) }),
+        }),
+      };
+    }
+    if (table === "workers") {
+      const row = worker === null ? null : { id: worker.id, name: worker.name };
+      const nameMatchRows = row ? [{ id: row.id, name: row.name }] : [];
+      return {
+        select: () => ({
+          eq: (col: string) => {
+            if (col === "name") {
+              return resolved(nameMatchRows);
+            }
+            return {
+              maybeSingle: () => thenable(row),
+            };
+          },
+          ilike: () => resolved(nameMatchRows),
         }),
       };
     }
