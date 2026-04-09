@@ -94,4 +94,51 @@ describe("labor-balance-shared", () => {
     const ids = await workerIdsForLaborBalanceFinancialQueries(mock, laborId);
     expect(ids.sort()).toEqual([laborId, otherWorkersId].sort());
   });
+
+  it("workerIdsForLaborBalanceFinancialQueries falls back to substring ilike + normalized name when eq/ilike miss spacing variants", async () => {
+    const laborId = "11111111-1111-1111-1111-111111111111";
+    const reimbWorkerId = "22222222-2222-2222-2222-222222222222";
+
+    const mock = {
+      from(table: string) {
+        if (table === "labor_workers") {
+          return {
+            select: () => ({
+              eq: () => ({
+                maybeSingle: async () => ({ data: { name: "小林" }, error: null }),
+              }),
+            }),
+          };
+        }
+        if (table === "workers") {
+          return {
+            select: () => ({
+              eq: async (col: string) => {
+                if (col === "name") {
+                  return { data: [], error: null };
+                }
+                return { data: [], error: null };
+              },
+              ilike: async (_col: string, val: string) => {
+                if (String(val).includes("%")) {
+                  return {
+                    data: [
+                      { id: laborId, name: "小林" },
+                      { id: reimbWorkerId, name: "\u3000小林\u3000" },
+                    ],
+                    error: null,
+                  };
+                }
+                return { data: [], error: null };
+              },
+            }),
+          };
+        }
+        throw new Error(`unexpected table ${table}`);
+      },
+    } as unknown as SupabaseClient;
+
+    const ids = await workerIdsForLaborBalanceFinancialQueries(mock, laborId);
+    expect(ids.sort()).toEqual([laborId, reimbWorkerId].sort());
+  });
 });
