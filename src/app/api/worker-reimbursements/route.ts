@@ -6,7 +6,13 @@ import type { WorkerReimbursement } from "@/lib/worker-reimbursements-db";
 export const dynamic = "force-dynamic";
 
 const COLS =
-  "id, worker_id, project_id, vendor, amount, description, receipt_url, status, created_at, paid_at, payment_id";
+  "id, worker_id, project_id, vendor, amount, description, receipt_url, status, reimbursement_date, created_at, paid_at, payment_id";
+
+function reimbDisplayDate(r: Record<string, unknown>): string {
+  const rd = r.reimbursement_date;
+  if (typeof rd === "string" && /^\d{4}-\d{2}-\d{2}/.test(rd)) return rd.slice(0, 10);
+  return String(r.created_at ?? "").slice(0, 10);
+}
 
 function fromRow(r: Record<string, unknown>): WorkerReimbursement {
   return {
@@ -20,6 +26,7 @@ function fromRow(r: Record<string, unknown>): WorkerReimbursement {
     description: (r.description as string | null) ?? null,
     receiptUrl: (r.receipt_url as string | null) ?? null,
     status: String(r.status ?? "").toLowerCase() === "paid" ? "paid" : "pending",
+    reimbursementDate: reimbDisplayDate(r),
     createdAt: String(r.created_at ?? ""),
     paidAt: r.paid_at != null ? String(r.paid_at) : null,
     paymentId: (r.payment_id as string | null) ?? null,
@@ -41,17 +48,29 @@ export async function GET() {
     const resFull = await supabase
       .from("worker_reimbursements")
       .select(COLS)
+      .order("reimbursement_date", { ascending: false })
       .order("created_at", { ascending: false });
     if (resFull.error) {
       const resFallback = await supabase
         .from("worker_reimbursements")
         .select(
-          "id, worker_id, project_id, amount, description, receipt_url, status, created_at, paid_at"
+          "id, worker_id, project_id, vendor, amount, description, receipt_url, status, reimbursement_date, created_at, paid_at, payment_id"
         )
+        .order("reimbursement_date", { ascending: false })
         .order("created_at", { ascending: false });
-      if (resFallback.error)
-        throw new Error(resFallback.error.message ?? "Failed to load reimbursements.");
-      raw = (resFallback.data ?? []) as Record<string, unknown>[];
+      if (resFallback.error) {
+        const resLegacy = await supabase
+          .from("worker_reimbursements")
+          .select(
+            "id, worker_id, project_id, amount, description, receipt_url, status, created_at, paid_at"
+          )
+          .order("created_at", { ascending: false });
+        if (resLegacy.error)
+          throw new Error(resLegacy.error.message ?? "Failed to load reimbursements.");
+        raw = (resLegacy.data ?? []) as Record<string, unknown>[];
+      } else {
+        raw = (resFallback.data ?? []) as Record<string, unknown>[];
+      }
     } else {
       raw = (resFull.data ?? []) as Record<string, unknown>[];
     }
@@ -94,9 +113,13 @@ export async function GET() {
       projectName: r.projectId ? (projectNameById.get(r.projectId) ?? null) : null,
     }));
 
-    const sorted = [...enriched].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    const sorted = [...enriched].sort((a, b) => {
+      const da = a.reimbursementDate || a.createdAt.slice(0, 10);
+      const db = b.reimbursementDate || b.createdAt.slice(0, 10);
+      const c = db.localeCompare(da);
+      if (c !== 0) return c;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
     return NextResponse.json({ reimbursements: sorted });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to load";
@@ -128,6 +151,12 @@ export async function POST(req: Request) {
     if (!Number.isFinite(amount) || amount < 0)
       return NextResponse.json({ message: "amount is invalid." }, { status: 400 });
 
+    const reimbDateRaw =
+      typeof body.reimbursementDate === "string" ? body.reimbursementDate.trim().slice(0, 10) : "";
+    const reimbursement_date = /^\d{4}-\d{2}-\d{2}$/.test(reimbDateRaw)
+      ? reimbDateRaw
+      : new Date().toISOString().slice(0, 10);
+
     const payloadBase: Record<string, unknown> = {
       worker_id: workerId,
       project_id: projectId || null,
@@ -135,6 +164,7 @@ export async function POST(req: Request) {
       description: typeof body.description === "string" ? body.description.trim() || null : null,
       receipt_url: typeof body.receiptUrl === "string" ? body.receiptUrl.trim() || null : null,
       status: typeof body.status === "string" ? body.status : "pending",
+      reimbursement_date,
     };
 
     // Try vendor column first.
@@ -154,6 +184,27 @@ export async function POST(req: Request) {
         // Select * so this works even if COLS doesn't match schema exactly (e.g. vendor_name vs vendor).
         .select("*")
         .single();
+    }
+    if (
+      res.error &&
+      /column .*reimbursement_date.*does not exist|schema cache/i.test(res.error.message ?? "")
+    ) {
+      const { reimbursement_date: _rd, ...noDate } = payloadBase;
+      res = await supabase
+        .from("worker_reimbursements")
+        .insert({ ...noDate, vendor: vendor || null })
+        .select("*")
+        .single();
+      if (
+        res.error &&
+        /column .*vendor.*does not exist|schema cache/i.test(res.error.message ?? "")
+      ) {
+        res = await supabase
+          .from("worker_reimbursements")
+          .insert({ ...noDate, vendor_name: vendor || null })
+          .select("*")
+          .single();
+      }
     }
     if (res.error || !res.data) {
       return NextResponse.json(

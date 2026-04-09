@@ -20,6 +20,8 @@ export type WorkerReimbursement = {
   description: string | null;
   receiptUrl: string | null;
   status: WorkerReimbursementStatus;
+  /** Business date (YYYY-MM-DD); falls back to created_at date when column absent in DB. */
+  reimbursementDate: string;
   createdAt: string;
   paidAt: string | null;
   paymentId?: string | null;
@@ -37,6 +39,8 @@ export type WorkerPayment = {
 export type WorkerReimbursementDraft = {
   workerId: string;
   projectId: string | null;
+  /** Required for new rows in UI; stored as reimbursement_date (date). */
+  reimbursementDate?: string;
   vendor?: string | null;
   amount: number;
   description?: string | null;
@@ -74,9 +78,11 @@ function isTableMissingError(error: { message?: string; code?: string }): boolea
 }
 
 const COLS =
+  "id, worker_id, project_id, vendor, amount, description, receipt_url, status, reimbursement_date, created_at, paid_at, payment_id";
+/** Oldest PostgREST shapes */
+const COLS_LEGACY =
   "id, worker_id, project_id, vendor, amount, description, receipt_url, status, created_at, paid_at, payment_id";
-/** Fallback when payment_id column does not exist */
-const COLS_MINIMAL =
+const COLS_LEGACY_NO_PAY =
   "id, worker_id, project_id, vendor, amount, description, receipt_url, status, created_at, paid_at";
 
 async function enrichNames(rows: WorkerReimbursement[]): Promise<WorkerReimbursement[]> {
@@ -119,6 +125,12 @@ function normaliseStatus(s: unknown): WorkerReimbursementStatus {
   return "pending";
 }
 
+function reimbursementDateFromRow(r: Record<string, unknown>): string {
+  const rd = r.reimbursement_date;
+  if (typeof rd === "string" && /^\d{4}-\d{2}-\d{2}/.test(rd)) return rd.slice(0, 10);
+  return String(r.created_at ?? "").slice(0, 10);
+}
+
 function fromRow(r: Record<string, unknown>): WorkerReimbursement {
   return {
     id: r.id as string,
@@ -131,6 +143,7 @@ function fromRow(r: Record<string, unknown>): WorkerReimbursement {
     description: (r.description as string | null) ?? null,
     receiptUrl: (r.receipt_url as string | null) ?? null,
     status: normaliseStatus(r.status),
+    reimbursementDate: reimbursementDateFromRow(r),
     createdAt: String(r.created_at ?? ""),
     paidAt: r.paid_at != null ? String(r.paid_at) : null,
     paymentId: (r.payment_id as string | null) ?? null,
@@ -147,14 +160,23 @@ export async function getWorkerReimbursements(): Promise<WorkerReimbursement[]> 
   let { data, error } = await c
     .from(TABLE_NAME)
     .select(COLS)
+    .order("reimbursement_date", { ascending: false })
     .order("created_at", { ascending: false });
   if (error && isColumnMissingError(error)) {
     const fallback = await c
       .from(TABLE_NAME)
-      .select(COLS_MINIMAL)
+      .select(COLS_LEGACY)
       .order("created_at", { ascending: false });
     data = fallback.data as unknown as typeof data;
     error = fallback.error;
+  }
+  if (error && isColumnMissingError(error)) {
+    const fallback2 = await c
+      .from(TABLE_NAME)
+      .select(COLS_LEGACY_NO_PAY)
+      .order("created_at", { ascending: false });
+    data = fallback2.data as unknown as typeof data;
+    error = fallback2.error;
   }
   if (error) {
     if (isTableMissingError(error)) throw new Error(TABLE_MISSING_MESSAGE);
@@ -177,11 +199,20 @@ export async function getReimbursementById(
   if (error && isColumnMissingError(error)) {
     const fallback = await c
       .from(TABLE_NAME)
-      .select(COLS_MINIMAL)
+      .select(COLS_LEGACY)
       .eq("id", reimbursementId)
       .maybeSingle();
     data = fallback.data as unknown as typeof data;
     error = fallback.error;
+  }
+  if (error && isColumnMissingError(error)) {
+    const fallback2 = await c
+      .from(TABLE_NAME)
+      .select(COLS_LEGACY_NO_PAY)
+      .eq("id", reimbursementId)
+      .maybeSingle();
+    data = fallback2.data as unknown as typeof data;
+    error = fallback2.error;
   }
   if (error) {
     if (isTableMissingError(error)) throw new Error(TABLE_MISSING_MESSAGE);
@@ -199,15 +230,25 @@ export async function getWorkerReimbursementsByWorkerId(
     .from(TABLE_NAME)
     .select(COLS)
     .eq("worker_id", workerId)
+    .order("reimbursement_date", { ascending: false })
     .order("created_at", { ascending: false });
   if (error && isColumnMissingError(error)) {
     const fallback = await c
       .from(TABLE_NAME)
-      .select(COLS_MINIMAL)
+      .select(COLS_LEGACY)
       .eq("worker_id", workerId)
       .order("created_at", { ascending: false });
     data = fallback.data as unknown as typeof data;
     error = fallback.error;
+  }
+  if (error && isColumnMissingError(error)) {
+    const fallback2 = await c
+      .from(TABLE_NAME)
+      .select(COLS_LEGACY_NO_PAY)
+      .eq("worker_id", workerId)
+      .order("created_at", { ascending: false });
+    data = fallback2.data as unknown as typeof data;
+    error = fallback2.error;
   }
   if (error) {
     if (isTableMissingError(error)) throw new Error(TABLE_MISSING_MESSAGE);
@@ -220,24 +261,33 @@ export async function getWorkerReimbursementsByWorkerId(
 export async function insertWorkerReimbursement(
   draft: WorkerReimbursementDraft
 ): Promise<WorkerReimbursement> {
-  const { data, error } = await client()
+  const dateStr =
+    draft.reimbursementDate?.trim().slice(0, 10) || new Date().toISOString().slice(0, 10);
+  const baseInsert: Record<string, unknown> = {
+    worker_id: draft.workerId,
+    project_id: draft.projectId ?? null,
+    vendor: draft.vendor?.trim() || null,
+    amount: draft.amount,
+    description: draft.description?.trim() || null,
+    receipt_url: draft.receiptUrl?.trim() || null,
+    status: (draft.status as string) ?? "pending",
+  };
+  let res = await client()
     .from(TABLE_NAME)
-    .insert({
-      worker_id: draft.workerId,
-      project_id: draft.projectId ?? null,
-      vendor: draft.vendor?.trim() || null,
-      amount: draft.amount,
-      description: draft.description?.trim() || null,
-      receipt_url: draft.receiptUrl?.trim() || null,
-      status: (draft.status as string) ?? "pending",
-    })
+    .insert({ ...baseInsert, reimbursement_date: dateStr })
     .select(COLS)
     .single();
-  if (error) {
-    if (isTableMissingError(error)) throw new Error(TABLE_MISSING_MESSAGE);
-    throw new Error(error.message ?? "Failed to create reimbursement.");
+  if (res.error && isColumnMissingError(res.error)) {
+    res = await client().from(TABLE_NAME).insert(baseInsert).select(COLS_LEGACY).single();
   }
-  return fromRow(data as Record<string, unknown>);
+  if (res.error && isColumnMissingError(res.error)) {
+    res = await client().from(TABLE_NAME).insert(baseInsert).select(COLS_LEGACY_NO_PAY).single();
+  }
+  if (res.error) {
+    if (isTableMissingError(res.error)) throw new Error(TABLE_MISSING_MESSAGE);
+    throw new Error(res.error.message ?? "Failed to create reimbursement.");
+  }
+  return fromRow(res.data as Record<string, unknown>);
 }
 
 export async function updateWorkerReimbursement(
@@ -252,31 +302,66 @@ export async function updateWorkerReimbursement(
   if (draft.description !== undefined) payload.description = draft.description?.trim() || null;
   if (draft.receiptUrl !== undefined) payload.receipt_url = draft.receiptUrl?.trim() || null;
   if (draft.status != null) payload.status = draft.status;
-  const { data, error } = await client()
-    .from(TABLE_NAME)
-    .update(payload)
-    .eq("id", id)
-    .select(COLS)
-    .single();
-  if (error) {
-    if (isTableMissingError(error)) throw new Error(TABLE_MISSING_MESSAGE);
-    throw new Error(error.message ?? "Failed to update reimbursement.");
+  if (draft.reimbursementDate !== undefined) {
+    const d = draft.reimbursementDate.trim().slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) payload.reimbursement_date = d;
   }
-  return fromRow(data as Record<string, unknown>);
+  let res = await client().from(TABLE_NAME).update(payload).eq("id", id).select(COLS).single();
+  if (res.error && isColumnMissingError(res.error)) {
+    res = await client().from(TABLE_NAME).update(payload).eq("id", id).select(COLS_LEGACY).single();
+  }
+  if (res.error && isColumnMissingError(res.error)) {
+    res = await client()
+      .from(TABLE_NAME)
+      .update(payload)
+      .eq("id", id)
+      .select(COLS_LEGACY_NO_PAY)
+      .single();
+  }
+  if (res.error && isColumnMissingError(res.error) && payload.reimbursement_date !== undefined) {
+    const { reimbursement_date: _x, ...rest } = payload;
+    res = await client()
+      .from(TABLE_NAME)
+      .update(rest)
+      .eq("id", id)
+      .select(COLS_LEGACY_NO_PAY)
+      .single();
+  }
+  if (res.error) {
+    if (isTableMissingError(res.error)) throw new Error(TABLE_MISSING_MESSAGE);
+    throw new Error(res.error.message ?? "Failed to update reimbursement.");
+  }
+  return fromRow(res.data as Record<string, unknown>);
 }
 
 export async function approveWorkerReimbursement(id: string): Promise<WorkerReimbursement> {
-  const { data, error } = await client()
+  let res = await client()
     .from(TABLE_NAME)
     .update({ status: "approved" })
     .eq("id", id)
     .select(COLS)
     .single();
-  if (error) {
-    if (isTableMissingError(error)) throw new Error(TABLE_MISSING_MESSAGE);
-    throw new Error(error.message ?? "Failed to approve reimbursement.");
+  if (res.error && isColumnMissingError(res.error)) {
+    res = await client()
+      .from(TABLE_NAME)
+      .update({ status: "approved" })
+      .eq("id", id)
+      .select(COLS_LEGACY)
+      .single();
   }
-  return fromRow(data as Record<string, unknown>);
+  if (res.error && isColumnMissingError(res.error)) {
+    res = await client()
+      .from(TABLE_NAME)
+      .update({ status: "approved" })
+      .eq("id", id)
+      .select(COLS_LEGACY_NO_PAY)
+      .single();
+  }
+  if (res.error) {
+    if (isTableMissingError(res.error)) throw new Error(TABLE_MISSING_MESSAGE);
+    throw new Error(res.error.message ?? "Failed to approve reimbursement.");
+  }
+  return fromRow(res.data as Record<string, unknown>);
 }
 
 export async function deleteWorkerReimbursement(id: string): Promise<void> {
@@ -354,7 +439,15 @@ export async function markReimbursementPaid(reimbursementId: string): Promise<Wo
       .from(TABLE_NAME)
       .update(withPaidAt)
       .eq("id", reimbursementId)
-      .select(COLS_MINIMAL)
+      .select(COLS_LEGACY)
+      .maybeSingle();
+  }
+  if (result.error && isColumnMissingError(result.error)) {
+    result = await c
+      .from(TABLE_NAME)
+      .update(withPaidAt)
+      .eq("id", reimbursementId)
+      .select(COLS_LEGACY_NO_PAY)
       .maybeSingle();
   }
   if (result.error && isColumnMissingError(result.error)) {
@@ -362,7 +455,7 @@ export async function markReimbursementPaid(reimbursementId: string): Promise<Wo
       .from(TABLE_NAME)
       .update(statusOnly)
       .eq("id", reimbursementId)
-      .select(COLS_MINIMAL)
+      .select(COLS_LEGACY_NO_PAY)
       .maybeSingle();
   }
   if (result.error) throw new Error(result.error.message ?? "Failed to update reimbursement.");
@@ -375,7 +468,7 @@ export async function markReimbursementPaid(reimbursementId: string): Promise<Wo
   }
   const { data: existing, error: fetchErr } = await c
     .from(TABLE_NAME)
-    .select(COLS_MINIMAL)
+    .select(COLS_LEGACY)
     .eq("id", reimbursementId)
     .maybeSingle();
   if (fetchErr) throw new Error(fetchErr.message ?? "Failed to load reimbursement.");

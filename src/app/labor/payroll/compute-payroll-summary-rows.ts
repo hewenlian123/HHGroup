@@ -81,7 +81,7 @@ export function buildPayrollSummaryRows(
 
   const reimbursements = reimbursementsAll.filter((r) => {
     if (projectFilter && r.projectId !== projectFilter) return false;
-    const d = r.createdAt?.slice(0, 10) ?? "";
+    const d = (r.reimbursementDate ?? r.createdAt?.slice(0, 10) ?? "").slice(0, 10);
     if (d && (d < fromDate || d > toDate)) return false;
     return String(r.status ?? "").toLowerCase() !== "paid";
   });

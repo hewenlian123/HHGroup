@@ -147,6 +147,7 @@ describe("buildPayrollSummaryRows", () => {
           description: "gas",
           receiptUrl: null,
           status: "pending",
+          reimbursementDate: "2026-03-06",
           createdAt: "2026-03-06T12:00:00Z",
           paidAt: null,
         },
@@ -162,6 +163,43 @@ describe("buildPayrollSummaryRows", () => {
     expect(r.shouldPay).toBe(95);
     expect(r.balance).toBe(95);
     expect(balanceStatusLabel(r.balance)).toBe("Unpaid");
+  });
+
+  it("filters reimbursements by reimbursementDate when it differs from createdAt", () => {
+    const rows = buildPayrollSummaryRows({
+      fromDate: "2026-03-01",
+      toDate: "2026-03-31",
+      projectFilter: null,
+      includeLaborInvoices: false,
+      workers,
+      laborEntries: [
+        baseLaborEntry({ workDate: "2026-03-10", dailyRate: 50, dayType: "full_day" }),
+      ],
+      reimbursementsAll: [
+        {
+          id: "rb-out",
+          workerId: "w1",
+          projectId: "p1",
+          amount: 99,
+          vendor: null,
+          description: "out of range",
+          receiptUrl: null,
+          status: "pending",
+          reimbursementDate: "2026-04-15",
+          createdAt: "2026-03-01T12:00:00Z",
+          paidAt: null,
+        },
+      ],
+      workerInvoicesAll: [],
+      laborInvoicesAll: [],
+      paymentsAll: [],
+      advancesAll: [],
+    });
+    const r = rows.find((x) => x.workerId === "w1");
+    expect(r).toBeDefined();
+    expect(r!.earned).toBe(50);
+    expect(r!.reimbursements).toBe(0);
+    expect(r!.shouldPay).toBe(50);
   });
 
   it("balanceStatusLabel: Balanced / Unpaid / Overpaid by rounded cents", () => {
