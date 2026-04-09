@@ -69,7 +69,7 @@ function ProjectDetailStatusPill({ status }: { status: string }) {
 }
 
 const TAB_PANEL =
-  "mt-4 rounded-lg bg-white p-4 sm:p-5 shadow-[0_1px_3px_rgba(0,0,0,0.06)] text-[14px] leading-normal";
+  "mt-4 rounded-lg bg-white p-4 sm:p-5 shadow-[0_1px_3px_rgba(0_0_0_0.06)] text-[14px] leading-normal";
 
 type TabKey =
   | "overview"
@@ -246,7 +246,7 @@ export function ProjectDetailTabsClient({
             <ArrowLeft className="h-4 w-4" />
             Projects
           </Link>
-          <div className="rounded-lg bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.06)] sm:p-6">
+          <div className="rounded-lg bg-white p-5 shadow-[0_1px_3px_rgba(0_0_0_0.06)] sm:p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0 space-y-2">
                 <div className="flex flex-wrap items-center gap-3">
@@ -484,7 +484,7 @@ export function ProjectDetailTabsClient({
               {/* Metrics strip */}
               {financialSummary && (
                 <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 xl:grid-cols-6">
-                  <div className="flex flex-col justify-between rounded-[8px] border border-[#F0F0F0] bg-[#FAFAFA] px-4 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+                  <div className="flex flex-col justify-between rounded-[8px] border border-[#F0F0F0] bg-[#FAFAFA] px-4 py-3 shadow-[0_1px_2px_rgba(0_0_0_0.04)]">
                     <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-[0.08em]">
                       Budget
                     </span>
@@ -495,7 +495,7 @@ export function ProjectDetailTabsClient({
                       })}
                     </span>
                   </div>
-                  <div className="flex flex-col justify-between rounded-[8px] border border-[#F0F0F0] bg-[#FAFAFA] px-4 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+                  <div className="flex flex-col justify-between rounded-[8px] border border-[#F0F0F0] bg-[#FAFAFA] px-4 py-3 shadow-[0_1px_2px_rgba(0_0_0_0.04)]">
                     <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-[0.08em]">
                       Spent
                     </span>
@@ -504,7 +504,7 @@ export function ProjectDetailTabsClient({
                       {financialSummary.spent.toLocaleString("en-US", { maximumFractionDigits: 0 })}
                     </span>
                   </div>
-                  <div className="flex flex-col justify-between rounded-[8px] border border-[#F0F0F0] bg-[#FAFAFA] px-4 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+                  <div className="flex flex-col justify-between rounded-[8px] border border-[#F0F0F0] bg-[#FAFAFA] px-4 py-3 shadow-[0_1px_2px_rgba(0_0_0_0.04)]">
                     <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-[0.08em]">
                       Revenue
                     </span>
@@ -515,7 +515,7 @@ export function ProjectDetailTabsClient({
                       })}
                     </span>
                   </div>
-                  <div className="flex flex-col justify-between rounded-[8px] border border-[#F0F0F0] bg-[#FAFAFA] px-4 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+                  <div className="flex flex-col justify-between rounded-[8px] border border-[#F0F0F0] bg-[#FAFAFA] px-4 py-3 shadow-[0_1px_2px_rgba(0_0_0_0.04)]">
                     <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-[0.08em]">
                       Collected
                     </span>
@@ -526,7 +526,7 @@ export function ProjectDetailTabsClient({
                       })}
                     </span>
                   </div>
-                  <div className="flex flex-col justify-between rounded-[8px] border border-[#F0F0F0] bg-[#FAFAFA] px-4 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+                  <div className="flex flex-col justify-between rounded-[8px] border border-[#F0F0F0] bg-[#FAFAFA] px-4 py-3 shadow-[0_1px_2px_rgba(0_0_0_0.04)]">
                     <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-[0.08em]">
                       Outstanding
                     </span>
@@ -537,7 +537,7 @@ export function ProjectDetailTabsClient({
                       })}
                     </span>
                   </div>
-                  <div className="flex flex-col justify-between rounded-[8px] border border-[#F0F0F0] bg-[#FAFAFA] px-4 py-3 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+                  <div className="flex flex-col justify-between rounded-[8px] border border-[#F0F0F0] bg-[#FAFAFA] px-4 py-3 shadow-[0_1px_2px_rgba(0_0_0_0.04)]">
                     <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-[0.08em]">
                       Profit
                     </span>

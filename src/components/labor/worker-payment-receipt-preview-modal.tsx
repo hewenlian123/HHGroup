@@ -119,7 +119,7 @@ export function WorkerPaymentReceiptPreviewModal({ paymentId, open, onOpenChange
         />
         <DialogPrimitive.Content
           className={cn(
-            "receipt-preview-dialog-root fixed left-1/2 top-1/2 z-50 flex max-h-[min(88vh,880px)] w-[min(720px,94vw)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-sm border border-border/60 bg-background shadow-none duration-100",
+            "receipt-preview-dialog-root fixed left-1/2 top-1/2 z-50 flex max-h-[min(88vh_880px)] w-[min(720px_94vw)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-sm border border-border/60 bg-background shadow-none duration-100",
             "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
             "max-md:inset-x-3 max-md:top-6 max-md:max-h-[calc(100vh-3rem)] max-md:w-auto max-md:max-w-[calc(100vw-1.5rem)] max-md:-translate-x-1/2 max-md:translate-y-0"
           )}

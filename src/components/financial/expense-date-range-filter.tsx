@@ -231,8 +231,8 @@ export function ExpenseDateRangeFilter({
         className={cn(
           "p-0",
           panel === "menu"
-            ? "w-[min(100vw-16px,260px)]"
-            : "w-[min(100vw-16px,720px)] max-w-[calc(100vw-16px)]"
+            ? "w-[min(100vw-16px_260px)]"
+            : "w-[min(100vw-16px_720px)] max-w-[calc(100vw-16px)]"
         )}
         onCloseAutoFocus={(e) => e.preventDefault()}
       >

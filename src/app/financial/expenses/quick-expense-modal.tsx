@@ -698,7 +698,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
-          className="flex max-h-[min(92dvh,640px)] w-[calc(100vw-1.5rem)] max-w-md flex-col gap-0 overflow-hidden rounded-sm border-border/60 p-0 sm:w-full"
+          className="flex max-h-[min(92dvh_640px)] w-[calc(100vw-1.5rem)] max-w-md flex-col gap-0 overflow-hidden rounded-sm border-border/60 p-0 sm:w-full"
           onKeyDown={(e) => {
             if (e.key === "Escape") {
               e.stopPropagation();
@@ -743,7 +743,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
             ) : null}
 
             <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
-              <div className="min-h-0 max-h-[min(50vh,360px)] shrink-0 space-y-2 overflow-y-auto md:max-h-none md:overflow-visible">
+              <div className="min-h-0 max-h-[min(50vh_360px)] shrink-0 space-y-2 overflow-y-auto md:max-h-none md:overflow-visible">
                 {ocrSuggestions &&
                 (fieldConfidence.vendor !== "high" ||
                   fieldConfidence.amount !== "high" ||
@@ -976,7 +976,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                   />
                 </button>
                 {moreOpen ? (
-                  <div className="max-h-[min(36vh,220px)] space-y-3 overflow-y-auto border-t border-border/40 py-2">
+                  <div className="max-h-[min(36vh_220px)] space-y-3 overflow-y-auto border-t border-border/40 py-2">
                     <div>
                       <label className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                         Items

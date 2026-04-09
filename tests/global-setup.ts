@@ -1,12 +1,10 @@
 /**
  * Before all Playwright tests: ensure preserved E2E rows exist (see supabase/seed.sql).
  *
- * - Loads `.env` then `.env.local` (local overrides).
+ * - Loads `.env` → `.env.local` → `.env.e2e` (if present) → `.env.test` (if present); `.env.test` wins for local E2E DB.
  * - Set `E2E_SKIP_DB_SEED=1` to skip (no Supabase / UI-only runs).
  * - When URL + key are present, seed **must** succeed or the suite fails fast.
  */
-import { resolve } from "node:path";
-import { config as loadDotenv } from "dotenv";
 import { createClient } from "@supabase/supabase-js";
 import type { FullConfig } from "@playwright/test";
 
@@ -16,6 +14,7 @@ import {
   E2E_PRESERVED_WORKER_ID,
   purgeE2EReceiptQueueRows,
 } from "./e2e-cleanup-db";
+import { loadE2EProcessEnv } from "./e2e-load-env";
 import { runSchemaAutoRepair } from "../src/lib/ensure-schema-auto-repair";
 import { ensureE2EPreservedSeed } from "./e2e-ensure-seed";
 import { resetE2ESeedWorkerPayrollStateWithClient } from "./e2e-reset-worker-payroll";
@@ -26,8 +25,7 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
     return;
   }
 
-  loadDotenv({ path: resolve(process.cwd(), ".env") });
-  loadDotenv({ path: resolve(process.cwd(), ".env.local"), override: true });
+  loadE2EProcessEnv();
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const key =
@@ -36,8 +34,12 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
 
   if (!url || !key) {
     throw new Error(
-      "[global-setup] E2E seed required: set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (recommended) or NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local — or set E2E_SKIP_DB_SEED=1 to skip."
+      "[global-setup] E2E seed required: set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (recommended) or NEXT_PUBLIC_SUPABASE_ANON_KEY (.env.test / .env.local). See .env.test.example — or E2E_SKIP_DB_SEED=1 to skip."
     );
+  }
+
+  if (url.includes("supabase.co")) {
+    throw new Error("E2E tests must not run against production Supabase!");
   }
 
   const repair = await runSchemaAutoRepair();

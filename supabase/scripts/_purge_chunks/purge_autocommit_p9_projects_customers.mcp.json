@@ -1,0 +1,4 @@
+{
+  "project_id": "rzublljldebswurgdqxp",
+  "query": "-- ─── 8) Projects / customers ────────────────────────────────────────────────\nDELETE FROM public.projects p\nWHERE p.id = '11111111-1111-1111-1111-111111111111'::uuid\n   OR p.name ILIKE ANY (ARRAY['%PW%','%Playwright%','%Workflow Test%','%Body balance%','%Overlord%','%E2E%','%Seed%'])\n   OR p.name LIKE '[[]E2E]%';\n\nDELETE FROM public.customers cu\nWHERE cu.id = '33333333-3333-3333-3333-333333333333'::uuid\n   OR cu.name ILIKE ANY (ARRAY['%PW%','%Playwright%','%Workflow Test%','%Body balance%','%E2E%','%Seed%'])\n   OR cu.name LIKE '[[]E2E]%';\n"
+}

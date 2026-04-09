@@ -462,7 +462,7 @@ export default function TimesheetClient() {
           <KpiCard label="Entries" value={String(entryCount)} icon={FileEdit} />
         </div>
 
-        <Card className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+        <Card className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-[0_1px_3px_rgba(0_0_0_0.06)]">
           {loading ? (
             <div className="p-6 space-y-4">
               {Array.from({ length: 5 }).map((_, i) => (

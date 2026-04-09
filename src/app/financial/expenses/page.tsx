@@ -1924,7 +1924,7 @@ function ExpensesPageInner() {
           ) : total === 0 ? (
             <>
               <div
-                className="hidden min-h-[min(55vh,480px)] flex-col justify-center border-b border-gray-100/80 py-12 text-center transition-opacity duration-200 ease-out animate-in fade-in dark:border-border/60 md:flex"
+                className="hidden min-h-[min(55vh_480px)] flex-col justify-center border-b border-gray-100/80 py-12 text-center transition-opacity duration-200 ease-out animate-in fade-in dark:border-border/60 md:flex"
                 tabIndex={-1}
                 data-expenses-empty
               >
@@ -2031,7 +2031,7 @@ function ExpensesPageInner() {
               </div>
             </>
           ) : (
-            <div className="exp-list-card w-full overflow-hidden rounded-none border-0 bg-transparent shadow-none dark:bg-transparent md:rounded-xl md:border md:border-gray-100/80 md:bg-white md:shadow-[0_4px_12px_rgba(0,0,0,0.06)] dark:md:border-border/60 dark:md:bg-card dark:md:shadow-none">
+            <div className="exp-list-card w-full overflow-hidden rounded-none border-0 bg-transparent shadow-none dark:bg-transparent md:rounded-xl md:border md:border-gray-100/80 md:bg-white md:shadow-[0_4px_12px_rgba(0_0_0_0.06)] dark:md:border-border/60 dark:md:bg-card dark:md:shadow-none">
               {listView === "all" ? (
                 <div className="divide-y divide-gray-100 dark:divide-border/60 md:hidden">
                   {pageRows.map((row) => {
@@ -2120,7 +2120,7 @@ function ExpensesPageInner() {
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <Input
-                                  className="h-7 rounded-sm border-gray-100/60 text-[14px] text-text-primary transition-[box-shadow,border-color] duration-150 focus-visible:ring-2 focus-visible:ring-blue-400/30"
+                                  className="h-7 rounded-sm border-gray-100/60 text-[14px] text-text-primary transition-[box-shadow_border-color] duration-150 focus-visible:ring-2 focus-visible:ring-blue-400/30"
                                   value={vendorDraft}
                                   autoFocus
                                   onChange={(e) => setVendorDraft(e.target.value)}
@@ -2263,7 +2263,7 @@ function ExpensesPageInner() {
                               <span className="inline-flex items-center gap-1" data-inline-field>
                                 <Input
                                   type="date"
-                                  className="h-7 w-[9.5rem] rounded-sm border-gray-100/60 text-xs text-text-primary transition-[box-shadow,border-color] duration-150 focus-visible:ring-2 focus-visible:ring-blue-400/30"
+                                  className="h-7 w-[9.5rem] rounded-sm border-gray-100/60 text-xs text-text-primary transition-[box-shadow_border-color] duration-150 focus-visible:ring-2 focus-visible:ring-blue-400/30"
                                   value={dateDraft}
                                   autoFocus
                                   onChange={(e) => setDateDraft(e.target.value)}
@@ -2437,7 +2437,7 @@ function ExpensesPageInner() {
                                 data-inline-field
                               >
                                 <Input
-                                  className="h-7 w-24 rounded-sm border-gray-100/80 text-right text-[15px] tabular-nums text-text-primary transition-[box-shadow,border-color] duration-150 focus-visible:ring-2 focus-visible:ring-blue-400/30"
+                                  className="h-7 w-24 rounded-sm border-gray-100/80 text-right text-[15px] tabular-nums text-text-primary transition-[box-shadow_border-color] duration-150 focus-visible:ring-2 focus-visible:ring-blue-400/30"
                                   value={amountDraft}
                                   autoFocus
                                   inputMode="decimal"

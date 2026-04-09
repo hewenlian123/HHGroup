@@ -2,8 +2,6 @@
  * Idempotent: upsert the same preserved rows as supabase/seed.sql (minimal subset).
  * Usage: npx tsx scripts/ensure-e2e-seed.ts
  */
-import { resolve } from "node:path";
-import { config as loadDotenv } from "dotenv";
 import { createClient } from "@supabase/supabase-js";
 
 import {
@@ -12,9 +10,10 @@ import {
   E2E_PRESERVED_WORKER_ID,
 } from "../tests/e2e-cleanup-db";
 import { ensureE2EPreservedSeed } from "../tests/e2e-ensure-seed";
+import { loadE2EProcessEnv } from "../tests/e2e-load-env";
+import { assertE2ESupabaseUrlSafeForMutations } from "../tests/e2e-supabase-url-guard";
 
-loadDotenv({ path: resolve(process.cwd(), ".env") });
-loadDotenv({ path: resolve(process.cwd(), ".env.local"), override: true });
+loadE2EProcessEnv();
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
 const key =
@@ -23,10 +22,13 @@ const key =
 
 if (!url || !key) {
   console.error(
-    "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY / anon key in .env.local"
+    "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY / anon key. " +
+      "Load order: .env → .env.test → .env.e2e → .env.local — see .env.test.example."
   );
   process.exit(1);
 }
+
+assertE2ESupabaseUrlSafeForMutations(url);
 
 ensureE2EPreservedSeed(createClient(url, key))
   .then(() => {

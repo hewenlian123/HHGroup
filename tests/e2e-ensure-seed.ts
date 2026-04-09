@@ -4,6 +4,7 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 import {
   E2E_PRESERVED_CUSTOMER_ID,
   E2E_PRESERVED_LABOR_ENTRY_ID,
@@ -43,6 +44,7 @@ async function upsertFirstSuccess(
 }
 
 export async function ensureE2EPreservedSeed(supabase: SupabaseClient): Promise<void> {
+  assertE2ESupabaseUrlSafeForMutations(process.env.NEXT_PUBLIC_SUPABASE_URL);
   const customerVariants: RecordUpsert[] = [
     {
       id: E2E_PRESERVED_CUSTOMER_ID,

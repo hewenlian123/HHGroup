@@ -71,7 +71,7 @@
     }
   }
   .hh-motion-root main img:not([data-no-image-preview]):not([data-no-tap-scale]) {
-    @apply cursor-zoom-in transition-[transform,box-shadow] duration-150 ease-out;
+    @apply cursor-zoom-in transition-[transform_box-shadow] duration-150 ease-out;
   }
   .hh-motion-root main img:not([data-no-image-preview]):not([data-no-tap-scale]):hover {
     @apply scale-[1.02] shadow-md;

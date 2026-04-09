@@ -19,11 +19,11 @@ type ProjectRow = { id: string; name: string | null; status?: string | null };
 type WorkerRow = { id: string; name: string };
 
 const RQ_BTN =
-  "transition-[background-color,transform,color] duration-[140ms] ease-out active:scale-[0.95] active:duration-90 active:ease-[cubic-bezier(0.34,1.56,0.64,1)]";
+  "transition-[background-color_transform_color] duration-[140ms] ease-out active:scale-[0.95] active:duration-90 active:ease-[cubic-bezier(0.34_1.56_0.64_1)]";
 
 function fieldClass(layout: RqLayout, extra?: string): string {
   return cn(
-    "w-full min-w-0 border border-[#e5e7eb] bg-[#ffffff] text-[#111827] shadow-none transition-[border-color,box-shadow,background-color] duration-150 ease-out",
+    "w-full min-w-0 border border-[#e5e7eb] bg-[#ffffff] text-[#111827] shadow-none transition-[border-color_box-shadow_background-color] duration-150 ease-out",
     "hover:border-[#d1d5db] focus-visible:border-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/30",
     layout === "mobile"
       ? "min-h-10 rounded-xl px-3 py-2 text-base leading-snug"
@@ -112,10 +112,10 @@ function propsEqual(prev: ReceiptQueueRowCardProps, next: ReceiptQueueRowCardPro
 }
 
 const TABLET_GRID =
-  "grid min-w-[700px] w-full items-center gap-x-2 gap-y-2 [grid-template-columns:52px_72px_minmax(0,1.35fr)_minmax(0,0.95fr)_minmax(0,0.95fr)_minmax(0,1.05fr)_minmax(0,0.95fr)_minmax(0,0.95fr)_92px]";
+  "grid min-w-[700px] w-full items-center gap-x-2 gap-y-2 [grid-template-columns:52px_72px_minmax(0_1.35fr)_minmax(0_0.95fr)_minmax(0_0.95fr)_minmax(0_1.05fr)_minmax(0_0.95fr)_minmax(0_0.95fr)_92px]";
 
 const DESKTOP_GRID =
-  "grid min-w-[920px] w-full items-center gap-x-3 gap-y-2 [grid-template-columns:60px_80px_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)_100px]";
+  "grid min-w-[920px] w-full items-center gap-x-3 gap-y-2 [grid-template-columns:60px_80px_minmax(0_1.4fr)_minmax(0_1fr)_minmax(0_1fr)_minmax(0_1.2fr)_minmax(0_1fr)_minmax(0_1fr)_100px]";
 
 export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
   layout,
@@ -168,7 +168,7 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
       aria-label="Preview receipt"
       data-queue-row-id={id}
       className={cn(
-        "relative overflow-hidden border border-[#e5e7eb] text-left transition-[opacity,box-shadow] duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/30",
+        "relative overflow-hidden border border-[#e5e7eb] text-left transition-[opacity_box-shadow] duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/30",
         thumbSize,
         busy || !prev
           ? "cursor-not-allowed opacity-60"
@@ -358,8 +358,8 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
       size="sm"
       className={cn(
         layout === "mobile"
-          ? "h-11 min-h-10 min-w-[2.75rem] shrink-0 rounded-xl border-[#e5e7eb] px-3 text-[#6b7280] transition-[background-color,transform,color,box-shadow] duration-150 ease-out hover:border-red-200/80 hover:bg-red-50 hover:text-[#d92d20] hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]/35 active:scale-[0.96]"
-          : "h-9 shrink-0 rounded-lg border-[#e5e7eb] px-2 text-[#6b7280] transition-[background-color,transform,color,box-shadow] duration-[140ms] ease-out hover:scale-110 hover:border-red-200/80 hover:bg-red-50 hover:text-[#d92d20] hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]/35 active:scale-[0.88] active:duration-90 active:ease-[cubic-bezier(0.34,1.56,0.64,1)]",
+          ? "h-11 min-h-10 min-w-[2.75rem] shrink-0 rounded-xl border-[#e5e7eb] px-3 text-[#6b7280] transition-[background-color_transform_color_box-shadow] duration-150 ease-out hover:border-red-200/80 hover:bg-red-50 hover:text-[#d92d20] hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]/35 active:scale-[0.96]"
+          : "h-9 shrink-0 rounded-lg border-[#e5e7eb] px-2 text-[#6b7280] transition-[background-color_transform_color_box-shadow] duration-[140ms] ease-out hover:scale-110 hover:border-red-200/80 hover:bg-red-50 hover:text-[#d92d20] hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]/35 active:scale-[0.88] active:duration-90 active:ease-[cubic-bezier(0.34_1.56_0.64_1)]",
         RQ_BTN
       )}
       disabled={busy || rowLocked}
@@ -403,23 +403,23 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
     layout === "mobile"
       ? "max-h-none rounded-xl border border-[#e5e7eb] shadow-sm dark:border-border"
       : "max-h-[520px] rounded-lg border border-[#e5e7eb] shadow-sm dark:border-border",
-    !!motion && "pointer-events-none will-change-[opacity,transform,max-height]",
+    !!motion && "pointer-events-none will-change-[opacity_transform_max-height]",
     motion
-      ? "transition-[transform,opacity,background-color,max-height,margin,padding,box-shadow] duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]"
+      ? "transition-[transform_opacity_background-color_max-height_margin_padding_box-shadow] duration-200 ease-[cubic-bezier(0.4_0_0.2_1)]"
       : "transition-all duration-150 ease-out",
     !motion &&
       !rowLocked &&
       "hover:-translate-y-px hover:bg-gray-50 active:scale-[0.99] dark:hover:bg-muted/40",
     motion === "success_check" && "bg-emerald-50 shadow-sm ring-1 ring-emerald-200/80",
-    motion === "fade" && "translate-x-2 opacity-0 !duration-200 !ease-[cubic-bezier(0.4,0,0.2,1)]",
+    motion === "fade" && "translate-x-2 opacity-0 !duration-200 !ease-[cubic-bezier(0.4_0_0.2_1)]",
     motion === "collapse" &&
-      "!mb-0 !max-h-0 !translate-x-2 !py-0 !opacity-0 !duration-200 !ease-[cubic-bezier(0.4,0,0.2,1)]",
+      "!mb-0 !max-h-0 !translate-x-2 !py-0 !opacity-0 !duration-200 !ease-[cubic-bezier(0.4_0_0.2_1)]",
     activeQueueRowId === id && "z-[1] ring-1 ring-inset ring-[#2563eb]/20 dark:ring-border",
     activeQueueRowId === id && !needsHighlight && !motion && "bg-[#eff6ff]/80 dark:bg-muted/25",
     newRowHighlight && "animate-receipt-queue-row-new",
     needsHighlight &&
       !motion &&
-      "bg-[#f8fafc] shadow-[inset_3px_0_0_0_#2563eb] dark:bg-slate-950/40 dark:shadow-[inset_3px_0_0_0_rgb(37,99,235)]",
+      "bg-[#f8fafc] shadow-[inset_3px_0_0_0_#2563eb] dark:bg-slate-950/40 dark:shadow-[inset_3px_0_0_0_rgb(37_99_235)]",
     needsHighlight && !motion && !rowLocked && "dark:hover:bg-slate-950/55"
   );
 

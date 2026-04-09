@@ -172,7 +172,7 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
           <div
             role="status"
             aria-live="polite"
-            className="pointer-events-none absolute right-14 top-4 z-[2] max-w-[min(12rem,calc(100%-5rem))] truncate rounded-sm border border-emerald-200/70 bg-emerald-50/95 px-2 py-0.5 text-[11px] font-medium leading-tight text-emerald-900 dark:border-emerald-900/45 dark:bg-emerald-950/55 dark:text-emerald-100"
+            className="pointer-events-none absolute right-14 top-4 z-[2] max-w-[min(12rem_calc(100%-5rem))] truncate rounded-sm border border-emerald-200/70 bg-emerald-50/95 px-2 py-0.5 text-[11px] font-medium leading-tight text-emerald-900 dark:border-emerald-900/45 dark:bg-emerald-950/55 dark:text-emerald-100"
           >
             ✔ Added to queue
           </div>

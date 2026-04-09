@@ -65,7 +65,7 @@ const SheetContent = React.forwardRef<
       className={cn(
         sheetVariants({ side }),
         side === "bottom" &&
-          "pt-[env(safe-area-inset-top,0px)] [&>button]:top-[calc(0.25rem+env(safe-area-inset-top,0px))]",
+          "pt-[env(safe-area-inset-top_0px)] [&>button]:top-[calc(0.25rem+env(safe-area-inset-top_0px))]",
         className
       )}
       {...props}
