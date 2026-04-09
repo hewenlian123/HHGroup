@@ -2,12 +2,12 @@
  * Worker monthly report — read-only aggregation.
  *
  * Column lists match production public.* (verified via information_schema):
- * - labor_entries: work_date, cost_amount, project_id, worker_id
+ * - labor_entries: work_date, cost_amount, worker_id; project_id optional (older local DBs omit it)
  * - worker_invoices: created_at, amount, project_id, worker_id
  * - labor_invoices: invoice_date, amount, status, project_splits, worker_id
  * - worker_reimbursements: created_at, amount, project_id, worker_id
  * - worker_advances: advance_date, amount, project_id, worker_id
- * - worker_payments: payment_date, amount, project_id, worker_id
+ * - worker_payments: payment_date + amount + project_id (prod), or total_amount + created_at (legacy local)
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -101,6 +101,136 @@ function laborInvoiceProjectLabel(splits: unknown, nameByProject: Map<string, st
   return "Multiple projects";
 }
 
+function isRetryableSelectError(err: { message?: string } | null): boolean {
+  const m = (err?.message ?? "").toLowerCase();
+  return /could not find the .* column|column .* does not exist|schema cache|pgrst204/i.test(m);
+}
+
+type PaymentRowNormalized = {
+  id: string;
+  project_id: string | null;
+  amount: unknown;
+  payment_date: string;
+};
+
+/** Production: amount + payment_date (+ optional project_id). Legacy local: total_amount + created_at. */
+async function loadWorkerPaymentsForMonth(
+  admin: SupabaseClient,
+  wid: string,
+  range: { start: string; nextStart: string; tStart: string; tNext: string }
+): Promise<{ rows: PaymentRowNormalized[]; error: string | null }> {
+  const modern = await admin
+    .from("worker_payments")
+    .select("id, project_id, amount, payment_date")
+    .eq("worker_id", wid)
+    .gte("payment_date", range.start)
+    .lt("payment_date", range.nextStart);
+
+  if (!modern.error) {
+    return {
+      rows: (
+        (modern.data ?? []) as {
+          id: string;
+          project_id: string | null;
+          amount: unknown;
+          payment_date: string;
+        }[]
+      ).map((r) => ({
+        id: r.id,
+        project_id: r.project_id != null ? String(r.project_id) : null,
+        amount: r.amount,
+        payment_date: String(r.payment_date ?? "").slice(0, 10),
+      })),
+      error: null,
+    };
+  }
+
+  if (!isRetryableSelectError(modern.error)) {
+    return { rows: [], error: modern.error?.message ?? "Failed to load worker payments." };
+  }
+
+  const legacy = await admin
+    .from("worker_payments")
+    .select("id, total_amount, created_at")
+    .eq("worker_id", wid)
+    .gte("created_at", range.tStart)
+    .lt("created_at", range.tNext);
+
+  if (legacy.error) {
+    return { rows: [], error: legacy.error.message ?? "Failed to load worker payments." };
+  }
+
+  return {
+    rows: ((legacy.data ?? []) as { id: string; total_amount: unknown; created_at: string }[]).map(
+      (r) => ({
+        id: r.id,
+        project_id: null,
+        amount: r.total_amount,
+        payment_date: String(r.created_at ?? "").slice(0, 10),
+      })
+    ),
+    error: null,
+  };
+}
+
+type LaborEntryRowNormalized = {
+  id: string;
+  project_id: string | null;
+  work_date: string;
+  cost_amount: unknown;
+};
+
+async function loadLaborEntriesForMonth(
+  admin: SupabaseClient,
+  wid: string,
+  range: { start: string; nextStart: string }
+): Promise<{ rows: LaborEntryRowNormalized[]; error: string | null }> {
+  const full = await admin
+    .from("labor_entries")
+    .select("id, project_id, work_date, cost_amount")
+    .eq("worker_id", wid)
+    .gte("work_date", range.start)
+    .lt("work_date", range.nextStart);
+
+  if (!full.error) {
+    return {
+      rows: ((full.data ?? []) as LaborEntryRowNormalized[]).map((r) => ({
+        ...r,
+        project_id: r.project_id != null ? String(r.project_id) : null,
+        work_date: String(r.work_date ?? "").slice(0, 10),
+      })),
+      error: null,
+    };
+  }
+
+  if (!isRetryableSelectError(full.error)) {
+    return { rows: [], error: full.error?.message ?? "Failed to load labor entries." };
+  }
+
+  const slim = await admin
+    .from("labor_entries")
+    .select("id, work_date, cost_amount")
+    .eq("worker_id", wid)
+    .gte("work_date", range.start)
+    .lt("work_date", range.nextStart);
+
+  if (slim.error) {
+    return { rows: [], error: slim.error.message ?? "Failed to load labor entries." };
+  }
+
+  return {
+    rows: ((slim.data ?? []) as { id: string; work_date: string; cost_amount: unknown }[]).map(
+      (r) => ({
+        id: r.id,
+        project_id: null,
+        work_date: String(r.work_date ?? "").slice(0, 10),
+        cost_amount: r.cost_amount,
+      })
+    ),
+    error: null,
+  };
+}
+
 async function loadProjectNames(
   admin: SupabaseClient,
   ids: string[]
@@ -152,14 +282,8 @@ export async function getWorkerMonthlyReport(
     };
   }
 
-  const [workerRes, laborRes, reimbRes, wiRes, liRes, advRes, payRes] = await Promise.all([
+  const [workerRes, reimbRes, wiRes, liRes, advRes] = await Promise.all([
     admin.from("workers").select("id, name").eq("id", wid).maybeSingle(),
-    admin
-      .from("labor_entries")
-      .select("id, project_id, work_date, cost_amount")
-      .eq("worker_id", wid)
-      .gte("work_date", range.start)
-      .lt("work_date", range.nextStart),
     admin
       .from("worker_reimbursements")
       .select("id, project_id, amount, created_at")
@@ -184,32 +308,23 @@ export async function getWorkerMonthlyReport(
       .eq("worker_id", wid)
       .gte("advance_date", range.start)
       .lt("advance_date", range.nextStart),
-    admin
-      .from("worker_payments")
-      .select("id, project_id, amount, payment_date")
-      .eq("worker_id", wid)
-      .gte("payment_date", range.start)
-      .lt("payment_date", range.nextStart),
   ]);
+
+  const { rows: laborRows, error: laborErr } = await loadLaborEntriesForMonth(admin, wid, range);
+  const { rows: payRows, error: payErr } = await loadWorkerPaymentsForMonth(admin, wid, range);
 
   const firstErr =
     workerRes.error?.message ??
-    laborRes.error?.message ??
+    laborErr ??
     reimbRes.error?.message ??
     wiRes.error?.message ??
     liRes.error?.message ??
     advRes.error?.message ??
-    payRes.error?.message ??
+    payErr ??
     null;
 
   const workerName = String((workerRes.data as { name?: string } | null)?.name ?? "").trim();
 
-  const laborRows = (laborRes.data ?? []) as {
-    id: string;
-    project_id: string | null;
-    work_date: string;
-    cost_amount: unknown;
-  }[];
   const reimbRows = (reimbRes.data ?? []) as {
     id: string;
     project_id: string | null;
@@ -234,12 +349,6 @@ export async function getWorkerMonthlyReport(
     project_id: string | null;
     amount: unknown;
     advance_date: string;
-  }[];
-  const payRows = (payRes.data ?? []) as {
-    id: string;
-    project_id: string | null;
-    amount: unknown;
-    payment_date: string;
   }[];
 
   const projectIds: string[] = [];
