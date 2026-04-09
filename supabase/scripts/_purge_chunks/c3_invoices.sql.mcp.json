@@ -1,4 +1,0 @@
-{
-  "project_id": "rzublljldebswurgdqxp",
-  "query": "-- \u2500\u2500\u2500 2) AR: invoice_payments / payments_received / items cascade from invoices \u2500\nDELETE FROM public.invoices i\nWHERE i.id = '44444444-4444-4444-4444-444444444447'::uuid\n   OR i.client_name ILIKE ANY (ARRAY['%PW%','%Playwright%','%Workflow Test%','%Body balance%'])\n   OR i.client_name LIKE '[[]E2E]%'\n   OR i.invoice_no ILIKE '%E2E%' OR i.invoice_no ILIKE 'E2E-%'\n   OR i.notes ILIKE '%E2E%' OR i.notes ILIKE '%Seed%';\n\n-- Orphan invoice_payments (invoice already removed outside this script)\n"
-}

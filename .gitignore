@@ -61,3 +61,5 @@ next-env.d.ts
 
 # Stale PWA copies with spaces in the name (build glitches). Real worker: public/sw.js
 public/sw\ *.js
+_purge_chunks/
+.cursor-mcp-purge*.json

@@ -1,4 +1,0 @@
-{
-  "project_id": "rzublljldebswurgdqxp",
-  "query": ");\n\nDELETE FROM public.commissions c\nWHERE c.person ILIKE ANY (ARRAY['%PW%','%Playwright%','%Workflow Test%','%Body balance%','%[E2E]%','%E2E%','%Seed%'])\n   OR c.notes ILIKE ANY (ARRAY['%PW%','%Playwright%','%Workflow Test%','%Body balance%','%[E2E]%','%E2E%','%Seed%']);\n"
-}
