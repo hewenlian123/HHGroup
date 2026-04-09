@@ -1,10 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
-  createWorkersFkToLaborIdResolver,
   isLaborUnpaidForWorkerPayroll,
   workerIdsForLaborBalanceFinancialQueries,
 } from "@/lib/labor-balance-shared";
-import postgres from "postgres";
 
 export type WorkerBalanceRow = {
   workerId: string;
@@ -76,10 +74,13 @@ export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBala
     workersById.set(id, { id, name: workersNameById.get(id) ?? null });
   }
 
-  const workers = [...workersById.values()].sort((a, b) =>
-    (a.name ?? "").localeCompare(b.name ?? "", undefined, { sensitivity: "base" })
-  );
-  const dbUrl = process.env.SUPABASE_DATABASE_URL ?? process.env.DATABASE_URL;
+  const workers = [...workersById.values()]
+    .filter((w) => {
+      // Never show E2E seed workers in real UI (local/dev data can leak into prod if seeded incorrectly).
+      const nm = String(w.name ?? "").trim();
+      return !/^\[e2e\]/i.test(nm);
+    })
+    .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? "", undefined, { sensitivity: "base" }));
 
   // Robust per-worker aggregation (matches detail page behavior and avoids cross-table id drift issues).
   return Promise.all(
@@ -147,10 +148,15 @@ export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBala
         return s + (Number(r.cost_amount ?? r.total) || 0);
       }, 0);
 
-      const reimbRes = await queryByIds("worker_reimbursements", "worker_id, amount, status");
+      // Reimbursements: prefer `amount`, fallback to `total_amount` (older schemas).
+      let reimbRes = await queryByIds("worker_reimbursements", "worker_id, amount, status");
+      if (reimbRes.error && isMissingColumn(reimbRes.error)) {
+        reimbRes = await queryByIds("worker_reimbursements", "worker_id, total_amount, status");
+      }
       const reimbRows = (reimbRes.data ?? []) as Array<{
         worker_id?: string | null;
         amount?: number | null;
+        total_amount?: number | null;
         status?: string | null;
       }>;
       const reimbursements = reimbRows.reduce((s, r) => {
@@ -160,7 +166,7 @@ export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBala
             .toLowerCase() === "paid"
         )
           return s;
-        return s + (Number(r.amount) || 0);
+        return s + (Number(r.amount ?? r.total_amount) || 0);
       }, 0);
 
       let payRows: Array<{ total_amount?: number | null; amount?: number | null }> = [];
@@ -173,37 +179,27 @@ export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBala
       }
       const payments = payRows.reduce((s, r) => s + (Number(r.total_amount ?? r.amount) || 0), 0);
 
-      let advances = 0;
-      if (dbUrl && ids.length > 0) {
-        const sql = postgres(dbUrl, { max: 1, connect_timeout: 10 });
-        try {
-          const rows = await sql<{ advances: string | number | null }[]>`
-            select coalesce(sum(amount), 0) as advances
-            from worker_advances
-            where lower(trim(status)) = 'deducted'
-              and worker_id in ${sql(ids)}
-          `;
-          advances = Number(rows[0]?.advances ?? 0) || 0;
-        } finally {
-          await sql.end();
-        }
-      } else {
-        const advRes = await queryByIds("worker_advances", "worker_id, amount, status");
-        const advRows = (advRes.data ?? []) as Array<{
-          worker_id?: string | null;
-          amount?: number | null;
-          status?: string | null;
-        }>;
-        advances = advRows.reduce((s, r) => {
-          if (
-            String(r.status ?? "")
-              .trim()
-              .toLowerCase() !== "deducted"
-          )
-            return s;
-          return s + (Number(r.amount) || 0);
-        }, 0);
+      // Advances: always use the same Supabase path as detail page to avoid env DB URL drift.
+      // Prefer `amount`, fallback to `total_amount` if present in older schemas.
+      let advRes = await queryByIds("worker_advances", "worker_id, amount, status");
+      if (advRes.error && isMissingColumn(advRes.error)) {
+        advRes = await queryByIds("worker_advances", "worker_id, total_amount, status");
       }
+      const advRows = (advRes.data ?? []) as Array<{
+        worker_id?: string | null;
+        amount?: number | null;
+        total_amount?: number | null;
+        status?: string | null;
+      }>;
+      const advances = advRows.reduce((s, r) => {
+        if (
+          String(r.status ?? "")
+            .trim()
+            .toLowerCase() !== "deducted"
+        )
+          return s;
+        return s + (Number(r.amount ?? r.total_amount) || 0);
+      }, 0);
 
       const balance = laborOwed + reimbursements - payments - advances;
       const payRowsCount = payRows.length;
