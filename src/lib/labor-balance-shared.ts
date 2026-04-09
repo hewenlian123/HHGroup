@@ -173,7 +173,17 @@ export async function createWorkersFkToLaborIdResolver(
 
 /**
  * All worker_id values to query for financial rows when opening a labor_workers balance by id.
- * Includes the labor id plus any workers.id rows with the same normalized name when labor id is not in workers.
+ *
+ * Financial tables (`worker_payments`, `worker_reimbursements`, `worker_advances`) reference
+ * `public.workers(id)`. `labor_workers.id` is often the same UUID, but rows can still point at
+ * another `workers` row with the **same display name** (imports / merges / legacy duplicates).
+ *
+ * Do **not** short-circuit to `[laborId]` when `workers` contains that id — that drops sibling ids
+ * and makes Worker Balances list show $0 reimbursements while the detail page (same helper) would
+ * also miss unless the full `workers` scan happened to include the other row within PostgREST limits.
+ *
+ * Query workers by exact name (then case-insensitive fallback), not unbounded `select *` which is
+ * capped by default row limits.
  */
 export async function workerIdsForLaborBalanceFinancialQueries(
   c: SupabaseClient,
@@ -182,22 +192,28 @@ export async function workerIdsForLaborBalanceFinancialQueries(
   const ids = new Set<string>();
   const lid = laborWorkerId.trim();
   if (!lid) return [];
+
   ids.add(lid);
 
-  const wSame = await c.from("workers").select("id").eq("id", lid).maybeSingle();
-  if (wSame.data && (wSame.data as { id?: string }).id) {
-    return [lid];
-  }
-
   const lw = await c.from("labor_workers").select("name").eq("id", lid).maybeSingle();
-  const lname = (lw.data as { name?: string | null } | null)?.name;
-  const k = normWorkerBalanceName(lname);
-  if (!k) return [...ids];
+  const rawName = (lw.data as { name?: string | null } | null)?.name;
+  const lname = String(rawName ?? "").trim();
+  if (!lname) return [...ids];
 
-  const { data: wrows, error } = await c.from("workers").select("id, name");
-  if (error || !wrows) return [...ids];
-  for (const r of wrows as { id: string; name: string | null }[]) {
-    if (normWorkerBalanceName(r.name) === k) ids.add(String(r.id));
+  const exact = await c.from("workers").select("id, name").eq("name", lname);
+  let rows = (exact.data ?? []) as { id: string; name: string | null }[];
+
+  if (exact.error || rows.length === 0) {
+    const fb = await c.from("workers").select("id, name").ilike("name", lname);
+    if (!fb.error && fb.data?.length) {
+      rows = fb.data as { id: string; name: string | null }[];
+    }
   }
+
+  for (const r of rows) {
+    const id = String(r.id ?? "").trim();
+    if (id) ids.add(id);
+  }
+
   return [...ids];
 }
