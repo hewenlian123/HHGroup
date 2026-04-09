@@ -1,4 +1,0 @@
-{
-  "project_id": "rzublljldebswurgdqxp",
-  "query": "-- ─── 10) Bank rows that are clearly test data (after expense unlink) ───────\nDO $blk$\nBEGIN\n  IF to_regclass('public.bank_transactions') IS NOT NULL THEN\n    EXECUTE $q$\n      DELETE FROM public.bank_transactions bt\n      WHERE bt.description ILIKE '%E2E%' OR bt.vendor_name ILIKE '%E2E%' OR bt.notes ILIKE '%E2E%'\n         OR bt.description ILIKE '%[E2E]%' OR bt.vendor_name ILIKE '%[E2E]%' OR bt.notes ILIKE '%[E2E]%'\n    $q$;\n  END IF;\nEND\n$blk$;\n\nCOMMIT;\n"
-}

@@ -1,4 +1,0 @@
-{
-  "project_id": "rzublljldebswurgdqxp",
-  "query": "-- ─── 4) Receipt queue ───────────────────────────────────────────────────────\nDELETE FROM public.receipt_queue rq\nWHERE rq.file_name ILIKE 'queue-%'\n   OR rq.file_name ILIKE 'receipt-layout-%'\n   OR rq.file_name ILIKE 'rq-%'\n   OR rq.file_name ILIKE '%E2E%'\n   OR rq.file_name ILIKE '%Seed%';\n"
-}
