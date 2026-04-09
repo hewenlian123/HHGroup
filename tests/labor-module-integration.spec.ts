@@ -162,10 +162,9 @@ test.describe("Labor module integration", () => {
     // Reimbursements should show seeded vendor names.
     await expect(page.getByText(/Vendor A|Vendor B/i).first()).toBeVisible({ timeout: 30_000 });
 
-    // Payments should show seeded method.
-    // NOTE: payment note may not be selectable in some environments due to PostgREST schema cache
-    // or schema variants (note/notes). Avoid making the test brittle on that field.
+    // Payments should show seeded method/note.
     await expect(page.getByText(/Cash/i).first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText(/integration payment/i).first()).toBeVisible({ timeout: 30_000 });
 
     // 3) Payroll summary
     await page.goto(`${BASE}/labor/payroll`);
