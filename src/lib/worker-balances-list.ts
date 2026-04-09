@@ -74,13 +74,9 @@ export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBala
     workersById.set(id, { id, name: workersNameById.get(id) ?? null });
   }
 
-  const workers = [...workersById.values()]
-    .filter((w) => {
-      // Never show E2E seed workers in real UI (local/dev data can leak into prod if seeded incorrectly).
-      const nm = String(w.name ?? "").trim();
-      return !/^\[e2e\]/i.test(nm);
-    })
-    .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? "", undefined, { sensitivity: "base" }));
+  const workers = [...workersById.values()].sort((a, b) =>
+    (a.name ?? "").localeCompare(b.name ?? "", undefined, { sensitivity: "base" })
+  );
 
   // Robust per-worker aggregation (matches detail page behavior and avoids cross-table id drift issues).
   return Promise.all(
