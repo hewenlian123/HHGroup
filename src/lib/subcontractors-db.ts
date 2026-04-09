@@ -43,19 +43,21 @@ function isMissingColumn(err: { message?: string } | null): boolean {
   return /column .* does not exist|schema cache/i.test(m);
 }
 
+// Local schema uses: id, created_at, phone, email, active, address, name
+// Keep optional fields in the mapper, but do not SELECT non-existent columns.
 const COLS_FULL =
-  "id, display_name, phone, email, address1, status, created_at, insurance_expiration, insurance_expiration_date, w9_storage_path, notes";
-const COLS_BASE = "id, display_name, phone, email, address1, status, created_at";
+  "id, name, phone, email, address, active, created_at, insurance_expiration_date, w9_storage_path, notes";
+const COLS_BASE = "id, name, phone, email, address, active, created_at";
 
 /** Fetch all subcontractors, ordered by display name. */
 export async function getSubcontractors(): Promise<SubcontractorRow[]> {
   const c = client();
-  const first = await c.from("subcontractors").select(COLS_FULL).order("display_name");
+  const first = await c.from("subcontractors").select(COLS_FULL).order("name");
   if (!first.error) return (first.data ?? []).map((r: Record<string, unknown>) => mapRow(r));
   if (!isMissingColumn(first.error))
     throw new Error(first.error.message ?? "Failed to load subcontractors.");
   // Fallback: columns added in a later migration don't exist yet — fetch base columns only.
-  const fallback = await c.from("subcontractors").select(COLS_BASE).order("display_name");
+  const fallback = await c.from("subcontractors").select(COLS_BASE).order("name");
   if (fallback.error) throw new Error(fallback.error.message ?? "Failed to load subcontractors.");
   return (fallback.data ?? []).map((r: Record<string, unknown>) => mapRow(r));
 }
@@ -101,11 +103,11 @@ export async function insertSubcontractor(draft: SubcontractorDraft): Promise<vo
   const c = client();
   const status = draft.active === false ? "inactive" : "active";
   const fullPayload = {
-    display_name: draft.name.trim(),
+    name: draft.name.trim(),
     phone: draft.phone?.trim() || null,
     email: draft.email?.trim() || null,
-    address1: draft.address?.trim() || null,
-    status,
+    address: draft.address?.trim() || null,
+    active: status === "active",
     insurance_expiration_date: draft.insurance_expiration_date?.slice(0, 10) || null,
     w9_storage_path: draft.w9_storage_path?.trim() || null,
     notes: draft.notes?.trim() || null,
@@ -115,11 +117,11 @@ export async function insertSubcontractor(draft: SubcontractorDraft): Promise<vo
   if (!isMissingColumn(error)) throw new Error(error.message ?? "Failed to add subcontractor.");
   // Fallback: legacy shape (name, address, active).
   const { error: err2 } = await c.from("subcontractors").insert({
-    name: fullPayload.display_name,
+    name: fullPayload.name,
     phone: fullPayload.phone,
     email: fullPayload.email,
-    address: fullPayload.address1,
-    active: draft.active ?? true,
+    address: fullPayload.address,
+    active: fullPayload.active ?? draft.active ?? true,
   });
   if (err2) throw new Error(err2.message ?? "Failed to add subcontractor.");
 }
@@ -145,11 +147,11 @@ export async function updateSubcontractor(
 ): Promise<SubcontractorRow | null> {
   const c = client();
   const payload: Record<string, unknown> = {};
-  if (patch.name !== undefined) payload.display_name = patch.name.trim();
+  if (patch.name !== undefined) payload.name = patch.name.trim();
   if (patch.phone !== undefined) payload.phone = patch.phone?.trim() || null;
   if (patch.email !== undefined) payload.email = patch.email?.trim() || null;
-  if (patch.address !== undefined) payload.address1 = patch.address?.trim() || null;
-  if (patch.active !== undefined) payload.status = patch.active ? "active" : "inactive";
+  if (patch.address !== undefined) payload.address = patch.address?.trim() || null;
+  if (patch.active !== undefined) payload.active = !!patch.active;
   if (patch.insurance_expiration_date !== undefined)
     payload.insurance_expiration_date = patch.insurance_expiration_date?.slice(0, 10) || null;
   if (patch.w9_storage_path !== undefined)
@@ -162,11 +164,11 @@ export async function updateSubcontractor(
       throw new Error(error.message ?? "Failed to update subcontractor.");
     // Retry without newer columns.
     const basePayload: Record<string, unknown> = {};
-    if (payload.display_name !== undefined) basePayload.name = payload.display_name;
+    if (payload.name !== undefined) basePayload.name = payload.name;
     if (payload.phone !== undefined) basePayload.phone = payload.phone;
     if (payload.email !== undefined) basePayload.email = payload.email;
-    if (payload.address1 !== undefined) basePayload.address = payload.address1;
-    if (payload.status !== undefined) basePayload.active = payload.status === "active";
+    if (payload.address !== undefined) basePayload.address = payload.address;
+    if (payload.active !== undefined) basePayload.active = payload.active;
     if (Object.keys(basePayload).length > 0) {
       const { error: err2 } = await c.from("subcontractors").update(basePayload).eq("id", id);
       if (err2) throw new Error(err2.message ?? "Failed to update subcontractor.");
