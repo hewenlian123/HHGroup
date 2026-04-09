@@ -3,6 +3,7 @@ import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server
 import { markInvoiceSent } from "@/lib/invoices-db";
 import { createPaymentReceived } from "@/lib/payments-received-db";
 import { createWorkerPaymentWithClient } from "@/lib/worker-payments-db";
+import { insertLaborEntryForTestSchema } from "@/lib/labor-entry-test-insert";
 import postgres from "postgres";
 
 export const dynamic = "force-dynamic";
@@ -181,49 +182,6 @@ export async function POST(req: Request) {
 
   function isSchemaOrMissingColumn(msg: string): boolean {
     return /could not find the .* column|column .* does not exist|schema cache/i.test(msg);
-  }
-
-  /** `labor_entries` shape differs across migrations (timesheet vs daily log vs legacy). */
-  async function insertLaborEntryForWorkflow(opts: {
-    workerId: string;
-    projectId: string;
-    workDate: string;
-  }): Promise<{ id: string }> {
-    const { workerId, projectId, workDate } = opts;
-    const attempts: Record<string, unknown>[] = [
-      {
-        worker_id: workerId,
-        project_id: projectId,
-        work_date: workDate,
-        hours: 4,
-        cost_amount: 50,
-      },
-      {
-        worker_id: workerId,
-        work_date: workDate,
-        project_am_id: projectId,
-        day_rate: 50,
-        ot_amount: 0,
-        total: 50,
-      },
-      {
-        worker_id: workerId,
-        date: workDate,
-        am_project_id: projectId,
-        half_day_rate: 50,
-        ot_amount: 0,
-        total: 50,
-        status: "draft",
-      },
-    ];
-    let lastErr = "";
-    for (const payload of attempts) {
-      const { data, error } = await c!.from("labor_entries").insert(payload).select("id").single();
-      if (!error && data) return data as { id: string };
-      lastErr = error?.message ?? "";
-      if (lastErr && !isSchemaOrMissingColumn(lastErr)) break;
-    }
-    throw new Error(lastErr || "labor_entries insert failed");
   }
 
   /** Call an API route the same way the UI does. Returns parsed JSON or throws. */
@@ -766,6 +724,7 @@ export async function POST(req: Request) {
         .insert({
           expense_date: new Date().toISOString().slice(0, 10),
           vendor_name: "Workflow Test Vendor",
+          amount: 100,
           total: 100,
           line_count: 0,
         })
@@ -801,7 +760,11 @@ export async function POST(req: Request) {
       // Update expense
       const { error: updateErr } = await c
         .from("expenses")
-        .update({ vendor_name: "Workflow Test Vendor Updated", total: 120 })
+        .update({
+          vendor_name: "Workflow Test Vendor Updated",
+          amount: 120,
+          total: 120,
+        })
         .eq("id", expenseId);
       if (updateErr) throw new Error(`Expense update failed: ${updateErr.message}`);
       steps.push("expense updated");
@@ -969,7 +932,7 @@ export async function POST(req: Request) {
 
       // Create labor entry (schema varies by migration — try multiple shapes)
       const today = new Date().toISOString().slice(0, 10);
-      const labor = await insertLaborEntryForWorkflow({
+      const labor = await insertLaborEntryForTestSchema(c!, {
         workerId,
         projectId,
         workDate: today,

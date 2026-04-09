@@ -193,7 +193,28 @@ export async function createDepositFromPayment(payment: {
   }
   const exRow = (existing.data ?? [])[0] as { id?: string; status?: string | null } | undefined;
   if (exRow?.id && String(exRow.status ?? "recorded") !== "void") {
-    throw new Error("Duplicate deposit not allowed");
+    // DB trigger `auto_create_deposit` may already have inserted this row; treat as success.
+    {
+      const r = await c
+        .from("deposits")
+        .select(
+          "id, payment_id, invoice_id, amount, deposit_account, deposit_date, customer_name, project_id, payment_method, status, created_at"
+        )
+        .eq("payment_id", payment.id)
+        .maybeSingle();
+      if (!r.error && r.data) return mapDepositDbRow(r.data as DepositsDbRow);
+    }
+    {
+      const r = await c
+        .from("deposits")
+        .select(
+          "id, payment_id, invoice_id, amount, deposit_account, deposit_date, customer_name, project_id, payment_method, created_at"
+        )
+        .eq("payment_id", payment.id)
+        .maybeSingle();
+      if (!r.error && r.data) return mapDepositDbRow(r.data as DepositsDbRow);
+    }
+    return null;
   }
 
   const depositDate = payment.payment_date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
