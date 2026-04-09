@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { Download, Printer, X } from "lucide-react";
+import { Download, ExternalLink, Printer, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WorkerPaymentReceiptDocument } from "@/components/labor/worker-payment-receipt-document";
 import type { WorkerPaymentReceiptPreviewDto } from "@/lib/worker-payment-receipt-preview-dto";
@@ -133,6 +134,18 @@ export function WorkerPaymentReceiptPreviewModal({ paymentId, open, onOpenChange
               Receipt preview
             </DialogPrimitive.Title>
             <div className="flex flex-wrap items-center justify-end gap-1">
+              {paymentId ? (
+                <Button type="button" size="sm" variant="outline" className="h-8 gap-1" asChild>
+                  <Link
+                    href={`/labor/payments/${encodeURIComponent(paymentId)}/receipt`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    View receipt
+                  </Link>
+                </Button>
+              ) : null}
               <Button
                 type="button"
                 size="sm"

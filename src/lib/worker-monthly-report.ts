@@ -11,6 +11,7 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getCompanyProfile } from "@/lib/company-profile";
 import { getServerSupabase } from "@/lib/supabase-server";
 
 export type WorkerMonthlyReportRowType =
@@ -37,11 +38,25 @@ export type WorkerMonthlyReportSummary = {
   balance: number;
 };
 
+/** Extra fields for print / PDF payroll statement (screen UI may ignore). */
+export type WorkerMonthlyReportPayrollStatement = {
+  companyName: string;
+  monthYm: string;
+  monthLabel: string;
+  generatedAtDisplay: string;
+  /** Count of labor_entries (time entries) in the month */
+  totalDays: number;
+  /** Worker DB rate if present, else earned ÷ totalDays when totalDays > 0 */
+  dailyRate: number;
+  dailyRateFromWorker: boolean;
+};
+
 export type WorkerMonthlyReportResult = {
   workerName: string;
   monthLabel: string;
   rows: WorkerMonthlyReportRow[];
   summary: WorkerMonthlyReportSummary;
+  payrollStatement: WorkerMonthlyReportPayrollStatement;
   supabaseConfigured: boolean;
   loadError: string | null;
 };
@@ -84,6 +99,51 @@ function monthHeading(ym: string): string {
   if (!m) return ym;
   const d = new Date(Number(m[1]), Number(m[2]) - 1, 1);
   return d.toLocaleString("en-US", { month: "long", year: "numeric" });
+}
+
+function generatedAtLabel(): string {
+  return new Date().toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function stubPayrollStatement(monthYm: string): WorkerMonthlyReportPayrollStatement {
+  return {
+    companyName: "HH Group",
+    monthYm,
+    monthLabel: monthHeading(monthYm),
+    generatedAtDisplay: generatedAtLabel(),
+    totalDays: 0,
+    dailyRate: 0,
+    dailyRateFromWorker: false,
+  };
+}
+
+type WorkerRowRates = {
+  id: string;
+  name: string | null;
+  half_day_rate?: unknown;
+  daily_rate?: unknown;
+};
+
+async function loadWorkerForReport(
+  admin: SupabaseClient,
+  wid: string
+): Promise<{ data: WorkerRowRates | null; error: { message?: string } | null }> {
+  let res = await admin
+    .from("workers")
+    .select("id, name, half_day_rate, daily_rate")
+    .eq("id", wid)
+    .maybeSingle();
+  if (res.error && isRetryableSelectError(res.error)) {
+    res = await admin.from("workers").select("id, name, half_day_rate").eq("id", wid).maybeSingle();
+  }
+  if (res.error && isRetryableSelectError(res.error)) {
+    res = await admin.from("workers").select("id, name").eq("id", wid).maybeSingle();
+  }
+  return { data: res.data as WorkerRowRates | null, error: res.error };
 }
 
 type Split = { projectId?: string; project_id?: string };
@@ -257,6 +317,7 @@ export async function getWorkerMonthlyReport(
       monthLabel: monthHeading(monthYm),
       rows: [],
       summary: { earned: 0, reimbursements: 0, totalOwed: 0, paid: 0, balance: 0 },
+      payrollStatement: stubPayrollStatement(monthYm),
       supabaseConfigured: false,
       loadError: "Supabase is not configured.",
     };
@@ -277,13 +338,15 @@ export async function getWorkerMonthlyReport(
       monthLabel: monthHeading(monthYm),
       rows: [],
       summary: { earned: 0, reimbursements: 0, totalOwed: 0, paid: 0, balance: 0 },
+      payrollStatement: stubPayrollStatement(monthYm),
       supabaseConfigured: true,
       loadError: "Missing worker id.",
     };
   }
 
-  const [workerRes, reimbRes, wiRes, liRes, advRes] = await Promise.all([
-    admin.from("workers").select("id, name").eq("id", wid).maybeSingle(),
+  const workerRes = await loadWorkerForReport(admin, wid);
+
+  const [reimbRes, wiRes, liRes, advRes] = await Promise.all([
     admin
       .from("worker_reimbursements")
       .select("id, project_id, amount, created_at")
@@ -323,7 +386,7 @@ export async function getWorkerMonthlyReport(
     payErr ??
     null;
 
-  const workerName = String((workerRes.data as { name?: string } | null)?.name ?? "").trim();
+  const workerName = String(workerRes.data?.name ?? "").trim();
 
   const reimbRows = (reimbRes.data ?? []) as {
     id: string;
@@ -486,6 +549,26 @@ export async function getWorkerMonthlyReport(
   const paid = paySum + advSum;
   const balance = totalOwed - paid;
 
+  const totalDays = laborRows.length;
+  const halfDay = Number(workerRes.data?.half_day_rate) || 0;
+  const dailyExplicitRaw = workerRes.data?.daily_rate;
+  const dailyExplicit =
+    dailyExplicitRaw != null && Number(dailyExplicitRaw) > 0 ? Number(dailyExplicitRaw) : 0;
+  const dailyFromHalfPairs = halfDay > 0 ? 2 * halfDay : 0;
+  const workerDailyRate =
+    dailyExplicit > 0 ? dailyExplicit : dailyFromHalfPairs > 0 ? dailyFromHalfPairs : null;
+  const impliedDaily = totalDays > 0 && earned > 0 ? earned / totalDays : 0;
+  const dailyRateFromWorker = workerDailyRate != null && workerDailyRate > 0;
+  const displayDailyRate = dailyRateFromWorker ? workerDailyRate! : impliedDaily;
+
+  let companyName = "HH Group";
+  try {
+    const prof = await getCompanyProfile(admin);
+    companyName = prof?.org_name?.trim() || "HH Group";
+  } catch {
+    /* keep default */
+  }
+
   return {
     workerName,
     monthLabel: monthHeading(monthYm),
@@ -496,6 +579,15 @@ export async function getWorkerMonthlyReport(
       totalOwed,
       paid,
       balance,
+    },
+    payrollStatement: {
+      companyName,
+      monthYm,
+      monthLabel: monthHeading(monthYm),
+      generatedAtDisplay: generatedAtLabel(),
+      totalDays,
+      dailyRate: displayDailyRate,
+      dailyRateFromWorker,
     },
     supabaseConfigured: true,
     loadError: firstErr,

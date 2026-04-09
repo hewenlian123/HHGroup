@@ -1,0 +1,40 @@
+/* Payroll statement — print / Save as PDF only. Keeps shell chrome off the page. */
+
+@media print {
+  @page {
+    margin: 14mm 12mm;
+    size: auto;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  .app-shell {
+    height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+
+  [data-app-sidebar],
+  [data-radix-portal] {
+    display: none !important;
+  }
+
+  [data-app-main-column] {
+    overflow: visible !important;
+    min-height: 0 !important;
+  }
+
+  [data-app-main-column] > *:not(main) {
+    display: none !important;
+  }
+
+  main {
+    overflow: visible !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+}

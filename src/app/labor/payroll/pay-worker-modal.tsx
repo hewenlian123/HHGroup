@@ -16,6 +16,7 @@ import {
   WorkerAdvanceSelector,
   type WorkerAdvanceOption,
 } from "@/components/labor/worker-advance-selector";
+import type { WorkerPayment } from "@/lib/worker-payments-db";
 
 const METHODS = ["Cash", "Check", "Bank Transfer", "Zelle", "Other"] as const;
 
@@ -26,6 +27,8 @@ type Props = {
   workerName: string;
   defaultAmount: number;
   onSuccess: () => void;
+  /** Fired after payment is recorded and finalize steps complete; use to open receipt preview. */
+  onPaymentSuccess?: (payment: WorkerPayment) => void;
 };
 
 export function PayWorkerModal({
@@ -35,6 +38,7 @@ export function PayWorkerModal({
   workerName,
   defaultAmount,
   onSuccess,
+  onPaymentSuccess,
 }: Props) {
   const [projects, setProjects] = React.useState<Awaited<ReturnType<typeof getProjects>>>([]);
   const [projectId, setProjectId] = React.useState<string>("");
@@ -108,7 +112,7 @@ export function PayWorkerModal({
         .filter((a) => selectedAdvanceIds.includes(a.id))
         .reduce((sum, a) => sum + a.amount, 0);
 
-      await createWorkerPayment({
+      const payment = await createWorkerPayment({
         workerId,
         projectId: projectId || null,
         paymentDate,
@@ -135,6 +139,9 @@ export function PayWorkerModal({
       startTransition(() => {
         onOpenChange(false);
         onSuccess();
+      });
+      queueMicrotask(() => {
+        onPaymentSuccess?.(payment);
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to record payment.");

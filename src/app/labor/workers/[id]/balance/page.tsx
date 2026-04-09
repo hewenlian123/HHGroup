@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { WorkerPaymentReceiptPreviewModal } from "@/components/labor/worker-payment-receipt-preview-modal";
 import {
   getLaborPaymentStatus,
   laborPaymentStatusUiLabel,
@@ -90,6 +91,8 @@ export default function WorkerBalanceDetailPage() {
   const [payError, setPayError] = React.useState<string | null>(null);
   const [laborPayrollMode, setLaborPayrollMode] =
     React.useState<LaborPayrollSettlementMode>("payment_link");
+  const [receiptPaymentId, setReceiptPaymentId] = React.useState<string | null>(null);
+  const [receiptOpen, setReceiptOpen] = React.useState(false);
 
   const load = React.useCallback(async () => {
     if (!workerId) return;
@@ -218,11 +221,18 @@ export default function WorkerBalanceDetailPage() {
           reimbursement_ids: Array.from(selectedReimbIds),
         }),
       });
-      const data = await res.json();
+      const data = (await res.json()) as { message?: string; payment?: { id?: string } };
       if (!res.ok) throw new Error(data.message ?? "Payment failed.");
+      const pid = typeof data.payment?.id === "string" ? data.payment.id : null;
       setPayModalOpen(false);
       await load();
       dispatchClientDataSync({ reason: "worker-pay" });
+      if (pid) {
+        queueMicrotask(() => {
+          setReceiptPaymentId(pid);
+          setReceiptOpen(true);
+        });
+      }
     } catch (err) {
       setPayError(err instanceof Error ? err.message : "Payment failed.");
     } finally {
@@ -621,6 +631,15 @@ export default function WorkerBalanceDetailPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <WorkerPaymentReceiptPreviewModal
+        paymentId={receiptPaymentId}
+        open={receiptOpen}
+        onOpenChange={(open) => {
+          setReceiptOpen(open);
+          if (!open) setReceiptPaymentId(null);
+        }}
+      />
     </div>
   );
 }
