@@ -148,11 +148,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     }
     const laborSettlementMode = laborPayrollSettlementModeFromSelectList(laborColsApplied);
 
-    // worker_payments — canonical: total_amount, note, created_at (note may be missing in some schema caches)
+    // worker_payments — canonical: total_amount, note, created_at
     let paymentsRes: RawResult = { data: null, error: null };
     for (const cols of [
-      "id, worker_id, total_amount, payment_method, created_at",
-      "id, worker_id, total_amount, created_at",
       "id, worker_id, total_amount, payment_method, note, created_at",
       "id, worker_id, total_amount, note, created_at",
       "id, worker_id, total_amount, created_at",
