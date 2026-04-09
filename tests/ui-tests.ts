@@ -103,6 +103,8 @@ async function smokeTestModulePage(
     throw new Error(`Page ${path} returned HTTP ${res ? res.status() : "no response"}`);
   }
   await page.waitForSelector("body", { timeout: WAIT_TIMEOUT });
+  await waitFor(page, "main, [class*='page-container']", "page content");
+  // Snapshot after shell + main exist so client-rendered titles (e.g. Change Orders) are present.
   const content = await page.content();
 
   // Fail if page shows Supabase/API/schema error
@@ -123,9 +125,12 @@ async function smokeTestModulePage(
     }
   }
 
-  await waitFor(page, "main, [class*='page-container']", "page content");
   if (!content.includes(expectedText)) {
-    throw new Error(`Expected page content not found: "${expectedText}"`);
+    await page.waitForFunction(
+      (t: string) => document.body?.innerText?.includes(t) === true,
+      { timeout: WAIT_TIMEOUT },
+      expectedText
+    );
   }
 
   // Table or list: look for table element or role=table or list-like structure

@@ -215,6 +215,10 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
         ids.push(...(data ?? []).map((r: { id: string }) => r.id));
       }
       if (testProjectIds.length > 0) {
+        const { data: dataPid } = await c
+          .from("labor_entries")
+          .select("id")
+          .in("project_id", testProjectIds);
         const { data: dataAm } = await c
           .from("labor_entries")
           .select("id")
@@ -223,6 +227,7 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
           .from("labor_entries")
           .select("id")
           .in("project_pm_id", testProjectIds);
+        ids.push(...(dataPid ?? []).map((r: { id: string }) => r.id));
         ids.push(...(dataAm ?? []).map((r: { id: string }) => r.id));
         ids.push(...(dataPm ?? []).map((r: { id: string }) => r.id));
       }

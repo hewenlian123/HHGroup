@@ -79,6 +79,13 @@ function isMissingTable(err: { message?: string } | null): boolean {
   return /schema cache|relation.*does not exist|could not find the table/i.test(m);
 }
 
+function isMissingColumn(err: { message?: string } | null): boolean {
+  const m = err?.message ?? "";
+  return /column .* does not exist|does not exist.*column|could not find the .* column|schema cache|pgrst204/i.test(
+    m
+  );
+}
+
 /** Postgres FK violation code */
 const PG_FK_VIOLATION = "23503";
 
@@ -130,11 +137,19 @@ async function parseForeignKeyError(
   let count = 0;
   try {
     if (table === "labor_entries") {
-      const { data } = await c
+      const ids = new Set<string>();
+      const byPid = await c.from("labor_entries").select("id").eq("project_id", projectId);
+      if (!byPid.error && byPid.data) {
+        for (const r of byPid.data) ids.add((r as { id: string }).id);
+      }
+      const byAmPm = await c
         .from("labor_entries")
         .select("id")
         .or(`project_am_id.eq.${projectId},project_pm_id.eq.${projectId}`);
-      count = (data ?? []).length;
+      if (!byAmPm.error && byAmPm.data) {
+        for (const r of byAmPm.data) ids.add((r as { id: string }).id);
+      }
+      count = ids.size;
     } else {
       const { count: n } = await c
         .from(table)
@@ -475,7 +490,7 @@ const FORCE_DELETE_ORDER: { table: string; column?: string; orColumns?: [string,
   { table: "project_budget_items" },
   { table: "project_change_orders" },
   { table: "expense_lines" },
-  { table: "labor_entries", orColumns: ["project_am_id", "project_pm_id"] },
+  { table: "labor_entries" },
   { table: "worker_receipts" },
   { table: "invoices" },
   { table: "bills" },
@@ -506,6 +521,20 @@ const FORCE_DELETE_ORDER: { table: string; column?: string; orColumns?: [string,
 export async function forceDeleteProject(id: string): Promise<void> {
   const c = client();
   for (const { table, orColumns } of FORCE_DELETE_ORDER) {
+    if (table === "labor_entries") {
+      const r1 = await c.from("labor_entries").delete().eq("project_id", id);
+      if (r1.error && !isMissingColumn(r1.error)) {
+        throw new Error(r1.error.message ?? "labor_entries delete failed");
+      }
+      const r2 = await c
+        .from("labor_entries")
+        .delete()
+        .or(`project_am_id.eq.${id},project_pm_id.eq.${id}`);
+      if (r2.error && !isMissingColumn(r2.error)) {
+        throw new Error(r2.error.message ?? "labor_entries delete failed");
+      }
+      continue;
+    }
     if (orColumns) {
       await c.from(table).delete().or(`project_am_id.eq.${id},project_pm_id.eq.${id}`);
     } else {
@@ -545,12 +574,19 @@ export async function getProjectUsageCounts(projectId: string): Promise<ProjectU
   };
 
   const laborOr = async (): Promise<number> => {
-    const { data, error } = await c
+    const ids = new Set<string>();
+    const byPid = await c.from("labor_entries").select("id").eq("project_id", pid);
+    if (!byPid.error && byPid.data) {
+      for (const r of byPid.data) ids.add((r as { id: string }).id);
+    }
+    const byAmPm = await c
       .from("labor_entries")
       .select("id")
       .or(`project_am_id.eq.${pid},project_pm_id.eq.${pid}`);
-    if (error) return 0;
-    return (data ?? []).length;
+    if (!byAmPm.error && byAmPm.data) {
+      for (const r of byAmPm.data) ids.add((r as { id: string }).id);
+    }
+    return ids.size;
   };
 
   const [

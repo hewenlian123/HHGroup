@@ -67,16 +67,20 @@ function mergeLaborRowsById(rows: LaborRowRaw[]): LaborRowRaw[] {
   });
 }
 
-/** Local seed uses `project_id`; older schemas use AM/PM project columns. */
+/** Try sparse columns first (no project_* / total / AM-PM ids), then richer shapes. */
 const LABOR_RECEIPT_SELECT_VARIANTS = [
-  "id, work_date, project_id, project_am_id, project_pm_id, cost_amount, total, morning, afternoon, worker_payment_id",
-  "id, work_date, project_id, project_am_id, project_pm_id, cost_amount, total, worker_payment_id",
-  "id, work_date, project_id, cost_amount, total, morning, afternoon, worker_payment_id",
-  "id, work_date, project_id, cost_amount, total, worker_payment_id",
-  "id, work_date, project_am_id, project_pm_id, cost_amount, total, morning, afternoon, worker_payment_id",
-  "id, work_date, project_am_id, project_pm_id, cost_amount, total, worker_payment_id",
+  "id, work_date, cost_amount, cost_code, status, worker_payment_id, morning, afternoon, hours, notes",
+  "id, work_date, cost_amount, status, worker_payment_id, morning, afternoon, hours, notes",
+  "id, work_date, cost_amount, status, worker_payment_id, morning, afternoon",
+  "id, work_date, cost_amount, status, worker_payment_id",
   "id, work_date, cost_amount, total, morning, afternoon, worker_payment_id",
   "id, work_date, cost_amount, total, worker_payment_id",
+  "id, work_date, project_id, cost_amount, total, morning, afternoon, worker_payment_id",
+  "id, work_date, project_id, cost_amount, total, worker_payment_id",
+  "id, work_date, project_id, project_am_id, project_pm_id, cost_amount, total, morning, afternoon, worker_payment_id",
+  "id, work_date, project_id, project_am_id, project_pm_id, cost_amount, total, worker_payment_id",
+  "id, work_date, project_am_id, project_pm_id, cost_amount, total, morning, afternoon, worker_payment_id",
+  "id, work_date, project_am_id, project_pm_id, cost_amount, total, worker_payment_id",
 ] as const;
 
 function isRetryableLaborSelectError(err: { message?: string } | null): boolean {

@@ -121,9 +121,16 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     let laborRes: RawResult = { data: null, error: null };
     let laborColsApplied = "";
     for (const cols of [
-      "id, worker_id, project_am_id, project_pm_id, work_date, cost_amount, total, status, worker_payment_id, morning, afternoon, hours, notes",
-      "id, worker_id, project_am_id, project_pm_id, work_date, cost_amount, total, status, worker_payment_id, morning, afternoon",
-      "id, worker_id, project_am_id, project_pm_id, work_date, cost_amount, total, status, worker_payment_id",
+      // Sparse daily labor (no project_* / total / AM-PM ids) — try first for local & trimmed remotes.
+      "id, worker_id, work_date, cost_amount, cost_code, status, worker_payment_id, morning, afternoon, hours, notes",
+      "id, worker_id, work_date, cost_amount, status, worker_payment_id, morning, afternoon, hours, notes",
+      "id, worker_id, work_date, cost_amount, status, worker_payment_id, morning, afternoon",
+      "id, worker_id, work_date, cost_amount, status, worker_payment_id",
+      "id, worker_id, work_date, cost_amount, status",
+      "id, worker_id, work_date, cost_amount",
+      // With total when column exists (older daily log).
+      "id, worker_id, work_date, cost_amount, total, status, worker_payment_id, morning, afternoon, hours, notes",
+      // project_id on row (newer unified schema).
       "id, worker_id, project_id, work_date, cost_amount, status, worker_payment_id, morning, afternoon, hours, notes",
       "id, worker_id, project_id, work_date, cost_amount, status, worker_payment_id, morning, afternoon",
       "id, worker_id, project_id, work_date, cost_amount, status, worker_payment_id",
@@ -132,13 +139,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       "id, worker_id, project_id, work_date, cost_amount, status",
       "id, worker_id, project_id, work_date, cost_amount",
       "id, worker_id, project_id, work_date",
-      // No project_* columns (sparse migrations / denormalized project not exposed to PostgREST).
-      "id, worker_id, work_date, cost_amount, total, status, worker_payment_id, morning, afternoon, hours, notes",
-      "id, worker_id, work_date, cost_amount, status, worker_payment_id, morning, afternoon, hours, notes",
-      "id, worker_id, work_date, cost_amount, status, worker_payment_id, morning, afternoon",
-      "id, worker_id, work_date, cost_amount, status, worker_payment_id",
-      "id, worker_id, work_date, cost_amount, status",
-      "id, worker_id, work_date, cost_amount",
     ]) {
       laborRes = await queryWorker(c, "labor_entries", cols, "work_date");
       if (!laborRes.error || !isMissingColumn(laborRes.error)) {
