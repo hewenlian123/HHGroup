@@ -29,13 +29,13 @@ type ProjectRow = {
 type ProjectSubcontractorRow = {
   id: string;
   role: string | null;
-  subcontractors?: { id: string; display_name: string | null; status: string | null } | null;
+  subcontractors?: { id: string; name: string | null; active: boolean | null } | null;
 };
 
 type ProjectSubcontractorRowRaw = Omit<ProjectSubcontractorRow, "subcontractors"> & {
   subcontractors?:
-    | Array<{ id: string; display_name: string | null; status: string | null }>
-    | { id: string; display_name: string | null; status: string | null }
+    | Array<{ id: string; name: string | null; active: boolean | null }>
+    | { id: string; name: string | null; active: boolean | null }
     | null;
 };
 
@@ -48,7 +48,7 @@ type BillRow = {
   total: number | null;
   balance: number | null;
   payee_name: string | null;
-  subcontractors?: { id: string; display_name: string | null } | null;
+  subcontractors?: { id: string; name: string | null } | null;
 };
 
 type ProjectDetailState = {
@@ -167,7 +167,7 @@ export function ProjectDetailClient({ id }: { id: string }) {
         .limit(25),
       supabase
         .from("project_subcontractors")
-        .select("id,role,subcontractors(id,display_name,status)")
+        .select("id,role,subcontractors(id,name,active)")
         .eq("project_id", id)
         .order("created_at", { ascending: false })
         .limit(50),
@@ -315,7 +315,7 @@ export function ProjectDetailClient({ id }: { id: string }) {
       header: "Payee",
       render: (row) => (
         <span className="text-muted-foreground">
-          {row.subcontractors?.display_name || row.payee_name || "—"}
+          {row.subcontractors?.name || row.payee_name || "—"}
         </span>
       ),
     },
@@ -355,7 +355,7 @@ export function ProjectDetailClient({ id }: { id: string }) {
           href={row.subcontractors?.id ? `/labor/subcontractors/${row.subcontractors.id}` : "#"}
           className="font-medium text-foreground hover:underline"
         >
-          {row.subcontractors?.display_name || "—"}
+          {row.subcontractors?.name || "—"}
         </Link>
       ),
     },
@@ -367,7 +367,9 @@ export function ProjectDetailClient({ id }: { id: string }) {
     {
       key: "status",
       header: "Status",
-      render: (row) => <StatusBadge status={row.subcontractors?.status || "active"} />,
+      render: (row) => (
+        <StatusBadge status={row.subcontractors?.active === false ? "inactive" : "active"} />
+      ),
     },
   ];
 
