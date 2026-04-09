@@ -136,8 +136,8 @@ function isMissingTable(err: { message?: string; code?: string } | null): boolea
   );
 }
 
-const COLS =
-  "id, worker_id, project_id, amount, advance_date, status, notes, created_at, created_by";
+/** Columns that exist on all envs; omit created_by (dropped in prod) and optional updated_at. */
+const COLS = "id, worker_id, project_id, amount, advance_date, status, notes, created_at";
 
 function fromRow(r: Record<string, unknown>): WorkerAdvance {
   return {
