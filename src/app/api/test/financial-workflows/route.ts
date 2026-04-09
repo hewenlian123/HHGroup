@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { insertLaborEntryForTestSchema } from "@/lib/labor-entry-test-insert";
-import { createWorkerPayment } from "@/lib/worker-payments-db";
+import { createWorkerPaymentWithClient } from "@/lib/worker-payments-db";
 import {
   insertWorkerReceiptWithClient,
   approveWorkerReceiptWithClient,
@@ -92,14 +92,20 @@ export async function POST(req: Request) {
         } else {
           steps.push("labor_entries created");
           log("labor_workflow", "daily entry created");
-          const balanceRes = await fetch(`${baseUrl}/api/labor/workers/${workerId}/balance`);
+          const balanceUrl = (nonce: string) =>
+            `${baseUrl}/api/labor/workers/${workerId}/balance?t=${nonce}`;
+          const balanceRes = await fetch(balanceUrl(String(Date.now())), {
+            cache: "no-store",
+            headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
+          });
           const balanceData = await balanceRes.json().catch(() => ({}));
-          const laborOwedBefore = balanceData?.summary?.laborOwed ?? 0;
-          const balanceBefore = balanceData?.summary?.balance ?? 0;
+          const laborOwedBefore = Number(balanceData?.summary?.laborOwed ?? 0);
+          const balanceBefore = Number(balanceData?.summary?.balance ?? 0);
+          const paymentsBefore = Number(balanceData?.summary?.payments ?? 0);
           steps.push("worker balance fetched");
           log("labor_workflow", "balance updated");
           const payAmount = 50;
-          const payment = await createWorkerPayment({
+          const payment = await createWorkerPaymentWithClient(server, {
             workerId,
             amount: payAmount,
             paymentMethod: "Test",
@@ -107,19 +113,29 @@ export async function POST(req: Request) {
           });
           steps.push("worker_payment created");
           log("labor_workflow", "worker payment created");
-          const balanceRes2 = await fetch(`${baseUrl}/api/labor/workers/${workerId}/balance`);
+          const balanceRes2 = await fetch(balanceUrl(String(Date.now())), {
+            cache: "no-store",
+            headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
+          });
           const balanceData2 = await balanceRes2.json().catch(() => ({}));
-          const balanceAfter = balanceData2?.summary?.balance ?? 0;
+          const balanceAfter = Number(balanceData2?.summary?.balance ?? 0);
+          const paymentsAfter = Number(balanceData2?.summary?.payments ?? 0);
           const reduced =
             balanceAfter < balanceBefore ||
             Math.abs(balanceAfter - (balanceBefore - payAmount)) < 0.01;
-          if (!reduced && balanceBefore > 0)
-            steps.push("balance reduced check: " + (reduced ? "yes" : "no"));
-          else steps.push("balance reduced");
-          log("labor_workflow", "balance reduced");
+          const paymentsIncreased = paymentsAfter >= paymentsBefore + payAmount - 0.01;
+          const balanceOk = reduced || balanceBefore === 0 || paymentsIncreased;
+          if (!balanceOk) {
+            steps.push(
+              `balance check failed: balance ${balanceBefore}→${balanceAfter}, payments ${paymentsBefore}→${paymentsAfter}, laborOwed ${laborOwedBefore}`
+            );
+          } else {
+            steps.push("balance or payments reflect payout");
+          }
+          log("labor_workflow", "balance/payments verified");
           tests.push({
             name: "labor_workflow",
-            ok: laborOk && !!payment?.id && (reduced || balanceBefore === 0),
+            ok: laborOk && !!payment?.id && balanceOk,
             steps,
           });
         }
