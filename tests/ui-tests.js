@@ -230,6 +230,10 @@ async function main() {
     results.push(
       await runTest("receipt_upload", async () => {
         await goto(page, "/upload-receipt");
+        await page.waitForFunction(
+          () => document.body?.innerText?.includes("Worker Receipt Upload") === true,
+          { timeout: WAIT_TIMEOUT }
+        );
         await assertText(page, "Worker Receipt Upload");
         await waitFor(page, "button", "submit button");
       })
