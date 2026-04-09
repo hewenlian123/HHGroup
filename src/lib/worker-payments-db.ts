@@ -63,6 +63,11 @@ function isRetryableWorkerPaymentsSelectError(err: { message?: string } | null):
  * Extra variants cover legacy or partial schemas without breaking the payments UI.
  */
 const WORKER_PAYMENTS_SELECT_VARIANTS = [
+  // Start with minimal columns so missing note/notes won't break the page.
+  "id, worker_id, total_amount, payment_method, created_at, labor_entry_ids",
+  "id, worker_id, total_amount, payment_method, created_at",
+  "id, worker_id, amount, payment_method, created_at",
+  // Optional note columns (schema variants).
   "id, worker_id, total_amount, payment_method, note, created_at, labor_entry_ids",
   "id, worker_id, total_amount, payment_method, note, created_at",
   "id, worker_id, amount, payment_method, note, created_at",
