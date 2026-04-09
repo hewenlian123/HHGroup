@@ -348,6 +348,7 @@ export async function approveWorkerReceiptWithClient(
       [approvedReceipt.vendor, approvedReceipt.expenseType].filter(Boolean).join(" · ") ||
       approvedReceipt.description ||
       null;
+    const reimbDay = new Date().toISOString().slice(0, 10);
     const fullInsert = {
       worker_id: workerId,
       project_id: projectId,
@@ -356,6 +357,7 @@ export async function approveWorkerReceiptWithClient(
       description,
       receipt_url: approvedReceipt.receiptUrl ?? null,
       status: "pending",
+      reimbursement_date: reimbDay,
     };
     const legacyInsert = {
       worker_id: workerId,
@@ -377,7 +379,7 @@ export async function approveWorkerReceiptWithClient(
       project_id: projectId,
       amount: approvedReceipt.amount ?? 0,
       notes: notesText,
-      reimbursement_date: new Date().toISOString().slice(0, 10),
+      reimbursement_date: reimbDay,
       receipt_url: approvedReceipt.receiptUrl ?? null,
     };
 
@@ -392,8 +394,15 @@ export async function approveWorkerReceiptWithClient(
 
     await tryInsert(
       fullInsert,
-      "id, worker_id, project_id, vendor, amount, description, receipt_url, status, created_at"
+      "id, worker_id, project_id, vendor, amount, description, receipt_url, status, reimbursement_date, created_at"
     );
+    if (rErr && isMissingColumn(rErr)) {
+      const { reimbursement_date: _rd, ...fullNoDate } = fullInsert;
+      await tryInsert(
+        fullNoDate,
+        "id, worker_id, project_id, vendor, amount, description, receipt_url, status, created_at"
+      );
+    }
     if (rErr && isMissingColumn(rErr)) {
       await tryInsert(
         legacyInsert,
@@ -402,15 +411,13 @@ export async function approveWorkerReceiptWithClient(
     }
     if (rErr && isMissingColumn(rErr)) {
       await tryInsert(
-        legacyInsert,
-        "id, worker_id, project_id, amount, description, status, created_at"
-      );
-    }
-    if (rErr && isMissingColumn(rErr)) {
-      await tryInsert(
         minimalInsert,
         "id, worker_id, project_id, amount, notes, reimbursement_date, created_at"
       );
+    }
+    if (rErr && isMissingColumn(rErr)) {
+      const { reimbursement_date: _md, ...minimalNoDate } = minimalInsert;
+      await tryInsert(minimalNoDate, "id, worker_id, project_id, amount, notes, created_at");
     }
     if (rErr && isMissingColumn(rErr)) {
       await tryInsert(
@@ -445,6 +452,11 @@ export async function approveWorkerReceiptWithClient(
             : null,
       receiptUrl: row.receipt_url != null ? String(row.receipt_url) : null,
       status: "pending",
+      reimbursementDate: (() => {
+        const rd = row.reimbursement_date;
+        if (typeof rd === "string" && /^\d{4}-\d{2}-\d{2}/.test(rd)) return rd.slice(0, 10);
+        return reimbDay;
+      })(),
       createdAt: String(row.created_at ?? ""),
       paidAt: null,
       paymentId: null,

@@ -5,7 +5,7 @@
  * - labor_entries: work_date, cost_amount, worker_id; project_id optional (older local DBs omit it)
  * - worker_invoices: created_at, amount, project_id, worker_id
  * - labor_invoices: invoice_date, amount, status, project_splits, worker_id
- * - worker_reimbursements: created_at, amount, project_id, worker_id
+ * - worker_reimbursements: reimbursement_date (business date), created_at, amount, project_id, worker_id
  * - worker_advances: advance_date, amount, project_id, worker_id
  * - worker_payments: payment_date + amount + project_id (prod), or total_amount + created_at (legacy local)
  */
@@ -346,13 +346,32 @@ export async function getWorkerMonthlyReport(
 
   const workerRes = await loadWorkerForReport(admin, wid);
 
-  const [reimbRes, wiRes, liRes, advRes] = await Promise.all([
-    admin
+  type ReimbReportRow = {
+    id: unknown;
+    project_id: unknown;
+    amount: unknown;
+    created_at: unknown;
+    reimbursement_date?: unknown;
+  };
+  const reimbPrimary = await admin
+    .from("worker_reimbursements")
+    .select("id, project_id, amount, created_at, reimbursement_date")
+    .eq("worker_id", wid)
+    .gte("reimbursement_date", range.start)
+    .lt("reimbursement_date", range.nextStart);
+  let reimbData = reimbPrimary.data as ReimbReportRow[] | null;
+  let reimbErr = reimbPrimary.error;
+  if (reimbErr && isRetryableSelectError(reimbErr)) {
+    const reimbFallback = await admin
       .from("worker_reimbursements")
       .select("id, project_id, amount, created_at")
       .eq("worker_id", wid)
       .gte("created_at", range.tStart)
-      .lt("created_at", range.tNext),
+      .lt("created_at", range.tNext);
+    reimbData = reimbFallback.data as ReimbReportRow[] | null;
+    reimbErr = reimbFallback.error;
+  }
+  const [wiRes, liRes, advRes] = await Promise.all([
     admin
       .from("worker_invoices")
       .select("id, project_id, amount, created_at")
@@ -379,7 +398,7 @@ export async function getWorkerMonthlyReport(
   const firstErr =
     workerRes.error?.message ??
     laborErr ??
-    reimbRes.error?.message ??
+    reimbErr?.message ??
     wiRes.error?.message ??
     liRes.error?.message ??
     advRes.error?.message ??
@@ -388,11 +407,12 @@ export async function getWorkerMonthlyReport(
 
   const workerName = String(workerRes.data?.name ?? "").trim();
 
-  const reimbRows = (reimbRes.data ?? []) as {
+  const reimbRows = (reimbData ?? []) as {
     id: string;
     project_id: string | null;
     amount: unknown;
     created_at: string;
+    reimbursement_date?: string | null;
   }[];
   const wiRows = (wiRes.data ?? []) as {
     id: string;
@@ -448,7 +468,11 @@ export async function getWorkerMonthlyReport(
 
   for (const r of reimbRows) {
     const amt = Math.abs(Number(r.amount) || 0);
-    const d = String(r.created_at ?? "").slice(0, 10);
+    const rd = r.reimbursement_date;
+    const d =
+      typeof rd === "string" && /^\d{4}-\d{2}-\d{2}/.test(rd)
+        ? rd.slice(0, 10)
+        : String(r.created_at ?? "").slice(0, 10);
     const pid = r.project_id ? String(r.project_id) : null;
     merged.push({
       id: `reimb-${r.id}`,

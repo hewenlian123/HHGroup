@@ -175,13 +175,22 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       );
     }
 
-    const [reimbRes, projectsRes, advancesRes] = await Promise.all([
-      queryFinancialTable(
+    let reimbRes = await queryFinancialTable(
+      c,
+      "worker_reimbursements",
+      "id, worker_id, project_id, vendor, amount, status, created_at, reimbursement_date",
+      "reimbursement_date"
+    );
+    if (reimbRes.error && isMissingColumn(reimbRes.error)) {
+      reimbRes = await queryFinancialTable(
         c,
         "worker_reimbursements",
         "id, worker_id, project_id, vendor, amount, status, created_at",
         "created_at"
-      ),
+      );
+    }
+
+    const [projectsRes, advancesRes] = await Promise.all([
       c.from("projects").select("id, name"),
       queryFinancialTable(c, "worker_advances", "worker_id, amount, status"),
     ]);
@@ -246,10 +255,16 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       amount?: number | null;
       status?: string | null;
       created_at?: string;
+      reimbursement_date?: string | null;
     }[];
+    const reimbRowDisplayDate = (r: (typeof reimbRaw)[0]): string => {
+      const rd = r.reimbursement_date;
+      if (typeof rd === "string" && /^\d{4}-\d{2}-\d{2}/.test(rd)) return rd.slice(0, 10);
+      return (r.created_at ?? "").slice(0, 10);
+    };
     const reimbursements: ReimbursementRow[] = reimbRaw.map((r) => ({
       id: r.id,
-      date: (r.created_at ?? "").slice(0, 10),
+      date: reimbRowDisplayDate(r),
       vendor: r.vendor ?? null,
       projectId: r.project_id ?? null,
       projectName: r.project_id ? (projectNameById.get(r.project_id) ?? null) : null,

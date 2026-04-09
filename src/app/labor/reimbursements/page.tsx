@@ -46,6 +46,14 @@ function fmtUsd(n: number): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function todayLocalISODate(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 const STATUS_OPTIONS: WorkerReimbursementStatus[] = ["pending", "paid"];
 
 export default function WorkerReimbursementsPage() {
@@ -61,10 +69,10 @@ export default function WorkerReimbursementsPage() {
   const [page, setPage] = React.useState(1);
   const pageSize = 10;
   const [sort, setSort] = React.useState<{
-    key: "createdAt" | "amount" | "status";
+    key: "reimbursementDate" | "createdAt" | "amount" | "status";
     dir: "asc" | "desc";
   }>({
-    key: "createdAt",
+    key: "reimbursementDate",
     dir: "desc",
   });
   const [form, setForm] = React.useState({
@@ -74,6 +82,7 @@ export default function WorkerReimbursementsPage() {
     amount: "",
     receiptUrl: "",
     description: "",
+    reimbursementDate: todayLocalISODate(),
     status: "pending" as WorkerReimbursementStatus,
   });
   const { openPreview } = useAttachmentPreview();
@@ -161,6 +170,11 @@ export default function WorkerReimbursementsPage() {
       if (sort.key === "amount") return ((a.amount ?? 0) - (b.amount ?? 0)) * dir;
       if (sort.key === "status")
         return (String(a.status).localeCompare(String(b.status)) || 0) * dir;
+      if (sort.key === "reimbursementDate") {
+        const da = a.reimbursementDate || String(a.createdAt ?? "").slice(0, 10);
+        const db = b.reimbursementDate || String(b.createdAt ?? "").slice(0, 10);
+        return (da.localeCompare(db) || 0) * dir;
+      }
       return (String(a.createdAt).localeCompare(String(b.createdAt)) || 0) * dir;
     });
     return sorted;
@@ -185,10 +199,26 @@ export default function WorkerReimbursementsPage() {
       amount: "",
       receiptUrl: "",
       description: "",
+      reimbursementDate: todayLocalISODate(),
       status: "pending",
     });
     setEditingId(null);
     setShowForm(false);
+  };
+
+  const openNewReimbursementForm = () => {
+    setEditingId(null);
+    setForm({
+      workerId: "",
+      projectId: "",
+      vendor: "",
+      amount: "",
+      receiptUrl: "",
+      description: "",
+      reimbursementDate: todayLocalISODate(),
+      status: "pending",
+    });
+    setShowForm(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -202,6 +232,11 @@ export default function WorkerReimbursementsPage() {
       setMessage("Enter a valid amount.");
       return;
     }
+    const reimbursementDate = form.reimbursementDate.trim().slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(reimbursementDate)) {
+      setMessage("Enter a valid date.");
+      return;
+    }
     setMessage(null);
     try {
       if (editingId) {
@@ -213,6 +248,7 @@ export default function WorkerReimbursementsPage() {
           receiptUrl: form.receiptUrl.trim() || null,
           description: form.description.trim() || null,
           status: form.status,
+          reimbursementDate,
         });
       } else {
         const res = await fetch("/api/worker-reimbursements", {
@@ -226,6 +262,7 @@ export default function WorkerReimbursementsPage() {
             receiptUrl: form.receiptUrl.trim() || null,
             description: form.description.trim() || null,
             status: form.status,
+            reimbursementDate,
           }),
         });
         if (!res.ok) {
@@ -321,13 +358,17 @@ export default function WorkerReimbursementsPage() {
       amount: String(row.amount ?? 0),
       receiptUrl: row.receiptUrl ?? "",
       description: row.description ?? "",
+      reimbursementDate:
+        row.reimbursementDate?.trim().slice(0, 10) ||
+        String(row.createdAt ?? "").slice(0, 10) ||
+        todayLocalISODate(),
       status: (row.status as WorkerReimbursementStatus) ?? "pending",
     });
     setEditingId(row.id);
     setShowForm(true);
   };
 
-  const toggleSort = (key: "createdAt" | "amount" | "status") => {
+  const toggleSort = (key: "reimbursementDate" | "createdAt" | "amount" | "status") => {
     setSort((s) =>
       s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }
     );
@@ -455,7 +496,7 @@ export default function WorkerReimbursementsPage() {
     );
   }
 
-  const sortFilterActive = sort.key !== "createdAt" || sort.dir !== "desc" ? 1 : 0;
+  const sortFilterActive = sort.key !== "reimbursementDate" || sort.dir !== "desc" ? 1 : 0;
 
   return (
     <div
@@ -488,10 +529,7 @@ export default function WorkerReimbursementsPage() {
               <Button
                 size="sm"
                 className="w-full max-md:min-h-11 sm:w-auto"
-                onClick={() => {
-                  setEditingId(null);
-                  setShowForm(true);
-                }}
+                onClick={openNewReimbursementForm}
               >
                 + New Reimbursement
               </Button>
@@ -501,15 +539,7 @@ export default function WorkerReimbursementsPage() {
       </div>
       <MobileListHeader
         title="Reimbursements"
-        fab={
-          <MobileFabButton
-            ariaLabel="New reimbursement"
-            onClick={() => {
-              setEditingId(null);
-              setShowForm(true);
-            }}
-          />
-        }
+        fab={<MobileFabButton ariaLabel="New reimbursement" onClick={openNewReimbursementForm} />}
       />
       <MobileSearchFiltersRow
         filterSheetOpen={filtersOpen}
@@ -536,12 +566,13 @@ export default function WorkerReimbursementsPage() {
             onChange={(e) =>
               setSort((s) => ({
                 ...s,
-                key: e.target.value as "createdAt" | "amount" | "status",
+                key: e.target.value as "reimbursementDate" | "createdAt" | "amount" | "status",
               }))
             }
             className="w-full"
           >
-            <option value="createdAt">Date</option>
+            <option value="reimbursementDate">Date</option>
+            <option value="createdAt">Recorded</option>
             <option value="amount">Amount</option>
             <option value="status">Status</option>
           </Select>
@@ -617,6 +648,19 @@ export default function WorkerReimbursementsPage() {
             {editingId ? "Edit Reimbursement" : "New Reimbursement"}
           </h2>
           <form onSubmit={handleSubmit} className="flex flex-wrap gap-3 items-end">
+            <div>
+              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-[0.2em] block mb-1">
+                Date
+              </label>
+              <Input
+                type="date"
+                value={form.reimbursementDate}
+                onChange={(e) => setForm((f) => ({ ...f, reimbursementDate: e.target.value }))}
+                className="h-9 w-[140px] rounded-sm"
+                required
+                aria-label="Reimbursement date"
+              />
+            </div>
             <div>
               <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-[0.2em] block mb-1">
                 Worker
@@ -761,7 +805,7 @@ export default function WorkerReimbursementsPage() {
                         {projectName(r)} · {r.vendor ?? "—"}
                       </p>
                       <p className="mt-1 text-xs tabular-nums text-muted-foreground">
-                        {(r.createdAt ?? "").slice(0, 10)}
+                        {r.reimbursementDate || (r.createdAt ?? "").slice(0, 10)}
                       </p>
                     </div>
                   </div>
@@ -795,6 +839,12 @@ export default function WorkerReimbursementsPage() {
                   className="h-4 w-4 rounded border-input"
                 />
               </th>
+              <th
+                className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground cursor-pointer select-none tabular-nums"
+                onClick={() => toggleSort("reimbursementDate")}
+              >
+                Date
+              </th>
               <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Worker
               </th>
@@ -825,13 +875,13 @@ export default function WorkerReimbursementsPage() {
           <tbody>
             {loading ? (
               <tr className="border-b border-border/40">
-                <td colSpan={8} className="py-6 px-3 text-center text-muted-foreground text-xs">
+                <td colSpan={9} className="py-6 px-3 text-center text-muted-foreground text-xs">
                   Loading…
                 </td>
               </tr>
             ) : paged.length === 0 ? (
               <tr className="border-b border-border/40">
-                <td colSpan={8} className="py-6 px-3 text-center text-muted-foreground text-xs">
+                <td colSpan={9} className="py-6 px-3 text-center text-muted-foreground text-xs">
                   No reimbursements yet.
                 </td>
               </tr>
@@ -857,6 +907,9 @@ export default function WorkerReimbursementsPage() {
                     ) : (
                       <span className="text-muted-foreground">—</span>
                     )}
+                  </td>
+                  <td className="py-2 px-3 text-muted-foreground tabular-nums">
+                    {r.reimbursementDate || (r.createdAt ?? "").slice(0, 10)}
                   </td>
                   <td
                     className={cn(
