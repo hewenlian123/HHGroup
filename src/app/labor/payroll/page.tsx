@@ -165,6 +165,9 @@ export default function PayrollSummaryPage() {
     );
   };
 
+  /** Monthly report page uses calendar month; align with the range “From” date. */
+  const payrollMonthYm = fromDate.slice(0, 7);
+
   return (
     <div className="page-container page-stack py-6">
       <PageHeader
@@ -302,17 +305,26 @@ export default function PayrollSummaryPage() {
                 </div>
               </dl>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-8 max-md:min-h-11"
-                  onClick={() => {
-                    setPayTarget(r);
-                    setPayOpen(true);
-                  }}
-                >
-                  Pay Worker
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 max-md:min-h-11"
+                    onClick={() => {
+                      setPayTarget(r);
+                      setPayOpen(true);
+                    }}
+                  >
+                    Pay Worker
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-8 max-md:min-h-11" asChild>
+                    <Link
+                      href={`/worker/${encodeURIComponent(r.workerId)}/monthly-report?month=${encodeURIComponent(payrollMonthYm)}`}
+                    >
+                      Monthly Report
+                    </Link>
+                  </Button>
+                </div>
                 <RowActionsMenu
                   appearance="list"
                   ariaLabel={`Actions for ${r.workerName}`}
@@ -354,7 +366,7 @@ export default function PayrollSummaryPage() {
 
       <div className="hidden border-b border-border/60 md:block">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[760px] border-separate border-spacing-x-0 border-spacing-y-1.5 text-sm lg:min-w-0">
+          <table className="w-full min-w-[900px] border-separate border-spacing-x-0 border-spacing-y-1.5 text-sm lg:min-w-0">
             <thead>
               <tr className="border-b border-border/60">
                 <th
@@ -396,7 +408,7 @@ export default function PayrollSummaryPage() {
                 <th className="w-28 px-4 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Pay
                 </th>
-                <th className="w-12 px-4 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                <th className="min-w-[200px] px-4 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Actions
                 </th>
               </tr>
@@ -498,41 +510,50 @@ export default function PayrollSummaryPage() {
                       className="last:rounded-r-xl py-2 px-4 text-right"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <RowActionsMenu
-                        appearance="list"
-                        ariaLabel={`Actions for ${r.workerName}`}
-                        actions={[
-                          { label: "View", onClick: () => router.push(`/workers/${r.workerId}`) },
-                          { label: "Edit", onClick: () => router.push("/workers") },
-                          {
-                            label: "Delete",
-                            onClick: async () => {
-                              if (deletingId) return;
-                              if (
-                                !window.confirm(
-                                  `Delete worker "${r.workerName}"? This cannot be undone.`
+                      <div className="flex flex-wrap items-center justify-end gap-2">
+                        <Button size="sm" variant="outline" className="h-8" asChild>
+                          <Link
+                            href={`/worker/${encodeURIComponent(r.workerId)}/monthly-report?month=${encodeURIComponent(payrollMonthYm)}`}
+                          >
+                            Monthly Report
+                          </Link>
+                        </Button>
+                        <RowActionsMenu
+                          appearance="list"
+                          ariaLabel={`Actions for ${r.workerName}`}
+                          actions={[
+                            { label: "View", onClick: () => router.push(`/workers/${r.workerId}`) },
+                            { label: "Edit", onClick: () => router.push("/workers") },
+                            {
+                              label: "Delete",
+                              onClick: async () => {
+                                if (deletingId) return;
+                                if (
+                                  !window.confirm(
+                                    `Delete worker "${r.workerName}"? This cannot be undone.`
+                                  )
                                 )
-                              )
-                                return;
-                              setDeletingId(r.workerId);
-                              const res = await deleteWorkerAction(r.workerId);
-                              if (!res.ok) {
-                                toast({
-                                  title: "Delete failed",
-                                  description: res.error,
-                                  variant: "error",
-                                });
-                              } else {
-                                toast({ title: "Deleted", variant: "success" });
-                              }
-                              setDeletingId(null);
-                              await load();
+                                  return;
+                                setDeletingId(r.workerId);
+                                const res = await deleteWorkerAction(r.workerId);
+                                if (!res.ok) {
+                                  toast({
+                                    title: "Delete failed",
+                                    description: res.error,
+                                    variant: "error",
+                                  });
+                                } else {
+                                  toast({ title: "Deleted", variant: "success" });
+                                }
+                                setDeletingId(null);
+                                await load();
+                              },
+                              destructive: true,
+                              disabled: deletingId === r.workerId,
                             },
-                            destructive: true,
-                            disabled: deletingId === r.workerId,
-                          },
-                        ]}
-                      />
+                          ]}
+                        />
+                      </div>
                     </td>
                   </tr>
                 ))
