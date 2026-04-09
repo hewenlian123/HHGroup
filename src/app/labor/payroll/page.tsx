@@ -27,6 +27,7 @@ import {
   type PayrollSummaryComputeRow,
 } from "./compute-payroll-summary-rows";
 import { PayWorkerModal } from "./pay-worker-modal";
+import { WorkerPaymentReceiptPreviewModal } from "@/components/labor/worker-payment-receipt-preview-modal";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { deleteWorkerAction } from "@/app/workers/actions";
 import { cn } from "@/lib/utils";
@@ -76,6 +77,8 @@ export default function PayrollSummaryPage() {
   const [payOpen, setPayOpen] = React.useState(false);
   const [payTarget, setPayTarget] = React.useState<Row | null>(null);
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
+  const [receiptPaymentId, setReceiptPaymentId] = React.useState<string | null>(null);
+  const [receiptOpen, setReceiptOpen] = React.useState(false);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -600,8 +603,23 @@ export default function PayrollSummaryPage() {
           workerName={payTarget.workerName}
           defaultAmount={Math.max(0, payTarget.balance)}
           onSuccess={load}
+          onPaymentSuccess={(payment) => {
+            if (payment.id) {
+              setReceiptPaymentId(payment.id);
+              setReceiptOpen(true);
+            }
+          }}
         />
       ) : null}
+
+      <WorkerPaymentReceiptPreviewModal
+        paymentId={receiptPaymentId}
+        open={receiptOpen}
+        onOpenChange={(open) => {
+          setReceiptOpen(open);
+          if (!open) setReceiptPaymentId(null);
+        }}
+      />
     </div>
   );
 }

@@ -21,9 +21,12 @@ function monthOptions(count = 24): { value: string; label: string }[] {
 export function MonthReportToolbar({
   workerId,
   currentYm,
+  printDocumentTitle,
 }: {
   workerId: string;
   currentYm: string;
+  /** Optional PDF / print job title (browser “Save as PDF” filename hint). */
+  printDocumentTitle?: string;
 }) {
   const router = useRouter();
   const opts = monthOptions();
@@ -52,7 +55,16 @@ export function MonthReportToolbar({
         variant="outline"
         size="sm"
         className="rounded-sm"
-        onClick={() => window.print()}
+        onClick={() => {
+          const prev = document.title;
+          if (printDocumentTitle?.trim()) document.title = printDocumentTitle.trim();
+          const restoreTitle = () => {
+            document.title = prev;
+            window.removeEventListener("afterprint", restoreTitle);
+          };
+          window.addEventListener("afterprint", restoreTitle);
+          window.print();
+        }}
       >
         Print / PDF
       </Button>
