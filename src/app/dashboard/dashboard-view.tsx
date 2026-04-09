@@ -411,7 +411,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                             key={p.id}
                             className="hh-row-interactive h-10 border-b border-gray-100 dark:border-border/60"
                           >
-                            <td className="max-w-[min(280px,40vw)] py-2 px-4">
+                            <td className="max-w-[min(280px_40vw)] py-2 px-4">
                               <div className="min-w-[180px]">
                                 <Link
                                   href={`/projects/${p.id}`}

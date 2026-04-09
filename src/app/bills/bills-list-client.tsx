@@ -154,7 +154,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
   return (
     <div
       className={cn(
-        "flex flex-col gap-6 text-foreground [font-family:var(--font-inter),var(--font-geist-sans),sans-serif]",
+        "flex flex-col gap-6 text-foreground [font-family:var(--font-inter)_var(--font-geist-sans)_sans-serif]",
         mobileListPagePaddingClass,
         "max-md:!gap-3"
       )}

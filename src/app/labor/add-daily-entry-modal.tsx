@@ -371,7 +371,7 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
               <VirtualScrollList
                 count={workers.length}
                 estimateSize={WORKER_ROW_ESTIMATE_PX}
-                className="min-h-[120px] max-h-[min(52vh,440px)] flex-1"
+                className="min-h-[120px] max-h-[min(52vh_440px)] flex-1"
               >
                 {(index) => {
                   const worker = workers[index];

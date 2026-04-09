@@ -112,7 +112,7 @@ export function FloatingActionButton() {
         className={cn(
           "fixed z-40 right-4 lg:hidden",
           /* bottom-20 (5rem) + safe area — clears bottom tab bar */
-          "bottom-[calc(5rem+env(safe-area-inset-bottom,0px))]"
+          "bottom-[calc(5rem+env(safe-area-inset-bottom_0px))]"
         )}
         aria-label="Quick actions"
       >
@@ -141,7 +141,7 @@ export function FloatingActionButton() {
           onOpenAutoFocus={(e) => e.preventDefault()}
           className={cn(
             "rounded-t-xl border-t border-border/60 p-0 max-lg:max-h-[85vh]",
-            "pb-[env(safe-area-inset-bottom,0px)]",
+            "pb-[env(safe-area-inset-bottom_0px)]",
             "[&>button]:max-lg:min-h-[44px] [&>button]:max-lg:min-w-[44px]"
           )}
         >

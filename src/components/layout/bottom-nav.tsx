@@ -54,7 +54,7 @@ const BottomNavItem = React.memo(function BottomNavItem({
       onPointerEnter={onPointerEnterNav}
       className={cn(
         "flex min-h-[44px] min-w-[40px] flex-1 flex-col items-center justify-center gap-0.5 text-xs touch-manipulation cursor-pointer",
-        "transition-[color,transform,opacity] duration-75 active:opacity-80 active:scale-[0.97]",
+        "transition-[color_transform_opacity] duration-75 active:opacity-80 active:scale-[0.97]",
         isActive
           ? "font-medium text-text-primary dark:text-foreground"
           : "text-sm text-text-secondary dark:text-muted-foreground"

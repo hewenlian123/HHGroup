@@ -4,6 +4,8 @@
  */
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
+
 /** Seed.sql fixed IDs — never delete these rows. */
 export const E2E_PRESERVED_PROJECT_ID = "11111111-1111-1111-1111-111111111111";
 export const E2E_PRESERVED_WORKER_ID = "22222222-2222-2222-2222-222222222222";
@@ -27,6 +29,7 @@ const E2E_RECEIPT_QUEUE_FILE_PATTERNS = ["queue-%", "receipt-layout-%", "rq-%"] 
 
 /** Delete E2E receipt_queue rows so failed specs do not accumulate and starve the UI. */
 export async function purgeE2EReceiptQueueRows(supabase: SupabaseClient): Promise<number> {
+  assertE2ESupabaseUrlSafeForMutations(process.env.NEXT_PUBLIC_SUPABASE_URL);
   const seen = new Set<string>();
   for (const p of E2E_RECEIPT_QUEUE_FILE_PATTERNS) {
     const { data, error } = await supabase.from("receipt_queue").select("id").ilike("file_name", p);
@@ -107,6 +110,7 @@ async function collectCustomerIdsForCleanup(c: SupabaseClient): Promise<string[]
  * Invoices use column **`client_name`** (not `client`).
  */
 export async function cleanupTestData(supabase: SupabaseClient): Promise<CleanupTestDataResult> {
+  assertE2ESupabaseUrlSafeForMutations(process.env.NEXT_PUBLIC_SUPABASE_URL);
   const deleted: Record<string, number> = {};
   const warnings: string[] = [];
   const bump = (table: string, n: number) => {

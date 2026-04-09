@@ -179,7 +179,7 @@ export function ExpenseReceiptPreviewDialog({
                       className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-background/70 px-6 backdrop-blur-sm dark:bg-background/80"
                       aria-busy
                     >
-                      <Skeleton className="h-[min(50vh,320px)] w-full max-w-lg rounded-md" />
+                      <Skeleton className="h-[min(50vh_320px)] w-full max-w-lg rounded-md" />
                       <span className="sr-only">Loading preview</span>
                     </div>
                   ) : null}

@@ -19,7 +19,7 @@ const ROLES = ["Designer", "Sales", "Referral", "Agent", "Other"] as const;
 const CALC_MODES = ["Auto", "Manual"] as const;
 
 const COMMISSION_MODAL =
-  "max-w-[480px] w-full gap-0 border-0 p-8 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-xl sm:rounded-xl sm:max-w-[480px]";
+  "max-w-[480px] w-full gap-0 border-0 p-8 shadow-[0_8px_30px_rgba(0_0_0_0.08)] rounded-xl sm:rounded-xl sm:max-w-[480px]";
 const COMMISSION_LABEL = "mb-1.5 block text-[12px] font-medium text-text-secondary";
 const COMMISSION_FIELD =
   "h-10 rounded-lg border border-gray-100 bg-white text-[14px] focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black";

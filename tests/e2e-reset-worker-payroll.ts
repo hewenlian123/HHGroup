@@ -3,16 +3,17 @@
  * Used by Playwright global-setup and payment E2E beforeEach so partial runs do not leave
  * "already settled" or orphan payment rows.
  */
-import { resolve } from "node:path";
-import { config as loadDotenv } from "dotenv";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { E2E_PRESERVED_LABOR_ENTRY_ID, E2E_PRESERVED_WORKER_ID } from "./e2e-cleanup-db";
 import { ensureE2EPreservedSeed } from "./e2e-ensure-seed";
+import { loadE2EProcessEnv } from "./e2e-load-env";
+import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 export async function resetE2ESeedWorkerPayrollStateWithClient(
   admin: SupabaseClient
 ): Promise<void> {
+  assertE2ESupabaseUrlSafeForMutations(process.env.NEXT_PUBLIC_SUPABASE_URL);
   const wid = E2E_PRESERVED_WORKER_ID;
   const keepLaborId = E2E_PRESERVED_LABOR_ENTRY_ID;
 
@@ -52,11 +53,11 @@ export async function resetE2ESeedWorkerPayrollStateWithClient(
 
 /** Load env from .env / .env.local then reset (no-op if URL or service role missing). */
 export async function resetE2ESeedWorkerPayrollStateFromEnv(): Promise<void> {
-  loadDotenv({ path: resolve(process.cwd(), ".env") });
-  loadDotenv({ path: resolve(process.cwd(), ".env.local"), override: true });
+  loadE2EProcessEnv();
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (!url || !key) return;
+  assertE2ESupabaseUrlSafeForMutations(url);
   await resetE2ESeedWorkerPayrollStateWithClient(createClient(url, key));
 }
 
@@ -65,11 +66,11 @@ export async function resetE2ESeedWorkerPayrollStateFromEnv(): Promise<void> {
  * Use in worker-payment specs so a long main suite cannot leave the seed worker without payable labor.
  */
 export async function resetAndEnsureE2EPaymentSeedFromEnv(): Promise<void> {
-  loadDotenv({ path: resolve(process.cwd(), ".env") });
-  loadDotenv({ path: resolve(process.cwd(), ".env.local"), override: true });
+  loadE2EProcessEnv();
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (!url || !key) return;
+  assertE2ESupabaseUrlSafeForMutations(url);
   const supabase = createClient(url, key);
   await resetE2ESeedWorkerPayrollStateWithClient(supabase);
   await ensureE2EPreservedSeed(supabase);

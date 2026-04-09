@@ -189,7 +189,7 @@ type FieldRefs = {
 
 /** Buttons: hover lighten 140ms ease; active scale 0.95 90ms spring */
 const RQ_BTN =
-  "transition-[background-color,transform,color] duration-[140ms] ease-out active:scale-[0.95] active:duration-90 active:ease-[cubic-bezier(0.34,1.56,0.64,1)]";
+  "transition-[background-color_transform_color] duration-[140ms] ease-out active:scale-[0.95] active:duration-90 active:ease-[cubic-bezier(0.34_1.56_0.64_1)]";
 
 function scrollReceiptQueueRowIntoView(rowId: string, behavior: ScrollBehavior = "smooth") {
   if (typeof window === "undefined") return;
@@ -1686,7 +1686,7 @@ export function ReceiptQueueWorkspace() {
               ref={emptyQueueRef}
               tabIndex={-1}
               data-receipt-queue-empty
-              className="hidden min-h-[min(40vh,280px)] flex-col justify-center transition-opacity duration-200 ease-out animate-in fade-in md:flex"
+              className="hidden min-h-[min(40vh_280px)] flex-col justify-center transition-opacity duration-200 ease-out animate-in fade-in md:flex"
             >
               <p className="text-center text-sm text-[#6b7280] dark:text-muted-foreground">
                 No items in the queue.

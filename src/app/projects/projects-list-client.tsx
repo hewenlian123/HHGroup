@@ -394,7 +394,7 @@ export function ProjectsListClient({
               ) : undefined
             }
           />
-          <div className="hidden rounded-lg bg-white px-8 py-14 text-center shadow-[0_1px_3px_rgba(0,0,0,0.06)] md:block dark:bg-card">
+          <div className="hidden rounded-lg bg-white px-8 py-14 text-center shadow-[0_1px_3px_rgba(0_0_0_0.06)] md:block dark:bg-card">
             <p className="text-[14px] font-medium text-text-secondary">
               {dataLoadWarning
                 ? "Could not load projects."

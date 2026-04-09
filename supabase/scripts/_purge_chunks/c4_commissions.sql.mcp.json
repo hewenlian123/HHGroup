@@ -1,0 +1,4 @@
+{
+  "project_id": "rzublljldebswurgdqxp",
+  "query": "DELETE FROM public.invoice_payments ip\nWHERE NOT EXISTS (SELECT 1 FROM public.invoices inv WHERE inv.id = ip.invoice_id);\n\n-- \u2500\u2500\u2500 3) Commissions \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nDELETE FROM public.commission_payments cp\nWHERE EXISTS (\n  SELECT 1 FROM public.commissions c\n  WHERE c.id = cp.commission_id\n    AND (\n      c.person ILIKE ANY (ARRAY['%PW%','%Playwright%','%Workflow Test%','%Body balance%','%[E2E]%','%E2E%','%Seed%'])\n      OR c.notes ILIKE ANY (ARRAY['%PW%','%Playwright%','%Workflow Test%','%Body balance%','%[E2E]%','%E2E%','%Seed%'])\n    )\n"
+}

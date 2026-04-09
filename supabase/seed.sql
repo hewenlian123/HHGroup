@@ -4,6 +4,10 @@
 -- Minimal subset only (no DB reset): `npm run db:seed:e2e` or Playwright `globalSetup` (tests/global-setup.ts).
 -- All human-visible seed labels use an `[E2E]` prefix so they are easy to identify (and are not removed by
 -- Playwright global-teardown, which only deletes rows matching PW / Playwright / Workflow Test / etc.).
+--
+-- TypeScript: Playwright globalSetup/teardown throw if NEXT_PUBLIC_SUPABASE_URL contains `supabase.co`.
+-- Other entrypoints may use tests/e2e-supabase-url-guard.ts (E2E_ALLOW_REMOTE_SUPABASE=1 escape hatch).
+-- This SQL file has no env check — do not run against production.
 -- ═══════════════════════════════════════════════════════════════════════════
 --
 -- 1) Verify columns in **your** database (Supabase SQL Editor):

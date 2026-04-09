@@ -85,13 +85,13 @@ async function postCommissionReceiptWithProgress(
 
 const COMMISSION_PAGE_BG = "bg-page";
 const COMMISSION_MODAL =
-  "max-w-[480px] w-full gap-0 border-0 p-8 shadow-[0_8px_30px_rgba(0,0,0,0.08)] rounded-xl sm:rounded-xl sm:max-w-[480px]";
+  "max-w-[480px] w-full gap-0 border-0 p-8 shadow-[0_8px_30px_rgba(0_0_0_0.08)] rounded-xl sm:rounded-xl sm:max-w-[480px]";
 const COMMISSION_LABEL = "mb-1.5 block text-[12px] font-medium text-text-secondary";
 const COMMISSION_FIELD =
   "h-10 rounded-lg border border-gray-100 bg-white text-[14px] focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black";
 
 const RECEIPT_UPLOAD_MODAL =
-  "max-w-[480px] w-full gap-0 rounded-[14px] border-[0.5px] border-gray-100 bg-white p-8 shadow-[0_8px_30px_rgba(0,0,0,0.12)] sm:max-w-[480px]";
+  "max-w-[480px] w-full gap-0 rounded-[14px] border-[0.5px] border-gray-100 bg-white p-8 shadow-[0_8px_30px_rgba(0_0_0_0.12)] sm:max-w-[480px]";
 function PaymentStatusPill({ status }: { status: CommissionPaymentStatus }) {
   const map = {
     unpaid: { bg: "bg-[#F3F4F6]", text: "text-text-secondary", label: "Unpaid" },
@@ -1020,7 +1020,7 @@ export function CommissionsClient({
             ["THIS MONTH PAID", summary.thisMonthPaid],
           ] as const
         ).map(([label, value]) => (
-          <div key={label} className="rounded-lg bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+          <div key={label} className="rounded-lg bg-white p-5 shadow-[0_1px_3px_rgba(0_0_0_0.06)]">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
               {label}
             </p>
@@ -1170,7 +1170,7 @@ export function CommissionsClient({
         ) : null}
       </div>
 
-      <div className="hidden overflow-hidden rounded-lg bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)] md:block">
+      <div className="hidden overflow-hidden rounded-lg bg-white shadow-[0_1px_3px_rgba(0_0_0_0.06)] md:block">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[640px] border-collapse text-[14px] lg:min-w-0">
             <thead>
@@ -1219,7 +1219,7 @@ export function CommissionsClient({
                 filteredRows.map((r) => (
                   <React.Fragment key={r.id}>
                     <tr
-                      className="cursor-pointer border-b border-[#E8E4DD] transition-shadow duration-150 hover:bg-white hover:shadow-[0_2px_12px_rgba(0,0,0,0.06)]"
+                      className="cursor-pointer border-b border-[#E8E4DD] transition-shadow duration-150 hover:bg-white hover:shadow-[0_2px_12px_rgba(0_0_0_0.06)]"
                       data-testid={`financial-commission-row-${r.id}`}
                       onClick={() => router.push(`/projects/${r.project_id}`)}
                     >
@@ -1837,7 +1837,7 @@ export function CommissionsClient({
                 key={commissionPdfOpenId}
                 title="Commission summary PDF"
                 src={`/commission/${commissionPdfOpenId}/pdf`}
-                className="h-[min(72vh,640px)] w-full rounded-sm border border-border/60 bg-white"
+                className="h-[min(72vh_640px)] w-full rounded-sm border border-border/60 bg-white"
               />
             ) : null}
           </div>
@@ -1902,7 +1902,7 @@ export function CommissionsClient({
                 key={paymentReceiptPdfOpenId}
                 title="Payment Receipt PDF"
                 src={`/commission-payment/${paymentReceiptPdfOpenId}/pdf`}
-                className="h-[min(72vh,640px)] w-full rounded-sm border border-border/60 bg-white"
+                className="h-[min(72vh_640px)] w-full rounded-sm border border-border/60 bg-white"
               />
             ) : null}
           </div>

@@ -307,7 +307,7 @@ export function EditExpenseModal({
             </DialogTitle>
           </DialogHeader>
           {expense ? (
-            <div className="max-h-[min(88vh,680px)] space-y-2 overflow-y-auto py-3">
+            <div className="max-h-[min(88vh_680px)] space-y-2 overflow-y-auto py-3">
               <input
                 ref={fileInputRef}
                 type="file"
