@@ -21,6 +21,32 @@ export default function nextConfig(phase) {
   const base = {
     // Use single distDir so "rm -rf .next" cleans dev and prod; avoids 404s from stale .next-dev
     distDir: ".next",
+    // Worker balances must never be cached at Vercel Edge (stale rows after DB deletes).
+    async headers() {
+      const workerBalancesNoStore = [
+        {
+          source: "/api/labor/worker-balances",
+          headers: [
+            {
+              key: "Cache-Control",
+              value: "private, no-store, no-cache, max-age=0, must-revalidate",
+            },
+            { key: "CDN-Cache-Control", value: "no-store" },
+            { key: "Vercel-CDN-Cache-Control", value: "no-store" },
+          ],
+        },
+      ];
+      if (process.env.NODE_ENV === "development") {
+        return [
+          ...workerBalancesNoStore,
+          {
+            source: "/:path*",
+            headers: [{ key: "Cache-Control", value: "no-store, no-cache, must-revalidate" }],
+          },
+        ];
+      }
+      return workerBalancesNoStore;
+    },
     eslint: {
       ignoreDuringBuilds: true,
     },
