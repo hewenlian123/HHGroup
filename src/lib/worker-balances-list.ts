@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { omitE2ESeedWorkerFromBalanceWorkers } from "@/lib/e2e-seed-worker";
 import {
   isLaborUnpaidForWorkerPayroll,
   workerIdsForLaborBalanceFinancialQueries,
@@ -43,6 +44,9 @@ export async function fetchWorkerBalanceRowForDelete(
  * Labor Owed = unpaid payroll per `isLaborUnpaidForWorkerPayroll` / worker_payment_id NULL in SQL path.
  * Balance = Labor Owed + Reimbursements - Payments - DeductedAdvances.
  * Worker list comes from labor_workers; payments/advances aggregate by worker_id (same ids as labor_workers when synced).
+ * Also unions worker_id from labor_entries, worker_reimbursements, worker_payments, worker_advances so orphans still appear.
+ * Names are resolved via labor_workers first, then `workers` (full-table name map + targeted lookups).
+ * In production builds, the fixed E2E seed UUID is omitted from this list (`omitE2ESeedWorkerFromBalanceWorkers`).
  */
 export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBalanceRow[]> {
   // Canonical source is labor_workers, but some environments still write entries using workers(id).
@@ -119,8 +123,10 @@ export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBala
     }
   }
 
-  const workers = [...workersById.values()].sort((a, b) =>
-    (a.name ?? "").localeCompare(b.name ?? "", undefined, { sensitivity: "base" })
+  const workers = omitE2ESeedWorkerFromBalanceWorkers(
+    [...workersById.values()].sort((a, b) =>
+      (a.name ?? "").localeCompare(b.name ?? "", undefined, { sensitivity: "base" })
+    )
   );
 
   // Robust per-worker aggregation (matches detail page behavior and avoids cross-table id drift issues).
@@ -217,6 +223,11 @@ export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBala
       let reimbRes = await queryByIds("worker_reimbursements", "worker_id, amount, status");
       if (reimbRes.error && isMissingColumn(reimbRes.error)) {
         reimbRes = await queryByIds("worker_reimbursements", "worker_id, total_amount, status");
+      }
+      if (reimbRes.error && !isMissingColumn(reimbRes.error)) {
+        throw new Error(
+          `worker_reimbursements query failed for worker ${workerId}: ${reimbRes.error.message ?? "unknown error"}`
+        );
       }
       const reimbRows = (reimbRes.data ?? []) as Array<{
         worker_id?: string | null;
