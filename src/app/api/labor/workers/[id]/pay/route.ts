@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { getServerSupabaseInternal } from "@/lib/supabase-server";
 import { createWorkerPaymentWithClient } from "@/lib/worker-payments-db";
 import { computeImplicitSettlement } from "@/lib/worker-payment-implicit-settlement";
 import {
@@ -59,10 +59,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       ? body.project_id.trim()
       : null;
 
-  const admin = getServerSupabaseAdmin();
+  const admin = getServerSupabaseInternal();
   if (!admin) {
     return NextResponse.json(
-      { message: "Supabase service role not configured; cannot settle labor entries." },
+      { message: "Supabase not configured; cannot settle labor entries." },
       { status: 500 }
     );
   }

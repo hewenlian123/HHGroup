@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createWorker } from "@/lib/data";
-import { getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { getServerSupabaseInternal } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +13,7 @@ const NO_CACHE_HEADERS = {
  * GET: List all workers — query with admin client directly so UI always sees same data as DELETE/clear-data.
  */
 export async function GET() {
-  const admin = getServerSupabaseAdmin();
+  const admin = getServerSupabaseInternal();
   if (!admin) {
     return NextResponse.json({ message: "Supabase not configured" }, { status: 500 });
   }
@@ -44,7 +44,7 @@ export async function GET() {
  * POST: Create a worker (uses admin client).
  */
 export async function POST(req: Request) {
-  const admin = getServerSupabaseAdmin();
+  const admin = getServerSupabaseInternal();
   if (!admin) {
     return NextResponse.json({ message: "Supabase not configured" }, { status: 500 });
   }

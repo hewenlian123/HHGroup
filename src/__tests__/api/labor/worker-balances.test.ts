@@ -20,6 +20,8 @@ function createChained<T>(data: T[], error: { message: string } | null = null) {
 
 vi.mock("@/lib/supabase-server", () => ({
   getServerSupabaseAdmin: () => mockSupabaseGetter(),
+  getServerSupabase: () => mockSupabaseGetter(),
+  getServerSupabaseInternal: () => mockSupabaseGetter(),
 }));
 
 describe("GET /api/labor/worker-balances", () => {

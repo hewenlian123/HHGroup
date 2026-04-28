@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { getServerSupabaseInternal } from "@/lib/supabase-server";
 import { fetchWorkerBalances, type WorkerBalanceRow } from "@/lib/worker-balances-list";
 
 /** Opt out of any Route Handler / Data Cache (Next + Vercel Edge). */
@@ -24,7 +24,7 @@ export type { WorkerBalanceRow };
  * GET: Worker balances summary (see `fetchWorkerBalances` in `@/lib/worker-balances-list`).
  */
 export async function GET() {
-  const c = getServerSupabaseAdmin();
+  const c = getServerSupabaseInternal();
   if (!c) {
     return NextResponse.json(
       { message: "Supabase not configured" },

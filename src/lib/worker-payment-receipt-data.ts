@@ -2,7 +2,8 @@
  * Server data for /labor/payments/[id]/receipt — labor lines, reimb lines, balance snapshot.
  */
 
-import { getServerSupabaseAdmin } from "@/lib/supabase-server";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { getServerSupabaseInternal } from "@/lib/supabase-server";
 import {
   isLaborUnpaidForWorkerPayroll,
   laborSessionLabel,
@@ -101,7 +102,7 @@ export async function getWorkerPaymentReceiptPayload(
     laborEntryIdsFromPayment?: string[] | null;
   }
 ): Promise<WorkerPaymentReceiptPayload | null> {
-  const c = getServerSupabaseAdmin();
+  const c = getServerSupabaseInternal();
   if (!c) return null;
 
   const projectNameById = new Map<string, string | null>();
@@ -220,7 +221,7 @@ export async function getWorkerPaymentReceiptPayload(
 }
 
 async function computeWorkerBalanceSnapshot(
-  c: NonNullable<ReturnType<typeof getServerSupabaseAdmin>>,
+  c: SupabaseClient,
   workerId: string,
   paymentAmount: number
 ): Promise<WorkerBalanceSnapshot> {
@@ -297,10 +298,7 @@ async function computeWorkerBalanceSnapshot(
   };
 }
 
-async function sumAdvances(
-  c: NonNullable<ReturnType<typeof getServerSupabaseAdmin>>,
-  workerId: string
-): Promise<number> {
+async function sumAdvances(c: SupabaseClient, workerId: string): Promise<number> {
   const advRes = await c.from("worker_advances").select("amount, status").eq("worker_id", workerId);
   if (advRes.error) return 0;
   let s = 0;
