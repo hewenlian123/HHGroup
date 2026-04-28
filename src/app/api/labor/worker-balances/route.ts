@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { getServerSupabaseInternal } from "@/lib/supabase-server";
+import {
+  SUPABASE_MISSING_SERVER_ENV_MESSAGE,
+  getServerSupabaseInternal,
+} from "@/lib/supabase-server";
 import { fetchWorkerBalances, type WorkerBalanceRow } from "@/lib/worker-balances-list";
 
 /** Opt out of any Route Handler / Data Cache (Next + Vercel Edge). */
@@ -27,8 +30,8 @@ export async function GET() {
   const c = getServerSupabaseInternal();
   if (!c) {
     return NextResponse.json(
-      { message: "Supabase not configured" },
-      { status: 500, headers: NO_CACHE_HEADERS }
+      { message: SUPABASE_MISSING_SERVER_ENV_MESSAGE },
+      { status: 503, headers: NO_CACHE_HEADERS }
     );
   }
 

@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { getServerSupabaseInternal } from "@/lib/supabase-server";
+import {
+  SUPABASE_MISSING_SERVER_ENV_MESSAGE,
+  getServerSupabaseInternal,
+} from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
@@ -23,10 +26,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
 
   const admin = getServerSupabaseInternal();
   if (!admin) {
-    return NextResponse.json(
-      { message: "Supabase not configured; cannot reverse payment settlement." },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: SUPABASE_MISSING_SERVER_ENV_MESSAGE }, { status: 503 });
   }
 
   try {

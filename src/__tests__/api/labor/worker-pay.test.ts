@@ -42,11 +42,15 @@ const serverLaborPayMock = {
   },
 };
 
-vi.mock("@/lib/supabase-server", () => ({
-  getServerSupabaseAdmin: () => serverLaborPayMock,
-  getServerSupabase: () => serverLaborPayMock,
-  getServerSupabaseInternal: () => serverLaborPayMock,
-}));
+vi.mock("@/lib/supabase-server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/supabase-server")>();
+  return {
+    ...actual,
+    getServerSupabaseAdmin: () => serverLaborPayMock,
+    getServerSupabase: () => serverLaborPayMock,
+    getServerSupabaseInternal: () => serverLaborPayMock,
+  };
+});
 
 describe("POST /api/labor/workers/[id]/pay", () => {
   beforeEach(() => {

@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { getServerSupabaseInternal } from "@/lib/supabase-server";
+import {
+  SUPABASE_MISSING_SERVER_ENV_MESSAGE,
+  getServerSupabaseInternal,
+} from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +21,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   }
   const supabase = getServerSupabaseInternal();
   if (!supabase) {
-    return NextResponse.json({ message: "Supabase not configured" }, { status: 500 });
+    return NextResponse.json({ message: SUPABASE_MISSING_SERVER_ENV_MESSAGE }, { status: 503 });
   }
   const c = supabase;
 

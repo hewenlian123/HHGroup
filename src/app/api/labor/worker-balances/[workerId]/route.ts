@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { getServerSupabaseInternal } from "@/lib/supabase-server";
+import {
+  SUPABASE_MISSING_SERVER_ENV_MESSAGE,
+  getServerSupabaseInternal,
+} from "@/lib/supabase-server";
 import { fetchWorkerBalanceRowForDelete } from "@/lib/worker-balances-list";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +39,7 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
 
   const c = getServerSupabaseInternal();
   if (!c) {
-    return NextResponse.json({ ok: false, message: "Supabase not configured." }, { status: 500 });
+    return NextResponse.json({ ok: false, message: SUPABASE_MISSING_SERVER_ENV_MESSAGE }, { status: 503 });
   }
 
   const BAL_EPS = 0.005;
