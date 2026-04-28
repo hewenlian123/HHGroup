@@ -92,7 +92,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python - <<'PY'
+          python3 - <<'PY'
           import os
           from urllib.parse import urlsplit
 
@@ -115,6 +115,21 @@ jobs:
               raise SystemExit("SUPABASE_DB_URL query should include sslmode=require.")
           print("SUPABASE_DB_URL format looks valid.")
           PY
+
+      - name: Check Vercel deploy secrets
+        id: vercel_secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=true
+          missing=()
+          if [ -z "${{ secrets.VERCEL_TOKEN }}" ]; then ok=false; missing+=("VERCEL_TOKEN"); fi
+          if [ -z "${{ secrets.VERCEL_ORG_ID }}" ]; then ok=false; missing+=("VERCEL_ORG_ID"); fi
+          if [ -z "${{ secrets.VERCEL_PROJECT_ID }}" ]; then ok=false; missing+=("VERCEL_PROJECT_ID"); fi
+          echo "ok=$ok" >> "$GITHUB_OUTPUT"
+          if [ "$ok" != "true" ]; then
+            echo "::notice::Skipping Vercel deploy (missing secrets: ${missing[*]}). Configure repo secrets to enable production deploy."
+          fi
 
       # Production may still list migration versions from filenames we renamed for
       # check-migration-order (e.g. 202604081200 → 202604271510). Those rows must be
@@ -140,6 +155,7 @@ jobs:
         run: supabase db push --db-url "$SUPABASE_DB_URL"
 
       - name: Deploy to Vercel
+        if: ${{ steps.vercel_secrets.outputs.ok == 'true' }}
         uses: amondnet/vercel-action@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
