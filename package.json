@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "dev:safe": "ulimit -n 10240 2>/dev/null; next dev",
+    "dev": "next dev -p 3000",
+    "dev:safe": "ulimit -n 10240 2>/dev/null; next dev -p 3000",
     "clean": "rm -rf .next .next-dev node_modules/.cache",
     "build": "next build",
     "build:clean": "npm run clean && npm run build",

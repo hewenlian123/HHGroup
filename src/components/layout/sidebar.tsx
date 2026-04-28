@@ -317,7 +317,7 @@ export function Sidebar({
   /** Nav row: active = soft surface + accent icon (Linear-style) */
   const navRowClass = (active: boolean) =>
     cn(
-      "group relative flex items-center rounded-md text-[13px] transition-colors duration-\\[120ms\\] ease-out touch-manipulation",
+      "group relative flex items-center rounded-md text-[13px] transition-colors duration-nav ease-out touch-manipulation",
       collapsed
         ? "min-h-[44px] justify-center px-2 py-1.5 lg:min-h-0"
         : "max-lg:min-h-[44px] min-h-0 gap-2.5 px-2 py-1.5 lg:min-h-0",
@@ -328,7 +328,7 @@ export function Sidebar({
 
   const navIconClass = (active: boolean, extra?: string) =>
     cn(
-      "h-[16px] w-[16px] shrink-0 transition-colors duration-\\[120ms\\] ease-out",
+      "h-[16px] w-[16px] shrink-0 transition-colors duration-nav ease-out",
       active
         ? "text-brand-primary dark:text-blue-400"
         : "text-text-secondary group-hover:text-text-primary dark:group-hover:text-foreground",

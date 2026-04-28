@@ -19,7 +19,10 @@ export async function PATCH(req: Request, { params }: RouteParams) {
   }
   const admin = getServerSupabaseInternal();
   if (!admin) {
-    return NextResponse.json({ ok: false, message: SUPABASE_MISSING_SERVER_ENV_MESSAGE }, { status: 503 });
+    return NextResponse.json(
+      { ok: false, message: SUPABASE_MISSING_SERVER_ENV_MESSAGE },
+      { status: 503 }
+    );
   }
   try {
     const body = await req.json().catch(() => ({}));
@@ -51,7 +54,10 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
   }
   const admin = getServerSupabaseInternal();
   if (!admin) {
-    return NextResponse.json({ ok: false, message: SUPABASE_MISSING_SERVER_ENV_MESSAGE }, { status: 503 });
+    return NextResponse.json(
+      { ok: false, message: SUPABASE_MISSING_SERVER_ENV_MESSAGE },
+      { status: 503 }
+    );
   }
   try {
     await deleteWorker(id);

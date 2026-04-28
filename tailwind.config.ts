@@ -183,6 +183,15 @@ const config: Config = {
       transitionDuration: {
         micro: "200ms",
         "micro-slow": "240ms",
+        /** Named steps avoid ambiguous `duration-[Nms]` warnings (Tailwind 3.4+) */
+        nav: "120ms",
+        rq: "140ms",
+      },
+      transitionTimingFunction: {
+        /** Material standard / deceleration */
+        "material-standard": "cubic-bezier(0.4, 0, 0.2, 1)",
+        /** Slight overshoot (receipt queue micro-interactions) */
+        "spring-out": "cubic-bezier(0.34, 1.56, 0.64, 1)",
       },
     },
   },

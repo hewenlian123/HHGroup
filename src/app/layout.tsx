@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import dynamic from "next/dynamic";
 import localFont from "next/font/local";
 import { Inter } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { ensureConstructionSchema } from "@/lib/ensure-construction-schema";
 import { DevUnregisterServiceWorker } from "@/components/dev-unregister-service-worker";
@@ -74,6 +75,11 @@ export default async function RootLayout(
       <body
         className={`hh-motion-root ${geistSans.variable} ${geistMono.variable} ${inter.variable} antialiased`}
       >
+        {process.env.NODE_ENV === "development" ? (
+          <Script id="dev-unregister-sw-before-interactive" strategy="beforeInteractive">
+            {`(function(){if(typeof navigator!=="undefined"&&"serviceWorker"in navigator){navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(x){x.unregister();});});}})();`}
+          </Script>
+        ) : null}
         {process.env.NODE_ENV === "development" ? <DevUnregisterServiceWorker /> : null}
         <Providers>
           <AppShell>{props.children}</AppShell>

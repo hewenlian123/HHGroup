@@ -189,7 +189,7 @@ type FieldRefs = {
 
 /** Buttons: hover lighten 140ms ease; active scale 0.95 90ms spring */
 const RQ_BTN =
-  "transition-[background-color_transform_color] duration-\\[140ms\\] ease-out active:scale-[0.95] active:duration-90 active:ease-\\[cubic-bezier(0.34_1.56_0.64_1)\\]";
+  "transition-[background-color_transform_color] duration-rq ease-out active:scale-[0.95] active:duration-90 active:ease-spring-out";
 
 function scrollReceiptQueueRowIntoView(rowId: string, behavior: ScrollBehavior = "smooth") {
   if (typeof window === "undefined") return;
@@ -1665,7 +1665,7 @@ export function ReceiptQueueWorkspace() {
             ) : null}
             <div
               className={cn(
-                "hidden min-h-[140px] flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[#e5e7eb] bg-white py-8 text-sm text-[#6b7280] transition-colors duration-\\[140ms\\] ease-out md:flex",
+                "hidden min-h-[140px] flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[#e5e7eb] bg-white py-8 text-sm text-[#6b7280] transition-colors duration-rq ease-out md:flex",
                 dragOver && !captureUploading && "border-[#2563eb]/45 bg-[#2563eb]/[0.06]",
                 captureUploading && "pointer-events-none opacity-60"
               )}
@@ -1754,7 +1754,7 @@ export function ReceiptQueueWorkspace() {
                       type="button"
                       onClick={() => setListFilter("all")}
                       className={cn(
-                        "rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-\\[140ms\\] ease-out",
+                        "rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-rq ease-out",
                         listFilter === "all"
                           ? "bg-white text-[#111827] shadow-sm ring-1 ring-[#e5e7eb] dark:bg-amber-900/40 dark:text-amber-50 dark:ring-amber-700/50"
                           : "text-[#9a5b13] hover:bg-white/70 dark:text-amber-200/90 dark:hover:bg-amber-900/30"
@@ -1766,7 +1766,7 @@ export function ReceiptQueueWorkspace() {
                       type="button"
                       onClick={() => setListFilter("needs_fix")}
                       className={cn(
-                        "rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-\\[140ms\\] ease-out",
+                        "rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-rq ease-out",
                         listFilter === "needs_fix"
                           ? "bg-white text-[#111827] shadow-sm ring-1 ring-[#e5e7eb] dark:bg-amber-900/40 dark:text-amber-50 dark:ring-amber-700/50"
                           : "text-[#9a5b13] hover:bg-white/70 dark:text-amber-200/90 dark:hover:bg-amber-900/30"
