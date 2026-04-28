@@ -13,7 +13,6 @@ import {
   getExpenseCategories,
   getVendors,
   getAccounts,
-  getPaymentAccounts,
   addExpenseCategory,
   addVendor,
   isVendorDisabled,
@@ -96,7 +95,6 @@ export default function ExpenseDetailPage() {
   const [vendorName, setVendorName] = React.useState("");
   const [accountId, setAccountId] = React.useState("");
   const [paymentAccountId, setPaymentAccountId] = React.useState("");
-  const [paymentAccountRows, setPaymentAccountRows] = React.useState<PaymentAccountRow[]>([]);
   const [toastMessage, setToastMessage] = React.useState<string | null>(null);
   const { openPreview } = useAttachmentPreview();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -117,6 +115,10 @@ export default function ExpenseDetailPage() {
   );
 
   const vendorDisabled = useAsyncDisabled(vendorName || null, isVendorDisabled);
+
+  const handlePaymentAccountsUpdated = React.useCallback((rows: PaymentAccountRow[]) => {
+    void rows;
+  }, []);
 
   React.useEffect(() => {
     if (!id) {
@@ -141,21 +143,16 @@ export default function ExpenseDetailPage() {
 
   React.useEffect(() => {
     let cancelled = false;
-    Promise.all([
-      getProjects(),
-      getExpenseCategories(),
-      getVendors(),
-      getAccounts(),
-      getPaymentAccounts().catch(() => [] as PaymentAccountRow[]),
-    ]).then(([p, c, v, accs, pay]) => {
-      if (!cancelled) {
-        setProjects(p);
-        setCategories(c);
-        setVendorsList(v);
-        setAccounts(accs);
-        setPaymentAccountRows(pay);
+    Promise.all([getProjects(), getExpenseCategories(), getVendors(), getAccounts()]).then(
+      ([p, c, v, accs]) => {
+        if (!cancelled) {
+          setProjects(p);
+          setCategories(c);
+          setVendorsList(v);
+          setAccounts(accs);
+        }
       }
-    });
+    );
     return () => {
       cancelled = true;
     };
@@ -171,18 +168,16 @@ export default function ExpenseDetailPage() {
   }, [id]);
 
   const reloadLookups = React.useCallback(async () => {
-    const [p, c, v, accs, pay] = await Promise.all([
+    const [p, c, v, accs] = await Promise.all([
       getProjects(),
       getExpenseCategories(),
       getVendors(),
       getAccounts(),
-      getPaymentAccounts().catch(() => [] as PaymentAccountRow[]),
     ]);
     setProjects(p);
     setCategories(c);
     setVendorsList(v);
     setAccounts(accs);
-    setPaymentAccountRows(pay);
   }, []);
 
   useOnAppSync(
@@ -513,7 +508,7 @@ export default function ExpenseDetailPage() {
                   setPaymentAccountId(id);
                   persistLastExpensePaymentAccountId(id);
                 }}
-                onAccountsUpdated={setPaymentAccountRows}
+                onAccountsUpdated={handlePaymentAccountsUpdated}
                 className="mt-1 h-9 w-full rounded-sm border border-input bg-transparent px-2 text-sm"
               />
             </div>

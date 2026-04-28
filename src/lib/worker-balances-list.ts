@@ -132,18 +132,38 @@ export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBala
       const ids = await workerIdsForLaborBalanceFinancialQueries(c, workerId).catch(() => [
         workerId,
       ]);
+
+      const hasFunction = (v: unknown, key: string): v is Record<string, unknown> => {
+        if (!v || typeof v !== "object") return false;
+        const maybe = (v as Record<string, unknown>)[key];
+        return typeof maybe === "function";
+      };
       const queryByIds = async (table: string, cols: string) => {
-        const base = (c.from(table) as any).select(cols);
-        try {
-          if (ids.length <= 1) {
-            return typeof base.eq === "function"
-              ? await base.eq("worker_id", ids[0] ?? workerId)
-              : await base;
+        const base = c.from(table).select(cols) as unknown;
+        // Test mocks may return a thenable without query helpers (eq/in). Fall back to awaiting the base.
+        if (ids.length <= 1) {
+          if (hasFunction(base, "eq")) {
+            return await (base as { eq: (col: string, val: string) => unknown }).eq(
+              "worker_id",
+              ids[0] ?? workerId
+            );
           }
-          return typeof base.in === "function" ? await base.in("worker_id", ids) : await base;
-        } catch {
-          return await base;
+          return await (base as PromiseLike<unknown>);
         }
+        if (hasFunction(base, "in")) {
+          return await (base as { in: (col: string, vals: string[]) => unknown }).in(
+            "worker_id",
+            ids
+          );
+        }
+        // As a safe fallback, try a single eq (best-effort) or just await.
+        if (hasFunction(base, "eq")) {
+          return await (base as { eq: (col: string, val: string) => unknown }).eq(
+            "worker_id",
+            workerId
+          );
+        }
+        return await (base as PromiseLike<unknown>);
       };
 
       function isMissingColumn(err: { message?: string } | null): boolean {
@@ -170,10 +190,13 @@ export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBala
         "worker_id, total, status",
         "worker_id, cost_amount, total",
       ]) {
-        const base = (c.from("labor_entries") as any).select(cols);
-        const res = (await (typeof base.eq === "function"
-          ? base.eq("worker_id", workerId)
-          : base)) as { data: unknown[] | null; error: { message?: string } | null };
+        const base = c.from("labor_entries").select(cols) as unknown;
+        const res = (await (hasFunction(base, "eq")
+          ? (base as { eq: (col: string, val: string) => unknown }).eq("worker_id", workerId)
+          : (base as PromiseLike<unknown>))) as {
+          data: unknown[] | null;
+          error: { message?: string } | null;
+        };
         if (!res.error || !isMissingColumn(res.error)) {
           laborRows = (res.data ?? []) as LaborRaw[];
           laborSettlementMode = /\bworker_payment_id\b/.test(cols)

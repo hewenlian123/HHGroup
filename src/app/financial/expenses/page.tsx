@@ -23,10 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  getExpenses,
-  getExpenseCategories,
   getExpenseTotal,
-  getWorkers,
   deleteExpense,
   updateExpense,
   updateExpenseReceiptUrl,
@@ -372,10 +369,6 @@ function ExpensesPageInner() {
     readStoredExpenseSort()
   );
 
-  const readCachedExpenses = React.useCallback(
-    () => queryClient.getQueryData<Expense[]>(buildExpensesQueryKey(expenseSort)),
-    [queryClient, expenseSort]
-  );
   const readCachedCategories = React.useCallback(
     () => queryClient.getQueryData<string[]>(expenseCategoriesQueryKey),
     [queryClient]

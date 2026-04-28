@@ -74,8 +74,10 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.message ?? `Failed to load advances (${res.status})`);
       }
-      const data = await res.json();
-      const advances = (data.advances ?? []) as any[];
+      const data = (await res.json().catch(() => ({}))) as { advances?: unknown };
+      const advances = (Array.isArray(data.advances) ? data.advances : []) as Array<
+        Record<string, unknown>
+      >;
       setRows(
         advances.map((r) => ({
           id: r.id as string,
@@ -438,7 +440,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
         </select>
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as any)}
+          onChange={(e) => setStatusFilter(e.target.value as "" | AdvanceRow["status"])}
           className="h-9 max-md:min-h-11 w-full rounded-md border border-input bg-background px-3 text-sm lg:w-auto"
         >
           <option value="">All statuses</option>

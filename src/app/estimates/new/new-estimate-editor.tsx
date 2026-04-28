@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { createEstimateWithItemsAction } from "./actions";
 import type { CostCode } from "@/lib/data";
-import { Plus, Copy, Trash2, ChevronRight, ChevronDown } from "lucide-react";
+import { Plus, Copy, Trash2, ChevronRight } from "lucide-react";
 import { useToast } from "@/components/toast/toast-provider";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { createBrowserClient } from "@/lib/supabase";

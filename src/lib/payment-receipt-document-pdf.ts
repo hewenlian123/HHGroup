@@ -33,7 +33,7 @@ function drawCompanyHeader(
   right: number,
   startY: number
 ): number {
-  let y = startY;
+  const y = startY;
   const logo = input.logoBase64;
   let textStartX = left;
   if (logo) {

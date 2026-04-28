@@ -189,7 +189,7 @@ type FieldRefs = {
 
 /** Buttons: hover lighten 140ms ease; active scale 0.95 90ms spring */
 const RQ_BTN =
-  "transition-[background-color_transform_color] duration-[140ms] ease-out active:scale-[0.95] active:duration-90 active:ease-[cubic-bezier(0.34_1.56_0.64_1)]";
+  "transition-[background-color_transform_color] duration-\\[140ms\\] ease-out active:scale-[0.95] active:duration-90 active:ease-\\[cubic-bezier(0.34_1.56_0.64_1)\\]";
 
 function scrollReceiptQueueRowIntoView(rowId: string, behavior: ScrollBehavior = "smooth") {
   if (typeof window === "undefined") return;
@@ -305,6 +305,43 @@ export function ReceiptQueueWorkspace() {
     return url && anon ? createBrowserClient(url, anon) : null;
   }, []);
 
+  const rqDraftKey = (id: string) => `hh.rq.draft.${id}`;
+  const readRqDraft = React.useCallback((id: string): ReceiptQueuePatch | null => {
+    try {
+      const raw = window.sessionStorage.getItem(rqDraftKey(id));
+      if (!raw) return null;
+      const v = JSON.parse(raw) as Record<string, unknown>;
+      const patch: ReceiptQueuePatch = {};
+      if (typeof v.vendor_name === "string") patch.vendor_name = v.vendor_name;
+      if (typeof v.amount === "string") patch.amount = v.amount;
+      if (typeof v.expense_date === "string") patch.expense_date = v.expense_date;
+      if (typeof v.payment_account_id === "string" || v.payment_account_id === null) {
+        patch.payment_account_id = v.payment_account_id as string | null;
+      }
+      return patch;
+    } catch {
+      return null;
+    }
+  }, []);
+  const writeRqDraft = React.useCallback(
+    (id: string, patch: ReceiptQueuePatch) => {
+      try {
+        const prev = readRqDraft(id) ?? {};
+        window.sessionStorage.setItem(rqDraftKey(id), JSON.stringify({ ...prev, ...patch }));
+      } catch {
+        /* ignore */
+      }
+    },
+    [readRqDraft]
+  );
+  const clearRqDraft = React.useCallback((id: string) => {
+    try {
+      window.sessionStorage.removeItem(rqDraftKey(id));
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   const {
     data: receiptQueueData,
     isPending: receiptQueuePending,
@@ -334,8 +371,14 @@ export function ReceiptQueueWorkspace() {
 
   React.useLayoutEffect(() => {
     if (receiptQueueData === undefined) return;
-    setRows(receiptQueueData);
-  }, [receiptQueueData]);
+    // Preserve locally-edited (debounced) fields across a hard reload even if a reload aborts in-flight saves.
+    setRows(
+      receiptQueueData.map((r) => {
+        const draft = readRqDraft(r.id);
+        return draft ? { ...r, ...draft } : r;
+      })
+    );
+  }, [receiptQueueData, readRqDraft]);
   React.useLayoutEffect(() => {
     if (expensesQueryData === undefined) return;
     setExpenses(expensesQueryData);
@@ -359,6 +402,8 @@ export function ReceiptQueueWorkspace() {
       await updateReceiptQueueRow(supabase, vars.id, vars.patch);
     },
     onSuccess: (_void, { id, patch }) => {
+      // DB is updated; we can drop any matching draft.
+      clearRqDraft(id);
       queryClient.setQueryData<ReceiptQueueRow[]>(receiptQueueQueryKey, (old) =>
         (old ?? []).map((row) => (row.id === id ? { ...row, ...patch } : row))
       );
@@ -499,22 +544,6 @@ export function ReceiptQueueWorkspace() {
     };
   }, [queueBootstrapWaiting, rows, focusRowField]);
 
-  const loadRows = React.useCallback(async () => {
-    if (!supabase) {
-      startTransition(() => setRows([]));
-      return;
-    }
-    try {
-      await flushPendingDebouncedPatches();
-      const list = await fetchReceiptQueue(supabase);
-      startTransition(() => setRows(list));
-      queryClient.setQueryData(receiptQueueQueryKey, list);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "Failed to load queue";
-      toast({ title: "Receipt queue", description: msg, variant: "error" });
-    }
-  }, [supabase, toast, flushPendingDebouncedPatches, queryClient]);
-
   const refreshAll = React.useCallback(async (): Promise<ReceiptQueueRow[]> => {
     await flushPendingDebouncedPatches();
     let list: ReceiptQueueRow[] = [];
@@ -620,6 +649,7 @@ export function ReceiptQueueWorkspace() {
       if (!supabase) return;
       const prevPatch = pendingPatchesById.current.get(id) ?? {};
       pendingPatchesById.current.set(id, { ...prevPatch, ...patch });
+      writeRqDraft(id, patch);
       const prevRaf = rowPatchRafRef.current.get(id);
       if (prevRaf != null) cancelAnimationFrame(prevRaf);
       const raf = requestAnimationFrame(() => {
@@ -648,6 +678,7 @@ export function ReceiptQueueWorkspace() {
   const patchRowImmediate = React.useCallback(
     async (id: string, patch: ReceiptQueuePatch) => {
       if (!supabase) return;
+      writeRqDraft(id, patch);
       const inflight = rowSavePromises.current.get(id);
       if (inflight) await inflight;
       try {
@@ -723,12 +754,13 @@ export function ReceiptQueueWorkspace() {
             payment_account_id: row.payment_account_id ?? null,
           },
         });
+        clearRqDraft(row.id);
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Save failed";
         toast({ title: "Queue row", description: msg, variant: "error" });
       }
     },
-    [supabase, toast, patchQueueRowMutation]
+    [supabase, toast, patchQueueRowMutation, clearRqDraft]
   );
 
   const finalizeConfirmMutation = useMutation({
@@ -1067,7 +1099,8 @@ export function ReceiptQueueWorkspace() {
           setRowMotion((s) => ({ ...s, [id]: "collapse" }));
           window.setTimeout(() => {
             setRowMotion((s) => {
-              const { [id]: _, ...rest } = s;
+              const { [id]: removedPhase, ...rest } = s;
+              void removedPhase;
               return rest;
             });
             options.onComplete();
@@ -1281,9 +1314,9 @@ export function ReceiptQueueWorkspace() {
   }, []);
 
   const queueHandlersRef = React.useRef({
-    confirmRow: ((_row: ReceiptQueueRow) => {}) as (row: ReceiptQueueRow) => void,
-    removeRow: ((_id: string) => {}) as (id: string) => void,
-    openPreview: ((_id: string) => {}) as (id: string) => void,
+    confirmRow: (() => {}) as (row: ReceiptQueueRow) => void,
+    removeRow: (() => {}) as (id: string) => void,
+    openPreview: (() => {}) as (id: string) => void,
   });
   queueHandlersRef.current.confirmRow = confirmRow;
   queueHandlersRef.current.removeRow = removeRow;
@@ -1632,7 +1665,7 @@ export function ReceiptQueueWorkspace() {
             ) : null}
             <div
               className={cn(
-                "hidden min-h-[140px] flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[#e5e7eb] bg-white py-8 text-sm text-[#6b7280] transition-colors duration-[140ms] ease-out md:flex",
+                "hidden min-h-[140px] flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[#e5e7eb] bg-white py-8 text-sm text-[#6b7280] transition-colors duration-\\[140ms\\] ease-out md:flex",
                 dragOver && !captureUploading && "border-[#2563eb]/45 bg-[#2563eb]/[0.06]",
                 captureUploading && "pointer-events-none opacity-60"
               )}
@@ -1721,7 +1754,7 @@ export function ReceiptQueueWorkspace() {
                       type="button"
                       onClick={() => setListFilter("all")}
                       className={cn(
-                        "rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-[140ms] ease-out",
+                        "rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-\\[140ms\\] ease-out",
                         listFilter === "all"
                           ? "bg-white text-[#111827] shadow-sm ring-1 ring-[#e5e7eb] dark:bg-amber-900/40 dark:text-amber-50 dark:ring-amber-700/50"
                           : "text-[#9a5b13] hover:bg-white/70 dark:text-amber-200/90 dark:hover:bg-amber-900/30"
@@ -1733,7 +1766,7 @@ export function ReceiptQueueWorkspace() {
                       type="button"
                       onClick={() => setListFilter("needs_fix")}
                       className={cn(
-                        "rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-[140ms] ease-out",
+                        "rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-\\[140ms\\] ease-out",
                         listFilter === "needs_fix"
                           ? "bg-white text-[#111827] shadow-sm ring-1 ring-[#e5e7eb] dark:bg-amber-900/40 dark:text-amber-50 dark:ring-amber-700/50"
                           : "text-[#9a5b13] hover:bg-white/70 dark:text-amber-200/90 dark:hover:bg-amber-900/30"

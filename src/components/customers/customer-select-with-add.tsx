@@ -106,7 +106,7 @@ export function CustomerSelectWithAdd({ label = "Customer", value, onChange }: P
       onChange(created.id, created);
       setAddOpen(false);
       setOpen(false);
-    } catch (e) {
+    } catch {
       setAddError("Failed to create customer.");
     } finally {
       setAddBusy(false);

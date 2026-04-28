@@ -11,7 +11,6 @@ import {
   getWorkers,
   createWorker,
   getSitePhotos,
-  createSitePhoto,
   getInspectionLogs,
   createInspectionLog,
 } from "@/lib/data";
@@ -74,14 +73,6 @@ const DEMO_WORKERS: Array<{ name: string; trade: string; dailyRate: number }> = 
   { name: "Hai Jun", trade: "Electrician", dailyRate: 240 },
   { name: "Tom Lee", trade: "Plumber", dailyRate: 230 },
   { name: "Mike Chen", trade: "Labor", dailyRate: 180 },
-];
-
-const SITE_PHOTO_DESCRIPTIONS = [
-  "Framing progress",
-  "Electrical rough-in",
-  "Drywall installation",
-  "Flooring preparation",
-  "Painting completed",
 ];
 
 const INSPECTION_TEMPLATES: Array<{ type: string; status: "passed" | "failed" | "pending" }> = [

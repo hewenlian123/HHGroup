@@ -3,7 +3,6 @@
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { FilterBar } from "@/components/filter-bar";
 import { Button } from "@/components/ui/button";
@@ -57,7 +56,6 @@ function todayLocalISODate(): string {
 const STATUS_OPTIONS: WorkerReimbursementStatus[] = ["pending", "paid"];
 
 export default function WorkerReimbursementsPage() {
-  const router = useRouter();
   const [workers, setWorkers] = React.useState<Awaited<ReturnType<typeof getLaborWorkersList>>>([]);
   const [projects, setProjects] = React.useState<Awaited<ReturnType<typeof getProjects>>>([]);
   const [rows, setRows] = React.useState<WorkerReimbursement[]>([]);

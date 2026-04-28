@@ -37,7 +37,7 @@ function isMissingTable(err: { message?: string } | null): boolean {
 export async function getAccounts(): Promise<Account[]> {
   const c = client();
   try {
-    let q = c
+    const q = c
       .from("accounts")
       .select("id, name, type, last_four, notes, created_at, updated_at")
       .order("name");

@@ -75,8 +75,10 @@ export function PayWorkerModal({
         url.searchParams.set("status", "pending");
         const res = await fetch(url.toString(), { cache: "no-store" });
         if (res.ok) {
-          const data = await res.json();
-          const list = (data.advances ?? []) as any[];
+          const data = (await res.json().catch(() => ({}))) as { advances?: unknown };
+          const list = (Array.isArray(data.advances) ? data.advances : []) as Array<
+            Record<string, unknown>
+          >;
           setAdvances(
             list.map((r) => ({
               id: r.id as string,
