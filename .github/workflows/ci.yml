@@ -126,10 +126,28 @@ jobs:
           if [ -z "${{ secrets.VERCEL_TOKEN }}" ]; then ok=false; missing+=("VERCEL_TOKEN"); fi
           if [ -z "${{ secrets.VERCEL_ORG_ID }}" ]; then ok=false; missing+=("VERCEL_ORG_ID"); fi
           if [ -z "${{ secrets.VERCEL_PROJECT_ID }}" ]; then ok=false; missing+=("VERCEL_PROJECT_ID"); fi
-          echo "ok=$ok" >> "$GITHUB_OUTPUT"
           if [ "$ok" != "true" ]; then
             echo "::notice::Skipping Vercel deploy (missing secrets: ${missing[*]}). Configure repo secrets to enable production deploy."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+          # Verify the token can access the configured project before attempting deploy.
+          # This avoids hard failures like: {"code":"forbidden","message":"Not authorized","status":403}
+          token="${{ secrets.VERCEL_TOKEN }}"
+          org="${{ secrets.VERCEL_ORG_ID }}"
+          project="${{ secrets.VERCEL_PROJECT_ID }}"
+          url="https://api.vercel.com/v9/projects/${project}?teamId=${org}"
+          code="$(curl -sS -o /tmp/vercel_project_check.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${token}" \
+            -H "Content-Type: application/json" \
+            "${url}" || true)"
+          if [ "$code" != "200" ]; then
+            echo "::notice::Skipping Vercel deploy (project access check HTTP ${code}). Check VERCEL_TOKEN permissions and VERCEL_ORG_ID/VERCEL_PROJECT_ID values."
+            echo "::notice::Vercel response: $(head -c 400 /tmp/vercel_project_check.json || true)"
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "ok=true" >> "$GITHUB_OUTPUT"
 
       # Production may still list migration versions from filenames we renamed for
       # check-migration-order (e.g. 202604081200 → 202604271510). Those rows must be
