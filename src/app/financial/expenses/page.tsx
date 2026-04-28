@@ -173,22 +173,46 @@ async function resolveReceiptPreviewUrls(
   supabase: ReturnType<typeof createBrowserClient> | null
 ): Promise<ReceiptItem[]> {
   if (!supabase) return items;
+  const parseStorageObjectUrl = (
+    url: string
+  ): { bucket: "receipts" | "expense-attachments"; path: string } | null => {
+    try {
+      const pathname = new URL(url.trim()).pathname;
+      for (const bucket of ["receipts", "expense-attachments"] as const) {
+        for (const marker of [`/object/public/${bucket}/`, `/object/sign/${bucket}/`]) {
+          const i = pathname.indexOf(marker);
+          if (i === -1) continue;
+          const path = decodeURIComponent(pathname.slice(i + marker.length)).replace(/^\/+/, "");
+          if (!path) return null;
+          return { bucket, path };
+        }
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  };
   const next: ReceiptItem[] = [];
   for (const item of items) {
     const raw = (item.url ?? "").trim();
-    if (!raw || /^https?:\/\//i.test(raw) || raw.startsWith("blob:")) {
+    if (!raw || raw.startsWith("blob:")) {
       next.push(item);
       continue;
     }
-    const path = raw.replace(/^\/+/, "");
+    const parsed = /^https?:\/\//i.test(raw) ? parseStorageObjectUrl(raw) : null;
+    const path = (parsed?.path ?? raw).replace(/^\/+/, "");
     let urlOut: string | null = null;
     const tryBucket = async (bucket: string) => {
       const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 3600);
       if (!error && data?.signedUrl) return data.signedUrl;
       return null;
     };
-    urlOut = await tryBucket("expense-attachments");
-    if (!urlOut) urlOut = await tryBucket("receipts");
+    if (parsed) {
+      urlOut = await tryBucket(parsed.bucket);
+    } else {
+      urlOut = await tryBucket("expense-attachments");
+      if (!urlOut) urlOut = await tryBucket("receipts");
+    }
     if (!urlOut && path) {
       const { data: pub } = supabase.storage.from("receipts").getPublicUrl(path);
       if (pub?.publicUrl) urlOut = pub.publicUrl;
