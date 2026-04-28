@@ -77,6 +77,8 @@ function createBalanceMock(
 
 vi.mock("@/lib/supabase-server", () => ({
   getServerSupabaseAdmin: () => mockSupabaseGetter(),
+  getServerSupabase: () => mockSupabaseGetter(),
+  getServerSupabaseInternal: () => mockSupabaseGetter(),
 }));
 
 describe("GET /api/labor/workers/[id]/balance", () => {

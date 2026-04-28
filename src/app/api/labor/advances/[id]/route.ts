@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { getServerSupabaseInternal } from "@/lib/supabase-server";
 import { mapWorkerAdvanceRowsForApi, type WorkerAdvanceSelectRow } from "@/lib/worker-advances-db";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +10,7 @@ const NO_CACHE_HEADERS = {
 };
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const admin = getServerSupabaseAdmin();
+  const admin = getServerSupabaseInternal();
   if (!admin) {
     return NextResponse.json({ message: "Supabase not configured" }, { status: 500 });
   }
@@ -35,7 +35,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const admin = getServerSupabaseAdmin();
+  const admin = getServerSupabaseInternal();
   if (!admin) {
     return NextResponse.json({ message: "Supabase not configured" }, { status: 500 });
   }
@@ -73,7 +73,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const admin = getServerSupabaseAdmin();
+  const admin = getServerSupabaseInternal();
   if (!admin) {
     return NextResponse.json({ message: "Supabase not configured" }, { status: 500 });
   }

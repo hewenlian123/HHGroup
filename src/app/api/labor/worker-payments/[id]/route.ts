@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { getServerSupabaseInternal } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
@@ -21,10 +21,10 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     return NextResponse.json({ message: "Payment id required." }, { status: 400 });
   }
 
-  const admin = getServerSupabaseAdmin();
+  const admin = getServerSupabaseInternal();
   if (!admin) {
     return NextResponse.json(
-      { message: "Supabase service role not configured; cannot reverse payment settlement." },
+      { message: "Supabase not configured; cannot reverse payment settlement." },
       { status: 500 }
     );
   }

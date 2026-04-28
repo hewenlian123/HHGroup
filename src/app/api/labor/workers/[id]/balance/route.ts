@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { getServerSupabaseInternal } from "@/lib/supabase-server";
 import {
   isLaborUnpaidForWorkerPayroll,
   laborPayrollSettlementModeFromSelectList,
@@ -55,7 +55,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!workerId) {
     return NextResponse.json({ message: "Worker id required" }, { status: 400 });
   }
-  const c = getServerSupabaseAdmin();
+  const c = getServerSupabaseInternal();
   if (!c) {
     return NextResponse.json({ message: "Supabase not configured" }, { status: 500 });
   }

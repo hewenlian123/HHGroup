@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { deleteWorker, updateWorker } from "@/lib/data";
-import { getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { getServerSupabaseInternal } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +14,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
   if (!id?.trim()) {
     return NextResponse.json({ ok: false, message: "Worker id is required." }, { status: 400 });
   }
-  const admin = getServerSupabaseAdmin();
+  const admin = getServerSupabaseInternal();
   if (!admin) {
     return NextResponse.json({ ok: false, message: "Supabase not configured." }, { status: 500 });
   }
@@ -46,7 +46,7 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
   if (!id?.trim()) {
     return NextResponse.json({ ok: false, message: "Worker id is required." }, { status: 400 });
   }
-  const admin = getServerSupabaseAdmin();
+  const admin = getServerSupabaseInternal();
   if (!admin) {
     return NextResponse.json({ ok: false, message: "Supabase not configured." }, { status: 500 });
   }

@@ -15,33 +15,37 @@ vi.mock("@/lib/worker-payment-implicit-settlement", () => ({
     .mockResolvedValue({ laborIds: [], reimbIds: [], expectedTotal: 50 }),
 }));
 
-vi.mock("@/lib/supabase-server", () => ({
-  getServerSupabaseAdmin: () => ({
-    from: (table: string) => {
-      if (table === "worker_payments") {
-        return {
-          delete: () => ({
-            eq: () => updateOk,
-          }),
-        };
-      }
+const serverLaborPayMock = {
+  from: (table: string) => {
+    if (table === "worker_payments") {
       return {
-        select: () => ({
-          eq: () => ({
-            in: () => emptyList,
-            then: (resolveFn: (v: { data: unknown[]; error: null }) => void) =>
-              emptyList.then(resolveFn),
-          }),
-        }),
-        update: () => ({
-          eq: () => ({
-            in: () => updateOk,
-            neq: () => updateOk,
-          }),
+        delete: () => ({
+          eq: () => updateOk,
         }),
       };
-    },
-  }),
+    }
+    return {
+      select: () => ({
+        eq: () => ({
+          in: () => emptyList,
+          then: (resolveFn: (v: { data: unknown[]; error: null }) => void) =>
+            emptyList.then(resolveFn),
+        }),
+      }),
+      update: () => ({
+        eq: () => ({
+          in: () => updateOk,
+          neq: () => updateOk,
+        }),
+      }),
+    };
+  },
+};
+
+vi.mock("@/lib/supabase-server", () => ({
+  getServerSupabaseAdmin: () => serverLaborPayMock,
+  getServerSupabase: () => serverLaborPayMock,
+  getServerSupabaseInternal: () => serverLaborPayMock,
 }));
 
 describe("POST /api/labor/workers/[id]/pay", () => {

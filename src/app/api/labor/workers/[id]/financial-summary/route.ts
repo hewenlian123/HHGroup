@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { getServerSupabaseInternal } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +16,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!workerId) {
     return NextResponse.json({ message: "Worker id required" }, { status: 400 });
   }
-  const supabase = getServerSupabaseAdmin();
+  const supabase = getServerSupabaseInternal();
   if (!supabase) {
     return NextResponse.json({ message: "Supabase not configured" }, { status: 500 });
   }

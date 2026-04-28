@@ -3,7 +3,7 @@
  * Does not persist to DB; UUID remains the canonical id for URLs and storage.
  */
 
-import { getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { getServerSupabaseInternal } from "@/lib/supabase-server";
 
 function paymentDateKey(iso: string): string {
   const s = iso.slice(0, 10);
@@ -31,7 +31,7 @@ export async function computeWorkerPaymentReceiptNo(
 ): Promise<string> {
   const dateKey = paymentDateKey(paymentDateRaw);
   const day = yyyymmdd(dateKey);
-  const c = getServerSupabaseAdmin();
+  const c = getServerSupabaseInternal();
   if (!c) {
     return `R-${day}-001`;
   }

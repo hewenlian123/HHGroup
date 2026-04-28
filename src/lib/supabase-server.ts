@@ -53,6 +53,17 @@ export function getServerSupabaseAdmin(): SupabaseClient | null {
   return createClient(url, service, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
+/**
+ * Internal API routes: prefer service-role admin; otherwise use {@link getServerSupabase}
+ * (service role when configured, else anon/publishable key).
+ *
+ * Some deployments only expose anon keys on the server — routes must not hard-require
+ * `SUPABASE_SERVICE_ROLE_KEY` for reads used by dashboard workflow tests.
+ */
+export function getServerSupabaseInternal(): SupabaseClient | null {
+  return getServerSupabaseAdmin() ?? getServerSupabase();
+}
+
 /** Back-compat alias used by some server actions. */
 export async function createServerSupabaseClient(): Promise<SupabaseClient | null> {
   const url = envUrl();

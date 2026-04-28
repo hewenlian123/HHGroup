@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { getServerSupabaseInternal } from "@/lib/supabase-server";
 import { fetchWorkerBalanceRowForDelete } from "@/lib/worker-balances-list";
 
 export const dynamic = "force-dynamic";
@@ -34,7 +34,7 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
     return NextResponse.json({ ok: false, message: "Worker id is required." }, { status: 400 });
   }
 
-  const c = getServerSupabaseAdmin();
+  const c = getServerSupabaseInternal();
   if (!c) {
     return NextResponse.json({ ok: false, message: "Supabase not configured." }, { status: 500 });
   }

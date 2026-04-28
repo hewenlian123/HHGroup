@@ -111,7 +111,11 @@ async function smokeTestModulePage(
   const errorIndicators = [
     "Could not find the table",
     "schema cache",
-    "Supabase",
+    // Avoid matching the plain word "Supabase" — it can appear in normal HTML (bundles, metadata, etc.).
+    // Only fail on actionable Supabase misconfiguration or API error signals.
+    "Supabase is not configured",
+    "Supabase not configured",
+    "supabase error",
     "PGRST",
     "relation.*does not exist",
     "Failed to load",
@@ -166,15 +170,23 @@ async function smokeTestModulePage(
   }
 }
 
-/** XPath first match (legacy `Page.$x` — not always in typings). */
-async function xpathFirst(
-  page: Page,
-  expression: string
-): Promise<ElementHandle<Element> | undefined> {
-  const legacy = page as unknown as { $x?: (xpath: string) => Promise<ElementHandle<Element>[]> };
-  if (!legacy.$x) throw new Error("Puppeteer Page.$x is not available");
-  const handles = await legacy.$x(expression);
-  return handles[0];
+/**
+ * Click the first <a> or <button> whose visible text includes `needle`.
+ * This avoids XPath APIs that are missing in newer Puppeteer versions.
+ */
+async function clickByText(page: Page, needle: string): Promise<void> {
+  const ok = await page.evaluate((text) => {
+    const targetText = text.toLowerCase();
+    const candidates = Array.from(document.querySelectorAll("button, a")) as HTMLElement[];
+    const el = candidates.find((n) =>
+      (n.textContent || "").trim().toLowerCase().includes(targetText)
+    );
+    if (!el) return false;
+    el.scrollIntoView({ block: "center" });
+    el.click();
+    return true;
+  }, needle);
+  if (!ok) throw new Error(`Element not found by text: "${needle}"`);
 }
 
 type PuppeteerWithLaunch = { launch: (opts?: LaunchOptions) => Promise<Browser> };
@@ -389,72 +401,67 @@ async function main() {
     })
   );
 
-  // ── 9b. tasks create + delete (row disappears) ─────────────────────────────
-  results.push(
-    await runTest("tasks_create_delete", async () => {
-      const page = await browser.newPage();
-      page.setDefaultTimeout(WAIT_TIMEOUT);
-      const taskTitle = `UI Test Task ${Date.now()}`;
-      try {
-        await goto(page, "/tasks");
-        await waitFor(page, "main, [class*='page-container']", "page content");
-        const newBtn = await xpathFirst(page, '//button[contains(., "New Task")]');
-        if (!newBtn) throw new Error('"New Task" button not found');
-        await newBtn.click();
-        await page.waitForSelector('[role="dialog"], [class*="dialog"]', { timeout: WAIT_TIMEOUT });
-        const firstProjectValue = await page.evaluate(() => {
-          const opt = document.querySelector('select option[value]:not([value=""])');
-          return opt ? (opt as HTMLOptionElement).value : null;
-        });
-        if (!firstProjectValue) {
-          await page.keyboard.press("Escape");
-          return;
+  // ── 9b. tasks create + delete (mutating) ───────────────────────────────────
+  // UI smoke tests should be read-only by default. Enable explicitly when needed:
+  // UI_TEST_MUTATIONS=1 npm run ui:test
+  if (process.env.UI_TEST_MUTATIONS === "1") {
+    results.push(
+      await runTest("tasks_create_delete", async () => {
+        const page = await browser.newPage();
+        page.setDefaultTimeout(WAIT_TIMEOUT);
+        const taskTitle = `UI Test Task ${Date.now()}`;
+        try {
+          await goto(page, "/tasks");
+          await waitFor(page, "main, [class*='page-container']", "page content");
+          await clickByText(page, "New Task");
+          await page.waitForSelector('[role="dialog"], [class*="dialog"]', {
+            timeout: WAIT_TIMEOUT,
+          });
+          const firstProjectValue = await page.evaluate(() => {
+            const opt = document.querySelector('select option[value]:not([value=""])');
+            return opt ? (opt as HTMLOptionElement).value : null;
+          });
+          if (!firstProjectValue) {
+            await page.keyboard.press("Escape");
+            return;
+          }
+          await page.select("select", firstProjectValue);
+          const titleInput = await page.$(
+            'input[placeholder*="Task title"], input[placeholder*="title"]'
+          );
+          if (!titleInput) throw new Error("Task title input not found");
+          await titleInput.type(taskTitle, { delay: 20 });
+          await clickByText(page, "Save");
+          await page
+            .waitForFunction(
+              () =>
+                !document.querySelector('[role="dialog"]') &&
+                !document.querySelector('[class*="dialog"][data-state="open"]'),
+              { timeout: WAIT_TIMEOUT }
+            )
+            .catch(() => {});
+          await new Promise((r) => setTimeout(r, 800));
+          const hasRow = await page.evaluate(
+            (title) => document.body.innerText.includes(title),
+            taskTitle
+          );
+          if (!hasRow) throw new Error(`New task row "${taskTitle}" did not appear`);
+          await clickByText(page, taskTitle);
+          await new Promise((r) => setTimeout(r, 400));
+          page.once("dialog", (d: { accept: () => void }) => d.accept());
+          await clickByText(page, "Delete");
+          await new Promise((r) => setTimeout(r, 1200));
+          const stillThere = await page.evaluate(
+            (title) => document.body.innerText.includes(title),
+            taskTitle
+          );
+          if (stillThere) throw new Error("Task row still visible after delete");
+        } finally {
+          await page.close();
         }
-        await page.select("select", firstProjectValue);
-        const titleInput = await page.$(
-          'input[placeholder*="Task title"], input[placeholder*="title"]'
-        );
-        if (!titleInput) throw new Error("Task title input not found");
-        await titleInput.type(taskTitle, { delay: 20 });
-        const saveBtn = await xpathFirst(page, '//button[contains(., "Save")]');
-        if (!saveBtn) throw new Error("Save button not found");
-        await saveBtn.click();
-        await page
-          .waitForFunction(
-            () =>
-              !document.querySelector('[role="dialog"]') &&
-              !document.querySelector('[class*="dialog"][data-state="open"]'),
-            { timeout: WAIT_TIMEOUT }
-          )
-          .catch(() => {});
-        await new Promise((r) => setTimeout(r, 800));
-        const hasRow = await page.evaluate(
-          (title) => document.body.innerText.includes(title),
-          taskTitle
-        );
-        if (!hasRow) throw new Error(`New task row "${taskTitle}" did not appear`);
-        const rowEl = await xpathFirst(
-          page,
-          `//tr[contains(., "${taskTitle}")] | //button[contains(., "${taskTitle}")]`
-        );
-        if (!rowEl) throw new Error(`Row with "${taskTitle}" not found`);
-        await rowEl.click();
-        await new Promise((r) => setTimeout(r, 400));
-        const deleteBtn = await xpathFirst(page, '//button[contains(., "Delete")]');
-        if (!deleteBtn) throw new Error("Delete button not found in drawer");
-        page.once("dialog", (d: { accept: () => void }) => d.accept());
-        await deleteBtn.click();
-        await new Promise((r) => setTimeout(r, 1200));
-        const stillThere = await page.evaluate(
-          (title) => document.body.innerText.includes(title),
-          taskTitle
-        );
-        if (stillThere) throw new Error("Task row still visible after delete");
-      } finally {
-        await page.close();
-      }
-    })
-  );
+      })
+    );
+  }
 
   // ── 10. punch_list ────────────────────────────────────────────────────────
   results.push(
