@@ -18,6 +18,9 @@ import {
 import type { ApBillWithProject, ApBillPaymentRow } from "@/lib/data";
 import { addApBillPayment } from "@/lib/data";
 import { deleteBillDraftAction, voidBillAction } from "../actions";
+import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
+import { createBrowserClient } from "@/lib/supabase";
+import { resolvePreviewSignedUrl } from "@/lib/storage-signed-url";
 
 function fmtUsd(n: number): string {
   return `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -36,6 +39,14 @@ type Props = {
 
 export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPaymentOpen }: Props) {
   const router = useRouter();
+  const { openPreview } = useAttachmentPreview();
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const configured = Boolean(url && anon);
+  const supabase = React.useMemo(
+    () => (configured ? createBrowserClient(url as string, anon as string) : null),
+    [configured, url, anon]
+  );
   const [addPaymentOpen, setAddPaymentOpen] = React.useState(initialAddPaymentOpen);
   const [paymentDate, setPaymentDate] = React.useState(() => new Date().toISOString().slice(0, 10));
   const [paymentAmount, setPaymentAmount] = React.useState("");
@@ -207,10 +218,32 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
           <Link href={`/bills/${bill.id}/edit`}>Edit bill</Link>
         </Button>
         {bill.attachment_url ? (
-          <Button variant="outline" size="sm" asChild>
-            <a href={bill.attachment_url} target="_blank" rel="noopener noreferrer">
-              Open attachment
-            </a>
+          <Button
+            variant="outline"
+            size="sm"
+            type="button"
+            onClick={() => {
+              const raw = (bill.attachment_url ?? "").trim();
+              if (!raw) return;
+              void (async () => {
+                const signed = await resolvePreviewSignedUrl({
+                  supabase,
+                  rawUrlOrPath: raw,
+                  ttlSec: 3600,
+                  // Buckets vary by environment; use URL parsing when it's a storage URL.
+                  bucketCandidates: [
+                    "ap-bills",
+                    "bills",
+                    "documents",
+                    "receipts",
+                    "expense-attachments",
+                  ],
+                });
+                openPreview({ url: signed || raw, fileName: "Attachment" });
+              })();
+            }}
+          >
+            View attachment
           </Button>
         ) : null}
         {bill.status !== "Void" &&

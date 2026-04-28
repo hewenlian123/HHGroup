@@ -13,7 +13,12 @@ export function parseCommissionReceiptStorageUrl(
   try {
     const pathname = new URL(url.trim()).pathname;
     for (const b of COMMISSION_RECEIPT_BUCKETS) {
-      for (const marker of [`/object/public/${b}/`, `/object/sign/${b}/`]) {
+      for (const marker of [
+        `/storage/v1/object/public/${b}/`,
+        `/storage/v1/object/sign/${b}/`,
+        `/object/public/${b}/`,
+        `/object/sign/${b}/`,
+      ]) {
         const i = pathname.indexOf(marker);
         if (i !== -1) {
           return { bucket: b, path: decodeURIComponent(pathname.slice(i + marker.length)) };
