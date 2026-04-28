@@ -85,6 +85,7 @@ import {
   persistLastExpensePaymentAccountId,
   rememberExpenseVendorPaymentAccount,
 } from "@/lib/expense-payment-preferences";
+import { resolvePreviewSignedUrl } from "@/lib/storage-signed-url";
 
 type ProjectRow = { id: string; name: string | null; status?: string | null };
 type WorkerRow = { id: string; name: string };
@@ -173,25 +174,6 @@ async function resolveReceiptPreviewUrls(
   supabase: ReturnType<typeof createBrowserClient> | null
 ): Promise<ReceiptItem[]> {
   if (!supabase) return items;
-  const parseStorageObjectUrl = (
-    url: string
-  ): { bucket: "receipts" | "expense-attachments"; path: string } | null => {
-    try {
-      const pathname = new URL(url.trim()).pathname;
-      for (const bucket of ["receipts", "expense-attachments"] as const) {
-        for (const marker of [`/object/public/${bucket}/`, `/object/sign/${bucket}/`]) {
-          const i = pathname.indexOf(marker);
-          if (i === -1) continue;
-          const path = decodeURIComponent(pathname.slice(i + marker.length)).replace(/^\/+/, "");
-          if (!path) return null;
-          return { bucket, path };
-        }
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  };
   const next: ReceiptItem[] = [];
   for (const item of items) {
     const raw = (item.url ?? "").trim();
@@ -199,24 +181,12 @@ async function resolveReceiptPreviewUrls(
       next.push(item);
       continue;
     }
-    const parsed = /^https?:\/\//i.test(raw) ? parseStorageObjectUrl(raw) : null;
-    const path = (parsed?.path ?? raw).replace(/^\/+/, "");
-    let urlOut: string | null = null;
-    const tryBucket = async (bucket: string) => {
-      const { data, error } = await supabase.storage.from(bucket).createSignedUrl(path, 3600);
-      if (!error && data?.signedUrl) return data.signedUrl;
-      return null;
-    };
-    if (parsed) {
-      urlOut = await tryBucket(parsed.bucket);
-    } else {
-      urlOut = await tryBucket("expense-attachments");
-      if (!urlOut) urlOut = await tryBucket("receipts");
-    }
-    if (!urlOut && path) {
-      const { data: pub } = supabase.storage.from("receipts").getPublicUrl(path);
-      if (pub?.publicUrl) urlOut = pub.publicUrl;
-    }
+    const urlOut = await resolvePreviewSignedUrl({
+      supabase,
+      rawUrlOrPath: raw,
+      ttlSec: 3600,
+      bucketCandidates: ["expense-attachments", "receipts"],
+    });
     next.push(urlOut ? { ...item, url: urlOut } : item);
   }
   return next;

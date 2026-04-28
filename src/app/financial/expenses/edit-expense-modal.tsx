@@ -23,6 +23,7 @@ import { ExpenseCategorySelect } from "@/components/expense-category-select";
 import { PaymentAccountSelect } from "@/components/payment-account-select";
 import type { PaymentAccountRow } from "@/lib/data";
 import { persistLastExpensePaymentAccountId } from "@/lib/expense-payment-preferences";
+import { resolvePreviewSignedUrl } from "@/lib/storage-signed-url";
 
 type ProjectOption = { id: string; name: string | null };
 type WorkerOption = { id: string; name: string };
@@ -135,14 +136,13 @@ export function EditExpenseModal({
           next[att.id] = null;
           continue;
         }
-        if (/^https?:\/\//i.test(raw) || raw.startsWith("blob:")) {
-          next[att.id] = raw;
-          continue;
-        }
-        const { data, error } = await supabase.storage
-          .from("expense-attachments")
-          .createSignedUrl(raw, 3600);
-        next[att.id] = !error && data?.signedUrl ? data.signedUrl : null;
+        const signed = await resolvePreviewSignedUrl({
+          supabase,
+          rawUrlOrPath: raw,
+          ttlSec: 3600,
+          bucketCandidates: ["expense-attachments", "receipts"],
+        });
+        next[att.id] = signed || null;
       }
       if (alive) setThumbById(next);
     })();
@@ -155,12 +155,13 @@ export function EditExpenseModal({
     async (att: ExpenseAttachment): Promise<string> => {
       const raw = (att.url ?? "").trim();
       if (!raw) return "";
-      if (/^https?:\/\//i.test(raw) || raw.startsWith("blob:")) return raw;
       if (!supabase) return "";
-      const { data, error } = await supabase.storage
-        .from("expense-attachments")
-        .createSignedUrl(raw, 3600);
-      return !error && data?.signedUrl ? data.signedUrl : "";
+      return await resolvePreviewSignedUrl({
+        supabase,
+        rawUrlOrPath: raw,
+        ttlSec: 3600,
+        bucketCandidates: ["expense-attachments", "receipts"],
+      });
     },
     [supabase]
   );

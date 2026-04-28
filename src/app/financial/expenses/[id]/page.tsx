@@ -38,6 +38,7 @@ import { SplitLinesEditor } from "@/components/split-lines-editor";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import { ArrowLeft, Plus, FileText, Download, Trash2 } from "lucide-react";
 import { createBrowserClient } from "@/lib/supabase";
+import { resolvePreviewSignedUrl } from "@/lib/storage-signed-url";
 import { useToast } from "@/components/toast/toast-provider";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
@@ -226,10 +227,36 @@ export default function ExpenseDetailPage() {
   const firstImageSigned =
     firstImageAttachment != null ? attachmentPreviewSrc[firstImageAttachment.id] : undefined;
 
+  const [receiptSignedUrl, setReceiptSignedUrl] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    let cancelled = false;
+    const raw = (expense?.receiptUrl ?? "").trim();
+    if (!raw) {
+      setReceiptSignedUrl(null);
+      return;
+    }
+    if (!supabase) {
+      setReceiptSignedUrl(raw);
+      return;
+    }
+    void (async () => {
+      const signed = await resolvePreviewSignedUrl({
+        supabase,
+        rawUrlOrPath: raw,
+        ttlSec: 3600,
+        bucketCandidates: ["receipts", "expense-attachments"],
+      });
+      if (!cancelled) setReceiptSignedUrl(signed || raw);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [expense?.receiptUrl, supabase]);
+
   const openPrimaryReceiptPreview = React.useCallback(() => {
     if (!expense) return;
     if (expense.receiptUrl) {
-      const u = expense.receiptUrl;
+      const u = receiptSignedUrl || expense.receiptUrl;
       openPreview({
         files: [
           {
@@ -256,7 +283,14 @@ export default function ExpenseDetailPage() {
         onClosed: () => {},
       });
     }
-  }, [expense, firstImageAttachment, firstImageSigned, openPreview]);
+  }, [expense, receiptSignedUrl, firstImageAttachment, firstImageSigned, openPreview]);
+
+  const openReceiptInNewTab = React.useCallback(() => {
+    const raw = (expense?.receiptUrl ?? "").trim();
+    if (!raw) return;
+    const u = receiptSignedUrl || raw;
+    window.open(u, "_blank", "noopener,noreferrer");
+  }, [expense?.receiptUrl, receiptSignedUrl]);
 
   const openAttachmentCarouselAt = React.useCallback(
     async (focusIndex: number) => {
@@ -562,7 +596,7 @@ export default function ExpenseDetailPage() {
                     <img
                       src={
                         expense.receiptUrl && receiptHrefLooksImage(expense.receiptUrl)
-                          ? expense.receiptUrl
+                          ? (receiptSignedUrl ?? expense.receiptUrl)
                           : (firstImageSigned ?? "")
                       }
                       alt=""
@@ -572,10 +606,14 @@ export default function ExpenseDetailPage() {
                   </button>
                 ) : null}
                 {expense.receiptUrl ? (
-                  <Button variant="outline" size="sm" className="rounded-sm" asChild>
-                    <a href={expense.receiptUrl} target="_blank" rel="noopener noreferrer">
-                      View attachment
-                    </a>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-sm"
+                    type="button"
+                    onClick={openReceiptInNewTab}
+                  >
+                    View attachment
                   </Button>
                 ) : firstImageAttachment && firstImageSigned ? (
                   <Button

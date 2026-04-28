@@ -23,6 +23,8 @@ import {
 } from "@/lib/data";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
+import { createBrowserClient } from "@/lib/supabase";
+import { resolvePreviewSignedUrl } from "@/lib/storage-signed-url";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,6 +58,13 @@ function todayLocalISODate(): string {
 const STATUS_OPTIONS: WorkerReimbursementStatus[] = ["pending", "paid"];
 
 export default function WorkerReimbursementsPage() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const configured = Boolean(url && anon);
+  const supabase = React.useMemo(
+    () => (configured ? createBrowserClient(url as string, anon as string) : null),
+    [configured, url, anon]
+  );
   const [workers, setWorkers] = React.useState<Awaited<ReturnType<typeof getLaborWorkersList>>>([]);
   const [projects, setProjects] = React.useState<Awaited<ReturnType<typeof getProjects>>>([]);
   const [rows, setRows] = React.useState<WorkerReimbursement[]>([]);
@@ -472,7 +481,16 @@ export default function WorkerReimbursementsPage() {
                   <DropdownMenuItem
                     onSelect={() => {
                       const u = r.receiptUrl;
-                      if (u) openPreview({ url: u, fileName: "Receipt" });
+                      if (!u) return;
+                      void (async () => {
+                        const signed = await resolvePreviewSignedUrl({
+                          supabase,
+                          rawUrlOrPath: u,
+                          ttlSec: 3600,
+                          bucketCandidates: ["worker-receipts", "receipts", "expense-attachments"],
+                        });
+                        openPreview({ url: signed || u, fileName: "Receipt" });
+                      })();
                     }}
                   >
                     View Receipt
@@ -940,7 +958,20 @@ export default function WorkerReimbursementsPage() {
                         type="button"
                         onClick={() => {
                           const u = r.receiptUrl;
-                          if (u) openPreview({ url: u, fileName: "Receipt" });
+                          if (!u) return;
+                          void (async () => {
+                            const signed = await resolvePreviewSignedUrl({
+                              supabase,
+                              rawUrlOrPath: u,
+                              ttlSec: 3600,
+                              bucketCandidates: [
+                                "worker-receipts",
+                                "receipts",
+                                "expense-attachments",
+                              ],
+                            });
+                            openPreview({ url: signed || u, fileName: "Receipt" });
+                          })();
                         }}
                         className="cursor-pointer text-xs text-primary transition-transform hover:scale-105 hover:underline"
                       >
