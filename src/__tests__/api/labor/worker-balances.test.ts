@@ -18,11 +18,15 @@ function createChained<T>(data: T[], error: { message: string } | null = null) {
   };
 }
 
-vi.mock("@/lib/supabase-server", () => ({
-  getServerSupabaseAdmin: () => mockSupabaseGetter(),
-  getServerSupabase: () => mockSupabaseGetter(),
-  getServerSupabaseInternal: () => mockSupabaseGetter(),
-}));
+vi.mock("@/lib/supabase-server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/supabase-server")>();
+  return {
+    ...actual,
+    getServerSupabaseAdmin: () => mockSupabaseGetter(),
+    getServerSupabase: () => mockSupabaseGetter(),
+    getServerSupabaseInternal: () => mockSupabaseGetter(),
+  };
+});
 
 describe("GET /api/labor/worker-balances", () => {
   beforeEach(() => {
@@ -30,11 +34,11 @@ describe("GET /api/labor/worker-balances", () => {
     mockSupabaseGetter = () => null;
   });
 
-  it("returns 500 when Supabase is not configured", async () => {
+  it("returns 503 when Supabase is not configured", async () => {
     mockSupabaseGetter = () => null;
     const { GET } = await import("@/app/api/labor/worker-balances/route");
     const res = await GET();
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(503);
     const json = await res.json();
     expect(json.message).toContain("Supabase");
   });

@@ -64,6 +64,29 @@ export function getServerSupabaseInternal(): SupabaseClient | null {
   return getServerSupabaseAdmin() ?? getServerSupabase();
 }
 
+/** Matches reads from env — documented so ops/Vercel use one name only (never embed secrets in code). */
+export const SUPABASE_SERVICE_ROLE_ENV_NAME = "SUPABASE_SERVICE_ROLE_KEY" as const;
+
+/**
+ * Stable API error text when neither anon nor service-role credentials yield a client.
+ * Add secrets only in deployment env (e.g. Vercel → Environment Variables).
+ */
+export const SUPABASE_MISSING_SERVER_ENV_MESSAGE =
+  "Supabase not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY on the server (e.g. Vercel). Optional: SUPABASE_SERVICE_ROLE_KEY (server-only) bypasses RLS for labor pay/settlement.";
+
+/** PostgREST/Postgres errors that usually mean anon/session lacks privileges — hint service role on server. */
+export function appendLaborSettlementServiceRoleHint(message: string): string {
+  const m = message.toLowerCase();
+  if (
+    /permission denied|row-level security|violates row-level security|\brls\b|policy|jwt expired|not authorized|must be owner/i.test(
+      m
+    )
+  ) {
+    return `${message.trim()} Add SUPABASE_SERVICE_ROLE_KEY (server-only) in Vercel if writes must bypass RLS.`;
+  }
+  return message;
+}
+
 /** Back-compat alias used by some server actions. */
 export async function createServerSupabaseClient(): Promise<SupabaseClient | null> {
   const url = envUrl();

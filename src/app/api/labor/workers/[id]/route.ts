@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { deleteWorker, updateWorker } from "@/lib/data";
-import { getServerSupabaseInternal } from "@/lib/supabase-server";
+import {
+  SUPABASE_MISSING_SERVER_ENV_MESSAGE,
+  getServerSupabaseInternal,
+} from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +19,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
   }
   const admin = getServerSupabaseInternal();
   if (!admin) {
-    return NextResponse.json({ ok: false, message: "Supabase not configured." }, { status: 500 });
+    return NextResponse.json({ ok: false, message: SUPABASE_MISSING_SERVER_ENV_MESSAGE }, { status: 503 });
   }
   try {
     const body = await req.json().catch(() => ({}));
@@ -48,7 +51,7 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
   }
   const admin = getServerSupabaseInternal();
   if (!admin) {
-    return NextResponse.json({ ok: false, message: "Supabase not configured." }, { status: 500 });
+    return NextResponse.json({ ok: false, message: SUPABASE_MISSING_SERVER_ENV_MESSAGE }, { status: 503 });
   }
   try {
     await deleteWorker(id);

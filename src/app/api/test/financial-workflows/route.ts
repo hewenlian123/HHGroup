@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSupabase } from "@/lib/supabase-server";
+import { SUPABASE_MISSING_SERVER_ENV_MESSAGE, getServerSupabase } from "@/lib/supabase-server";
 import { insertLaborEntryForTestSchema } from "@/lib/labor-entry-test-insert";
 import { createWorkerPaymentWithClient } from "@/lib/worker-payments-db";
 import {
@@ -51,8 +51,8 @@ export async function POST(req: Request) {
   const server = getServerSupabase();
   if (!server) {
     return NextResponse.json(
-      { ok: false, message: "Supabase not configured", tests: [] },
-      { status: 500 }
+      { ok: false, message: SUPABASE_MISSING_SERVER_ENV_MESSAGE, tests: [] },
+      { status: 503 }
     );
   }
 

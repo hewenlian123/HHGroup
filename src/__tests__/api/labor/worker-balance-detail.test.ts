@@ -75,11 +75,15 @@ function createBalanceMock(
   return { from };
 }
 
-vi.mock("@/lib/supabase-server", () => ({
-  getServerSupabaseAdmin: () => mockSupabaseGetter(),
-  getServerSupabase: () => mockSupabaseGetter(),
-  getServerSupabaseInternal: () => mockSupabaseGetter(),
-}));
+vi.mock("@/lib/supabase-server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/supabase-server")>();
+  return {
+    ...actual,
+    getServerSupabaseAdmin: () => mockSupabaseGetter(),
+    getServerSupabase: () => mockSupabaseGetter(),
+    getServerSupabaseInternal: () => mockSupabaseGetter(),
+  };
+});
 
 describe("GET /api/labor/workers/[id]/balance", () => {
   beforeEach(() => {
@@ -93,11 +97,11 @@ describe("GET /api/labor/workers/[id]/balance", () => {
     expect(res.status).toBe(400);
   });
 
-  it("returns 500 when Supabase is not configured", async () => {
+  it("returns 503 when Supabase is not configured", async () => {
     mockSupabaseGetter = () => null;
     const { GET } = await import("@/app/api/labor/workers/[id]/balance/route");
     const res = await GET(new Request("http://x"), { params: Promise.resolve({ id: "w1" }) });
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(503);
     const json = await res.json();
     expect(json.message).toContain("Supabase");
   });

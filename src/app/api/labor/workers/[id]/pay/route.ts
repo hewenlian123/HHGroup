@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { getServerSupabaseInternal } from "@/lib/supabase-server";
+import {
+  SUPABASE_MISSING_SERVER_ENV_MESSAGE,
+  appendLaborSettlementServiceRoleHint,
+  getServerSupabaseInternal,
+} from "@/lib/supabase-server";
 import { createWorkerPaymentWithClient } from "@/lib/worker-payments-db";
 import { computeImplicitSettlement } from "@/lib/worker-payment-implicit-settlement";
 import {
@@ -61,10 +65,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const admin = getServerSupabaseInternal();
   if (!admin) {
-    return NextResponse.json(
-      { message: "Supabase not configured; cannot settle labor entries." },
-      { status: 500 }
-    );
+    return NextResponse.json({ message: SUPABASE_MISSING_SERVER_ENV_MESSAGE }, { status: 503 });
   }
 
   const laborIdsIn = Array.isArray(body.labor_entry_ids)
@@ -304,7 +305,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (!laborResult.ok) {
       await admin.from("worker_payments").delete().eq("id", payment.id);
       return NextResponse.json(
-        { message: laborResult.error ?? "Failed to settle labor entries." },
+        {
+          message: appendLaborSettlementServiceRoleHint(
+            laborResult.error ?? "Failed to settle labor entries."
+          ),
+        },
         { status: 500 }
       );
     }
@@ -317,7 +322,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         .eq("worker_payment_id", payment.id);
       await admin.from("worker_payments").delete().eq("id", payment.id);
       return NextResponse.json(
-        { message: reimbResult.error ?? "Failed to settle reimbursements." },
+        {
+          message: appendLaborSettlementServiceRoleHint(
+            reimbResult.error ?? "Failed to settle reimbursements."
+          ),
+        },
         { status: 500 }
       );
     }

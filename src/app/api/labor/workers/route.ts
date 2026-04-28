@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { createWorker } from "@/lib/data";
-import { getServerSupabaseInternal } from "@/lib/supabase-server";
+import {
+  SUPABASE_MISSING_SERVER_ENV_MESSAGE,
+  getServerSupabaseInternal,
+} from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +18,7 @@ const NO_CACHE_HEADERS = {
 export async function GET() {
   const admin = getServerSupabaseInternal();
   if (!admin) {
-    return NextResponse.json({ message: "Supabase not configured" }, { status: 500 });
+    return NextResponse.json({ message: SUPABASE_MISSING_SERVER_ENV_MESSAGE }, { status: 503 });
   }
   try {
     const { data: rows, error } = await admin
@@ -46,7 +49,7 @@ export async function GET() {
 export async function POST(req: Request) {
   const admin = getServerSupabaseInternal();
   if (!admin) {
-    return NextResponse.json({ message: "Supabase not configured" }, { status: 500 });
+    return NextResponse.json({ message: SUPABASE_MISSING_SERVER_ENV_MESSAGE }, { status: 503 });
   }
   try {
     const body = await req.json().catch(() => ({}));

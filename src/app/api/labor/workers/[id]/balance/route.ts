@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getServerSupabaseInternal } from "@/lib/supabase-server";
+import {
+  SUPABASE_MISSING_SERVER_ENV_MESSAGE,
+  getServerSupabaseInternal,
+} from "@/lib/supabase-server";
 import {
   isLaborUnpaidForWorkerPayroll,
   laborPayrollSettlementModeFromSelectList,
@@ -57,7 +60,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   }
   const c = getServerSupabaseInternal();
   if (!c) {
-    return NextResponse.json({ message: "Supabase not configured" }, { status: 500 });
+    return NextResponse.json({ message: SUPABASE_MISSING_SERVER_ENV_MESSAGE }, { status: 503 });
   }
 
   // Shared result shape — avoids TypeScript inferring per-column types from each .select() call.
