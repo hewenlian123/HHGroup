@@ -7,7 +7,11 @@ import {
   isStoragePathForCommissionReceipt,
   parseCommissionReceiptStorageUrl,
 } from "@/lib/commission-receipt-storage";
-import { getServerSupabaseAdmin } from "@/lib/supabase-server";
+import {
+  createServerSupabaseClient,
+  getServerSupabaseAdmin,
+  getSupabaseUserFromRequest,
+} from "@/lib/supabase-server";
 import { uuidNormalizedEqual } from "@/lib/uuid-normalize";
 
 const ALLOWED_BUCKETS = new Set<string>(COMMISSION_RECEIPT_BUCKETS);
@@ -19,21 +23,38 @@ const VIEW_SIGNED_TTL_SEC = 60 * 60;
  * `receipt_url` points at commission-receipts storage under this payment's path.
  */
 export async function GET(
-  _req: Request,
+  req: Request,
   ctx: { params: Promise<{ id: string; commissionId: string; paymentId: string }> }
 ) {
   const { id: projectId, commissionId, paymentId } = await ctx.params;
   if (!projectId || !commissionId || !paymentId)
     return NextResponse.json({ ok: false, message: "Missing id" }, { status: 400 });
 
-  const supabase = getServerSupabaseAdmin();
-  if (!supabase)
-    return NextResponse.json(
-      { ok: false, message: "Supabase service role is not configured." },
-      { status: 500 }
-    );
-
   try {
+    const admin = getServerSupabaseAdmin();
+    // If service role isn't configured in the environment, fall back to the current
+    // authenticated user session (SSR cookies or Authorization header).
+    const supabase = admin ?? (await createServerSupabaseClient());
+    if (!supabase) {
+      return NextResponse.json(
+        { ok: false, message: "Supabase is not configured." },
+        { status: 500 }
+      );
+    }
+    if (!admin) {
+      const user = await getSupabaseUserFromRequest(req);
+      if (!user) {
+        return NextResponse.json(
+          {
+            ok: false,
+            message:
+              "Not signed in (or session missing). Please log in again and retry viewing the receipt.",
+          },
+          { status: 401 }
+        );
+      }
+    }
+
     const commission = await getCommissionById(commissionId);
     if (!commission)
       return NextResponse.json({ ok: false, message: "Commission not found" }, { status: 404 });
@@ -95,8 +116,11 @@ export async function GET(
       .createSignedUrl(parsed.path, VIEW_SIGNED_TTL_SEC);
     if (error || !data?.signedUrl) {
       return NextResponse.json(
-        { ok: false, message: error?.message ?? "Could not create signed URL for receipt." },
-        { status: 500 }
+        {
+          ok: false,
+          message: error?.message ?? "Could not create signed URL for receipt.",
+        },
+        { status: admin ? 500 : 403 }
       );
     }
 
