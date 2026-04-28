@@ -30,9 +30,8 @@ export async function createAccountAction(
     }
     // If the DB/RLS allows anon inserts, proceed without a user session.
     // When signed in, we attach user_id for ownership.
-    const {
-      data: { user },
-    } = await supabase.auth.getUser().catch(() => ({ data: { user: null as any } }));
+    const userRes = await supabase.auth.getUser().catch(() => ({ data: { user: null } }));
+    const user = userRes.data.user;
     const name = (input.name ?? "").trim();
     if (!name) {
       return { error: "Account name is required." };
@@ -79,9 +78,8 @@ export async function getAccountsAction(): Promise<{
   const supabase = (await createServerSupabaseClient()) ?? getServerSupabase();
   if (!supabase) return { accounts: [], error: "Supabase is not configured." };
   // user is optional; when present we can optionally scope admin results.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser().catch(() => ({ data: { user: null as any } }));
+  const userRes = await supabase.auth.getUser().catch(() => ({ data: { user: null } }));
+  const user = userRes.data.user;
 
   // Prefer admin client (if configured) to avoid "old rows with null/mismatched user_id" disappearing.
   // We still scope results to the signed-in user when possible (user_id=user OR user_id is null).

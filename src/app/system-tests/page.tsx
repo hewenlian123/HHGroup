@@ -315,8 +315,8 @@ export default function SystemTestsPage() {
           Full System Test — CRUD &amp; Workflows
         </p>
         <p className="text-xs text-muted-foreground -mt-1">
-          Creates, verifies, and deletes real rows in each table. All test data is tagged "Workflow
-          Test" and cleaned up automatically.
+          Creates, verifies, and deletes real rows in each table. All test data is tagged
+          &quot;Workflow Test&quot; and cleaned up automatically.
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <Button

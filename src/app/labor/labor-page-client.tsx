@@ -200,8 +200,9 @@ export default function LaborPageClient() {
   const [editing, setEditing] = React.useState<LaborEntryWithJoins | null>(null);
 
   const sessionFromFlags = React.useCallback((e: LaborEntryWithJoins): LaborSession => {
-    const m = (e as any).morning === true;
-    const a = (e as any).afternoon === true;
+    const flags = e as LaborEntryWithJoins & { morning?: unknown; afternoon?: unknown };
+    const m = flags.morning === true;
+    const a = flags.afternoon === true;
     if (m && a) return "full_day";
     if (m && !a) return "morning";
     if (!m && a) return "afternoon";

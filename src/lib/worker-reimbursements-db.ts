@@ -93,10 +93,10 @@ async function enrichNames(rows: WorkerReimbursement[]): Promise<WorkerReimburse
   const [workersRes, projectsRes] = await Promise.all([
     workerIds.length
       ? c.from("workers").select("id, name").in("id", workerIds)
-      : Promise.resolve({ data: [] as any[] }),
+      : Promise.resolve({ data: [] as Array<{ id: string; name: string | null }> }),
     projectIds.length
       ? c.from("projects").select("id, name").in("id", projectIds)
-      : Promise.resolve({ data: [] as any[] }),
+      : Promise.resolve({ data: [] as Array<{ id: string; name: string | null }> }),
   ]);
 
   const workerNameById = new Map(
@@ -319,7 +319,8 @@ export async function updateWorkerReimbursement(
       .single();
   }
   if (res.error && isColumnMissingError(res.error) && payload.reimbursement_date !== undefined) {
-    const { reimbursement_date: _x, ...rest } = payload;
+    const { reimbursement_date, ...rest } = payload;
+    void reimbursement_date;
     res = await client()
       .from(TABLE_NAME)
       .update(rest)

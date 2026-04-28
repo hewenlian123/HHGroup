@@ -29,8 +29,6 @@ function photoUrl(path: string): string {
 
 export function ProjectMaterialsTab({
   projectId,
-  projectName: _projectName,
-  clientName: _clientName,
   selections,
   catalog,
   onRefresh,

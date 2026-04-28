@@ -207,7 +207,7 @@ export async function workerIdsForLaborBalanceFinancialQueries(
   ids.add(lid);
 
   const lw = await c.from("labor_workers").select("name").eq("id", lid).maybeSingle();
-  let rawName = (lw.data as { name?: string | null } | null)?.name;
+  const rawName = (lw.data as { name?: string | null } | null)?.name;
   let lname = String(rawName ?? "").trim();
 
   if (!lname) {

@@ -57,7 +57,8 @@ export function EditEntryModal(props: {
   React.useEffect(() => {
     if (!open || !entry) return;
     setProjectId(entry.project_id ?? "");
-    setSession(sessionFromFlags((entry as any).morning, (entry as any).afternoon));
+    const flags = entry as LaborEntryWithJoins & { morning?: unknown; afternoon?: unknown };
+    setSession(sessionFromFlags(flags.morning, flags.afternoon));
     setCostAmount(String(entry.cost_amount != null ? Number(entry.cost_amount) : 0));
     setHours(String(entry.hours != null ? Number(entry.hours) : 0));
     setNotes(entry.notes ?? "");

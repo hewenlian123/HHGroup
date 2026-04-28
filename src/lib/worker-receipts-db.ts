@@ -397,7 +397,8 @@ export async function approveWorkerReceiptWithClient(
       "id, worker_id, project_id, vendor, amount, description, receipt_url, status, reimbursement_date, created_at"
     );
     if (rErr && isMissingColumn(rErr)) {
-      const { reimbursement_date: _rd, ...fullNoDate } = fullInsert;
+      const { reimbursement_date, ...fullNoDate } = fullInsert;
+      void reimbursement_date;
       await tryInsert(
         fullNoDate,
         "id, worker_id, project_id, vendor, amount, description, receipt_url, status, created_at"
@@ -416,7 +417,8 @@ export async function approveWorkerReceiptWithClient(
       );
     }
     if (rErr && isMissingColumn(rErr)) {
-      const { reimbursement_date: _md, ...minimalNoDate } = minimalInsert;
+      const { reimbursement_date, ...minimalNoDate } = minimalInsert;
+      void reimbursement_date;
       await tryInsert(minimalNoDate, "id, worker_id, project_id, amount, notes, created_at");
     }
     if (rErr && isMissingColumn(rErr)) {

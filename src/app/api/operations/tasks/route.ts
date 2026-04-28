@@ -52,10 +52,6 @@ export async function GET() {
     const projects = (projectsRes.data ?? []) as Array<{ id: string; name: string | null }>;
     const workers = (workersRes.data ?? []) as Array<{ id: string; name: string | null }>;
 
-    const projectIds = [...new Set(taskRows.map((t) => t.project_id as string))];
-    const workerIds = [
-      ...new Set(taskRows.map((t) => t.assigned_worker_id as string).filter(Boolean)),
-    ];
     const projectNameById = new Map(projects.map((p) => [p.id, p.name ?? null]));
     const workerNameById = new Map(workers.map((w) => [w.id, w.name ?? null]));
 

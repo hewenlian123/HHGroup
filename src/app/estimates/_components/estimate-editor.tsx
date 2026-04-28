@@ -320,11 +320,6 @@ export function EstimateEditor({
     setExpandedCategoryIds([]);
   }, [costBreakdownCollapseNonce]);
 
-  const categoryIdsWithItems = React.useMemo(
-    () => new Set(localItems.map((i) => i.costCode)),
-    [localItems]
-  );
-
   const usedCostCodesOnEstimate = React.useMemo(() => {
     const s = new Set<string>();
     for (const it of localItems) s.add(it.costCode);
@@ -982,7 +977,6 @@ export function EstimateEditor({
                 estimateId={estimateId}
                 allCategoryCodes={categoryDropdownOptions.map((o) => o.code)}
                 getCategoryDisplayName={getCategoryDisplayNameHint}
-                categoryIdsWithItems={categoryIdsWithItems}
                 usedCostCodes={usedCostCodesOnEstimate}
                 pendingSelectNewCategory={pendingSelectNewCategory}
                 onPendingSelectNewCategoryConsumed={consumePendingSelectNewCategory}
@@ -1371,7 +1365,6 @@ function AddCategoryBlock({
   estimateId,
   allCategoryCodes,
   getCategoryDisplayName,
-  categoryIdsWithItems,
   usedCostCodes,
   pendingSelectNewCategory,
   onPendingSelectNewCategoryConsumed,
@@ -1380,7 +1373,6 @@ function AddCategoryBlock({
   estimateId: string;
   allCategoryCodes: string[];
   getCategoryDisplayName: (code: string) => string;
-  categoryIdsWithItems: Set<string>;
   usedCostCodes: ReadonlySet<string>;
   pendingSelectNewCategory?: { code: string; displayName: string } | null;
   onPendingSelectNewCategoryConsumed?: () => void;

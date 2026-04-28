@@ -290,7 +290,7 @@ export default function WorkerSummaryPage() {
           <select
             value={sort.key}
             onChange={(e) =>
-              setSort((s) => ({
+              setSort(() => ({
                 key: e.target.value as SortKey,
                 dir: e.target.value === "workerName" ? "asc" : "desc",
               }))

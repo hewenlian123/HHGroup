@@ -56,7 +56,7 @@ export function WorkerAdvanceFormDialog({
 
   React.useEffect(() => {
     if (open) {
-      setForm((prev) => ({
+      setForm(() => ({
         workerId: "",
         projectId: null,
         amount: "",

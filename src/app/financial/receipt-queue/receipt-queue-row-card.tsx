@@ -19,7 +19,7 @@ type ProjectRow = { id: string; name: string | null; status?: string | null };
 type WorkerRow = { id: string; name: string };
 
 const RQ_BTN =
-  "transition-[background-color_transform_color] duration-[140ms] ease-out active:scale-[0.95] active:duration-90 active:ease-[cubic-bezier(0.34_1.56_0.64_1)]";
+  "transition-[background-color_transform_color] duration-\\[140ms\\] ease-out active:scale-[0.95] active:duration-90 active:ease-\\[cubic-bezier(0.34_1.56_0.64_1)\\]";
 
 function fieldClass(layout: RqLayout, extra?: string): string {
   return cn(
@@ -359,7 +359,7 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
       className={cn(
         layout === "mobile"
           ? "h-11 min-h-10 min-w-[2.75rem] shrink-0 rounded-xl border-[#e5e7eb] px-3 text-[#6b7280] transition-[background-color_transform_color_box-shadow] duration-150 ease-out hover:border-red-200/80 hover:bg-red-50 hover:text-[#d92d20] hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]/35 active:scale-[0.96]"
-          : "h-9 shrink-0 rounded-lg border-[#e5e7eb] px-2 text-[#6b7280] transition-[background-color_transform_color_box-shadow] duration-[140ms] ease-out hover:scale-110 hover:border-red-200/80 hover:bg-red-50 hover:text-[#d92d20] hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]/35 active:scale-[0.88] active:duration-90 active:ease-[cubic-bezier(0.34_1.56_0.64_1)]",
+          : "h-9 shrink-0 rounded-lg border-[#e5e7eb] px-2 text-[#6b7280] transition-[background-color_transform_color_box-shadow] duration-\\[140ms\\] ease-out hover:scale-110 hover:border-red-200/80 hover:bg-red-50 hover:text-[#d92d20] hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563eb]/35 active:scale-[0.88] active:duration-90 active:ease-\\[cubic-bezier(0.34_1.56_0.64_1)\\]",
         RQ_BTN
       )}
       disabled={busy || rowLocked}
@@ -405,15 +405,16 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
       : "max-h-[520px] rounded-lg border border-[#e5e7eb] shadow-sm dark:border-border",
     !!motion && "pointer-events-none will-change-[opacity_transform_max-height]",
     motion
-      ? "transition-[transform_opacity_background-color_max-height_margin_padding_box-shadow] duration-200 ease-[cubic-bezier(0.4_0_0.2_1)]"
+      ? "transition-[transform_opacity_background-color_max-height_margin_padding_box-shadow] duration-200 ease-\\[cubic-bezier(0.4_0_0.2_1)\\]"
       : "transition-all duration-150 ease-out",
     !motion &&
       !rowLocked &&
       "hover:-translate-y-px hover:bg-gray-50 active:scale-[0.99] dark:hover:bg-muted/40",
     motion === "success_check" && "bg-emerald-50 shadow-sm ring-1 ring-emerald-200/80",
-    motion === "fade" && "translate-x-2 opacity-0 !duration-200 !ease-[cubic-bezier(0.4_0_0.2_1)]",
+    motion === "fade" &&
+      "translate-x-2 opacity-0 !duration-200 !ease-\\[cubic-bezier(0.4_0_0.2_1)\\]",
     motion === "collapse" &&
-      "!mb-0 !max-h-0 !translate-x-2 !py-0 !opacity-0 !duration-200 !ease-[cubic-bezier(0.4_0_0.2_1)]",
+      "!mb-0 !max-h-0 !translate-x-2 !py-0 !opacity-0 !duration-200 !ease-\\[cubic-bezier(0.4_0_0.2_1)\\]",
     activeQueueRowId === id && "z-[1] ring-1 ring-inset ring-[#2563eb]/20 dark:ring-border",
     activeQueueRowId === id && !needsHighlight && !motion && "bg-[#eff6ff]/80 dark:bg-muted/25",
     newRowHighlight && "animate-receipt-queue-row-new",

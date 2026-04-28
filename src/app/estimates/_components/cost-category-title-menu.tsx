@@ -240,10 +240,6 @@ export function CostCategoryTitleMenu({
   const [renameDraft, setRenameDraft] = React.useState(displayName);
   const [renameSaving, setRenameSaving] = React.useState(false);
   const [addOpen, setAddOpen] = React.useState(false);
-  const [addCodeDraft, setAddCodeDraft] = React.useState("");
-  const [addNameDraft, setAddNameDraft] = React.useState("");
-  const [addSaving, setAddSaving] = React.useState(false);
-  const addDisplayNameRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     // Keep draft in sync when label changes outside the dialog.

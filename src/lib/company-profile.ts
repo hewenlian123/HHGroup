@@ -252,7 +252,7 @@ export async function saveCompanyProfile(
   const current = await getCompanyProfile(client);
   const merged = mergeCompanyProfileInput(current, values);
 
-  let payload: Record<string, unknown> = { ...merged };
+  const payload: Record<string, unknown> = { ...merged };
   for (let i = 0; i < 15; i++) {
     if (current) {
       const { data, error } = await client

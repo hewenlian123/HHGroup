@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
-import { ClipboardList, Download, ImageIcon, Search, Trash2 } from "lucide-react";
+import { Download, ImageIcon, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageLayout, PageHeader, Drawer } from "@/components/base";
 import { Button } from "@/components/ui/button";
@@ -153,12 +153,6 @@ export default function SitePhotosPage() {
     }, [load]),
     [load]
   );
-
-  const handleDeleteClick = (e: React.MouseEvent, photo: PhotoRow) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (canDelete) setDeleteConfirmPhoto(photo);
-  };
 
   const openPunchIssueModal = React.useCallback(async (e: React.MouseEvent, photo: PhotoRow) => {
     e.preventDefault();

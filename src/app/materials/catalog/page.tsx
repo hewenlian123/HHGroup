@@ -63,7 +63,6 @@ export default function MaterialCatalogPage() {
   const [submitting, setSubmitting] = React.useState(false);
   const [uploading, setUploading] = React.useState(false);
   const [form, setForm] = React.useState({ ...EMPTY_FORM });
-  const [photoFile, setPhotoFile] = React.useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = React.useState("");

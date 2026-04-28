@@ -56,8 +56,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setTabletSidebarExpanded(false);
   }, [pathname]);
 
-  const effectiveCollapsed = isTabletNav ? !tabletSidebarExpanded : collapsed;
-
   const handleToggleSidebar = React.useCallback(() => {
     if (isTabletNav) {
       setTabletSidebarExpanded((e) => !e);
@@ -92,8 +90,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 {/* Tablet/Desktop (640px+): sidebar fixed left, collapsible. */}
                 <Sidebar
                   className="hidden sm:flex shrink-0 transition-[width] duration-200"
-                  collapsed={collapsed}
-                  onToggleCollapsed={() => setCollapsed((v) => !v)}
+                  collapsed={isTabletNav ? !tabletSidebarExpanded : collapsed}
+                  onToggleCollapsed={handleToggleSidebar}
                 />
                 {/* Mobile (<640px): slide-out drawer (hamburger menu). */}
                 <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>

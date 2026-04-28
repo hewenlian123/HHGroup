@@ -76,8 +76,9 @@ export async function GET() {
     }
 
     const all = raw.map((r) => {
-      if (r.vendor == null && (r as any).vendor_name != null)
-        (r as any).vendor = (r as any).vendor_name;
+      const withVendorName = r as Record<string, unknown> & { vendor_name?: unknown };
+      if (r.vendor == null && withVendorName.vendor_name != null)
+        r.vendor = withVendorName.vendor_name;
       return fromRow(r);
     });
     const list = all.filter((r) => r.status === "pending");
@@ -189,7 +190,8 @@ export async function POST(req: Request) {
       res.error &&
       /column .*reimbursement_date.*does not exist|schema cache/i.test(res.error.message ?? "")
     ) {
-      const { reimbursement_date: _rd, ...noDate } = payloadBase;
+      const { reimbursement_date, ...noDate } = payloadBase;
+      void reimbursement_date;
       res = await supabase
         .from("worker_reimbursements")
         .insert({ ...noDate, vendor: vendor || null })

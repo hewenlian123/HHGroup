@@ -95,7 +95,7 @@ const SEGMENT_LABELS: Record<string, string> = {
 };
 
 /** When under /labor, "payments" shows as "Worker Payments". */
-function getBreadcrumbLabel(segment: string, pathSegments: string[], index: number): string {
+function getBreadcrumbLabel(segment: string, pathSegments: string[]): string {
   const lower = segment.toLowerCase();
   if (pathSegments[0] === "labor" && lower === "payments") return "Worker Payments";
   return (
@@ -111,7 +111,7 @@ function buildBreadcrumbs(pathname: string, overrides: Map<string, string>): str
     const key = `${path}:${i}`;
     const override = overrides.get(key);
     if (override) return override;
-    return getBreadcrumbLabel(p, parts, i);
+    return getBreadcrumbLabel(p, parts);
   });
 }
 

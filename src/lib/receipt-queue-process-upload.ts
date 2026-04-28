@@ -50,7 +50,10 @@ export function scheduleReceiptQueueOcr(
   onApplied?: () => void
 ): void {
   void (async () => {
-    const infer = (vendor: string, _itemNames: string[]) => inferCategory(vendor);
+    const infer = (vendor: string, itemNames: string[]) => {
+      void itemNames;
+      return inferCategory(vendor);
+    };
     if (!file.type.startsWith("image/")) {
       try {
         await updateReceiptQueueRow(supabase, rowId, { ocr_source: "none" });

@@ -17,10 +17,11 @@ export const maxDuration = 300;
 type CheckResult = { name: string; ok: boolean; error?: string };
 
 async function runCleanup(
-  _origin: string
+  origin: string
 ): Promise<{ deleted: Record<string, number>; errors: string[] }> {
   const c = getServerSupabase();
   if (!c) return { deleted: {}, errors: ["Supabase not configured"] };
+  void origin;
   return cleanupTestData(c);
 }
 

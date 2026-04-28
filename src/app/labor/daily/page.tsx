@@ -57,12 +57,6 @@ function parseDayTypeAndOt(notes: string | null): { dayType: string; otHours: st
 
 type Session = "morning" | "afternoon" | "full_day";
 
-function sessionLabel(s: Session): string {
-  if (s === "morning") return "Morning";
-  if (s === "afternoon") return "Afternoon";
-  return "Full Day";
-}
-
 function sessionTag(s: Session): string {
   if (s === "morning") return "🌅";
   if (s === "afternoon") return "🌇";
@@ -162,7 +156,8 @@ export default function DailyLaborLogPage() {
   const openEdit = React.useCallback((entry: LaborEntryWithJoins) => {
     setEditing(entry);
     setEditProjectId(entry.project_id ?? "");
-    setEditSession(sessionFromFlags((entry as any).morning, (entry as any).afternoon));
+    const flags = entry as LaborEntryWithJoins & { morning?: unknown; afternoon?: unknown };
+    setEditSession(sessionFromFlags(flags.morning, flags.afternoon));
     setEditAmount(String(entry.cost_amount != null ? Number(entry.cost_amount) : 0));
     setEditHours(String(entry.hours != null ? Number(entry.hours) : 0));
     setEditNotes(entry.notes ?? "");
@@ -325,7 +320,11 @@ export default function DailyLaborLogPage() {
               <tbody>
                 {dayEntries.map((e) => {
                   const { dayType, otHours } = parseDayTypeAndOt(e.notes);
-                  const sess = sessionFromFlags((e as any).morning, (e as any).afternoon);
+                  const flags = e as LaborEntryWithJoins & {
+                    morning?: unknown;
+                    afternoon?: unknown;
+                  };
+                  const sess = sessionFromFlags(flags.morning, flags.afternoon);
                   const pay = e.cost_amount != null ? Number(e.cost_amount) : 0;
                   return (
                     <tr key={e.id} className="group border-b border-gray-100 last:border-b-0">
