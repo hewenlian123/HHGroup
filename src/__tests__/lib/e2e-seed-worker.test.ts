@@ -1,8 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import {
-  E2E_SEED_WORKER_ID,
-  omitE2ESeedWorkerFromBalanceWorkers,
-} from "@/lib/e2e-seed-worker";
+import { E2E_SEED_WORKER_ID, omitE2ESeedWorkerFromBalanceWorkers } from "@/lib/e2e-seed-worker";
 
 describe("omitE2ESeedWorkerFromBalanceWorkers", () => {
   afterEach(() => {
