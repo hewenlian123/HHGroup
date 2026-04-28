@@ -126,7 +126,6 @@ export default function MaterialCatalogPage() {
     if (!open) {
       setEditingMaterial(null);
       setForm({ ...EMPTY_FORM });
-      setPhotoFile(null);
       setPreviewUrl(null);
       setError(null);
     }
@@ -135,7 +134,6 @@ export default function MaterialCatalogPage() {
   const openModal = () => {
     setEditingMaterial(null);
     setForm({ ...EMPTY_FORM });
-    setPhotoFile(null);
     setPreviewUrl(null);
     setError(null);
     setModalOpen(true);
@@ -150,7 +148,6 @@ export default function MaterialCatalogPage() {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setPhotoFile(file);
     setPreviewUrl((prev) => {
       revokePreviewIfBlob(prev);
       return URL.createObjectURL(file);
