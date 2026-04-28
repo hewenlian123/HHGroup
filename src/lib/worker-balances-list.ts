@@ -138,32 +138,33 @@ export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBala
         const maybe = (v as Record<string, unknown>)[key];
         return typeof maybe === "function";
       };
-      const queryByIds = async (table: string, cols: string) => {
+      type QueryResult = { data: unknown[] | null; error: { message?: string } | null };
+      const queryByIds = async (table: string, cols: string): Promise<QueryResult> => {
         const base = c.from(table).select(cols) as unknown;
         // Test mocks may return a thenable without query helpers (eq/in). Fall back to awaiting the base.
         if (ids.length <= 1) {
           if (hasFunction(base, "eq")) {
-            return await (base as { eq: (col: string, val: string) => unknown }).eq(
+            return (await (base as { eq: (col: string, val: string) => unknown }).eq(
               "worker_id",
               ids[0] ?? workerId
-            );
+            )) as QueryResult;
           }
-          return await (base as PromiseLike<unknown>);
+          return (await (base as PromiseLike<unknown>)) as QueryResult;
         }
         if (hasFunction(base, "in")) {
-          return await (base as { in: (col: string, vals: string[]) => unknown }).in(
+          return (await (base as { in: (col: string, vals: string[]) => unknown }).in(
             "worker_id",
             ids
-          );
+          )) as QueryResult;
         }
         // As a safe fallback, try a single eq (best-effort) or just await.
         if (hasFunction(base, "eq")) {
-          return await (base as { eq: (col: string, val: string) => unknown }).eq(
+          return (await (base as { eq: (col: string, val: string) => unknown }).eq(
             "worker_id",
             workerId
-          );
+          )) as QueryResult;
         }
-        return await (base as PromiseLike<unknown>);
+        return (await (base as PromiseLike<unknown>)) as QueryResult;
       };
 
       function isMissingColumn(err: { message?: string } | null): boolean {
