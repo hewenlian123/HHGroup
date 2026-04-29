@@ -48,7 +48,10 @@ type WorkerBalanceRow = {
 
 export default function WorkerBalancesPage() {
   const [rows, setRows] = React.useState<WorkerBalanceRow[]>([]);
-  const [loading, setLoading] = React.useState(true);
+  const [initialLoading, setInitialLoading] = React.useState(true);
+  const [refreshing, setRefreshing] = React.useState(false);
+  const firstLoadRef = React.useRef(true);
+  const fetchGenRef = React.useRef(0);
   const [message, setMessage] = React.useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = React.useState<WorkerBalanceRow | null>(null);
   const [deleteBusy, setDeleteBusy] = React.useState(false);
@@ -56,7 +59,9 @@ export default function WorkerBalancesPage() {
   const [searchQuery, setSearchQuery] = React.useState("");
 
   const load = React.useCallback(async () => {
-    setLoading(true);
+    const gen = ++fetchGenRef.current;
+    if (firstLoadRef.current) setInitialLoading(true);
+    else setRefreshing(true);
     setMessage(null);
     try {
       const res = await fetch(`/api/labor/worker-balances?t=${Date.now()}`, {
@@ -65,12 +70,19 @@ export default function WorkerBalancesPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message ?? "Failed to load.");
+      if (gen !== fetchGenRef.current) return;
       setRows(data.balances ?? []);
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Failed to load.");
-      setRows([]);
+      if (gen === fetchGenRef.current) {
+        setMessage(e instanceof Error ? e.message : "Failed to load.");
+        setRows([]);
+      }
     } finally {
-      setLoading(false);
+      if (gen === fetchGenRef.current) {
+        setInitialLoading(false);
+        setRefreshing(false);
+        firstLoadRef.current = false;
+      }
     }
   }, []);
 
@@ -116,6 +128,8 @@ export default function WorkerBalancesPage() {
     return rows.filter((r) => r.workerName.toLowerCase().includes(q));
   }, [rows, searchQuery]);
 
+  const fetchBusy = initialLoading || refreshing;
+
   return (
     <div
       className={cn("page-container page-stack py-6", mobileListPagePaddingClass, "max-md:!gap-3")}
@@ -129,11 +143,11 @@ export default function WorkerBalancesPage() {
               size="sm"
               variant="outline"
               className="min-h-[44px] sm:min-h-9 w-full sm:w-auto"
-              onClick={load}
-              disabled={loading}
+              onClick={() => void load()}
+              disabled={fetchBusy}
             >
-              <SubmitSpinner loading={loading} className="mr-2" />
-              {loading ? "Loading…" : "Refresh"}
+              <SubmitSpinner loading={fetchBusy} className="mr-2" />
+              {fetchBusy ? "Loading…" : "Refresh"}
             </Button>
           }
         />
@@ -169,9 +183,9 @@ export default function WorkerBalancesPage() {
             void load();
             setFiltersOpen(false);
           }}
-          disabled={loading}
+          disabled={fetchBusy}
         >
-          <SubmitSpinner loading={loading} className="mr-2" />
+          <SubmitSpinner loading={fetchBusy} className="mr-2" />
           Refresh balances
         </Button>
         <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
@@ -183,7 +197,7 @@ export default function WorkerBalancesPage() {
       ) : null}
 
       <div className="border-b border-border/60 pb-4 md:hidden">
-        {loading ? (
+        {initialLoading ? (
           <div className="flex flex-col gap-2 py-2">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="py-2">
@@ -203,7 +217,18 @@ export default function WorkerBalancesPage() {
             message="No workers match your search."
           />
         ) : (
-          <div className="divide-y divide-gray-100 dark:divide-border/60">
+          <div
+            className={cn(
+              "divide-y divide-gray-100 dark:divide-border/60 relative",
+              refreshing && "pointer-events-none opacity-60"
+            )}
+            aria-busy={refreshing || undefined}
+          >
+            {refreshing ? (
+              <div className="pointer-events-none absolute inset-x-0 top-0 z-[1] flex justify-center py-1">
+                <span className="text-xs text-muted-foreground">Updating…</span>
+              </div>
+            ) : null}
             {filteredRows.map((r) => (
               <div key={r.workerId} className="flex min-h-[48px] flex-col gap-2 py-2.5">
                 <div className="flex items-start justify-between gap-2">
@@ -246,7 +271,18 @@ export default function WorkerBalancesPage() {
         )}
       </div>
 
-      <div className="table-responsive hidden border-b border-border/60 md:block">
+      <div
+        className={cn(
+          "table-responsive hidden border-b border-border/60 md:block relative",
+          refreshing && rows.length > 0 && "opacity-60 pointer-events-none"
+        )}
+        aria-busy={refreshing && rows.length > 0 ? true : undefined}
+      >
+        {refreshing && rows.length > 0 ? (
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-[1] flex justify-center py-1">
+            <span className="text-xs text-muted-foreground">Updating…</span>
+          </div>
+        ) : null}
         <table className="w-full border-collapse text-sm min-w-[520px] lg:min-w-0">
           <thead>
             <tr className="border-b border-border/60">
@@ -274,7 +310,7 @@ export default function WorkerBalancesPage() {
             </tr>
           </thead>
           <tbody>
-            {loading ? (
+            {initialLoading ? (
               Array.from({ length: 8 }).map((_, i) => (
                 <tr key={i} className="border-b border-border/40">
                   <td className="py-2 px-4">

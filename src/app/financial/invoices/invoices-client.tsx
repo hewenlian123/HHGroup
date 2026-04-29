@@ -30,6 +30,7 @@ import { Plus, Search } from "lucide-react";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Pagination } from "@/components/ui/pagination";
 import { FILTER_CONTROL_CLASS } from "@/lib/native-field-classes";
+import { useToast } from "@/components/toast/toast-provider";
 
 type InvoiceStatus = "Draft" | "Sent" | "Partially Paid" | "Paid" | "Void";
 
@@ -76,7 +77,11 @@ function isMissingTableError(error: unknown): boolean {
 
 export function InvoicesClient() {
   const router = useRouter();
-  const [loading, setLoading] = React.useState(true);
+  const { toast } = useToast();
+  const [initialLoading, setInitialLoading] = React.useState(true);
+  const [refreshing, setRefreshing] = React.useState(false);
+  const fetchGenerationRef = React.useRef(0);
+  const isFirstInvoiceFetchRef = React.useRef(true);
   const [error, setError] = React.useState<string | null>(null);
   const [invoices, setInvoices] = React.useState<InvoiceRow[]>([]);
   const [total, setTotal] = React.useState(0);
@@ -101,12 +106,16 @@ export function InvoicesClient() {
     if (!supabase) {
       setInvoices([]);
       setProjects([]);
-      setLoading(false);
+      setInitialLoading(false);
+      setRefreshing(false);
+      isFirstInvoiceFetchRef.current = false;
       setError(configured ? "Supabase client unavailable." : "Supabase is not configured.");
       return;
     }
 
-    setLoading(true);
+    const gen = ++fetchGenerationRef.current;
+    if (isFirstInvoiceFetchRef.current) setInitialLoading(true);
+    else setRefreshing(true);
     setError(null);
     setVoidConfirmId(null);
 
@@ -126,6 +135,7 @@ export function InvoicesClient() {
             .order("created_at", { ascending: false })
             .limit(500),
         ]);
+      if (gen !== fetchGenerationRef.current) return;
       const projectMap = new Map(
         ((projectData ?? []) as { id: string; name: string }[]).map((p) => [p.id, p.name])
       );
@@ -154,9 +164,15 @@ export function InvoicesClient() {
         setProjects((projectData ?? []) as ProjectOption[]);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load invoices.");
+      if (gen === fetchGenerationRef.current) {
+        setError(e instanceof Error ? e.message : "Failed to load invoices.");
+      }
     } finally {
-      setLoading(false);
+      if (gen === fetchGenerationRef.current) {
+        setInitialLoading(false);
+        setRefreshing(false);
+        isFirstInvoiceFetchRef.current = false;
+      }
     }
   }, [supabase, configured, page, pageSize, statusFilter, projectFilter, search]);
 
@@ -340,14 +356,25 @@ export function InvoicesClient() {
         </div>
       ) : null}
 
-      {loading ? (
+      {initialLoading ? (
         <div className="space-y-2 p-4">
           {Array.from({ length: 8 }).map((_, idx) => (
             <Skeleton key={idx} className="h-12 w-full" />
           ))}
         </div>
       ) : (
-        <>
+        <div
+          className={cn(
+            "relative",
+            refreshing && "pointer-events-none opacity-60 transition-opacity duration-150"
+          )}
+          aria-busy={refreshing || undefined}
+        >
+          {refreshing ? (
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-[1] flex justify-center pt-2">
+              <span className="text-xs text-muted-foreground">Updating…</span>
+            </div>
+          ) : null}
           <DataTable<InvoiceRow>
             columns={columns}
             data={invoices}
@@ -364,7 +391,7 @@ export function InvoicesClient() {
             onPageChange={setPage}
             className="pt-4"
           />
-        </>
+        </div>
       )}
 
       <Dialog open={!!voidConfirmId} onOpenChange={(open) => !open && setVoidConfirmId(null)}>
@@ -401,6 +428,7 @@ export function InvoicesClient() {
                     .eq("id", voidConfirmId);
                   if (updateError) setError(updateError.message);
                   else {
+                    toast({ title: "Invoice voided", variant: "success" });
                     startTransition(() => {
                       setInvoices((prev) =>
                         prev.map((inv) =>
