@@ -73,6 +73,7 @@ import {
   workersQueryKey,
 } from "@/lib/queries/expenses";
 import { isDefaultExpenseListSort } from "@/lib/expenses-db";
+import { cn } from "@/lib/utils";
 import { ExpensesListSkeleton } from "@/components/financial/expenses-list-skeleton";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
@@ -384,6 +385,7 @@ function ExpensesPageInner() {
   const {
     data: expensesQueryData,
     isPending: expensesQueryPending,
+    isFetching: expensesQueryFetching,
     isError: expensesQueryError,
   } = useQuery({
     queryKey: buildExpensesQueryKey(expenseSort),
@@ -424,6 +426,10 @@ function ExpensesPageInner() {
 
   const bundleWaiting = expensesQueryPending && expensesQueryData === undefined;
   const showExpensesSkeleton = useDelayedPending(bundleWaiting && !expensesQueryError);
+  /** Background refetch (sort/filter) — keep list visible, avoid “full skeleton” feel. */
+  const expensesListRefetching = Boolean(
+    expensesQueryFetching && expensesQueryData !== undefined && !expensesQueryError
+  );
   const [search, setSearch] = React.useState("");
   const [projectFilter, setProjectFilter] = React.useState("");
   const [categoryFilter, setCategoryFilter] = React.useState("");
@@ -730,27 +736,49 @@ function ExpensesPageInner() {
     [router, searchParams]
   );
 
+  const manualRefreshGenRef = React.useRef(0);
   const refresh = React.useCallback(async () => {
-    const [ex, cat, w] = await Promise.all([
-      fetchExpenses(expenseSort),
-      fetchExpenseCategories(),
-      fetchWorkers(),
-    ]);
-    setExpenses(ex);
-    setCategoriesList(cat);
-    setWorkers(w as WorkerRow[]);
-    queryClient.setQueryData(buildExpensesQueryKey(expenseSort), ex);
-    queryClient.setQueryData(expenseCategoriesQueryKey, cat);
-    queryClient.setQueryData(workersQueryKey, w);
-  }, [queryClient, expenseSort]);
+    const gen = ++manualRefreshGenRef.current;
+    try {
+      const [ex, cat, w] = await Promise.all([
+        fetchExpenses(expenseSort),
+        fetchExpenseCategories(),
+        fetchWorkers(),
+      ]);
+      if (gen !== manualRefreshGenRef.current) return;
+      setExpenses(ex);
+      setCategoriesList(cat);
+      setWorkers(w as WorkerRow[]);
+      queryClient.setQueryData(buildExpensesQueryKey(expenseSort), ex);
+      queryClient.setQueryData(expenseCategoriesQueryKey, cat);
+      queryClient.setQueryData(workersQueryKey, w);
+    } catch (e) {
+      if (gen !== manualRefreshGenRef.current) return;
+      const msg = e instanceof Error ? e.message : "Could not refresh.";
+      toast({ title: "Refresh failed", description: msg, variant: "error" });
+    }
+  }, [queryClient, expenseSort, toast]);
 
   const openReceiptPreview = React.useCallback(
     async (row: Expense) => {
-      const raw = getReceiptItems(row);
-      const items = await resolveReceiptPreviewUrls(raw, supabase);
-      setReceiptPreview({ items, index: 0, expenseId: row.id });
+      try {
+        const raw = getReceiptItems(row);
+        if (raw.length === 0) {
+          toast({
+            title: "No receipt",
+            description: "This expense has no attachment or receipt URL yet.",
+            variant: "default",
+          });
+          return;
+        }
+        const items = await resolveReceiptPreviewUrls(raw, supabase);
+        setReceiptPreview({ items, index: 0, expenseId: row.id });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Could not prepare preview.";
+        toast({ title: "Preview failed", description: msg, variant: "error" });
+      }
     },
-    [supabase]
+    [supabase, toast]
   );
 
   const receiptPreviewRef = React.useRef(receiptPreview);
@@ -803,7 +831,11 @@ function ExpensesPageInner() {
                 }
               : null
           );
+          toast({ title: "Receipt replaced", variant: "success" });
           void refresh();
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : "Replace failed.";
+          toast({ title: "Replace failed", description: msg, variant: "error" });
         } finally {
           setReceiptReplacing(false);
           e.target.value = "";
@@ -811,7 +843,7 @@ function ExpensesPageInner() {
       },
       onClosed: () => setReceiptPreview(null),
     });
-  }, [receiptPreview, supabase, closePreview, openPreview, refresh]);
+  }, [receiptPreview, supabase, closePreview, openPreview, refresh, toast]);
 
   React.useEffect(() => {
     patchPreview({ replaceBusy: receiptReplacing });
@@ -1905,7 +1937,18 @@ function ExpensesPageInner() {
           </div>
         </div>
 
-        <section className="mt-2 md:mt-4">
+        <section
+          className={cn(
+            "relative mt-2 md:mt-4",
+            expensesListRefetching && expenses.length > 0 && "pointer-events-none opacity-60"
+          )}
+          aria-busy={expensesListRefetching && expenses.length > 0 ? true : undefined}
+        >
+          {expensesListRefetching && expenses.length > 0 ? (
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-[1] flex justify-center pt-1">
+              <span className="text-xs text-muted-foreground">Updating…</span>
+            </div>
+          ) : null}
           {showExpensesSkeleton && expenses.length === 0 ? (
             <ExpensesListSkeleton rows={8} />
           ) : total === 0 ? (

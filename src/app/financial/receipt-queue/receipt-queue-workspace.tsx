@@ -579,21 +579,26 @@ export function ReceiptQueueWorkspace() {
     return list;
   }, [supabase, toast, flushPendingDebouncedPatches, queryClient]);
 
+  const softRefreshGenRef = React.useRef(0);
   /** Lighter than refreshAll: queue + expenses only (no workers reload). */
   const softRefreshQueueAndExpenses = React.useCallback(async () => {
     if (!supabase) return;
+    const gen = ++softRefreshGenRef.current;
     let list: ReceiptQueueRow[] = [];
     try {
       await flushPendingDebouncedPatches();
       list = await fetchReceiptQueue(supabase);
+      if (gen !== softRefreshGenRef.current) return;
       startTransition(() => setRows(list));
       queryClient.setQueryData(receiptQueueQueryKey, list);
     } catch (e) {
+      if (gen !== softRefreshGenRef.current) return;
       const msg = e instanceof Error ? e.message : "Failed to load queue";
       toast({ title: "Receipt queue", description: msg, variant: "error" });
     }
     try {
       const expList = await getExpenses(defaultExpenseListSort);
+      if (gen !== softRefreshGenRef.current) return;
       startTransition(() => setExpenses(expList));
       queryClient.setQueryData(buildExpensesQueryKey(defaultExpenseListSort), expList);
     } catch {
