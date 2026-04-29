@@ -462,7 +462,14 @@ export function CommissionsClient({
 
   const handlePreviewDownload = React.useCallback(async () => {
     const r = receiptPreviewRef.current;
-    if (!r) return;
+    if (!r?.url?.trim()) {
+      toast({
+        title: "Nothing to download",
+        description: "Receipt URL is missing.",
+        variant: "default",
+      });
+      return;
+    }
     setReceiptPreviewDownloading(true);
     try {
       const res = await fetch(r.url, { mode: "cors" });
@@ -475,11 +482,19 @@ export function CommissionsClient({
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
     } catch {
-      window.open(r.url, "_blank", "noopener,noreferrer");
+      try {
+        window.open(r.url, "_blank", "noopener,noreferrer");
+      } catch {
+        toast({
+          title: "Download failed",
+          description: "Could not open the receipt. Try again or copy the link from storage.",
+          variant: "error",
+        });
+      }
     } finally {
       setReceiptPreviewDownloading(false);
     }
-  }, []);
+  }, [toast]);
 
   const handlePreviewPrintReceipt = React.useCallback(async () => {
     const r = receiptPreviewRef.current;
@@ -615,7 +630,14 @@ export function CommissionsClient({
     e: React.MouseEvent
   ) => {
     e.stopPropagation();
-    if (!p.receipt_url) return;
+    if (!p.receipt_url?.trim()) {
+      toast({
+        title: "No receipt",
+        description: "Upload a receipt before removing one.",
+        variant: "default",
+      });
+      return;
+    }
     if (
       !window.confirm(
         "Remove the uploaded receipt file from this payment? You can upload a new file afterward."
@@ -647,7 +669,11 @@ export function CommissionsClient({
       setReceiptPreview((prev) => (prev?.payment.id === p.id ? null : prev));
       syncRouterNonBlocking(router);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to remove receipt");
+      toast({
+        title: "Remove receipt failed",
+        description: err instanceof Error ? err.message : "Failed to remove receipt",
+        variant: "error",
+      });
     } finally {
       setReceiptDeletingPaymentId(null);
     }
@@ -672,7 +698,11 @@ export function CommissionsClient({
       }
       syncRouterNonBlocking(router);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to delete");
+      toast({
+        title: "Delete failed",
+        description: err instanceof Error ? err.message : "Failed to delete",
+        variant: "error",
+      });
     } finally {
       setPaymentDeleteSubmitting(false);
     }
@@ -703,7 +733,11 @@ export function CommissionsClient({
       invalidatePaymentsCache(row.id);
       syncRouterNonBlocking(router);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to delete");
+      toast({
+        title: "Delete failed",
+        description: err instanceof Error ? err.message : "Failed to delete",
+        variant: "error",
+      });
     } finally {
       setCommissionDeleteSubmitting(false);
     }

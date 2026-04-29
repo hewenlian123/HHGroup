@@ -493,19 +493,21 @@ function ExpensesPageInner() {
   const expensesRef = React.useRef<Expense[]>([]);
   expensesRef.current = expenses;
 
+  const projectsFetchGenRef = React.useRef(0);
   React.useEffect(() => {
     if (!supabase) {
       setProjectsError("Supabase is not configured.");
       setProjects([]);
       return;
     }
+    const gen = ++projectsFetchGenRef.current;
     let cancelled = false;
     (async () => {
       const { data: projectsData, error } = await supabase
         .from("projects")
         .select("id,name,status")
         .order("name");
-      if (cancelled) return;
+      if (cancelled || gen !== projectsFetchGenRef.current) return;
       if (error) {
         setProjectsError(error.message ?? "Failed to load projects.");
         setProjects([]);

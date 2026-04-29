@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import type { CommissionPaymentStatus, CommissionWithPaid } from "@/lib/data";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/components/toast/toast-provider";
 
 const ROLES = ["Designer", "Sales", "Referral", "Agent", "Other"] as const;
 const CALC_MODES = ["Auto", "Manual"] as const;
@@ -51,6 +52,7 @@ export function ProjectCommissionTab({
   commissions: CommissionWithPaid[];
   onRefresh: () => void;
 }) {
+  const { toast } = useToast();
   const [rows, setRows] = React.useState<CommissionWithPaid[]>(commissions);
   const [modalOpen, setModalOpen] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
@@ -176,11 +178,15 @@ export function ProjectCommissionTab({
       onRefresh();
     } catch (err) {
       setRows(prev);
-      alert(err instanceof Error ? err.message : "Failed to delete");
+      toast({
+        title: "Delete failed",
+        description: err instanceof Error ? err.message : "Failed to delete",
+        variant: "error",
+      });
     } finally {
       setDeletingId(null);
     }
-  }, [pendingDelete, projectId, rows, loadCommissionsFromApi, onRefresh]);
+  }, [pendingDelete, projectId, rows, loadCommissionsFromApi, onRefresh, toast]);
 
   return (
     <>

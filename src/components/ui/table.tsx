@@ -150,9 +150,14 @@ export { Table, TableHeader, TableBody, TableFooter, TableHead, TableRow, TableC
 export function TableShell({
   className,
   children,
+  ...rest
 }: {
   className?: string;
   children: React.ReactNode;
-}) {
-  return <div className={cn(tableShellClass, className)}>{children}</div>;
+} & React.ComponentPropsWithoutRef<"div">) {
+  return (
+    <div className={cn(tableShellClass, className)} {...rest}>
+      {children}
+    </div>
+  );
 }
