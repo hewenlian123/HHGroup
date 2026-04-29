@@ -50,6 +50,7 @@ import {
   printAndDownloadCommissionReceipt,
 } from "@/lib/commission-payment-receipt-pdf";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
+import { useToast } from "@/components/toast/toast-provider";
 
 const PAYMENT_METHODS = ["Check", "Bank Transfer", "Cash", "Zelle", "Other"] as const;
 
@@ -211,6 +212,7 @@ export function CommissionsClient({
   const receiptPreviewRef = React.useRef(receiptPreview);
   receiptPreviewRef.current = receiptPreview;
   const { openPreview, patchPreview, closePreview } = useAttachmentPreview();
+  const { toast } = useToast();
   const [receiptDeletingPaymentId, setReceiptDeletingPaymentId] = React.useState<string | null>(
     null
   );
@@ -498,11 +500,15 @@ export function CommissionsClient({
       });
       printAndDownloadCommissionReceipt(blob, payment.id);
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to generate receipt PDF");
+      toast({
+        title: "Print failed",
+        description: err instanceof Error ? err.message : "Failed to generate receipt PDF",
+        variant: "error",
+      });
     } finally {
       setReceiptPrinting(false);
     }
-  }, []);
+  }, [toast]);
 
   const commissionPrintFooter = React.useCallback(
     (printing: boolean) => (
@@ -527,7 +533,14 @@ export function CommissionsClient({
 
   const openReceiptPreview = (parent: Row, p: CommissionPaymentRecord, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!p.receipt_url) return;
+    if (!p.receipt_url) {
+      toast({
+        title: "No receipt",
+        description: "Upload a receipt for this payment to preview it.",
+        variant: "default",
+      });
+      return;
+    }
     setReceiptPreview(null);
     setReceiptViewLoading({ parent, payment: p });
     openPreview({
@@ -575,7 +588,11 @@ export function CommissionsClient({
           extraFooter: commissionPrintFooter(receiptPrinting),
         });
       } catch (err) {
-        alert(err instanceof Error ? err.message : "Could not load receipt.");
+        toast({
+          title: "Receipt preview failed",
+          description: err instanceof Error ? err.message : "Could not load receipt.",
+          variant: "error",
+        });
         closePreview();
       } finally {
         setReceiptViewLoading(null);

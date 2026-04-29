@@ -781,8 +781,9 @@ export function ReceiptQueueWorkspace() {
       const row = rowsRef.current.find((r) => r.id === rowId);
       if (!row || row.status === "processing") return;
       if (shiftKey) {
-        await flushRowToDb(row);
+        // Flush other rows' debounced edits first, then persist the active row snapshot.
         await flushPendingDebouncedPatches();
+        await flushRowToDb(row);
         return;
       }
       void flushRowToDb(row);
@@ -861,7 +862,7 @@ export function ReceiptQueueWorkspace() {
         return r;
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Processing failed";
-        hotToast.error("Something went wrong");
+        hotToast.error(msg);
         await patchQueueRowMutation.mutateAsync({
           id: rowId,
           patch: {
@@ -1057,7 +1058,14 @@ export function ReceiptQueueWorkspace() {
           : p
       );
     },
-    [supabase, runUploadForRow, focusQueueRowVendor, flashNewRowHighlights, patchQueueRowMutation]
+    [
+      supabase,
+      toast,
+      runUploadForRow,
+      focusQueueRowVendor,
+      flashNewRowHighlights,
+      patchQueueRowMutation,
+    ]
   );
 
   React.useEffect(() => {
@@ -1240,9 +1248,10 @@ export function ReceiptQueueWorkspace() {
           try {
             await finalizeConfirmMutation.mutateAsync(live);
             hotToast.success("Confirmed");
-          } catch {
+          } catch (err) {
             setRows(snapshot);
-            hotToast.error("Something went wrong");
+            const msg = err instanceof Error ? err.message : "Confirm failed";
+            hotToast.error(msg);
           }
         })();
       },
@@ -1324,7 +1333,15 @@ export function ReceiptQueueWorkspace() {
     const row = rowsRef.current.find((r) => r.id === id);
     if (!row) return;
     const src = previewUrlsRef.current[row.id];
-    if (!src || row.status === "processing") return;
+    if (row.status === "processing") return;
+    if (!src) {
+      toast({
+        title: "No receipt preview",
+        description: "File is still processing or missing. Re-upload if this persists.",
+        variant: "error",
+      });
+      return;
+    }
     const isPdf =
       row.mime_type === "application/pdf" || row.file_name.toLowerCase().endsWith(".pdf");
     setReceiptPreview({

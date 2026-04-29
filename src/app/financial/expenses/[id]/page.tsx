@@ -40,6 +40,7 @@ import { ArrowLeft, Plus, FileText, Download, Trash2 } from "lucide-react";
 import { createBrowserClient } from "@/lib/supabase";
 import { resolvePreviewSignedUrl } from "@/lib/storage-signed-url";
 import { useToast } from "@/components/toast/toast-provider";
+import { InlineLoading } from "@/components/ui/skeleton";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
 
@@ -97,6 +98,7 @@ export default function ExpenseDetailPage() {
   const [accountId, setAccountId] = React.useState("");
   const [paymentAccountId, setPaymentAccountId] = React.useState("");
   const [toastMessage, setToastMessage] = React.useState<string | null>(null);
+  const [attachmentUploading, setAttachmentUploading] = React.useState(false);
   const { openPreview } = useAttachmentPreview();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [projects, setProjects] = React.useState<Awaited<ReturnType<typeof getProjects>>>([]);
@@ -410,6 +412,7 @@ export default function ExpenseDetailPage() {
       });
       return;
     }
+    setAttachmentUploading(true);
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i]!;
@@ -425,10 +428,13 @@ export default function ExpenseDetailPage() {
         const att = { ...makeAttachment(file), url: filePath };
         await addExpenseAttachment(expense.id, att);
       }
-      setToastMessage("Receipt uploaded.");
+      toast({ title: "Receipt uploaded", description: "Attachment saved.", variant: "success" });
+      setToastMessage(null);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Upload failed.";
       toast({ title: "Upload failed", description: msg, variant: "error" });
+    } finally {
+      setAttachmentUploading(false);
     }
     e.target.value = "";
     await refresh();
@@ -643,10 +649,20 @@ export default function ExpenseDetailPage() {
           variant="outline"
           size="sm"
           className="rounded-sm"
+          disabled={attachmentUploading}
           onClick={() => fileInputRef.current?.click()}
         >
-          <Plus className="h-4 w-4 mr-2" />
-          Add receipt
+          {attachmentUploading ? (
+            <>
+              <InlineLoading className="mr-2 h-4 w-4" size="md" aria-hidden />
+              Uploading…
+            </>
+          ) : (
+            <>
+              <Plus className="h-4 w-4 mr-2" />
+              Add receipt
+            </>
+          )}
         </Button>
         <ul className="mt-3 space-y-2">
           {expense.attachments.map((att) => (
