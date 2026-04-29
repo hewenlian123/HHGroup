@@ -467,7 +467,7 @@ export function ProjectsListClient({
               </div>
             ))}
           </div>
-          <TableShell className="hidden md:block">
+          <TableShell className="hidden md:block" aria-busy={deletingId != null || undefined}>
             <div className="airtable-table-scroll">
               <table className="w-full min-w-[880px] border-collapse text-[13px]">
                 <thead>
@@ -562,7 +562,7 @@ export function ProjectsListClient({
                             type="button"
                             className="rounded-md p-1.5 text-red-600 hover:bg-red-50 disabled:opacity-50"
                             aria-label={`Delete ${r.name}`}
-                            disabled={deletingId === r.id}
+                            disabled={deletingId != null}
                             onClick={() => void handleDelete(r.id, r.name)}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -664,13 +664,13 @@ export function ProjectsListClient({
                       syncRouterNonBlocking(router);
                     }
                   }}
-                  disabled={forceDeleteInProgress}
+                  disabled={forceDeleteInProgress || deletingId != null}
                 >
                   Archive project
                 </Button>
                 <Button
                   className="h-10 rounded-lg bg-red-600 text-[14px] font-medium text-white hover:bg-red-700"
-                  disabled={forceDeleteInProgress}
+                  disabled={forceDeleteInProgress || deletingId != null}
                   onClick={async () => {
                     if (!deleteBlockedProjectId || !deleteBlockedCounts) return;
                     const labels = getRelatedLabelsList(deleteBlockedCounts);

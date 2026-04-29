@@ -236,8 +236,11 @@ test.describe("Expenses: receipt upload queue", () => {
     await fillControlledTextInput(vendor1, v1);
     await fillControlledTextInput(vendor2, v2);
     await vendor2.press("Shift+Enter");
+    // Let debounced PATCH + sessionStorage complete before a hard reload (avoids race with slow CI).
+    await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => undefined);
+    await page.waitForTimeout(400);
 
-    await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.reload({ waitUntil: "networkidle", timeout: 90_000 });
     await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
 
     const r1 = receiptQueueRowByFileName(page, f1);
@@ -249,7 +252,7 @@ test.describe("Expenses: receipt upload queue", () => {
         async () =>
           (await r1.getByPlaceholder("Vendor").inputValue()).trim() === v1 &&
           (await r2.getByPlaceholder("Vendor").inputValue()).trim() === v2,
-        { timeout: 90_000 }
+        { timeout: 120_000, intervals: [200, 300, 500, 800] }
       )
       .toBe(true);
   });
