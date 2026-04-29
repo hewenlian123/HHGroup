@@ -210,6 +210,7 @@ export function ProjectsListClient({
           if (snapshot) setLocalRows(snapshot);
           toast({ title: "Error", description: result.error, variant: "error" });
         } else {
+          toast({ title: "Project deleted", variant: "success" });
           syncRouterNonBlocking(router);
         }
       } finally {
@@ -456,6 +457,7 @@ export function ProjectsListClient({
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="text-destructive focus:text-destructive"
+                      disabled={deletingId != null}
                       onSelect={() => void handleDelete(r.id, r.name)}
                     >
                       Delete
@@ -656,6 +658,7 @@ export function ProjectsListClient({
                     if (result?.error) {
                       toast({ title: "Error", description: result.error, variant: "error" });
                     } else {
+                      toast({ title: "Project archived", variant: "success" });
                       setDeleteBlockedOpen(false);
                       setDeleteBlockedProjectId(null);
                       syncRouterNonBlocking(router);
