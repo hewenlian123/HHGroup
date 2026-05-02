@@ -36,3 +36,15 @@ export function getExpenseReceiptItems(expense: Expense): ExpenseReceiptItem[] {
     attachments: expense.attachments,
   });
 }
+
+/**
+ * Server-friendly receipt signal: non-empty receipt URL or at least one attachment row.
+ * Matches the intent of getExpenseReceiptItemsFromParts when full attachment URLs are loaded.
+ */
+export function expenseHasReceiptSignal(
+  receiptUrl: string | null | undefined,
+  attachmentCount: number
+): boolean {
+  if ((receiptUrl ?? "").trim() !== "") return true;
+  return attachmentCount > 0;
+}

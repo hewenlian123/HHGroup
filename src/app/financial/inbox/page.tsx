@@ -1,11 +1,11 @@
 "use client";
 
-import "./expenses-ui-theme.css";
+import "../expenses/expenses-ui-theme.css";
 import * as React from "react";
 import { ExpensesListSkeleton } from "@/components/financial/expenses-list-skeleton";
-import { ExpensesPageClient } from "./expenses-client";
+import { ExpensesPageClient } from "../expenses/expenses-client";
 
-export default function ExpensesPage() {
+export default function InboxPage() {
   return (
     <React.Suspense
       fallback={
@@ -16,7 +16,7 @@ export default function ExpensesPage() {
         </div>
       }
     >
-      <ExpensesPageClient pool="expenses" />
+      <ExpensesPageClient pool="inbox" />
     </React.Suspense>
   );
 }

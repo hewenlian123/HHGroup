@@ -5,6 +5,9 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
+import { expenseHasReceiptSignal } from "@/lib/expense-receipt-items";
+import { deriveExpenseWorkflowStatus } from "@/lib/expense-workflow-status";
+import { isConfirmedExpenseStatus } from "@/lib/project-expense-cost-status";
 
 export type ExpenseAttachment = {
   id: string;
@@ -372,16 +375,17 @@ const EXPENSE_COLS_FULL_NO_PAYMENT_METHOD =
   "id,expense_date,vendor,vendor_name,notes,reference_no,total,line_count,receipt_url,status,worker_id,card_name,account_id,payment_account_id,project_id,created_at";
 /** Legacy: table may have only vendor (no vendor_name). No payment_method so works when column is missing. */
 const EXPENSE_COLS_LEGACY =
-  "id,expense_date,vendor,notes,reference_no,total,line_count,payment_account_id,created_at";
+  "id,expense_date,vendor,notes,reference_no,total,line_count,status,payment_account_id,created_at";
 /** Minimal: no reference_no, no payment_method (for schemas that only have core columns). */
 const EXPENSE_COLS_MINIMAL =
-  "id,expense_date,vendor,vendor_name,notes,total,line_count,payment_account_id,created_at";
+  "id,expense_date,vendor,vendor_name,notes,total,line_count,status,payment_account_id,created_at";
 const EXPENSE_COLS_MINIMAL_LEGACY =
-  "id,expense_date,vendor,notes,total,line_count,payment_account_id,created_at";
+  "id,expense_date,vendor,notes,total,line_count,status,payment_account_id,created_at";
 /** Fallback when total/line_count do not exist: total is derived from expense_lines in app. */
 const EXPENSE_COLS_NO_TOTAL =
-  "id,expense_date,vendor,vendor_name,notes,payment_account_id,created_at";
-const EXPENSE_COLS_NO_TOTAL_LEGACY = "id,expense_date,vendor,notes,payment_account_id,created_at";
+  "id,expense_date,vendor,vendor_name,notes,status,payment_account_id,created_at";
+const EXPENSE_COLS_NO_TOTAL_LEGACY =
+  "id,expense_date,vendor,notes,status,payment_account_id,created_at";
 
 function isMissingColumn(err: { message?: string } | null): boolean {
   const m = err?.message ?? "";
@@ -560,7 +564,13 @@ export async function getExpenses(
   const result: Expense[] = [];
   for (const row of rowModels) {
     const r = row;
-    const { data: lineRows } = await c.from("expense_lines").select("*").eq("expense_id", r.id);
+    const { data: lineRows, error: lineErr } = await c
+      .from("expense_lines")
+      .select("*")
+      .eq("expense_id", r.id);
+    if (lineErr && !isMissingTable(lineErr)) {
+      throw new Error(lineErr.message ?? "Failed to load expense lines.");
+    }
     const lines = (lineRows ?? []) as ExpenseLineRow[];
     const attachments = await getAttachments(r.id);
     const linkedBankTxId = await getLinkedBankTxId(r.id);
@@ -905,13 +915,18 @@ export async function createQuickExpense(payload: {
   const sourceType = expenseSourceTypeForDatabase(
     payload.sourceType ?? (receiptUrl ? "receipt_upload" : "company")
   );
+  /** Prefer explicit payload (Quick modal); else derive from project+category before receipt fallback. */
+  const workflowDefault = deriveExpenseWorkflowStatus(projectId, category);
   const resolvedStatus = expenseStatusForDatabase(
-    payload.initialStatus ?? (receiptUrl ? "needs_review" : "pending")
+    payload.initialStatus ??
+      (workflowDefault === "reviewed" ? "reviewed" : receiptUrl ? "needs_review" : "pending")
   );
 
   const insertRow: Record<string, unknown> = {
     expense_date: date,
     vendor_name: vendor,
+    /** Legacy/newer schemas expose `vendor`; mirror label so sort + list mapping never see NULL. */
+    vendor,
     notes: notes || null,
     reference_no: null,
     total,
@@ -1045,6 +1060,16 @@ export async function createQuickExpense(payload: {
     const paUpd = await c.from("expenses").update({ payment_account_id: paId }).eq("id", expenseId);
     if (paUpd.error && !isMissingColumn(paUpd.error)) {
       console.warn("[createQuickExpense] payment_account_id update:", paUpd.error.message);
+    }
+  }
+
+  /** INSERT may fall back to `pending` when `reviewed` fails the status check; upgrade once lines exist. */
+  const workflowDesired = deriveExpenseWorkflowStatus(projectId, category);
+  if (workflowDesired === "reviewed") {
+    const st = expenseStatusForDatabase("reviewed");
+    const statusUpd = await c.from("expenses").update({ status: st }).eq("id", expenseId);
+    if (statusUpd.error && !isMissingColumn(statusUpd.error)) {
+      console.warn("[createQuickExpense] workflow reviewed status:", statusUpd.error.message);
     }
   }
 
@@ -1747,6 +1772,239 @@ export async function deleteExpenseAttachment(
 
 export function getExpenseTotal(expense: Expense): number {
   return expense.lines.reduce((sum, l) => sum + l.amount, 0);
+}
+
+/** Single batched load for project detail cost dashboard + alerts + expense tab lists. */
+export type ProjectExpenseCostLineRow = {
+  lineId: string;
+  expenseId: string;
+  date: string;
+  vendorName: string;
+  category: string;
+  memo: string | null;
+  amount: number;
+  paymentMethod: string;
+  expenseStatus: string;
+};
+
+export type ProjectExpenseAlertSummary = {
+  needsReviewCount: number;
+  missingReceiptCount: number;
+  missingClassificationCount: number;
+};
+
+type ExpenseHeaderForProjectCost = {
+  id: string;
+  status: string | null;
+  vendor_name?: string | null;
+  vendor?: string | null;
+  expense_date: string | null;
+  payment_method?: string | null;
+  receipt_url?: string | null;
+};
+
+async function fetchExpenseHeadersByIds(
+  c: SupabaseClient,
+  ids: string[]
+): Promise<Map<string, ExpenseHeaderForProjectCost>> {
+  const map = new Map<string, ExpenseHeaderForProjectCost>();
+  if (ids.length === 0) return map;
+  for (let i = 0; i < ids.length; i += PAYMENT_METHOD_LIST_HYDRATE_CHUNK) {
+    const slice = ids.slice(i, i + PAYMENT_METHOD_LIST_HYDRATE_CHUNK);
+    const { data, error } = await c
+      .from("expenses")
+      .select("id,status,vendor_name,vendor,expense_date,payment_method,receipt_url")
+      .in("id", slice);
+    if (error || !data) continue;
+    for (const r of data as ExpenseHeaderForProjectCost[]) {
+      map.set(r.id, r);
+    }
+  }
+  return map;
+}
+
+/** Per-expense attachment row counts (expense_attachments + legacy attachments). */
+async function fetchAttachmentCountsByExpenseIds(
+  c: SupabaseClient,
+  ids: string[]
+): Promise<Map<string, number>> {
+  const counts = new Map<string, number>();
+  const bump = (expenseId: string) => counts.set(expenseId, (counts.get(expenseId) ?? 0) + 1);
+
+  for (let i = 0; i < ids.length; i += PAYMENT_METHOD_LIST_HYDRATE_CHUNK) {
+    const slice = ids.slice(i, i + PAYMENT_METHOD_LIST_HYDRATE_CHUNK);
+    const { data, error } = await c
+      .from("expense_attachments")
+      .select("expense_id")
+      .in("expense_id", slice);
+    if (!error && data) {
+      for (const r of data as { expense_id?: string }[]) {
+        const id = r.expense_id;
+        if (id) bump(id);
+      }
+    }
+  }
+
+  for (let i = 0; i < ids.length; i += PAYMENT_METHOD_LIST_HYDRATE_CHUNK) {
+    const slice = ids.slice(i, i + PAYMENT_METHOD_LIST_HYDRATE_CHUNK);
+    const { data, error } = await c
+      .from("attachments")
+      .select("entity_id")
+      .eq("entity_type", "expense")
+      .in("entity_id", slice);
+    if (!error && data) {
+      for (const r of data as { entity_id?: string }[]) {
+        const id = r.entity_id;
+        if (id) bump(id);
+      }
+    }
+  }
+
+  return counts;
+}
+
+/**
+ * Project-linked expense lines with batched headers: confirmed-status cost rows (see
+ * isConfirmedExpenseStatus), all lines for secondary lists, and alert counts (deduped per expense).
+ */
+export async function getProjectExpenseLinesBundle(projectId: string): Promise<{
+  doneCostLines: ProjectExpenseCostLineRow[];
+  allDisplayLines: Array<{
+    id: string;
+    expenseId: string;
+    date: string;
+    vendorName: string;
+    category: string;
+    memo: string | null;
+    amount: number;
+  }>;
+  alerts: ProjectExpenseAlertSummary;
+}> {
+  const c = client();
+  const { data: lineRows, error } = await c
+    .from("expense_lines")
+    .select("id, expense_id, project_id, category, memo, amount")
+    .eq("project_id", projectId);
+  if (error || !lineRows?.length) {
+    return {
+      doneCostLines: [],
+      allDisplayLines: [],
+      alerts: { needsReviewCount: 0, missingReceiptCount: 0, missingClassificationCount: 0 },
+    };
+  }
+  const lines = lineRows as ExpenseLineRow[];
+  const expenseIds = [...new Set(lines.map((l) => l.expense_id).filter(Boolean))];
+  const [expMap, attachCounts] = await Promise.all([
+    fetchExpenseHeadersByIds(c, expenseIds),
+    fetchAttachmentCountsByExpenseIds(c, expenseIds),
+  ]);
+
+  const alerts: ProjectExpenseAlertSummary = {
+    needsReviewCount: 0,
+    missingReceiptCount: 0,
+    missingClassificationCount: 0,
+  };
+
+  const countedNeedsReview = new Set<string>();
+  const countedMissingReceipt = new Set<string>();
+  const countedMissingClass = new Set<string>();
+
+  for (const expId of expenseIds) {
+    const e = expMap.get(expId);
+    if (!e) continue;
+    const projLines = lines.filter((l) => l.expense_id === expId && l.project_id === projectId);
+    if (projLines.length === 0) continue;
+
+    const catMissing = projLines.some((l) => {
+      const cat = String(l.category ?? "").trim();
+      return !cat || cat === "—";
+    });
+
+    if (!isConfirmedExpenseStatus(e.status)) {
+      if (!countedNeedsReview.has(expId)) {
+        countedNeedsReview.add(expId);
+        alerts.needsReviewCount++;
+      }
+      if (catMissing && !countedMissingClass.has(expId)) {
+        countedMissingClass.add(expId);
+        alerts.missingClassificationCount++;
+      }
+      continue;
+    }
+
+    if (catMissing && !countedMissingClass.has(expId)) {
+      countedMissingClass.add(expId);
+      alerts.missingClassificationCount++;
+    }
+
+    const attachCount = attachCounts.get(expId) ?? 0;
+    const hasReceipt = expenseHasReceiptSignal(e.receipt_url, attachCount);
+    if (!hasReceipt && !countedMissingReceipt.has(expId)) {
+      countedMissingReceipt.add(expId);
+      alerts.missingReceiptCount++;
+    }
+  }
+
+  const vendorOf = (e: ExpenseHeaderForProjectCost) =>
+    String(e.vendor_name ?? e.vendor ?? "").trim() || "—";
+
+  const doneCostLines: ProjectExpenseCostLineRow[] = [];
+  const allDisplayLines: Array<{
+    id: string;
+    expenseId: string;
+    date: string;
+    vendorName: string;
+    category: string;
+    memo: string | null;
+    amount: number;
+  }> = [];
+
+  for (const l of lines) {
+    const e = expMap.get(l.expense_id);
+    if (!e) continue;
+    const dateStr = String(e.expense_date ?? "").slice(0, 10) || "—";
+    const vendorName = vendorOf(e);
+    const category = String(l.category ?? "").trim() || "Other";
+    const memo = l.memo ?? null;
+    const amount = Number(l.amount ?? 0) || 0;
+    const paymentMethod = String(e.payment_method ?? "").trim() || "—";
+
+    allDisplayLines.push({
+      id: l.id,
+      expenseId: l.expense_id,
+      date: dateStr,
+      vendorName,
+      category,
+      memo,
+      amount,
+    });
+
+    if (!isConfirmedExpenseStatus(e.status)) continue;
+
+    doneCostLines.push({
+      lineId: l.id,
+      expenseId: l.expense_id,
+      date: dateStr,
+      vendorName,
+      category,
+      memo,
+      amount,
+      paymentMethod,
+      expenseStatus: String(e.status ?? ""),
+    });
+  }
+
+  const sortDesc = (
+    a: { date: string; expenseId: string },
+    b: { date: string; expenseId: string }
+  ) => {
+    const d = b.date.localeCompare(a.date);
+    return d !== 0 ? d : b.expenseId.localeCompare(a.expenseId);
+  };
+  doneCostLines.sort(sortDesc);
+  allDisplayLines.sort(sortDesc);
+
+  return { doneCostLines, allDisplayLines, alerts };
 }
 
 /** Expense lines for a project (for project detail / profit drilldown). */

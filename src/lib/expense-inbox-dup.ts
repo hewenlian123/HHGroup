@@ -47,3 +47,15 @@ export function expenseInboxPossibleDuplicateAmongLoaded(
   }
   return false;
 }
+
+/** IDs in `loaded` that have a possible duplicate elsewhere in the same list (full-list inbox signals). */
+export function expenseInboxDuplicateIdSet(
+  loaded: Expense[],
+  getTotal: (e: Expense) => number
+): ReadonlySet<string> {
+  const dup = new Set<string>();
+  for (const row of loaded) {
+    if (expenseInboxPossibleDuplicateAmongLoaded(row, loaded, getTotal)) dup.add(row.id);
+  }
+  return dup;
+}

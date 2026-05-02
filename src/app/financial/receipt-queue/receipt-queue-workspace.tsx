@@ -1299,7 +1299,7 @@ export function ReceiptQueueWorkspace() {
     }
     if (successCount > 0) {
       const navT = uiNavMark();
-      router.push("/financial/expenses?view=unreviewed&focus_unreviewed=1&page=1");
+      router.push("/financial/inbox?focus_unreviewed=1&page=1");
       requestAnimationFrame(() => uiNavLog("receipt-queue-bulk->expenses", navT, 200));
     }
     if (failCount === 0 && successCount > 0) {

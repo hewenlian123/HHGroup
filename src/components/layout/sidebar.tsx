@@ -84,6 +84,7 @@ const sections: { key: (typeof SECTION_KEYS)[number]; label: string; items: NavI
       { href: "/site-photos", label: "Site Photos", icon: Camera },
       { href: "/inspection-log", label: "Inspection Log", icon: ClipboardCheck },
       { href: "/materials/catalog", label: "Material Catalog", icon: Package },
+      { href: "/financial/inbox", label: "Inbox", icon: Inbox },
     ],
   },
   {
@@ -96,7 +97,6 @@ const sections: { key: (typeof SECTION_KEYS)[number]; label: string; items: NavI
       { href: "/financial/deposits", label: "Deposits", icon: Banknote },
       { href: "/bills", label: "Bills", icon: Receipt },
       { href: "/financial/expenses", label: "Expenses", icon: ShoppingCart },
-      { href: "/financial/receipt-queue", label: "Receipt Queue", icon: Inbox },
       { href: "/financial/accounts", label: "Accounts", icon: Wallet },
     ],
   },
@@ -160,7 +160,7 @@ function financialNavPrefetchProps(
   href: string,
   run: (h: string) => void
 ): { onPointerEnter?: () => void; onPointerDown?: () => void } {
-  if (href !== "/financial/expenses" && href !== "/financial/receipt-queue") return {};
+  if (href !== "/financial/expenses" && href !== "/financial/inbox") return {};
   const prefetch = () => run(href);
   return { onPointerEnter: prefetch, onPointerDown: prefetch };
 }
@@ -397,10 +397,10 @@ export function Sidebar({
                     const active = isActive(item.href);
                     const Icon = item.icon;
                     const navLabel =
-                      item.href === "/financial/receipt-queue"
-                        ? `Receipt Queue (${receiptQueueCount})`
+                      item.href === "/financial/inbox"
+                        ? `Inbox (${receiptQueueCount})`
                         : item.label;
-                    if (item.href === "/financial/receipt-queue" && Icon) {
+                    if (item.href === "/financial/inbox" && Icon) {
                       return (
                         <Link
                           key={item.href}
@@ -478,10 +478,10 @@ export function Sidebar({
                         const active = isActive(item.href);
                         const Icon = item.icon;
                         const navLabel =
-                          item.href === "/financial/receipt-queue"
-                            ? `Receipt Queue (${receiptQueueCount})`
+                          item.href === "/financial/inbox"
+                            ? `Inbox (${receiptQueueCount})`
                             : item.label;
-                        if (item.href === "/financial/receipt-queue" && Icon) {
+                        if (item.href === "/financial/inbox" && Icon) {
                           return (
                             <Link
                               key={item.href}
@@ -494,7 +494,7 @@ export function Sidebar({
                             >
                               <Icon className={navIconClass(active)} strokeWidth={1.75} />
                               <span className="flex min-w-0 flex-1 items-baseline gap-0">
-                                <span className="truncate">Receipt Queue </span>
+                                <span className="truncate">Inbox </span>
                                 <span
                                   key={receiptQueueAnimKey}
                                   className="inline-block shrink-0 origin-center rounded-sm px-0.5 tabular-nums animate-receipt-queue-badge"

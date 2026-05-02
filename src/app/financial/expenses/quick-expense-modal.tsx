@@ -323,6 +323,20 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
     if (!open) resetState();
   }, [open, resetState]);
 
+  React.useEffect(() => {
+    if (!open) return;
+    const t = window.setTimeout(() => {
+      const el = amountInputRef.current;
+      if (!el) return;
+      const raw = el.value.trim();
+      const num = raw === "" ? NaN : Number.parseFloat(raw);
+      if (!Number.isFinite(num) || num <= 0) {
+        el.focus({ preventScroll: true });
+      }
+    }, 0);
+    return () => window.clearTimeout(t);
+  }, [open]);
+
   const onPaymentAccountChange = React.useCallback((id: string) => {
     paymentChoiceTouchedRef.current = true;
     setPaymentAccountId(id);
@@ -704,7 +718,15 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
           });
           if (fileInputRef.current) fileInputRef.current.value = "";
           setError(null);
-          window.setTimeout(() => amountInputRef.current?.focus(), 0);
+          window.setTimeout(() => {
+            const el = amountInputRef.current;
+            if (!el) return;
+            const raw = el.value.trim();
+            const num = raw === "" ? NaN : Number.parseFloat(raw);
+            if (!Number.isFinite(num) || num <= 0) {
+              el.focus({ preventScroll: true });
+            }
+          }, 0);
         } else {
           onOpenChange(false);
         }
@@ -803,7 +825,6 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                         fieldConfidence.amount !== "high" && "border-amber-500/50"
                       )}
                       disabled={saving || !supabase}
-                      autoFocus
                     />
                   </div>
                   <div className="min-w-0">
@@ -815,10 +836,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                       ref={vendorInputRef}
                       value={vendorName}
                       onChange={(e) => setVendorName(e.target.value)}
-                      className={cn(
-                        "mt-0.5 h-10",
-                        fieldConfidence.vendor !== "high" && "border-amber-500/50"
-                      )}
+                      className="mt-0.5 h-10"
                       disabled={saving || !supabase}
                     />
                   </div>
