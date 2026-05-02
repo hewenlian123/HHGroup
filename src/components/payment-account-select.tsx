@@ -12,6 +12,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   addPaymentAccount,
   getPaymentAccounts,
   type PaymentAccountRow,
@@ -21,6 +28,7 @@ import { useToast } from "@/components/toast/toast-provider";
 import { cn } from "@/lib/utils";
 
 const ADD_NEW_VALUE = "__hh_add_payment_account__";
+const EMPTY_VALUE = "__hh_pay_empty__";
 
 export type PaymentAccountSelectProps = {
   value: string;
@@ -29,8 +37,10 @@ export type PaymentAccountSelectProps = {
   className?: string;
   id?: string;
   autoFocus?: boolean;
-  onKeyDown?: React.KeyboardEventHandler<HTMLSelectElement>;
+  onKeyDown?: React.KeyboardEventHandler<HTMLElement>;
   onAccountsUpdated?: (rows: PaymentAccountRow[]) => void;
+  /** When `value` is set but not in the loaded list yet (e.g. stale id), show this label in the trigger */
+  fallbackDisplayName?: string;
   "data-queue-row-id"?: string;
   "data-queue-field"?: string;
 };
@@ -44,6 +54,7 @@ export function PaymentAccountSelect({
   autoFocus,
   onKeyDown,
   onAccountsUpdated,
+  fallbackDisplayName,
   "data-queue-row-id": dataQueueRowId,
   "data-queue-field": dataQueueField,
 }: PaymentAccountSelectProps) {
@@ -86,18 +97,9 @@ export function PaymentAccountSelect({
       setNewName("");
       setNewType("card");
       const t = window.setTimeout(() => newInputRef.current?.focus(), 50);
-      return () => clearTimeout(t);
+      return () => window.clearTimeout(t);
     }
   }, [addOpen]);
-
-  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const v = e.target.value;
-    if (v === ADD_NEW_VALUE) {
-      setAddOpen(true);
-      return;
-    }
-    onValueChange(v);
-  };
 
   const handleCreate = async () => {
     const trimmed = newName.trim();
@@ -137,28 +139,50 @@ export function PaymentAccountSelect({
     }
   };
 
+  const selectedKnown = Boolean(value && accounts.some((a) => a.id === value));
+  const radixValue = !value || value === "" ? EMPTY_VALUE : value;
+
   return (
     <>
-      <select
-        id={id}
-        value={value}
+      <Select
+        value={radixValue}
         disabled={disabled || loading}
-        onChange={handleSelectChange}
-        onKeyDown={onKeyDown}
-        className={cn(className)}
-        autoFocus={autoFocus}
-        aria-busy={loading}
-        data-queue-row-id={dataQueueRowId}
-        data-queue-field={dataQueueField}
+        onValueChange={(v) => {
+          if (v === ADD_NEW_VALUE) {
+            setAddOpen(true);
+            return;
+          }
+          if (v === EMPTY_VALUE) {
+            onValueChange("");
+            return;
+          }
+          onValueChange(v);
+        }}
       >
-        <option value="">—</option>
-        {accounts.map((a) => (
-          <option key={a.id} value={a.id}>
-            {a.name}
-          </option>
-        ))}
-        <option value={ADD_NEW_VALUE}>+ Add new account</option>
-      </select>
+        <SelectTrigger
+          id={id}
+          className={cn("h-10 max-md:h-10 max-md:min-h-10 [&>span]:line-clamp-1", className)}
+          aria-busy={loading}
+          data-queue-row-id={dataQueueRowId}
+          data-queue-field={dataQueueField}
+          autoFocus={autoFocus}
+          onKeyDown={onKeyDown as React.KeyboardEventHandler<HTMLButtonElement>}
+        >
+          <SelectValue placeholder="Payment account" />
+        </SelectTrigger>
+        <SelectContent position="popper" sideOffset={4} className="max-h-56">
+          <SelectItem value={EMPTY_VALUE}>—</SelectItem>
+          {accounts.map((a) => (
+            <SelectItem key={a.id} value={a.id}>
+              {a.name}
+            </SelectItem>
+          ))}
+          {value && !selectedKnown && value !== "" ? (
+            <SelectItem value={value}>{(fallbackDisplayName ?? "").trim() || "Account"}</SelectItem>
+          ) : null}
+          <SelectItem value={ADD_NEW_VALUE}>+ Add new account</SelectItem>
+        </SelectContent>
+      </Select>
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="max-w-sm rounded-sm border-border/60">
@@ -166,32 +190,39 @@ export function PaymentAccountSelect({
             <DialogTitle className="text-base font-medium">New payment account</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <Input
-              ref={newInputRef}
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="Name (e.g. Amex)"
-              className="h-9"
-              disabled={creating}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  void handleCreate();
-                }
-              }}
-            />
-            <div className="space-y-1">
-              <label className="text-[11px] text-muted-foreground">Type</label>
-              <select
-                className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm"
+            <div className="space-y-1.5">
+              <label className="text-xs uppercase tracking-wide text-muted-foreground">Name</label>
+              <Input
+                ref={newInputRef}
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="Name (e.g. Amex)"
+                className="h-10 rounded-sm border-border/60"
+                disabled={creating}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void handleCreate();
+                  }
+                }}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs uppercase tracking-wide text-muted-foreground">Type</label>
+              <Select
                 value={newType}
                 disabled={creating}
-                onChange={(e) => setNewType(e.target.value as PaymentAccountType)}
+                onValueChange={(v) => setNewType(v as PaymentAccountType)}
               >
-                <option value="cash">Cash</option>
-                <option value="card">Card</option>
-                <option value="bank">Bank</option>
-              </select>
+                <SelectTrigger className="h-10 max-md:h-10 max-md:min-h-10 rounded-sm border-border/60">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent position="popper" sideOffset={4} className="max-h-56">
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="card">Card</SelectItem>
+                  <SelectItem value="bank">Bank</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-2">

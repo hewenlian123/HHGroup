@@ -235,24 +235,64 @@ test.describe("Expenses: receipt upload queue", () => {
     await vendor2.waitFor({ state: "visible", timeout: 120_000 });
     await fillControlledTextInput(vendor1, v1);
     await fillControlledTextInput(vendor2, v2);
-    await vendor2.press("Shift+Enter");
-    // Let debounced PATCH + sessionStorage complete before a hard reload (avoids race with slow CI).
-    await page.waitForLoadState("networkidle", { timeout: 15_000 }).catch(() => undefined);
-    await page.waitForTimeout(400);
 
-    await page.reload({ waitUntil: "networkidle", timeout: 90_000 });
-    await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
-
-    const r1 = receiptQueueRowByFileName(page, f1);
-    const r2 = receiptQueueRowByFileName(page, f2);
-    await expect(r1).toBeVisible({ timeout: 120_000 });
-    await expect(r2).toBeVisible({ timeout: 120_000 });
     await expect
       .poll(
-        async () =>
-          (await r1.getByPlaceholder("Vendor").inputValue()).trim() === v1 &&
-          (await r2.getByPlaceholder("Vendor").inputValue()).trim() === v2,
-        { timeout: 120_000, intervals: [200, 300, 500, 800] }
+        async () => {
+          const a = (await row1.getByPlaceholder("Vendor").inputValue()).trim();
+          const b = (await row2.getByPlaceholder("Vendor").inputValue()).trim();
+          return a === v1 && b === v2;
+        },
+        { timeout: 30_000, intervals: [50, 100, 200, 400] }
+      )
+      .toBe(true);
+
+    /**
+     * Shift+Enter runs flushPendingDebouncedPatches + flushRowToDb (see receipt-queue-workspace).
+     * Wait for at least one successful Supabase REST PATCH so we know persistence started.
+     * Do **not** wait for a "quiet tail" after the last PATCH: softRefresh can refetch slightly stale
+     * rows and briefly clobber UI; polling vendor fields handles that.
+     */
+    const firstPatchAfterSave = page.waitForResponse(
+      (resp) => {
+        const req = resp.request();
+        return (
+          resp.url().includes("receipt_queue") &&
+          req.method() === "PATCH" &&
+          resp.status() >= 200 &&
+          resp.status() < 300
+        );
+      },
+      { timeout: 60_000 }
+    );
+    await vendor2.press("Shift+Enter");
+    await firstPatchAfterSave;
+
+    await expect
+      .poll(
+        async () => {
+          const a = (await row1.getByPlaceholder("Vendor").inputValue()).trim();
+          const b = (await row2.getByPlaceholder("Vendor").inputValue()).trim();
+          return a === v1 && b === v2;
+        },
+        { timeout: 90_000, intervals: [100, 200, 400, 600, 1000] }
+      )
+      .toBe(true);
+
+    await page.reload({ waitUntil: "domcontentloaded", timeout: 90_000 });
+    await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
+
+    await expect
+      .poll(
+        async () => {
+          const rA = receiptQueueRowByFileName(page, f1);
+          const rB = receiptQueueRowByFileName(page, f2);
+          if ((await rA.count()) === 0 || (await rB.count()) === 0) return false;
+          const a = (await rA.getByPlaceholder("Vendor").inputValue()).trim();
+          const b = (await rB.getByPlaceholder("Vendor").inputValue()).trim();
+          return a === v1 && b === v2;
+        },
+        { timeout: 180_000, intervals: [200, 400, 600, 1000, 1500] }
       )
       .toBe(true);
   });

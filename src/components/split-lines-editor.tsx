@@ -4,6 +4,14 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { EXPENSE_PROJECT_SELECT_NONE } from "@/lib/expense-workflow-status";
+import {
   Table,
   TableBody,
   TableCell,
@@ -89,6 +97,17 @@ export function SplitLinesEditor({
   focusLineId,
   onFocusLineHandled,
 }: SplitLinesEditorProps) {
+  const selectPopperContentProps = React.useMemo(
+    () => ({
+      position: "popper" as const,
+      sideOffset: 4,
+      className: "z-[120] max-h-[min(280px,var(--radix-select-content-available-height))]",
+    }),
+    []
+  );
+  const projectSelectTriggerClass =
+    "h-10 w-full rounded-sm border-border/60 text-sm [&>span]:line-clamp-1";
+
   const linesTotal = React.useMemo(() => lines.reduce((s, l) => s + l.amount, 0), [lines]);
   const remaining = targetAmount != null ? targetAmount - linesTotal : 0;
   const focusLineAmountRef = React.useRef<HTMLInputElement | null>(null);
@@ -223,18 +242,32 @@ export function SplitLinesEditor({
             {lines.map((line) => (
               <TableRow key={line.id} className="border-b border-zinc-100/50 dark:border-border/30">
                 <TableCell>
-                  <select
-                    className="w-full rounded-md border border-input bg-transparent px-2 py-1 text-sm min-h-[36px]"
-                    value={line.projectId ?? ""}
-                    onChange={(e) => onLineChange(line.id, { projectId: e.target.value || null })}
+                  <Select
+                    value={
+                      line.projectId && String(line.projectId).trim() !== ""
+                        ? line.projectId
+                        : EXPENSE_PROJECT_SELECT_NONE
+                    }
+                    onValueChange={(v) =>
+                      onLineChange(line.id, {
+                        projectId: v === EXPENSE_PROJECT_SELECT_NONE ? null : v,
+                      })
+                    }
                   >
-                    <option value="">Overhead (No project)</option>
-                    {projects.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className={projectSelectTriggerClass}>
+                      <SelectValue placeholder="Project" />
+                    </SelectTrigger>
+                    <SelectContent {...selectPopperContentProps}>
+                      <SelectItem value={EXPENSE_PROJECT_SELECT_NONE}>
+                        Overhead (No project)
+                      </SelectItem>
+                      {projects.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </TableCell>
                 <TableCell>
                   <div className="min-w-[120px]">
@@ -263,7 +296,7 @@ export function SplitLinesEditor({
                 {showCostCode && (
                   <TableCell>
                     <Input
-                      className="h-8 text-sm"
+                      className="h-10 text-sm"
                       value={line.costCode ?? ""}
                       onChange={(e) => onLineChange(line.id, { costCode: e.target.value || null })}
                       placeholder="Optional"
@@ -272,7 +305,7 @@ export function SplitLinesEditor({
                 )}
                 <TableCell>
                   <Input
-                    className="h-8 text-sm"
+                    className="h-10 text-sm"
                     value={line.memo ?? ""}
                     onChange={(e) => onLineChange(line.id, { memo: e.target.value || null })}
                     placeholder="Memo"
@@ -285,7 +318,7 @@ export function SplitLinesEditor({
                     type="number"
                     min={0}
                     step={0.01}
-                    className="h-8 w-24 text-right tabular-nums ml-auto"
+                    className="h-10 w-24 text-right tabular-nums ml-auto"
                     value={line.amount}
                     onChange={(e) =>
                       onLineChange(line.id, { amount: parseFloat(e.target.value) || 0 })

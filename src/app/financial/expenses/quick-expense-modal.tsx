@@ -5,6 +5,14 @@ import { Button } from "@/components/ui/button";
 import { InlineLoading } from "@/components/ui/skeleton";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import {
@@ -41,8 +49,25 @@ import {
   uploadReceiptToStorage,
   type ExpenseReceiptUploadSlot,
 } from "@/lib/expense-receipt-upload-browser";
+import {
+  deriveExpenseWorkflowStatus,
+  EXPENSE_COMMON_ITEM_NONE,
+  EXPENSE_PROJECT_SELECT_NONE,
+} from "@/lib/expense-workflow-status";
 
 type QuickExpenseAttachmentSlot = ExpenseReceiptUploadSlot;
+
+const FIELD_LABEL = "text-xs uppercase tracking-wide text-muted-foreground";
+const CONTROL_H = "h-10";
+const SELECT_TRIGGER = cn(
+  CONTROL_H,
+  "w-full rounded-sm border-border/60 text-sm [&>span]:line-clamp-1"
+);
+const selectPopperContentProps = {
+  position: "popper" as const,
+  sideOffset: 4,
+  className: "z-[200] max-h-[min(280px,var(--radix-select-content-available-height))]",
+};
 
 type OcrDebugInfo = {
   source: OcrSource;
@@ -101,7 +126,6 @@ type Props = {
 export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, expenses }: Props) {
   const { toast } = useToast();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const paymentFieldRef = React.useRef<HTMLDivElement>(null);
   const [processing, setProcessing] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [saveFlash, setSaveFlash] = React.useState(false);
@@ -161,6 +185,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
     amount: string;
     date: string;
   } | null>(null);
+  const [catalogPick, setCatalogPick] = React.useState(EXPENSE_COMMON_ITEM_NONE);
   const [duplicateCandidate, setDuplicateCandidate] = React.useState<{
     id: string;
     vendor: string;
@@ -290,6 +315,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
     setDuplicateConfirmed(false);
     setDuplicateCandidate(null);
     setOcrSuggestions(null);
+    setCatalogPick(EXPENSE_COMMON_ITEM_NONE);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }, []);
 
@@ -517,12 +543,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
     setSaving(true);
     setError(null);
     try {
-      const fromState = paymentAccountId.trim();
-      const fromDom =
-        typeof document !== "undefined"
-          ? (paymentFieldRef.current?.querySelector("select")?.value?.trim() ?? "")
-          : "";
-      const effectivePaymentAccountId = fromState || fromDom;
+      const effectivePaymentAccountId = paymentAccountId.trim();
       if (effectivePaymentAccountId) {
         paymentChoiceTouchedRef.current = true;
       }
@@ -550,6 +571,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
         receiptUrl: firstPublic || undefined,
         sourceType: slotsToSave.length > 0 ? "receipt_upload" : "company",
         category,
+        initialStatus: deriveExpenseWorkflowStatus(projectId || null, category),
         notes: (() => {
           const userNotes = notes.trim();
           const itemsPart = `Items: ${dedupeItems(recognizedItems).join(", ")}`;
@@ -669,6 +691,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
           setNotes("");
           setRecognizedItems([]);
           setItemDraft("");
+          setCatalogPick(EXPENSE_COMMON_ITEM_NONE);
           setOcrSuggestions(null);
           setFieldConfidence({ vendor: "low", amount: "low", date: "low" });
           setDetectedSnapshot(null);
@@ -698,7 +721,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
-          className="flex max-h-[min(92dvh_640px)] w-[calc(100vw-1.5rem)] max-w-md flex-col gap-0 overflow-hidden rounded-sm border-border/60 p-0 sm:w-full"
+          className="flex max-h-[min(92dvh,820px)] w-[calc(100vw-1.5rem)] max-w-[560px] flex-col gap-0 overflow-hidden rounded-sm border-border/60 p-0 sm:w-full"
           onKeyDown={(e) => {
             if (e.key === "Escape") {
               e.stopPropagation();
@@ -766,9 +789,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
 
                 <div className="grid grid-cols-2 gap-x-3 gap-y-2">
                   <div className="min-w-0">
-                    <label className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                      Amount
-                    </label>
+                    <label className={FIELD_LABEL}>Amount</label>
                     <Input
                       ref={amountInputRef}
                       type="number"
@@ -778,7 +799,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
                       className={cn(
-                        "mt-0.5 h-9 tabular-nums",
+                        "mt-0.5 h-10 tabular-nums",
                         fieldConfidence.amount !== "high" && "border-amber-500/50"
                       )}
                       disabled={saving || !supabase}
@@ -786,10 +807,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                     />
                   </div>
                   <div className="min-w-0">
-                    <label
-                      htmlFor="quick-expense-vendor"
-                      className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
-                    >
+                    <label htmlFor="quick-expense-vendor" className={FIELD_LABEL}>
                       Vendor
                     </label>
                     <Input
@@ -798,7 +816,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                       value={vendorName}
                       onChange={(e) => setVendorName(e.target.value)}
                       className={cn(
-                        "mt-0.5 h-9",
+                        "mt-0.5 h-10",
                         fieldConfidence.vendor !== "high" && "border-amber-500/50"
                       )}
                       disabled={saving || !supabase}
@@ -806,29 +824,36 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                   </div>
 
                   <div className="min-w-0">
-                    <label className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                      Project
-                    </label>
+                    <label className={FIELD_LABEL}>Project</label>
                     <Input
                       value={projectSearch}
                       onChange={(e) => setProjectSearch(e.target.value)}
-                      className="mt-0.5 h-8 text-xs"
+                      className="mt-0.5 h-10 text-xs"
                       placeholder="Search…"
                       disabled={saving}
                     />
-                    <select
-                      value={projectId}
-                      onChange={(e) => setProjectId(e.target.value)}
-                      className="mt-1 h-8 w-full rounded border border-input bg-transparent px-2 text-xs"
+                    <Select
                       disabled={saving}
+                      value={projectId.trim() ? projectId : EXPENSE_PROJECT_SELECT_NONE}
+                      onValueChange={(v) =>
+                        setProjectId(v === EXPENSE_PROJECT_SELECT_NONE ? "" : v)
+                      }
                     >
-                      <option value="">No project</option>
-                      {projectOptions.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name ?? p.id}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger
+                        id="quick-expense-project-select"
+                        className={cn(SELECT_TRIGGER, "mt-1 text-xs")}
+                      >
+                        <SelectValue placeholder="No project" />
+                      </SelectTrigger>
+                      <SelectContent {...selectPopperContentProps}>
+                        <SelectItem value={EXPENSE_PROJECT_SELECT_NONE}>No project</SelectItem>
+                        {projectOptions.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name ?? p.id}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     {projectId && projectId === suggestedProjectId ? (
                       <div className="mt-1 flex flex-wrap items-center gap-2">
                         <MatchStatusBadge kind="suggested" />
@@ -838,41 +863,35 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                       </div>
                     ) : null}
                   </div>
-                  <div className="min-w-0" ref={paymentFieldRef}>
-                    <label className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                      Payment
-                    </label>
+                  <div className="min-w-0">
+                    <label className={FIELD_LABEL}>Payment</label>
                     <PaymentAccountSelect
                       id="quick-expense-payment-select"
                       value={paymentAccountId}
                       onValueChange={onPaymentAccountChange}
                       disabled={saving}
-                      className="mt-0.5 h-8 w-full rounded border border-input bg-transparent px-2 text-xs"
+                      className={cn(SELECT_TRIGGER, "mt-0.5 text-xs")}
                     />
                   </div>
 
                   <div className="min-w-0">
-                    <label className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                      Category
-                    </label>
+                    <label className={FIELD_LABEL}>Category</label>
                     <ExpenseCategorySelect
                       value={category}
                       onValueChange={setCategory}
                       disabled={saving}
-                      className="mt-0.5 h-8 w-full rounded border border-input bg-transparent px-2 text-xs"
+                      className={cn(SELECT_TRIGGER, "mt-0.5 text-xs")}
                     />
                   </div>
                   <div className="min-w-0">
-                    <label className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                      Date
-                    </label>
+                    <label className={FIELD_LABEL}>Date</label>
                     <Input
                       ref={dateInputRef}
                       type="date"
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
                       className={cn(
-                        "mt-0.5 h-9",
+                        "mt-0.5 h-10",
                         fieldConfidence.date !== "high" && "border-amber-500/50"
                       )}
                       disabled={saving || !supabase}
@@ -935,28 +954,6 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                     </Button>
                   </div>
                 ) : null}
-
-                <div className="flex justify-end gap-2 pt-0.5">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-8"
-                    onClick={() => void handleSave(true)}
-                    disabled={saving || saveFlash || !supabase}
-                  >
-                    {saveFlash ? "✔ Done" : "Save & new"}
-                  </Button>
-                  <Button
-                    type="submit"
-                    size="sm"
-                    className="h-8"
-                    disabled={saving || saveFlash || !supabase}
-                  >
-                    <SubmitSpinner loading={saving} className="mr-2" />
-                    {saving ? "Saving…" : saveFlash ? "✔ Done" : "Save"}
-                  </Button>
-                </div>
               </div>
 
               <div className="mt-1 min-h-0 shrink border-t border-border/60 pt-1.5">
@@ -978,9 +975,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                 {moreOpen ? (
                   <div className="max-h-[min(36vh_220px)] space-y-3 overflow-y-auto border-t border-border/40 py-2">
                     <div>
-                      <label className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                        Items
-                      </label>
+                      <label className={FIELD_LABEL}>Items</label>
                       <div className="mt-1 flex flex-wrap gap-1">
                         {dedupeItems(recognizedItems).map((item) => (
                           <span
@@ -1008,7 +1003,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                         <Input
                           value={itemDraft}
                           onChange={(e) => setItemDraft(e.target.value)}
-                          className="h-8 text-xs"
+                          className="h-10 text-xs"
                           placeholder="Add item"
                           disabled={saving}
                         />
@@ -1016,7 +1011,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                           type="button"
                           variant="outline"
                           size="sm"
-                          className="h-8 shrink-0"
+                          className="h-10 shrink-0"
                           disabled={saving}
                           onClick={() => {
                             const next = titleCase(itemDraft);
@@ -1028,40 +1023,42 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                           Add
                         </Button>
                       </div>
-                      <select
-                        className="mt-1.5 h-8 w-full rounded border border-input bg-transparent px-2 text-xs"
-                        value=""
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          if (!v) return;
-                          setRecognizedItems((prev) => dedupeItems([...prev, v]));
-                        }}
+                      <Select
                         disabled={saving}
+                        value={catalogPick}
+                        onValueChange={(v) => {
+                          if (v !== EXPENSE_COMMON_ITEM_NONE) {
+                            setRecognizedItems((prev) => dedupeItems([...prev, v]));
+                          }
+                          setCatalogPick(EXPENSE_COMMON_ITEM_NONE);
+                        }}
                       >
-                        <option value="">Common items…</option>
-                        {ITEM_CATALOG.map((opt) => (
-                          <option key={opt} value={opt}>
-                            {opt}
-                          </option>
-                        ))}
-                      </select>
+                        <SelectTrigger className={cn(SELECT_TRIGGER, "mt-1.5 text-xs")}>
+                          <SelectValue placeholder="Common items…" />
+                        </SelectTrigger>
+                        <SelectContent {...selectPopperContentProps}>
+                          <SelectItem value={EXPENSE_COMMON_ITEM_NONE}>Common items…</SelectItem>
+                          {ITEM_CATALOG.map((opt) => (
+                            <SelectItem key={opt} value={opt}>
+                              {opt}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div>
-                      <label className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                        Notes
-                      </label>
-                      <Input
+                      <label className={FIELD_LABEL}>Notes</label>
+                      <Textarea
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
-                        className="mt-0.5 h-8 text-xs"
+                        className="mt-0.5 min-h-[80px] resize-y text-xs"
                         placeholder="Optional"
                         disabled={saving}
+                        rows={3}
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                        Attachments
-                      </label>
+                      <label className={FIELD_LABEL}>Attachments</label>
                       <p className="mt-0.5 text-[11px] text-muted-foreground">
                         {attachmentSlots.length} file(s)
                         {attachmentSlots.some(
@@ -1126,7 +1123,40 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
               </div>
             </div>
 
-            {error ? <p className="mt-2 shrink-0 text-xs text-destructive">{error}</p> : null}
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border/60 px-4 py-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-10 rounded-sm"
+                onClick={() => onOpenChange(false)}
+              >
+                Cancel
+              </Button>
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-10 rounded-sm"
+                  onClick={() => void handleSave(true)}
+                  disabled={saving || saveFlash || !supabase}
+                >
+                  {saveFlash ? "✔ Done" : "Save & new"}
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="h-10 rounded-sm bg-black px-5 text-white hover:bg-neutral-900 dark:bg-foreground dark:text-background dark:hover:bg-foreground/90"
+                  disabled={saving || saveFlash || !supabase}
+                >
+                  <SubmitSpinner loading={saving} className="mr-2" />
+                  {saving ? "Saving…" : saveFlash ? "✔ Done" : "Save"}
+                </Button>
+              </div>
+            </div>
+
+            {error ? <p className="mt-2 shrink-0 px-4 text-xs text-destructive">{error}</p> : null}
           </form>
         </DialogContent>
       </Dialog>

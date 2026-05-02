@@ -1,8 +1,11 @@
 import { expect, type Page, type Locator } from "@playwright/test";
 
-/** Expenses list is `<ul class="exp-divide">` with `<li class="... exp-row ...">`, not a table. */
+/** Desktop: `main table tbody tr.exp-row`; mobile: `main ul.exp-divide > li.exp-row`. */
 export function expenseListRow(page: Page, text: string | RegExp): Locator {
-  return page.locator("main ul.exp-divide > li").filter({ hasText: text }).first();
+  return page
+    .locator("main table tbody tr.exp-row, main ul.exp-divide > li.exp-row")
+    .filter({ hasText: text })
+    .first();
 }
 
 /** Vendor filter on `/financial/expenses` (scoped to `main` — not the global topbar search). */
@@ -16,13 +19,44 @@ export function receiptQueueRowByFileName(page: Page, fileName: string): Locator
 }
 
 /**
- * `PaymentAccountSelect` in Quick expense / edit flows: native `<select>` that includes
- * “+ Add new account” (unlike Project / Category selects).
+ * Receipt queue row: payment account is {@link PaymentAccountSelect} (Radix trigger), not a native
+ * `<select>`. `data-queue-field="payment"` is set on the trigger in `receipt-queue-row-card`.
+ */
+export function receiptQueuePaymentAccountTrigger(queueRow: Locator): Locator {
+  return queueRow.locator('[data-queue-field="payment"]').first();
+}
+
+/**
+ * Payment account control: Quick expense / edit / inbox use Radix
+ * `<button id="quick-expense-payment-select|edit-expense-payment-select" role="combobox">`.
  */
 export function dialogPaymentAccountSelect(dialog: Locator, _page: Page): Locator {
   return dialog
     .locator("#quick-expense-payment-select")
     .or(dialog.locator("#edit-expense-payment-select"));
+}
+
+async function radixPaymentListbox(page: Page): Promise<Locator> {
+  const lb = page.locator('[role="listbox"]').last();
+  await expect(lb).toBeVisible({ timeout: 15_000 });
+  return lb;
+}
+
+/** Opens “+ Add new account” from either a native `<select>` or a Radix payment trigger. */
+export async function paymentAccountSelectChooseAddNew(
+  page: Page,
+  trigger: Locator
+): Promise<void> {
+  const control = trigger.first();
+  await expect(control).toBeEnabled({ timeout: 60_000 });
+  const tag = await control.evaluate((el) => el.tagName.toLowerCase());
+  if (tag === "select") {
+    await control.selectOption({ label: "+ Add new account" });
+    return;
+  }
+  await control.click();
+  const listbox = await radixPaymentListbox(page);
+  await listbox.getByRole("option", { name: "+ Add new account", exact: true }).click();
 }
 
 /**
@@ -34,30 +68,72 @@ export async function pickOrCreatePaymentInSelect(
   sel: Locator,
   preferredFirst: readonly string[] = ["Cash", "Amex", "Chase"]
 ): Promise<string> {
-  await expect(sel).toBeEnabled({ timeout: 60_000 });
-  for (const label of preferredFirst) {
-    const o = sel.getByRole("option", { name: label, exact: true });
-    if ((await o.count()) > 0) {
-      const value = await o.first().getAttribute("value");
-      if (value && value.trim() !== "") {
-        await sel.selectOption({ value });
-      } else {
-        await sel.selectOption({ label });
+  const control = sel.first();
+  await expect(control).toBeEnabled({ timeout: 60_000 });
+  const tag = await control.evaluate((el) => el.tagName.toLowerCase());
+
+  if (tag === "select") {
+    for (const label of preferredFirst) {
+      const o = control.getByRole("option", { name: label, exact: true });
+      if ((await o.count()) > 0) {
+        const value = await o.first().getAttribute("value");
+        if (value && value.trim() !== "") {
+          await control.selectOption({ value });
+        } else {
+          await control.selectOption({ label });
+        }
+        return label;
       }
-      return label;
     }
+    const opts = control.locator("option");
+    const n = await opts.count();
+    for (let i = 0; i < n; i++) {
+      const t = ((await opts.nth(i).textContent()) ?? "").trim();
+      if (t && t !== "—" && !t.startsWith("+")) {
+        await control.selectOption({ label: t });
+        return t;
+      }
+    }
+    const name = `E2E-Pay-${Date.now()}`;
+    await control.selectOption({ label: "+ Add new account" });
+    const sub = page.getByRole("dialog", { name: /New payment account/i });
+    await expect(sub).toBeVisible({ timeout: 15_000 });
+    await sub.getByPlaceholder("Name (e.g. Amex)").fill(name);
+    await sub.getByPlaceholder("Name (e.g. Amex)").press("Enter");
+    await expect(sub).toBeHidden({ timeout: 30_000 });
+    return name;
   }
-  const opts = sel.locator("option");
+
+  for (const label of preferredFirst) {
+    await control.click();
+    const listbox = await radixPaymentListbox(page).catch(() => null);
+    if (listbox) {
+      const opt = listbox.getByRole("option", { name: label, exact: true });
+      if ((await opt.count()) > 0) {
+        await opt.click();
+        return label;
+      }
+    }
+    await page.keyboard.press("Escape");
+  }
+
+  await control.click();
+  let listbox = await radixPaymentListbox(page);
+  const opts = listbox.getByRole("option");
   const n = await opts.count();
   for (let i = 0; i < n; i++) {
-    const t = ((await opts.nth(i).textContent()) ?? "").trim();
+    const o = opts.nth(i);
+    const t = ((await o.textContent()) ?? "").trim();
     if (t && t !== "—" && !t.startsWith("+")) {
-      await sel.selectOption({ label: t });
+      await o.click();
       return t;
     }
   }
+
   const name = `E2E-Pay-${Date.now()}`;
-  await sel.selectOption({ label: "+ Add new account" });
+  await control.click();
+  listbox = await radixPaymentListbox(page);
+  await listbox.getByRole("option", { name: "+ Add new account", exact: true }).click();
   const sub = page.getByRole("dialog", { name: /New payment account/i });
   await expect(sub).toBeVisible({ timeout: 15_000 });
   await sub.getByPlaceholder("Name (e.g. Amex)").fill(name);

@@ -8,6 +8,9 @@ import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 /** Seed.sql fixed IDs — never delete these rows. */
 export const E2E_PRESERVED_PROJECT_ID = "11111111-1111-1111-1111-111111111111";
+
+/** Display name in Quick expense / project Select (matches seed upsert). */
+export const E2E_PRESERVED_PROJECT_LABEL = "[E2E] Seed — HH Unified";
 export const E2E_PRESERVED_WORKER_ID = "22222222-2222-2222-2222-222222222222";
 export const E2E_PRESERVED_CUSTOMER_ID = "33333333-3333-3333-3333-333333333333";
 /** Fixed labor row for worker-payment E2E (unpaid, same project as seed). */

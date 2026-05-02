@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { E2E_PRESERVED_PROJECT_ID } from "./e2e-cleanup-db";
+import { E2E_PRESERVED_PROJECT_LABEL } from "./e2e-cleanup-db";
 import { expenseListRow, expensesVendorSearch } from "./e2e-expenses-helpers";
 
 /** Minimal valid 1×1 PNG (keeps upload + OCR path light in CI). */
@@ -34,10 +34,8 @@ test.describe("Quick Expense: upload and save", () => {
     const vendorMark = `E2E-HD-${Date.now()}`;
     await dialog.locator("input[type='number']").fill("120");
     await dialog.locator("#quick-expense-vendor").fill(vendorMark);
-    const projectSelect = dialog
-      .locator("select")
-      .filter({ has: page.locator(`option[value="${E2E_PRESERVED_PROJECT_ID}"]`) });
-    await projectSelect.selectOption({ value: E2E_PRESERVED_PROJECT_ID });
+    await dialog.locator("#quick-expense-project-select").click();
+    await page.getByRole("option", { name: E2E_PRESERVED_PROJECT_LABEL }).click();
 
     const grid = dialog.locator(".grid.grid-cols-2").first();
     await expect(grid).toBeVisible();

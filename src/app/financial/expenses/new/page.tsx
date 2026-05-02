@@ -8,6 +8,14 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ExpenseCategorySelect } from "@/components/expense-category-select";
 import { CreatableSelect } from "@/components/ui/creatable-select";
 import { useToast } from "@/components/toast/toast-provider";
@@ -19,6 +27,7 @@ import {
   getAccounts,
   getPaymentAccounts,
   updateExpenseReceiptUrl,
+  updateExpenseForReview,
   type PaymentAccountRow,
 } from "@/lib/data";
 import { PaymentAccountSelect } from "@/components/payment-account-select";
@@ -28,8 +37,24 @@ import {
   rememberExpenseVendorPaymentAccount,
 } from "@/lib/expense-payment-preferences";
 import { createBrowserClient } from "@/lib/supabase";
+import {
+  deriveExpenseWorkflowStatus,
+  EXPENSE_ACCOUNT_SELECT_NONE,
+  EXPENSE_PROJECT_SELECT_NONE,
+} from "@/lib/expense-workflow-status";
+import { cn } from "@/lib/utils";
 
 type ProjectOption = { id: string; name: string | null };
+
+const FIELD_LABEL = "text-xs uppercase tracking-wide text-muted-foreground";
+const CONTROL_CLASS = "h-10 rounded-sm border-border/60 text-sm";
+const SELECT_TRIGGER = cn(CONTROL_CLASS, "[&>span]:line-clamp-1");
+
+const selectPopperContentProps = {
+  position: "popper" as const,
+  sideOffset: 4,
+  className: "z-[200] max-h-[min(280px,var(--radix-select-content-available-height))]",
+};
 
 type LineForm = {
   id: string;
@@ -239,6 +264,10 @@ export default function NewExpensePage() {
         persistLastExpensePaymentAccountId(pa);
         rememberExpenseVendorPaymentAccount(vendorName.trim(), pa);
       }
+      const head = effectiveLines[0];
+      await updateExpenseForReview(created.id, {
+        status: deriveExpenseWorkflowStatus(head?.projectId ?? null, head?.category ?? ""),
+      });
       toast({ title: "Created", description: "Expense created.", variant: "success" });
       router.push("/financial/expenses");
       syncRouterNonBlocking(router);
@@ -268,15 +297,13 @@ export default function NewExpensePage() {
             </h2>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2 md:col-span-2">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Amount
-                </label>
-                <div className="flex items-center gap-2 rounded-md border border-input px-3 py-2">
+                <label className={FIELD_LABEL}>Amount</label>
+                <div className="flex h-10 items-center gap-2 rounded-sm border border-input px-3">
                   <span className="text-sm font-medium text-muted-foreground">$</span>
-                  <input
+                  <Input
                     type="text"
                     inputMode="decimal"
-                    className="h-9 w-full bg-transparent text-lg tabular-nums outline-none"
+                    className="h-10 border-0 bg-transparent p-0 text-lg tabular-nums shadow-none focus-visible:ring-0"
                     placeholder="0.00"
                     value={amountInput}
                     onChange={(e) => setAmountInput(e.target.value)}
@@ -303,14 +330,12 @@ export default function NewExpensePage() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Date
-                </label>
+                <label className={FIELD_LABEL}>Date</label>
                 <Input
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="h-9"
+                  className={CONTROL_CLASS}
                   required
                 />
               </div>
@@ -319,34 +344,38 @@ export default function NewExpensePage() {
                   <div className="space-y-2 md:col-span-2 lg:col-span-3">
                     <div className="grid gap-4 md:grid-cols-3">
                       <div className="space-y-2">
-                        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          Project
-                        </label>
-                        <select
-                          value={lines[0]?.projectId ?? ""}
-                          onChange={(e) => {
-                            const v = e.target.value || null;
+                        <label className={FIELD_LABEL}>Project</label>
+                        <Select
+                          disabled={loading}
+                          value={
+                            lines[0]?.projectId && String(lines[0].projectId).trim() !== ""
+                              ? lines[0]!.projectId!
+                              : EXPENSE_PROJECT_SELECT_NONE
+                          }
+                          onValueChange={(v) => {
+                            const proj = v === EXPENSE_PROJECT_SELECT_NONE ? null : v;
                             setLines((prev) => {
                               const row = prev[0] ?? newLine();
                               const rest = prev.slice(1);
-                              return [{ ...row, projectId: v }, ...rest];
+                              return [{ ...row, projectId: proj }, ...rest];
                             });
                           }}
-                          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
-                          disabled={loading}
                         >
-                          <option value="">Overhead</option>
-                          {projects.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.name ?? p.id}
-                            </option>
-                          ))}
-                        </select>
+                          <SelectTrigger className={SELECT_TRIGGER}>
+                            <SelectValue placeholder="Project" />
+                          </SelectTrigger>
+                          <SelectContent {...selectPopperContentProps}>
+                            <SelectItem value={EXPENSE_PROJECT_SELECT_NONE}>Overhead</SelectItem>
+                            {projects.map((p) => (
+                              <SelectItem key={p.id} value={p.id}>
+                                {p.name ?? p.id}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          Category
-                        </label>
+                        <label className={FIELD_LABEL}>Category</label>
                         <ExpenseCategorySelect
                           value={lines[0]?.category ?? "Other"}
                           onValueChange={(v) => {
@@ -356,14 +385,12 @@ export default function NewExpensePage() {
                               return [{ ...row, category: v }, ...rest];
                             });
                           }}
-                          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+                          className={SELECT_TRIGGER}
                           disabled={loading}
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                          Payment
-                        </label>
+                        <label className={FIELD_LABEL}>Payment</label>
                         <PaymentAccountSelect
                           value={paymentAccountId}
                           onValueChange={(id) => {
@@ -373,7 +400,7 @@ export default function NewExpensePage() {
                           }}
                           disabled={loading || saving}
                           onAccountsUpdated={setPaymentAccountRows}
-                          className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+                          className={SELECT_TRIGGER}
                         />
                       </div>
                     </div>
@@ -408,43 +435,44 @@ export default function NewExpensePage() {
             <section className="space-y-4 border-b border-border/60 pb-6">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Payment source
-                  </label>
-                  <select
-                    value={accountId}
-                    onChange={(e) => setAccountId(e.target.value)}
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+                  <label className={FIELD_LABEL}>Payment source</label>
+                  <Select
+                    value={accountId.trim() ? accountId : EXPENSE_ACCOUNT_SELECT_NONE}
+                    onValueChange={(v) => setAccountId(v === EXPENSE_ACCOUNT_SELECT_NONE ? "" : v)}
                   >
-                    <option value="">Select payment source</option>
-                    {accounts.map((acc) => (
-                      <option key={acc.id} value={acc.id}>
-                        {acc.lastFour ? `${acc.name} •••• ${acc.lastFour}` : acc.name}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className={SELECT_TRIGGER}>
+                      <SelectValue placeholder="Select payment source" />
+                    </SelectTrigger>
+                    <SelectContent {...selectPopperContentProps}>
+                      <SelectItem value={EXPENSE_ACCOUNT_SELECT_NONE}>
+                        Select payment source
+                      </SelectItem>
+                      {accounts.map((acc) => (
+                        <SelectItem key={acc.id} value={acc.id}>
+                          {acc.lastFour ? `${acc.name} •••• ${acc.lastFour}` : acc.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                    Reference #
-                  </label>
+                  <label className={FIELD_LABEL}>Reference #</label>
                   <Input
                     value={referenceNo}
                     onChange={(e) => setReferenceNo(e.target.value)}
-                    className="h-9"
+                    className={CONTROL_CLASS}
                     placeholder="Optional"
                   />
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Notes
-                </label>
-                <Input
+                <label className={FIELD_LABEL}>Notes</label>
+                <Textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="h-9"
+                  className={cn(CONTROL_CLASS, "min-h-[88px] resize-y py-2")}
                   placeholder="Optional"
+                  rows={3}
                 />
               </div>
             </section>
@@ -594,27 +622,35 @@ export default function NewExpensePage() {
                           prev.map((x) => (x.id === l.id ? { ...x, memo: e.target.value } : x))
                         )
                       }
-                      className="h-9"
+                      className={CONTROL_CLASS}
                       placeholder="Memo / description"
                     />
-                    <select
-                      value={l.projectId ?? ""}
-                      onChange={(e) => {
-                        const v = e.target.value || null;
+                    <Select
+                      disabled={loading}
+                      value={
+                        l.projectId && String(l.projectId).trim() !== ""
+                          ? l.projectId
+                          : EXPENSE_PROJECT_SELECT_NONE
+                      }
+                      onValueChange={(v) => {
+                        const proj = v === EXPENSE_PROJECT_SELECT_NONE ? null : v;
                         setLines((prev) =>
-                          prev.map((x) => (x.id === l.id ? { ...x, projectId: v } : x))
+                          prev.map((x) => (x.id === l.id ? { ...x, projectId: proj } : x))
                         );
                       }}
-                      className="h-9 rounded border border-input bg-transparent px-2 text-xs"
-                      disabled={loading}
                     >
-                      <option value="">Overhead</option>
-                      {projects.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name ?? p.id}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger className={cn(SELECT_TRIGGER, "text-xs")}>
+                        <SelectValue placeholder="Project" />
+                      </SelectTrigger>
+                      <SelectContent {...selectPopperContentProps}>
+                        <SelectItem value={EXPENSE_PROJECT_SELECT_NONE}>Overhead</SelectItem>
+                        {projects.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name ?? p.id}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <ExpenseCategorySelect
                       value={l.category}
                       onValueChange={(v) =>
@@ -622,7 +658,7 @@ export default function NewExpensePage() {
                           prev.map((x) => (x.id === l.id ? { ...x, category: v } : x))
                         )
                       }
-                      className="h-9 rounded border border-input bg-transparent px-2 text-xs"
+                      className={cn(SELECT_TRIGGER, "text-xs")}
                       disabled={loading}
                     />
                     <Input
@@ -635,7 +671,7 @@ export default function NewExpensePage() {
                           prev.map((x) => (x.id === l.id ? { ...x, amount: e.target.value } : x))
                         )
                       }
-                      className="h-9 tabular-nums"
+                      className={cn(CONTROL_CLASS, "tabular-nums")}
                       placeholder="0.00"
                       required={idx === 0}
                     />
