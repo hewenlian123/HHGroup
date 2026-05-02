@@ -133,6 +133,83 @@ export function waitForReceiptQueueSuccessfulPatches(
   });
 }
 
+/** No successful `receipt_queue` PATCH for `quietMs` (timer resets on each PATCH). */
+export async function waitForReceiptQueuePatchIdle(
+  page: Page,
+  quietMs: number,
+  timeoutMs: number
+): Promise<void> {
+  let lastPatchAt = Date.now();
+  const onResp = (resp: Response) => {
+    if (!isSuccessfulReceiptQueuePatch(resp)) return;
+    lastPatchAt = Date.now();
+  };
+  page.on("response", onResp);
+  try {
+    await expect
+      .poll(
+        async () => Date.now() - lastPatchAt >= quietMs,
+        { timeout: timeoutMs, intervals: [80, 150, 300, 500] }
+      )
+      .toBe(true);
+  } finally {
+    page.off("response", onResp);
+  }
+}
+
+/**
+ * Call after {@link waitForReceiptQueuePatchIdle}. Only counts PATCH responses whose **request** was issued
+ * after `press()` settles (Shift+Enter saves run asynchronously after keydown).
+ */
+export async function waitForReceiptQueuePatchesAfterPressQuiet(
+  page: Page,
+  press: () => Promise<void>,
+  quietMs: number,
+  timeoutMs: number
+): Promise<void> {
+  let seen = 0;
+  let lastPatchAt = 0;
+  let gated = false;
+  let gateAt = 0;
+  /** Playwright `request` vs `response.request()` may not share identity — key by URL/method/body. */
+  const patchReqStartedAt = new Map<string, number>();
+  const patchRequestKey = (url: string, method: string, postData: string | null | undefined) =>
+    `${url}\0${method}\0${postData ?? ""}`;
+  const onRequest = (req: { url: () => string; method: () => string; postData: () => string | null }) => {
+    if (!req.url().includes("receipt_queue") || req.method() !== "PATCH") return;
+    patchReqStartedAt.set(patchRequestKey(req.url(), req.method(), req.postData()), performance.now());
+  };
+  const onResp = (resp: Response) => {
+    if (!gated || !isSuccessfulReceiptQueuePatch(resp)) return;
+    const req = resp.request();
+    const started = patchReqStartedAt.get(
+      patchRequestKey(req.url(), req.method(), req.postData())
+    );
+    if (started === undefined || started < gateAt) return;
+    seen += 1;
+    lastPatchAt = Date.now();
+  };
+  page.on("request", onRequest);
+  page.on("response", onResp);
+  try {
+    await press();
+    gateAt = performance.now();
+    gated = true;
+    await expect
+      .poll(
+        async () => {
+          if (seen < 1) return false;
+          return Date.now() - lastPatchAt >= quietMs;
+        },
+        { timeout: timeoutMs, intervals: [80, 150, 300, 500, 800] }
+      )
+      .toBe(true);
+  } finally {
+    page.off("request", onRequest);
+    page.off("response", onResp);
+  }
+}
+
 /** Waits until `ExpensesPageClient` marks the React Query expenses list as success (not merely HTTP GET). */
 export async function waitForExpensesQuerySuccess(page: Page, timeoutMs = 120_000): Promise<void> {
   await expect

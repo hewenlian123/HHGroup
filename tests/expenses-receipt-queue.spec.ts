@@ -1,11 +1,13 @@
 import { test, expect } from "@playwright/test";
+import { createClient } from "@supabase/supabase-js";
 import { E2E_PRESERVED_PROJECT_ID } from "./e2e-cleanup-db";
 import {
   expectExpenseVendorRowArchiveOrInbox,
   expenseListRow,
   expensesVendorSearch,
   waitForExpensesQuerySuccess,
-  waitForReceiptQueueSuccessfulPatches,
+  waitForReceiptQueuePatchIdle,
+  waitForReceiptQueuePatchesAfterPressQuiet,
   fillControlledTextInput,
   prepareReceiptQueueRowForConfirm,
   receiptQueueExpenseSuccessSeen,
@@ -205,9 +207,12 @@ test.describe("Expenses: receipt upload queue", () => {
       .toBe(true);
   });
 
-  test("Shift+Enter persists debounced vendor edits on multiple rows after reload", async ({
-    page,
-  }) => {
+  test.describe("Shift+Enter multi-row reload", () => {
+    test.describe.configure({ retries: 0 });
+
+    test("Shift+Enter persists debounced vendor edits on multiple rows after reload", async ({
+      page,
+    }) => {
     await page.goto("/financial/receipt-queue", { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
 
@@ -256,26 +261,43 @@ test.describe("Expenses: receipt upload queue", () => {
       )
       .toBe(true);
 
-    /**
-     * At least two PATCHes cover both edited rows; a third may follow for the focused row — waiting on 2 avoids
-     * starving when only two REST calls occur, while the poll below waits for UI consistency.
-     */
-    const patchBarrier = waitForReceiptQueueSuccessfulPatches(page, 2, 120_000);
-    await vendor2.press("Shift+Enter");
-    await patchBarrier;
+    await waitForReceiptQueuePatchIdle(page, 800, 90_000);
 
-    await expect
-      .poll(
-        async () => {
-          const a = (await row1.getByPlaceholder("Vendor").inputValue()).trim();
-          const b = (await row2.getByPlaceholder("Vendor").inputValue()).trim();
-          return a === v1 && b === v2;
-        },
-        { timeout: 120_000, intervals: [100, 200, 400, 600, 1000] }
-      )
-      .toBe(true);
+    await waitForReceiptQueuePatchesAfterPressQuiet(
+      page,
+      async () => {
+        await vendor2.press("Shift+Enter");
+      },
+      1200,
+      180_000
+    );
 
-    const queueListAfterReload = page.waitForResponse(
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (supabaseUrl && serviceKey) {
+      const sb = createClient(supabaseUrl, serviceKey);
+      await expect
+        .poll(
+          async () => {
+            const { data, error } = await sb
+              .from("receipt_queue")
+              .select("file_name,vendor_name")
+              .in("file_name", [f1, f2]);
+            if (error) throw error;
+            const m = new Map(
+              (data ?? []).map((r: { file_name: string; vendor_name: string | null }) => [
+                r.file_name,
+                String(r.vendor_name ?? "").trim(),
+              ])
+            );
+            return m.get(f1) === v1 && m.get(f2) === v2;
+          },
+          { timeout: 120_000, intervals: [200, 400, 600, 1000] }
+        )
+        .toBe(true);
+    }
+
+    const receiptQueueListReload = page.waitForResponse(
       (resp) => {
         const req = resp.request();
         return (
@@ -287,8 +309,10 @@ test.describe("Expenses: receipt upload queue", () => {
       },
       { timeout: 120_000 }
     );
-    await page.reload({ waitUntil: "domcontentloaded", timeout: 90_000 });
-    await queueListAfterReload;
+    await Promise.all([
+      receiptQueueListReload,
+      page.reload({ waitUntil: "domcontentloaded", timeout: 90_000 }),
+    ]);
     await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
 
     await expect
@@ -304,5 +328,6 @@ test.describe("Expenses: receipt upload queue", () => {
         { timeout: 240_000, intervals: [200, 400, 600, 1000, 1500] }
       )
       .toBe(true);
+    });
   });
 });
