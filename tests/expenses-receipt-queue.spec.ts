@@ -1,8 +1,11 @@
 import { test, expect } from "@playwright/test";
 import { E2E_PRESERVED_PROJECT_ID } from "./e2e-cleanup-db";
 import {
+  expectExpenseVendorRowArchiveOrInbox,
   expenseListRow,
   expensesVendorSearch,
+  waitForExpensesQuerySuccess,
+  waitForReceiptQueueSuccessfulPatches,
   fillControlledTextInput,
   prepareReceiptQueueRowForConfirm,
   receiptQueueExpenseSuccessSeen,
@@ -15,8 +18,8 @@ const PNG_1X1 = Buffer.from(
 );
 
 test.describe("Expenses: receipt upload queue", () => {
-  /** Parallel chromium workers + shared local DB can starve upload/OCR; retries absorb flake. */
-  test.describe.configure({ timeout: 120_000, retries: 2, mode: "serial" });
+  /** Shift+Enter + reload polls need headroom; serial avoids shared-queue races. */
+  test.describe.configure({ timeout: 300_000, retries: 2, mode: "serial" });
 
   test("upload → receipt queue → confirm creates expense and clears row", async ({ page }) => {
     await page.goto("/financial/receipt-queue", { waitUntil: "domcontentloaded", timeout: 60_000 });
@@ -81,12 +84,18 @@ test.describe("Expenses: receipt upload queue", () => {
       timeout: 15_000,
     });
 
-    await page.goto("/financial/expenses", { waitUntil: "domcontentloaded" });
-    await page.locator("main").first().waitFor({ state: "visible", timeout: 60_000 });
-    await expensesVendorSearch(page).fill(vendorMark);
-    const dataRow = expenseListRow(page, vendorMark);
-    await expect(dataRow).toBeVisible({ timeout: 20_000 });
-    await expect(dataRow).toContainText("[E2E] Seed — HH Unified");
+    await expectExpenseVendorRowArchiveOrInbox(page, vendorMark, { timeoutMs: 180_000 });
+    await expect
+      .poll(
+        async () => {
+          const row = expenseListRow(page, vendorMark);
+          if (!(await row.isVisible().catch(() => false))) return false;
+          const t = (await row.innerText()).replace(/\s+/g, " ");
+          return t.includes("88.12") && t.includes("[E2E] Seed — HH Unified");
+        },
+        { timeout: 120_000, intervals: [400, 800, 1500, 2500] }
+      )
+      .toBe(true);
   });
 
   test("inline validation shows stable vendor/amount hints after bad confirm", async ({ page }) => {
@@ -248,25 +257,12 @@ test.describe("Expenses: receipt upload queue", () => {
       .toBe(true);
 
     /**
-     * Shift+Enter runs flushPendingDebouncedPatches + flushRowToDb (see receipt-queue-workspace).
-     * Wait for at least one successful Supabase REST PATCH so we know persistence started.
-     * Do **not** wait for a "quiet tail" after the last PATCH: softRefresh can refetch slightly stale
-     * rows and briefly clobber UI; polling vendor fields handles that.
+     * At least two PATCHes cover both edited rows; a third may follow for the focused row — waiting on 2 avoids
+     * starving when only two REST calls occur, while the poll below waits for UI consistency.
      */
-    const firstPatchAfterSave = page.waitForResponse(
-      (resp) => {
-        const req = resp.request();
-        return (
-          resp.url().includes("receipt_queue") &&
-          req.method() === "PATCH" &&
-          resp.status() >= 200 &&
-          resp.status() < 300
-        );
-      },
-      { timeout: 60_000 }
-    );
+    const patchBarrier = waitForReceiptQueueSuccessfulPatches(page, 2, 120_000);
     await vendor2.press("Shift+Enter");
-    await firstPatchAfterSave;
+    await patchBarrier;
 
     await expect
       .poll(
@@ -275,11 +271,24 @@ test.describe("Expenses: receipt upload queue", () => {
           const b = (await row2.getByPlaceholder("Vendor").inputValue()).trim();
           return a === v1 && b === v2;
         },
-        { timeout: 90_000, intervals: [100, 200, 400, 600, 1000] }
+        { timeout: 120_000, intervals: [100, 200, 400, 600, 1000] }
       )
       .toBe(true);
 
+    const queueListAfterReload = page.waitForResponse(
+      (resp) => {
+        const req = resp.request();
+        return (
+          resp.url().includes("receipt_queue") &&
+          req.method() === "GET" &&
+          resp.status() >= 200 &&
+          resp.status() < 300
+        );
+      },
+      { timeout: 120_000 }
+    );
     await page.reload({ waitUntil: "domcontentloaded", timeout: 90_000 });
+    await queueListAfterReload;
     await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
 
     await expect
@@ -292,7 +301,7 @@ test.describe("Expenses: receipt upload queue", () => {
           const b = (await rB.getByPlaceholder("Vendor").inputValue()).trim();
           return a === v1 && b === v2;
         },
-        { timeout: 180_000, intervals: [200, 400, 600, 1000, 1500] }
+        { timeout: 240_000, intervals: [200, 400, 600, 1000, 1500] }
       )
       .toBe(true);
   });

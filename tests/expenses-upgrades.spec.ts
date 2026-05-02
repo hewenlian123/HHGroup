@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { E2E_PRESERVED_PROJECT_ID, E2E_PRESERVED_PROJECT_LABEL } from "./e2e-cleanup-db";
 import {
   attachmentPreviewModal,
+  clickVisibleQuickExpenseButton,
   dialogPaymentAccountSelect,
   expenseListRow,
   expensesVendorSearch,
@@ -11,6 +12,9 @@ import {
   receiptQueueExpenseSuccessSeen,
   receiptQueuePaymentAccountTrigger,
   receiptQueueRowByFileName,
+  E2E_FINANCIAL_INBOX_URL,
+  waitForExpensesQuerySuccess,
+  waitForQuickExpenseProjectLabel,
 } from "./e2e-expenses-helpers";
 
 const PNG_1X1 = Buffer.from(
@@ -122,10 +126,7 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
     await page.goto("/financial/expenses", { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
 
-    await page
-      .getByRole("button", { name: /Quick expense/i })
-      .first()
-      .click();
+    await clickVisibleQuickExpenseButton(page);
     const dialog = page.getByRole("dialog", { name: /Quick expense/i });
     await expect(dialog).toBeVisible({ timeout: 15_000 });
 
@@ -149,6 +150,7 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
     await dialog.locator("#quick-expense-vendor").fill(vendorMark);
     await dialog.locator("#quick-expense-project-select").click();
     await page.getByRole("option", { name: E2E_PRESERVED_PROJECT_LABEL }).click();
+    await waitForQuickExpenseProjectLabel(dialog, E2E_PRESERVED_PROJECT_LABEL);
 
     await pickOrCreatePaymentInSelect(page, dialogPaymentAccountSelect(dialog, page));
 
@@ -174,7 +176,8 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
 
     await expect(dialog).not.toBeVisible({ timeout: 30_000 });
 
-    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.goto(E2E_FINANCIAL_INBOX_URL, { waitUntil: "domcontentloaded" });
+    await waitForExpensesQuerySuccess(page);
     await page.locator("main").first().waitFor({ state: "visible", timeout: 60_000 });
     await expensesVendorSearch(page).fill(vendorMark);
     const row = expenseListRow(page, vendorMark);
@@ -193,10 +196,7 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
     await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
 
     const dialog = page.getByRole("dialog", { name: /Quick expense/i });
-    await page
-      .getByRole("button", { name: /Quick expense/i })
-      .first()
-      .click();
+    await clickVisibleQuickExpenseButton(page);
     await expect(dialog).toBeVisible({ timeout: 15_000 });
 
     if (
@@ -238,10 +238,7 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
     await page.goto("/financial/expenses", { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
 
-    await page
-      .getByRole("button", { name: /Quick expense/i })
-      .first()
-      .click();
+    await clickVisibleQuickExpenseButton(page);
     const q = page.getByRole("dialog", { name: /Quick expense/i });
     await expect(q).toBeVisible({ timeout: 15_000 });
     if (
@@ -258,6 +255,7 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
     await q.locator("#quick-expense-vendor").fill(vendorBase);
     await q.locator("#quick-expense-project-select").click();
     await page.getByRole("option", { name: E2E_PRESERVED_PROJECT_LABEL }).click();
+    await waitForQuickExpenseProjectLabel(q, E2E_PRESERVED_PROJECT_LABEL);
     await q.getByRole("button", { name: "Save", exact: true }).click();
     if (
       await q
@@ -269,7 +267,8 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
     }
     await expect(q).not.toBeVisible({ timeout: 60_000 });
 
-    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.goto(E2E_FINANCIAL_INBOX_URL, { waitUntil: "domcontentloaded" });
+    await waitForExpensesQuerySuccess(page);
     await page.locator("main").first().waitFor({ state: "visible", timeout: 60_000 });
     await expensesVendorSearch(page).fill(vendorBase);
     const row = expenseListRow(page, vendorBase);
@@ -306,7 +305,8 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
 
     await expect(editDlg).not.toBeVisible({ timeout: 15_000 });
 
-    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.goto(E2E_FINANCIAL_INBOX_URL, { waitUntil: "domcontentloaded" });
+    await waitForExpensesQuerySuccess(page);
     await page.locator("main").first().waitFor({ state: "visible", timeout: 60_000 });
     await expensesVendorSearch(page).fill(`${vendorBase}-X`);
     const row2 = expenseListRow(page, `${vendorBase}-X`);
@@ -316,7 +316,7 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
 
   test("expenses list: unreviewed view, status control visible", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
-    await page.goto("/financial/expenses?view=unreviewed", {
+    await page.goto("/financial/inbox", {
       waitUntil: "domcontentloaded",
       timeout: 60_000,
     });

@@ -1,14 +1,19 @@
 import { test, expect, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { E2E_PRESERVED_PROJECT_LABEL } from "./e2e-cleanup-db";
-import { expenseListRow, expensesVendorSearch } from "./e2e-expenses-helpers";
+import {
+  clickVisibleQuickExpenseButton,
+  expenseListRow,
+  expensesVendorSearch,
+  E2E_FINANCIAL_INBOX_URL,
+  waitForExpensesQuerySuccess,
+  waitForQuickExpenseProjectLabel,
+  waitForVisibleQuickExpenseButton,
+} from "./e2e-expenses-helpers";
 
 /** AppShell is `ssr: false`; `main` is absent until the client chunk loads — anchor on list UI instead. */
 async function waitForExpensesListShell(page: Page, timeoutMs = 150_000): Promise<void> {
-  await page
-    .getByRole("button", { name: /Quick expense/i })
-    .first()
-    .waitFor({ state: "visible", timeout: timeoutMs });
+  await waitForVisibleQuickExpenseButton(page, timeoutMs);
   await page.locator("main").first().waitFor({ state: "visible", timeout: 30_000 });
 }
 
@@ -34,10 +39,7 @@ test.describe("Expense inbox payment method (preview modal)", () => {
 
     const vendorMark = `E2E-PM-MODAL-${Date.now()}`;
 
-    await page
-      .getByRole("button", { name: /Quick expense/i })
-      .first()
-      .click();
+    await clickVisibleQuickExpenseButton(page);
     const q = page.getByRole("dialog", { name: /Quick expense/i });
     await expect(q).toBeVisible({ timeout: 15_000 });
 
@@ -54,6 +56,7 @@ test.describe("Expense inbox payment method (preview modal)", () => {
     await q.locator("#quick-expense-vendor").fill(vendorMark);
     await q.locator("#quick-expense-project-select").click();
     await page.getByRole("option", { name: E2E_PRESERVED_PROJECT_LABEL }).click();
+    await waitForQuickExpenseProjectLabel(q, E2E_PRESERVED_PROJECT_LABEL);
     await q.getByRole("button", { name: "Save", exact: true }).click();
     if (
       await q
@@ -65,7 +68,8 @@ test.describe("Expense inbox payment method (preview modal)", () => {
     }
     await expect(q).not.toBeVisible({ timeout: 90_000 });
 
-    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.goto(E2E_FINANCIAL_INBOX_URL, { waitUntil: "domcontentloaded" });
+    await waitForExpensesQuerySuccess(page, 90_000);
     await waitForExpensesListShell(page, 90_000);
     await expensesVendorSearch(page).fill(vendorMark);
 
@@ -105,7 +109,8 @@ test.describe("Expense inbox payment method (preview modal)", () => {
     await expect(page.getByRole("dialog", { name: /Edit expense/i })).not.toBeVisible();
     expect(page.url().split("#")[0]).toBe(urlBefore.split("#")[0]);
 
-    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.goto(E2E_FINANCIAL_INBOX_URL, { waitUntil: "domcontentloaded" });
+    await waitForExpensesQuerySuccess(page, 90_000);
     await waitForExpensesListShell(page, 90_000);
     await expensesVendorSearch(page).fill(vendorMark);
     const rowAfter = expenseListRow(page, vendorMark);

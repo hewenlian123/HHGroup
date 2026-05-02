@@ -1,4 +1,13 @@
-import { expect, type Page, type Locator } from "@playwright/test";
+import { expect, type Page, type Locator, type Response } from "@playwright/test";
+
+/**
+ * Use after creating expenses in E2E: `/financial/expenses` lists only the archive pool
+ * (`reviewed`/`done` with project + category). New rows usually stay on Inbox until Mark Done.
+ */
+export const E2E_FINANCIAL_INBOX_URL = "/financial/inbox";
+
+/** Archive list: `reviewed`/`done` rows with project + category (excludes inbox-only workflow rows). */
+export const E2E_FINANCIAL_EXPENSES_ARCHIVE_URL = "/financial/expenses";
 
 /** Desktop: `main table tbody tr.exp-row`; mobile: `main ul.exp-divide > li.exp-row`. */
 export function expenseListRow(page: Page, text: string | RegExp): Locator {
@@ -11,6 +20,176 @@ export function expenseListRow(page: Page, text: string | RegExp): Locator {
 /** Vendor filter on `/financial/expenses` (scoped to `main` — not the global topbar search). */
 export function expensesVendorSearch(page: Page): Locator {
   return page.locator("main").getByRole("textbox", { name: "Search…" });
+}
+
+/**
+ * Inbox / Expenses toolbar renders two "Quick" buttons (mobile `md:hidden` + desktop `hidden md:block`).
+ * Only one is visible; `nth(0)` / `nth(1)` alone is wrong when the count is 1 or order differs.
+ */
+export async function waitForVisibleQuickExpenseButton(
+  page: Page,
+  timeoutMs = 150_000
+): Promise<void> {
+  const buttons = page.getByRole("button", { name: /^Quick$/ });
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const n = await buttons.count();
+    for (let i = 0; i < n; i++) {
+      const b = buttons.nth(i);
+      if (await b.isVisible().catch(() => false)) {
+        await b.waitFor({ state: "visible", timeout: 10_000 });
+        return;
+      }
+    }
+    await page.waitForTimeout(100);
+  }
+  throw new Error('Visible "Quick" button not found');
+}
+
+export async function clickVisibleQuickExpenseButton(page: Page): Promise<void> {
+  const buttons = page.getByRole("button", { name: /^Quick$/ });
+  const n = await buttons.count();
+  for (let i = 0; i < n; i++) {
+    const b = buttons.nth(i);
+    if (await b.isVisible().catch(() => false)) {
+      await b.click();
+      return;
+    }
+  }
+  throw new Error('Visible "Quick" button not found');
+}
+
+/** Radix project Select updates async; wait until the trigger shows the chosen label before Save. */
+export async function waitForQuickExpenseProjectLabel(
+  dialog: Locator,
+  projectLabel: string,
+  timeoutMs = 20_000
+): Promise<void> {
+  await expect(dialog.locator("#quick-expense-project-select")).toContainText(projectLabel, {
+    timeout: timeoutMs,
+  });
+}
+
+/**
+ * Call **before** `page.reload()` or `goto(/financial/expenses)`, then `await` the returned promise
+ * after navigation so we don't miss the expenses list GET (fixes empty client state before vendor search).
+ *
+ * **Note:** The first `GET …/expenses` completes before `fetchExpenses` finishes hydrating lines;
+ * prefer {@link waitForExpensesQuerySuccess} after navigation so React Query has settled.
+ */
+export function listenForExpensesTableFetch(
+  page: Page,
+  timeoutMs = 90_000
+): ReturnType<Page["waitForResponse"]> {
+  return page.waitForResponse(
+    (r) =>
+      /\/rest\/v1\/expenses(?:\?|$)/i.test(r.url()) &&
+      r.request().method() === "GET" &&
+      r.status() === 200,
+    { timeout: timeoutMs }
+  );
+}
+
+function isSuccessfulReceiptQueuePatch(resp: Response): boolean {
+  const req = resp.request();
+  return (
+    resp.url().includes("receipt_queue") &&
+    req.method() === "PATCH" &&
+    resp.status() >= 200 &&
+    resp.status() < 300
+  );
+}
+
+/**
+ * Attach **before** the action that persists rows (e.g. Shift+Enter). Resolves after `count`
+ * successful Supabase `receipt_queue` PATCH responses — multi-row debounced saves often emit one PATCH each.
+ */
+export function waitForReceiptQueueSuccessfulPatches(
+  page: Page,
+  count: number,
+  timeoutMs = 120_000
+): Promise<void> {
+  if (count <= 0) return Promise.resolve();
+  let seen = 0;
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      page.off("response", onResp);
+      reject(
+        new Error(
+          `Timed out after ${timeoutMs}ms waiting for ${count} receipt_queue PATCH responses (saw ${seen}).`
+        )
+      );
+    }, timeoutMs);
+    const onResp = (resp: Response) => {
+      if (!isSuccessfulReceiptQueuePatch(resp)) return;
+      seen += 1;
+      if (seen >= count) {
+        clearTimeout(timer);
+        page.off("response", onResp);
+        resolve();
+      }
+    };
+    page.on("response", onResp);
+  });
+}
+
+/** Waits until `ExpensesPageClient` marks the React Query expenses list as success (not merely HTTP GET). */
+export async function waitForExpensesQuerySuccess(page: Page, timeoutMs = 120_000): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        const err = await page.locator(".expenses-ui[data-expenses-query-status='error']").count();
+        if (err > 0)
+          throw new Error("Expenses list query failed (data-expenses-query-status=error).");
+        const ok = await page.locator(".expenses-ui[data-expenses-query-status='success']").count();
+        return ok > 0;
+      },
+      { timeout: timeoutMs, intervals: [100] }
+    )
+    .toBe(true);
+}
+
+/**
+ * After receipt-queue confirm, DB status may land as archived (`reviewed`) or still in workflow — try
+ * archive first, then inbox, until the vendor row is visible (optionally matching `projectSnippet`).
+ */
+export async function expectExpenseVendorRowArchiveOrInbox(
+  page: Page,
+  vendorMark: string,
+  opts?: { projectSnippet?: string; timeoutMs?: number }
+): Promise<void> {
+  const timeoutMs = opts?.timeoutMs ?? 180_000;
+  const snippet = opts?.projectSnippet;
+  await expect
+    .poll(
+      async () => {
+        for (const url of [E2E_FINANCIAL_EXPENSES_ARCHIVE_URL, E2E_FINANCIAL_INBOX_URL]) {
+          try {
+            await page.goto(url, { waitUntil: "domcontentloaded" });
+            const err = await page
+              .locator(".expenses-ui[data-expenses-query-status='error']")
+              .count();
+            if (err > 0)
+              throw new Error("Expenses list query failed (data-expenses-query-status=error).");
+            await page
+              .locator(".expenses-ui[data-expenses-query-status='success']")
+              .first()
+              .waitFor({ state: "attached", timeout: 90_000 });
+            await page.locator("main").first().waitFor({ state: "visible", timeout: 45_000 });
+            await expensesVendorSearch(page).fill(vendorMark);
+            const row = expenseListRow(page, vendorMark);
+            if (!(await row.isVisible().catch(() => false))) continue;
+            if (snippet && !(await row.innerText()).includes(snippet)) continue;
+            return true;
+          } catch {
+            continue;
+          }
+        }
+        return false;
+      },
+      { timeout: timeoutMs, intervals: [900, 1800, 2600] }
+    )
+    .toBe(true);
 }
 
 /** Card row on `/financial/receipt-queue` (`data-testid="receipt-queue-row"`). */
