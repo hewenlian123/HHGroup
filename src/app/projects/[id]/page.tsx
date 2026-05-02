@@ -4,7 +4,6 @@ import {
   getProjectBillingSummary,
   getProjectTasks,
   getWorkers,
-  getExpenseLinesByProject,
   getLaborEntriesWithJoins,
   getDocumentsByProject,
   getCommissionsWithPaidByProject,
@@ -23,22 +22,28 @@ import {
   getInvoicesWithDerived,
 } from "@/lib/data";
 import { getCanonicalProjectProfit } from "@/lib/profit-engine";
+import { getProjectCostDashboard } from "@/lib/project-cost-dashboard";
 import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { ProjectDetailTabsClient } from "./project-detail-tabs-client";
 import type { RecentExpenseLineRow } from "./recent-expense-lines";
 
+const LEGACY_TAB_MAP: Record<string, string> = {
+  financial: "cost",
+  documents: "docs",
+};
+
 type TabKey =
   | "overview"
+  | "cost"
   | "tasks"
   | "schedule"
-  | "financial"
+  | "docs"
   | "budget"
   | "expenses"
   | "labor"
   | "subcontracts"
   | "bills"
-  | "documents"
   | "activity"
   | "change-orders"
   | "materials"
@@ -55,18 +60,19 @@ export default async function ProjectDetailPage({
 }) {
   const { id } = await params;
   const sp = (await searchParams) ?? {};
-  const tabParam = (sp.tab ?? "overview").toString().toLowerCase();
+  const rawTab = (sp.tab ?? "overview").toString().toLowerCase();
+  const tabParam = LEGACY_TAB_MAP[rawTab] ?? rawTab;
   const validTabs: TabKey[] = [
     "overview",
+    "cost",
     "tasks",
     "schedule",
-    "financial",
+    "docs",
     "budget",
     "expenses",
     "labor",
     "subcontracts",
     "bills",
-    "documents",
     "activity",
     "change-orders",
     "materials",
@@ -105,7 +111,6 @@ export default async function ProjectDetailPage({
     billingSummary,
     tasks,
     workers,
-    expenseLinesRaw,
     laborEntries,
     documents,
     commissions,
@@ -122,6 +127,7 @@ export default async function ProjectDetailPage({
     closeoutCompletion,
     scheduleItems,
     projectInvoicesRaw,
+    costDashboard,
   ] = await Promise.all([
     safe(() => getCanonicalProjectProfit(id), {
       revenue: 0,
@@ -142,7 +148,6 @@ export default async function ProjectDetailPage({
     }),
     safe(() => getProjectTasks(id), []),
     safe(() => getWorkers(), []),
-    safe(() => getExpenseLinesByProject(id, 500), []),
     safe(() => getLaborEntriesWithJoins({ project_id: id }), []),
     safe(() => getDocumentsByProject(id), []),
     (async () => {
@@ -166,32 +171,50 @@ export default async function ProjectDetailPage({
     safe(() => getCloseoutCompletion(id), null),
     safe(() => getProjectSchedule(id), []),
     safe(() => getInvoicesWithDerived({ projectId: id }), []),
+    safe(() => getProjectCostDashboard(id), {
+      breakdown: { totalCost: 0, materials: 0, labor: 0, bills: 0, other: 0 },
+      spentTotal: 0,
+      profit: 0,
+      margin: 0,
+      revenue: 0,
+      doneCostRows: [],
+      recentDoneRows: [],
+      allExpenseLineRows: [],
+      alerts: { needsReviewCount: 0, missingReceiptCount: 0, missingClassificationCount: 0 },
+    }),
   ]);
 
-  // Map expense lines to Overview / Expenses tab shape (overview shows first 10)
-  const expenseLineRowsAll: RecentExpenseLineRow[] = (expenseLinesRaw ?? []).map(
-    ({ expenseId, date, vendorName, line }) => ({
-      id: line.id,
-      expenseId,
-      date,
-      vendorName,
-      category: line.category ?? "Other",
-      memo: line.memo ?? null,
-      amount: line.amount ?? 0,
-    })
-  );
-  const recentExpenseLines = expenseLineRowsAll.slice(0, 10);
+  const recentExpenseLines: RecentExpenseLineRow[] = costDashboard.recentDoneRows.map((r) => ({
+    id: r.lineId,
+    expenseId: r.expenseId,
+    date: r.date,
+    vendorName: r.vendorName,
+    category: r.category,
+    memo: r.memo,
+    amount: r.amount,
+  }));
+
+  const expenseLineRowsAll: RecentExpenseLineRow[] = costDashboard.allExpenseLineRows.map((r) => ({
+    id: r.id,
+    expenseId: r.expenseId,
+    date: r.date,
+    vendorName: r.vendorName,
+    category: r.category,
+    memo: r.memo,
+    amount: r.amount,
+  }));
+
   const projectInvoices = (projectInvoicesRaw ?? []).filter((i) => i.computedStatus !== "Void");
 
   const financialSummary = {
     budget: project.budget ?? 0,
-    revenue: canonical.revenue,
-    spent: canonical.actualCost,
-    profit: canonical.profit,
-    marginPct: canonical.margin * 100,
+    revenue: costDashboard.revenue,
+    spent: costDashboard.spentTotal,
+    profit: costDashboard.profit,
+    marginPct: costDashboard.margin * 100,
     collected: billingSummary.paidTotal,
     outstanding: Math.max(0, billingSummary.invoicedTotal - billingSummary.paidTotal),
-    cashflow: billingSummary.paidTotal - canonical.actualCost,
+    cashflow: billingSummary.paidTotal - costDashboard.spentTotal,
   };
 
   return (
@@ -201,6 +224,7 @@ export default async function ProjectDetailPage({
       financialSummary={financialSummary}
       billingSummary={billingSummary}
       canonicalProfit={canonical}
+      projectCost={costDashboard}
       initialTab={tab}
       tasks={tasks ?? []}
       workers={workers ?? []}

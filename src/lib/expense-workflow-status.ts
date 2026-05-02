@@ -4,6 +4,7 @@
  */
 
 import type { Expense } from "@/lib/data";
+import { getExpenseReceiptItems } from "@/lib/expense-receipt-items";
 
 /** Radix Select sentinel: no project (overhead). */
 export const EXPENSE_PROJECT_SELECT_NONE = "__hh_proj_none__";
@@ -76,4 +77,53 @@ export function expenseHasProjectForWorkflow(expense: Expense): boolean {
 export function expenseHasCategoryForWorkflow(expense: Expense): boolean {
   const cat = (expense.lines[0]?.category ?? "").trim();
   return cat !== "" && cat !== "—";
+}
+
+/** Status written when user marks an expense done from Inbox (`reviewed`; legacy `done` if present). */
+export function expenseIsArchivedDoneDbStatus(status: string | undefined | null): boolean {
+  const s = String(status ?? "")
+    .trim()
+    .toLowerCase();
+  return s === "reviewed" || s === "done";
+}
+
+/**
+ * Mark Done / transition to archived: require project then category (order matches toast copy).
+ * Returns which gate failed, or null if OK.
+ */
+export function validateMarkDoneRequiresProjectAndCategory(
+  expense: Expense
+): "project" | "category" | null {
+  if (!expenseHasProjectForWorkflow(expense)) return "project";
+  if (!expenseHasCategoryForWorkflow(expense)) return "category";
+  return null;
+}
+
+/** True when there is no receipt/attachment signal for inbox UI (matches modal “Missing receipt”). */
+export function expenseMissingReceiptForInbox(expense: Expense): boolean {
+  return getExpenseReceiptItems(expense).length === 0;
+}
+
+/**
+ * Inbox queue: needs workflow attention — pending DB review, missing classification,
+ * missing receipt, or duplicate hint (hint computed separately).
+ */
+export function expenseMatchesInboxPool(expense: Expense, duplicateHint: boolean): boolean {
+  if (duplicateHint) return true;
+  if (expenseNeedsReviewFromDb(expense.status)) return true;
+  if (!expenseHasProjectForWorkflow(expense)) return true;
+  if (!expenseHasCategoryForWorkflow(expense)) return true;
+  if (expenseMissingReceiptForInbox(expense)) return true;
+  return false;
+}
+
+/**
+ * Expenses archive list: only rows explicitly archived via Mark Done (`reviewed` / `done`),
+ * with project + category (guaranteed bound to a project for display).
+ */
+export function expenseMatchesExpensesArchivePool(expense: Expense): boolean {
+  if (!expenseIsArchivedDoneDbStatus(expense.status)) return false;
+  if (!expenseHasProjectForWorkflow(expense)) return false;
+  if (!expenseHasCategoryForWorkflow(expense)) return false;
+  return true;
 }

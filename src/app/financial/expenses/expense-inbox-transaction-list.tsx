@@ -46,7 +46,7 @@ function InboxDescriptionSignals({
 }) {
   const items = React.useMemo(() => getExpenseReceiptItems(row), [row]);
   const hasReceipt = items.length > 0;
-  const extraSignals = missingProject || missingCategory || duplicate;
+  const extraSignals = missingCategory || duplicate;
 
   return (
     <div className="mt-1 min-w-0 space-y-0.5">
@@ -81,16 +81,16 @@ function InboxDescriptionSignals({
           </span>
         )}
       </div>
+      {missingProject ? (
+        <div className="text-xs leading-snug text-orange-600 dark:text-orange-400">
+          <span aria-hidden className="select-none">
+            ⚠{" "}
+          </span>
+          Missing project
+        </div>
+      ) : null}
       {extraSignals ? (
         <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs leading-snug text-muted-foreground">
-          {missingProject ? (
-            <span className="inline-flex items-center gap-1 text-violet-600/90 dark:text-violet-400/85">
-              <span aria-hidden className="select-none">
-                ⚠
-              </span>
-              Missing project
-            </span>
-          ) : null}
           {missingCategory ? (
             <span className="inline-flex items-center gap-1 text-yellow-700/85 dark:text-yellow-400/85">
               <span aria-hidden className="select-none">

@@ -21,12 +21,19 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/toast/toast-provider";
 import type { Project, ProjectFinancialSummary } from "@/lib/data";
 import type { CanonicalProjectProfit } from "@/lib/profit-engine";
+import {
+  categoryLooksMaterials,
+  type ProjectCostDashboardPayload,
+} from "@/lib/project-cost-dashboard";
 import { ProjectDocumentsTab } from "./project-documents-tab";
+import { ProjectCostLinesTable } from "./project-cost-lines-table";
 import { ProjectTasksTab } from "./project-tasks-tab";
 import { ProjectCloseoutTab } from "./project-closeout-tab";
 import { ProjectMaterialsTab } from "./project-materials-tab";
@@ -69,19 +76,26 @@ function ProjectDetailStatusPill({ status }: { status: string }) {
 }
 
 const TAB_PANEL =
-  "mt-4 rounded-lg bg-white p-4 sm:p-5 shadow-[0_1px_3px_rgba(0_0_0_0.06)] text-[14px] leading-normal";
+  "mt-4 rounded-xl border border-border/60 bg-white p-4 sm:p-5 text-[14px] leading-normal";
+
+function fmtMoney(n: number, opts?: { maximumFractionDigits?: number }) {
+  const fd = opts?.maximumFractionDigits ?? 0;
+  return `$${Number(n).toLocaleString("en-US", { maximumFractionDigits: fd })}`;
+}
+
+type CostBucketFilter = null | "materials" | "labor" | "bills" | "other";
 
 type TabKey =
   | "overview"
+  | "cost"
   | "tasks"
   | "schedule"
-  | "financial"
+  | "docs"
   | "budget"
   | "expenses"
   | "labor"
   | "subcontracts"
   | "bills"
-  | "documents"
   | "activity"
   | "change-orders"
   | "materials"
@@ -92,7 +106,8 @@ type TabKey =
 export interface ProjectDetailTabsClientProps {
   projectId: string;
   project: Project;
-  financialSummary: ProjectFinancialSummary | null;
+  financialSummary: (ProjectFinancialSummary & { marginPct?: number }) | null;
+  projectCost: ProjectCostDashboardPayload;
   billingSummary: {
     invoicedTotal: number;
     paidTotal: number;
@@ -128,6 +143,7 @@ export function ProjectDetailTabsClient({
   projectId,
   project,
   financialSummary,
+  projectCost,
   billingSummary,
   canonicalProfit,
   initialTab,
@@ -156,6 +172,7 @@ export function ProjectDetailTabsClient({
   const { toast } = useToast();
   const [, startTabTransition] = React.useTransition();
   const [tab, setTab] = React.useState<TabKey>(initialTab);
+  const [costBucketFilter, setCostBucketFilter] = React.useState<CostBucketFilter>(null);
   const [editModalOpen, setEditModalOpen] = React.useState(false);
   const [displayProject, setDisplayProject] = React.useState<Project>(() => project);
   useBreadcrumbEntityLabel(displayProject.name);
@@ -172,6 +189,12 @@ export function ProjectDetailTabsClient({
     project.customerId,
     project.address,
   ]);
+
+  React.useEffect(() => {
+    if (tab !== "cost") {
+      setCostBucketFilter(null);
+    }
+  }, [tab]);
 
   React.useEffect(() => {
     let t: ReturnType<typeof setTimeout> | null = null;
@@ -229,9 +252,60 @@ export function ProjectDetailTabsClient({
   );
 
   const budgetVal = displayProject.budget ?? financialSummary?.budget ?? 0;
-  const spentVal = financialSummary?.spent ?? canonicalProfit.actualCost;
-  const profitVal = canonicalProfit.profit;
-  const marginPct = canonicalProfit.margin * 100;
+  const spentVal = financialSummary?.spent ?? projectCost.spentTotal;
+  const profitVal = financialSummary?.profit ?? projectCost.profit;
+  const marginPct = financialSummary?.marginPct ?? projectCost.margin * 100;
+
+  const expensesProjectHref = `/financial/expenses?project_id=${encodeURIComponent(projectId)}`;
+  const inboxProjectHref = `/financial/inbox?project_id=${encodeURIComponent(projectId)}`;
+
+  const goToCostTab = React.useCallback(() => {
+    startTabTransition(() => setTab("cost"));
+  }, [startTabTransition]);
+
+  const filteredCostRows = React.useMemo(() => {
+    const rows = projectCost.doneCostRows;
+    if (costBucketFilter === null) return rows;
+    if (costBucketFilter === "materials")
+      return rows.filter((r) => categoryLooksMaterials(r.category));
+    if (costBucketFilter === "other")
+      return rows.filter((r) => !categoryLooksMaterials(r.category));
+    return [];
+  }, [projectCost.doneCostRows, costBucketFilter]);
+
+  const costTableHint = React.useMemo(() => {
+    const parts: string[] = [];
+    if (costBucketFilter === "labor") {
+      parts.push(
+        "Labor is included in Total but comes from labor entries, not this expense table. Use More → Labor."
+      );
+    }
+    if (costBucketFilter === "bills") {
+      parts.push(
+        "Bills / Subcontracts are included in Total from approved subcontract bills. Use More → Subcontracts or Bills."
+      );
+    }
+    if (costBucketFilter === "materials") {
+      parts.push("Showing expense lines classified as Materials only.");
+    }
+    if (costBucketFilter === "other") {
+      parts.push("Showing expense lines in the Other bucket only (non-material categories).");
+    }
+    return parts.length ? parts.join(" ") : null;
+  }, [costBucketFilter]);
+
+  const costTableEmptyMessage =
+    projectCost.doneCostRows.length === 0
+      ? "No project costs yet"
+      : "No expense lines match this filter.";
+
+  const pickBreakdown = React.useCallback((key: "total" | Exclude<CostBucketFilter, null>) => {
+    if (key === "total") {
+      setCostBucketFilter(null);
+      return;
+    }
+    setCostBucketFilter(key);
+  }, []);
 
   return (
     <PageLayout
@@ -333,24 +407,28 @@ export function ProjectDetailTabsClient({
               </DropdownMenu>
             </div>
             <div className="mt-6 border-t border-gray-100 pt-6">
-              <div className="rounded-lg border-[0.5px] border-gray-100 bg-white p-4 sm:p-5">
+              <div className="rounded-xl border border-border/60 bg-white p-4 sm:p-5">
                 <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
                       Budget
                     </p>
                     <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-text-primary">
-                      ${budgetVal.toLocaleString()}
+                      {fmtMoney(budgetVal)}
                     </p>
                   </div>
-                  <div>
+                  <button
+                    type="button"
+                    onClick={goToCostTab}
+                    className="rounded-lg text-left outline-none ring-offset-background transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
                       Spent
                     </p>
-                    <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-text-primary">
-                      ${spentVal.toLocaleString()}
+                    <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-text-primary underline decoration-border underline-offset-4">
+                      {fmtMoney(spentVal)}
                     </p>
-                  </div>
+                  </button>
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
                       Profit
@@ -361,7 +439,8 @@ export function ProjectDetailTabsClient({
                         profitVal >= 0 ? "text-hh-profit-positive" : "text-red-600"
                       )}
                     >
-                      {profitVal >= 0 ? "" : "−"}${Math.abs(profitVal).toLocaleString()}
+                      {profitVal >= 0 ? "" : "−"}
+                      {fmtMoney(Math.abs(profitVal))}
                     </p>
                   </div>
                   <div>
@@ -405,10 +484,10 @@ export function ProjectDetailTabsClient({
                 {(
                   [
                     { key: "overview" as const, label: "Overview" },
+                    { key: "cost" as const, label: "Cost" },
                     { key: "tasks" as const, label: "Tasks" },
                     { key: "schedule" as const, label: "Schedule" },
-                    { key: "financial" as const, label: "Financial" },
-                    { key: "documents" as const, label: "Documents" },
+                    { key: "docs" as const, label: "Docs" },
                   ] as const
                 ).map((t) => (
                   <TabsTrigger
@@ -450,234 +529,313 @@ export function ProjectDetailTabsClient({
                     More ▾
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="min-w-[200px]">
-                  {(
-                    [
-                      { key: "budget" as const, label: "Budget" },
-                      { key: "expenses" as const, label: "Expenses" },
-                      { key: "labor" as const, label: "Labor" },
-                      { key: "subcontracts" as const, label: "Subcontracts" },
-                      { key: "bills" as const, label: "Bills" },
-                      { key: "activity" as const, label: "Activity" },
-                      { key: "change-orders" as const, label: "Change Orders" },
-                      { key: "materials" as const, label: "Material Selections" },
-                      { key: "closeout" as const, label: "Closeout" },
-                      { key: "commission" as const, label: "Commission" },
-                      { key: "punch-list" as const, label: "Punch List" },
-                    ] as const
-                  ).map((item) => (
-                    <DropdownMenuItem
-                      key={item.key}
-                      onSelect={(e) => {
-                        e.preventDefault();
-                        setTab(item.key);
-                      }}
-                    >
-                      {item.label}
-                    </DropdownMenuItem>
-                  ))}
+                <DropdownMenuContent align="end" className="min-w-[220px]">
+                  <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                    Cost
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      setTab("expenses");
+                    }}
+                  >
+                    Expenses
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      setTab("labor");
+                    }}
+                  >
+                    Labor
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      setTab("bills");
+                    }}
+                  >
+                    Bills
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      setTab("subcontracts");
+                    }}
+                  >
+                    Subcontracts
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                    Project
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      setTab("budget");
+                    }}
+                  >
+                    Budget
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      setTab("change-orders");
+                    }}
+                  >
+                    Change Orders
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      setTab("materials");
+                    }}
+                  >
+                    Material Selections
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                    Activity
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      setTab("activity");
+                    }}
+                  >
+                    Activity
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      setTab("punch-list");
+                    }}
+                  >
+                    Punch List
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                    Final
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      setTab("closeout");
+                    }}
+                  >
+                    Closeout
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      setTab("commission");
+                    }}
+                  >
+                    Commission
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
 
-            <TabsContent value="overview" className={cn(TAB_PANEL, "space-y-4")}>
-              {/* Metrics strip */}
-              {financialSummary && (
-                <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 xl:grid-cols-6">
-                  <div className="flex flex-col justify-between rounded-[8px] border border-[#F0F0F0] bg-[#FAFAFA] px-4 py-3 shadow-[0_1px_2px_rgba(0_0_0_0.04)]">
-                    <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-[0.08em]">
-                      Budget
-                    </span>
-                    <span className="mt-1 text-[18px] leading-tight font-medium tabular-nums">
-                      $
-                      {financialSummary.budget.toLocaleString("en-US", {
-                        maximumFractionDigits: 0,
-                      })}
-                    </span>
-                  </div>
-                  <div className="flex flex-col justify-between rounded-[8px] border border-[#F0F0F0] bg-[#FAFAFA] px-4 py-3 shadow-[0_1px_2px_rgba(0_0_0_0.04)]">
-                    <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-[0.08em]">
-                      Spent
-                    </span>
-                    <span className="mt-1 text-[18px] leading-tight font-medium tabular-nums">
-                      $
-                      {financialSummary.spent.toLocaleString("en-US", { maximumFractionDigits: 0 })}
-                    </span>
-                  </div>
-                  <div className="flex flex-col justify-between rounded-[8px] border border-[#F0F0F0] bg-[#FAFAFA] px-4 py-3 shadow-[0_1px_2px_rgba(0_0_0_0.04)]">
-                    <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-[0.08em]">
-                      Revenue
-                    </span>
-                    <span className="mt-1 text-[18px] leading-tight font-medium tabular-nums">
-                      $
-                      {financialSummary.revenue.toLocaleString("en-US", {
-                        maximumFractionDigits: 0,
-                      })}
-                    </span>
-                  </div>
-                  <div className="flex flex-col justify-between rounded-[8px] border border-[#F0F0F0] bg-[#FAFAFA] px-4 py-3 shadow-[0_1px_2px_rgba(0_0_0_0.04)]">
-                    <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-[0.08em]">
-                      Collected
-                    </span>
-                    <span className="mt-1 text-[18px] leading-tight font-medium tabular-nums">
-                      $
-                      {financialSummary.collected.toLocaleString("en-US", {
-                        maximumFractionDigits: 0,
-                      })}
-                    </span>
-                  </div>
-                  <div className="flex flex-col justify-between rounded-[8px] border border-[#F0F0F0] bg-[#FAFAFA] px-4 py-3 shadow-[0_1px_2px_rgba(0_0_0_0.04)]">
-                    <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-[0.08em]">
-                      Outstanding
-                    </span>
-                    <span className="mt-1 text-[18px] leading-tight font-medium tabular-nums">
-                      $
-                      {financialSummary.outstanding.toLocaleString("en-US", {
-                        maximumFractionDigits: 0,
-                      })}
-                    </span>
-                  </div>
-                  <div className="flex flex-col justify-between rounded-[8px] border border-[#F0F0F0] bg-[#FAFAFA] px-4 py-3 shadow-[0_1px_2px_rgba(0_0_0_0.04)]">
-                    <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-[0.08em]">
-                      Profit
-                    </span>
-                    <span
-                      className={cn(
-                        "mt-1 text-[18px] font-medium leading-tight tabular-nums",
-                        canonicalProfit.profit >= 0 ? "text-hh-profit-positive" : "text-red-600"
-                      )}
-                    >
-                      {canonicalProfit.profit >= 0 ? "" : "−"}$
-                      {Math.abs(canonicalProfit.profit).toLocaleString("en-US", {
-                        maximumFractionDigits: 0,
-                      })}
-                    </span>
-                  </div>
+            <TabsContent value="overview" className={cn(TAB_PANEL, "space-y-6")}>
+              {/* A. Cost snapshot */}
+              <div
+                role="button"
+                tabIndex={0}
+                className="cursor-pointer rounded-xl border border-border/60 bg-white px-4 py-4 outline-none transition-colors hover:bg-muted/20 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                onClick={goToCostTab}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    goToCostTab();
+                  }
+                }}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <SectionHeader
+                    label="Cost snapshot"
+                    className="text-[11px] tracking-[0.08em] text-[#9CA3AF] font-medium"
+                  />
+                  <span className="text-[12px] font-medium text-muted-foreground underline-offset-4 hover:underline">
+                    View cost details
+                  </span>
                 </div>
-              )}
+                <Divider />
+                <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
+                  {(
+                    [
+                      { label: "Total cost", value: projectCost.breakdown.totalCost },
+                      { label: "Materials", value: projectCost.breakdown.materials },
+                      { label: "Labor", value: projectCost.breakdown.labor },
+                      { label: "Bills / Subcontracts", value: projectCost.breakdown.bills },
+                      { label: "Other", value: projectCost.breakdown.other },
+                    ] as const
+                  ).map((cell) => (
+                    <div key={cell.label} className="min-w-0">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        {cell.label}
+                      </p>
+                      <p className="mt-1 font-mono text-[15px] font-semibold tabular-nums text-text-primary">
+                        {fmtMoney(cell.value)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-              {/* Project summary */}
-              <div className="rounded-sm border border-border/60 bg-background px-3 py-3">
+              {/* B. Alerts */}
+              <div className="rounded-xl border border-border/60 bg-white px-4 py-4">
                 <SectionHeader
-                  label="Project summary"
+                  label="Alerts / issues"
                   className="text-[11px] tracking-[0.08em] text-[#9CA3AF] font-medium"
                 />
                 <Divider />
-                <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-[13px]">
+                <ul className="mt-3 divide-y divide-border/60 text-[13px]">
+                  <li className="py-0">
+                    <Link
+                      href={inboxProjectHref}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-sm py-2.5 text-text-primary outline-none ring-offset-background hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                    >
+                      <span>Needs review expenses</span>
+                      <span className="tabular-nums text-muted-foreground">
+                        {projectCost.alerts.needsReviewCount}
+                        <span className="ml-2 text-[12px] font-medium text-foreground">
+                          Inbox →
+                        </span>
+                      </span>
+                    </Link>
+                  </li>
+                  <li className="py-0">
+                    <Link
+                      href={expensesProjectHref}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-sm py-2.5 text-text-primary outline-none ring-offset-background hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                    >
+                      <span>Missing receipt</span>
+                      <span className="tabular-nums text-muted-foreground">
+                        {projectCost.alerts.missingReceiptCount}
+                        <span className="ml-2 text-[12px] font-medium text-foreground">
+                          Expenses →
+                        </span>
+                      </span>
+                    </Link>
+                  </li>
+                  <li className="py-0">
+                    <Link
+                      href={inboxProjectHref}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-sm py-2.5 text-text-primary outline-none ring-offset-background hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                    >
+                      <span>Duplicate expenses</span>
+                      <span className="text-[12px] font-medium text-muted-foreground">Inbox →</span>
+                    </Link>
+                  </li>
+                  <li className="py-0">
+                    <Link
+                      href={expensesProjectHref}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-sm py-2.5 text-text-primary outline-none ring-offset-background hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                    >
+                      <span>Missing project / category</span>
+                      <span className="tabular-nums text-muted-foreground">
+                        {projectCost.alerts.missingClassificationCount}
+                        <span className="ml-2 text-[12px] font-medium text-foreground">
+                          Expenses →
+                        </span>
+                      </span>
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+
+              {/* C. Recent costs (done only, max 5) */}
+              <div className="rounded-xl border border-border/60 bg-white px-4 py-4">
+                <SectionHeader
+                  label="Recent costs"
+                  className="text-[11px] tracking-[0.08em] text-[#9CA3AF] font-medium"
+                />
+                <Divider />
+                <div className="mt-2">
+                  {recentExpenseLines.length === 0 ? (
+                    <p className="py-6 text-center text-sm text-muted-foreground">
+                      No recorded costs yet.
+                    </p>
+                  ) : (
+                    <RecentExpenseLines rows={recentExpenseLines} />
+                  )}
+                </div>
+                <div className="mt-3 border-t border-border/60 pt-3">
+                  <button
+                    type="button"
+                    onClick={goToCostTab}
+                    className="text-[12px] font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                  >
+                    View all costs →
+                  </button>
+                </div>
+              </div>
+
+              {/* D. Quick actions */}
+              <div className="rounded-xl border border-border/60 bg-white px-4 py-4">
+                <SectionHeader
+                  label="Quick actions"
+                  className="text-[11px] tracking-[0.08em] text-[#9CA3AF] font-medium"
+                />
+                <Divider />
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" className="h-8 text-[13px]" asChild>
+                    <Link href="/financial/expenses/new">Add expense</Link>
+                  </Button>
+                  <Button variant="outline" size="sm" className="h-8 text-[13px]" asChild>
+                    <Link href={expensesProjectHref}>Upload receipt</Link>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-[13px]"
+                    type="button"
+                    onClick={goToCostTab}
+                  >
+                    View all costs
+                  </Button>
+                </div>
+              </div>
+
+              {/* Compact context (no KPI repeat) */}
+              <div className="rounded-xl border border-border/60 bg-white px-4 py-4">
+                <SectionHeader
+                  label="Project context"
+                  className="text-[11px] tracking-[0.08em] text-[#9CA3AF] font-medium"
+                />
+                <Divider />
+                <div className="mt-2 grid grid-cols-1 gap-2 text-[13px] sm:grid-cols-2">
                   <div className="flex items-center justify-between gap-3 py-2">
-                    <span className="text-[#9CA3AF]">Client</span>
-                    <span className="truncate text-right text-text-primary">
+                    <span className="text-muted-foreground">Client</span>
+                    <span className="truncate text-right font-medium text-text-primary">
                       {displayProject.client ??
                         (displayProject as { client_name?: string }).client_name ??
                         "—"}
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-3 py-2">
-                    <span className="text-[#9CA3AF]">Contract value</span>
-                    <span className="tabular-nums text-right text-text-primary">
-                      $
-                      {canonicalProfit.revenue.toLocaleString("en-US", {
-                        maximumFractionDigits: 0,
-                      })}
+                    <span className="text-muted-foreground">Contract value</span>
+                    <span className="tabular-nums text-right font-medium text-text-primary">
+                      {fmtMoney(canonicalProfit.revenue)}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between gap-3 py-2">
-                    <span className="text-[#9CA3AF]">Budget</span>
-                    <span className="tabular-nums text-right text-text-primary">
-                      $
-                      {(displayProject.budget ?? financialSummary?.budget ?? 0).toLocaleString(
-                        "en-US",
-                        {
-                          maximumFractionDigits: 0,
-                        }
-                      )}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3 py-2">
-                    <span className="text-[#9CA3AF]">Spent</span>
-                    <span className="tabular-nums text-right text-text-primary">
-                      $
-                      {(financialSummary?.spent ?? canonicalProfit.actualCost).toLocaleString(
-                        "en-US",
-                        { maximumFractionDigits: 0 }
-                      )}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3 py-2">
-                    <span className="text-[#9CA3AF]">Profit</span>
-                    <span
-                      className={cn(
-                        "text-right tabular-nums",
-                        canonicalProfit.profit >= 0 ? "text-hh-profit-positive" : "text-red-600"
-                      )}
-                    >
-                      {canonicalProfit.profit >= 0 ? "" : "−"}$
-                      {Math.abs(canonicalProfit.profit).toLocaleString("en-US", {
-                        maximumFractionDigits: 0,
-                      })}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3 py-2">
-                    <span className="text-[#9CA3AF]">Margin</span>
-                    <span className="tabular-nums text-right text-text-primary">
-                      {(canonicalProfit.margin * 100).toFixed(1)}%
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid gap-4 lg:grid-cols-2">
-                <div className="rounded-sm border border-border/60 bg-background px-3 py-3">
-                  <SectionHeader
-                    label="Recent expense lines"
-                    className="text-[11px] tracking-[0.08em] text-[#9CA3AF] font-medium"
-                  />
-                  <Divider />
-                  <div className="mt-2">
-                    <RecentExpenseLines rows={recentExpenseLines} />
-                  </div>
-                  {recentExpenseLines.length > 0 && (
-                    <div className="mt-2 border-t border-border/60 pt-2">
-                      <Link
-                        href={`/projects/${projectId}?tab=expenses`}
-                        className="text-xs font-medium text-muted-foreground hover:text-foreground"
-                      >
-                        View all in Expenses tab →
-                      </Link>
-                    </div>
-                  )}
-                </div>
-                <div className="rounded-sm border border-border/60 bg-background px-3 py-3">
-                  <SectionHeader
-                    label="Activity feed"
-                    className="text-[11px] tracking-[0.08em] text-[#9CA3AF] font-medium"
-                  />
-                  <Divider />
-                  {activityLogs.length === 0 ? (
-                    <p className="py-4 text-xs text-muted-foreground">No recent activity.</p>
-                  ) : (
-                    <ul className="space-y-2 py-2">
-                      {activityLogs.slice(0, 5).map((log) => (
-                        <li key={log.id} className="text-xs text-foreground">
-                          <span className="text-muted-foreground">
-                            {log.created_at?.slice(0, 16).replace("T", " ")}
-                          </span>
-                          {" — "}
-                          {log.description ?? log.type}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  {activityLogs.length > 0 && (
-                    <div className="mt-2 border-t border-border/60 pt-2">
-                      <Link
-                        href={`/projects/${projectId}?tab=activity`}
-                        className="text-xs font-medium text-muted-foreground hover:text-foreground"
-                      >
-                        View all in Activity tab →
-                      </Link>
-                    </div>
-                  )}
+                  {financialSummary ? (
+                    <>
+                      <div className="flex items-center justify-between gap-3 py-2">
+                        <span className="text-muted-foreground">Collected</span>
+                        <span className="tabular-nums text-right text-text-primary">
+                          {fmtMoney(financialSummary.collected)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 py-2">
+                        <span className="text-muted-foreground">AR outstanding</span>
+                        <span className="tabular-nums text-right text-text-primary">
+                          {fmtMoney(financialSummary.outstanding)}
+                        </span>
+                      </div>
+                    </>
+                  ) : null}
                 </div>
               </div>
             </TabsContent>
@@ -760,83 +918,162 @@ export function ProjectDetailTabsClient({
               )}
             </TabsContent>
 
-            <TabsContent value="financial" className={TAB_PANEL}>
-              <SectionHeader
-                label="Financial"
-                className="text-[11px] tracking-[0.08em] text-[#9CA3AF] font-medium"
-              />
-              <Divider />
-              <p className="text-sm text-muted-foreground mt-1">
-                Invoiced ${billingSummary.invoicedTotal.toLocaleString()} · Collected $
-                {billingSummary.paidTotal.toLocaleString()} · AR balance $
-                {billingSummary.arBalance.toLocaleString()}
-              </p>
-              {projectInvoices.length === 0 ? (
-                <p className="py-6 text-sm text-muted-foreground">No invoices for this project.</p>
-              ) : (
-                <div className="airtable-table-wrap airtable-table-wrap--ruled mt-3">
-                  <div className="airtable-table-scroll">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr>
-                          <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                            Invoice
-                          </th>
-                          <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                            Issue date
-                          </th>
-                          <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                            Status
-                          </th>
-                          <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
-                            Total
-                          </th>
-                          <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
-                            Balance
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {projectInvoices.map((inv) => (
-                          <tr key={inv.id} className={listTableRowStaticClassName}>
-                            <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">
-                              <Link
-                                href={`/financial/invoices/${inv.id}`}
-                                className="font-medium text-foreground hover:underline"
-                              >
-                                {inv.invoiceNo}
-                              </Link>
-                            </td>
-                            <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] tabular-nums">
-                              {inv.issueDate?.slice(0, 10) ?? "—"}
-                            </td>
-                            <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">
-                              <InvoiceStatusBadge status={inv.computedStatus} />
-                            </td>
-                            <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
-                              ${inv.total.toLocaleString()}
-                            </td>
-                            <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
-                              ${inv.balanceDue.toLocaleString()}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+            <TabsContent value="cost" className={cn(TAB_PANEL, "space-y-8")}>
+              <div>
+                <SectionHeader
+                  label="Cost breakdown"
+                  className="text-[11px] tracking-[0.08em] text-[#9CA3AF] font-medium"
+                />
+                <Divider />
+                <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                  {(
+                    [
+                      {
+                        key: "total" as const,
+                        label: "Total cost",
+                        value: projectCost.breakdown.totalCost,
+                      },
+                      {
+                        key: "materials" as const,
+                        label: "Materials",
+                        value: projectCost.breakdown.materials,
+                      },
+                      { key: "labor" as const, label: "Labor", value: projectCost.breakdown.labor },
+                      {
+                        key: "bills" as const,
+                        label: "Bills / Subcontracts",
+                        value: projectCost.breakdown.bills,
+                      },
+                      { key: "other" as const, label: "Other", value: projectCost.breakdown.other },
+                    ] as const
+                  ).map((cell) => {
+                    const active =
+                      cell.key === "total"
+                        ? costBucketFilter === null
+                        : costBucketFilter === cell.key;
+                    return (
+                      <button
+                        key={cell.key}
+                        type="button"
+                        onClick={() => pickBreakdown(cell.key)}
+                        className={cn(
+                          "rounded-xl border border-border/60 bg-white px-3 py-3 text-left transition-colors",
+                          active ? "ring-1 ring-foreground/20 bg-muted/20" : "hover:bg-muted/10"
+                        )}
+                      >
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          {cell.label}
+                        </p>
+                        <p className="mt-1 font-mono text-[16px] font-semibold tabular-nums text-text-primary">
+                          {fmtMoney(cell.value)}
+                        </p>
+                      </button>
+                    );
+                  })}
                 </div>
-              )}
-              <div className="mt-3">
-                <Link
-                  href="/financial/invoices"
-                  className="text-xs font-medium text-muted-foreground hover:text-foreground"
-                >
-                  View all invoices →
-                </Link>
+                <p className="mt-2 text-[12px] text-muted-foreground">
+                  Spent = confirmed expense lines (done, reviewed, approved, paid) on this project +
+                  labor + approved subcontract bills + paid reimbursements. Click a card to filter
+                  the table; Total clears the filter.
+                </p>
+              </div>
+
+              <div>
+                <SectionHeader
+                  label="Cost detail"
+                  className="text-[11px] tracking-[0.08em] text-[#9CA3AF] font-medium"
+                />
+                <Divider />
+                <div className="mt-3">
+                  <ProjectCostLinesTable
+                    rows={filteredCostRows}
+                    projectId={projectId}
+                    hint={costTableHint}
+                    emptyMessage={costTableEmptyMessage}
+                  />
+                </div>
+              </div>
+
+              <div className="border-t border-border/60 pt-6">
+                <SectionHeader
+                  label="Invoicing"
+                  className="text-[11px] tracking-[0.08em] text-[#9CA3AF] font-medium"
+                />
+                <Divider />
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Invoiced {fmtMoney(billingSummary.invoicedTotal)} · Collected{" "}
+                  {fmtMoney(billingSummary.paidTotal)} · AR balance{" "}
+                  {fmtMoney(billingSummary.arBalance)}
+                </p>
+                {projectInvoices.length === 0 ? (
+                  <p className="py-6 text-sm text-muted-foreground">
+                    No invoices for this project.
+                  </p>
+                ) : (
+                  <div className="airtable-table-wrap airtable-table-wrap--ruled mt-3 overflow-hidden rounded-xl border border-border/60 bg-white">
+                    <div className="airtable-table-scroll">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr>
+                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                              Invoice
+                            </th>
+                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                              Issue date
+                            </th>
+                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                              Status
+                            </th>
+                            <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                              Total
+                            </th>
+                            <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                              Balance
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {projectInvoices.map((inv) => (
+                            <tr key={inv.id} className={listTableRowStaticClassName}>
+                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">
+                                <Link
+                                  href={`/financial/invoices/${inv.id}`}
+                                  className="font-medium text-foreground hover:underline"
+                                >
+                                  {inv.invoiceNo}
+                                </Link>
+                              </td>
+                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] tabular-nums">
+                                {inv.issueDate?.slice(0, 10) ?? "—"}
+                              </td>
+                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">
+                                <InvoiceStatusBadge status={inv.computedStatus} />
+                              </td>
+                              <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                                ${inv.total.toLocaleString()}
+                              </td>
+                              <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                                ${inv.balanceDue.toLocaleString()}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+                <div className="mt-3">
+                  <Link
+                    href="/financial/invoices"
+                    className="text-xs font-medium text-muted-foreground hover:text-foreground"
+                  >
+                    View all invoices →
+                  </Link>
+                </div>
               </div>
             </TabsContent>
 
-            <TabsContent value="documents" className={TAB_PANEL}>
+            <TabsContent value="docs" className={TAB_PANEL}>
               <ProjectDocumentsTab projectId={projectId} documents={documents} />
             </TabsContent>
 

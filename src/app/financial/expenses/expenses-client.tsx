@@ -1,94 +1,410 @@
 "use client";
 
+import "./expenses-ui-theme.css";
 import * as React from "react";
 import { startTransition } from "react";
-import { useOnAppSync } from "@/hooks/use-on-app-sync";
+import { flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
-import { Plus, Search } from "lucide-react";
-import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { PageHeader } from "@/components/page-header";
-import { Card } from "@/components/ui/card";
-import { FilterBar } from "@/components/filter-bar";
-import { Select } from "@/components/ui/native-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
-import { SubmitSpinner } from "@/components/ui/submit-spinner";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  getExpenseTotal,
+  deleteExpense,
+  updateExpense,
+  updateExpenseReceiptUrl,
+  updateExpenseForReview,
+  type Expense,
+} from "@/lib/data";
 import { createBrowserClient } from "@/lib/supabase";
-import { DataTable, type Column } from "@/components/data-table";
+import {
+  AlertCircle,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  DollarSign,
+  Filter,
+  RefreshCw,
+  Search,
+  Upload,
+  MoreHorizontal,
+} from "lucide-react";
+import { uiActionLog, uiActionMark, uiNavLog, uiNavMark } from "@/lib/ui-action-perf";
+import {
+  afterLayout,
+  focusFirstFocusableInContainer,
+  neighborRowIdAfterRemove,
+  scrollElementIntoViewNearest,
+} from "@/lib/list-flow";
+import { useSearchParams } from "next/navigation";
+import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
+import { QuickExpenseModal } from "./quick-expense-modal";
+import { UploadReceiptsQueueModal } from "./upload-receipts-queue-modal";
+import type { ExpenseReviewSavePatch } from "./edit-expense-modal";
+import {
+  ExpenseInboxPreviewModal,
+  type ExpenseInboxPreviewSavePayload,
+} from "./expense-inbox-preview-modal";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
+import { useDelayedPending } from "@/hooks/use-delayed-pending";
+import hotToast from "react-hot-toast";
+import { useToast } from "@/components/toast/toast-provider";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  buildExpensesQueryKey,
+  defaultExpenseListSort,
+  expenseCategoriesQueryKey,
+  expensesQueryKeyRoot,
+  fetchExpenseCategories,
+  fetchExpenses,
+  fetchWorkers,
+  type ExpenseListSort,
+  workersQueryKey,
+} from "@/lib/queries/expenses";
+import { isDefaultExpenseListSort } from "@/lib/expenses-db";
+import { cn } from "@/lib/utils";
+import { ExpensesListSkeleton } from "@/components/financial/expenses-list-skeleton";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  ExpenseDateRangeFilter,
+  expenseDateInFilter,
+  type ExpenseDateFilterValue,
+} from "@/components/financial/expense-date-range-filter";
+import {
+  persistLastExpensePaymentAccountId,
+  rememberExpenseVendorPaymentAccount,
+} from "@/lib/expense-payment-preferences";
+import { resolvePreviewSignedUrl } from "@/lib/storage-signed-url";
+import { ExpenseInboxTransactionList } from "./expense-inbox-transaction-list";
+import { expenseInboxDuplicateIdSet } from "@/lib/expense-inbox-dup";
+import {
+  expenseMatchesExpensesArchivePool,
+  expenseMatchesInboxPool,
+  expenseNeedsReviewFromDb,
+  validateMarkDoneRequiresProjectAndCategory,
+} from "@/lib/expense-workflow-status";
+import { getExpenseReceiptItems, type ExpenseReceiptItem } from "@/lib/expense-receipt-items";
 
-type ExpenseRow = {
-  id: string;
-  expense_date: string | null;
-  vendor_name: string | null;
-  payment_method: string | null;
-  reference_no: string | null;
-  total: number | null;
-  line_count: number | null;
-  created_at: string | null;
-  worker_id?: string | null;
-  project_id?: string | null;
-  workers?: { id: string; name: string | null } | null;
-  projects?: { id: string; name: string | null } | null;
+type ProjectRow = { id: string; name: string | null; status?: string | null };
+type WorkerRow = { id: string; name: string };
+
+function mergeExpenseReviewPatch(e: Expense, p: ExpenseReviewSavePatch): Expense {
+  const nextLines =
+    e.lines.length > 0
+      ? e.lines.map((line, idx) =>
+          idx === 0
+            ? { ...line, projectId: p.projectId, category: p.category, amount: p.amount }
+            : line
+        )
+      : [
+          {
+            id: `optimistic-line-${p.expenseId}`,
+            projectId: p.projectId,
+            category: p.category,
+            amount: p.amount,
+          },
+        ];
+  return {
+    ...e,
+    date: p.date !== undefined ? p.date : e.date,
+    vendorName: p.vendorName,
+    notes: p.notes ?? e.notes,
+    status: p.status,
+    workerId: p.workerId,
+    sourceType: p.sourceType !== undefined ? p.sourceType : e.sourceType,
+    paymentAccountId: p.paymentAccountId,
+    paymentAccountName: p.paymentAccountName,
+    lines: nextLines,
+    headerProjectId: p.projectId,
+  };
+}
+
+function mergeExpenseWithPaymentMethod(
+  e: Expense,
+  patch: ExpenseReviewSavePatch,
+  paymentMethod: string
+): Expense {
+  return { ...mergeExpenseReviewPatch(e, patch), paymentMethod };
+}
+
+function receiptItemLooksPdf(item: ExpenseReceiptItem | undefined): boolean {
+  if (!item?.url && !item?.fileName) return false;
+  const name = (item.fileName ?? "").toLowerCase();
+  const u = (item.url ?? "").toLowerCase();
+  return name.endsWith(".pdf") || u.endsWith(".pdf") || u.includes("application/pdf");
+}
+
+async function resolveReceiptPreviewUrls(
+  items: ExpenseReceiptItem[],
+  supabase: ReturnType<typeof createBrowserClient> | null
+): Promise<ExpenseReceiptItem[]> {
+  if (!supabase) return items;
+  const next: ExpenseReceiptItem[] = [];
+  for (const item of items) {
+    const raw = (item.url ?? "").trim();
+    if (!raw || raw.startsWith("blob:")) {
+      next.push(item);
+      continue;
+    }
+    const urlOut = await resolvePreviewSignedUrl({
+      supabase,
+      rawUrlOrPath: raw,
+      ttlSec: 3600,
+      bucketCandidates: ["expense-attachments", "receipts"],
+    });
+    next.push(urlOut ? { ...item, url: urlOut } : item);
+  }
+  return next;
+}
+
+function normalizedVendorLabel(vendor: string): string {
+  const v = (vendor ?? "").trim();
+  if (!v || /^unknown$/i.test(v) || /^smokevendor[-_]/i.test(v)) return "Needs Review";
+  return v;
+}
+
+/** Radix Select cannot use `""` as a value — map “all / placeholder” filters to this sentinel. */
+const EXPENSE_FILTER_ALL = "__hh_all__";
+
+function expenseHasReceipt(e: Expense): boolean {
+  return getExpenseReceiptItems(e).length > 0;
+}
+
+function extractExpenseTags(expense: Expense): string[] {
+  const notes = expense.notes ?? "";
+  const m = notes.match(/items:\s*(.+)$/im);
+  if (m?.[1]) {
+    return m[1]
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .slice(0, 3);
+  }
+  return Array.from(new Set(expense.lines.map((l) => l.category).filter(Boolean))).slice(0, 3);
+}
+
+const EXPENSE_SORT_STORAGE_KEY = "hh-expenses-sort-v1";
+
+function readStoredExpenseSort(): ExpenseListSort {
+  if (typeof window === "undefined") return defaultExpenseListSort;
+  try {
+    const raw = localStorage.getItem(EXPENSE_SORT_STORAGE_KEY);
+    if (!raw) return defaultExpenseListSort;
+    const p = JSON.parse(raw) as Partial<ExpenseListSort>;
+    if (
+      (p.field === "date" || p.field === "amount" || p.field === "vendor") &&
+      (p.order === "asc" || p.order === "desc")
+    ) {
+      return { field: p.field, order: p.order };
+    }
+  } catch {
+    /* ignore */
+  }
+  return defaultExpenseListSort;
+}
+
+type ExpensesAdvancedFiltersFieldsProps = {
+  projectFilter: string;
+  setProjectFilter: React.Dispatch<React.SetStateAction<string>>;
+  categoryFilter: string;
+  setCategoryFilter: React.Dispatch<React.SetStateAction<string>>;
+  expenseDateFilter: ExpenseDateFilterValue;
+  onExpenseDateChange: (next: ExpenseDateFilterValue) => void;
+  sourceTypeFilter: string;
+  setSourceTypeFilter: React.Dispatch<React.SetStateAction<string>>;
+  expenseSort: ExpenseListSort;
+  onSortValueChange: (value: string) => void;
+  safeProjects: ProjectRow[];
+  categoriesList: string[];
+  projectsError: string | null;
+  selectTriggerClassName: string;
 };
 
-type LineMiniRow = {
-  expense_id: string;
-  project_id: string | null;
-  category: string | null;
-  amount: number | null;
-  projects?: { id: string; name: string | null } | null;
-};
-
-type LineMiniRowRaw = Omit<LineMiniRow, "projects"> & {
-  projects?:
-    | Array<{ id: string; name: string | null }>
-    | { id: string; name: string | null }
-    | null;
-};
-
-function one<T>(value: T | T[] | null | undefined): T | null {
-  if (!value) return null;
-  return Array.isArray(value) ? (value[0] ?? null) : value;
+function ExpensesAdvancedFiltersFields({
+  projectFilter,
+  setProjectFilter,
+  categoryFilter,
+  setCategoryFilter,
+  expenseDateFilter,
+  onExpenseDateChange,
+  sourceTypeFilter,
+  setSourceTypeFilter,
+  expenseSort,
+  onSortValueChange,
+  safeProjects,
+  categoriesList,
+  projectsError,
+  selectTriggerClassName,
+}: ExpensesAdvancedFiltersFieldsProps) {
+  return (
+    <div className="grid grid-cols-1 gap-3">
+      <Select
+        value={projectFilter === "" ? EXPENSE_FILTER_ALL : projectFilter}
+        onValueChange={(v) => setProjectFilter(v === EXPENSE_FILTER_ALL ? "" : v)}
+      >
+        <SelectTrigger data-expenses-filter-project className={selectTriggerClassName}>
+          <SelectValue placeholder="Project" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={EXPENSE_FILTER_ALL}>Project</SelectItem>
+          {safeProjects.map((p) => (
+            <SelectItem key={p.id} value={p.id}>
+              {p.name ?? p.id}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {projectsError ? (
+        <span className="text-[11px] text-amber-600 dark:text-amber-400">{projectsError}</span>
+      ) : null}
+      <Select
+        value={categoryFilter === "" ? EXPENSE_FILTER_ALL : categoryFilter}
+        onValueChange={(v) => setCategoryFilter(v === EXPENSE_FILTER_ALL ? "" : v)}
+      >
+        <SelectTrigger className={selectTriggerClassName}>
+          <SelectValue placeholder="Category" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={EXPENSE_FILTER_ALL}>Category</SelectItem>
+          {categoriesList.map((c) => (
+            <SelectItem key={c} value={c}>
+              {c}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <ExpenseDateRangeFilter value={expenseDateFilter} onChange={onExpenseDateChange} />
+      <Select
+        value={sourceTypeFilter === "" ? EXPENSE_FILTER_ALL : sourceTypeFilter}
+        onValueChange={(v) => setSourceTypeFilter(v === EXPENSE_FILTER_ALL ? "" : v)}
+      >
+        <SelectTrigger className={selectTriggerClassName}>
+          <SelectValue placeholder="Source" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={EXPENSE_FILTER_ALL}>Source</SelectItem>
+          <SelectItem value="company">Company</SelectItem>
+          <SelectItem value="receipt_upload">Receipt</SelectItem>
+          <SelectItem value="reimbursement">Reimbursement</SelectItem>
+        </SelectContent>
+      </Select>
+      <Select value={`${expenseSort.field}|${expenseSort.order}`} onValueChange={onSortValueChange}>
+        <SelectTrigger className={selectTriggerClassName} aria-label="Sort expenses">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="date|desc">Sort: Date ↓</SelectItem>
+          <SelectItem value="date|asc">Sort: Date ↑</SelectItem>
+          <SelectItem value="amount|desc">Sort: Amount ↓</SelectItem>
+          <SelectItem value="amount|asc">Sort: Amount ↑</SelectItem>
+          <SelectItem value="vendor|asc">Sort: Vendor A–Z</SelectItem>
+          <SelectItem value="vendor|desc">Sort: Vendor Z–A</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
 }
 
-function safeNumber(n: number | null | undefined): number {
-  return Number.isFinite(n as number) ? (n as number) : 0;
+function KpiSparkline({ className }: { className?: string }) {
+  return (
+    <svg
+      className={cn(
+        "h-8 w-[4.5rem] shrink-0 opacity-60 text-gray-300 dark:text-gray-600",
+        className
+      )}
+      viewBox="0 0 72 28"
+      aria-hidden
+    >
+      <polyline
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.25"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        points="2,20 14,14 26,18 38,8 50,12 62,6 70,10"
+      />
+    </svg>
+  );
 }
 
-function money(n: number): string {
-  return `$${Math.round(n).toLocaleString()}`;
+function TransactionInboxEntryActions({
+  onQuick,
+  onUpload,
+  onNewExpense,
+  className,
+  uploadLabel = "Upload",
+  quickButtonSize = "sm",
+}: {
+  onQuick: () => void;
+  onUpload: () => void;
+  onNewExpense: () => void;
+  className?: string;
+  uploadLabel?: string;
+  quickButtonSize?: "sm" | "default";
+}) {
+  return (
+    <div className={cn("flex flex-wrap items-center justify-end gap-1.5", className)}>
+      <Button
+        type="button"
+        variant="default"
+        size={quickButtonSize}
+        className="shrink-0 shadow-none"
+        onClick={onQuick}
+      >
+        Quick
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="shrink-0 shadow-none"
+        onClick={onUpload}
+      >
+        <Upload className="mr-1 h-3.5 w-3.5 shrink-0" aria-hidden />
+        {uploadLabel}
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0 shadow-none"
+            aria-label="More actions"
+          >
+            <MoreHorizontal className="h-4 w-4 shrink-0" aria-hidden />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="z-[200] w-44">
+          <DropdownMenuItem onSelect={onNewExpense}>New expense</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
 }
 
-function projectSummaryLabel(
-  e: ExpenseRow,
-  linesForExpense: LineMiniRow[],
-  projectNameById: Map<string, string>
-): string {
-  const distinct = new Set<string>();
-  for (const l of linesForExpense) {
-    const pid = l.project_id;
-    if (pid != null && String(pid).trim() !== "") distinct.add(String(pid).trim());
-  }
-  const hid = e.project_id;
-  if (hid != null && String(hid).trim() !== "") distinct.add(String(hid).trim());
-
-  if (distinct.size === 0) {
-    const lineCount = linesForExpense.length;
-    const reported = e.line_count ?? 0;
-    if (lineCount === 0 && reported === 0) return "—";
-    return "Overhead";
-  }
-  if (distinct.size === 1) {
-    const id = [...distinct][0]!;
-    const fromLine = linesForExpense.find((l) => l.project_id === id);
-    return projectNameById.get(id) ?? fromLine?.projects?.name ?? e.projects?.name ?? id;
-  }
-  return `${distinct.size} projects`;
-}
-
-export function ExpensesClient() {
+export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const inboxMode = pool === "inbox";
+  const archiveMode = pool === "expenses";
+  const listPath = inboxMode ? "/financial/inbox" : "/financial/expenses";
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const configured = Boolean(url && anon);
@@ -97,447 +413,1435 @@ export function ExpensesClient() {
     [configured, url, anon]
   );
 
-  const PAGE_SIZE = 80;
-  const [loading, setLoading] = React.useState(true);
-  const [loadingMore, setLoadingMore] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-  const [rows, setRows] = React.useState<ExpenseRow[]>([]);
-  const [lines, setLines] = React.useState<LineMiniRow[]>([]);
-  const [hasMore, setHasMore] = React.useState(true);
-  const [query, setQuery] = React.useState("");
-  const [projectFilter, setProjectFilter] = React.useState("");
-  const [categoryFilter, setCategoryFilter] = React.useState("");
-
-  const rowsRef = React.useRef(rows);
-  const linesRef = React.useRef(lines);
-  React.useEffect(() => {
-    rowsRef.current = rows;
-  }, [rows]);
-  React.useEffect(() => {
-    linesRef.current = lines;
-  }, [lines]);
-
-  const fetchPage = React.useCallback(
-    async (offset: number, append: boolean) => {
-      if (!supabase) return;
-      const setBusy = append ? setLoadingMore : setLoading;
-      setBusy(true);
-      if (!append) setError(null);
-      type ExpRaw = { data: Record<string, unknown>[] | null; error: { message: string } | null };
-      let expRes: ExpRaw = (await supabase
-        .from("expenses")
-        .select(
-          "id,expense_date,vendor_name,payment_method,reference_no,total,line_count,created_at,worker_id,project_id,workers(id,name),projects(id,name)"
-        )
-        .order("expense_date", { ascending: false })
-        .range(offset, offset + PAGE_SIZE - 1)) as ExpRaw;
-      if (expRes.error) {
-        expRes = (await supabase
-          .from("expenses")
-          .select(
-            "id,expense_date,vendor_name,payment_method,reference_no,total,line_count,created_at"
-          )
-          .order("expense_date", { ascending: false })
-          .range(offset, offset + PAGE_SIZE - 1)) as ExpRaw;
-      }
-      if (expRes.error) {
-        setError(expRes.error.message || "Failed to load expenses.");
-        if (!append) {
-          setRows([]);
-          setLines([]);
-        }
-        setBusy(false);
-        return;
-      }
-      const rawExpenses = (expRes.data ?? []) as (ExpenseRow & {
-        workers?: unknown;
-        projects?: unknown;
-      })[];
-      const expenses: ExpenseRow[] = rawExpenses.map((r) => ({
-        ...r,
-        workers:
-          one(
-            r.workers as
-              | { id: string; name: string | null }
-              | { id: string; name: string | null }[]
-              | null
-          ) ?? undefined,
-        projects:
-          one(
-            r.projects as
-              | { id: string; name: string | null }
-              | { id: string; name: string | null }[]
-              | null
-          ) ?? undefined,
-      }));
-      setHasMore(expenses.length === PAGE_SIZE);
-      const ids = expenses.map((e) => e.id);
-      let lineRows: LineMiniRow[] = [];
-      if (ids.length > 0) {
-        const lineRes = await supabase
-          .from("expense_lines")
-          .select("expense_id,project_id,category,amount,projects(id,name)")
-          .in("expense_id", ids);
-        lineRows = lineRes.error
-          ? []
-          : ((lineRes.data ?? []) as unknown as LineMiniRowRaw[]).map((r) => ({
-              ...r,
-              projects: one(r.projects),
-            }));
-      }
-      if (append) {
-        setRows((prev) => [...prev, ...expenses]);
-        setLines((prev) => [...prev, ...lineRows]);
-      } else {
-        setRows(expenses);
-        setLines(lineRows);
-      }
-      setBusy(false);
-    },
-    [supabase]
+  const [expenseSort, setExpenseSort] = React.useState<ExpenseListSort>(() =>
+    readStoredExpenseSort()
   );
 
-  const refresh = React.useCallback(async () => {
-    if (!supabase) {
-      setError("Supabase is not configured.");
-      setRows([]);
-      setLines([]);
-      setLoading(false);
-      setHasMore(false);
-      return;
-    }
-    setHasMore(true);
-    await fetchPage(0, false);
-  }, [supabase, fetchPage]);
+  const readCachedCategories = React.useCallback(
+    () => queryClient.getQueryData<string[]>(expenseCategoriesQueryKey),
+    [queryClient]
+  );
+  const readCachedWorkers = React.useCallback(
+    () => queryClient.getQueryData<WorkerRow[]>(workersQueryKey),
+    [queryClient]
+  );
+  const [projects, setProjects] = React.useState<ProjectRow[]>([]);
+  const [workers, setWorkers] = React.useState<WorkerRow[]>(() => readCachedWorkers() ?? []);
+  const [projectsError, setProjectsError] = React.useState<string | null>(null);
+  const [expenses, setExpenses] = React.useState<Expense[]>(
+    () => queryClient.getQueryData<Expense[]>(buildExpensesQueryKey(readStoredExpenseSort())) ?? []
+  );
+  const [categoriesList, setCategoriesList] = React.useState<string[]>(
+    () => readCachedCategories() ?? []
+  );
+
+  const {
+    data: expensesQueryData,
+    isPending: expensesQueryPending,
+    isFetching: expensesQueryFetching,
+    isError: expensesQueryError,
+    status: expensesQueryStatus,
+  } = useQuery({
+    queryKey: buildExpensesQueryKey(expenseSort),
+    queryFn: () => fetchExpenses(expenseSort),
+    placeholderData: keepPreviousData,
+  });
 
   React.useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    try {
+      localStorage.setItem(EXPENSE_SORT_STORAGE_KEY, JSON.stringify(expenseSort));
+    } catch {
+      /* ignore */
+    }
+  }, [expenseSort]);
+  const { data: categoriesQueryData } = useQuery({
+    queryKey: expenseCategoriesQueryKey,
+    queryFn: fetchExpenseCategories,
+    placeholderData: keepPreviousData,
+  });
+  const { data: workersQueryData } = useQuery({
+    queryKey: workersQueryKey,
+    queryFn: fetchWorkers,
+    placeholderData: keepPreviousData,
+  });
+
+  React.useLayoutEffect(() => {
+    if (expensesQueryData === undefined) return;
+    setExpenses(expensesQueryData);
+  }, [expensesQueryData]);
+
+  /** Prefer React Query payload when mirrored state is still empty (avoids empty archive after reload). */
+  const expensesForListing = React.useMemo(
+    () => (expenses.length > 0 ? expenses : (expensesQueryData ?? [])),
+    [expenses, expensesQueryData]
+  );
+  React.useLayoutEffect(() => {
+    if (categoriesQueryData === undefined) return;
+    setCategoriesList(categoriesQueryData);
+  }, [categoriesQueryData]);
+  React.useLayoutEffect(() => {
+    if (workersQueryData === undefined) return;
+    setWorkers(workersQueryData as WorkerRow[]);
+  }, [workersQueryData]);
+
+  const bundleWaiting = expensesQueryPending && expensesQueryData === undefined;
+  const showExpensesSkeleton = useDelayedPending(bundleWaiting && !expensesQueryError);
+  /** Background refetch (sort/filter) — keep list visible, avoid “full skeleton” feel. */
+  const expensesListRefetching = Boolean(
+    expensesQueryFetching && expensesQueryData !== undefined && !expensesQueryError
+  );
+  const [search, setSearch] = React.useState("");
+  const [projectFilter, setProjectFilter] = React.useState("");
+  const [categoryFilter, setCategoryFilter] = React.useState("");
+  const [expenseDateFilter, setExpenseDateFilter] = React.useState<ExpenseDateFilterValue>({
+    kind: "all",
+  });
+  const [sourceTypeFilter, setSourceTypeFilter] = React.useState("");
+  const [activeExpenseId, setActiveExpenseId] = React.useState<string | null>(null);
+  const rowElsRef = React.useRef<Record<string, HTMLTableRowElement | HTMLLIElement | null>>({});
+  const emptyExpensesRef = React.useRef<HTMLDivElement>(null);
+  const listView: "all" | "unreviewed" = inboxMode ? "unreviewed" : "all";
+
+  React.useEffect(() => {
+    if (!archiveMode) return;
+    if (searchParams.get("view") === "unreviewed") {
+      startTransition(() => router.replace("/financial/inbox"));
+    }
+  }, [archiveMode, router, searchParams]);
+
+  const applyExpenseSortValue = React.useCallback(
+    (v: string) => {
+      const [field, order] = v.split("|") as [ExpenseListSort["field"], ExpenseListSort["order"]];
+      if (
+        (field === "date" || field === "amount" || field === "vendor") &&
+        (order === "asc" || order === "desc")
+      ) {
+        setExpenseSort({ field, order });
+        const sp = new URLSearchParams(searchParams.toString());
+        sp.set("page", "1");
+        router.push(`${listPath}?${sp.toString()}`, { scroll: false });
+      }
+    },
+    [router, searchParams, listPath]
+  );
+
+  const onExpenseDateFilterChange = React.useCallback(
+    (next: ExpenseDateFilterValue) => {
+      setExpenseDateFilter(next);
+      const sp = new URLSearchParams(searchParams.toString());
+      sp.set("page", "1");
+      router.push(`${listPath}?${sp.toString()}`, { scroll: false });
+    },
+    [router, searchParams, listPath]
+  );
+  const appliedProjectIdFromUrl = React.useRef(false);
+  React.useEffect(() => {
+    if (appliedProjectIdFromUrl.current) return;
+    const pid = searchParams.get("project_id");
+    if (pid) {
+      setProjectFilter(pid);
+      appliedProjectIdFromUrl.current = true;
+    }
+  }, [searchParams]);
+  const [receiptPreview, setReceiptPreview] = React.useState<{
+    items: ExpenseReceiptItem[];
+    index: number;
+    expenseId?: string;
+  } | null>(null);
+  const [quickExpenseOpen, setQuickExpenseOpen] = React.useState(false);
+  const [uploadReceiptsOpen, setUploadReceiptsOpen] = React.useState(false);
+  const [filtersDrawerOpen, setFiltersDrawerOpen] = React.useState(false);
+  const [filtersPopoverOpen, setFiltersPopoverOpen] = React.useState(false);
+  const receiptReplaceRef = React.useRef<HTMLInputElement>(null);
+  const [receiptReplacing, setReceiptReplacing] = React.useState(false);
+  const [previewExpense, setPreviewExpense] = React.useState<Expense | null>(null);
+  const [previewOpen, setPreviewOpen] = React.useState(false);
+  const [previewEnterMode, setPreviewEnterMode] = React.useState<"preview" | "edit">("preview");
+  const [deletingExpenseId, setDeletingExpenseId] = React.useState<string | null>(null);
+  const expensesRef = React.useRef<Expense[]>([]);
+  expensesRef.current = expenses;
+
+  const projectsFetchGenRef = React.useRef(0);
+  React.useEffect(() => {
+    if (!supabase) {
+      setProjectsError("Supabase is not configured.");
+      setProjects([]);
+      return;
+    }
+    const gen = ++projectsFetchGenRef.current;
+    let cancelled = false;
+    (async () => {
+      const { data: projectsData, error } = await supabase
+        .from("projects")
+        .select("id,name,status")
+        .order("name");
+      if (cancelled || gen !== projectsFetchGenRef.current) return;
+      if (error) {
+        setProjectsError(error.message ?? "Failed to load projects.");
+        setProjects([]);
+        return;
+      }
+      setProjectsError(null);
+      const safe = projectsData ?? [];
+      setProjects(Array.isArray(safe) ? safe : []);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [supabase]);
+
+  const safeProjects = React.useMemo(() => projects ?? [], [projects]);
+  const projectNameById = React.useMemo(
+    () => new Map(safeProjects.map((p) => [p.id, p.name ?? p.id])),
+    [safeProjects]
+  );
+  const workerNameById = React.useMemo(
+    () => new Map(workers.map((w) => [w.id, w.name])),
+    [workers]
+  );
+
+  const inboxDupAll = React.useMemo(
+    () => expenseInboxDuplicateIdSet(expensesForListing, getExpenseTotal),
+    [expensesForListing]
+  );
+  const inboxAttentionCount = React.useMemo(
+    () =>
+      expensesForListing.filter((e) => expenseMatchesInboxPool(e, inboxDupAll.has(e.id))).length,
+    [expensesForListing, inboxDupAll]
+  );
+  const archivedExpenses = React.useMemo(
+    () => expensesForListing.filter(expenseMatchesExpensesArchivePool),
+    [expensesForListing]
+  );
+
+  const summary = React.useMemo(() => {
+    const now = new Date();
+    const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-`;
+    const basis = archiveMode ? archivedExpenses : expensesForListing;
+    const monthTotal = basis
+      .filter((e) => (e.date ?? "").startsWith(ym))
+      .reduce((s, e) => s + getExpenseTotal(e), 0);
+    const allTotal = basis.reduce((s, e) => s + getExpenseTotal(e), 0);
+    const reimbursementTotal = basis
+      .filter((e) => e.sourceType === "reimbursement")
+      .reduce((s, e) => s + getExpenseTotal(e), 0);
+    return {
+      monthTotal,
+      allTotal,
+      inboxQueueCount: inboxAttentionCount,
+      archivedCount: archivedExpenses.length,
+      reimbursementTotal,
+    };
+  }, [expensesForListing, archivedExpenses, archiveMode, inboxAttentionCount]);
+
+  const baseFilteredExpenses = React.useMemo(() => {
+    let list = expensesForListing;
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter((e) => {
+        const vendorQ = normalizedVendorLabel(e.vendorName).toLowerCase().includes(q);
+        const refQ = e.referenceNo?.toLowerCase().includes(q);
+        const memoQ = e.lines.some((l) => (l.memo ?? "").toLowerCase().includes(q));
+        const tagQ = extractExpenseTags(e).some((t) => t.toLowerCase().includes(q));
+        const amtQ = getExpenseTotal(e).toFixed(2).includes(q.replace(/[$,]/g, ""));
+        const notesQ = (e.notes ?? "").toLowerCase().includes(q);
+        const pid = e.headerProjectId ?? e.lines[0]?.projectId ?? "";
+        const projQ = pid ? (projectNameById.get(pid) ?? "").toLowerCase().includes(q) : false;
+        const workerQ = e.workerId
+          ? (workerNameById.get(e.workerId) ?? "").toLowerCase().includes(q)
+          : false;
+        const catQ = e.lines.some((l) => (l.category ?? "").toLowerCase().includes(q));
+        return vendorQ || refQ || memoQ || tagQ || amtQ || notesQ || projQ || workerQ || catQ;
+      });
+    }
+    if (projectFilter)
+      list = list.filter(
+        (e) =>
+          e.lines.some((l) => l.projectId === projectFilter) ||
+          (e.headerProjectId != null && e.headerProjectId === projectFilter)
+      );
+    if (categoryFilter)
+      list = list.filter((e) => e.lines.some((l) => l.category === categoryFilter));
+    if (sourceTypeFilter)
+      list = list.filter((e) => (e.sourceType ?? "company") === sourceTypeFilter);
+    if (expenseDateFilter.kind === "range") {
+      list = list.filter((e) => expenseDateInFilter(e.date, expenseDateFilter));
+    }
+    const dupSet = expenseInboxDuplicateIdSet(list, getExpenseTotal);
+    if (inboxMode) {
+      list = list.filter((e) => expenseMatchesInboxPool(e, dupSet.has(e.id)));
+    } else {
+      list = list.filter(expenseMatchesExpensesArchivePool);
+    }
+    return list;
+  }, [
+    expensesForListing,
+    search,
+    projectFilter,
+    categoryFilter,
+    expenseDateFilter,
+    sourceTypeFilter,
+    projectNameById,
+    workerNameById,
+    inboxMode,
+  ]);
+
+  const filteredSortedExpenses = React.useMemo(() => {
+    let list = baseFilteredExpenses;
+    if (inboxMode && isDefaultExpenseListSort(expenseSort)) {
+      list = [...list].sort((a, b) => {
+        const ha = expenseHasReceipt(a) ? 1 : 0;
+        const hb = expenseHasReceipt(b) ? 1 : 0;
+        if (ha !== hb) return hb - ha;
+        const ta = getExpenseTotal(a);
+        const tb = getExpenseTotal(b);
+        if (ta !== tb) return tb - ta;
+        const da = (a.date ?? "").slice(0, 10);
+        const db = (b.date ?? "").slice(0, 10);
+        return db.localeCompare(da);
+      });
+    }
+    return list;
+  }, [baseFilteredExpenses, inboxMode, expenseSort]);
+
+  const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
+  const [pageSize, setPageSize] = React.useState(25);
+  const total = filteredSortedExpenses.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const curPage = Math.min(page, totalPages);
+  const pageRows = React.useMemo(() => {
+    const start = (curPage - 1) * pageSize;
+    return filteredSortedExpenses.slice(start, start + pageSize);
+  }, [curPage, filteredSortedExpenses, pageSize]);
+
+  const setPageSizeAndReset = React.useCallback(
+    (next: number) => {
+      setPageSize(next);
+      const sp = new URLSearchParams(searchParams.toString());
+      sp.set("page", "1");
+      router.push(`${listPath}?${sp.toString()}`, { scroll: false });
+    },
+    [router, searchParams, listPath]
+  );
+
+  const pageRowsRef = React.useRef(pageRows);
+  pageRowsRef.current = pageRows;
+  const listViewRef = React.useRef(listView);
+  listViewRef.current = listView;
+
+  const pageRowIdsKey = React.useMemo(() => pageRows.map((r) => r.id).join("|"), [pageRows]);
+
+  /** Latest sort for mutation callbacks (avoid stale closure vs. `buildExpensesQueryKey`). */
+  const expenseSortRef = React.useRef(expenseSort);
+  expenseSortRef.current = expenseSort;
+
+  React.useEffect(() => {
+    if (listView !== "unreviewed") {
+      setActiveExpenseId(null);
+      return;
+    }
+    setActiveExpenseId((cur) => {
+      const ids = pageRowIdsKey ? pageRowIdsKey.split("|").filter(Boolean) : [];
+      if (cur && ids.includes(cur)) return cur;
+      return ids[0] ?? null;
+    });
+  }, [listView, pageRowIdsKey]);
+
+  React.useEffect(() => {
+    if (!activeExpenseId || listView !== "unreviewed") return;
+    const el = rowElsRef.current[activeExpenseId];
+    el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [activeExpenseId, listView, pageRowIdsKey]);
+
+  const setPage = React.useCallback(
+    (nextPage: number) => {
+      const sp = new URLSearchParams(searchParams);
+      sp.set("page", String(nextPage));
+      startTransition(() => router.push(`${listPath}?${sp.toString()}`, { scroll: false }));
+    },
+    [router, searchParams, listPath]
+  );
+
+  const manualRefreshGenRef = React.useRef(0);
+  const refresh = React.useCallback(async () => {
+    const gen = ++manualRefreshGenRef.current;
+    try {
+      const [ex, cat, w] = await Promise.all([
+        fetchExpenses(expenseSort),
+        fetchExpenseCategories(),
+        fetchWorkers(),
+      ]);
+      if (gen !== manualRefreshGenRef.current) return;
+      setExpenses(ex);
+      setCategoriesList(cat);
+      setWorkers(w as WorkerRow[]);
+      queryClient.setQueryData(buildExpensesQueryKey(expenseSort), ex);
+      queryClient.setQueryData(expenseCategoriesQueryKey, cat);
+      queryClient.setQueryData(workersQueryKey, w);
+    } catch (e) {
+      if (gen !== manualRefreshGenRef.current) return;
+      const msg = e instanceof Error ? e.message : "Could not refresh.";
+      toast({ title: "Refresh failed", description: msg, variant: "error" });
+    }
+  }, [queryClient, expenseSort, toast]);
+
+  const openReceiptPreview = React.useCallback(
+    async (row: Expense) => {
+      try {
+        const raw = getExpenseReceiptItems(row);
+        if (raw.length === 0) {
+          toast({
+            title: "No receipt",
+            description: "This expense has no attachment or receipt URL yet.",
+            variant: "default",
+          });
+          return;
+        }
+        const items = await resolveReceiptPreviewUrls(raw, supabase);
+        setReceiptPreview({ items, index: 0, expenseId: row.id });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Could not prepare preview.";
+        toast({ title: "Preview failed", description: msg, variant: "error" });
+      }
+    },
+    [supabase, toast]
+  );
+
+  const receiptPreviewRef = React.useRef(receiptPreview);
+  receiptPreviewRef.current = receiptPreview;
+  const {
+    openPreview,
+    closePreview,
+    patchPreview,
+    isOpen: attachmentPreviewOpen,
+  } = useAttachmentPreview();
+
+  React.useEffect(() => {
+    if (!receiptPreview) {
+      closePreview();
+      return;
+    }
+    openPreview({
+      files: receiptPreview.items.map((it) => ({
+        url: it.url ?? "",
+        fileName: it.fileName ?? "Receipt",
+        fileType: (receiptItemLooksPdf(it) ? "pdf" : "image") as "pdf" | "image",
+      })),
+      initialIndex: receiptPreview.index,
+      onIndexChange: (i: number) => setReceiptPreview((p) => (p ? { ...p, index: i } : p)),
+      showReplace: Boolean(receiptPreview.expenseId && supabase),
+      replaceInputRef: receiptReplaceRef,
+      replaceBusy: receiptReplacing,
+      onReplaceClick: () => receiptReplaceRef.current?.click(),
+      onReplaceInputChange: async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        const rp = receiptPreviewRef.current;
+        if (!file || !rp?.expenseId || !supabase) return;
+        setReceiptReplacing(true);
+        try {
+          const path = `receipts/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+          const { error } = await supabase.storage.from("receipts").upload(path, file, {
+            contentType: file.type || "application/octet-stream",
+            upsert: true,
+          });
+          if (error) throw error;
+          const { data } = supabase.storage.from("receipts").getPublicUrl(path);
+          await updateExpenseReceiptUrl(rp.expenseId, data.publicUrl);
+          setReceiptPreview((p) =>
+            p
+              ? {
+                  ...p,
+                  items: p.items.map((it, idx) =>
+                    idx === p.index ? { ...it, url: data.publicUrl } : it
+                  ),
+                }
+              : null
+          );
+          toast({ title: "Receipt replaced", variant: "success" });
+          void refresh();
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : "Replace failed.";
+          toast({ title: "Replace failed", description: msg, variant: "error" });
+        } finally {
+          setReceiptReplacing(false);
+          e.target.value = "";
+        }
+      },
+      onClosed: () => setReceiptPreview(null),
+    });
+  }, [receiptPreview, supabase, closePreview, openPreview, refresh, toast]);
+
+  React.useEffect(() => {
+    patchPreview({ replaceBusy: receiptReplacing });
+  }, [receiptReplacing, patchPreview]);
+
+  const handlePreviewModalSave = React.useCallback(
+    async (payload: ExpenseInboxPreviewSavePayload): Promise<Expense | null> => {
+      const prevList = expensesRef.current;
+      const target = prevList.find((e) => e.id === payload.expenseId);
+      if (!target) return null;
+      const { paymentMethod: pm, ...reviewPatch } = payload;
+      const merged = mergeExpenseWithPaymentMethod(target, reviewPatch, pm);
+      const t0 = uiActionMark();
+      flushSync(() => {
+        setExpenses((prev) => prev.map((e) => (e.id === payload.expenseId ? merged : e)));
+      });
+      uiActionLog("expense-preview-save-ui", t0, 100);
+      try {
+        const next = await updateExpenseForReview(payload.expenseId, {
+          date: reviewPatch.date,
+          vendorName: reviewPatch.vendorName,
+          amount: reviewPatch.amount,
+          projectId: reviewPatch.projectId,
+          workerId: reviewPatch.workerId,
+          category: reviewPatch.category,
+          notes: reviewPatch.notes,
+          status: reviewPatch.status,
+          sourceType: reviewPatch.sourceType,
+          paymentAccountId: reviewPatch.paymentAccountId,
+        });
+        let final: Expense = next ?? merged;
+        const pmTrim = pm.trim();
+        if (pmTrim !== (target.paymentMethod ?? "").trim()) {
+          const pmNext = await updateExpense(payload.expenseId, { paymentMethod: pmTrim });
+          if (pmNext) final = pmNext;
+        } else if (next) {
+          final = next;
+        }
+        // Keep UI aligned with the modal even if `updateExpense` verification returns null (stale read).
+        if (pmTrim) final = { ...final, paymentMethod: pmTrim };
+        flushSync(() => {
+          setExpenses((prev) => prev.map((e) => (e.id === payload.expenseId ? final : e)));
+          setPreviewExpense(final);
+        });
+        queryClient.setQueryData(
+          buildExpensesQueryKey(expenseSortRef.current),
+          (old: Expense[] | undefined) =>
+            old ? old.map((e) => (e.id === payload.expenseId ? final : e)) : old
+        );
+        const pa = final.paymentAccountId?.trim();
+        if (pa && (final.vendorName ?? "").trim()) {
+          rememberExpenseVendorPaymentAccount(final.vendorName!.trim(), pa);
+          persistLastExpensePaymentAccountId(pa);
+        }
+        hotToast.success("Saved");
+        return final;
+      } catch {
+        flushSync(() => setExpenses(prevList));
+        hotToast.error("Something went wrong");
+        return null;
+      }
+    },
+    [queryClient]
+  );
+
+  const handlePreviewMarkReviewed = React.useCallback(
+    async (expense: Expense) => {
+      const gate = validateMarkDoneRequiresProjectAndCategory(expense);
+      if (gate === "project") {
+        hotToast.error("Please select a project before marking as done");
+        return;
+      }
+      if (gate === "category") {
+        hotToast.error("Please select a category before marking as done");
+        return;
+      }
+      const prevList = expensesRef.current;
+      flushSync(() => {
+        setExpenses((list) =>
+          list.map((e) => (e.id === expense.id ? { ...e, status: "reviewed" as const } : e))
+        );
+      });
+      try {
+        const saved = await updateExpenseForReview(expense.id, { status: "reviewed" });
+        const final = saved ?? { ...expense, status: "reviewed" as const };
+        flushSync(() => {
+          setExpenses((list) => list.map((e) => (e.id === expense.id ? final : e)));
+        });
+        queryClient.setQueryData(
+          buildExpensesQueryKey(expenseSortRef.current),
+          (old: Expense[] | undefined) =>
+            old ? old.map((e) => (e.id === expense.id ? final : e)) : old
+        );
+        hotToast.success("Marked done");
+        if (inboxMode) {
+          flushSync(() => {
+            setPreviewOpen(false);
+            setPreviewExpense(null);
+          });
+        }
+      } catch {
+        flushSync(() => setExpenses(prevList));
+        hotToast.error("Status update failed");
+      }
+    },
+    [queryClient, inboxMode]
+  );
+
+  const openExpensePreview = React.useCallback(
+    (row: Expense, opts?: { mode?: "preview" | "edit" }) => {
+      setPreviewExpense(row);
+      setPreviewEnterMode(opts?.mode ?? "preview");
+      setPreviewOpen(true);
+    },
+    []
+  );
 
   useOnAppSync(
     React.useCallback(() => {
-      void refresh();
-    }, [refresh]),
-    [refresh]
+      void queryClient.invalidateQueries({ queryKey: expensesQueryKeyRoot });
+      void queryClient.invalidateQueries({ queryKey: expenseCategoriesQueryKey });
+      void queryClient.invalidateQueries({ queryKey: workersQueryKey });
+    }, [queryClient]),
+    []
   );
-
-  const projectsForFilter = React.useMemo(() => {
-    const map = new Map<string, string>();
-    for (const l of lines) {
-      const pid = l.project_id;
-      if (!pid) continue;
-      if (!map.has(pid)) map.set(pid, l.projects?.name || pid);
-    }
-    for (const e of rows) {
-      const pid = e.project_id;
-      if (!pid) continue;
-      if (!map.has(pid)) map.set(pid, e.projects?.name || pid);
-    }
-    return Array.from(map.entries())
-      .map(([id, name]) => ({ id, name }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [lines, rows]);
-
-  const projectNameById = React.useMemo(
-    () => new Map(projectsForFilter.map((p) => [p.id, p.name])),
-    [projectsForFilter]
-  );
-
-  const linesByExpense = React.useMemo(() => {
-    const m = new Map<string, LineMiniRow[]>();
-    for (const l of lines) {
-      const arr = m.get(l.expense_id) ?? [];
-      arr.push(l);
-      m.set(l.expense_id, arr);
-    }
-    return m;
-  }, [lines]);
-
-  const categoriesForFilter = React.useMemo(() => {
-    const set = new Set<string>();
-    for (const l of lines) {
-      if (l.category) set.add(l.category);
-    }
-    return Array.from(set.values()).sort((a, b) => a.localeCompare(b));
-  }, [lines]);
-
-  const expenseMeta = React.useMemo(() => {
-    const byExpense = new Map<string, { projects: Set<string>; categories: Set<string> }>();
-    for (const l of lines) {
-      const eid = l.expense_id;
-      if (!byExpense.has(eid)) byExpense.set(eid, { projects: new Set(), categories: new Set() });
-      const meta = byExpense.get(eid)!;
-      if (l.project_id) meta.projects.add(l.projects?.name || l.project_id);
-      if (l.category) meta.categories.add(l.category);
-    }
-    return byExpense;
-  }, [lines]);
-
-  const filtered = React.useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return rows.filter((e) => {
-      if (q) {
-        const vendor = (e.vendor_name ?? "").toLowerCase();
-        const ref = (e.reference_no ?? "").toLowerCase();
-        if (!vendor.includes(q) && !ref.includes(q)) return false;
-      }
-      if (projectFilter) {
-        const meta = expenseMeta.get(e.id);
-        const has = meta
-          ? Array.from(meta.projects).some((nameOrId) => nameOrId === projectFilter)
-          : false;
-        const hasLineProject = lines.some(
-          (l) => l.expense_id === e.id && l.project_id === projectFilter
-        );
-        const hasExpenseProject = e.project_id === projectFilter;
-        if (!has && !hasLineProject && !hasExpenseProject) return false;
-      }
-      if (categoryFilter) {
-        const hasCat = lines.some(
-          (l) => l.expense_id === e.id && (l.category ?? "") === categoryFilter
-        );
-        if (!hasCat) return false;
-      }
-      return true;
-    });
-  }, [categoryFilter, expenseMeta, lines, projectFilter, query, rows]);
 
   const handleNew = React.useCallback(() => {
-    startTransition(() => router.push("/financial/expenses/new"));
+    const t0 = uiNavMark();
+    startTransition(() => {
+      router.push("/financial/expenses/new");
+      requestAnimationFrame(() => uiNavLog("expenses->new-expense", t0, 200));
+    });
   }, [router]);
 
   const handleDelete = React.useCallback(
-    async (id: string) => {
-      if (!supabase) return;
-      if (!window.confirm("Delete this expense?")) return;
-      const prevRows = rowsRef.current;
-      const prevLines = linesRef.current;
-      setRows((r) => r.filter((e) => e.id !== id));
-      setLines((l) => l.filter((line) => line.expense_id !== id));
-      setError(null);
-      const { error: delError } = await supabase.from("expenses").delete().eq("id", id);
-      if (delError) {
-        setError(delError.message || "Failed to delete expense.");
-        setRows(prevRows);
-        setLines(prevLines);
+    (expense: Expense) => {
+      if (typeof window === "undefined" || !window.confirm("Delete this expense?")) return;
+      const prev = expensesRef.current;
+      const rowsBefore = pageRowsRef.current;
+      const nextId = neighborRowIdAfterRemove(rowsBefore, expense.id);
+      const t0 = uiActionMark();
+      setDeletingExpenseId(expense.id);
+      setExpenses((list) => list.filter((e) => e.id !== expense.id));
+      uiActionLog("expense-delete-ui", t0, 100);
+      expense.attachments?.forEach((a) => {
+        if (a.url?.startsWith("blob:")) URL.revokeObjectURL(a.url);
+      });
+      void (async () => {
+        try {
+          const ok = await deleteExpense(expense.id);
+          if (!ok) {
+            setExpenses(prev);
+            toast({ title: "Delete failed", variant: "error" });
+            return;
+          }
+          queryClient.setQueriesData<Expense[]>({ queryKey: [...expensesQueryKeyRoot] }, (old) =>
+            Array.isArray(old) ? old.filter((e) => e.id !== expense.id) : old
+          );
+          let closedPreviewForDeleted = false;
+          flushSync(() => {
+            setPreviewExpense((cur) => {
+              if (cur?.id === expense.id) {
+                closedPreviewForDeleted = true;
+                return null;
+              }
+              return cur;
+            });
+          });
+          if (closedPreviewForDeleted) setPreviewOpen(false);
+          toast({ title: "Expense deleted", variant: "success" });
+          afterLayout(() => {
+            const li = nextId ? rowElsRef.current[nextId] : null;
+            scrollElementIntoViewNearest(li ?? undefined);
+            if (listViewRef.current === "unreviewed") {
+              if (nextId) {
+                setActiveExpenseId(nextId);
+                focusFirstFocusableInContainer(li);
+              } else {
+                const first = pageRowsRef.current[0];
+                setActiveExpenseId(first?.id ?? null);
+                if (first) {
+                  const firstLi = rowElsRef.current[first.id];
+                  scrollElementIntoViewNearest(firstLi ?? undefined);
+                  focusFirstFocusableInContainer(firstLi);
+                } else {
+                  emptyExpensesRef.current?.focus({ preventScroll: true });
+                }
+              }
+            } else if (nextId) {
+              focusFirstFocusableInContainer(li);
+            } else {
+              emptyExpensesRef.current?.focus({ preventScroll: true });
+            }
+          });
+        } catch {
+          setExpenses(prev);
+          toast({ title: "Delete failed", variant: "error" });
+        } finally {
+          setDeletingExpenseId(null);
+        }
+      })();
+    },
+    [queryClient, toast]
+  );
+
+  const focusUnreviewedFromReceiptBulk = searchParams.get("focus_unreviewed") === "1";
+  const focusUnreviewedConsumedRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (!focusUnreviewedFromReceiptBulk) {
+      focusUnreviewedConsumedRef.current = false;
+      return;
+    }
+    if (!inboxMode || listView !== "unreviewed" || pageRows.length === 0) return;
+    const first = pageRows[0];
+    if (!first || !expensesRef.current.some((e) => e.id === first.id)) return;
+    if (focusUnreviewedConsumedRef.current) return;
+    focusUnreviewedConsumedRef.current = true;
+
+    const id = first.id;
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        setActiveExpenseId(id);
+        openExpensePreview(first);
+        const sp = new URLSearchParams(searchParams.toString());
+        sp.delete("focus_unreviewed");
+        const qs = sp.toString();
+        router.replace(qs ? `${listPath}?${qs}` : listPath, { scroll: false });
+      });
+    });
+  }, [
+    focusUnreviewedFromReceiptBulk,
+    inboxMode,
+    listPath,
+    listView,
+    pageRowIdsKey,
+    pageRows,
+    openExpensePreview,
+    router,
+    searchParams,
+  ]);
+
+  const kbRef = React.useRef({
+    listView,
+    attachmentPreviewOpen,
+    previewOpen,
+    quickExpenseOpen,
+    uploadReceiptsOpen,
+    pageRows,
+    activeExpenseId,
+  });
+  kbRef.current = {
+    listView,
+    attachmentPreviewOpen,
+    previewOpen,
+    quickExpenseOpen,
+    uploadReceiptsOpen,
+    pageRows,
+    activeExpenseId,
+  };
+
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const k = kbRef.current;
+      if (k.listView !== "unreviewed") return;
+      if (k.attachmentPreviewOpen || k.previewOpen || k.quickExpenseOpen || k.uploadReceiptsOpen) {
         return;
       }
+      const t = e.target as HTMLElement | null;
+      const inEditable = !!t?.closest("input, textarea, select");
+
+      if ((e.key === "d" || e.key === "D") && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        if (inEditable) return;
+        e.preventDefault();
+        const row = k.pageRows.find((r) => r.id === k.activeExpenseId);
+        if (row && typeof window !== "undefined" && window.confirm("Delete this expense?")) {
+          void handleDelete(row);
+        }
+        return;
+      }
+
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        if (inEditable) return;
+        e.preventDefault();
+        const idx = k.pageRows.findIndex((r) => r.id === k.activeExpenseId);
+        if (e.key === "ArrowDown") {
+          const n =
+            idx < 0 ? Math.min(0, k.pageRows.length - 1) : Math.min(idx + 1, k.pageRows.length - 1);
+          const r = k.pageRows[n];
+          if (r) setActiveExpenseId(r.id);
+        } else {
+          const n = idx < 0 ? 0 : Math.max(idx - 1, 0);
+          const r = k.pageRows[n];
+          if (r) setActiveExpenseId(r.id);
+        }
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [handleDelete]);
+
+  const toggleStatus = React.useCallback(
+    (expense: Expense) => {
+      const current = expense.status ?? "pending";
+      const goingDone = expenseNeedsReviewFromDb(current);
+      if (goingDone) {
+        const gate = validateMarkDoneRequiresProjectAndCategory(expense);
+        if (gate === "project") {
+          hotToast.error("Please select a project before marking as done");
+          return;
+        }
+        if (gate === "category") {
+          hotToast.error("Please select a category before marking as done");
+          return;
+        }
+      }
+      const next = goingDone ? "reviewed" : "needs_review";
+      const prev = expensesRef.current;
+      const t0 = uiActionMark();
+      setExpenses((list) => list.map((e) => (e.id === expense.id ? { ...e, status: next } : e)));
+      uiActionLog("expense-toggle-status-ui", t0, 100);
+      void (async () => {
+        try {
+          const saved = await updateExpenseForReview(expense.id, { status: next });
+          if (!saved) throw new Error("Failed");
+          const persisted = (saved.status ?? "pending") === next;
+          if (persisted) {
+            setExpenses((list) => list.map((e) => (e.id === expense.id ? saved : e)));
+          } else {
+            toast({
+              title: "Status changed locally",
+              description: "This environment does not persist status updates yet.",
+              variant: "default",
+            });
+          }
+        } catch {
+          setExpenses(prev);
+          toast({ title: "Status update failed", variant: "error" });
+        }
+      })();
     },
-    [supabase]
+    [toast]
   );
 
-  type Row = ExpenseRow & { summary: string };
-  const data: Row[] = React.useMemo(() => {
-    return filtered.map((e) => {
-      const meta = expenseMeta.get(e.id);
-      const categoryCount = meta?.categories.size ?? 0;
-      const linesForE = linesByExpense.get(e.id) ?? [];
-      const projectLabel = projectSummaryLabel(e, linesForE, projectNameById);
-      const catSuffix =
-        categoryCount === 0
-          ? ""
-          : categoryCount === 1
-            ? ` • ${Array.from(meta!.categories.values())[0]}`
-            : ` • ${categoryCount} categories`;
-      return { ...e, summary: `${projectLabel}${catSuffix}` };
-    });
-  }, [expenseMeta, filtered, linesByExpense, projectNameById]);
-
-  const columns = React.useMemo<Column<Row>[]>(
-    () => [
-      {
-        key: "expense_date",
-        header: "Date",
-        render: (row) => (
-          <span className="font-mono tabular-nums text-foreground">
-            {(row.expense_date ?? row.created_at ?? "").slice(0, 10) || "—"}
-          </span>
-        ),
-      },
-      {
-        key: "vendor_name",
-        header: "Vendor",
-        render: (row) => (
-          <span className="font-medium text-foreground">
-            {row.vendor_name?.trim() || "Untitled Expense"}
-          </span>
-        ),
-      },
-      {
-        key: "worker",
-        header: "Worker",
-        render: (row) => (
-          <span className="text-muted-foreground">{row.workers?.name?.trim() ?? "—"}</span>
-        ),
-      },
-      {
-        key: "payment_method",
-        header: "Payment",
-        render: (row) => <span className="text-muted-foreground">{row.payment_method || "—"}</span>,
-      },
-      {
-        key: "total",
-        header: "Total",
-        align: "right",
-        className: "tabular-nums",
-        render: (row) => (
-          <span className="font-mono tabular-nums font-medium text-red-600">
-            −{money(safeNumber(row.total))}
-          </span>
-        ),
-      },
-      {
-        key: "line_count",
-        header: "#Lines",
-        align: "right",
-        className: "tabular-nums",
-        render: (row) => (
-          <span className="font-mono tabular-nums text-muted-foreground">
-            {safeNumber(row.line_count)}
-          </span>
-        ),
-      },
-      {
-        key: "summary",
-        header: "Project / Category",
-        render: (row) => <span className="text-muted-foreground">{row.summary}</span>,
-      },
-      {
-        key: "actions",
-        header: "",
-        align: "right",
-        render: (row) => (
-          <RowActionsMenu
-            appearance="list"
-            ariaLabel={`Actions for ${row.vendor_name?.trim() || "expense"}`}
-            actions={[
-              {
-                label: "View",
-                onClick: () => startTransition(() => router.push(`/financial/expenses/${row.id}`)),
-              },
-              {
-                label: "Edit",
-                onClick: () => startTransition(() => router.push(`/financial/expenses/${row.id}`)),
-              },
-              { label: "Delete", onClick: () => void handleDelete(row.id), destructive: true },
-            ]}
-          />
-        ),
-      },
-    ],
-    [handleDelete, router]
+  const possibleDuplicateIds = React.useMemo(
+    () => expenseInboxDuplicateIdSet(filteredSortedExpenses, getExpenseTotal),
+    [filteredSortedExpenses]
   );
+
+  const hasNarrowingFilters =
+    Boolean(search.trim()) ||
+    Boolean(projectFilter) ||
+    Boolean(categoryFilter) ||
+    Boolean(sourceTypeFilter) ||
+    expenseDateFilter.kind !== "all";
+
+  /** Advanced filters only (tabs replace status dropdown). */
+  const activeAdvancedFilterCount =
+    (projectFilter ? 1 : 0) +
+    (categoryFilter ? 1 : 0) +
+    (sourceTypeFilter ? 1 : 0) +
+    (expenseDateFilter.kind !== "all" ? 1 : 0) +
+    (!isDefaultExpenseListSort(expenseSort) ? 1 : 0);
+
+  const showEmptyOnboardingCtas = !hasNarrowingFilters && expensesForListing.length === 0;
+
+  const deskStart = total === 0 ? 0 : (curPage - 1) * pageSize + 1;
+  const deskEnd = Math.min(total, curPage * pageSize);
+
+  const previewExpenseLive = React.useMemo(() => {
+    if (!previewExpense) return null;
+    return expenses.find((e) => e.id === previewExpense.id) ?? previewExpense;
+  }, [expenses, previewExpense]);
+
+  const previewModalNav = React.useMemo(() => {
+    if (!previewOpen || !previewExpenseLive) return undefined;
+    const idx = pageRows.findIndex((r) => r.id === previewExpenseLive.id);
+    if (idx < 0) return undefined;
+    return {
+      canPrev: idx > 0,
+      canNext: idx < pageRows.length - 1,
+      onPrev: () => {
+        const prev = pageRows[idx - 1];
+        if (prev) setPreviewExpense(prev);
+      },
+      onNext: () => {
+        const next = pageRows[idx + 1];
+        if (next) setPreviewExpense(next);
+      },
+    };
+  }, [previewOpen, previewExpenseLive, pageRows]);
+
+  const previewPossibleDuplicate =
+    previewExpenseLive != null && possibleDuplicateIds.has(previewExpenseLive.id);
+
+  const pageTitle = inboxMode ? "Inbox" : "Expenses";
+  const pageDescription = inboxMode
+    ? "Review and process incoming transactions"
+    : "Tracked project costs and completed expenses";
 
   return (
-    <div className="page-container page-stack">
-      <PageHeader
-        title="Expenses"
-        subtitle="Track vendor receipts and split costs across projects."
-        actions={
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <Button onClick={handleNew} className="min-h-[44px] sm:min-h-0 w-full sm:w-auto">
-              <Plus className="h-4 w-4" />
-              New Expense
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => void refresh()}
-              disabled={loading}
-              className="min-h-[44px] sm:min-h-0 w-full sm:w-auto"
-            >
-              <SubmitSpinner loading={loading} className="mr-2" />
-              {loading ? "Loading…" : "Refresh"}
-            </Button>
+    <div className="expenses-ui" data-expenses-query-status={expensesQueryStatus}>
+      <div className="expenses-ui-content mx-auto w-full max-w-[430px] px-3 py-2.5 sm:max-w-[460px] md:max-w-[1280px] md:px-8 md:py-8">
+        <div className="space-y-5">
+          <div className="flex h-11 items-center justify-between gap-2 border-b border-gray-100/80 dark:border-border/60 md:hidden">
+            <div className="min-w-0">
+              <h1 className="truncate text-lg font-semibold text-gray-900 dark:text-foreground">
+                {pageTitle}
+              </h1>
+              <p className="line-clamp-2 text-[11px] leading-snug text-gray-500 dark:text-muted-foreground">
+                {pageDescription}
+              </p>
+            </div>
+            <TransactionInboxEntryActions
+              onQuick={() => setQuickExpenseOpen(true)}
+              onUpload={() => setUploadReceiptsOpen(true)}
+              onNewExpense={handleNew}
+              quickButtonSize="default"
+              className="shrink-0 justify-end gap-1"
+            />
           </div>
-        }
-      />
 
-      {error ? (
-        <div className="rounded-lg border border-gray-100 bg-white px-4 py-3 text-sm text-text-secondary shadow-sm dark:border-border dark:bg-card dark:text-muted-foreground">
-          {error}
-        </div>
-      ) : null}
+          <div className="hidden md:block">
+            <PageHeader
+              className="[&_h1]:font-semibold [&_h1]:text-gray-900 [&_p]:text-sm [&_p]:text-gray-600 dark:[&_h1]:text-foreground dark:[&_p]:text-muted-foreground"
+              title={pageTitle}
+              description={pageDescription}
+              actions={
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 shrink-0 shadow-none"
+                    onClick={() =>
+                      router.push(inboxMode ? "/financial/expenses" : "/financial/inbox")
+                    }
+                  >
+                    {inboxMode ? "Expenses" : "Inbox"}
+                  </Button>
+                  <TransactionInboxEntryActions
+                    onQuick={() => setQuickExpenseOpen(true)}
+                    onUpload={() => setUploadReceiptsOpen(true)}
+                    onNewExpense={handleNew}
+                  />
+                </div>
+              }
+            />
+          </div>
 
-      <FilterBar>
-        <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-3">
-          <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-              Search
-            </p>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-secondary/75 dark:text-muted-foreground" />
-              <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Vendor or reference..."
-                className="pl-9"
-              />
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <div className="flex h-[76px] items-center gap-2.5 rounded-xl border border-gray-200/70 bg-white px-3 shadow-[0_1px_2px_rgba(16,24,40,0.06)] dark:border-gray-800 dark:bg-gray-950">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                <AlertCircle className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[10px] font-medium leading-tight text-gray-500 dark:text-gray-400">
+                  {inboxMode ? "In queue" : "Archived"}
+                </p>
+                <p className="text-xl font-semibold tabular-nums leading-tight text-gray-900 dark:text-gray-100">
+                  {inboxMode ? summary.inboxQueueCount : summary.archivedCount}
+                </p>
+              </div>
+            </div>
+            <div className="flex h-[76px] items-center justify-between gap-2 rounded-xl border border-gray-200/70 bg-white px-3 shadow-[0_1px_2px_rgba(16,24,40,0.06)] dark:border-gray-800 dark:bg-gray-950">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                  <CalendarDays className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-medium leading-tight text-gray-500 dark:text-gray-400">
+                    This Month
+                  </p>
+                  <p className="text-xl font-semibold tabular-nums leading-tight text-gray-900 dark:text-gray-100">
+                    ${summary.monthTotal.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+              <KpiSparkline />
+            </div>
+            <div className="flex h-[76px] items-center justify-between gap-2 rounded-xl border border-gray-200/70 bg-white px-3 shadow-[0_1px_2px_rgba(16,24,40,0.06)] dark:border-gray-800 dark:bg-gray-950">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                  <DollarSign className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-medium leading-tight text-gray-500 dark:text-gray-400">
+                    {archiveMode ? "Total (archived)" : "Total (all)"}
+                  </p>
+                  <p className="text-xl font-semibold tabular-nums leading-tight text-gray-900 dark:text-gray-100">
+                    ${summary.allTotal.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+              <KpiSparkline className="text-emerald-300 dark:text-emerald-900/40" />
+            </div>
+            <div className="flex h-[76px] items-center justify-between gap-2 rounded-xl border border-gray-200/70 bg-white px-3 shadow-[0_1px_2px_rgba(16,24,40,0.06)] dark:border-gray-800 dark:bg-gray-950">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                  <RefreshCw className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-medium leading-tight text-gray-500 dark:text-gray-400">
+                    Reimbursements
+                  </p>
+                  <p className="text-xl font-semibold tabular-nums leading-tight text-gray-900 dark:text-gray-100">
+                    ${summary.reimbursementTotal.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+              <KpiSparkline className="text-violet-300 dark:text-violet-900/40" />
             </div>
           </div>
-          <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-              Project
-            </p>
-            <Select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)}>
-              <option value="">All projects</option>
-              {projectsForFilter.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-              Category
-            </p>
-            <Select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
-              <option value="">All categories</option>
-              {categoriesForFilter.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </Select>
-          </div>
-        </div>
-      </FilterBar>
 
-      <Card className="p-0 overflow-hidden">
-        {loading ? (
-          <div className="p-5 space-y-2">
-            {Array.from({ length: 10 }).map((_, idx) => (
-              <Skeleton key={idx} className="h-12 w-full" />
-            ))}
+          {/* Mobile: cross-nav + search + filters drawer */}
+          <div className="flex flex-col gap-2 md:hidden">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9 w-fit shrink-0 shadow-none"
+              onClick={() =>
+                startTransition(() =>
+                  router.push(inboxMode ? "/financial/expenses" : "/financial/inbox")
+                )
+              }
+            >
+              {inboxMode ? "Open Expenses" : "Open Inbox"}
+            </Button>
+            <div className="flex w-full min-w-0 items-center gap-2">
+              <Input
+                placeholder="Search…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-10 min-w-0 flex-1 rounded-sm border border-gray-100/80 bg-white text-sm text-gray-900 shadow-none dark:border-border/60 dark:bg-card dark:text-foreground"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="relative h-10 shrink-0 gap-1 border-gray-100/80 px-2.5 dark:border-border/60"
+                onClick={() => setFiltersDrawerOpen(true)}
+              >
+                <Filter className="h-4 w-4 shrink-0" aria-hidden />
+                <span className="max-w-[5.5rem] truncate text-xs font-medium">
+                  Filters
+                  {activeAdvancedFilterCount > 0 ? (
+                    <span className="text-muted-foreground"> · {activeAdvancedFilterCount}</span>
+                  ) : null}
+                </span>
+              </Button>
+            </div>
           </div>
-        ) : (
-          <>
-            <DataTable<Row>
-              columns={columns}
-              data={data}
-              keyExtractor={(r) => r.id}
-              emptyText="No data yet."
-              onRowClick={(r) => startTransition(() => router.push(`/financial/expenses/${r.id}`))}
-              primaryColumnKey="vendor_name"
-              amountColumnKeys={["total", "line_count"]}
-            />
-            {hasMore && data.length > 0 && (
-              <div className="flex justify-center border-t border-border/60 p-3">
+          <Sheet open={filtersDrawerOpen} onOpenChange={setFiltersDrawerOpen}>
+            <SheetContent
+              side="bottom"
+              className="max-h-[90vh] overflow-y-auto rounded-t-lg p-4 md:hidden"
+            >
+              <SheetHeader className="text-left">
+                <SheetTitle className="text-base font-semibold">Filters & more</SheetTitle>
+              </SheetHeader>
+              <div className="mt-4 flex flex-col gap-4 pb-8">
+                <div className="flex flex-col gap-2 border-b border-gray-100/80 pb-4 dark:border-border/60">
+                  <Button
+                    type="button"
+                    variant="default"
+                    size="sm"
+                    className="h-10 w-full shrink-0 rounded-sm shadow-none"
+                    onClick={() => {
+                      setQuickExpenseOpen(true);
+                      setFiltersDrawerOpen(false);
+                    }}
+                  >
+                    Quick
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-10 w-full shrink-0 rounded-sm shadow-none"
+                    onClick={() => {
+                      setUploadReceiptsOpen(true);
+                      setFiltersDrawerOpen(false);
+                    }}
+                  >
+                    <Upload className="mr-2 h-4 w-4 shrink-0" aria-hidden />
+                    Upload receipts
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-10 w-full shrink-0 rounded-sm shadow-none"
+                    onClick={() => {
+                      handleNew();
+                      setFiltersDrawerOpen(false);
+                    }}
+                  >
+                    New expense
+                  </Button>
+                </div>
+                <ExpensesAdvancedFiltersFields
+                  projectFilter={projectFilter}
+                  setProjectFilter={setProjectFilter}
+                  categoryFilter={categoryFilter}
+                  setCategoryFilter={setCategoryFilter}
+                  expenseDateFilter={expenseDateFilter}
+                  onExpenseDateChange={onExpenseDateFilterChange}
+                  sourceTypeFilter={sourceTypeFilter}
+                  setSourceTypeFilter={setSourceTypeFilter}
+                  expenseSort={expenseSort}
+                  onSortValueChange={applyExpenseSortValue}
+                  safeProjects={safeProjects}
+                  categoriesList={categoriesList}
+                  projectsError={projectsError}
+                  selectTriggerClassName="h-10 w-full rounded-sm border border-gray-100/80 bg-white text-xs shadow-none dark:border-border/60 dark:bg-card"
+                />
                 <Button
-                  variant="outline"
-                  size="sm"
-                  className="min-h-11 w-full max-md:max-w-none md:min-h-8 md:w-auto"
-                  disabled={loadingMore}
-                  onClick={() => fetchPage(rows.length, true)}
+                  type="button"
+                  className="w-full"
+                  onClick={() => setFiltersDrawerOpen(false)}
                 >
-                  <SubmitSpinner loading={loadingMore} className="mr-2" />
-                  {loadingMore ? "Loading…" : "Load more"}
+                  Done
                 </Button>
               </div>
+            </SheetContent>
+          </Sheet>
+
+          <section
+            className={cn(
+              "relative",
+              expensesListRefetching &&
+                expensesForListing.length > 0 &&
+                "pointer-events-none opacity-60"
             )}
-          </>
-        )}
-      </Card>
+            aria-busy={expensesListRefetching && expensesForListing.length > 0 ? true : undefined}
+          >
+            {expensesListRefetching && expensesForListing.length > 0 ? (
+              <div className="pointer-events-none absolute inset-x-0 top-0 z-[1] flex justify-center pt-1">
+                <span className="text-xs text-muted-foreground">Updating…</span>
+              </div>
+            ) : null}
+
+            {/* Filters + table: one white card on md+ */}
+            <div className="overflow-hidden md:rounded-2xl md:border md:border-gray-200/70 md:bg-white md:shadow-sm dark:md:border-gray-800 dark:md:bg-gray-950">
+              <div className="hidden flex-wrap items-center justify-between gap-3 border-b border-gray-100 bg-white px-4 py-3 dark:border-gray-800 dark:bg-gray-950 md:flex">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-9 shrink-0 rounded-lg border-gray-200 bg-white text-xs font-medium text-gray-700 shadow-none hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:hover:bg-gray-900"
+                    onClick={() =>
+                      startTransition(() =>
+                        router.push(inboxMode ? "/financial/expenses" : "/financial/inbox")
+                      )
+                    }
+                  >
+                    {inboxMode ? "Expenses" : "Inbox"}
+                  </Button>
+                </div>
+                <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 lg:max-w-xl">
+                  <div className="relative min-w-[12rem] max-w-md flex-1">
+                    <Search
+                      className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400"
+                      aria-hidden
+                    />
+                    <Input
+                      placeholder="Search…"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="h-9 rounded-lg border-gray-200 bg-white py-1 pl-8 pr-14 text-sm shadow-none dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                    />
+                    <kbd className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 select-none rounded border border-gray-200 bg-white px-1.5 py-0.5 font-sans text-[10px] font-medium text-gray-400 lg:inline dark:border-gray-600 dark:bg-gray-800 dark:text-gray-500">
+                      ⌘K
+                    </kbd>
+                  </div>
+                  <Popover open={filtersPopoverOpen} onOpenChange={setFiltersPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-9 shrink-0 gap-1.5 rounded-lg border-gray-200 px-3 dark:border-gray-700 dark:bg-gray-950 dark:hover:bg-gray-900"
+                      >
+                        <Filter className="h-4 w-4 shrink-0" aria-hidden />
+                        <span className="text-xs font-medium">
+                          Filters
+                          {activeAdvancedFilterCount > 0 ? (
+                            <span className="text-gray-500 dark:text-gray-400">
+                              {" "}
+                              · {activeAdvancedFilterCount}
+                            </span>
+                          ) : null}
+                        </span>
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      align="end"
+                      sideOffset={8}
+                      className="z-50 overflow-visible w-[min(calc(100vw-2rem),22rem)] rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-950"
+                    >
+                      <ExpensesAdvancedFiltersFields
+                        projectFilter={projectFilter}
+                        setProjectFilter={setProjectFilter}
+                        categoryFilter={categoryFilter}
+                        setCategoryFilter={setCategoryFilter}
+                        expenseDateFilter={expenseDateFilter}
+                        onExpenseDateChange={onExpenseDateFilterChange}
+                        sourceTypeFilter={sourceTypeFilter}
+                        setSourceTypeFilter={setSourceTypeFilter}
+                        expenseSort={expenseSort}
+                        onSortValueChange={applyExpenseSortValue}
+                        safeProjects={safeProjects}
+                        categoriesList={categoriesList}
+                        projectsError={projectsError}
+                        selectTriggerClassName="h-9 w-full rounded-lg border border-gray-200 bg-white text-xs shadow-none dark:border-gray-700 dark:bg-gray-950"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+              {inboxMode ? (
+                <p className="hidden border-b border-gray-100 px-4 py-1.5 text-[11px] leading-snug text-gray-500 dark:border-gray-800 dark:text-gray-400 md:block">
+                  Enter: save · Shift+Enter: save only · Tab: field · ↑↓ row · D delete · Esc cancel
+                </p>
+              ) : null}
+              {showExpensesSkeleton && expenses.length === 0 ? (
+                <div className="border-t border-gray-100 px-4 py-8 dark:border-gray-800 md:border-t-0">
+                  <ExpensesListSkeleton rows={8} showStatCards={false} />
+                </div>
+              ) : total === 0 ? (
+                <>
+                  <div
+                    className="hidden min-h-[min(55vh,480px)] flex-col justify-center border-t border-gray-100 px-6 py-16 text-center dark:border-gray-800 md:flex"
+                    tabIndex={-1}
+                    data-expenses-empty
+                  >
+                    <p className="text-sm font-semibold text-gray-900 dark:text-foreground">
+                      No transactions found
+                    </p>
+                    <p className="mt-0.5 text-sm text-gray-600 dark:text-muted-foreground">
+                      {inboxMode
+                        ? hasNarrowingFilters
+                          ? "Try clearing filters or search."
+                          : expensesForListing.length === 0
+                            ? "Add an expense to get started."
+                            : summary.inboxQueueCount === 0
+                              ? "Nothing needs attention. Open Expenses to see archived costs."
+                              : "No matching items."
+                        : hasNarrowingFilters
+                          ? "Adjust filters or search."
+                          : expensesForListing.length === 0
+                            ? "Add an expense to get started."
+                            : summary.archivedCount === 0
+                              ? "No archived expenses yet. Mark items done from Inbox."
+                              : "No matching archived expenses."}
+                    </p>
+                    {showEmptyOnboardingCtas ? (
+                      <div className="mt-4 flex justify-center">
+                        <TransactionInboxEntryActions
+                          onQuick={() => setQuickExpenseOpen(true)}
+                          onUpload={() => setUploadReceiptsOpen(true)}
+                          onNewExpense={handleNew}
+                          className="justify-center"
+                        />
+                      </div>
+                    ) : inboxMode &&
+                      !hasNarrowingFilters &&
+                      expensesForListing.length > 0 &&
+                      summary.inboxQueueCount === 0 ? (
+                      <div className="mt-4">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-8 rounded-sm border border-gray-100 bg-white text-gray-700 shadow-none hover:bg-gray-50 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted/50"
+                          onClick={() => router.push("/financial/expenses")}
+                        >
+                          View Expenses
+                        </Button>
+                      </div>
+                    ) : archiveMode && !hasNarrowingFilters && summary.archivedCount === 0 ? (
+                      <div className="mt-4">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-8 rounded-sm border border-gray-100 bg-white text-gray-700 shadow-none hover:bg-gray-50 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted/50"
+                          onClick={() => router.push("/financial/inbox")}
+                        >
+                          Open Inbox
+                        </Button>
+                      </div>
+                    ) : null}
+                  </div>
+                  <div
+                    className="flex flex-col items-center border-b border-gray-100/80 py-10 md:hidden dark:border-border/60"
+                    tabIndex={-1}
+                    data-expenses-empty-mobile
+                  >
+                    <Upload
+                      className="h-8 w-8 text-text-secondary dark:text-muted-foreground"
+                      aria-hidden
+                    />
+                    <p className="mt-3 text-center text-sm font-semibold text-gray-900 dark:text-foreground">
+                      No transactions found
+                    </p>
+                    <p className="mt-1 max-w-xs text-center text-xs text-text-secondary dark:text-muted-foreground">
+                      {inboxMode
+                        ? hasNarrowingFilters
+                          ? "Try filters or search."
+                          : expensesForListing.length === 0
+                            ? "Add an expense to get started."
+                            : summary.inboxQueueCount === 0
+                              ? "Nothing needs attention."
+                              : "No matching items."
+                        : hasNarrowingFilters
+                          ? "Adjust filters or search."
+                          : expensesForListing.length === 0
+                            ? "Add an expense to get started."
+                            : summary.archivedCount === 0
+                              ? "Nothing archived yet. Use Inbox."
+                              : "No matching archived expenses."}
+                    </p>
+                    {showEmptyOnboardingCtas ? (
+                      <div className="mt-4 flex w-full max-w-sm justify-center px-2">
+                        <TransactionInboxEntryActions
+                          onQuick={() => setQuickExpenseOpen(true)}
+                          onUpload={() => setUploadReceiptsOpen(true)}
+                          onNewExpense={handleNew}
+                          quickButtonSize="default"
+                          className="max-w-full justify-center gap-1"
+                        />
+                      </div>
+                    ) : inboxMode &&
+                      !hasNarrowingFilters &&
+                      expensesForListing.length > 0 &&
+                      summary.inboxQueueCount === 0 ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="mt-4"
+                        onClick={() => router.push("/financial/expenses")}
+                      >
+                        View Expenses
+                      </Button>
+                    ) : archiveMode && !hasNarrowingFilters && summary.archivedCount === 0 ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="mt-4"
+                        onClick={() => router.push("/financial/inbox")}
+                      >
+                        Open Inbox
+                      </Button>
+                    ) : null}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="w-full overflow-hidden bg-background md:bg-white dark:md:bg-gray-950">
+                    <ExpenseInboxTransactionList
+                      pageRows={pageRows}
+                      possibleDuplicateIds={possibleDuplicateIds}
+                      api={{
+                        listView,
+                        activeExpenseId,
+                        setActiveExpenseId,
+                        rowElsRef,
+                        projectNameById,
+                        deletingExpenseId,
+                        toggleStatus,
+                        openReceiptPreview,
+                        openExpensePreview,
+                        handleDelete,
+                      }}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2 border-t border-gray-100 bg-white px-4 py-3 text-xs text-gray-600 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-400 md:flex-row md:items-center md:justify-between">
+                    <p className="tabular-nums">
+                      {total === 0
+                        ? "Showing 0 results"
+                        : `Showing ${deskStart} to ${deskEnd} of ${total} results`}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-3 md:gap-4">
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 w-7 shrink-0 border-gray-200 p-0 shadow-none dark:border-gray-700"
+                          disabled={curPage <= 1}
+                          aria-label="Previous page"
+                          onClick={() => setPage(curPage - 1)}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <span className="min-w-[2rem] text-center tabular-nums text-gray-900 dark:text-foreground">
+                          {curPage}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 w-7 shrink-0 border-gray-200 p-0 shadow-none dark:border-gray-700"
+                          disabled={curPage >= totalPages}
+                          aria-label="Next page"
+                          onClick={() => setPage(curPage + 1)}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="whitespace-nowrap text-gray-600 dark:text-gray-400">
+                          Rows per page
+                        </span>
+                        <Select
+                          value={String(pageSize)}
+                          onValueChange={(v) => setPageSizeAndReset(Number(v))}
+                        >
+                          <SelectTrigger className="h-7 w-[4.25rem] rounded-sm border-gray-200 text-xs shadow-none dark:border-gray-700">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="10">10</SelectItem>
+                            <SelectItem value="25">25</SelectItem>
+                            <SelectItem value="50">50</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </section>
+        </div>
+
+        <QuickExpenseModal
+          open={quickExpenseOpen}
+          onOpenChange={setQuickExpenseOpen}
+          onSuccess={refresh}
+          projects={safeProjects}
+          expenses={expensesForListing}
+        />
+        <UploadReceiptsQueueModal
+          open={uploadReceiptsOpen}
+          onOpenChange={setUploadReceiptsOpen}
+          onSuccess={refresh}
+        />
+        <ExpenseInboxPreviewModal
+          expense={previewExpenseLive}
+          open={previewOpen}
+          onOpenChange={(o) => {
+            setPreviewOpen(o);
+            if (!o) setPreviewExpense(null);
+          }}
+          enterMode={previewEnterMode}
+          projects={safeProjects}
+          workers={workers}
+          projectNameById={projectNameById}
+          supabase={supabase}
+          setCategoriesList={setCategoriesList}
+          onSave={handlePreviewModalSave}
+          onMarkReviewed={handlePreviewMarkReviewed}
+          previewNav={previewModalNav}
+          possibleDuplicate={previewPossibleDuplicate}
+        />
+      </div>
     </div>
   );
 }

@@ -72,7 +72,12 @@ export function prefetchFinancialRoute(
   supabase: SupabaseClient | null,
   href: string
 ): void {
-  if (href === "/financial/expenses" || href.startsWith("/financial/expenses?")) {
+  if (
+    href === "/financial/expenses" ||
+    href.startsWith("/financial/expenses?") ||
+    href === "/financial/inbox" ||
+    href.startsWith("/financial/inbox?")
+  ) {
     void prefetchExpensesPageData(queryClient);
     return;
   }
