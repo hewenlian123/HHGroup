@@ -1,6 +1,14 @@
 import { test, expect } from "@playwright/test";
 import { E2E_PRESERVED_PROJECT_LABEL } from "./e2e-cleanup-db";
-import { expenseListRow, expensesVendorSearch } from "./e2e-expenses-helpers";
+import {
+  E2E_FINANCIAL_EXPENSES_ARCHIVE_URL,
+  E2E_FINANCIAL_INBOX_URL,
+  clickVisibleQuickExpenseButton,
+  expenseListRow,
+  expensesVendorSearch,
+  waitForExpensesQuerySuccess,
+  waitForQuickExpenseProjectLabel,
+} from "./e2e-expenses-helpers";
 
 /** Minimal valid 1×1 PNG (keeps upload + OCR path light in CI). */
 const PNG_1X1 = Buffer.from(
@@ -15,10 +23,7 @@ test.describe("Quick Expense: upload and save", () => {
     await page.goto("/financial/expenses", { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
 
-    await page
-      .getByRole("button", { name: /Quick expense/i })
-      .first()
-      .click();
+    await clickVisibleQuickExpenseButton(page);
     const dialog = page.getByRole("dialog", { name: /Quick expense/i });
     await expect(dialog).toBeVisible({ timeout: 15_000 });
 
@@ -36,6 +41,7 @@ test.describe("Quick Expense: upload and save", () => {
     await dialog.locator("#quick-expense-vendor").fill(vendorMark);
     await dialog.locator("#quick-expense-project-select").click();
     await page.getByRole("option", { name: E2E_PRESERVED_PROJECT_LABEL }).click();
+    await waitForQuickExpenseProjectLabel(dialog, E2E_PRESERVED_PROJECT_LABEL);
 
     const grid = dialog.locator(".grid.grid-cols-2").first();
     await expect(grid).toBeVisible();
@@ -81,7 +87,8 @@ test.describe("Quick Expense: upload and save", () => {
 
     await expect(dialog).not.toBeVisible({ timeout: 30_000 });
 
-    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.goto(E2E_FINANCIAL_INBOX_URL, { waitUntil: "domcontentloaded" });
+    await waitForExpensesQuerySuccess(page);
     await page.locator("main").first().waitFor({ state: "visible", timeout: 60_000 });
 
     await expensesVendorSearch(page).fill(vendorMark);
@@ -95,10 +102,7 @@ test.describe("Quick Expense: upload and save", () => {
     await page.goto("/financial/expenses", { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
 
-    await page
-      .getByRole("button", { name: /Quick expense/i })
-      .first()
-      .click();
+    await clickVisibleQuickExpenseButton(page);
     const dialog = page.getByRole("dialog", { name: /Quick expense/i });
     await expect(dialog).toBeVisible({ timeout: 15_000 });
 
@@ -128,6 +132,9 @@ test.describe("Quick Expense: upload and save", () => {
     const vendorMark = `E2E-QE-${Date.now()}`;
     await dialog.locator("#quick-expense-vendor").fill(vendorMark);
     await dialog.locator("input[type='number']").fill("42.5");
+    await dialog.locator("#quick-expense-project-select").click();
+    await page.getByRole("option", { name: E2E_PRESERVED_PROJECT_LABEL }).click();
+    await waitForQuickExpenseProjectLabel(dialog, E2E_PRESERVED_PROJECT_LABEL);
 
     await dialog.getByRole("button", { name: "Save", exact: true }).click();
     if (
@@ -169,7 +176,9 @@ test.describe("Quick Expense: upload and save", () => {
 
     await expect(dialog).not.toBeVisible({ timeout: 30_000 });
 
-    await page.reload({ waitUntil: "domcontentloaded" });
+    // With attachment + project + category, quick save can land as archived (`reviewed`), which Inbox excludes.
+    await page.goto(E2E_FINANCIAL_EXPENSES_ARCHIVE_URL, { waitUntil: "domcontentloaded" });
+    await waitForExpensesQuerySuccess(page);
     await page.locator("main").first().waitFor({ state: "visible", timeout: 60_000 });
 
     await expensesVendorSearch(page).fill(vendorMark);
