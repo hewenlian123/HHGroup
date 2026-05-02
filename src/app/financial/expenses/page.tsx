@@ -4,7 +4,6 @@ import "./expenses-ui-theme.css";
 import * as React from "react";
 import { startTransition } from "react";
 import { flushSync } from "react-dom";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -17,12 +16,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   getExpenseTotal,
   deleteExpense,
   updateExpense,
@@ -32,15 +25,16 @@ import {
 } from "@/lib/data";
 import { createBrowserClient } from "@/lib/supabase";
 import {
-  Check,
+  AlertCircle,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  DollarSign,
   Filter,
-  MoreHorizontal,
-  Paperclip,
-  Pencil,
   Plus,
-  Trash2,
+  RefreshCw,
+  Search,
   Upload,
-  X,
 } from "lucide-react";
 import { uiActionLog, uiActionMark, uiNavLog, uiNavMark } from "@/lib/ui-action-perf";
 import {
@@ -49,18 +43,20 @@ import {
   neighborRowIdAfterRemove,
   scrollElementIntoViewNearest,
 } from "@/lib/list-flow";
-import { Pagination } from "@/components/ui/pagination";
 import { useSearchParams } from "next/navigation";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
-import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { QuickExpenseModal } from "./quick-expense-modal";
 import { UploadReceiptsQueueModal } from "./upload-receipts-queue-modal";
-import { EditExpenseModal, type ExpenseReviewSavePatch } from "./edit-expense-modal";
+import type { ExpenseReviewSavePatch } from "./edit-expense-modal";
+import {
+  ExpenseInboxPreviewModal,
+  type ExpenseInboxPreviewSavePayload,
+} from "./expense-inbox-preview-modal";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { useDelayedPending } from "@/hooks/use-delayed-pending";
 import hotToast from "react-hot-toast";
 import { useToast } from "@/components/toast/toast-provider";
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   buildExpensesQueryKey,
   defaultExpenseListSort,
@@ -76,21 +72,30 @@ import { isDefaultExpenseListSort } from "@/lib/expenses-db";
 import { cn } from "@/lib/utils";
 import { ExpensesListSkeleton } from "@/components/financial/expenses-list-skeleton";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   ExpenseDateRangeFilter,
   expenseDateInFilter,
   type ExpenseDateFilterValue,
 } from "@/components/financial/expense-date-range-filter";
-import { ExpenseCategorySelect } from "@/components/expense-category-select";
 import {
   persistLastExpensePaymentAccountId,
   rememberExpenseVendorPaymentAccount,
 } from "@/lib/expense-payment-preferences";
 import { resolvePreviewSignedUrl } from "@/lib/storage-signed-url";
+import { ExpenseInboxTransactionList } from "./expense-inbox-transaction-list";
+import { expenseInboxPossibleDuplicateAmongLoaded } from "@/lib/expense-inbox-dup";
+import {
+  expenseHasCategoryForWorkflow,
+  expenseHasProjectForWorkflow,
+  expenseNeedsReviewFromDb,
+  EXPENSE_UI_STATUS_FILTER_DONE,
+  EXPENSE_UI_STATUS_FILTER_NEEDS_REVIEW,
+} from "@/lib/expense-workflow-status";
+import { getExpenseReceiptItems, type ExpenseReceiptItem } from "@/lib/expense-receipt-items";
 
 type ProjectRow = { id: string; name: string | null; status?: string | null };
 type WorkerRow = { id: string; name: string };
-type ReceiptItem = { url: string; fileName: string };
 
 function mergeExpenseReviewPatch(e: Expense, p: ExpenseReviewSavePatch): Expense {
   const nextLines =
@@ -123,47 +128,15 @@ function mergeExpenseReviewPatch(e: Expense, p: ExpenseReviewSavePatch): Expense
   };
 }
 
-function projectLabel(expense: Expense, projectNameById: Map<string, string>): string {
-  const lineIds = expense.lines.map((l) => l.projectId ?? null);
-  const headerRaw = expense.headerProjectId ?? null;
-  const headerId =
-    headerRaw != null && String(headerRaw).trim() !== "" ? String(headerRaw).trim() : null;
-
-  const distinct = new Set<string>();
-  for (const id of lineIds) {
-    if (id != null && String(id).trim() !== "") distinct.add(String(id));
-  }
-  if (headerId) distinct.add(headerId);
-
-  if (distinct.size === 0) {
-    if (expense.lines.length === 0) return "—";
-    return "Overhead";
-  }
-  if (distinct.size === 1) {
-    const id = [...distinct][0]!;
-    return projectNameById.get(id) ?? id;
-  }
-  return "Multiple";
+function mergeExpenseWithPaymentMethod(
+  e: Expense,
+  patch: ExpenseReviewSavePatch,
+  paymentMethod: string
+): Expense {
+  return { ...mergeExpenseReviewPatch(e, patch), paymentMethod };
 }
 
-function getReceiptItems(expense: Expense): ReceiptItem[] {
-  const items: ReceiptItem[] = [];
-  if (expense.receiptUrl) {
-    items.push({ url: expense.receiptUrl, fileName: "Receipt" });
-  }
-  for (const a of expense.attachments ?? []) {
-    if (!a?.url) continue;
-    items.push({ url: a.url, fileName: a.fileName || "Attachment" });
-  }
-  const seen = new Set<string>();
-  return items.filter((i) => {
-    if (seen.has(i.url)) return false;
-    seen.add(i.url);
-    return true;
-  });
-}
-
-function receiptItemLooksPdf(item: ReceiptItem | undefined): boolean {
+function receiptItemLooksPdf(item: ExpenseReceiptItem | undefined): boolean {
   if (!item?.url && !item?.fileName) return false;
   const name = (item.fileName ?? "").toLowerCase();
   const u = (item.url ?? "").toLowerCase();
@@ -171,11 +144,11 @@ function receiptItemLooksPdf(item: ReceiptItem | undefined): boolean {
 }
 
 async function resolveReceiptPreviewUrls(
-  items: ReceiptItem[],
+  items: ExpenseReceiptItem[],
   supabase: ReturnType<typeof createBrowserClient> | null
-): Promise<ReceiptItem[]> {
+): Promise<ExpenseReceiptItem[]> {
   if (!supabase) return items;
-  const next: ReceiptItem[] = [];
+  const next: ExpenseReceiptItem[] = [];
   for (const item of items) {
     const raw = (item.url ?? "").trim();
     if (!raw || raw.startsWith("blob:")) {
@@ -193,109 +166,17 @@ async function resolveReceiptPreviewUrls(
   return next;
 }
 
-function ExpenseAttachmentTrigger({ row, onPreview }: { row: Expense; onPreview: () => void }) {
-  const items = React.useMemo(() => getReceiptItems(row), [row]);
-
-  if (items.length === 0) {
-    return <span className="text-text-secondary/50">—</span>;
-  }
-
-  const label = items.length > 1 ? `${items.length} files` : "Attachment";
-
-  return (
-    <button
-      type="button"
-      className="inline-flex max-w-full cursor-pointer items-center gap-1.5 text-[12px] text-text-secondary hover:underline"
-      onClick={(e) => {
-        e.stopPropagation();
-        onPreview();
-      }}
-      aria-label={`View ${items.length > 1 ? `${items.length} attachments` : "attachment"}`}
-      title="Preview attachment"
-    >
-      <Paperclip className="h-3.5 w-3.5 shrink-0 text-text-secondary/75" strokeWidth={1.75} />
-      <span className="min-w-0 truncate">{label}</span>
-    </button>
-  );
-}
-
-/** Dot + label colors for minimal status row (no pill background). */
-function expenseStatusDotTextClass(status: string | undefined): { dot: string; text: string } {
-  const v = (status ?? "pending").toLowerCase();
-  if (v === "needs_review") {
-    return { dot: "bg-amber-500", text: "text-amber-700 dark:text-amber-500/90" };
-  }
-  if (v === "pending") {
-    return { dot: "bg-status-pending", text: "text-text-secondary dark:text-text-secondary" };
-  }
-  if (
-    v === "reviewed" ||
-    v === "approved" ||
-    v === "paid" ||
-    v === "reimbursed" ||
-    v === "reimbursable"
-  ) {
-    return { dot: "bg-green-500", text: "text-green-600 dark:text-green-500" };
-  }
-  return { dot: "bg-status-pending", text: "text-text-secondary dark:text-text-secondary" };
-}
-
 function normalizedVendorLabel(vendor: string): string {
   const v = (vendor ?? "").trim();
   if (!v || /^unknown$/i.test(v) || /^smokevendor[-_]/i.test(v)) return "Needs Review";
   return v;
 }
 
-function sourceTypeLabel(t: Expense["sourceType"]): string {
-  if (t === "reimbursement") return "Reimbursement";
-  if (t === "receipt_upload") return "Receipt";
-  return "Company";
-}
-
-const PAYMENT_METHOD_OPTIONS = ["Amex", "Visa", "Cash", "Company"] as const;
-
 /** Radix Select cannot use `""` as a value — map “all / placeholder” filters to this sentinel. */
 const EXPENSE_FILTER_ALL = "__hh_all__";
-const EXPENSE_PROJECT_OVERHEAD = "__hh_overhead__";
-
-function paymentMethodDisplayLabel(pm: string | undefined): string {
-  const v = (pm ?? "").trim();
-  return v !== "" ? v : "—";
-}
-
-function primaryCategory(e: Expense): string {
-  const c = e.lines[0]?.category;
-  return c && c.trim() !== "" ? c : "—";
-}
-
-function primaryProjectId(e: Expense): string {
-  const fromLine = e.lines[0]?.projectId;
-  const h = e.headerProjectId;
-  const id = (fromLine != null && String(fromLine).trim() !== "" ? fromLine : h) ?? "";
-  return id ? String(id) : "";
-}
 
 function expenseHasReceipt(e: Expense): boolean {
-  return getReceiptItems(e).length > 0;
-}
-
-const INLINE_EDIT_FIELDS = ["vendor", "amount", "date", "project", "category", "source"] as const;
-type InlineEditField = (typeof INLINE_EDIT_FIELDS)[number];
-
-function isUnreviewedStatus(s: string | undefined): boolean {
-  const v = (s ?? "pending").toLowerCase();
-  return v === "pending" || v === "needs_review";
-}
-
-function statusDisplayLabel(s: string | undefined): string {
-  const v = (s ?? "pending").toLowerCase();
-  if (v === "needs_review") return "Needs review";
-  if (v === "pending") return "Pending";
-  if (v === "reviewed") return "Reviewed";
-  if (v === "reimbursable") return "Reimbursable";
-  if (v === "paid") return "Paid";
-  if (v === "approved" || v === "reimbursed") return "Closed";
-  return v;
+  return getExpenseReceiptItems(e).length > 0;
 }
 
 function extractExpenseTags(expense: Expense): string[] {
@@ -331,13 +212,137 @@ function readStoredExpenseSort(): ExpenseListSort {
   return defaultExpenseListSort;
 }
 
+type ExpensesAdvancedFiltersFieldsProps = {
+  projectFilter: string;
+  setProjectFilter: React.Dispatch<React.SetStateAction<string>>;
+  categoryFilter: string;
+  setCategoryFilter: React.Dispatch<React.SetStateAction<string>>;
+  expenseDateFilter: ExpenseDateFilterValue;
+  onExpenseDateChange: (next: ExpenseDateFilterValue) => void;
+  sourceTypeFilter: string;
+  setSourceTypeFilter: React.Dispatch<React.SetStateAction<string>>;
+  expenseSort: ExpenseListSort;
+  onSortValueChange: (value: string) => void;
+  safeProjects: ProjectRow[];
+  categoriesList: string[];
+  projectsError: string | null;
+  selectTriggerClassName: string;
+};
+
+function ExpensesAdvancedFiltersFields({
+  projectFilter,
+  setProjectFilter,
+  categoryFilter,
+  setCategoryFilter,
+  expenseDateFilter,
+  onExpenseDateChange,
+  sourceTypeFilter,
+  setSourceTypeFilter,
+  expenseSort,
+  onSortValueChange,
+  safeProjects,
+  categoriesList,
+  projectsError,
+  selectTriggerClassName,
+}: ExpensesAdvancedFiltersFieldsProps) {
+  return (
+    <div className="grid grid-cols-1 gap-3">
+      <Select
+        value={projectFilter === "" ? EXPENSE_FILTER_ALL : projectFilter}
+        onValueChange={(v) => setProjectFilter(v === EXPENSE_FILTER_ALL ? "" : v)}
+      >
+        <SelectTrigger data-expenses-filter-project className={selectTriggerClassName}>
+          <SelectValue placeholder="Project" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={EXPENSE_FILTER_ALL}>Project</SelectItem>
+          {safeProjects.map((p) => (
+            <SelectItem key={p.id} value={p.id}>
+              {p.name ?? p.id}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {projectsError ? (
+        <span className="text-[11px] text-amber-600 dark:text-amber-400">{projectsError}</span>
+      ) : null}
+      <Select
+        value={categoryFilter === "" ? EXPENSE_FILTER_ALL : categoryFilter}
+        onValueChange={(v) => setCategoryFilter(v === EXPENSE_FILTER_ALL ? "" : v)}
+      >
+        <SelectTrigger className={selectTriggerClassName}>
+          <SelectValue placeholder="Category" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={EXPENSE_FILTER_ALL}>Category</SelectItem>
+          {categoriesList.map((c) => (
+            <SelectItem key={c} value={c}>
+              {c}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <ExpenseDateRangeFilter value={expenseDateFilter} onChange={onExpenseDateChange} />
+      <Select
+        value={sourceTypeFilter === "" ? EXPENSE_FILTER_ALL : sourceTypeFilter}
+        onValueChange={(v) => setSourceTypeFilter(v === EXPENSE_FILTER_ALL ? "" : v)}
+      >
+        <SelectTrigger className={selectTriggerClassName}>
+          <SelectValue placeholder="Source" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={EXPENSE_FILTER_ALL}>Source</SelectItem>
+          <SelectItem value="company">Company</SelectItem>
+          <SelectItem value="receipt_upload">Receipt</SelectItem>
+          <SelectItem value="reimbursement">Reimbursement</SelectItem>
+        </SelectContent>
+      </Select>
+      <Select value={`${expenseSort.field}|${expenseSort.order}`} onValueChange={onSortValueChange}>
+        <SelectTrigger className={selectTriggerClassName} aria-label="Sort expenses">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="date|desc">Sort: Date ↓</SelectItem>
+          <SelectItem value="date|asc">Sort: Date ↑</SelectItem>
+          <SelectItem value="amount|desc">Sort: Amount ↓</SelectItem>
+          <SelectItem value="amount|asc">Sort: Amount ↑</SelectItem>
+          <SelectItem value="vendor|asc">Sort: Vendor A–Z</SelectItem>
+          <SelectItem value="vendor|desc">Sort: Vendor Z–A</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+function KpiSparkline({ className }: { className?: string }) {
+  return (
+    <svg
+      className={cn(
+        "h-8 w-[4.5rem] shrink-0 opacity-60 text-gray-300 dark:text-gray-600",
+        className
+      )}
+      viewBox="0 0 72 28"
+      aria-hidden
+    >
+      <polyline
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.25"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        points="2,20 14,14 26,18 38,8 50,12 62,6 70,10"
+      />
+    </svg>
+  );
+}
+
 export default function ExpensesPage() {
   return (
     <React.Suspense
       fallback={
         <div className="expenses-ui">
-          <div className="expenses-ui-content mx-auto w-full max-w-[430px] sm:max-w-[460px] px-4 py-6 md:max-w-5xl md:px-6">
-            <ExpensesListSkeleton rows={6} />
+          <div className="expenses-ui-content mx-auto w-full max-w-[430px] px-3 py-4 sm:max-w-[460px] md:max-w-[1280px] md:px-8">
+            <ExpensesListSkeleton rows={6} showStatCards />
           </div>
         </div>
       }
@@ -438,31 +443,49 @@ function ExpensesPageInner() {
     kind: "all",
   });
   const [sourceTypeFilter, setSourceTypeFilter] = React.useState("");
-  const [editingVendorId, setEditingVendorId] = React.useState<string | null>(null);
-  const [vendorDraft, setVendorDraft] = React.useState("");
-  const [editingAmountId, setEditingAmountId] = React.useState<string | null>(null);
-  const [amountDraft, setAmountDraft] = React.useState("");
-  const [editingDateId, setEditingDateId] = React.useState<string | null>(null);
-  const [dateDraft, setDateDraft] = React.useState("");
   const [activeExpenseId, setActiveExpenseId] = React.useState<string | null>(null);
-  const [editingProjectId, setEditingProjectId] = React.useState<string | null>(null);
-  const [projectDraft, setProjectDraft] = React.useState("");
-  const [editingCategoryId, setEditingCategoryId] = React.useState<string | null>(null);
-  const [categoryDraft, setCategoryDraft] = React.useState("");
-  const [editingSourceId, setEditingSourceId] = React.useState<string | null>(null);
-  const [sourceTypeDraft, setSourceTypeDraft] =
-    React.useState<NonNullable<Expense["sourceType"]>>("company");
-  const [editingPaymentMethodId, setEditingPaymentMethodId] = React.useState<string | null>(null);
-  const [paymentMethodFlashId, setPaymentMethodFlashId] = React.useState<string | null>(null);
-  const rowElsRef = React.useRef<Record<string, HTMLLIElement | null>>({});
+  const rowElsRef = React.useRef<Record<string, HTMLTableRowElement | HTMLLIElement | null>>({});
   const emptyExpensesRef = React.useRef<HTMLDivElement>(null);
   const listView: "all" | "unreviewed" =
     searchParams.get("view") === "unreviewed" ? "unreviewed" : "all";
-  const setListView = React.useCallback(
-    (next: "all" | "unreviewed") => {
+  /** Maps All / Needs Review / Done tabs to existing `view` URL + `statusFilter` (no filter pipeline changes). */
+  const applyInboxTab = React.useCallback(
+    (tab: "all" | "needs_review" | "done") => {
       const sp = new URLSearchParams(searchParams.toString());
-      if (next === "unreviewed") sp.set("view", "unreviewed");
-      else sp.delete("view");
+      sp.set("page", "1");
+      if (tab === "needs_review") {
+        sp.set("view", "unreviewed");
+        setStatusFilter("");
+      } else {
+        sp.delete("view");
+        if (tab === "done") setStatusFilter(EXPENSE_UI_STATUS_FILTER_DONE);
+        else setStatusFilter("");
+      }
+      router.push(`/financial/expenses?${sp.toString()}`, { scroll: false });
+    },
+    [router, searchParams]
+  );
+
+  const applyExpenseSortValue = React.useCallback(
+    (v: string) => {
+      const [field, order] = v.split("|") as [ExpenseListSort["field"], ExpenseListSort["order"]];
+      if (
+        (field === "date" || field === "amount" || field === "vendor") &&
+        (order === "asc" || order === "desc")
+      ) {
+        setExpenseSort({ field, order });
+        const sp = new URLSearchParams(searchParams.toString());
+        sp.set("page", "1");
+        router.push(`/financial/expenses?${sp.toString()}`, { scroll: false });
+      }
+    },
+    [router, searchParams]
+  );
+
+  const onExpenseDateFilterChange = React.useCallback(
+    (next: ExpenseDateFilterValue) => {
+      setExpenseDateFilter(next);
+      const sp = new URLSearchParams(searchParams.toString());
       sp.set("page", "1");
       router.push(`/financial/expenses?${sp.toString()}`, { scroll: false });
     },
@@ -478,17 +501,19 @@ function ExpensesPageInner() {
     }
   }, [searchParams]);
   const [receiptPreview, setReceiptPreview] = React.useState<{
-    items: ReceiptItem[];
+    items: ExpenseReceiptItem[];
     index: number;
     expenseId?: string;
   } | null>(null);
   const [quickExpenseOpen, setQuickExpenseOpen] = React.useState(false);
   const [uploadReceiptsOpen, setUploadReceiptsOpen] = React.useState(false);
   const [filtersDrawerOpen, setFiltersDrawerOpen] = React.useState(false);
+  const [filtersPopoverOpen, setFiltersPopoverOpen] = React.useState(false);
   const receiptReplaceRef = React.useRef<HTMLInputElement>(null);
   const [receiptReplacing, setReceiptReplacing] = React.useState(false);
-  const [editExpense, setEditExpense] = React.useState<Expense | null>(null);
-  const [editModalOpen, setEditModalOpen] = React.useState(false);
+  const [previewExpense, setPreviewExpense] = React.useState<Expense | null>(null);
+  const [previewOpen, setPreviewOpen] = React.useState(false);
+  const [previewEnterMode, setPreviewEnterMode] = React.useState<"preview" | "edit">("preview");
   const [deletingExpenseId, setDeletingExpenseId] = React.useState<string | null>(null);
   const expensesRef = React.useRef<Expense[]>([]);
   expensesRef.current = expenses;
@@ -539,24 +564,11 @@ function ExpensesPageInner() {
       .filter((e) => (e.date ?? "").startsWith(ym))
       .reduce((s, e) => s + getExpenseTotal(e), 0);
     const allTotal = expenses.reduce((s, e) => s + getExpenseTotal(e), 0);
-    const unreviewed = expenses.filter((e) => isUnreviewedStatus(e.status)).length;
-    const reimbursementCount = expenses.filter((e) => e.sourceType === "reimbursement").length;
-    const catTotals = new Map<string, number>();
-    for (const e of expenses) {
-      for (const l of e.lines) {
-        const c = (l.category ?? "Other").trim() || "Other";
-        catTotals.set(c, (catTotals.get(c) ?? 0) + l.amount);
-      }
-    }
-    let topCategory = "—";
-    let topCatAmount = 0;
-    for (const [c, a] of catTotals) {
-      if (a > topCatAmount) {
-        topCatAmount = a;
-        topCategory = c;
-      }
-    }
-    return { monthTotal, allTotal, unreviewed, reimbursementCount, topCategory };
+    const unreviewed = expenses.filter((e) => expenseNeedsReviewFromDb(e.status)).length;
+    const reimbursementTotal = expenses
+      .filter((e) => e.sourceType === "reimbursement")
+      .reduce((s, e) => s + getExpenseTotal(e), 0);
+    return { monthTotal, allTotal, unreviewed, reimbursementTotal };
   }, [expenses]);
 
   const baseFilteredExpenses = React.useMemo(() => {
@@ -587,11 +599,15 @@ function ExpensesPageInner() {
       );
     if (categoryFilter)
       list = list.filter((e) => e.lines.some((l) => l.category === categoryFilter));
-    if (statusFilter && listView !== "unreviewed") {
-      list = list.filter((e) => (e.status ?? "pending") === statusFilter);
+    if (listView !== "unreviewed") {
+      if (statusFilter === EXPENSE_UI_STATUS_FILTER_NEEDS_REVIEW) {
+        list = list.filter((e) => expenseNeedsReviewFromDb(e.status));
+      } else if (statusFilter === EXPENSE_UI_STATUS_FILTER_DONE) {
+        list = list.filter((e) => !expenseNeedsReviewFromDb(e.status));
+      }
     }
     if (listView === "unreviewed") {
-      list = list.filter((e) => isUnreviewedStatus(e.status));
+      list = list.filter((e) => expenseNeedsReviewFromDb(e.status));
     }
     if (sourceTypeFilter)
       list = list.filter((e) => (e.sourceType ?? "company") === sourceTypeFilter);
@@ -631,14 +647,24 @@ function ExpensesPageInner() {
   }, [baseFilteredExpenses, listView, expenseSort]);
 
   const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
-  const pageSize = 20;
+  const [pageSize, setPageSize] = React.useState(25);
   const total = filteredSortedExpenses.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const curPage = Math.min(page, totalPages);
   const pageRows = React.useMemo(() => {
     const start = (curPage - 1) * pageSize;
     return filteredSortedExpenses.slice(start, start + pageSize);
-  }, [curPage, filteredSortedExpenses]);
+  }, [curPage, filteredSortedExpenses, pageSize]);
+
+  const setPageSizeAndReset = React.useCallback(
+    (next: number) => {
+      setPageSize(next);
+      const sp = new URLSearchParams(searchParams.toString());
+      sp.set("page", "1");
+      router.push(`/financial/expenses?${sp.toString()}`, { scroll: false });
+    },
+    [router, searchParams]
+  );
 
   const pageRowsRef = React.useRef(pageRows);
   pageRowsRef.current = pageRows;
@@ -647,73 +673,13 @@ function ExpensesPageInner() {
 
   const pageRowIdsKey = React.useMemo(() => pageRows.map((r) => r.id).join("|"), [pageRows]);
 
-  const clearInlineEdits = React.useCallback(() => {
-    setEditingVendorId(null);
-    setEditingAmountId(null);
-    setEditingDateId(null);
-    setEditingProjectId(null);
-    setEditingCategoryId(null);
-    setEditingSourceId(null);
-    setEditingPaymentMethodId(null);
-  }, []);
-
   /** Latest sort for mutation callbacks (avoid stale closure vs. `buildExpensesQueryKey`). */
   const expenseSortRef = React.useRef(expenseSort);
   expenseSortRef.current = expenseSort;
 
-  const paymentMethodMutation = useMutation({
-    mutationFn: async (vars: { id: string; paymentMethod: string }) => {
-      const next = await updateExpense(vars.id, { paymentMethod: vars.paymentMethod });
-      if (!next) throw new Error("Failed to update payment method");
-      return { next, id: vars.id };
-    },
-    onMutate: async (vars) => {
-      const key = buildExpensesQueryKey(expenseSortRef.current);
-      await queryClient.cancelQueries({ queryKey: key });
-      const previous = queryClient.getQueryData<Expense[]>(key);
-      queryClient.setQueryData<Expense[]>(key, (old) =>
-        old
-          ? old.map((e) => (e.id === vars.id ? { ...e, paymentMethod: vars.paymentMethod } : e))
-          : old
-      );
-      setExpenses((prev) =>
-        prev.map((e) => (e.id === vars.id ? { ...e, paymentMethod: vars.paymentMethod } : e))
-      );
-      return { previous, key } as {
-        previous: Expense[] | undefined;
-        key: ReturnType<typeof buildExpensesQueryKey>;
-      };
-    },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.previous !== undefined) {
-        queryClient.setQueryData(ctx.key, ctx.previous);
-        setExpenses(ctx.previous);
-      }
-      hotToast.error("Something went wrong");
-    },
-    onSuccess: ({ next, id }, vars) => {
-      const key = buildExpensesQueryKey(expenseSortRef.current);
-      const merged =
-        next && typeof vars?.paymentMethod === "string"
-          ? { ...next, paymentMethod: vars.paymentMethod }
-          : next;
-      setExpenses((list) => list.map((e) => (e.id === id ? merged : e)));
-      queryClient.setQueryData<Expense[]>(key, (old) =>
-        old ? old.map((e) => (e.id === id ? merged : e)) : old
-      );
-      hotToast.success("Saved");
-      setEditingPaymentMethodId(null);
-      setPaymentMethodFlashId(id);
-      window.setTimeout(() => {
-        setPaymentMethodFlashId((cur) => (cur === id ? null : cur));
-      }, 1200);
-    },
-  });
-
   React.useEffect(() => {
     if (listView !== "unreviewed") {
       setActiveExpenseId(null);
-      clearInlineEdits();
       return;
     }
     setActiveExpenseId((cur) => {
@@ -721,7 +687,7 @@ function ExpensesPageInner() {
       if (cur && ids.includes(cur)) return cur;
       return ids[0] ?? null;
     });
-  }, [listView, pageRowIdsKey, clearInlineEdits]);
+  }, [listView, pageRowIdsKey]);
 
   React.useEffect(() => {
     if (!activeExpenseId || listView !== "unreviewed") return;
@@ -764,7 +730,7 @@ function ExpensesPageInner() {
   const openReceiptPreview = React.useCallback(
     async (row: Expense) => {
       try {
-        const raw = getReceiptItems(row);
+        const raw = getExpenseReceiptItems(row);
         if (raw.length === 0) {
           toast({
             title: "No receipt",
@@ -851,52 +817,106 @@ function ExpensesPageInner() {
     patchPreview({ replaceBusy: receiptReplacing });
   }, [receiptReplacing, patchPreview]);
 
-  const handleExpenseSave = React.useCallback((patch: ExpenseReviewSavePatch) => {
-    const prevList = expensesRef.current;
-    const target = prevList.find((e) => e.id === patch.expenseId);
-    if (!target) return;
-    const merged = mergeExpenseReviewPatch(target, patch);
-    const t0 = uiActionMark();
-    flushSync(() => {
-      setExpenses((prev) => prev.map((e) => (e.id === patch.expenseId ? merged : e)));
-      setEditModalOpen(false);
-      setEditExpense(null);
-    });
-    uiActionLog("expense-edit-save-ui", t0, 100);
-    void (async () => {
+  const handlePreviewModalSave = React.useCallback(
+    async (payload: ExpenseInboxPreviewSavePayload): Promise<Expense | null> => {
+      const prevList = expensesRef.current;
+      const target = prevList.find((e) => e.id === payload.expenseId);
+      if (!target) return null;
+      const { paymentMethod: pm, ...reviewPatch } = payload;
+      const merged = mergeExpenseWithPaymentMethod(target, reviewPatch, pm);
+      const t0 = uiActionMark();
+      flushSync(() => {
+        setExpenses((prev) => prev.map((e) => (e.id === payload.expenseId ? merged : e)));
+      });
+      uiActionLog("expense-preview-save-ui", t0, 100);
       try {
-        const next = await updateExpenseForReview(patch.expenseId, {
-          date: patch.date,
-          vendorName: patch.vendorName,
-          amount: patch.amount,
-          projectId: patch.projectId,
-          workerId: patch.workerId,
-          category: patch.category,
-          notes: patch.notes,
-          status: patch.status,
-          sourceType: patch.sourceType,
-          paymentAccountId: patch.paymentAccountId,
+        const next = await updateExpenseForReview(payload.expenseId, {
+          date: reviewPatch.date,
+          vendorName: reviewPatch.vendorName,
+          amount: reviewPatch.amount,
+          projectId: reviewPatch.projectId,
+          workerId: reviewPatch.workerId,
+          category: reviewPatch.category,
+          notes: reviewPatch.notes,
+          status: reviewPatch.status,
+          sourceType: reviewPatch.sourceType,
+          paymentAccountId: reviewPatch.paymentAccountId,
         });
-        if (!next) {
-          flushSync(() => setExpenses(prevList));
-          hotToast.error("Something went wrong");
-          return;
+        let final: Expense = next ?? merged;
+        const pmTrim = pm.trim();
+        if (pmTrim !== (target.paymentMethod ?? "").trim()) {
+          const pmNext = await updateExpense(payload.expenseId, { paymentMethod: pmTrim });
+          if (pmNext) final = pmNext;
+        } else if (next) {
+          final = next;
         }
-        flushSync(() =>
-          setExpenses((prev) => prev.map((e) => (e.id === patch.expenseId ? next : e)))
+        // Keep UI aligned with the modal even if `updateExpense` verification returns null (stale read).
+        if (pmTrim) final = { ...final, paymentMethod: pmTrim };
+        flushSync(() => {
+          setExpenses((prev) => prev.map((e) => (e.id === payload.expenseId ? final : e)));
+          setPreviewExpense(final);
+        });
+        queryClient.setQueryData(
+          buildExpensesQueryKey(expenseSortRef.current),
+          (old: Expense[] | undefined) =>
+            old ? old.map((e) => (e.id === payload.expenseId ? final : e)) : old
         );
-        const pa = next.paymentAccountId?.trim();
-        if (pa && (next.vendorName ?? "").trim()) {
-          rememberExpenseVendorPaymentAccount(next.vendorName!.trim(), pa);
+        const pa = final.paymentAccountId?.trim();
+        if (pa && (final.vendorName ?? "").trim()) {
+          rememberExpenseVendorPaymentAccount(final.vendorName!.trim(), pa);
           persistLastExpensePaymentAccountId(pa);
         }
         hotToast.success("Saved");
+        return final;
       } catch {
         flushSync(() => setExpenses(prevList));
         hotToast.error("Something went wrong");
+        return null;
       }
-    })();
-  }, []);
+    },
+    [queryClient]
+  );
+
+  const handlePreviewMarkReviewed = React.useCallback(
+    async (expense: Expense) => {
+      if (!expenseHasProjectForWorkflow(expense) || !expenseHasCategoryForWorkflow(expense)) {
+        hotToast.error("Please select project and category first");
+        return;
+      }
+      const prevList = expensesRef.current;
+      flushSync(() => {
+        setExpenses((list) =>
+          list.map((e) => (e.id === expense.id ? { ...e, status: "reviewed" as const } : e))
+        );
+      });
+      try {
+        const saved = await updateExpenseForReview(expense.id, { status: "reviewed" });
+        const final = saved ?? { ...expense, status: "reviewed" as const };
+        flushSync(() => {
+          setExpenses((list) => list.map((e) => (e.id === expense.id ? final : e)));
+        });
+        queryClient.setQueryData(
+          buildExpensesQueryKey(expenseSortRef.current),
+          (old: Expense[] | undefined) =>
+            old ? old.map((e) => (e.id === expense.id ? final : e)) : old
+        );
+        hotToast.success("Marked done");
+      } catch {
+        flushSync(() => setExpenses(prevList));
+        hotToast.error("Status update failed");
+      }
+    },
+    [queryClient]
+  );
+
+  const openExpensePreview = React.useCallback(
+    (row: Expense, opts?: { mode?: "preview" | "edit" }) => {
+      setPreviewExpense(row);
+      setPreviewEnterMode(opts?.mode ?? "preview");
+      setPreviewOpen(true);
+    },
+    []
+  );
 
   useOnAppSync(
     React.useCallback(() => {
@@ -930,7 +950,27 @@ function ExpensesPageInner() {
       });
       void (async () => {
         try {
-          await deleteExpense(expense.id);
+          const ok = await deleteExpense(expense.id);
+          if (!ok) {
+            setExpenses(prev);
+            toast({ title: "Delete failed", variant: "error" });
+            return;
+          }
+          queryClient.setQueriesData<Expense[]>({ queryKey: [...expensesQueryKeyRoot] }, (old) =>
+            Array.isArray(old) ? old.filter((e) => e.id !== expense.id) : old
+          );
+          let closedPreviewForDeleted = false;
+          flushSync(() => {
+            setPreviewExpense((cur) => {
+              if (cur?.id === expense.id) {
+                closedPreviewForDeleted = true;
+                return null;
+              }
+              return cur;
+            });
+          });
+          if (closedPreviewForDeleted) setPreviewOpen(false);
+          toast({ title: "Expense deleted", variant: "success" });
           afterLayout(() => {
             const li = nextId ? rowElsRef.current[nextId] : null;
             scrollElementIntoViewNearest(li ?? undefined);
@@ -963,271 +1003,7 @@ function ExpensesPageInner() {
         }
       })();
     },
-    [toast]
-  );
-
-  const persistInlineField = React.useCallback(
-    (expenseId: string, field: InlineEditField): boolean => {
-      const t0 = uiActionMark();
-      switch (field) {
-        case "vendor": {
-          const nextVendor = vendorDraft.trim() || "Unknown";
-          const prev = expensesRef.current;
-          setExpenses((list) =>
-            list.map((e) => (e.id === expenseId ? { ...e, vendorName: nextVendor } : e))
-          );
-          uiActionLog("expense-inline-save-ui", t0, 100);
-          void (async () => {
-            try {
-              const next = await updateExpenseForReview(expenseId, { vendorName: nextVendor });
-              if (!next) throw new Error("Failed");
-              setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
-              hotToast.success("Saved");
-            } catch {
-              setExpenses(prev);
-              hotToast.error("Something went wrong");
-            }
-          })();
-          return true;
-        }
-        case "amount": {
-          const num = parseFloat(amountDraft.replace(/,/g, ""));
-          if (Number.isNaN(num) || num < 0) {
-            hotToast.error("Something went wrong");
-            return false;
-          }
-          const prev = expensesRef.current;
-          setExpenses((list) =>
-            list.map((e) => {
-              if (e.id !== expenseId) return e;
-              if (e.lines.length === 0) {
-                return {
-                  ...e,
-                  lines: [
-                    { id: `tmp-${expenseId}`, projectId: null, category: "Other", amount: num },
-                  ],
-                };
-              }
-              return {
-                ...e,
-                lines: e.lines.map((line, i) => (i === 0 ? { ...line, amount: num } : line)),
-              };
-            })
-          );
-          uiActionLog("expense-inline-save-ui", t0, 100);
-          void (async () => {
-            try {
-              const next = await updateExpenseForReview(expenseId, { amount: num });
-              if (!next) throw new Error("Failed");
-              setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
-              hotToast.success("Saved");
-            } catch {
-              setExpenses(prev);
-              hotToast.error("Something went wrong");
-            }
-          })();
-          return true;
-        }
-        case "date": {
-          const d = dateDraft.trim().slice(0, 10);
-          if (!d) return false;
-          const prev = expensesRef.current;
-          setExpenses((list) => list.map((e) => (e.id === expenseId ? { ...e, date: d } : e)));
-          uiActionLog("expense-inline-save-ui", t0, 100);
-          void (async () => {
-            try {
-              const next = await updateExpenseForReview(expenseId, { date: d });
-              if (!next) throw new Error("Failed");
-              setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
-              hotToast.success("Saved");
-            } catch {
-              setExpenses(prev);
-              hotToast.error("Something went wrong");
-            }
-          })();
-          return true;
-        }
-        case "project": {
-          const raw = projectDraft.trim();
-          const pid = raw === "" ? null : raw;
-          const prev = expensesRef.current;
-          setExpenses((list) =>
-            list.map((e) => {
-              if (e.id !== expenseId) return e;
-              if (e.lines.length === 0) {
-                return {
-                  ...e,
-                  headerProjectId: pid,
-                  lines: [{ id: `tmp-${expenseId}`, projectId: pid, category: "Other", amount: 0 }],
-                };
-              }
-              return {
-                ...e,
-                headerProjectId: pid,
-                lines: e.lines.map((line, i) => (i === 0 ? { ...line, projectId: pid } : line)),
-              };
-            })
-          );
-          uiActionLog("expense-inline-save-ui", t0, 100);
-          void (async () => {
-            try {
-              const next = await updateExpenseForReview(expenseId, { projectId: pid });
-              if (!next) throw new Error("Failed");
-              setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
-              hotToast.success("Saved");
-            } catch {
-              setExpenses(prev);
-              hotToast.error("Something went wrong");
-            }
-          })();
-          return true;
-        }
-        case "category": {
-          const cat = categoryDraft.trim() || "Other";
-          const prev = expensesRef.current;
-          setExpenses((list) =>
-            list.map((e) => {
-              if (e.id !== expenseId) return e;
-              if (e.lines.length === 0) {
-                return {
-                  ...e,
-                  lines: [{ id: `tmp-${expenseId}`, projectId: null, category: cat, amount: 0 }],
-                };
-              }
-              return {
-                ...e,
-                lines: e.lines.map((line, i) => (i === 0 ? { ...line, category: cat } : line)),
-              };
-            })
-          );
-          uiActionLog("expense-inline-save-ui", t0, 100);
-          void (async () => {
-            try {
-              const next = await updateExpenseForReview(expenseId, { category: cat });
-              if (!next) throw new Error("Failed");
-              setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
-              hotToast.success("Saved");
-            } catch {
-              setExpenses(prev);
-              hotToast.error("Something went wrong");
-            }
-          })();
-          return true;
-        }
-        case "source": {
-          const prev = expensesRef.current;
-          setExpenses((list) =>
-            list.map((e) => (e.id === expenseId ? { ...e, sourceType: sourceTypeDraft } : e))
-          );
-          uiActionLog("expense-inline-save-ui", t0, 100);
-          void (async () => {
-            try {
-              const next = await updateExpenseForReview(expenseId, { sourceType: sourceTypeDraft });
-              if (!next) throw new Error("Failed");
-              setExpenses((list) => list.map((e) => (e.id === expenseId ? next : e)));
-              hotToast.success("Saved");
-            } catch {
-              setExpenses(prev);
-              hotToast.error("Something went wrong");
-            }
-          })();
-          return true;
-        }
-        default:
-          return false;
-      }
-    },
-    [vendorDraft, amountDraft, dateDraft, projectDraft, categoryDraft, sourceTypeDraft]
-  );
-
-  const handleVendorInlineSave = React.useCallback(
-    (expenseId: string) => {
-      persistInlineField(expenseId, "vendor");
-      clearInlineEdits();
-    },
-    [persistInlineField, clearInlineEdits]
-  );
-
-  const handleAmountInlineSave = React.useCallback(
-    (expenseId: string) => {
-      if (!persistInlineField(expenseId, "amount")) return;
-      clearInlineEdits();
-    },
-    [persistInlineField, clearInlineEdits]
-  );
-
-  const handleDateInlineSave = React.useCallback(
-    (expenseId: string) => {
-      if (!persistInlineField(expenseId, "date")) return;
-      clearInlineEdits();
-    },
-    [persistInlineField, clearInlineEdits]
-  );
-
-  const handleProjectInlineSave = React.useCallback(
-    (expenseId: string) => {
-      persistInlineField(expenseId, "project");
-      clearInlineEdits();
-    },
-    [persistInlineField, clearInlineEdits]
-  );
-
-  const handleCategoryInlineSave = React.useCallback(
-    (expenseId: string) => {
-      persistInlineField(expenseId, "category");
-      clearInlineEdits();
-    },
-    [persistInlineField, clearInlineEdits]
-  );
-
-  const handleSourceInlineSave = React.useCallback(
-    (expenseId: string) => {
-      persistInlineField(expenseId, "source");
-      clearInlineEdits();
-    },
-    [persistInlineField, clearInlineEdits]
-  );
-
-  const openInlineField = React.useCallback(
-    (expenseId: string, field: InlineEditField) => {
-      const row = expensesRef.current.find((e) => e.id === expenseId);
-      if (!row) return;
-      clearInlineEdits();
-      switch (field) {
-        case "vendor":
-          setEditingVendorId(expenseId);
-          setVendorDraft((row.vendorName ?? "").trim());
-          break;
-        case "amount":
-          setEditingAmountId(expenseId);
-          setAmountDraft(
-            getExpenseTotal(row).toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })
-          );
-          break;
-        case "date":
-          setEditingDateId(expenseId);
-          setDateDraft((row.date ?? "").slice(0, 10));
-          break;
-        case "project":
-          setEditingProjectId(expenseId);
-          setProjectDraft(primaryProjectId(row));
-          break;
-        case "category": {
-          const c = primaryCategory(row);
-          setEditingCategoryId(expenseId);
-          setCategoryDraft(c === "—" ? "Other" : c);
-          break;
-        }
-        case "source":
-          setEditingSourceId(expenseId);
-          setSourceTypeDraft(row.sourceType ?? "company");
-          break;
-      }
-    },
-    [clearInlineEdits]
+    [queryClient, toast]
   );
 
   const focusUnreviewedFromReceiptBulk = searchParams.get("focus_unreviewed") === "1";
@@ -1248,7 +1024,7 @@ function ExpensesPageInner() {
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
         setActiveExpenseId(id);
-        openInlineField(id, "vendor");
+        openExpensePreview(first);
         const sp = new URLSearchParams(searchParams.toString());
         sp.delete("focus_unreviewed");
         const qs = sp.toString();
@@ -1260,140 +1036,39 @@ function ExpensesPageInner() {
     listView,
     pageRowIdsKey,
     pageRows,
-    openInlineField,
+    openExpensePreview,
     router,
     searchParams,
   ]);
 
-  const advanceInlineField = React.useCallback(
-    (expenseId: string, field: InlineEditField, dir: 1 | -1) => {
-      const ix = INLINE_EDIT_FIELDS.indexOf(field);
-      const nextIx = (ix + dir + INLINE_EDIT_FIELDS.length) % INLINE_EDIT_FIELDS.length;
-      openInlineField(expenseId, INLINE_EDIT_FIELDS[nextIx]);
-    },
-    [openInlineField]
-  );
-
-  const markExpenseReviewed = React.useCallback(
-    (expenseId: string) => {
-      const prev = expensesRef.current;
-      const t0 = uiActionMark();
-      setExpenses((list) =>
-        list.map((e) => (e.id === expenseId ? { ...e, status: "reviewed" as const } : e))
-      );
-      uiActionLog("expense-mark-reviewed-ui", t0, 100);
-      void (async () => {
-        try {
-          const saved = await updateExpenseForReview(expenseId, { status: "reviewed" });
-          if (!saved) throw new Error("Failed");
-          const persisted = (saved.status ?? "pending") === "reviewed";
-          if (persisted) {
-            setExpenses((list) => list.map((e) => (e.id === expenseId ? saved : e)));
-            return;
-          }
-          setExpenses(prev);
-          toast({
-            title: "Could not mark reviewed",
-            description: "Status may not be supported in this environment.",
-            variant: "default",
-          });
-        } catch {
-          setExpenses(prev);
-          toast({ title: "Status update failed", variant: "error" });
-        }
-      })();
-    },
-    [toast]
-  );
-
-  const handleInlineEnter = React.useCallback(
-    (row: Expense, field: InlineEditField, opts: { markReviewed: boolean }) => {
-      const ok = persistInlineField(row.id, field);
-      if (!ok) return;
-      if (!opts.markReviewed) {
-        clearInlineEdits();
-        return;
-      }
-      const ix = INLINE_EDIT_FIELDS.indexOf(field);
-      const hasNextFieldInRow = ix >= 0 && ix < INLINE_EDIT_FIELDS.length - 1;
-      if (hasNextFieldInRow) {
-        clearInlineEdits();
-        openInlineField(row.id, INLINE_EDIT_FIELDS[ix + 1]);
-        return;
-      }
-      clearInlineEdits();
-      const rows = pageRowsRef.current;
-      const idx = rows.findIndex((r) => r.id === row.id);
-      const nextRow = rows[idx + 1];
-      if (isUnreviewedStatus(row.status)) {
-        markExpenseReviewed(row.id);
-      }
-      if (listView === "unreviewed") {
-        if (nextRow) {
-          setActiveExpenseId(nextRow.id);
-          openInlineField(nextRow.id, "vendor");
-          afterLayout(() => {
-            const el = rowElsRef.current[nextRow.id];
-            scrollElementIntoViewNearest(el ?? undefined);
-          });
-        } else {
-          setActiveExpenseId(null);
-        }
-      }
-    },
-    [persistInlineField, clearInlineEdits, markExpenseReviewed, listView, openInlineField]
-  );
-
-  const inlineEditing =
-    Boolean(editingVendorId) ||
-    Boolean(editingAmountId) ||
-    Boolean(editingDateId) ||
-    Boolean(editingProjectId) ||
-    Boolean(editingCategoryId) ||
-    Boolean(editingSourceId) ||
-    Boolean(editingPaymentMethodId);
-
   const kbRef = React.useRef({
     listView,
     attachmentPreviewOpen,
-    editModalOpen,
+    previewOpen,
     quickExpenseOpen,
     uploadReceiptsOpen,
     pageRows,
     activeExpenseId,
-    inlineEditing,
   });
   kbRef.current = {
     listView,
     attachmentPreviewOpen,
-    editModalOpen,
+    previewOpen,
     quickExpenseOpen,
     uploadReceiptsOpen,
     pageRows,
     activeExpenseId,
-    inlineEditing,
   };
 
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const k = kbRef.current;
       if (k.listView !== "unreviewed") return;
-      if (
-        k.attachmentPreviewOpen ||
-        k.editModalOpen ||
-        k.quickExpenseOpen ||
-        k.uploadReceiptsOpen
-      ) {
+      if (k.attachmentPreviewOpen || k.previewOpen || k.quickExpenseOpen || k.uploadReceiptsOpen) {
         return;
       }
       const t = e.target as HTMLElement | null;
       const inEditable = !!t?.closest("input, textarea, select");
-
-      if (e.key === "Escape" && k.inlineEditing) {
-        e.preventDefault();
-        clearInlineEdits();
-        return;
-      }
 
       if ((e.key === "d" || e.key === "D") && !e.metaKey && !e.ctrlKey && !e.altKey) {
         if (inEditable) return;
@@ -1406,8 +1081,8 @@ function ExpensesPageInner() {
       }
 
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        if (inEditable) return;
         e.preventDefault();
-        if (inEditable) clearInlineEdits();
         const idx = k.pageRows.findIndex((r) => r.id === k.activeExpenseId);
         if (e.key === "ArrowDown") {
           const n =
@@ -1423,12 +1098,19 @@ function ExpensesPageInner() {
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [clearInlineEdits, handleDelete]);
+  }, [handleDelete]);
 
   const toggleStatus = React.useCallback(
     (expense: Expense) => {
       const current = expense.status ?? "pending";
-      const next = isUnreviewedStatus(current) ? "reviewed" : "needs_review";
+      const goingDone = expenseNeedsReviewFromDb(current);
+      if (goingDone) {
+        if (!expenseHasProjectForWorkflow(expense) || !expenseHasCategoryForWorkflow(expense)) {
+          hotToast.error("Please select project and category first");
+          return;
+        }
+      }
+      const next = goingDone ? "reviewed" : "needs_review";
       const prev = expensesRef.current;
       const t0 = uiActionMark();
       setExpenses((list) => list.map((e) => (e.id === expense.id ? { ...e, status: next } : e)));
@@ -1456,28 +1138,15 @@ function ExpensesPageInner() {
     [toast]
   );
 
-  const onInlineKeyDown = React.useCallback(
-    (row: Expense, field: InlineEditField) => (e: React.KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        clearInlineEdits();
-        return;
+  const possibleDuplicateIds = React.useMemo(() => {
+    const next = new Set<string>();
+    for (const row of pageRows) {
+      if (expenseInboxPossibleDuplicateAmongLoaded(row, pageRows, getExpenseTotal)) {
+        next.add(row.id);
       }
-      if (e.key === "Tab") {
-        e.preventDefault();
-        const ok = persistInlineField(row.id, field);
-        if (ok) advanceInlineField(row.id, field, e.shiftKey ? -1 : 1);
-        return;
-      }
-      if (e.key === "Enter") {
-        e.preventDefault();
-        void handleInlineEnter(row, field, {
-          markReviewed: listView === "unreviewed" && !e.shiftKey,
-        });
-      }
-    },
-    [clearInlineEdits, persistInlineField, advanceInlineField, handleInlineEnter, listView]
-  );
+    }
+    return next;
+  }, [pageRows]);
 
   const hasNarrowingFilters =
     Boolean(search.trim()) ||
@@ -1487,10 +1156,10 @@ function ExpensesPageInner() {
     Boolean(sourceTypeFilter) ||
     expenseDateFilter.kind !== "all";
 
-  const activeDrawerFilterCount =
+  /** Advanced filters only (tabs replace status dropdown). */
+  const activeAdvancedFilterCount =
     (projectFilter ? 1 : 0) +
     (categoryFilter ? 1 : 0) +
-    (listView === "all" && statusFilter ? 1 : 0) +
     (sourceTypeFilter ? 1 : 0) +
     (expenseDateFilter.kind !== "all" ? 1 : 0) +
     (!isDefaultExpenseListSort(expenseSort) ? 1 : 0);
@@ -1498,1095 +1167,606 @@ function ExpensesPageInner() {
   const showEmptyOnboardingCtas =
     listView === "all" && !hasNarrowingFilters && expenses.length === 0;
 
+  const deskStart = total === 0 ? 0 : (curPage - 1) * pageSize + 1;
+  const deskEnd = Math.min(total, curPage * pageSize);
+
+  const previewExpenseLive = React.useMemo(() => {
+    if (!previewExpense) return null;
+    return expenses.find((e) => e.id === previewExpense.id) ?? previewExpense;
+  }, [expenses, previewExpense]);
+
+  const previewModalNav = React.useMemo(() => {
+    if (!previewOpen || !previewExpenseLive) return undefined;
+    const idx = pageRows.findIndex((r) => r.id === previewExpenseLive.id);
+    if (idx < 0) return undefined;
+    return {
+      canPrev: idx > 0,
+      canNext: idx < pageRows.length - 1,
+      onPrev: () => {
+        const prev = pageRows[idx - 1];
+        if (prev) setPreviewExpense(prev);
+      },
+      onNext: () => {
+        const next = pageRows[idx + 1];
+        if (next) setPreviewExpense(next);
+      },
+    };
+  }, [previewOpen, previewExpenseLive, pageRows]);
+
+  const previewPossibleDuplicate =
+    previewExpenseLive != null && possibleDuplicateIds.has(previewExpenseLive.id);
+
+  const inboxTab: "all" | "needs_review" | "done" =
+    listView === "unreviewed" ||
+    (listView === "all" && statusFilter === EXPENSE_UI_STATUS_FILTER_NEEDS_REVIEW)
+      ? "needs_review"
+      : statusFilter === EXPENSE_UI_STATUS_FILTER_DONE
+        ? "done"
+        : "all";
+
+  const inboxTabActiveBtn =
+    "h-8 shrink-0 rounded-lg border-transparent bg-gray-900 px-3 text-xs font-medium text-white shadow-none hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-950 dark:hover:bg-white";
+  const inboxTabIdleBtn =
+    "h-8 shrink-0 rounded-lg border border-gray-200 bg-white px-3 text-xs font-medium text-gray-600 shadow-none hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-300 dark:hover:bg-gray-900";
+
   return (
     <div className="expenses-ui">
-      <div className="expenses-ui-content mx-auto flex w-full max-w-[430px] sm:max-w-[460px] flex-col gap-3 px-4 py-3 md:max-w-5xl md:gap-6 md:px-6 md:py-6">
-        <div className="flex h-11 items-center justify-between gap-3 border-b border-gray-100/80 dark:border-border/60 md:hidden">
-          <h1 className="text-lg font-semibold text-gray-900 dark:text-foreground">Expenses</h1>
-          <button
-            type="button"
-            onClick={handleNew}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black text-white dark:bg-foreground dark:text-background"
-            aria-label="New expense"
-          >
-            <Plus className="h-5 w-5" strokeWidth={2} />
-          </button>
-        </div>
-
-        <div className="hidden md:block">
-          <PageHeader
-            className="[&_h1]:font-semibold [&_h1]:text-gray-900 [&_p]:text-sm [&_p]:text-gray-600 dark:[&_h1]:text-foreground dark:[&_p]:text-muted-foreground"
-            title="Expenses"
-            description="Spend, receipts, reimbursements"
-            actions={
-              <div className="flex flex-wrap items-center justify-end gap-1.5">
-                <Button
-                  type="button"
-                  size="sm"
-                  className="h-8 rounded-sm border-0 bg-blue-500 text-white shadow-none hover:bg-blue-600"
-                  onClick={() => setUploadReceiptsOpen(true)}
-                >
-                  <Upload className="mr-1 h-3.5 w-3.5" />
-                  Upload
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-8 rounded-sm border border-gray-100 bg-white text-gray-700 shadow-none hover:bg-gray-50 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted/50"
-                  aria-label="Quick expense"
-                  onClick={() => setQuickExpenseOpen(true)}
-                >
-                  Quick
-                </Button>
-                <Button
-                  type="button"
-                  onClick={handleNew}
-                  size="sm"
-                  className="h-8 rounded-sm border-0 bg-black text-white shadow-none hover:bg-gray-800"
-                >
-                  <Plus className="mr-1 h-3.5 w-3.5" />
-                  New
-                </Button>
-              </div>
-            }
-          />
-        </div>
-
-        <div className="hidden flex-wrap items-baseline gap-x-6 gap-y-1 border-b border-gray-100/80 pb-3 text-sm text-gray-600 dark:border-border/60 dark:text-muted-foreground md:flex">
-          <span>
-            Month{" "}
-            <span className="ml-1 font-medium tabular-nums text-gray-900 dark:text-foreground">
-              ${summary.monthTotal.toLocaleString()}
-            </span>
-          </span>
-          <span>
-            Total{" "}
-            <span className="ml-1 font-medium tabular-nums text-gray-900 dark:text-foreground">
-              ${summary.allTotal.toLocaleString()}
-            </span>
-          </span>
-          <span>
-            Unreviewed{" "}
-            <span className="ml-1 font-medium tabular-nums text-gray-900 dark:text-foreground">
-              {summary.unreviewed}
-            </span>
-          </span>
-          <span>
-            Reimb.{" "}
-            <span className="ml-1 font-medium tabular-nums text-gray-900 dark:text-foreground">
-              {summary.reimbursementCount}
-            </span>
-          </span>
-          <span className="min-w-0">
-            Top cat.{" "}
-            <span
-              className="ml-1 font-medium text-gray-900 dark:text-foreground"
-              title={summary.topCategory}
-            >
-              {summary.topCategory}
-            </span>
-          </span>
-        </div>
-
-        <div className="flex flex-col gap-1 border-b border-gray-100/80 pb-3 dark:border-border/60">
-          <div className="flex flex-wrap items-center gap-2">
+      <div className="expenses-ui-content mx-auto w-full max-w-[430px] px-3 py-2.5 sm:max-w-[460px] md:max-w-[1280px] md:px-8 md:py-8">
+        <div className="space-y-5">
+          <div className="flex h-11 items-center justify-between gap-3 border-b border-gray-100/80 dark:border-border/60 md:hidden">
+            <div className="min-w-0">
+              <h1 className="truncate text-lg font-semibold text-gray-900 dark:text-foreground">
+                Transaction Inbox
+              </h1>
+              <p className="line-clamp-2 text-[11px] leading-snug text-gray-500 dark:text-muted-foreground">
+                Review, categorize, and assign expenses to projects
+              </p>
+            </div>
             <Button
               type="button"
-              variant="outline"
-              size="sm"
-              className={
-                listView === "all"
-                  ? "h-8 max-md:min-h-11 rounded-sm border-transparent bg-blue-500 px-3 text-sm font-medium text-white shadow-none hover:bg-blue-600 hover:text-white"
-                  : "h-8 max-md:min-h-11 rounded-sm border-gray-100/80 bg-gray-100 px-3 text-sm font-medium text-gray-600 shadow-none hover:bg-blue-50 hover:text-gray-800 dark:border-border/60 dark:bg-muted dark:text-muted-foreground dark:hover:bg-muted/80"
-              }
-              onClick={() => setListView("all")}
+              size="icon"
+              onClick={handleNew}
+              className="h-10 w-10 shrink-0 rounded-full bg-black text-white hover:bg-neutral-900 dark:bg-foreground dark:text-background dark:hover:bg-foreground/90"
+              aria-label="New expense"
             >
-              All
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className={
-                listView === "unreviewed"
-                  ? "h-8 max-md:min-h-11 rounded-sm border-transparent bg-blue-500 px-3 text-sm font-medium text-white shadow-none hover:bg-blue-600 hover:text-white"
-                  : "h-8 max-md:min-h-11 rounded-sm border-gray-100/80 bg-gray-100 px-3 text-sm font-medium text-gray-600 shadow-none hover:bg-blue-50 hover:text-gray-800 dark:border-border/60 dark:bg-muted dark:text-muted-foreground dark:hover:bg-muted/80"
-              }
-              onClick={() => setListView("unreviewed")}
-            >
-              Unreviewed ({summary.unreviewed})
+              <Plus className="h-5 w-5" strokeWidth={2} />
             </Button>
           </div>
-          {listView === "unreviewed" ? (
-            <p className="hidden text-sm text-gray-600 dark:text-muted-foreground md:block">
-              Enter: save, mark reviewed, next row · Shift+Enter: save only · Tab: next field · ↑↓:
-              row · D: delete · Esc: cancel
-            </p>
-          ) : null}
-        </div>
 
-        {/* Mobile: search + filters drawer */}
-        <div className="flex flex-col gap-2 md:hidden">
-          <div className="flex items-center gap-2">
-            <Input
-              placeholder="Search…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-10 flex-1 rounded-sm border border-gray-100/80 bg-white text-sm text-gray-900 shadow-none dark:border-border/60 dark:bg-card dark:text-foreground"
+          <div className="hidden md:block">
+            <PageHeader
+              className="[&_h1]:font-semibold [&_h1]:text-gray-900 [&_p]:text-sm [&_p]:text-gray-600 dark:[&_h1]:text-foreground dark:[&_p]:text-muted-foreground"
+              title="Transaction Inbox"
+              description="Review, categorize, and assign expenses to projects"
+              actions={
+                <div className="flex flex-wrap items-center justify-end gap-1.5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 rounded-lg border border-gray-200 bg-white text-gray-700 shadow-none hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:hover:bg-gray-900"
+                    onClick={() => setUploadReceiptsOpen(true)}
+                  >
+                    <Upload className="mr-1 h-3.5 w-3.5" />
+                    Upload
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 rounded-lg border border-gray-200 bg-white text-gray-700 shadow-none hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:hover:bg-gray-900"
+                    aria-label="Quick expense"
+                    onClick={() => setQuickExpenseOpen(true)}
+                  >
+                    Quick
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleNew}
+                    size="sm"
+                    className="h-8 rounded-lg border-0 bg-gray-900 text-white shadow-none hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-950 dark:hover:bg-white"
+                  >
+                    <Plus className="mr-1 h-3.5 w-3.5" />
+                    New
+                  </Button>
+                </div>
+              }
             />
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="relative h-10 shrink-0 gap-1.5 border-gray-100/80 px-2.5 dark:border-border/60"
-              onClick={() => setFiltersDrawerOpen(true)}
-            >
-              <Filter className="h-4 w-4" />
-              <span className="text-xs font-medium">Filters</span>
-              {activeDrawerFilterCount > 0 ? (
-                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-black px-1 text-[10px] font-medium text-white dark:bg-foreground dark:text-background">
-                  {activeDrawerFilterCount}
-                </span>
-              ) : null}
-            </Button>
           </div>
-        </div>
-        <Sheet open={filtersDrawerOpen} onOpenChange={setFiltersDrawerOpen}>
-          <SheetContent
-            side="bottom"
-            className="max-h-[90vh] overflow-y-auto rounded-t-lg p-4 md:hidden"
-          >
-            <SheetHeader className="text-left">
-              <SheetTitle className="text-base font-semibold">Filters & more</SheetTitle>
-            </SheetHeader>
-            <div className="mt-4 flex flex-col gap-4 pb-8">
-              <div className="flex flex-col gap-2 border-b border-gray-100/80 pb-4 dark:border-border/60">
+
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <div className="flex h-[76px] items-center gap-2.5 rounded-xl border border-gray-200/70 bg-white px-3 shadow-[0_1px_2px_rgba(16,24,40,0.06)] dark:border-gray-800 dark:bg-gray-950">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                <AlertCircle className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[10px] font-medium leading-tight text-gray-500 dark:text-gray-400">
+                  Needs Review
+                </p>
+                <p className="text-xl font-semibold tabular-nums leading-tight text-gray-900 dark:text-gray-100">
+                  {summary.unreviewed}
+                </p>
+              </div>
+            </div>
+            <div className="flex h-[76px] items-center justify-between gap-2 rounded-xl border border-gray-200/70 bg-white px-3 shadow-[0_1px_2px_rgba(16,24,40,0.06)] dark:border-gray-800 dark:bg-gray-950">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                  <CalendarDays className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-medium leading-tight text-gray-500 dark:text-gray-400">
+                    This Month
+                  </p>
+                  <p className="text-xl font-semibold tabular-nums leading-tight text-gray-900 dark:text-gray-100">
+                    ${summary.monthTotal.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+              <KpiSparkline />
+            </div>
+            <div className="flex h-[76px] items-center justify-between gap-2 rounded-xl border border-gray-200/70 bg-white px-3 shadow-[0_1px_2px_rgba(16,24,40,0.06)] dark:border-gray-800 dark:bg-gray-950">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                  <DollarSign className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-medium leading-tight text-gray-500 dark:text-gray-400">
+                    Total Expenses
+                  </p>
+                  <p className="text-xl font-semibold tabular-nums leading-tight text-gray-900 dark:text-gray-100">
+                    ${summary.allTotal.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+              <KpiSparkline className="text-emerald-300 dark:text-emerald-900/40" />
+            </div>
+            <div className="flex h-[76px] items-center justify-between gap-2 rounded-xl border border-gray-200/70 bg-white px-3 shadow-[0_1px_2px_rgba(16,24,40,0.06)] dark:border-gray-800 dark:bg-gray-950">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                  <RefreshCw className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-medium leading-tight text-gray-500 dark:text-gray-400">
+                    Reimbursements
+                  </p>
+                  <p className="text-xl font-semibold tabular-nums leading-tight text-gray-900 dark:text-gray-100">
+                    ${summary.reimbursementTotal.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+              <KpiSparkline className="text-violet-300 dark:text-violet-900/40" />
+            </div>
+          </div>
+
+          {/* Mobile: tabs + search + filters drawer */}
+          <div className="flex flex-col gap-2 md:hidden">
+            <div className="-mx-1 overflow-x-auto overscroll-x-contain [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="flex w-max min-w-full flex-nowrap gap-1.5 px-1">
                 <Button
                   type="button"
+                  variant="outline"
                   size="sm"
-                  className="h-10 w-full rounded-sm border-0 bg-blue-500 text-white"
-                  onClick={() => {
-                    setUploadReceiptsOpen(true);
-                    setFiltersDrawerOpen(false);
-                  }}
+                  className={
+                    inboxTab === "all"
+                      ? "h-9 shrink-0 rounded-md border-transparent bg-foreground px-3 text-sm font-medium text-background shadow-none hover:bg-foreground/90 hover:text-background"
+                      : "h-9 shrink-0 rounded-md border-border/60 bg-transparent px-3 text-sm font-medium text-muted-foreground shadow-none hover:bg-muted/50 hover:text-foreground"
+                  }
+                  onClick={() => applyInboxTab("all")}
                 >
-                  <Upload className="mr-2 h-4 w-4" />
-                  Upload receipts
+                  All
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-10 w-full"
-                  onClick={() => {
-                    setQuickExpenseOpen(true);
-                    setFiltersDrawerOpen(false);
-                  }}
+                  className={
+                    inboxTab === "needs_review"
+                      ? "h-9 shrink-0 rounded-md border-transparent bg-foreground px-3 text-sm font-medium text-background shadow-none hover:bg-foreground/90 hover:text-background"
+                      : "h-9 shrink-0 rounded-md border-border/60 bg-transparent px-3 text-sm font-medium text-muted-foreground shadow-none hover:bg-muted/50 hover:text-foreground"
+                  }
+                  onClick={() => applyInboxTab("needs_review")}
                 >
-                  Quick expense
+                  Needs Review ({summary.unreviewed})
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className={
+                    inboxTab === "done"
+                      ? "h-9 shrink-0 rounded-md border-transparent bg-foreground px-3 text-sm font-medium text-background shadow-none hover:bg-foreground/90 hover:text-background"
+                      : "h-9 shrink-0 rounded-md border-border/60 bg-transparent px-3 text-sm font-medium text-muted-foreground shadow-none hover:bg-muted/50 hover:text-foreground"
+                  }
+                  onClick={() => applyInboxTab("done")}
+                >
+                  Done
                 </Button>
               </div>
-              <Select
-                value={projectFilter === "" ? EXPENSE_FILTER_ALL : projectFilter}
-                onValueChange={(v) => setProjectFilter(v === EXPENSE_FILTER_ALL ? "" : v)}
-              >
-                <SelectTrigger className="h-10 w-full border-gray-100/80 bg-white text-xs dark:border-border/60 dark:bg-card">
-                  <SelectValue placeholder="Project" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={EXPENSE_FILTER_ALL}>Project</SelectItem>
-                  {safeProjects.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name ?? p.id}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {projectsError ? (
-                <span className="text-[11px] text-amber-600 dark:text-amber-400">
-                  {projectsError}
-                </span>
-              ) : null}
-              <Select
-                value={categoryFilter === "" ? EXPENSE_FILTER_ALL : categoryFilter}
-                onValueChange={(v) => setCategoryFilter(v === EXPENSE_FILTER_ALL ? "" : v)}
-              >
-                <SelectTrigger className="h-10 w-full border-gray-100/80 bg-white text-xs dark:border-border/60 dark:bg-card">
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={EXPENSE_FILTER_ALL}>Category</SelectItem>
-                  {categoriesList.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
-                value={statusFilter === "" ? EXPENSE_FILTER_ALL : statusFilter}
-                onValueChange={(v) => setStatusFilter(v === EXPENSE_FILTER_ALL ? "" : v)}
-                disabled={listView === "unreviewed"}
-              >
-                <SelectTrigger
-                  className="h-10 w-full border-gray-100/80 bg-white text-xs disabled:opacity-50 dark:border-border/60 dark:bg-card"
-                  title={
-                    listView === "unreviewed" ? "Status filter applies in All view only" : undefined
-                  }
-                >
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={EXPENSE_FILTER_ALL}>Status</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="needs_review">Needs review</SelectItem>
-                  <SelectItem value="reviewed">Reviewed</SelectItem>
-                  <SelectItem value="reimbursable">Reimbursable</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="paid">Paid</SelectItem>
-                  <SelectItem value="reimbursed">Reimbursed</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select
-                value={sourceTypeFilter === "" ? EXPENSE_FILTER_ALL : sourceTypeFilter}
-                onValueChange={(v) => setSourceTypeFilter(v === EXPENSE_FILTER_ALL ? "" : v)}
-              >
-                <SelectTrigger className="h-10 w-full border-gray-100/80 bg-white text-xs dark:border-border/60 dark:bg-card">
-                  <SelectValue placeholder="Source" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={EXPENSE_FILTER_ALL}>Source</SelectItem>
-                  <SelectItem value="company">Company</SelectItem>
-                  <SelectItem value="receipt_upload">Receipt</SelectItem>
-                  <SelectItem value="reimbursement">Reimbursement</SelectItem>
-                </SelectContent>
-              </Select>
-              <ExpenseDateRangeFilter
-                value={expenseDateFilter}
-                onChange={(next) => {
-                  setExpenseDateFilter(next);
-                  const sp = new URLSearchParams(searchParams.toString());
-                  sp.set("page", "1");
-                  router.push(`/financial/expenses?${sp.toString()}`, { scroll: false });
-                }}
+            </div>
+            <div className="flex w-full min-w-0 items-center gap-2">
+              <Input
+                placeholder="Search…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-10 min-w-0 flex-1 rounded-sm border border-gray-100/80 bg-white text-sm text-gray-900 shadow-none dark:border-border/60 dark:bg-card dark:text-foreground"
               />
-              <Select
-                value={`${expenseSort.field}|${expenseSort.order}`}
-                onValueChange={(v) => {
-                  const [field, order] = v.split("|") as [
-                    ExpenseListSort["field"],
-                    ExpenseListSort["order"],
-                  ];
-                  if (
-                    (field === "date" || field === "amount" || field === "vendor") &&
-                    (order === "asc" || order === "desc")
-                  ) {
-                    setExpenseSort({ field, order });
-                    const sp = new URLSearchParams(searchParams.toString());
-                    sp.set("page", "1");
-                    router.push(`/financial/expenses?${sp.toString()}`, { scroll: false });
-                  }
-                }}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="relative h-10 shrink-0 gap-1 border-gray-100/80 px-2.5 dark:border-border/60"
+                onClick={() => setFiltersDrawerOpen(true)}
               >
-                <SelectTrigger
-                  className="h-10 w-full border-gray-100 bg-white text-xs font-medium dark:border-border dark:bg-card"
-                  aria-label="Sort expenses"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="date|desc">Sort: Date ↓</SelectItem>
-                  <SelectItem value="date|asc">Sort: Date ↑</SelectItem>
-                  <SelectItem value="amount|desc">Sort: Amount ↓</SelectItem>
-                  <SelectItem value="amount|asc">Sort: Amount ↑</SelectItem>
-                  <SelectItem value="vendor|asc">Sort: Vendor A–Z</SelectItem>
-                  <SelectItem value="vendor|desc">Sort: Vendor Z–A</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button type="button" className="w-full" onClick={() => setFiltersDrawerOpen(false)}>
-                Done
+                <Filter className="h-4 w-4 shrink-0" aria-hidden />
+                <span className="max-w-[5.5rem] truncate text-xs font-medium">
+                  Filters
+                  {activeAdvancedFilterCount > 0 ? (
+                    <span className="text-muted-foreground"> · {activeAdvancedFilterCount}</span>
+                  ) : null}
+                </span>
               </Button>
             </div>
-          </SheetContent>
-        </Sheet>
-
-        <div className="hidden flex-col gap-3 pt-0 md:flex md:gap-2">
-          <Input
-            placeholder="Search…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="h-8 rounded-sm border border-gray-100/80 bg-white text-sm text-gray-900 shadow-none transition-all duration-200 placeholder:text-gray-600 focus-visible:border-gray-300 focus-visible:ring-2 focus-visible:ring-blue-400/30 dark:border-border/60 dark:bg-card dark:text-foreground dark:placeholder:text-muted-foreground"
-          />
-          <div className="flex flex-col gap-2 md:flex-row md:flex-wrap">
-            <Select
-              value={projectFilter === "" ? EXPENSE_FILTER_ALL : projectFilter}
-              onValueChange={(v) => setProjectFilter(v === EXPENSE_FILTER_ALL ? "" : v)}
-            >
-              <SelectTrigger className="h-8 min-w-[8rem] max-w-[14rem] border-gray-100/80 bg-white text-xs text-gray-900 dark:border-border/60 dark:bg-card dark:text-foreground">
-                <SelectValue placeholder="Project" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={EXPENSE_FILTER_ALL}>Project</SelectItem>
-                {safeProjects.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name ?? p.id}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {projectsError ? (
-              <span className="self-center text-[11px] text-amber-600 dark:text-amber-400">
-                {projectsError}
-              </span>
-            ) : null}
-            <Select
-              value={categoryFilter === "" ? EXPENSE_FILTER_ALL : categoryFilter}
-              onValueChange={(v) => setCategoryFilter(v === EXPENSE_FILTER_ALL ? "" : v)}
-            >
-              <SelectTrigger className="h-8 min-w-[7rem] max-w-[12rem] border-gray-100/80 bg-white text-xs text-gray-900 dark:border-border/60 dark:bg-card dark:text-foreground">
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={EXPENSE_FILTER_ALL}>Category</SelectItem>
-                {categoriesList.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {c}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={statusFilter === "" ? EXPENSE_FILTER_ALL : statusFilter}
-              onValueChange={(v) => setStatusFilter(v === EXPENSE_FILTER_ALL ? "" : v)}
-              disabled={listView === "unreviewed"}
-            >
-              <SelectTrigger
-                className="h-8 min-w-[6.5rem] max-w-[10rem] border-gray-100/80 bg-white text-xs text-gray-900 disabled:opacity-50 dark:border-border/60 dark:bg-card dark:text-foreground"
-                title={
-                  listView === "unreviewed" ? "Status filter applies in All view only" : undefined
-                }
-              >
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={EXPENSE_FILTER_ALL}>Status</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="needs_review">Needs review</SelectItem>
-                <SelectItem value="reviewed">Reviewed</SelectItem>
-                <SelectItem value="reimbursable">Reimbursable</SelectItem>
-                <SelectItem value="approved">Approved</SelectItem>
-                <SelectItem value="paid">Paid</SelectItem>
-                <SelectItem value="reimbursed">Reimbursed</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select
-              value={sourceTypeFilter === "" ? EXPENSE_FILTER_ALL : sourceTypeFilter}
-              onValueChange={(v) => setSourceTypeFilter(v === EXPENSE_FILTER_ALL ? "" : v)}
-            >
-              <SelectTrigger className="h-8 min-w-[6.5rem] max-w-[9rem] border-gray-100/80 bg-white text-xs text-gray-900 dark:border-border/60 dark:bg-card dark:text-foreground">
-                <SelectValue placeholder="Source" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={EXPENSE_FILTER_ALL}>Source</SelectItem>
-                <SelectItem value="company">Company</SelectItem>
-                <SelectItem value="receipt_upload">Receipt</SelectItem>
-                <SelectItem value="reimbursement">Reimbursement</SelectItem>
-              </SelectContent>
-            </Select>
-            <ExpenseDateRangeFilter
-              value={expenseDateFilter}
-              onChange={(next) => {
-                setExpenseDateFilter(next);
-                const sp = new URLSearchParams(searchParams.toString());
-                sp.set("page", "1");
-                router.push(`/financial/expenses?${sp.toString()}`, { scroll: false });
-              }}
-            />
-            <Select
-              value={`${expenseSort.field}|${expenseSort.order}`}
-              onValueChange={(v) => {
-                const [field, order] = v.split("|") as [
-                  ExpenseListSort["field"],
-                  ExpenseListSort["order"],
-                ];
-                if (
-                  (field === "date" || field === "amount" || field === "vendor") &&
-                  (order === "asc" || order === "desc")
-                ) {
-                  setExpenseSort({ field, order });
-                  const sp = new URLSearchParams(searchParams.toString());
-                  sp.set("page", "1");
-                  router.push(`/financial/expenses?${sp.toString()}`, { scroll: false });
-                }
-              }}
-            >
-              <SelectTrigger
-                className="h-8 min-w-[9.5rem] border-gray-100 bg-white text-xs font-medium text-gray-900 dark:border-border dark:bg-card dark:text-foreground"
-                aria-label="Sort expenses"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="date|desc">Sort: Date ↓</SelectItem>
-                <SelectItem value="date|asc">Sort: Date ↑</SelectItem>
-                <SelectItem value="amount|desc">Sort: Amount ↓</SelectItem>
-                <SelectItem value="amount|asc">Sort: Amount ↑</SelectItem>
-                <SelectItem value="vendor|asc">Sort: Vendor A–Z</SelectItem>
-                <SelectItem value="vendor|desc">Sort: Vendor Z–A</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
-        </div>
-
-        <section
-          className={cn(
-            "relative mt-2 md:mt-4",
-            expensesListRefetching && expenses.length > 0 && "pointer-events-none opacity-60"
-          )}
-          aria-busy={expensesListRefetching && expenses.length > 0 ? true : undefined}
-        >
-          {expensesListRefetching && expenses.length > 0 ? (
-            <div className="pointer-events-none absolute inset-x-0 top-0 z-[1] flex justify-center pt-1">
-              <span className="text-xs text-muted-foreground">Updating…</span>
-            </div>
-          ) : null}
-          {showExpensesSkeleton && expenses.length === 0 ? (
-            <ExpensesListSkeleton rows={8} />
-          ) : total === 0 ? (
-            <>
-              <div
-                className="hidden min-h-[min(55vh_480px)] flex-col justify-center border-b border-gray-100/80 py-12 text-center transition-opacity duration-200 ease-out animate-in fade-in dark:border-border/60 md:flex"
-                tabIndex={-1}
-                data-expenses-empty
-              >
-                <p className="text-sm font-semibold text-gray-900 dark:text-foreground">
-                  {listView === "unreviewed"
-                    ? hasNarrowingFilters
-                      ? "No unreviewed matches"
-                      : expenses.length === 0
-                        ? "No expenses yet"
-                        : "You're all caught up"
-                    : hasNarrowingFilters
-                      ? "No matches"
-                      : "No expenses yet"}
-                </p>
-                <p className="mt-0.5 text-sm text-gray-600 dark:text-muted-foreground">
-                  {listView === "unreviewed"
-                    ? hasNarrowingFilters
-                      ? "Try clearing filters or switch to All."
-                      : expenses.length === 0
-                        ? "Add an expense to get started."
-                        : "No pending or needs-review items right now."
-                    : hasNarrowingFilters
-                      ? "Adjust filters or search."
-                      : "Add an expense to get started."}
-                </p>
-                {showEmptyOnboardingCtas ? (
-                  <div className="mt-4 flex flex-wrap justify-center gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-8 rounded-sm border border-gray-100 bg-white text-gray-700 shadow-none hover:bg-gray-50 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted/50"
-                      onClick={() => setQuickExpenseOpen(true)}
-                    >
-                      Quick expense
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="h-8 rounded-sm border-0 bg-blue-500 text-white shadow-none hover:bg-blue-600"
-                      onClick={() => setUploadReceiptsOpen(true)}
-                    >
-                      <Upload className="mr-1.5 h-3.5 w-3.5" />
-                      Upload
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="h-8 rounded-sm border-0 bg-black text-white shadow-none hover:bg-gray-800"
-                      onClick={handleNew}
-                    >
-                      New expense
-                    </Button>
-                  </div>
-                ) : listView === "unreviewed" && !hasNarrowingFilters && expenses.length > 0 ? (
-                  <div className="mt-4">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="h-8 rounded-sm border border-gray-100 bg-white text-gray-700 shadow-none hover:bg-gray-50 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted/50"
-                      onClick={() => setListView("all")}
-                    >
-                      View all expenses
-                    </Button>
-                  </div>
-                ) : null}
-              </div>
-              <div
-                className="flex flex-col items-center border-b border-gray-100/80 py-10 md:hidden dark:border-border/60"
-                tabIndex={-1}
-                data-expenses-empty-mobile
-              >
-                <Upload
-                  className="h-8 w-8 text-text-secondary dark:text-muted-foreground"
-                  aria-hidden
-                />
-                <p className="mt-3 text-center text-sm text-text-secondary dark:text-muted-foreground">
-                  {listView === "unreviewed"
-                    ? hasNarrowingFilters
-                      ? "No unreviewed matches. Try filters or All."
-                      : expenses.length === 0
-                        ? "No expenses yet."
-                        : "You're all caught up."
-                    : hasNarrowingFilters
-                      ? "No matches. Adjust filters or search."
-                      : "No expenses yet."}
-                </p>
-                {showEmptyOnboardingCtas ? (
-                  <Button type="button" size="sm" className="mt-4" onClick={handleNew}>
-                    New expense
-                  </Button>
-                ) : listView === "unreviewed" && !hasNarrowingFilters && expenses.length > 0 ? (
+          <Sheet open={filtersDrawerOpen} onOpenChange={setFiltersDrawerOpen}>
+            <SheetContent
+              side="bottom"
+              className="max-h-[90vh] overflow-y-auto rounded-t-lg p-4 md:hidden"
+            >
+              <SheetHeader className="text-left">
+                <SheetTitle className="text-base font-semibold">Filters & more</SheetTitle>
+              </SheetHeader>
+              <div className="mt-4 flex flex-col gap-4 pb-8">
+                <div className="flex flex-col gap-2 border-b border-gray-100/80 pb-4 dark:border-border/60">
                   <Button
                     type="button"
                     size="sm"
-                    variant="outline"
-                    className="mt-4"
-                    onClick={() => setListView("all")}
+                    className="h-10 w-full rounded-sm border-0 bg-blue-500 text-white"
+                    onClick={() => {
+                      setUploadReceiptsOpen(true);
+                      setFiltersDrawerOpen(false);
+                    }}
                   >
-                    View all expenses
+                    <Upload className="mr-2 h-4 w-4" />
+                    Upload receipts
                   </Button>
-                ) : null}
-              </div>
-            </>
-          ) : (
-            <div className="exp-list-card w-full overflow-hidden rounded-none border-0 bg-transparent shadow-none dark:bg-transparent md:rounded-xl md:border md:border-gray-100/80 md:bg-white md:shadow-[0_4px_12px_rgba(0_0_0_0.06)] dark:md:border-border/60 dark:md:bg-card dark:md:shadow-none">
-              {listView === "all" ? (
-                <div className="divide-y divide-gray-100 dark:divide-border/60 md:hidden">
-                  {pageRows.map((row) => {
-                    const rowTotal = getExpenseTotal(row);
-                    const projLabel = projectLabel(row, projectNameById);
-                    const status = row.status ?? "pending";
-                    const statusStyle = expenseStatusDotTextClass(status);
-                    return (
-                      <Link
-                        key={row.id}
-                        href={`/financial/expenses/${row.id}`}
-                        className="hh-row-interactive flex min-h-[48px] w-full items-center gap-3 px-0 py-2 text-left"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-gray-900 dark:text-foreground">
-                            {normalizedVendorLabel(row.vendorName)}
-                          </p>
-                          <p className="truncate text-xs text-text-secondary dark:text-muted-foreground">
-                            {projLabel} · {row.date ?? "—"}
-                          </p>
-                        </div>
-                        <div className="flex min-w-[5.5rem] shrink-0 flex-col items-end gap-1 text-right">
-                          <span className="text-sm font-medium tabular-nums text-[#d92d20] dark:text-red-400">
-                            −$
-                            {rowTotal.toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })}
-                          </span>
-                          <span className="flex items-center gap-1 text-xs font-medium">
-                            <span
-                              className={`h-2 w-2 shrink-0 rounded-full ${statusStyle.dot}`}
-                              aria-hidden
-                            />
-                            <span className={statusStyle.text}>{statusDisplayLabel(status)}</span>
-                          </span>
-                        </div>
-                      </Link>
-                    );
-                  })}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-10 w-full"
+                    onClick={() => {
+                      setQuickExpenseOpen(true);
+                      setFiltersDrawerOpen(false);
+                    }}
+                  >
+                    Quick expense
+                  </Button>
                 </div>
-              ) : null}
-              <div
-                className={
-                  listView === "all" ? "hidden overflow-x-auto md:block" : "overflow-x-auto"
-                }
-              >
-                <ul
-                  className={
-                    listView === "all" ? "exp-divide w-full min-w-[640px] lg:min-w-0" : "exp-divide"
-                  }
-                >
-                  {pageRows.map((row) => {
-                    const rowTotal = getExpenseTotal(row);
-                    const projLabel = projectLabel(row, projectNameById);
-                    const status = row.status ?? "pending";
-                    const statusStyle = expenseStatusDotTextClass(status);
-                    const catLabel = primaryCategory(row);
-                    return (
-                      <li
-                        key={row.id}
-                        ref={(el) => {
-                          rowElsRef.current[row.id] = el;
-                        }}
-                        className={`group exp-row relative flex flex-col gap-3 border-b border-gray-100/80 bg-transparent px-3 py-3 pr-10 transition-all duration-150 ease-out last:border-b-0 hover:-translate-y-px hover:bg-gray-50 active:scale-[0.99] dark:border-border/60 dark:hover:bg-muted/40 md:flex-row md:justify-between md:items-start md:gap-4 md:px-4 md:py-2.5 md:pr-12 lg:pr-14 ${
-                          paymentMethodFlashId === row.id ? "hh-row-flash-success" : ""
-                        } ${
-                          deletingExpenseId === row.id
-                            ? "pointer-events-none !duration-300 opacity-0 ease-out scale-[0.98]"
-                            : ""
-                        } ${
-                          listView === "unreviewed" && activeExpenseId === row.id
-                            ? "bg-white/95 ring-1 ring-inset ring-gray-200/80 dark:bg-white/10 dark:ring-border/60"
-                            : ""
-                        }`}
-                        onClick={() => {
-                          if (listView === "unreviewed") setActiveExpenseId(row.id);
-                        }}
-                      >
-                        <div className="order-2 flex min-w-0 w-full flex-1 flex-col gap-1 md:order-1">
-                          <div className="min-w-0">
-                            {editingVendorId === row.id ? (
-                              <div
-                                className="flex max-w-md items-center gap-1"
-                                data-inline-field
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <Input
-                                  className="h-7 rounded-sm border-gray-100/60 text-[14px] text-text-primary transition-[box-shadow_border-color] duration-150 focus-visible:ring-2 focus-visible:ring-blue-400/30"
-                                  value={vendorDraft}
-                                  autoFocus
-                                  onChange={(e) => setVendorDraft(e.target.value)}
-                                  onKeyDown={onInlineKeyDown(row, "vendor")}
-                                />
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="exp-icon-btn h-7 w-7 shrink-0"
-                                  aria-label="Save vendor"
-                                  onMouseDown={(e) => e.preventDefault()}
-                                  onClick={() => void handleVendorInlineSave(row.id)}
-                                >
-                                  <Check className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="exp-icon-btn h-7 w-7 shrink-0"
-                                  aria-label="Cancel"
-                                  onMouseDown={(e) => e.preventDefault()}
-                                  onClick={() => clearInlineEdits()}
-                                >
-                                  <X className="h-3.5 w-3.5" />
-                                </Button>
-                              </div>
-                            ) : (
-                              <button
-                                type="button"
-                                className="truncate text-left text-[14px] font-semibold text-gray-900 hover:underline dark:text-foreground"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveExpenseId(row.id);
-                                  openInlineField(row.id, "vendor");
-                                }}
-                              >
-                                {normalizedVendorLabel(row.vendorName)}
-                              </button>
-                            )}
-                          </div>
-                          <div
-                            className="flex min-w-0 flex-wrap items-center gap-x-1 gap-y-0.5 text-[12px] leading-snug text-gray-600 dark:text-muted-foreground"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {editingCategoryId === row.id ? (
-                              <span data-inline-field className="inline-flex items-center gap-1">
-                                <ExpenseCategorySelect
-                                  className="h-7 max-w-[9rem] rounded-sm border border-gray-100/60 bg-white/90 px-1.5 text-xs text-text-primary backdrop-blur-sm"
-                                  value={categoryDraft}
-                                  autoFocus
-                                  onValueChange={setCategoryDraft}
-                                  onCategoriesUpdated={setCategoriesList}
-                                  onKeyDown={onInlineKeyDown(row, "category")}
-                                />
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="exp-icon-btn h-7 w-7"
-                                  onMouseDown={(e) => e.preventDefault()}
-                                  onClick={() => void handleCategoryInlineSave(row.id)}
-                                >
-                                  <Check className="h-3.5 w-3.5" />
-                                </Button>
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                className="hover:text-text-primary hover:underline"
-                                onClick={() => {
-                                  setActiveExpenseId(row.id);
-                                  openInlineField(row.id, "category");
-                                }}
-                              >
-                                {catLabel}
-                              </button>
-                            )}
-                            <span
-                              className="text-text-secondary/60 dark:text-text-secondary"
-                              aria-hidden
-                            >
-                              ·
-                            </span>
-                            {editingProjectId === row.id ? (
-                              <span
-                                data-inline-field
-                                className="inline-flex min-w-0 items-center gap-1"
-                                onKeyDown={onInlineKeyDown(row, "project")}
-                              >
-                                <Select
-                                  value={
-                                    projectDraft === "" ? EXPENSE_PROJECT_OVERHEAD : projectDraft
-                                  }
-                                  onValueChange={(v) =>
-                                    setProjectDraft(v === EXPENSE_PROJECT_OVERHEAD ? "" : v)
-                                  }
-                                >
-                                  <SelectTrigger className="h-7 max-w-[10rem] border-gray-100/60 bg-white/90 text-xs text-text-primary backdrop-blur-sm">
-                                    <SelectValue placeholder="Project" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value={EXPENSE_PROJECT_OVERHEAD}>
-                                      Overhead
-                                    </SelectItem>
-                                    {safeProjects.map((p) => (
-                                      <SelectItem key={p.id} value={p.id}>
-                                        {p.name ?? p.id}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="exp-icon-btn h-7 w-7 shrink-0"
-                                  onMouseDown={(e) => e.preventDefault()}
-                                  onClick={() => void handleProjectInlineSave(row.id)}
-                                >
-                                  <Check className="h-3.5 w-3.5" />
-                                </Button>
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                className="hh-inline-tap min-w-0 max-w-[10rem] truncate hover:text-text-primary hover:underline"
-                                onClick={() => {
-                                  setActiveExpenseId(row.id);
-                                  openInlineField(row.id, "project");
-                                }}
-                              >
-                                {projLabel}
-                              </button>
-                            )}
-                            <span
-                              className="text-text-secondary/60 dark:text-text-secondary"
-                              aria-hidden
-                            >
-                              ·
-                            </span>
-                            {editingDateId === row.id ? (
-                              <span className="inline-flex items-center gap-1" data-inline-field>
-                                <Input
-                                  type="date"
-                                  className="h-7 w-[9.5rem] rounded-sm border-gray-100/60 text-xs text-text-primary transition-[box-shadow_border-color] duration-150 focus-visible:ring-2 focus-visible:ring-blue-400/30"
-                                  value={dateDraft}
-                                  autoFocus
-                                  onChange={(e) => setDateDraft(e.target.value)}
-                                  onKeyDown={onInlineKeyDown(row, "date")}
-                                />
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="exp-icon-btn h-7 w-7"
-                                  onMouseDown={(e) => e.preventDefault()}
-                                  onClick={() => void handleDateInlineSave(row.id)}
-                                >
-                                  <Check className="h-3.5 w-3.5" />
-                                </Button>
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                className="hh-inline-tap hover:text-text-primary hover:underline"
-                                onClick={() => {
-                                  setActiveExpenseId(row.id);
-                                  openInlineField(row.id, "date");
-                                }}
-                              >
-                                {row.date || "—"}
-                              </button>
-                            )}
-                            <span
-                              className="text-text-secondary/60 dark:text-text-secondary"
-                              aria-hidden
-                            >
-                              ·
-                            </span>
-                            <span className="inline-flex min-w-0 max-w-[9rem] items-center gap-1">
-                              <span className="sr-only">Payment method </span>
-                              {editingPaymentMethodId === row.id ? (
-                                (() => {
-                                  const pmInList = (
-                                    PAYMENT_METHOD_OPTIONS as readonly string[]
-                                  ).includes(row.paymentMethod);
-                                  const pmValue = pmInList
-                                    ? row.paymentMethod
-                                    : row.paymentMethod?.trim()
-                                      ? row.paymentMethod
-                                      : PAYMENT_METHOD_OPTIONS[0];
-                                  return (
-                                    <Select
-                                      value={pmValue}
-                                      disabled={paymentMethodMutation.isPending}
-                                      onValueChange={(v) => {
-                                        if (v === row.paymentMethod) return;
-                                        paymentMethodMutation.mutate({
-                                          id: row.id,
-                                          paymentMethod: v,
-                                        });
-                                      }}
-                                      onOpenChange={(open) => {
-                                        if (!open && !paymentMethodMutation.isPending) {
-                                          setEditingPaymentMethodId(null);
-                                        }
-                                      }}
-                                    >
-                                      <SelectTrigger
-                                        data-inline-field
-                                        className="flex h-7 min-h-[28px] max-w-[9rem] items-center border-gray-100 bg-white text-xs text-gray-900 dark:border-border dark:bg-card dark:text-foreground"
-                                      >
-                                        <SelectValue />
-                                        <SubmitSpinner
-                                          loading={paymentMethodMutation.isPending}
-                                          className="ml-1 shrink-0"
-                                        />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {!pmInList && row.paymentMethod?.trim() ? (
-                                          <SelectItem value={row.paymentMethod}>
-                                            {row.paymentMethod}
-                                          </SelectItem>
-                                        ) : null}
-                                        {PAYMENT_METHOD_OPTIONS.map((opt) => (
-                                          <SelectItem key={opt} value={opt}>
-                                            {opt}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                  );
-                                })()
-                              ) : (
-                                <button
-                                  type="button"
-                                  className="hh-inline-tap inline-flex min-h-[28px] max-w-[9rem] items-center gap-1 px-2 py-1 text-left text-[12px] text-gray-700 dark:text-foreground"
-                                  title={`Payment method: ${paymentMethodDisplayLabel(row.paymentMethod)}`}
-                                  onClick={() => {
-                                    clearInlineEdits();
-                                    setActiveExpenseId(row.id);
-                                    setEditingPaymentMethodId(row.id);
-                                  }}
-                                >
-                                  <span className="truncate">
-                                    {paymentMethodDisplayLabel(row.paymentMethod)}
-                                  </span>
-                                  {paymentMethodFlashId === row.id ? (
-                                    <Check
-                                      className="h-3.5 w-3.5 shrink-0 text-emerald-600 opacity-90 animate-in fade-in zoom-in-95 duration-200 dark:text-emerald-500"
-                                      aria-hidden
-                                    />
-                                  ) : null}
-                                </button>
-                              )}
-                            </span>
-                            <span
-                              className="text-text-secondary/60 dark:text-text-secondary"
-                              aria-hidden
-                            >
-                              ·
-                            </span>
-                            {editingSourceId === row.id ? (
-                              <span
-                                data-inline-field
-                                className="inline-flex items-center gap-1"
-                                onKeyDown={onInlineKeyDown(row, "source")}
-                              >
-                                <Select
-                                  value={sourceTypeDraft ?? "company"}
-                                  onValueChange={(v) =>
-                                    setSourceTypeDraft(v as NonNullable<Expense["sourceType"]>)
-                                  }
-                                >
-                                  <SelectTrigger className="h-7 border-gray-100/60 bg-white/90 text-xs text-text-primary backdrop-blur-sm">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="company">Company</SelectItem>
-                                    <SelectItem value="receipt_upload">Receipt</SelectItem>
-                                    <SelectItem value="reimbursement">Reimbursement</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="exp-icon-btn h-7 w-7"
-                                  onMouseDown={(e) => e.preventDefault()}
-                                  onClick={() => void handleSourceInlineSave(row.id)}
-                                >
-                                  <Check className="h-3.5 w-3.5" />
-                                </Button>
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                className="hover:text-text-primary hover:underline"
-                                onClick={() => {
-                                  setActiveExpenseId(row.id);
-                                  openInlineField(row.id, "source");
-                                }}
-                              >
-                                {sourceTypeLabel(row.sourceType)}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-
-                        <div
-                          className="order-1 flex w-full shrink-0 flex-col items-end gap-1 md:order-2 md:w-auto"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <div className="flex justify-end">
-                            {editingAmountId === row.id ? (
-                              <div
-                                className="flex items-center justify-end gap-1"
-                                data-inline-field
-                              >
-                                <Input
-                                  className="h-7 w-24 rounded-sm border-gray-100/80 text-right text-[15px] tabular-nums text-text-primary transition-[box-shadow_border-color] duration-150 focus-visible:ring-2 focus-visible:ring-blue-400/30"
-                                  value={amountDraft}
-                                  autoFocus
-                                  inputMode="decimal"
-                                  onChange={(e) => setAmountDraft(e.target.value)}
-                                  onKeyDown={onInlineKeyDown(row, "amount")}
-                                />
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="exp-icon-btn h-7 w-7"
-                                  onMouseDown={(e) => e.preventDefault()}
-                                  onClick={() => void handleAmountInlineSave(row.id)}
-                                >
-                                  <Check className="h-3.5 w-3.5" />
-                                </Button>
-                              </div>
-                            ) : (
-                              <button
-                                type="button"
-                                className="text-[15px] font-semibold tabular-nums tracking-tight text-[#d92d20] transition-opacity duration-200 group-hover:opacity-90 hover:underline"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveExpenseId(row.id);
-                                  openInlineField(row.id, "amount");
-                                }}
-                              >
-                                −$
-                                {rowTotal.toLocaleString(undefined, {
-                                  minimumFractionDigits: 2,
-                                  maximumFractionDigits: 2,
-                                })}
-                              </button>
-                            )}
-                          </div>
-                          <button
-                            type="button"
-                            className={`flex items-center gap-1 text-xs font-medium ${statusStyle.text}`}
-                            onClick={() => void toggleStatus(row)}
-                            title={
-                              listView === "unreviewed" ? "Mark reviewed" : "Toggle review status"
-                            }
-                          >
-                            <span
-                              className={`h-2 w-2 shrink-0 rounded-full ${statusStyle.dot}`}
-                              aria-hidden
-                            />
-                            {statusDisplayLabel(status)}
-                          </button>
-                          <ExpenseAttachmentTrigger
-                            row={row}
-                            onPreview={() => void openReceiptPreview(row)}
-                          />
-                        </div>
-
-                        <div className="absolute right-2 top-3 z-[1] opacity-0 transition-opacity duration-150 ease-out group-hover:opacity-100 group-focus-within:opacity-100 max-md:opacity-100 md:right-1.5 md:top-1/2 md:-translate-y-1/2">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="exp-icon-btn h-7 w-7"
-                                aria-label="Row actions"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent
-                              align="end"
-                              className="w-44"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <DropdownMenuItem
-                                className="gap-2"
-                                onClick={() => {
-                                  setEditExpense(row);
-                                  setEditModalOpen(true);
-                                }}
-                              >
-                                <Pencil className="h-3.5 w-3.5" />
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="gap-2 text-red-600 focus:bg-red-50 focus:text-red-700 dark:focus:bg-red-950/30 dark:focus:text-red-400"
-                                disabled={deletingExpenseId === row.id}
-                                onClick={() => handleDelete(row)}
-                              >
-                                <SubmitSpinner
-                                  loading={deletingExpenseId === row.id}
-                                  className="shrink-0"
-                                />
-                                {deletingExpenseId !== row.id ? (
-                                  <Trash2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                                ) : null}
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-              <div className="border-t border-gray-100/80 px-4 py-2 dark:border-border/60">
-                <Pagination
-                  page={curPage}
-                  pageSize={pageSize}
-                  total={total}
-                  onPageChange={setPage}
-                  className="text-gray-600 [&_.text-muted-foreground]:text-gray-600 [&_button]:border [&_button]:border-gray-100/80 [&_button]:bg-white [&_button]:text-gray-700 [&_button]:shadow-none hover:[&_button]:bg-gray-50 dark:text-muted-foreground dark:[&_button]:border-border dark:[&_button]:bg-background dark:[&_button]:text-foreground dark:hover:[&_button]:bg-muted/50"
+                <ExpensesAdvancedFiltersFields
+                  projectFilter={projectFilter}
+                  setProjectFilter={setProjectFilter}
+                  categoryFilter={categoryFilter}
+                  setCategoryFilter={setCategoryFilter}
+                  expenseDateFilter={expenseDateFilter}
+                  onExpenseDateChange={onExpenseDateFilterChange}
+                  sourceTypeFilter={sourceTypeFilter}
+                  setSourceTypeFilter={setSourceTypeFilter}
+                  expenseSort={expenseSort}
+                  onSortValueChange={applyExpenseSortValue}
+                  safeProjects={safeProjects}
+                  categoriesList={categoriesList}
+                  projectsError={projectsError}
+                  selectTriggerClassName="h-10 w-full rounded-sm border border-gray-100/80 bg-white text-xs shadow-none dark:border-border/60 dark:bg-card"
                 />
+                <Button
+                  type="button"
+                  className="w-full"
+                  onClick={() => setFiltersDrawerOpen(false)}
+                >
+                  Done
+                </Button>
               </div>
+            </SheetContent>
+          </Sheet>
+
+          <section
+            className={cn(
+              "relative",
+              expensesListRefetching && expenses.length > 0 && "pointer-events-none opacity-60"
+            )}
+            aria-busy={expensesListRefetching && expenses.length > 0 ? true : undefined}
+          >
+            {expensesListRefetching && expenses.length > 0 ? (
+              <div className="pointer-events-none absolute inset-x-0 top-0 z-[1] flex justify-center pt-1">
+                <span className="text-xs text-muted-foreground">Updating…</span>
+              </div>
+            ) : null}
+
+            {/* Filters + table: one white card on md+; rows/list always visible (mobile uses sheet + tabs above). */}
+            <div className="overflow-hidden md:rounded-2xl md:border md:border-gray-200/70 md:bg-white md:shadow-sm dark:md:border-gray-800 dark:md:bg-gray-950">
+              <div className="hidden flex-wrap items-center justify-between gap-3 border-b border-gray-100 bg-white px-4 py-3 dark:border-gray-800 dark:bg-gray-950 md:flex">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={inboxTab === "all" ? inboxTabActiveBtn : inboxTabIdleBtn}
+                    onClick={() => applyInboxTab("all")}
+                  >
+                    All
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={inboxTab === "needs_review" ? inboxTabActiveBtn : inboxTabIdleBtn}
+                    onClick={() => applyInboxTab("needs_review")}
+                  >
+                    Needs Review ({summary.unreviewed})
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={inboxTab === "done" ? inboxTabActiveBtn : inboxTabIdleBtn}
+                    onClick={() => applyInboxTab("done")}
+                  >
+                    Done
+                  </Button>
+                </div>
+                <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 lg:max-w-xl">
+                  <div className="relative min-w-[12rem] max-w-md flex-1">
+                    <Search
+                      className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400"
+                      aria-hidden
+                    />
+                    <Input
+                      placeholder="Search…"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="h-9 rounded-lg border-gray-200 bg-white py-1 pl-8 pr-14 text-sm shadow-none dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                    />
+                    <kbd className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 select-none rounded border border-gray-200 bg-white px-1.5 py-0.5 font-sans text-[10px] font-medium text-gray-400 lg:inline dark:border-gray-600 dark:bg-gray-800 dark:text-gray-500">
+                      ⌘K
+                    </kbd>
+                  </div>
+                  <Popover open={filtersPopoverOpen} onOpenChange={setFiltersPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-9 shrink-0 gap-1.5 rounded-lg border-gray-200 px-3 dark:border-gray-700 dark:bg-gray-950 dark:hover:bg-gray-900"
+                      >
+                        <Filter className="h-4 w-4 shrink-0" aria-hidden />
+                        <span className="text-xs font-medium">
+                          Filters
+                          {activeAdvancedFilterCount > 0 ? (
+                            <span className="text-gray-500 dark:text-gray-400">
+                              {" "}
+                              · {activeAdvancedFilterCount}
+                            </span>
+                          ) : null}
+                        </span>
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      align="end"
+                      sideOffset={8}
+                      className="z-50 overflow-visible w-[min(calc(100vw-2rem),22rem)] rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-950"
+                    >
+                      <ExpensesAdvancedFiltersFields
+                        projectFilter={projectFilter}
+                        setProjectFilter={setProjectFilter}
+                        categoryFilter={categoryFilter}
+                        setCategoryFilter={setCategoryFilter}
+                        expenseDateFilter={expenseDateFilter}
+                        onExpenseDateChange={onExpenseDateFilterChange}
+                        sourceTypeFilter={sourceTypeFilter}
+                        setSourceTypeFilter={setSourceTypeFilter}
+                        expenseSort={expenseSort}
+                        onSortValueChange={applyExpenseSortValue}
+                        safeProjects={safeProjects}
+                        categoriesList={categoriesList}
+                        projectsError={projectsError}
+                        selectTriggerClassName="h-9 w-full rounded-lg border border-gray-200 bg-white text-xs shadow-none dark:border-gray-700 dark:bg-gray-950"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+              {listView === "unreviewed" ? (
+                <p className="hidden border-b border-gray-100 px-4 py-1.5 text-[11px] leading-snug text-gray-500 dark:border-gray-800 dark:text-gray-400 md:block">
+                  Enter: save · Shift+Enter: save only · Tab: field · ↑↓ row · D delete · Esc cancel
+                </p>
+              ) : null}
+              {showExpensesSkeleton && expenses.length === 0 ? (
+                <div className="border-t border-gray-100 px-4 py-8 dark:border-gray-800 md:border-t-0">
+                  <ExpensesListSkeleton rows={8} showStatCards={false} />
+                </div>
+              ) : total === 0 ? (
+                <>
+                  <div
+                    className="hidden min-h-[min(55vh,480px)] flex-col justify-center border-t border-gray-100 px-6 py-16 text-center dark:border-gray-800 md:flex"
+                    tabIndex={-1}
+                    data-expenses-empty
+                  >
+                    <p className="text-sm font-semibold text-gray-900 dark:text-foreground">
+                      No transactions found
+                    </p>
+                    <p className="mt-0.5 text-sm text-gray-600 dark:text-muted-foreground">
+                      {listView === "unreviewed"
+                        ? hasNarrowingFilters
+                          ? "Try clearing filters or switch to All."
+                          : expenses.length === 0
+                            ? "Add an expense to get started."
+                            : "Nothing waiting for review."
+                        : hasNarrowingFilters
+                          ? "Adjust filters or search."
+                          : "Add an expense to get started."}
+                    </p>
+                    {showEmptyOnboardingCtas ? (
+                      <div className="mt-4 flex flex-wrap justify-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 rounded-sm border border-gray-100 bg-white text-gray-700 shadow-none hover:bg-gray-50 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted/50"
+                          onClick={() => setQuickExpenseOpen(true)}
+                        >
+                          Quick expense
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="h-8 rounded-sm border-0 bg-blue-500 text-white shadow-none hover:bg-blue-600"
+                          onClick={() => setUploadReceiptsOpen(true)}
+                        >
+                          <Upload className="mr-1.5 h-3.5 w-3.5" />
+                          Upload
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="h-8 rounded-sm border-0 bg-black text-white shadow-none hover:bg-gray-800"
+                          onClick={handleNew}
+                        >
+                          New expense
+                        </Button>
+                      </div>
+                    ) : listView === "unreviewed" && !hasNarrowingFilters && expenses.length > 0 ? (
+                      <div className="mt-4">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-8 rounded-sm border border-gray-100 bg-white text-gray-700 shadow-none hover:bg-gray-50 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted/50"
+                          onClick={() => applyInboxTab("all")}
+                        >
+                          View all expenses
+                        </Button>
+                      </div>
+                    ) : null}
+                  </div>
+                  <div
+                    className="flex flex-col items-center border-b border-gray-100/80 py-10 md:hidden dark:border-border/60"
+                    tabIndex={-1}
+                    data-expenses-empty-mobile
+                  >
+                    <Upload
+                      className="h-8 w-8 text-text-secondary dark:text-muted-foreground"
+                      aria-hidden
+                    />
+                    <p className="mt-3 text-center text-sm font-semibold text-gray-900 dark:text-foreground">
+                      No transactions found
+                    </p>
+                    <p className="mt-1 max-w-xs text-center text-xs text-text-secondary dark:text-muted-foreground">
+                      {listView === "unreviewed"
+                        ? hasNarrowingFilters
+                          ? "Try filters or switch to All."
+                          : expenses.length === 0
+                            ? "Add an expense to get started."
+                            : "Nothing waiting for review."
+                        : hasNarrowingFilters
+                          ? "Adjust filters or search."
+                          : "Add an expense to get started."}
+                    </p>
+                    {showEmptyOnboardingCtas ? (
+                      <Button type="button" size="sm" className="mt-4" onClick={handleNew}>
+                        New expense
+                      </Button>
+                    ) : listView === "unreviewed" && !hasNarrowingFilters && expenses.length > 0 ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="mt-4"
+                        onClick={() => applyInboxTab("all")}
+                      >
+                        View all expenses
+                      </Button>
+                    ) : null}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="w-full overflow-hidden bg-background md:bg-white dark:md:bg-gray-950">
+                    <ExpenseInboxTransactionList
+                      pageRows={pageRows}
+                      possibleDuplicateIds={possibleDuplicateIds}
+                      api={{
+                        listView,
+                        activeExpenseId,
+                        setActiveExpenseId,
+                        rowElsRef,
+                        projectNameById,
+                        deletingExpenseId,
+                        toggleStatus,
+                        openReceiptPreview,
+                        openExpensePreview,
+                        handleDelete,
+                      }}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2 border-t border-gray-100 bg-white px-4 py-3 text-xs text-gray-600 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-400 md:flex-row md:items-center md:justify-between">
+                    <p className="tabular-nums">
+                      {total === 0
+                        ? "Showing 0 results"
+                        : `Showing ${deskStart} to ${deskEnd} of ${total} results`}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-3 md:gap-4">
+                      <div className="flex items-center gap-1">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 w-7 shrink-0 border-gray-200 p-0 shadow-none dark:border-gray-700"
+                          disabled={curPage <= 1}
+                          aria-label="Previous page"
+                          onClick={() => setPage(curPage - 1)}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <span className="min-w-[2rem] text-center tabular-nums text-gray-900 dark:text-foreground">
+                          {curPage}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 w-7 shrink-0 border-gray-200 p-0 shadow-none dark:border-gray-700"
+                          disabled={curPage >= totalPages}
+                          aria-label="Next page"
+                          onClick={() => setPage(curPage + 1)}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="whitespace-nowrap text-gray-600 dark:text-gray-400">
+                          Rows per page
+                        </span>
+                        <Select
+                          value={String(pageSize)}
+                          onValueChange={(v) => setPageSizeAndReset(Number(v))}
+                        >
+                          <SelectTrigger className="h-7 w-[4.25rem] rounded-sm border-gray-200 text-xs shadow-none dark:border-gray-700">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="10">10</SelectItem>
+                            <SelectItem value="25">25</SelectItem>
+                            <SelectItem value="50">50</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
-          )}
-        </section>
+          </section>
+        </div>
 
         <QuickExpenseModal
           open={quickExpenseOpen}
@@ -2600,18 +1780,23 @@ function ExpensesPageInner() {
           onOpenChange={setUploadReceiptsOpen}
           onSuccess={refresh}
         />
-        <EditExpenseModal
-          expense={editExpense}
-          open={editModalOpen}
-          onOpenChange={setEditModalOpen}
+        <ExpenseInboxPreviewModal
+          expense={previewExpenseLive}
+          open={previewOpen}
+          onOpenChange={(o) => {
+            setPreviewOpen(o);
+            if (!o) setPreviewExpense(null);
+          }}
+          enterMode={previewEnterMode}
           projects={safeProjects}
           workers={workers}
+          projectNameById={projectNameById}
           supabase={supabase}
-          onExpenseAttachmentsUpdated={(next) => {
-            setExpenses((prev) => prev.map((e) => (e.id === next.id ? next : e)));
-            setEditExpense(next);
-          }}
-          onSave={handleExpenseSave}
+          setCategoriesList={setCategoriesList}
+          onSave={handlePreviewModalSave}
+          onMarkReviewed={handlePreviewMarkReviewed}
+          previewNav={previewModalNav}
+          possibleDuplicate={previewPossibleDuplicate}
         />
       </div>
     </div>

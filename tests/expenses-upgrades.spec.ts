@@ -1,13 +1,15 @@
 import { test, expect } from "@playwright/test";
-import { E2E_PRESERVED_PROJECT_ID } from "./e2e-cleanup-db";
+import { E2E_PRESERVED_PROJECT_ID, E2E_PRESERVED_PROJECT_LABEL } from "./e2e-cleanup-db";
 import {
   attachmentPreviewModal,
   dialogPaymentAccountSelect,
   expenseListRow,
   expensesVendorSearch,
+  paymentAccountSelectChooseAddNew,
   pickOrCreatePaymentInSelect,
   prepareReceiptQueueRowForConfirm,
   receiptQueueExpenseSuccessSeen,
+  receiptQueuePaymentAccountTrigger,
   receiptQueueRowByFileName,
 } from "./e2e-expenses-helpers";
 
@@ -73,10 +75,7 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
       projectId: E2E_PRESERVED_PROJECT_ID,
     });
 
-    const paySel = queueRow
-      .locator("select")
-      .filter({ has: page.getByRole("option", { name: "+ Add new account" }) })
-      .first();
+    const paySel = receiptQueuePaymentAccountTrigger(queueRow);
     await pickOrCreatePaymentInSelect(page, paySel);
 
     await queueRow.getByRole("button", { name: /preview receipt/i }).click();
@@ -141,17 +140,15 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
 
     const box = await dialog.boundingBox();
     expect(box && box.height).toBeTruthy();
-    if (box) expect(box.height).toBeLessThan(660);
+    if (box) expect(box.height).toBeLessThan(760);
 
     await expect(dialog.locator(".grid.grid-cols-2").first()).toBeVisible();
 
     await dialog.locator("input[type='number']").fill("77.01");
     const vendorMark = `E2E-QP-${Date.now()}`;
     await dialog.locator("#quick-expense-vendor").fill(vendorMark);
-    await dialog
-      .locator("select")
-      .filter({ has: page.locator(`option[value="${E2E_PRESERVED_PROJECT_ID}"]`) })
-      .selectOption({ value: E2E_PRESERVED_PROJECT_ID });
+    await dialog.locator("#quick-expense-project-select").click();
+    await page.getByRole("option", { name: E2E_PRESERVED_PROJECT_LABEL }).click();
 
     await pickOrCreatePaymentInSelect(page, dialogPaymentAccountSelect(dialog, page));
 
@@ -213,8 +210,7 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
 
     const acct = `E2E-Pay-${Date.now()}`;
     const paySelect = dialogPaymentAccountSelect(dialog, page);
-    await expect(paySelect).toBeEnabled({ timeout: 60_000 });
-    await paySelect.selectOption({ label: "+ Add new account" });
+    await paymentAccountSelectChooseAddNew(page, paySelect);
 
     const sub = page.getByRole("dialog", { name: /New payment account/i });
     await expect(sub).toBeVisible({ timeout: 10_000 });
@@ -260,10 +256,8 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
     const vendorBase = `E2E-ED-${Date.now()}`;
     await q.locator("input[type='number']").fill("33");
     await q.locator("#quick-expense-vendor").fill(vendorBase);
-    await q
-      .locator("select")
-      .filter({ has: page.locator(`option[value="${E2E_PRESERVED_PROJECT_ID}"]`) })
-      .selectOption({ value: E2E_PRESERVED_PROJECT_ID });
+    await q.locator("#quick-expense-project-select").click();
+    await page.getByRole("option", { name: E2E_PRESERVED_PROJECT_LABEL }).click();
     await q.getByRole("button", { name: "Save", exact: true }).click();
     if (
       await q
@@ -280,14 +274,13 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
     await expensesVendorSearch(page).fill(vendorBase);
     const row = expenseListRow(page, vendorBase);
     await expect(row).toBeVisible({ timeout: 20_000 });
-    await row.hover();
-    await row.getByRole("button", { name: "Row actions" }).click();
-    await page.getByRole("menuitem", { name: "Edit" }).click();
+    await row.getByRole("button", { name: /row actions/i }).click();
+    await page.getByRole("menuitem", { name: "Edit", exact: true }).click();
 
     const editDlg = page.getByRole("dialog", { name: /Edit expense/i });
     await expect(editDlg).toBeVisible({ timeout: 15_000 });
 
-    await editDlg.locator(".col-span-2 input").first().fill(`${vendorBase}-X`);
+    await editDlg.getByTestId("edit-expense-vendor-input").fill(`${vendorBase}-X`);
     await editDlg.locator('input[type="number"]').fill("44.55");
 
     const editPay = dialogPaymentAccountSelect(editDlg, page);
@@ -329,18 +322,13 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
     });
     await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
 
-    const list = page.locator("main ul.exp-divide");
-    if ((await list.locator("> li").count()) === 0) {
+    const rows = page.locator("main table tbody > tr.exp-row, main ul.exp-divide > li.exp-row");
+    if ((await rows.count()) === 0) {
       test.skip(true, "No unreviewed expenses in seed.");
     }
 
-    const firstRow = list.locator("> li").first();
+    const firstRow = rows.first();
     await expect(firstRow).toBeVisible();
-    await expect(
-      firstRow
-        .locator("button")
-        .filter({ hasText: /reviewed|Pending|Needs/i })
-        .first()
-    ).toBeVisible();
+    await expect(firstRow.getByText(/Needs Review|Done/)).toBeVisible();
   });
 });

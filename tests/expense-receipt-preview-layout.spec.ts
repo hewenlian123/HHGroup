@@ -5,6 +5,7 @@ import {
   pickOrCreatePaymentInSelect,
   prepareReceiptQueueRowForConfirm,
   receiptQueueExpenseSuccessSeen,
+  receiptQueuePaymentAccountTrigger,
   receiptQueueRowByFileName,
 } from "./e2e-expenses-helpers";
 import { mkdirSync } from "node:fs";
@@ -51,10 +52,7 @@ test.describe("Expense receipt preview (layout)", () => {
       projectId: E2E_PRESERVED_PROJECT_ID,
     });
 
-    const paySel = queueRow
-      .locator("select")
-      .filter({ has: page.getByRole("option", { name: "+ Add new account" }) })
-      .first();
+    const paySel = receiptQueuePaymentAccountTrigger(queueRow);
     await pickOrCreatePaymentInSelect(page, paySel);
 
     const previewTrigger = queueRow.getByRole("button", { name: /preview receipt/i });

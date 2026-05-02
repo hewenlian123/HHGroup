@@ -1,6 +1,6 @@
 /* Expenses route: Apple-style layered grays (scoped under .expenses-ui) */
 .expenses-ui {
-  --exp-page-bg: #f3f4f6;
+  --exp-page-bg: #f6f7f9;
   --exp-content-bg: transparent;
   --exp-primary: #111827;
   --exp-secondary: #4b5563;
@@ -57,7 +57,7 @@
 
 .expenses-ui .exp-icon-btn:hover {
   color: var(--exp-icon-hover) !important;
-  background-color: rgb(255 255 255 / 0.85) !important;
+  background-color: #f3f4f6 !important;
 }
 
 .expenses-ui .exp-icon-danger {

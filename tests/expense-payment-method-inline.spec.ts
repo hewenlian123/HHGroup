@@ -1,6 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
-import { E2E_PRESERVED_PROJECT_ID } from "./e2e-cleanup-db";
+import { E2E_PRESERVED_PROJECT_LABEL } from "./e2e-cleanup-db";
 import { expenseListRow, expensesVendorSearch } from "./e2e-expenses-helpers";
 
 /** AppShell is `ssr: false`; `main` is absent until the client chunk loads — anchor on list UI instead. */
@@ -12,11 +12,11 @@ async function waitForExpensesListShell(page: Page, timeoutMs = 150_000): Promis
   await page.locator("main").first().waitFor({ state: "visible", timeout: 30_000 });
 }
 
-test.describe("Expense list inline payment method", () => {
+test.describe("Expense inbox payment method (preview modal)", () => {
   /** Cold `next dev` + Quick modal + reloads need headroom beyond a single 180s gate. */
   test.describe.configure({ timeout: 300_000 });
 
-  test("updates row optimistically and persists after reload", async ({ page }) => {
+  test("updates row after save from modal and persists after reload", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
 
     await page.goto("/financial/expenses", { waitUntil: "domcontentloaded", timeout: 60_000 });
@@ -32,7 +32,7 @@ test.describe("Expense list inline payment method", () => {
       test.skip(true, "Supabase not configured.");
     }
 
-    const vendorMark = `E2E-PM-INLINE-${Date.now()}`;
+    const vendorMark = `E2E-PM-MODAL-${Date.now()}`;
 
     await page
       .getByRole("button", { name: /Quick expense/i })
@@ -52,10 +52,8 @@ test.describe("Expense list inline payment method", () => {
 
     await q.locator("input[type='number']").fill("9.01");
     await q.locator("#quick-expense-vendor").fill(vendorMark);
-    await q
-      .locator("select")
-      .filter({ has: page.locator(`option[value="${E2E_PRESERVED_PROJECT_ID}"]`) })
-      .selectOption({ value: E2E_PRESERVED_PROJECT_ID });
+    await q.locator("#quick-expense-project-select").click();
+    await page.getByRole("option", { name: E2E_PRESERVED_PROJECT_LABEL }).click();
     await q.getByRole("button", { name: "Save", exact: true }).click();
     if (
       await q
@@ -74,30 +72,35 @@ test.describe("Expense list inline payment method", () => {
     const row = expenseListRow(page, vendorMark);
     await expect(row).toBeVisible({ timeout: 60_000 });
 
-    const pmButton = row.locator("button[title^='Payment method:']");
-    await expect(pmButton).toBeVisible();
-    const titleBefore = (await pmButton.getAttribute("title")) ?? "";
-    expect(titleBefore.length).toBeGreaterThan(0);
-
-    const targetMethod = titleBefore.includes("Visa") ? "Amex" : "Visa";
+    const rowText = (await row.innerText()).replace(/\s+/g, " ");
+    const targetMethod = /\bVisa\b/i.test(rowText) ? "Amex" : "Visa";
 
     const urlBefore = page.url();
 
-    await pmButton.click();
-    const combo = row.getByRole("combobox");
-    await expect(combo).toBeVisible({ timeout: 10_000 });
-    await combo.click();
-    await page.getByRole("option", { name: targetMethod, exact: true }).click();
+    await row.click();
+    const previewDlg = page.getByRole("dialog", { name: /^Expense$/ });
+    await expect(previewDlg).toBeVisible({ timeout: 15_000 });
+
+    await previewDlg.getByRole("button", { name: "Edit", exact: true }).click();
+    const editDlg = page.getByRole("dialog", { name: /Edit expense/i });
+    await expect(editDlg).toBeVisible({ timeout: 15_000 });
+
+    const pmTrigger = editDlg.locator("#edit-expense-payment-method-select");
+    await pmTrigger.click();
+    await page
+      .locator('[role="listbox"]')
+      .last()
+      .getByRole("option", { name: targetMethod, exact: true })
+      .click();
+
+    await editDlg.getByRole("button", { name: "Save", exact: true }).click();
 
     await expect(page.getByText("Saved", { exact: true }).first()).toBeVisible({ timeout: 30_000 });
 
-    const pmTitleRe = new RegExp(
-      `Payment method:.*${targetMethod.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`
-    );
-    await expect(row.locator("button[title^='Payment method:']")).toHaveAttribute(
-      "title",
-      pmTitleRe
-    );
+    await previewDlg.getByRole("button", { name: "Close", exact: true }).last().click();
+    await expect(previewDlg).not.toBeVisible({ timeout: 15_000 });
+
+    await expect(row).toContainText(targetMethod);
 
     await expect(page.getByRole("dialog", { name: /Edit expense/i })).not.toBeVisible();
     expect(page.url().split("#")[0]).toBe(urlBefore.split("#")[0]);
@@ -124,10 +127,6 @@ test.describe("Expense list inline payment method", () => {
       );
     }
 
-    await expect(rowAfter.locator("button[title^='Payment method:']")).toHaveAttribute(
-      "title",
-      pmTitleRe,
-      { timeout: 15_000 }
-    );
+    await expect(rowAfter).toContainText(targetMethod, { timeout: 15_000 });
   });
 });

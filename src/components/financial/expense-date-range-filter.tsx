@@ -229,7 +229,7 @@ export function ExpenseDateRangeFilter({
         align="start"
         sideOffset={6}
         className={cn(
-          "p-0",
+          "z-[130] overflow-visible p-0",
           panel === "menu"
             ? "w-[min(100vw-16px_260px)]"
             : "w-[min(100vw-16px_720px)] max-w-[calc(100vw-16px)]"

@@ -6,7 +6,14 @@ import { useParams } from "next/navigation";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/native-select";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   getExpenseById,
   getProjects,
@@ -20,6 +27,7 @@ import {
   updateExpense,
   addExpenseLine,
   updateExpenseLine,
+  updateExpenseForReview,
   deleteExpenseLine,
   addExpenseAttachment,
   deleteExpenseAttachment,
@@ -43,6 +51,10 @@ import { useToast } from "@/components/toast/toast-provider";
 import { InlineLoading } from "@/components/ui/skeleton";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
+import {
+  deriveExpenseWorkflowStatus,
+  EXPENSE_ACCOUNT_SELECT_NONE,
+} from "@/lib/expense-workflow-status";
 
 function useAsyncDisabled(name: string | null, fn: (n: string) => Promise<boolean>): boolean {
   const [disabled, setDisabled] = React.useState(false);
@@ -168,6 +180,16 @@ export default function ExpenseDetailPage() {
       setExpense(e);
       setPaymentAccountId(e.paymentAccountId ?? "");
     }
+  }, [id]);
+
+  const syncWorkflowStatusFromFirstLine = React.useCallback(async () => {
+    if (!id) return;
+    const fresh = await getExpenseById(id);
+    const first = fresh?.lines[0];
+    if (!fresh || !first) return;
+    await updateExpenseForReview(fresh.id, {
+      status: deriveExpenseWorkflowStatus(first.projectId, first.category),
+    });
   }, [id]);
 
   const reloadLookups = React.useCallback(async () => {
@@ -386,18 +408,21 @@ export default function ExpenseDetailPage() {
   const handleLineChange = async (lineId: string, patch: Partial<ExpenseLine>) => {
     if (!expense) return;
     await updateExpenseLine(expense.id, lineId, patch);
+    await syncWorkflowStatusFromFirstLine();
     await refresh();
   };
 
   const handleAddLine = async () => {
     if (!expense) return;
     await addExpenseLine(expense.id, { projectId: null, category: "Other", amount: 0 });
+    await syncWorkflowStatusFromFirstLine();
     await refresh();
   };
 
   const handleDeleteLine = async (lineId: string) => {
     if (!expense) return;
     await deleteExpenseLine(expense.id, lineId);
+    await syncWorkflowStatusFromFirstLine();
     await refresh();
   };
 
@@ -518,7 +543,7 @@ export default function ExpenseDetailPage() {
                 name="date"
                 type="date"
                 defaultValue={expense.date}
-                className="mt-1 rounded-sm"
+                className="mt-1 h-10 rounded-sm"
               />
             </div>
             <div>
@@ -526,16 +551,20 @@ export default function ExpenseDetailPage() {
                 Payment source
               </label>
               <Select
-                value={accountId}
-                onChange={(e) => setAccountId(e.target.value)}
-                className="mt-1"
+                value={accountId.trim() ? accountId : EXPENSE_ACCOUNT_SELECT_NONE}
+                onValueChange={(v) => setAccountId(v === EXPENSE_ACCOUNT_SELECT_NONE ? "" : v)}
               >
-                <option value="">Select payment source</option>
-                {accounts.map((acc) => (
-                  <option key={acc.id} value={acc.id}>
-                    {acc.lastFour ? `${acc.name} •••• ${acc.lastFour}` : acc.name}
-                  </option>
-                ))}
+                <SelectTrigger className="mt-1 h-10 w-full rounded-sm border-border/60 text-sm">
+                  <SelectValue placeholder="Select payment source" />
+                </SelectTrigger>
+                <SelectContent position="popper" sideOffset={4}>
+                  <SelectItem value={EXPENSE_ACCOUNT_SELECT_NONE}>Select payment source</SelectItem>
+                  {accounts.map((acc) => (
+                    <SelectItem key={acc.id} value={acc.id}>
+                      {acc.lastFour ? `${acc.name} •••• ${acc.lastFour}` : acc.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
             <div>
@@ -549,7 +578,7 @@ export default function ExpenseDetailPage() {
                   persistLastExpensePaymentAccountId(id);
                 }}
                 onAccountsUpdated={handlePaymentAccountsUpdated}
-                className="mt-1 h-9 w-full rounded-sm border border-input bg-transparent px-2 text-sm"
+                className="mt-1 h-10 w-full rounded-sm border-border/60 text-sm"
               />
             </div>
             <div>
@@ -559,7 +588,7 @@ export default function ExpenseDetailPage() {
               <Input
                 name="referenceNo"
                 defaultValue={expense.referenceNo ?? ""}
-                className="mt-1 rounded-sm"
+                className="mt-1 h-10 rounded-sm"
                 placeholder="Optional"
               />
             </div>
@@ -568,11 +597,12 @@ export default function ExpenseDetailPage() {
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Notes
             </label>
-            <Input
+            <Textarea
               name="notes"
               defaultValue={expense.notes ?? ""}
-              className="mt-1 rounded-sm"
+              className="mt-1 min-h-[88px] rounded-sm text-sm"
               placeholder="Optional"
+              rows={3}
             />
           </div>
           <Button type="button" size="sm" className="rounded-sm" onClick={handleSaveHeader}>
