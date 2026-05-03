@@ -5,6 +5,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
+import { dedupeExpenseAttachmentsByStorageKey } from "@/lib/expense-attachment-dedupe";
 import { expenseHasReceiptSignal } from "@/lib/expense-receipt-items";
 import { deriveExpenseWorkflowStatus } from "@/lib/expense-workflow-status";
 import { isConfirmedExpenseStatus } from "@/lib/project-expense-cost-status";
@@ -247,9 +248,7 @@ async function getAttachments(expenseId: string): Promise<ExpenseAttachment[]> {
     getLegacyAttachmentsFromTable(expenseId),
     getExpenseAttachmentRows(expenseId),
   ]);
-  const merged = [...legacy, ...dedicated];
-  merged.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-  return merged;
+  return dedupeExpenseAttachmentsByStorageKey([...legacy, ...dedicated]);
 }
 
 function toExpenseLine(r: ExpenseLineRow): ExpenseLine {
