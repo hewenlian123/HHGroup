@@ -111,7 +111,9 @@ export default function ExpenseDetailPage() {
   const [paymentAccountId, setPaymentAccountId] = React.useState("");
   const [toastMessage, setToastMessage] = React.useState<string | null>(null);
   const [attachmentUploading, setAttachmentUploading] = React.useState(false);
-  const { openPreview } = useAttachmentPreview();
+  const { openPreview, patchPreview } = useAttachmentPreview();
+  const patchPreviewRef = React.useRef(patchPreview);
+  patchPreviewRef.current = patchPreview;
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [projects, setProjects] = React.useState<Awaited<ReturnType<typeof getProjects>>>([]);
   const [categories, setCategories] = React.useState<string[]>([]);
@@ -255,6 +257,11 @@ export default function ExpenseDetailPage() {
   const firstImageSigned =
     firstImageAttachment != null ? attachmentPreviewSrc[firstImageAttachment.id] : undefined;
 
+  const expenseRef = React.useRef(expense);
+  expenseRef.current = expense;
+  const firstImageAttachmentRef = React.useRef(firstImageAttachment);
+  firstImageAttachmentRef.current = firstImageAttachment;
+
   const [receiptSignedUrl, setReceiptSignedUrl] = React.useState<string | null>(null);
   React.useEffect(() => {
     let cancelled = false;
@@ -291,9 +298,30 @@ export default function ExpenseDetailPage() {
             url: u,
             fileName: "Receipt",
             fileType: (receiptHrefLooksPdf(u) ? "pdf" : "image") as "pdf" | "image",
+            mimeType: receiptHrefLooksPdf(u) ? "application/pdf" : "image/jpeg",
           },
         ],
         initialIndex: 0,
+        onRefreshPreviewUrl: async () => {
+          const ex = expenseRef.current;
+          if (!ex?.receiptUrl?.trim() || !supabase) return null;
+          const raw = ex.receiptUrl.trim();
+          const signed = await resolvePreviewSignedUrl({
+            supabase,
+            rawUrlOrPath: raw,
+            ttlSec: 3600,
+            bucketCandidates: ["receipts", "expense-attachments"],
+          });
+          const next = (signed ?? "").trim() || null;
+          if (next) {
+            setReceiptSignedUrl(next);
+            patchPreviewRef.current({
+              url: next,
+              mimeType: receiptHrefLooksPdf(next) ? "application/pdf" : "image/jpeg",
+            });
+          }
+          return next;
+        },
         onClosed: () => {},
       });
       return;
@@ -305,13 +333,27 @@ export default function ExpenseDetailPage() {
             url: firstImageSigned,
             fileName: firstImageAttachment.fileName,
             fileType: "image" as const,
+            mimeType: firstImageAttachment.mimeType,
           },
         ],
         initialIndex: 0,
+        onRefreshPreviewUrl: async () => {
+          const att = firstImageAttachmentRef.current;
+          if (!att || !supabase) return null;
+          const { data, error } = await supabase.storage
+            .from("expense-attachments")
+            .createSignedUrl(att.url, 60 * 60);
+          const next = (!error && data?.signedUrl ? data.signedUrl : "").trim() || null;
+          if (next) {
+            setAttachmentPreviewSrc((m) => ({ ...m, [att.id]: next }));
+            patchPreviewRef.current({ url: next, mimeType: att.mimeType });
+          }
+          return next;
+        },
         onClosed: () => {},
       });
     }
-  }, [expense, receiptSignedUrl, firstImageAttachment, firstImageSigned, openPreview]);
+  }, [expense, receiptSignedUrl, firstImageAttachment, firstImageSigned, openPreview, supabase]);
 
   const openReceiptInNewTab = React.useCallback(() => {
     const raw = (expense?.receiptUrl ?? "").trim();

@@ -811,6 +811,8 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     patchPreview,
     isOpen: attachmentPreviewOpen,
   } = useAttachmentPreview();
+  const patchPreviewRef = React.useRef(patchPreview);
+  patchPreviewRef.current = patchPreview;
 
   const mapReceiptItemsToPreviewFiles = React.useCallback((items: ExpenseReceiptItem[]) => {
     return items.map((it) => ({
@@ -902,6 +904,20 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
         replaceBusy: receiptReplacing,
         onReplaceClick: () => receiptReplaceRef.current?.click(),
         onReplaceInputChange: onReceiptReplaceInputChange,
+        onRefreshPreviewUrl: async () => {
+          const rp = receiptPreviewRef.current;
+          if (!rp || !supabase) return null;
+          const resolved = await resolveReceiptPreviewUrls(rp.items, supabase);
+          const nextFiles = mapReceiptItemsToPreviewFiles(resolved);
+          const u = (nextFiles[rp.index]?.url ?? "").trim();
+          if (u) {
+            patchPreviewRef.current({ files: nextFiles });
+            setReceiptPreview((p) =>
+              p && p.expenseId === rp.expenseId ? { ...p, items: resolved } : p
+            );
+          }
+          return u || null;
+        },
         onClosed: () => {
           receiptPreviewSessionRef.current += 1;
           setReceiptPreview(null);

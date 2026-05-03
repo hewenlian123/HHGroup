@@ -25,6 +25,8 @@ type SessionOptions = {
   replaceAccept?: string;
   extraFooter?: React.ReactNode;
   onClosed?: () => void;
+  /** Re-sign or re-resolve preview URL after HTTP 403/404 (receipt flows). */
+  onRefreshPreviewUrl?: () => Promise<string | null>;
 };
 
 export type AttachmentPreviewOpenMultiPayload = SessionOptions & {
@@ -37,6 +39,7 @@ export type AttachmentPreviewOpenSinglePayload = SessionOptions & {
   fileName?: string;
   fileType?: AttachmentPreviewFileType;
   unsupported?: boolean;
+  mimeType?: string;
 };
 
 export type AttachmentPreviewOpenPayload =
@@ -52,6 +55,7 @@ export type AttachmentPreviewPatch = Partial<SessionOptions> & {
   fileName?: string;
   fileType?: AttachmentPreviewFileType;
   unsupported?: boolean;
+  mimeType?: string;
 };
 
 function isMultiPayload(p: AttachmentPreviewOpenPayload): p is AttachmentPreviewOpenMultiPayload {
@@ -64,7 +68,7 @@ function normalizeFileItem(
 ): AttachmentPreviewFileItem {
   const fileName = f.fileName ?? fallbackName;
   const fileType = f.fileType ?? inferAttachmentPreviewType(fileName, f.url);
-  return { ...f, fileName, fileType };
+  return { ...f, fileName, fileType, mimeType: f.mimeType };
 }
 
 type ModalState = {
@@ -82,6 +86,7 @@ type ModalState = {
   replaceBusy: boolean;
   replaceAccept: string;
   extraFooter?: React.ReactNode;
+  onRefreshPreviewUrl?: () => Promise<string | null>;
 };
 
 function emptyModalState(): ModalState {
@@ -114,6 +119,7 @@ function applySessionOptions(
   if (s.replaceAccept !== undefined) base.replaceAccept = s.replaceAccept;
   if (s.extraFooter !== undefined) base.extraFooter = s.extraFooter;
   if (s.onClosed !== undefined) onClosedRef.current = s.onClosed;
+  if (s.onRefreshPreviewUrl !== undefined) base.onRefreshPreviewUrl = s.onRefreshPreviewUrl;
 }
 
 type AttachmentPreviewContextValue = {
@@ -218,6 +224,7 @@ export function AttachmentPreviewProvider({ children }: { children: React.ReactN
               fileName,
               fileType,
               unsupported: payload.unsupported,
+              mimeType: payload.mimeType,
             },
             fileName
           ),
@@ -297,6 +304,13 @@ export function AttachmentPreviewProvider({ children }: { children: React.ReactN
           next.files = next.files.map((f, j) => (j === i ? { ...f, fileType: patch.fileType } : f));
         }
       }
+      if (patch.mimeType !== undefined && next.files.length > 0) {
+        const i = next.currentIndex;
+        const cur = next.files[i];
+        if (cur) {
+          next.files = next.files.map((f, j) => (j === i ? { ...f, mimeType: patch.mimeType } : f));
+        }
+      }
       if (patch.unsupported !== undefined && next.files.length > 0) {
         const i = next.currentIndex;
         const cur = next.files[i];
@@ -320,6 +334,8 @@ export function AttachmentPreviewProvider({ children }: { children: React.ReactN
       if (patch.replaceAccept !== undefined) next.replaceAccept = patch.replaceAccept;
       if (patch.extraFooter !== undefined) next.extraFooter = patch.extraFooter;
       if (patch.onClosed !== undefined) onClosedRef.current = patch.onClosed;
+      if (patch.onRefreshPreviewUrl !== undefined)
+        next.onRefreshPreviewUrl = patch.onRefreshPreviewUrl;
 
       return next;
     });
@@ -368,6 +384,7 @@ export function AttachmentPreviewProvider({ children }: { children: React.ReactN
         replaceBusy={state.replaceBusy}
         replaceAccept={state.replaceAccept}
         extraFooter={state.extraFooter}
+        onRefreshPreviewUrl={state.onRefreshPreviewUrl}
       />
     </AttachmentPreviewContext.Provider>
   );
