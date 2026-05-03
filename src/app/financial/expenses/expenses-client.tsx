@@ -490,7 +490,12 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
   const expensesListRefetching = Boolean(
     expensesQueryFetching && expensesQueryData !== undefined && !expensesQueryError
   );
-  const [search, setSearch] = React.useState("");
+  const [searchInput, setSearchInput] = React.useState("");
+  const [debouncedSearch, setDebouncedSearch] = React.useState("");
+  React.useEffect(() => {
+    const t = window.setTimeout(() => setDebouncedSearch(searchInput.trim()), 280);
+    return () => window.clearTimeout(t);
+  }, [searchInput]);
   const [projectFilter, setProjectFilter] = React.useState("");
   const [categoryFilter, setCategoryFilter] = React.useState("");
   const [expenseDateFilter, setExpenseDateFilter] = React.useState<ExpenseDateFilterValue>({
@@ -636,8 +641,8 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
 
   const baseFilteredExpenses = React.useMemo(() => {
     let list = expensesForListing;
-    if (search.trim()) {
-      const q = search.toLowerCase();
+    if (debouncedSearch) {
+      const q = debouncedSearch.toLowerCase();
       list = list.filter((e) => {
         const vendorQ = normalizedVendorLabel(e.vendorName).toLowerCase().includes(q);
         const refQ = e.referenceNo?.toLowerCase().includes(q);
@@ -676,7 +681,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     return list;
   }, [
     expensesForListing,
-    search,
+    debouncedSearch,
     projectFilter,
     categoryFilter,
     expenseDateFilter,
@@ -785,30 +790,9 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     }
   }, [queryClient, expenseSort, toast]);
 
-  const openReceiptPreview = React.useCallback(
-    async (row: Expense) => {
-      try {
-        const raw = getExpenseReceiptItems(row);
-        if (raw.length === 0) {
-          toast({
-            title: "No receipt",
-            description: "This expense has no attachment or receipt URL yet.",
-            variant: "default",
-          });
-          return;
-        }
-        const items = await resolveReceiptPreviewUrls(raw, supabase);
-        setReceiptPreview({ items, index: 0, expenseId: row.id });
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : "Could not prepare preview.";
-        toast({ title: "Preview failed", description: msg, variant: "error" });
-      }
-    },
-    [supabase, toast]
-  );
-
   const receiptPreviewRef = React.useRef(receiptPreview);
   receiptPreviewRef.current = receiptPreview;
+  const receiptPreviewSessionRef = React.useRef(0);
   const {
     openPreview,
     closePreview,
@@ -816,60 +800,136 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     isOpen: attachmentPreviewOpen,
   } = useAttachmentPreview();
 
-  React.useEffect(() => {
-    if (!receiptPreview) {
-      closePreview();
-      return;
-    }
-    openPreview({
-      files: receiptPreview.items.map((it) => ({
-        url: it.url ?? "",
-        fileName: it.fileName ?? "Receipt",
+  const mapReceiptItemsToPreviewFiles = React.useCallback((items: ExpenseReceiptItem[]) => {
+    return items.map((it) => ({
+      url: it.url ?? "",
+      fileName: it.fileName ?? "Receipt",
+      fileType: (receiptItemLooksPdf(it) ? "pdf" : "image") as "pdf" | "image",
+    }));
+  }, []);
+
+  const onReceiptReplaceInputChange = React.useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      const rp = receiptPreviewRef.current;
+      if (!file || !rp?.expenseId || !supabase) return;
+      setReceiptReplacing(true);
+      try {
+        const path = `receipts/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
+        const { error } = await supabase.storage.from("receipts").upload(path, file, {
+          contentType: file.type || "application/octet-stream",
+          upsert: true,
+        });
+        if (error) throw error;
+        const { data } = supabase.storage.from("receipts").getPublicUrl(path);
+        await updateExpenseReceiptUrl(rp.expenseId, data.publicUrl);
+        const nextItems = rp.items.map((it, idx) =>
+          idx === rp.index ? { ...it, url: data.publicUrl } : it
+        );
+        setReceiptPreview((p) =>
+          p
+            ? {
+                ...p,
+                items: p.items.map((it, idx) =>
+                  idx === p.index ? { ...it, url: data.publicUrl } : it
+                ),
+              }
+            : null
+        );
+        patchPreview({ files: mapReceiptItemsToPreviewFiles(nextItems) });
+        toast({ title: "Receipt replaced", variant: "success" });
+        void refresh();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Replace failed.";
+        toast({ title: "Replace failed", description: msg, variant: "error" });
+      } finally {
+        setReceiptReplacing(false);
+        e.target.value = "";
+      }
+    },
+    [supabase, toast, refresh, patchPreview, mapReceiptItemsToPreviewFiles]
+  );
+
+  const openReceiptPreview = React.useCallback(
+    (row: Expense) => {
+      const raw = getExpenseReceiptItems(row);
+      if (raw.length === 0) {
+        toast({
+          title: "No receipt",
+          description: "This expense has no attachment or receipt URL yet.",
+          variant: "default",
+        });
+        return;
+      }
+
+      const shellFiles = raw.map((it, i) => ({
+        url: /^https?:\/\//i.test((it.url ?? "").trim()) ? (it.url ?? "").trim() : "",
+        fileName: it.fileName ?? `Receipt ${i + 1}`,
         fileType: (receiptItemLooksPdf(it) ? "pdf" : "image") as "pdf" | "image",
-      })),
-      initialIndex: receiptPreview.index,
-      onIndexChange: (i: number) => setReceiptPreview((p) => (p ? { ...p, index: i } : p)),
-      showReplace: Boolean(receiptPreview.expenseId && supabase),
-      replaceInputRef: receiptReplaceRef,
-      replaceBusy: receiptReplacing,
-      onReplaceClick: () => receiptReplaceRef.current?.click(),
-      onReplaceInputChange: async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        const rp = receiptPreviewRef.current;
-        if (!file || !rp?.expenseId || !supabase) return;
-        setReceiptReplacing(true);
-        try {
-          const path = `receipts/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
-          const { error } = await supabase.storage.from("receipts").upload(path, file, {
-            contentType: file.type || "application/octet-stream",
-            upsert: true,
+      }));
+
+      const needsSigned =
+        shellFiles.every((f) => !f.url) ||
+        raw.some((it) => {
+          const u = (it.url ?? "").trim();
+          return u.length > 0 && !/^https?:\/\//i.test(u);
+        });
+
+      setReceiptPreview({ items: raw, index: 0, expenseId: row.id });
+      const previewSession = ++receiptPreviewSessionRef.current;
+
+      openPreview({
+        files: shellFiles,
+        initialIndex: 0,
+        isLoading: needsSigned,
+        onIndexChange: (i: number) => {
+          setReceiptPreview((p) => (p ? { ...p, index: i } : p));
+        },
+        showReplace: Boolean(supabase),
+        replaceInputRef: receiptReplaceRef,
+        replaceBusy: receiptReplacing,
+        onReplaceClick: () => receiptReplaceRef.current?.click(),
+        onReplaceInputChange: onReceiptReplaceInputChange,
+        onClosed: () => {
+          receiptPreviewSessionRef.current += 1;
+          setReceiptPreview(null);
+        },
+      });
+
+      if (!needsSigned) return;
+
+      void resolveReceiptPreviewUrls(raw, supabase)
+        .then((items) => {
+          if (receiptPreviewSessionRef.current !== previewSession) return;
+          patchPreview({
+            isLoading: false,
+            files: mapReceiptItemsToPreviewFiles(items),
           });
-          if (error) throw error;
-          const { data } = supabase.storage.from("receipts").getPublicUrl(path);
-          await updateExpenseReceiptUrl(rp.expenseId, data.publicUrl);
-          setReceiptPreview((p) =>
-            p
-              ? {
-                  ...p,
-                  items: p.items.map((it, idx) =>
-                    idx === p.index ? { ...it, url: data.publicUrl } : it
-                  ),
-                }
-              : null
-          );
-          toast({ title: "Receipt replaced", variant: "success" });
-          void refresh();
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : "Replace failed.";
-          toast({ title: "Replace failed", description: msg, variant: "error" });
-        } finally {
-          setReceiptReplacing(false);
-          e.target.value = "";
-        }
-      },
-      onClosed: () => setReceiptPreview(null),
-    });
-  }, [receiptPreview, supabase, closePreview, openPreview, refresh, toast]);
+          setReceiptPreview((p) => (p && p.expenseId === row.id ? { ...p, items } : p));
+        })
+        .catch((e) => {
+          if (receiptPreviewSessionRef.current !== previewSession) return;
+          const msg = e instanceof Error ? e.message : "Could not prepare preview.";
+          toast({ title: "Preview failed", description: msg, variant: "error" });
+          closePreview();
+          setReceiptPreview(null);
+        });
+    },
+    [
+      supabase,
+      toast,
+      openPreview,
+      patchPreview,
+      closePreview,
+      receiptReplacing,
+      onReceiptReplaceInputChange,
+      mapReceiptItemsToPreviewFiles,
+    ]
+  );
+
+  React.useEffect(() => {
+    if (!receiptPreview) closePreview();
+  }, [receiptPreview, closePreview]);
 
   React.useEffect(() => {
     patchPreview({ replaceBusy: receiptReplacing });
@@ -1220,7 +1280,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
   );
 
   const hasNarrowingFilters =
-    Boolean(search.trim()) ||
+    Boolean(searchInput.trim()) ||
     Boolean(projectFilter) ||
     Boolean(categoryFilter) ||
     Boolean(sourceTypeFilter) ||
@@ -1402,8 +1462,8 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
             <div className="flex w-full min-w-0 items-center gap-2">
               <Input
                 placeholder="Search…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 className="h-10 min-w-0 flex-1 rounded-sm border border-gray-100/80 bg-white text-sm text-gray-900 shadow-none dark:border-border/60 dark:bg-card dark:text-foreground"
               />
               <Button
@@ -1539,8 +1599,8 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                     />
                     <Input
                       placeholder="Search…"
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
+                      value={searchInput}
+                      onChange={(e) => setSearchInput(e.target.value)}
                       className="h-9 rounded-lg border-gray-200 bg-white py-1 pl-8 pr-14 text-sm shadow-none dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
                     />
                     <kbd className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 select-none rounded border border-gray-200 bg-white px-1.5 py-0.5 font-sans text-[10px] font-medium text-gray-400 lg:inline dark:border-gray-600 dark:bg-gray-800 dark:text-gray-500">

@@ -58,10 +58,12 @@ import {
 type QuickExpenseAttachmentSlot = ExpenseReceiptUploadSlot;
 
 const FIELD_LABEL = "text-xs uppercase tracking-wide text-muted-foreground";
+/** iOS Safari avoids input zoom at 16px+; 44px min touch target on small screens. */
+const FIELD_INPUT_CLASS = "max-md:min-h-11 max-md:text-base";
 const CONTROL_H = "h-10";
 const SELECT_TRIGGER = cn(
   CONTROL_H,
-  "w-full rounded-sm border-border/60 text-sm [&>span]:line-clamp-1"
+  "w-full rounded-sm border-border/60 text-sm [&>span]:line-clamp-1 max-md:min-h-11 max-md:text-base"
 );
 const selectPopperContentProps = {
   position: "popper" as const,
@@ -424,6 +426,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
 
   const handleFiles = async (files: FileList | File[] | null) => {
     if (!files || files.length === 0) return;
+    if (processing || saving) return;
     if (!supabase) {
       enterFallbackEdit("Storage is unavailable. Please enter expense details manually and save.");
       return;
@@ -822,6 +825,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                       onChange={(e) => setAmount(e.target.value)}
                       className={cn(
                         "mt-0.5 h-10 tabular-nums",
+                        FIELD_INPUT_CLASS,
                         fieldConfidence.amount !== "high" && "border-amber-500/50"
                       )}
                       disabled={saving || !supabase}
@@ -836,7 +840,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                       ref={vendorInputRef}
                       value={vendorName}
                       onChange={(e) => setVendorName(e.target.value)}
-                      className="mt-0.5 h-10"
+                      className={cn("mt-0.5 h-10", FIELD_INPUT_CLASS)}
                       disabled={saving || !supabase}
                     />
                   </div>
@@ -846,7 +850,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                     <Input
                       value={projectSearch}
                       onChange={(e) => setProjectSearch(e.target.value)}
-                      className="mt-0.5 h-10 text-xs"
+                      className={cn("mt-0.5 h-10 text-xs", FIELD_INPUT_CLASS)}
                       placeholder="Search…"
                       disabled={saving}
                     />
@@ -910,6 +914,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                       onChange={(e) => setDate(e.target.value)}
                       className={cn(
                         "mt-0.5 h-10",
+                        FIELD_INPUT_CLASS,
                         fieldConfidence.date !== "high" && "border-amber-500/50"
                       )}
                       disabled={saving || !supabase}
@@ -923,7 +928,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="h-8 gap-1.5"
+                      className="h-8 gap-1.5 max-md:min-h-11 touch-manipulation"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={processing || saving}
                     >
@@ -1021,7 +1026,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                         <Input
                           value={itemDraft}
                           onChange={(e) => setItemDraft(e.target.value)}
-                          className="h-10 text-xs"
+                          className={cn("h-10 text-xs", FIELD_INPUT_CLASS)}
                           placeholder="Add item"
                           disabled={saving}
                         />
@@ -1029,7 +1034,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                           type="button"
                           variant="outline"
                           size="sm"
-                          className="h-10 shrink-0"
+                          className="h-10 shrink-0 max-md:min-h-11 touch-manipulation"
                           disabled={saving}
                           onClick={() => {
                             const next = titleCase(itemDraft);
@@ -1069,7 +1074,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                       <Textarea
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
-                        className="mt-0.5 min-h-[80px] resize-y text-xs"
+                        className={cn("mt-0.5 min-h-[80px] resize-y text-xs", FIELD_INPUT_CLASS)}
                         placeholder="Optional"
                         disabled={saving}
                         rows={3}
@@ -1141,22 +1146,22 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
               </div>
             </div>
 
-            <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border/60 px-4 py-3">
+            <div className="sticky bottom-0 z-[1] flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border/60 bg-background px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] max-md:flex-col max-md:items-stretch">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-10 rounded-sm"
+                className="h-10 max-md:min-h-11 touch-manipulation rounded-sm max-md:w-full"
                 onClick={() => onOpenChange(false)}
               >
                 Cancel
               </Button>
-              <div className="flex flex-wrap justify-end gap-2">
+              <div className="flex w-full flex-wrap justify-end gap-2 max-md:flex-col md:w-auto">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-10 rounded-sm"
+                  className="h-10 max-md:min-h-11 touch-manipulation rounded-sm max-md:w-full"
                   onClick={() => void handleSave(true)}
                   disabled={saving || saveFlash || !supabase}
                 >
@@ -1165,7 +1170,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                 <Button
                   type="submit"
                   size="sm"
-                  className="h-10 rounded-sm bg-black px-5 text-white hover:bg-neutral-900 dark:bg-foreground dark:text-background dark:hover:bg-foreground/90"
+                  className="h-10 max-md:min-h-11 touch-manipulation rounded-sm bg-black px-5 text-white hover:bg-neutral-900 dark:bg-foreground dark:text-background dark:hover:bg-foreground/90 max-md:w-full"
                   disabled={saving || saveFlash || !supabase}
                 >
                   <SubmitSpinner loading={saving} className="mr-2" />

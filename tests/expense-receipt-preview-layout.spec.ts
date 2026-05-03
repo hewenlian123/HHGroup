@@ -1,12 +1,15 @@
 import { expect, test } from "@playwright/test";
-import { E2E_PRESERVED_PROJECT_ID } from "./e2e-cleanup-db";
+import { createClient } from "@supabase/supabase-js";
+import { E2E_PRESERVED_PROJECT_ID, purgeE2EReceiptQueueRows } from "./e2e-cleanup-db";
 import {
   attachmentPreviewModal,
   pickOrCreatePaymentInSelect,
+  pollReceiptQueueRowUntilConfirmableDom,
   prepareReceiptQueueRowForConfirm,
-  receiptQueueExpenseSuccessSeen,
   receiptQueuePaymentAccountTrigger,
   receiptQueueRowByFileName,
+  receiptQueueRowIdFromLocator,
+  waitForReceiptQueueConfirmDeleteResponse,
 } from "./e2e-expenses-helpers";
 import { mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -36,6 +39,12 @@ test.describe("Expense receipt preview (layout)", () => {
         .catch(() => false)
     ) {
       test.skip(true, "Supabase browser client not configured.");
+    }
+
+    const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const sbService = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (sbUrl && sbService) {
+      await purgeE2EReceiptQueueRows(createClient(sbUrl, sbService));
     }
 
     await page.locator("main").locator('input[type="file"][multiple]').setInputFiles({
@@ -75,25 +84,29 @@ test.describe("Expense receipt preview (layout)", () => {
     await preview.getByRole("button", { name: "Close" }).click();
     await expect(preview).toBeHidden({ timeout: 10_000 });
 
-    // Soft refresh can refetch before debounced queue patches land; re-sync row + payment.
-    await prepareReceiptQueueRowForConfirm(
+    // Soft refresh can refetch before debounced queue patches land; re-resolve row after preview closes.
+    const rowForConfirm = page
+      .locator(`[data-testid="receipt-queue-row"][data-queue-file-name="${queueFileName}"]`)
+      .first();
+    await expect(rowForConfirm).toBeVisible({ timeout: 120_000 });
+    await pollReceiptQueueRowUntilConfirmableDom(
       page,
-      queueRow,
+      rowForConfirm,
       { vendor: vendorMark, amount: "22.22", projectId: E2E_PRESERVED_PROJECT_ID },
-      { assertConfirmEnabled: true }
-    );
-    await pickOrCreatePaymentInSelect(page, paySel);
-
-    await queueRow.getByRole("button", { name: "Confirm", exact: true }).click();
-    await expect
-      .poll(
-        async () => {
-          const t = await page.locator("body").innerText();
-          if (/create failed/i.test(t)) throw new Error("Confirm failed.");
-          return receiptQueueExpenseSuccessSeen(t) ? "done" : null;
+      {
+        afterPrepare: async () => {
+          const paySelFresh = receiptQueuePaymentAccountTrigger(rowForConfirm);
+          await pickOrCreatePaymentInSelect(page, paySelFresh);
         },
-        { timeout: 120_000, intervals: [300] }
-      )
-      .toBe("done");
+      }
+    );
+
+    const receiptQueueRowId = await receiptQueueRowIdFromLocator(rowForConfirm);
+    if (!receiptQueueRowId) {
+      throw new Error("E2E: missing data-receipt-queue-row on receipt queue row");
+    }
+    const confirmPersisted = waitForReceiptQueueConfirmDeleteResponse(page, receiptQueueRowId);
+    await rowForConfirm.getByRole("button", { name: "Confirm", exact: true }).click();
+    await confirmPersisted;
   });
 });

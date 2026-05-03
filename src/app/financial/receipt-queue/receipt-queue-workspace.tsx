@@ -88,6 +88,24 @@ async function signStoragePath(
   return pub?.publicUrl ?? null;
 }
 
+/** When a refetch races replication, prefer non-empty server fields; otherwise keep prior UI state. */
+function mergeReceiptQueueFetchWithPrev(
+  fetched: ReceiptQueueRow[],
+  prev: ReceiptQueueRow[]
+): ReceiptQueueRow[] {
+  const prevById = new Map(prev.map((r) => [r.id, r]));
+  return fetched.map((srv) => {
+    const p = prevById.get(srv.id);
+    if (!p) return srv;
+    return {
+      ...srv,
+      vendor_name: srv.vendor_name.trim() !== "" ? srv.vendor_name : p.vendor_name,
+      amount: srv.amount.trim() !== "" ? srv.amount : p.amount,
+      expense_date: srv.expense_date.trim() !== "" ? srv.expense_date : p.expense_date,
+    };
+  });
+}
+
 async function downloadReceiptBlob(src: string, fileName: string) {
   const name = fileName.trim() || "receipt";
   try {
@@ -568,15 +586,15 @@ export function ReceiptQueueWorkspace() {
     }
     const w = settled[2];
     if (w.status === "fulfilled") workerList = w.value as WorkerRow[];
+    const mergedList = mergeReceiptQueueFetchWithPrev(list, rowsRef.current);
     startTransition(() => {
-      setRows(list);
       setExpenses(expList);
       setWorkers(workerList);
     });
-    queryClient.setQueryData(receiptQueueQueryKey, list);
+    queryClient.setQueryData(receiptQueueQueryKey, mergedList);
     queryClient.setQueryData(buildExpensesQueryKey(defaultExpenseListSort), expList);
     queryClient.setQueryData(workersQueryKey, workerList);
-    return list;
+    return mergedList;
   }, [supabase, toast, flushPendingDebouncedPatches, queryClient]);
 
   const softRefreshGenRef = React.useRef(0);
@@ -589,8 +607,8 @@ export function ReceiptQueueWorkspace() {
       await flushPendingDebouncedPatches();
       list = await fetchReceiptQueue(supabase);
       if (gen !== softRefreshGenRef.current) return;
-      startTransition(() => setRows(list));
-      queryClient.setQueryData(receiptQueueQueryKey, list);
+      const merged = mergeReceiptQueueFetchWithPrev(list, rowsRef.current);
+      queryClient.setQueryData(receiptQueueQueryKey, merged);
     } catch (e) {
       if (gen !== softRefreshGenRef.current) return;
       const msg = e instanceof Error ? e.message : "Failed to load queue";

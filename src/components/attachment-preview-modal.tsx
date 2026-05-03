@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight, Download, RefreshCw, X } from "lucide-react"
 import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch";
 import { Button } from "@/components/ui/button";
 import { InlineLoading, Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 export type AttachmentPreviewFileType = "image" | "pdf";
 
@@ -52,6 +53,90 @@ export async function downloadPreviewBlob(fileUrl: string, fileName: string): Pr
 
 const DRAG_THRESHOLD = 72;
 const SWIPE_TOUCH_MIN = 56;
+
+function AttachmentPreviewImage({
+  fileUrl,
+  onPinchScale,
+}: {
+  fileUrl: string;
+  onPinchScale: (scale: number) => void;
+}) {
+  const [phase, setPhase] = React.useState<"loading" | "ready" | "error">("loading");
+  const [retryKey, setRetryKey] = React.useState(0);
+
+  React.useEffect(() => {
+    setPhase("loading");
+    setRetryKey(0);
+  }, [fileUrl]);
+
+  const src =
+    retryKey > 0 ? `${fileUrl}${fileUrl.includes("?") ? "&" : "?"}hh_retry=${retryKey}` : fileUrl;
+
+  return (
+    <TransformWrapper
+      key={`tw-${fileUrl}-${retryKey}`}
+      initialScale={1}
+      initialPositionX={0}
+      initialPositionY={0}
+      minScale={0.35}
+      maxScale={8}
+      wheel={{ step: 0.12 }}
+      panning={{ velocityDisabled: true }}
+      pinch={{ step: 5 }}
+      doubleClick={{ mode: "toggle", step: 0.85 }}
+      onTransformed={(_ref, st) => onPinchScale(st.scale)}
+    >
+      <TransformComponent
+        wrapperClass="!flex !h-full !w-full !items-center !justify-center"
+        contentClass="!flex !h-full !w-full !items-center !justify-center"
+      >
+        <div className="relative flex h-full min-h-[120px] w-full items-center justify-center">
+          {phase === "loading" ? (
+            <Skeleton
+              className="pointer-events-none absolute inset-3 max-h-[min(70vh,560px)] w-[calc(100%-1.5rem)] rounded-sm opacity-90"
+              aria-hidden
+            />
+          ) : null}
+          {phase === "error" ? (
+            <div className="flex max-w-sm flex-col items-center gap-3 px-4 py-6 text-center">
+              <p className="text-sm text-muted-foreground">
+                Could not load this image. Check your connection or try again.
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="touch-manipulation"
+                onClick={() => {
+                  setPhase("loading");
+                  setRetryKey((k) => k + 1);
+                }}
+              >
+                Retry
+              </Button>
+            </div>
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={src}
+              alt=""
+              data-no-image-preview
+              decoding="async"
+              loading="eager"
+              draggable={false}
+              onLoad={() => setPhase("ready")}
+              onError={() => setPhase((p) => (p === "loading" ? "error" : p))}
+              className={cn(
+                "max-h-full max-w-full object-contain transition-opacity duration-200 ease-out",
+                phase === "ready" ? "opacity-100" : "opacity-0"
+              )}
+            />
+          )}
+        </div>
+      </TransformComponent>
+    </TransformWrapper>
+  );
+}
 
 const slideVariants: Variants = {
   enter: (direction: number) => ({
@@ -126,6 +211,23 @@ export function AttachmentPreviewModal({
   React.useEffect(() => {
     setPinchScale(1);
   }, [safeIndex, fileUrl]);
+
+  React.useEffect(() => {
+    if (!isOpen || itemCount === 0) return;
+    const nextIdx = (safeIndex + 1) % itemCount;
+    const next = files[nextIdx];
+    const u = (next?.url ?? "").trim();
+    if (
+      !u ||
+      next?.fileType === "pdf" ||
+      inferAttachmentPreviewType(next?.fileName ?? "", u) === "pdf"
+    ) {
+      return;
+    }
+    const img = new Image();
+    img.decoding = "async";
+    img.src = u;
+  }, [isOpen, itemCount, safeIndex, files]);
 
   const goNext = React.useCallback(() => {
     if (itemCount <= 1) return;
@@ -253,7 +355,7 @@ export function AttachmentPreviewModal({
               aria-modal="true"
               aria-labelledby="attachment-preview-title"
               data-attachment-preview-modal
-              className="fixed left-1/2 top-1/2 z-[201] flex max-h-[90vh] w-full max-w-[90vw] flex-col overflow-hidden rounded-sm border border-border/60 bg-background shadow-none"
+              className="fixed left-1/2 top-1/2 z-[201] flex max-h-[90vh] w-full max-w-[90vw] flex-col overflow-hidden rounded-sm border border-border/60 bg-background shadow-none max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:left-0 max-md:right-0 max-md:max-h-[min(92dvh,calc(100vh-env(safe-area-inset-bottom)))] max-md:w-full max-md:max-w-none max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-b-none max-md:rounded-t-sm"
               style={{ transformOrigin: "center center" }}
               initial={{ opacity: 0, scale: 0.95, x: "-50%", y: "-50%" }}
               animate={{ opacity: 1, scale: 1, x: "-50%", y: "-50%" }}
@@ -290,7 +392,7 @@ export function AttachmentPreviewModal({
                   type="button"
                   variant="outline"
                   size="icon"
-                  className="btn-outline-ghost absolute right-2 top-2 h-9 w-9 shrink-0 rounded-sm"
+                  className="btn-outline-ghost absolute right-2 top-2 h-9 w-9 shrink-0 rounded-sm touch-manipulation max-md:h-11 max-md:w-11"
                   aria-label="Close"
                   onClick={onClose}
                 >
@@ -309,7 +411,7 @@ export function AttachmentPreviewModal({
                       type="button"
                       variant="outline"
                       size="icon"
-                      className="btn-outline-ghost absolute left-1 top-1/2 z-20 h-9 w-9 -translate-y-1/2 rounded-sm"
+                      className="btn-outline-ghost absolute left-1 top-1/2 z-20 h-9 w-9 -translate-y-1/2 rounded-sm touch-manipulation max-md:h-11 max-md:w-11"
                       aria-label="Previous attachment"
                       onClick={goPrev}
                     >
@@ -319,7 +421,7 @@ export function AttachmentPreviewModal({
                       type="button"
                       variant="outline"
                       size="icon"
-                      className="btn-outline-ghost absolute right-1 top-1/2 z-20 h-9 w-9 -translate-y-1/2 rounded-sm"
+                      className="btn-outline-ghost absolute right-1 top-1/2 z-20 h-9 w-9 -translate-y-1/2 rounded-sm touch-manipulation max-md:h-11 max-md:w-11"
                       aria-label="Next attachment"
                       onClick={goNext}
                     >
@@ -353,7 +455,7 @@ export function AttachmentPreviewModal({
                           initial="enter"
                           animate="center"
                           exit="exit"
-                          transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                          transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
                           drag={enableMotionDrag ? "x" : false}
                           dragConstraints={{ left: 0, right: 0 }}
                           dragElastic={0.12}
@@ -367,33 +469,10 @@ export function AttachmentPreviewModal({
                               className="h-full w-full border-0"
                             />
                           ) : (
-                            <TransformWrapper
-                              key={`${safeIndex}-${fileUrl}`}
-                              initialScale={1}
-                              initialPositionX={0}
-                              initialPositionY={0}
-                              minScale={0.35}
-                              maxScale={8}
-                              wheel={{ step: 0.12 }}
-                              panning={{ velocityDisabled: true }}
-                              pinch={{ step: 5 }}
-                              doubleClick={{ mode: "toggle", step: 0.85 }}
-                              onTransformed={(_ref, st) => setPinchScale(st.scale)}
-                            >
-                              <TransformComponent
-                                wrapperClass="!flex !h-full !w-full !items-center !justify-center"
-                                contentClass="!flex !h-full !w-full !items-center !justify-center"
-                              >
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                  src={fileUrl}
-                                  alt=""
-                                  data-no-image-preview
-                                  className="max-h-full max-w-full object-contain"
-                                  draggable={false}
-                                />
-                              </TransformComponent>
-                            </TransformWrapper>
+                            <AttachmentPreviewImage
+                              fileUrl={fileUrl}
+                              onPinchScale={setPinchScale}
+                            />
                           )}
                         </motion.div>
                       </AnimatePresence>
@@ -402,7 +481,7 @@ export function AttachmentPreviewModal({
                 </div>
               </div>
 
-              <footer className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-border/60 px-4 py-3">
+              <footer className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-border/60 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
                 {extraFooter}
                 {showReplace && replaceInputRef && onReplaceClick && onReplaceInputChange ? (
                   <>
@@ -418,7 +497,7 @@ export function AttachmentPreviewModal({
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="h-8"
+                      className="h-8 max-md:min-h-11 touch-manipulation"
                       disabled={replaceBusy}
                       onClick={onReplaceClick}
                     >
@@ -430,7 +509,7 @@ export function AttachmentPreviewModal({
                 <Button
                   type="button"
                   size="sm"
-                  className="h-8"
+                  className="h-8 max-md:min-h-11 touch-manipulation"
                   disabled={!fileUrl || sessionIsLoading || unsupported || downloadBusy}
                   onClick={() => void handleDownload()}
                 >

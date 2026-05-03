@@ -38,3 +38,21 @@ Skipped tests were all **empty list / no matching row** after long waits:
 | `delete-all-surfaces.spec.ts` | tasks, documents, labor review, labor invoices, reimbursements, labor daily, site-photos |
 
 Fix: seed the corresponding entities in Supabase (or run against an env that has them).
+
+## Expense / receipt-queue E2E — diff scope (**9 + 1 files**, not 7)
+
+**Nine** application / Playwright files (the feature + queue helpers):
+
+- `src/app/financial/expenses/expense-inbox-preview-modal.tsx`
+- `src/app/financial/expenses/expenses-client.tsx`
+- `src/app/financial/expenses/quick-expense-modal.tsx`
+- `src/app/projects/[id]/project-cost-lines-table.tsx`
+- `src/components/attachment-preview-modal.tsx`
+- `tests/e2e-cleanup-db.ts`
+- `tests/e2e-expenses-helpers.ts`
+- `tests/expense-receipt-preview-layout.spec.ts`
+- `tests/expenses-receipt-queue.spec.ts`
+
+**Plus** `docs/playwright-skip-inventory.md` (this section) → **`git diff --stat` shows 10 files** when the doc is included.
+
+Focused Chromium run: keep `npm run dev:safe` on `:3000`, then `E2E_WEB_SERVER=off npx playwright test` on the five expense specs with `--retries=0` (see repo scripts / CI docs).
