@@ -3,11 +3,15 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion, type PanInfo, type Variants } from "framer-motion";
-import { ChevronLeft, ChevronRight, Download, RefreshCw, X } from "lucide-react";
-import { TransformComponent, TransformWrapper } from "react-zoom-pan-pinch";
+import { ChevronLeft, ChevronRight, Download, ExternalLink, RefreshCw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InlineLoading, Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import {
+  classifyStorageUrlPrefix,
+  preflightPreviewUrl,
+  type PreviewUrlPreflightResult,
+} from "@/lib/preview-url-preflight";
 
 export type AttachmentPreviewFileType = "image" | "pdf";
 
@@ -16,6 +20,8 @@ export type AttachmentPreviewFileItem = {
   fileName?: string;
   fileType?: AttachmentPreviewFileType;
   unsupported?: boolean;
+  /** Optional MIME for debug (e.g. receipt row `mime_type`). */
+  mimeType?: string;
 };
 
 export function inferAttachmentPreviewType(
@@ -26,6 +32,12 @@ export function inferAttachmentPreviewType(
   const u = (fileUrl ?? "").toLowerCase();
   if (n.endsWith(".pdf") || /\.pdf(\?|#|$)/i.test(u)) return "pdf";
   return "image";
+}
+
+export function isReceiptPreviewDebugEnabled(): boolean {
+  return (
+    process.env.NODE_ENV === "development" || process.env.NEXT_PUBLIC_DEBUG_RECEIPT_PREVIEW === "1"
+  );
 }
 
 function safeDownloadName(name: string): string {
@@ -54,87 +66,281 @@ export async function downloadPreviewBlob(fileUrl: string, fileName: string): Pr
 const DRAG_THRESHOLD = 72;
 const SWIPE_TOUCH_MIN = 56;
 
-function AttachmentPreviewImage({
-  fileUrl,
-  onPinchScale,
+type PreflightPhase = "idle" | "checking" | "ok" | "error";
+
+function ReceiptPreviewImageArea({
+  displayUrl,
+  fileName,
+  mimeHint,
+  onRefreshPreviewUrl,
+  downloadBusy,
+  onDownload,
+  defaultDownload,
 }: {
-  fileUrl: string;
-  onPinchScale: (scale: number) => void;
+  displayUrl: string;
+  fileName: string;
+  mimeHint?: string;
+  onRefreshPreviewUrl?: () => Promise<string | null>;
+  downloadBusy: boolean;
+  onDownload?: () => void | Promise<void>;
+  defaultDownload: () => void | Promise<void>;
 }) {
-  const [phase, setPhase] = React.useState<"loading" | "ready" | "error">("loading");
+  const showDebug = isReceiptPreviewDebugEnabled();
+  const [preflightPhase, setPreflightPhase] = React.useState<PreflightPhase>("idle");
+  const [preflightResult, setPreflightResult] = React.useState<PreviewUrlPreflightResult | null>(
+    null
+  );
+  const [imgPhase, setImgPhase] = React.useState<"loading" | "ready" | "error">("loading");
+  const [imgErrorDetail, setImgErrorDetail] = React.useState<string | null>(null);
+  const [naturalSize, setNaturalSize] = React.useState({ w: 0, h: 0 });
   const [retryKey, setRetryKey] = React.useState(0);
+  const [localUrl, setLocalUrl] = React.useState(displayUrl);
+  const containerRef = React.useRef<HTMLDivElement | null>(null);
+  const [containerH, setContainerH] = React.useState(0);
+  const onRefreshRef = React.useRef(onRefreshPreviewUrl);
+  onRefreshRef.current = onRefreshPreviewUrl;
 
   React.useEffect(() => {
-    setPhase("loading");
+    setLocalUrl(displayUrl);
     setRetryKey(0);
-  }, [fileUrl]);
+    setImgPhase("loading");
+    setImgErrorDetail(null);
+    setNaturalSize({ w: 0, h: 0 });
+    setPreflightPhase("idle");
+    setPreflightResult(null);
+  }, [displayUrl]);
 
-  const src =
-    retryKey > 0 ? `${fileUrl}${fileUrl.includes("?") ? "&" : "?"}hh_retry=${retryKey}` : fileUrl;
+  const effectiveUrl =
+    retryKey > 0
+      ? `${localUrl}${localUrl.includes("?") ? "&" : "?"}hh_retry=${retryKey}`
+      : localUrl;
+
+  React.useEffect(() => {
+    if (!effectiveUrl.trim()) return;
+    let cancelled = false;
+    setPreflightPhase("checking");
+    void (async () => {
+      const runCheck = async (url: string) => {
+        const r = await preflightPreviewUrl(url);
+        if (cancelled) return null;
+        setPreflightResult(r);
+        return r;
+      };
+
+      let urlNow = effectiveUrl;
+      let r = await runCheck(urlNow);
+      if (cancelled || !r) return;
+
+      if (r.ok) {
+        setPreflightPhase("ok");
+        return;
+      }
+
+      const stat = r.status;
+      const refresh = onRefreshRef.current;
+      if (refresh && (stat === 403 || stat === 404)) {
+        const next = await refresh();
+        if (cancelled) return;
+        const nextTrim = (next ?? "").trim();
+        if (nextTrim && nextTrim !== urlNow) {
+          urlNow = nextTrim;
+          setLocalUrl(nextTrim);
+          r = await runCheck(urlNow);
+          if (cancelled || !r) return;
+        }
+      }
+
+      setPreflightPhase(r.ok ? "ok" : "error");
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveUrl]);
+
+  React.useEffect(() => {
+    const el = containerRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => {
+      setContainerH(el.clientHeight);
+    });
+    ro.observe(el);
+    setContainerH(el.clientHeight);
+    return () => ro.disconnect();
+  }, [preflightPhase, imgPhase]);
+
+  const inferredImage = inferAttachmentPreviewType(fileName, effectiveUrl) === "image";
+  const inferredPdf = inferAttachmentPreviewType(fileName, effectiveUrl) === "pdf";
+  const mime = (mimeHint ?? "").trim();
+  const isImageMime = mime.startsWith("image/");
+  const isPdfMime = mime === "application/pdf";
+
+  const openTab = () => {
+    window.open(effectiveUrl, "_blank", "noopener,noreferrer");
+  };
+
+  const runDownload = () => {
+    if (onDownload) void onDownload();
+    else void defaultDownload();
+  };
+
+  const preflightHardFail =
+    preflightPhase === "error" && preflightResult != null && !preflightResult.ok;
+
+  const failureActions = (
+    <div className="flex flex-wrap items-center justify-center gap-2">
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        className="touch-manipulation"
+        onClick={openTab}
+      >
+        <ExternalLink className="mr-2 h-3.5 w-3.5" />
+        Open in new tab
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        className="touch-manipulation"
+        disabled={downloadBusy || !effectiveUrl}
+        onClick={() => void runDownload()}
+      >
+        <Download className="mr-2 h-3.5 w-3.5" />
+        Download
+      </Button>
+    </div>
+  );
 
   return (
-    <TransformWrapper
-      key={`tw-${fileUrl}-${retryKey}`}
-      initialScale={1}
-      initialPositionX={0}
-      initialPositionY={0}
-      minScale={0.35}
-      maxScale={8}
-      wheel={{ step: 0.12 }}
-      panning={{ velocityDisabled: true }}
-      pinch={{ step: 5 }}
-      doubleClick={{ mode: "toggle", step: 0.85 }}
-      onTransformed={(_ref, st) => onPinchScale(st.scale)}
-    >
-      <TransformComponent
-        wrapperClass="!flex !h-full !w-full !items-center !justify-center"
-        contentClass="!flex !h-full !w-full !items-center !justify-center"
+    <div className="flex w-full min-h-[280px] flex-col items-stretch gap-2">
+      {showDebug ? (
+        <div
+          className="rounded-sm border border-dashed border-border/80 bg-muted/30 px-2 py-1.5 font-mono text-[10px] leading-snug text-muted-foreground"
+          data-testid="receipt-preview-debug"
+        >
+          <div>fileUrl: {effectiveUrl ? `string(len=${effectiveUrl.length})` : "(missing)"}</div>
+          <div>mime hint: {mime || "—"}</div>
+          <div>
+            infer: isPdf={String(inferredPdf)} isImage={String(inferredImage)} | mime: isPdf=
+            {String(isPdfMime)} isImage={String(isImageMime)}
+          </div>
+          <div>URL prefix: {classifyStorageUrlPrefix(effectiveUrl)}</div>
+          <div>
+            preflight: {preflightPhase}
+            {preflightResult?.status != null ? ` status=${preflightResult.status}` : ""}{" "}
+            {preflightResult?.method ? `via ${preflightResult.method}` : ""}
+            {preflightResult?.error ? ` err=${preflightResult.error}` : ""}
+          </div>
+          <div>
+            img: phase={imgPhase} natural={naturalSize.w}×{naturalSize.h} | err=
+            {imgErrorDetail ?? "—"}
+          </div>
+          <div>container clientHeight: {containerH}</div>
+        </div>
+      ) : null}
+
+      <div
+        ref={containerRef}
+        className="relative flex min-h-[280px] w-full flex-1 flex-col items-center justify-center gap-4 px-2 py-3"
       >
-        <div className="relative flex h-full min-h-[120px] w-full items-center justify-center">
-          {phase === "loading" ? (
-            <Skeleton
-              className="pointer-events-none absolute inset-3 max-h-[min(70vh,560px)] w-[calc(100%-1.5rem)] rounded-sm opacity-90"
-              aria-hidden
-            />
-          ) : null}
-          {phase === "error" ? (
-            <div className="flex max-w-sm flex-col items-center gap-3 px-4 py-6 text-center">
-              <p className="text-sm text-muted-foreground">
-                Could not load this image. Check your connection or try again.
-              </p>
+        {preflightPhase === "checking" ? (
+          <div className="flex flex-col items-center gap-2" aria-busy>
+            <Skeleton className="h-40 w-full max-w-md rounded-sm" />
+            <span className="sr-only">Checking preview URL</span>
+          </div>
+        ) : null}
+
+        {preflightHardFail ? (
+          <div
+            className="flex max-w-md flex-col items-center gap-3 text-center"
+            data-testid="receipt-preview-preflight-error"
+          >
+            <p className="text-sm text-muted-foreground">
+              Receipt could not be loaded
+              {preflightResult?.status != null ? ` (HTTP ${preflightResult.status})` : ""}.
+            </p>
+            {failureActions}
+            {onRefreshPreviewUrl ? (
               <Button
                 type="button"
                 size="sm"
-                variant="outline"
+                variant="ghost"
                 className="touch-manipulation"
                 onClick={() => {
-                  setPhase("loading");
-                  setRetryKey((k) => k + 1);
+                  setPreflightPhase("checking");
+                  void (async () => {
+                    const next = await onRefreshRef.current?.();
+                    if (next?.trim()) {
+                      setLocalUrl(next.trim());
+                      setRetryKey((k) => k + 1);
+                    }
+                  })();
                 }}
               >
-                Retry
+                <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                Retry signed URL
               </Button>
-            </div>
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={src}
-              alt=""
-              data-no-image-preview
-              decoding="async"
-              loading="eager"
-              draggable={false}
-              onLoad={() => setPhase("ready")}
-              onError={() => setPhase((p) => (p === "loading" ? "error" : p))}
-              className={cn(
-                "max-h-full max-w-full object-contain transition-opacity duration-200 ease-out",
-                phase === "ready" ? "opacity-100" : "opacity-0"
-              )}
-            />
-          )}
-        </div>
-      </TransformComponent>
-    </TransformWrapper>
+            ) : null}
+          </div>
+        ) : null}
+
+        {preflightPhase === "ok" ? (
+          <>
+            {imgPhase === "loading" ? (
+              <Skeleton className="pointer-events-none absolute inset-x-4 top-8 h-40 max-w-md rounded-sm opacity-90" />
+            ) : null}
+            {imgPhase === "error" ? (
+              <div
+                className="flex max-w-md flex-col items-center gap-3 text-center"
+                data-testid="receipt-preview-img-error"
+              >
+                <p className="text-sm text-muted-foreground">Receipt image failed to load.</p>
+                {failureActions}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="touch-manipulation"
+                  onClick={() => {
+                    setImgPhase("loading");
+                    setImgErrorDetail(null);
+                    setRetryKey((k) => k + 1);
+                  }}
+                >
+                  <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                  Retry
+                </Button>
+              </div>
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={effectiveUrl}
+                alt=""
+                data-no-image-preview
+                decoding="async"
+                loading="eager"
+                draggable={false}
+                onLoad={(e) => {
+                  const el = e.currentTarget;
+                  setNaturalSize({ w: el.naturalWidth, h: el.naturalHeight });
+                  setImgPhase("ready");
+                  setImgErrorDetail(null);
+                }}
+                onError={() => {
+                  setImgErrorDetail("img onError (decode / network / CORS)");
+                  setImgPhase("error");
+                }}
+                className={cn(
+                  "max-h-[70vh] max-w-full object-contain",
+                  imgPhase === "ready" ? "opacity-100" : "opacity-0"
+                )}
+              />
+            )}
+          </>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
@@ -170,6 +376,8 @@ export type AttachmentPreviewModalProps = {
   replaceBusy?: boolean;
   replaceAccept?: string;
   extraFooter?: React.ReactNode;
+  /** Re-resolve signed URL after HTTP 403/404 on preflight (receipt flows). */
+  onRefreshPreviewUrl?: () => Promise<string | null>;
 };
 
 export function AttachmentPreviewModal({
@@ -188,10 +396,10 @@ export function AttachmentPreviewModal({
   replaceBusy = false,
   replaceAccept = "image/*,.pdf,application/pdf",
   extraFooter,
+  onRefreshPreviewUrl,
 }: AttachmentPreviewModalProps) {
   const [mounted, setMounted] = React.useState(false);
   const [navDirection, setNavDirection] = React.useState(1);
-  const [pinchScale, setPinchScale] = React.useState(1);
   const touchStartRef = React.useRef<{ x: number; y: number } | null>(null);
 
   const itemCount = files.length;
@@ -205,12 +413,9 @@ export function AttachmentPreviewModal({
   const fileName = current.fileName ?? "File";
   const fileType = current.fileType ?? inferAttachmentPreviewType(fileName, fileUrl);
   const unsupported = current.unsupported ?? false;
+  const mimeHint = current.mimeType;
 
   React.useEffect(() => setMounted(true), []);
-
-  React.useEffect(() => {
-    setPinchScale(1);
-  }, [safeIndex, fileUrl]);
 
   React.useEffect(() => {
     if (!isOpen || itemCount === 0) return;
@@ -291,19 +496,19 @@ export function AttachmentPreviewModal({
 
   const onTouchStartCapture = React.useCallback(
     (e: React.TouchEvent) => {
-      if (itemCount <= 1 || pinchScale > 1.06) return;
+      if (itemCount <= 1) return;
       if (e.touches.length !== 1) return;
       touchStartRef.current = {
         x: e.touches[0].clientX,
         y: e.touches[0].clientY,
       };
     },
-    [itemCount, pinchScale]
+    [itemCount]
   );
 
   const onTouchEndCapture = React.useCallback(
     (e: React.TouchEvent) => {
-      if (itemCount <= 1 || pinchScale > 1.06) return;
+      if (itemCount <= 1) return;
       const start = touchStartRef.current;
       touchStartRef.current = null;
       if (!start || e.changedTouches.length !== 1) return;
@@ -315,7 +520,7 @@ export function AttachmentPreviewModal({
         else goNext();
       }
     },
-    [goNext, goPrev, itemCount, pinchScale]
+    [goNext, goPrev, itemCount]
   );
 
   if (!mounted) return null;
@@ -324,7 +529,7 @@ export function AttachmentPreviewModal({
   const title = itemCount > 1 ? `${titleBase} (${safeIndex + 1}/${itemCount})` : titleBase;
 
   const showNav = itemCount > 1;
-  const enableMotionDrag = showNav && (fileType === "pdf" || pinchScale <= 1.02);
+  const enableMotionDrag = showNav;
 
   const dialogTransition = {
     opacity: { duration: 0.18, ease: "easeOut" as const },
@@ -401,7 +606,7 @@ export function AttachmentPreviewModal({
               </header>
 
               <div
-                className="relative flex min-h-0 min-w-0 flex-1 flex-col px-4 py-2"
+                className="relative flex min-h-[320px] min-w-0 flex-1 flex-col px-4 py-2"
                 onTouchStartCapture={onTouchStartCapture}
                 onTouchEndCapture={onTouchEndCapture}
               >
@@ -430,7 +635,7 @@ export function AttachmentPreviewModal({
                   </>
                 ) : null}
 
-                <div className="flex w-full flex-1 min-h-[min(40vh,320px)] max-h-[min(85vh,calc(90vh-8rem))] items-center justify-center overflow-hidden">
+                <div className="flex w-full flex-1 min-h-[320px] max-h-[min(85vh,calc(90vh-8rem))] flex-col items-stretch justify-center overflow-auto">
                   {sessionIsLoading ? (
                     <div
                       className="flex w-full flex-col items-center justify-center gap-3 px-6 py-8"
@@ -446,8 +651,8 @@ export function AttachmentPreviewModal({
                   ) : !fileUrl ? (
                     <p className="text-sm text-muted-foreground">Receipt not available.</p>
                   ) : (
-                    <div className="relative h-full w-full">
-                      <AnimatePresence initial={false} custom={navDirection} mode="popLayout">
+                    <div className="relative flex min-h-[320px] w-full flex-1 flex-col">
+                      <AnimatePresence initial={false} custom={navDirection} mode="wait">
                         <motion.div
                           key={`${safeIndex}-${fileUrl}`}
                           custom={navDirection}
@@ -460,18 +665,23 @@ export function AttachmentPreviewModal({
                           dragConstraints={{ left: 0, right: 0 }}
                           dragElastic={0.12}
                           onDragEnd={handleDragEnd}
-                          className="absolute inset-0 flex items-center justify-center"
+                          className="relative flex min-h-[320px] w-full flex-1 flex-col items-center justify-center"
                         >
                           {fileType === "pdf" ? (
                             <iframe
                               title={fileName}
                               src={fileUrl}
-                              className="h-full w-full border-0"
+                              className="min-h-[280px] h-[min(70vh,720px)] w-full flex-1 border-0"
                             />
                           ) : (
-                            <AttachmentPreviewImage
-                              fileUrl={fileUrl}
-                              onPinchScale={setPinchScale}
+                            <ReceiptPreviewImageArea
+                              displayUrl={fileUrl}
+                              fileName={fileName}
+                              mimeHint={mimeHint}
+                              onRefreshPreviewUrl={onRefreshPreviewUrl}
+                              downloadBusy={downloadBusy}
+                              onDownload={onDownload}
+                              defaultDownload={() => void downloadPreviewBlob(fileUrl, fileName)}
                             />
                           )}
                         </motion.div>

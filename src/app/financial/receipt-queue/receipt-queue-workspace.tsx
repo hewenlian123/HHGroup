@@ -315,7 +315,9 @@ export function ReceiptQueueWorkspace() {
   } | null>(null);
   const receiptPreviewRef = React.useRef(receiptPreview);
   receiptPreviewRef.current = receiptPreview;
-  const { openPreview, closePreview } = useAttachmentPreview();
+  const { openPreview, closePreview, patchPreview } = useAttachmentPreview();
+  const patchPreviewRef = React.useRef(patchPreview);
+  patchPreviewRef.current = patchPreview;
   /** Per-row rAF handles: coalesce rapid typing into ≤1 PATCH per frame (no visible input lag). */
   const rowPatchRafRef = React.useRef<Map<string, number>>(new Map());
   const confirmingRowIdsRef = React.useRef<Set<string>>(new Set());
@@ -421,6 +423,8 @@ export function ReceiptQueueWorkspace() {
     const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     return url && anon ? createBrowserClient(url, anon) : null;
   }, []);
+  const supabaseRef = React.useRef(supabase);
+  supabaseRef.current = supabase;
 
   const rqDraftKey = (id: string) => `hh.rq.draft.${id}`;
   const readRqDraft = React.useCallback((id: string): ReceiptQueuePatch | null => {
@@ -1315,10 +1319,12 @@ export function ReceiptQueueWorkspace() {
    */
   React.useEffect(() => {
     if (!receiptPreview) return;
+    const row = rowsRef.current.find((r) => r.id === receiptPreview.rowId);
     openPreview({
       url: receiptPreview.src,
       fileName: receiptPreview.fileName,
       fileType: receiptPreview.isPdf ? "pdf" : "image",
+      mimeType: row?.mime_type ?? undefined,
       showReplace: true,
       replaceInputRef: previewReplaceInputRef,
       replaceAccept: "image/*,application/pdf",
@@ -1333,6 +1339,19 @@ export function ReceiptQueueWorkspace() {
       onDownload: () => {
         const rp = receiptPreviewRef.current;
         if (rp) void downloadReceiptBlob(rp.src, rp.fileName);
+      },
+      onRefreshPreviewUrl: async () => {
+        const rp = receiptPreviewRef.current;
+        const client = supabaseRef.current;
+        if (!rp || !client) return null;
+        const rrow = rowsRef.current.find((r) => r.id === rp.rowId);
+        if (!rrow) return null;
+        const url = await resolveQueueReceiptPreviewUrl(client, rrow);
+        if (url) {
+          setReceiptPreview((p) => (p && p.rowId === rrow.id ? { ...p, src: url } : p));
+          patchPreviewRef.current({ url, mimeType: rrow.mime_type ?? undefined });
+        }
+        return url;
       },
       onClosed: () => {
         if (mountedRef.current) setReceiptPreview(null);
