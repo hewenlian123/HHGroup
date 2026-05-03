@@ -45,9 +45,9 @@ type WorkerOption = { id: string; name: string };
 const PAYMENT_METHOD_OPTIONS = ["Amex", "Visa", "Cash", "Company"] as const;
 
 const FIELD_LABEL = "text-xs uppercase tracking-wide text-muted-foreground";
-const INPUT_CLASS = "h-10 rounded-sm border-border/60 text-sm";
+const INPUT_CLASS = "h-10 rounded-sm border-border/60 text-sm max-md:min-h-11 max-md:text-base";
 const SELECT_TRIGGER_CLASS =
-  "h-10 max-md:h-10 max-md:min-h-10 rounded-sm border-border/60 text-sm [&>span]:line-clamp-1";
+  "h-10 max-md:min-h-11 max-md:text-base rounded-sm border-border/60 text-sm [&>span]:line-clamp-1";
 
 const selectPopperContentProps = {
   position: "popper" as const,

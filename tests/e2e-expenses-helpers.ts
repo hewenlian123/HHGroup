@@ -17,9 +17,12 @@ export function expenseListRow(page: Page, text: string | RegExp): Locator {
     .first();
 }
 
-/** Vendor filter on `/financial/expenses` (scoped to `main` — not the global topbar search). */
+/**
+ * Vendor filter on inbox/archive (`ExpensesPageClient`). Two inputs share placeholder `Search…`
+ * (mobile `md:hidden` + desktop `hidden md:flex`); must target the **visible** one or fills no-op on Desktop.
+ */
 export function expensesVendorSearch(page: Page): Locator {
-  return page.locator("main").getByRole("textbox", { name: "Search…" });
+  return page.locator(".expenses-ui").getByPlaceholder("Search…").filter({ visible: true }).first();
 }
 
 /**
@@ -90,6 +93,51 @@ export function listenForExpensesTableFetch(
   );
 }
 
+/** True when the DELETE URL references this row id (substring — UUID is unique in typical PostgREST URLs). */
+function receiptQueueDeleteUrlMatchesRowId(url: string, rowId: string): boolean {
+  const id = rowId.trim().toLowerCase();
+  if (!id) return false;
+  let decoded = url;
+  try {
+    decoded = decodeURIComponent(url);
+  } catch {
+    /* use raw */
+  }
+  return decoded.toLowerCase().includes(id) || url.toLowerCase().includes(id);
+}
+
+/**
+ * Receipt-queue Confirm removes the row in the UI before `finalizeConfirmMutation` finishes; wait for the
+ * terminal Supabase **DELETE** on `receipt_queue` for **this row id** (runs after expense + attachments).
+ * Register **before** clicking Confirm; read the row id from `data-receipt-queue-row` on that row
+ * (e.g. {@link receiptQueueRowIdFromLocator}) so the DELETE URL matches only that queue row.
+ */
+export function waitForReceiptQueueConfirmDeleteResponse(
+  page: Page,
+  receiptQueueRowId: string,
+  timeoutMs = 180_000
+): Promise<Response> {
+  const rid = receiptQueueRowId.trim();
+  if (!rid) {
+    throw new Error("waitForReceiptQueueConfirmDeleteResponse: receiptQueueRowId is required");
+  }
+  return page.waitForResponse(
+    (r) => {
+      const req = r.request();
+      const url = req.url();
+      return (
+        req.method() === "DELETE" &&
+        /\breceipt_queue\b/i.test(url) &&
+        /\/rest\/v\d+\//i.test(url) &&
+        r.status() >= 200 &&
+        r.status() < 300 &&
+        receiptQueueDeleteUrlMatchesRowId(url, rid)
+      );
+    },
+    { timeout: timeoutMs }
+  );
+}
+
 function isSuccessfulReceiptQueuePatch(resp: Response): boolean {
   const req = resp.request();
   return (
@@ -147,10 +195,10 @@ export async function waitForReceiptQueuePatchIdle(
   page.on("response", onResp);
   try {
     await expect
-      .poll(
-        async () => Date.now() - lastPatchAt >= quietMs,
-        { timeout: timeoutMs, intervals: [80, 150, 300, 500] }
-      )
+      .poll(async () => Date.now() - lastPatchAt >= quietMs, {
+        timeout: timeoutMs,
+        intervals: [80, 150, 300, 500],
+      })
       .toBe(true);
   } finally {
     page.off("response", onResp);
@@ -175,16 +223,21 @@ export async function waitForReceiptQueuePatchesAfterPressQuiet(
   const patchReqStartedAt = new Map<string, number>();
   const patchRequestKey = (url: string, method: string, postData: string | null | undefined) =>
     `${url}\0${method}\0${postData ?? ""}`;
-  const onRequest = (req: { url: () => string; method: () => string; postData: () => string | null }) => {
+  const onRequest = (req: {
+    url: () => string;
+    method: () => string;
+    postData: () => string | null;
+  }) => {
     if (!req.url().includes("receipt_queue") || req.method() !== "PATCH") return;
-    patchReqStartedAt.set(patchRequestKey(req.url(), req.method(), req.postData()), performance.now());
+    patchReqStartedAt.set(
+      patchRequestKey(req.url(), req.method(), req.postData()),
+      performance.now()
+    );
   };
   const onResp = (resp: Response) => {
     if (!gated || !isSuccessfulReceiptQueuePatch(resp)) return;
     const req = resp.request();
-    const started = patchReqStartedAt.get(
-      patchRequestKey(req.url(), req.method(), req.postData())
-    );
+    const started = patchReqStartedAt.get(patchRequestKey(req.url(), req.method(), req.postData()));
     if (started === undefined || started < gateAt) return;
     seen += 1;
     lastPatchAt = Date.now();
@@ -242,18 +295,69 @@ export async function expectExpenseVendorRowArchiveOrInbox(
       async () => {
         for (const url of [E2E_FINANCIAL_EXPENSES_ARCHIVE_URL, E2E_FINANCIAL_INBOX_URL]) {
           try {
-            await page.goto(url, { waitUntil: "domcontentloaded" });
+            const expensesWait = page
+              .waitForResponse(
+                (r) =>
+                  /\/rest\/v1\/expenses(?:\?|$)/i.test(r.url()) &&
+                  r.request().method() === "GET" &&
+                  r.status() === 200,
+                { timeout: 45_000 }
+              )
+              .catch(() => {
+                /* Cache hit / request finished before listener — row polls below still apply. */
+              });
+            await page.goto(url, { waitUntil: "domcontentloaded", timeout: 90_000 });
+            await expensesWait;
             const err = await page
               .locator(".expenses-ui[data-expenses-query-status='error']")
               .count();
             if (err > 0)
               throw new Error("Expenses list query failed (data-expenses-query-status=error).");
-            await page
-              .locator(".expenses-ui[data-expenses-query-status='success']")
-              .first()
-              .waitFor({ state: "attached", timeout: 90_000 });
             await page.locator("main").first().waitFor({ state: "visible", timeout: 45_000 });
-            await expensesVendorSearch(page).fill(vendorMark);
+            // Attached `success` alone can precede hydrated rows; wait until RQ reports success.
+            await waitForExpensesQuerySuccess(page, 90_000);
+
+            const rowByVendor = () => expenseListRow(page, vendorMark);
+            let rowVisible = false;
+            try {
+              await expect
+                .poll(
+                  async () =>
+                    rowByVendor()
+                      .isVisible()
+                      .catch(() => false),
+                  {
+                    timeout: 55_000,
+                    intervals: [300, 600, 1200, 2000],
+                  }
+                )
+                .toBe(true);
+              rowVisible = true;
+            } catch {
+              /* Off-page, stale keepPreviousData snapshot, or refetch not landed yet — narrow via search. */
+            }
+
+            if (!rowVisible) {
+              await expensesVendorSearch(page).fill(vendorMark);
+              // Expenses list applies search on a ~280ms debounce.
+              try {
+                await expect
+                  .poll(
+                    async () =>
+                      rowByVendor()
+                        .isVisible()
+                        .catch(() => false),
+                    {
+                      timeout: 55_000,
+                      intervals: [100, 200, 350, 500, 800, 1200],
+                    }
+                  )
+                  .toBe(true);
+              } catch {
+                continue;
+              }
+            }
+
             const row = expenseListRow(page, vendorMark);
             if (!(await row.isVisible().catch(() => false))) continue;
             if (snippet && !(await row.innerText()).includes(snippet)) continue;
@@ -426,6 +530,10 @@ function receiptQueueAmountsMatch(actual: string, expected: string): boolean {
   return Number.isFinite(x) && Number.isFinite(y) && Math.abs(x - y) < 0.02;
 }
 
+export async function receiptQueueRowIdFromLocator(queueRow: Locator): Promise<string> {
+  return ((await queueRow.getAttribute("data-receipt-queue-row")) ?? "").trim();
+}
+
 /**
  * Fill vendor, amount, and project. Retries when a server refresh clears fields or Confirm stays
  * disabled briefly after values look correct.
@@ -436,9 +544,7 @@ export async function prepareReceiptQueueRowForConfirm(
   opts: { vendor: string; amount: string; projectId: string },
   more?: { assertConfirmEnabled?: boolean }
 ): Promise<void> {
-  const projectSelect = queueRow
-    .locator("select")
-    .filter({ has: page.locator(`option[value="${opts.projectId}"]`) });
+  const projectSelect = queueRow.locator('[data-queue-field="project"]').first();
 
   const amountNorm = opts.amount.replace(/,/g, "").trim();
   let lastVendor = "";
@@ -472,6 +578,51 @@ export async function prepareReceiptQueueRowForConfirm(
   throw new Error(
     `Receipt queue row did not become confirmable (vendor="${lastVendor}" expected "${opts.vendor}", amount="${lastAmount}" expected "${amountNorm}")`
   );
+}
+
+/**
+ * Re-runs {@link prepareReceiptQueueRowForConfirm} until vendor/amount/project match in the DOM.
+ * Needed because `softRefreshQueueAndExpenses` can replace local row state from the server without
+ * sessionStorage draft merge, clearing fields after an otherwise successful prepare.
+ */
+export async function pollReceiptQueueRowUntilConfirmableDom(
+  page: Page,
+  queueRow: Locator,
+  opts: { vendor: string; amount: string; projectId: string },
+  more?: { timeoutMs?: number; afterPrepare?: () => Promise<void> }
+): Promise<void> {
+  const amountNorm = opts.amount.replace(/,/g, "").trim();
+  const timeoutMs = more?.timeoutMs ?? 120_000;
+  const afterPrepare = more?.afterPrepare;
+  await expect
+    .poll(
+      async () => {
+        await prepareReceiptQueueRowForConfirm(page, queueRow, opts, {
+          assertConfirmEnabled: true,
+        });
+        if (afterPrepare) await afterPrepare();
+        await waitForReceiptQueuePatchIdle(page, 450, 25_000).catch(() => {
+          /* OCR / notify churn can prevent idle; DOM check below still gates Confirm. */
+        });
+        const vendor = (
+          await queueRow.locator('input[placeholder="Vendor"]:not([disabled])').first().inputValue()
+        ).trim();
+        const amountRaw = (await queueRow.getByPlaceholder("Amount").inputValue())
+          .replace(/,/g, "")
+          .trim();
+        const proj = await queueRow
+          .locator('[data-queue-field="project"]')
+          .first()
+          .evaluate((el) => (el as HTMLSelectElement).value);
+        return (
+          vendor === opts.vendor &&
+          receiptQueueAmountsMatch(amountRaw, amountNorm) &&
+          proj === opts.projectId
+        );
+      },
+      { timeout: timeoutMs, intervals: [180, 350, 600, 1100, 1800] }
+    )
+    .toBe(true);
 }
 
 /** After queue upload, OCR may keep rows in `processing` — wait for an editable vendor cell. */

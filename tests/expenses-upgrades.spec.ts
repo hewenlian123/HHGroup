@@ -273,8 +273,11 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
     await expensesVendorSearch(page).fill(vendorBase);
     const row = expenseListRow(page, vendorBase);
     await expect(row).toBeVisible({ timeout: 20_000 });
+    await row.scrollIntoViewIfNeeded();
     await row.getByRole("button", { name: /row actions/i }).click();
-    await page.getByRole("menuitem", { name: "Edit", exact: true }).click();
+    await page
+      .getByRole("menuitem", { name: "Edit", exact: true })
+      .click({ force: true, timeout: 30_000 });
 
     const editDlg = page.getByRole("dialog", { name: /Edit expense/i });
     await expect(editDlg).toBeVisible({ timeout: 15_000 });
