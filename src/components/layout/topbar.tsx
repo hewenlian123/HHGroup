@@ -14,8 +14,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useQuery } from "@tanstack/react-query";
 import { createBrowserClient } from "@/lib/supabase";
-import { getCompanyInitials, getCompanyProfile } from "@/lib/company-profile";
+import { companyProfileQueryKey, fetchCompanyProfileForNav } from "@/lib/queries/companyProfile";
+import { getCompanyInitials } from "@/lib/company-profile";
 import { useSystemHealth } from "@/contexts/system-health-context";
 import { useBreadcrumbOverrides } from "@/contexts/breadcrumb-override-context";
 import { cn } from "@/lib/utils";
@@ -122,9 +124,21 @@ export function Topbar({
   onOpenSidebar?: () => void;
   onToggleSidebar?: () => void;
 }) {
-  const [orgName, setOrgName] = React.useState("HH Group");
-  const [logoUrl, setLogoUrl] = React.useState<string | null>(null);
   const pathname = usePathname();
+  const brandingSupabase = React.useMemo(() => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    return url && anon ? createBrowserClient(url, anon) : null;
+  }, []);
+  const { data: companyProfile } = useQuery({
+    queryKey: companyProfileQueryKey,
+    queryFn: () => fetchCompanyProfileForNav(brandingSupabase!),
+    enabled: Boolean(brandingSupabase),
+    staleTime: 5 * 60_000,
+    refetchOnMount: false,
+  });
+  const orgName = companyProfile?.org_name?.trim() || "HH Group";
+  const logoUrl = companyProfile?.logo_url ?? null;
   const { overrides: breadcrumbOverrides } = useBreadcrumbOverrides();
   const breadcrumbs = React.useMemo(
     () => buildBreadcrumbs(pathname ?? "", breadcrumbOverrides),
@@ -138,30 +152,6 @@ export function Topbar({
     return breadcrumbs[0] ?? "Dashboard";
   }, [breadcrumbs]);
   const { systemHealth } = useSystemHealth();
-
-  React.useEffect(() => {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!url || !anon) return;
-
-    const client = createBrowserClient(url, anon);
-    let mounted = true;
-    const load = async () => {
-      try {
-        const profile = await getCompanyProfile(client);
-        if (!mounted || !profile) return;
-        setOrgName(profile.org_name || "HH Group");
-        setLogoUrl(profile.logo_url);
-      } catch {
-        // Keep fallback header branding.
-      }
-    };
-    void load();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
 
   return (
     <header

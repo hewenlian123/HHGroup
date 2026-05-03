@@ -71,6 +71,11 @@ export interface DashboardViewProps {
   profitPositive: boolean;
   /** Set when primary dashboard queries failed (e.g. Supabase misconfiguration). */
   dataLoadWarning?: string | null;
+  /**
+   * `main` = content only (no page shell, no title row, no KPI strip). Used when the route
+   * composes header + streamed KPI + this block.
+   */
+  variant?: "full" | "main";
 }
 
 function fmtUsd(n: number): string {
@@ -111,655 +116,196 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
     budgetUsagePct,
     profitPositive,
     dataLoadWarning,
+    variant = "full",
   } = props;
+
+  const isMain = variant === "main";
 
   const sectionShell = cn(
     "max-md:overflow-visible max-md:rounded-none max-md:border-0 max-md:border-b max-md:border-border/50 max-md:bg-transparent max-md:pb-3 max-md:shadow-none",
     "md:overflow-hidden md:rounded-xl md:border md:border-gray-100 md:bg-white md:pb-0 md:shadow-sm dark:md:border-border dark:md:bg-card md:dark:shadow-none"
   );
 
-  return (
-    <div className="min-h-full bg-page dark:bg-background">
-      <div className="page-container page-stack max-md:!gap-2 max-md:!py-2">
-        {dataLoadWarning ? (
-          <p className="border-b border-border/60 pb-3 text-sm text-muted-foreground" role="status">
-            {dataLoadWarning}
-          </p>
-        ) : null}
-        <header className="flex h-11 shrink-0 items-center md:hidden">
-          <h1 className="text-base font-medium tracking-tight text-text-primary dark:text-foreground">
-            Dashboard
-          </h1>
-        </header>
-        <header className="hidden flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 md:flex">
-          <div className="min-w-0">
-            <h1 className="text-xl font-medium tracking-tight text-text-primary dark:text-foreground">
+  const pageBody = (
+    <>
+      {dataLoadWarning ? (
+        <p className="border-b border-border/60 pb-3 text-sm text-muted-foreground" role="status">
+          {dataLoadWarning}
+        </p>
+      ) : null}
+      {!isMain ? (
+        <>
+          <header className="flex h-11 shrink-0 items-center md:hidden">
+            <h1 className="text-base font-medium tracking-tight text-text-primary dark:text-foreground">
               Dashboard
             </h1>
-            <p className="mt-0.5 text-sm text-text-secondary dark:text-muted-foreground">
-              Company overview
-            </p>
-          </div>
-          <span className="shrink-0 self-start rounded-md border border-gray-100 bg-white px-2.5 py-1 text-xs font-medium uppercase tracking-wide text-text-secondary dark:border-border sm:self-auto">
-            {new Date().toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            })}
-          </span>
-        </header>
+          </header>
+          <header className="hidden flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 md:flex">
+            <div className="min-w-0">
+              <h1 className="text-xl font-medium tracking-tight text-text-primary dark:text-foreground">
+                Dashboard
+              </h1>
+              <p className="mt-0.5 text-sm text-text-secondary dark:text-muted-foreground">
+                Company overview
+              </p>
+            </div>
+            <span className="shrink-0 self-start rounded-md border border-gray-100 bg-white px-2.5 py-1 text-xs font-medium uppercase tracking-wide text-text-secondary dark:border-border sm:self-auto">
+              {new Date().toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}
+            </span>
+          </header>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-3 lg:grid-cols-4 lg:gap-4">
-          <div className="kpi-metric relative overflow-hidden">
-            <p className="kpi-metric-label">Active Projects</p>
-            <p className="kpi-metric-value mt-0.5 tabular-nums text-text-primary dark:text-foreground">
-              {stats.activeProjects}
-            </p>
-            <p className="mt-0.5 text-sm text-muted-foreground">in portfolio</p>
-            <svg
-              viewBox="0 0 80 20"
-              className="mt-1.5 h-4 w-full text-[#9CA3AF] max-md:mt-1 md:mt-2 md:h-5"
-              aria-hidden
-            >
-              <polyline
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1.5}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                points="0,14 20,10 40,12 60,6 80,10"
-              />
-            </svg>
-          </div>
-          <div className="kpi-metric relative overflow-hidden">
-            <p className="kpi-metric-label">Outstanding Invoices</p>
-            <p className="kpi-metric-value mt-0.5 tabular-nums text-text-primary dark:text-foreground">
-              ${fmtUsd(overdueInvoices.reduce((sum, i) => sum + (i.balanceDue ?? 0), 0))}
-            </p>
-            <p className="mt-0.5 text-sm text-muted-foreground">{overdueInvoices.length} pending</p>
-            <svg
-              viewBox="0 0 80 20"
-              className="mt-1.5 h-4 w-full text-[#9CA3AF] max-md:mt-1 md:mt-2 md:h-5"
-              aria-hidden
-            >
-              <polyline
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1.5}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                points="0,10 20,14 40,8 60,12 80,6"
-              />
-            </svg>
-          </div>
-          <div className="kpi-metric relative overflow-hidden">
-            <p className="kpi-metric-label">Bills Due</p>
-            <p className="kpi-metric-value mt-0.5 tabular-nums text-text-primary dark:text-foreground">
-              {apBillsSummary.dueThisWeekCount} · ${fmtUsd(apBillsSummary.dueThisWeekAmount)}
-            </p>
-            <p className="mt-0.5 text-sm text-muted-foreground">Due this week</p>
-            <svg
-              viewBox="0 0 80 20"
-              className="mt-1.5 h-4 w-full text-[#9CA3AF] max-md:mt-1 md:mt-2 md:h-5"
-              aria-hidden
-            >
-              <polyline
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1.5}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                points="0,12 20,8 40,14 60,10 80,12"
-              />
-            </svg>
-          </div>
-          <div className="kpi-metric relative overflow-hidden">
-            <p className="kpi-metric-label">Labor Cost (This Month)</p>
-            <p className="kpi-metric-value mt-0.5 tabular-nums text-text-primary dark:text-foreground">
-              ${fmtUsd(laborCostThisWeek)}
-            </p>
-            <p className="mt-0.5 text-sm text-muted-foreground">This month</p>
-            <svg
-              viewBox="0 0 80 20"
-              className="mt-1.5 h-4 w-full text-[#9CA3AF] max-md:mt-1 md:mt-2 md:h-5"
-              aria-hidden
-            >
-              <polyline
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1.5}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                points="0,8 20,12 40,10 60,14 80,8"
-              />
-            </svg>
-          </div>
-          <div className="kpi-metric relative overflow-hidden">
-            <p className="kpi-metric-label">Profit</p>
-            <p
-              className={cn(
-                "kpi-metric-value mt-0.5 tabular-nums",
-                projectProfitSummary >= 0
-                  ? "text-hh-profit-positive dark:text-hh-profit-positive"
-                  : "text-red-600 dark:text-red-400"
-              )}
-            >
-              {projectProfitSummary >= 0 ? "$" : "−$"}
-              {fmtUsd(Math.abs(projectProfitSummary))}
-            </p>
-            <p className="mt-0.5 text-sm text-muted-foreground">This month</p>
-            <svg
-              viewBox="0 0 80 20"
-              className="mt-1.5 h-4 w-full text-[#9CA3AF] max-md:mt-1 md:mt-2 md:h-5"
-              aria-hidden
-            >
-              <polyline
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1.5}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                points="0,14 20,12 40,8 60,10 80,6"
-              />
-            </svg>
-          </div>
-        </div>
-
-        {debugEnabled ? (
-          <div className="rounded-lg bg-muted/30 px-3 py-2 text-sm text-muted-foreground md:rounded-xl md:border md:border-gray-100 md:bg-white md:px-4 md:py-3 md:text-xs md:text-text-secondary md:shadow-sm dark:md:border-border dark:md:bg-card">
-            Supabase URL configured: {supabaseUrl ? "YES" : "NO"} ({maskTail(supabaseUrl)}) | Anon
-            key configured: {supabaseAnonKey ? "YES" : "NO"} ({maskTail(supabaseAnonKey)})
-          </div>
-        ) : null}
-
-        <div className="grid grid-cols-1 gap-2 md:gap-6 lg:grid-cols-3">
-          <div className="space-y-2 md:space-y-6 lg:col-span-2">
-            <section className={sectionShell}>
-              <div className="border-b border-gray-100 px-4 py-2 md:py-3 dark:border-border">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-base font-medium tracking-tight text-text-primary dark:text-foreground md:text-xl">
-                    Recent Projects
-                  </h2>
-                  <Link
-                    href="/projects"
-                    className="text-sm text-text-secondary dark:text-muted-foreground hover:text-text-primary dark:hover:text-foreground transition"
-                  >
-                    View all
-                  </Link>
-                </div>
-                <p className="mt-0.5 hidden text-sm text-muted-foreground md:block">
-                  Revenue, cost, profit, and margin by project.
-                </p>
-              </div>
-              <div className="md:hidden divide-y divide-gray-100 dark:divide-border/60">
-                {projectHealthRows.length === 0 ? (
-                  <div className="flex flex-col items-center py-10">
-                    <svg
-                      className="h-8 w-8 text-text-secondary dark:text-muted-foreground"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={1.5}
-                      aria-hidden
-                    >
-                      <path d="M3 3v18h18" />
-                      <path d="M18 17V9" />
-                      <path d="M13 17V5" />
-                      <path d="M8 17v-3" />
-                    </svg>
-                    <p className="mt-3 text-sm text-text-secondary dark:text-muted-foreground">
-                      No projects yet.
-                    </p>
-                    <Button asChild size="sm" variant="outline" className="mt-4">
-                      <Link href="/projects/new">New project</Link>
-                    </Button>
-                  </div>
-                ) : (
-                  projectHealthRows.map((p) => {
-                    const status = getHealthStatus(p.marginPct);
-                    const risk = riskByProjectId.get(p.id) ?? "LOW";
-                    return (
-                      <Link
-                        key={p.id}
-                        href={`/projects/${p.id}`}
-                        className="hh-row-interactive flex min-h-[48px] w-full items-center gap-3 px-4 py-2 text-left"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-base font-medium text-text-primary dark:text-foreground">
-                            {p.name}
-                          </p>
-                          <p className="truncate text-sm text-muted-foreground">
-                            {fmtPct(p.marginPct)} margin · {risk} risk
-                          </p>
-                        </div>
-                        <div className="flex shrink-0 flex-col items-end gap-1">
-                          <span
-                            className={cn(
-                              "text-right text-lg font-semibold tabular-nums md:text-sm md:font-medium",
-                              p.profit >= 0
-                                ? "text-hh-profit-positive"
-                                : "text-red-600 dark:text-red-400"
-                            )}
-                          >
-                            {p.profit >= 0 ? "" : "−"}${fmtUsd(Math.abs(p.profit))}
-                          </span>
-                          <StatusBadge label={status.label} variant={status.variant} />
-                        </div>
-                      </Link>
-                    );
-                  })
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-3 lg:grid-cols-4 lg:gap-4">
+            <div className="kpi-metric relative overflow-hidden">
+              <p className="kpi-metric-label">Active Projects</p>
+              <p className="kpi-metric-value mt-0.5 tabular-nums text-text-primary dark:text-foreground">
+                {stats.activeProjects}
+              </p>
+              <p className="mt-0.5 text-sm text-muted-foreground">in portfolio</p>
+              <svg
+                viewBox="0 0 80 20"
+                className="mt-1.5 h-4 w-full text-[#9CA3AF] max-md:mt-1 md:mt-2 md:h-5"
+                aria-hidden
+              >
+                <polyline
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  points="0,14 20,10 40,12 60,6 80,10"
+                />
+              </svg>
+            </div>
+            <div className="kpi-metric relative overflow-hidden">
+              <p className="kpi-metric-label">Outstanding Invoices</p>
+              <p className="kpi-metric-value mt-0.5 tabular-nums text-text-primary dark:text-foreground">
+                ${fmtUsd(overdueInvoices.reduce((sum, i) => sum + (i.balanceDue ?? 0), 0))}
+              </p>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                {overdueInvoices.length} pending
+              </p>
+              <svg
+                viewBox="0 0 80 20"
+                className="mt-1.5 h-4 w-full text-[#9CA3AF] max-md:mt-1 md:mt-2 md:h-5"
+                aria-hidden
+              >
+                <polyline
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  points="0,10 20,14 40,8 60,12 80,6"
+                />
+              </svg>
+            </div>
+            <div className="kpi-metric relative overflow-hidden">
+              <p className="kpi-metric-label">Bills Due</p>
+              <p className="kpi-metric-value mt-0.5 tabular-nums text-text-primary dark:text-foreground">
+                {apBillsSummary.dueThisWeekCount} · ${fmtUsd(apBillsSummary.dueThisWeekAmount)}
+              </p>
+              <p className="mt-0.5 text-sm text-muted-foreground">Due this week</p>
+              <svg
+                viewBox="0 0 80 20"
+                className="mt-1.5 h-4 w-full text-[#9CA3AF] max-md:mt-1 md:mt-2 md:h-5"
+                aria-hidden
+              >
+                <polyline
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  points="0,12 20,8 40,14 60,10 80,12"
+                />
+              </svg>
+            </div>
+            <div className="kpi-metric relative overflow-hidden">
+              <p className="kpi-metric-label">Labor Cost (This Month)</p>
+              <p className="kpi-metric-value mt-0.5 tabular-nums text-text-primary dark:text-foreground">
+                ${fmtUsd(laborCostThisWeek)}
+              </p>
+              <p className="mt-0.5 text-sm text-muted-foreground">This month</p>
+              <svg
+                viewBox="0 0 80 20"
+                className="mt-1.5 h-4 w-full text-[#9CA3AF] max-md:mt-1 md:mt-2 md:h-5"
+                aria-hidden
+              >
+                <polyline
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  points="0,8 20,12 40,10 60,14 80,8"
+                />
+              </svg>
+            </div>
+            <div className="kpi-metric relative overflow-hidden">
+              <p className="kpi-metric-label">Profit</p>
+              <p
+                className={cn(
+                  "kpi-metric-value mt-0.5 tabular-nums",
+                  projectProfitSummary >= 0
+                    ? "text-hh-profit-positive dark:text-hh-profit-positive"
+                    : "text-red-600 dark:text-red-400"
                 )}
-              </div>
-              <div className="table-responsive hidden md:block">
-                <table className="w-full min-w-[720px] text-sm md:min-w-0">
-                  <thead>
-                    <tr className="border-b border-gray-100 bg-white dark:border-border dark:bg-muted/50">
-                      <th className="min-w-[200px] py-2.5 px-4 text-left text-xs uppercase tracking-wide text-text-secondary dark:text-muted-foreground">
-                        Project
-                      </th>
-                      <th className="py-2.5 px-4 text-right text-xs uppercase tracking-wide text-text-secondary dark:text-muted-foreground tabular-nums">
-                        Revenue
-                      </th>
-                      <th className="py-2.5 px-4 text-right text-xs uppercase tracking-wide text-text-secondary dark:text-muted-foreground tabular-nums">
-                        Cost
-                      </th>
-                      <th className="py-2.5 px-4 text-right text-xs uppercase tracking-wide text-text-secondary dark:text-muted-foreground tabular-nums">
-                        Profit
-                      </th>
-                      <th className="py-2.5 px-4 text-right text-xs uppercase tracking-wide text-text-secondary dark:text-muted-foreground tabular-nums">
-                        Margin
-                      </th>
-                      <th className="py-2.5 px-4 text-left text-xs uppercase tracking-wide text-text-secondary dark:text-muted-foreground">
-                        Risk
-                      </th>
-                      <th className="py-2.5 px-4 text-right text-xs uppercase tracking-wide text-text-secondary dark:text-muted-foreground tabular-nums">
-                        Progress
-                      </th>
-                      <th className="py-2.5 px-4 text-left text-xs uppercase tracking-wide text-text-secondary dark:text-muted-foreground">
-                        Status
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {projectHealthRows.length === 0 ? (
-                      <tr className="border-b">
-                        <td
-                          colSpan={8}
-                          className="py-8 px-4 text-center text-sm text-text-secondary"
-                        >
-                          No projects yet.
-                        </td>
-                      </tr>
-                    ) : (
-                      projectHealthRows.map((p) => {
-                        const status = getHealthStatus(p.marginPct);
-                        const risk = riskByProjectId.get(p.id) ?? "LOW";
-                        const riskBadge =
-                          risk === "HIGH"
-                            ? {
-                                label: "HIGH",
-                                variant: "muted" as const,
-                                className: "text-red-600 [&>span:first-child]:!bg-red-500",
-                              }
-                            : risk === "MEDIUM"
-                              ? { label: "MEDIUM", variant: "warning" as const }
-                              : { label: "LOW", variant: "success" as const };
-                        const progressPct = p.budget > 0 ? (p.actual / p.budget) * 100 : 0;
-                        const over = progressPct > 100;
-                        return (
-                          <tr
-                            key={p.id}
-                            className="hh-row-interactive h-10 border-b border-gray-100 dark:border-border/60"
-                          >
-                            <td className="max-w-[min(280px_40vw)] py-2 px-4">
-                              <div className="min-w-[180px]">
-                                <Link
-                                  href={`/projects/${p.id}`}
-                                  className="block truncate font-medium whitespace-nowrap text-text-primary dark:text-foreground hover:underline"
-                                  title={p.name}
-                                >
-                                  {p.name}
-                                </Link>
-                                <p className="mt-0.5 whitespace-nowrap text-sm text-muted-foreground">
-                                  {risk === "HIGH" ? "At risk" : "Active"}
-                                </p>
-                              </div>
-                            </td>
-                            <td className="py-2 px-4 text-right tabular-nums">
-                              ${fmtUsd(p.revenue)}
-                            </td>
-                            <td className="py-2 px-4 text-right tabular-nums">
-                              ${fmtUsd(p.actual)}
-                            </td>
-                            <td
-                              className={cn(
-                                "py-2 px-4 text-right tabular-nums font-medium",
-                                p.profit >= 0 ? "text-hh-profit-positive" : "text-red-600"
-                              )}
-                            >
-                              {p.profit >= 0 ? "" : "−"}${fmtUsd(Math.abs(p.profit))}
-                            </td>
-                            <td className="py-2 px-4 text-right tabular-nums">
-                              {fmtPct(p.marginPct)}
-                            </td>
-                            <td className="py-2 px-4">
-                              {risk === "HIGH" ? (
-                                <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 text-xs px-2 py-0.5">
-                                  <span
-                                    className="h-1 w-1 rounded-full bg-red-500 dark:bg-red-400"
-                                    aria-hidden
-                                  />
-                                  {riskBadge.label}
-                                </span>
-                              ) : risk === "MEDIUM" ? (
-                                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 text-xs px-2 py-0.5">
-                                  <span
-                                    className="h-1 w-1 rounded-full bg-amber-500 dark:bg-amber-400"
-                                    aria-hidden
-                                  />
-                                  {riskBadge.label}
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#DCFCE7] text-[#166534] text-xs px-2 py-0.5 font-medium">
-                                  <span className="h-1 w-1 rounded-full bg-[#166534]" aria-hidden />
-                                  {riskBadge.label}
-                                </span>
-                              )}
-                            </td>
-                            <td className="py-2 px-4 text-right tabular-nums">
-                              <div className="flex flex-col items-end gap-1">
-                                <span
-                                  className={cn(
-                                    "text-xs tabular-nums",
-                                    over
-                                      ? "text-red-600 dark:text-red-400"
-                                      : "text-text-secondary dark:text-muted-foreground"
-                                  )}
-                                >
-                                  {Number.isFinite(progressPct) ? fmtPct(progressPct) : "—"}
-                                </span>
-                                <div className="h-0.5 w-24 rounded-full bg-gray-200 dark:bg-gray-700">
-                                  <div
-                                    className={cn(
-                                      "h-0.5 rounded-full",
-                                      over
-                                        ? "bg-red-500 dark:bg-red-400"
-                                        : "bg-gray-900 dark:bg-gray-100"
-                                    )}
-                                    style={{ width: `${Math.min(100, Math.max(0, progressPct))}%` }}
-                                  />
-                                </div>
-                              </div>
-                            </td>
-                            <td className="py-2 px-4">
-                              <StatusBadge label={status.label} variant={status.variant} />
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-
-            <section className={sectionShell}>
-              <div className="border-b border-gray-100 px-4 py-2 md:py-3 dark:border-border">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-base font-medium tracking-tight text-text-primary dark:text-foreground md:text-xl">
-                    Recent Activity
-                  </h2>
-                  <Link
-                    href="/financial/invoices"
-                    className="text-sm text-text-secondary dark:text-muted-foreground hover:text-text-primary dark:hover:text-foreground transition"
-                  >
-                    View all
-                  </Link>
-                </div>
-                <p className="mt-0.5 hidden text-sm text-muted-foreground md:block">
-                  Latest transactions.
-                </p>
-              </div>
-              <div className="divide-y divide-gray-100 dark:divide-border/60">
-                {recentActivity.length === 0 ? (
-                  <div className="flex flex-col items-center py-10 md:px-4 md:py-8">
-                    <svg
-                      className="h-8 w-8 text-text-secondary dark:text-muted-foreground"
-                      width={32}
-                      height={32}
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={1.5}
-                      aria-hidden
-                    >
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                      <polyline points="14 2 14 8 20 8" />
-                    </svg>
-                    <p className="mt-3 text-sm text-text-secondary dark:text-muted-foreground">
-                      No activity.
-                    </p>
-                    <Button asChild size="sm" variant="outline" className="mt-4">
-                      <Link href="/financial/invoices">View invoices</Link>
-                    </Button>
-                  </div>
-                ) : (
-                  recentActivity.map((tx) => (
-                    <div
-                      key={tx.id}
-                      className="hh-row-interactive flex min-h-[48px] items-center gap-3 px-4 py-2"
-                    >
-                      <div
-                        className="hidden h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg border border-gray-100 bg-page dark:border-border dark:bg-muted md:flex"
-                        aria-hidden
-                      >
-                        <svg
-                          width={12}
-                          height={12}
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth={1.5}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="text-text-secondary/75 dark:text-muted-foreground"
-                        >
-                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                          <polyline points="14 2 14 8 20 8" />
-                          <line x1="16" y1="13" x2="8" y2="13" />
-                          <line x1="16" y1="17" x2="8" y2="17" />
-                          <polyline points="10 9 9 9 8 9" />
-                        </svg>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="truncate text-sm font-medium text-text-primary dark:text-foreground">
-                            {tx.projectName}
-                          </span>
-                          <span className="shrink-0 rounded-full bg-page px-1.5 py-0.5 text-[9px] capitalize text-text-secondary dark:bg-muted dark:text-muted-foreground">
-                            {tx.type === "invoice"
-                              ? "Invoice"
-                              : tx.type === "bill"
-                                ? "Bill"
-                                : tx.type === "expense"
-                                  ? "Expense"
-                                  : "Labor"}
-                          </span>
-                        </div>
-                        <div className="mt-0.5 truncate text-sm text-muted-foreground">
-                          {tx.description}
-                        </div>
-                      </div>
-                      <div className="shrink-0 text-right">
-                        <div className="tabular-nums text-sm text-muted-foreground">{tx.date}</div>
-                        <div
-                          className={cn(
-                            "text-right text-lg font-semibold tabular-nums md:text-sm md:font-medium",
-                            tx.amount < 0 && "text-red-600 dark:text-red-400",
-                            tx.amount >= 0 && "text-hh-profit-positive dark:text-hh-profit-positive"
-                          )}
-                        >
-                          {tx.amount >= 0 ? "" : "−"}${Math.abs(tx.amount).toLocaleString()}
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </section>
+              >
+                {projectProfitSummary >= 0 ? "$" : "−$"}
+                {fmtUsd(Math.abs(projectProfitSummary))}
+              </p>
+              <p className="mt-0.5 text-sm text-muted-foreground">This month</p>
+              <svg
+                viewBox="0 0 80 20"
+                className="mt-1.5 h-4 w-full text-[#9CA3AF] max-md:mt-1 md:mt-2 md:h-5"
+                aria-hidden
+              >
+                <polyline
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  points="0,14 20,12 40,8 60,10 80,6"
+                />
+              </svg>
+            </div>
           </div>
+        </>
+      ) : null}
 
-          {/* Right column: Financial Summary, Bills Due */}
-          <div className="space-y-2 md:space-y-6">
-            <section className={sectionShell}>
-              <div className="border-b border-gray-100 px-4 py-2 md:py-3 dark:border-border">
-                <h2 className="text-base font-medium tracking-tight text-text-primary dark:text-foreground md:text-xl">
-                  Financial Summary
-                </h2>
-                <p className="mt-0.5 hidden text-sm text-muted-foreground md:block">
-                  Portfolio snapshot.
-                </p>
-              </div>
-              <div className="p-3 md:p-4">
-                <div className="grid grid-cols-1">
-                  {kpis.map((k, i) => (
-                    <div
-                      key={k.key}
-                      className={cn(
-                        "flex items-center justify-between py-2.5",
-                        i < kpis.length - 1 && "border-b border-gray-100 dark:border-border/60"
-                      )}
-                    >
-                      <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                        {k.icon ? <k.icon className="h-3.5 w-3.5 opacity-60" /> : null}
-                        {k.label}
-                      </span>
-                      <span className="text-lg font-semibold tabular-nums text-text-primary dark:text-foreground md:text-sm md:font-medium">
-                        {k.value}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-2 rounded-lg bg-muted/30 px-4 py-2.5 dark:bg-muted/40 md:mt-3 md:rounded-xl md:border md:border-gray-100 md:bg-page md:py-3 dark:md:border-border dark:md:bg-muted/50">
-                  <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span>Budget usage</span>
-                    <span className="text-lg font-semibold tabular-nums text-text-primary dark:text-foreground md:text-sm md:font-medium">
-                      {budgetUsagePct.toFixed(0)}%
-                    </span>
-                  </div>
-                  <div className="mt-2 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700">
-                    <div
-                      className="h-1.5 rounded-full bg-gray-900 dark:bg-gray-100"
-                      style={{ width: `${Math.min(100, budgetUsagePct)}%` }}
-                    />
-                  </div>
-                  <div className="mt-2 flex items-center justify-between text-sm text-muted-foreground">
-                    <span>$0</span>
-                    <span className="text-lg font-semibold tabular-nums text-text-primary dark:text-foreground md:text-sm md:font-medium">
-                      {budgetUsagePct > 0
-                        ? `$${Math.round(stats.totalSpent / (budgetUsagePct / 100) / 1000)}K`
-                        : "—"}
-                    </span>
-                  </div>
-                  <div className="mt-2 flex items-center justify-between text-sm text-muted-foreground">
-                    <span>Total spent</span>
-                    <span className="text-lg font-semibold tabular-nums text-text-primary dark:text-foreground md:text-sm md:font-medium">
-                      ${stats.totalSpent.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="mt-0.5 flex items-center justify-between text-sm text-muted-foreground">
-                    <span>Total profit</span>
-                    <span
-                      className={cn(
-                        "text-lg font-semibold tabular-nums text-text-primary dark:text-foreground md:text-sm md:font-medium",
-                        !profitPositive && "text-red-600 dark:text-red-400"
-                      )}
-                    >
-                      {profitPositive ? "" : "−"}${stats.totalProfit.toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <section className={sectionShell}>
-              <div className="border-b border-gray-100 px-4 py-2 md:py-3 dark:border-border">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-base font-medium tracking-tight text-text-primary dark:text-foreground md:text-xl">
-                    Bills Due
-                  </h2>
-                  <Link
-                    href="/bills"
-                    className="text-sm text-text-secondary dark:text-muted-foreground hover:text-text-primary dark:hover:text-foreground transition"
-                  >
-                    View all
-                  </Link>
-                </div>
-                <p className="mt-0.5 hidden text-sm text-muted-foreground md:block">
-                  Outstanding, overdue, and due this week.
-                </p>
-              </div>
-              <div className="p-3 md:p-4">
-                <div className="flex justify-between border-b border-gray-100 py-2.5 text-sm dark:border-border/60">
-                  <span className="text-muted-foreground">Outstanding</span>
-                  <span className="text-lg font-semibold tabular-nums text-text-primary dark:text-foreground md:text-sm md:font-medium">
-                    ${fmtUsd(apBillsSummary.totalOutstanding)}
-                  </span>
-                </div>
-                <div className="flex justify-between border-b border-gray-100 py-2.5 text-sm dark:border-border/60">
-                  <span className="text-muted-foreground">Overdue</span>
-                  <span
-                    className={cn(
-                      "text-lg font-semibold tabular-nums md:text-sm md:font-medium",
-                      apBillsSummary.overdueCount > 0 || apBillsSummary.overdueAmount > 0.005
-                        ? "text-red-600 dark:text-red-400"
-                        : "text-text-primary dark:text-foreground"
-                    )}
-                  >
-                    {apBillsSummary.overdueCount} bills · ${fmtUsd(apBillsSummary.overdueAmount)}
-                  </span>
-                </div>
-                <div className="flex justify-between py-2.5 text-sm">
-                  <span className="text-muted-foreground">Due this week</span>
-                  <span className="text-lg font-semibold tabular-nums text-text-primary dark:text-foreground md:text-sm md:font-medium">
-                    {apBillsSummary.dueThisWeekCount} bills · $
-                    {fmtUsd(apBillsSummary.dueThisWeekAmount)}
-                  </span>
-                </div>
-                <div className="hidden border-t border-gray-100 pt-3 dark:border-border md:block">
-                  <Link
-                    href="/bills/new"
-                    className="inline-flex h-9 items-center justify-center rounded-full bg-black px-4 text-sm font-medium text-white transition hover:scale-[1.02]"
-                  >
-                    New bill
-                  </Link>
-                </div>
-              </div>
-            </section>
-          </div>
+      {debugEnabled ? (
+        <div className="rounded-lg bg-muted/30 px-3 py-2 text-sm text-muted-foreground md:rounded-xl md:border md:border-gray-100 md:bg-white md:px-4 md:py-3 md:text-xs md:text-text-secondary md:shadow-sm dark:md:border-border dark:md:bg-card">
+          Supabase URL configured: {supabaseUrl ? "YES" : "NO"} ({maskTail(supabaseUrl)}) | Anon key
+          configured: {supabaseAnonKey ? "YES" : "NO"} ({maskTail(supabaseAnonKey)})
         </div>
+      ) : null}
 
-        {/* Additional sections: Outstanding Subcontracts, Upcoming Tasks, Overdue Invoices */}
-        <div className="grid grid-cols-1 gap-2 md:gap-6 lg:grid-cols-3">
-          <section className={cn(sectionShell, "lg:col-span-2")}>
+      <div className="grid grid-cols-1 gap-2 md:gap-6 lg:grid-cols-3">
+        <div className="space-y-2 md:space-y-6 lg:col-span-2">
+          <section className={sectionShell}>
             <div className="border-b border-gray-100 px-4 py-2 md:py-3 dark:border-border">
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-medium tracking-tight text-text-primary dark:text-foreground md:text-xl">
-                  Outstanding Subcontracts
+                  Recent Projects
                 </h2>
                 <Link
-                  href="/subcontractors"
-                  className="text-sm text-text-secondary hover:text-text-primary transition"
+                  href="/projects"
+                  className="text-sm text-text-secondary dark:text-muted-foreground hover:text-text-primary dark:hover:text-foreground transition"
                 >
                   View all
                 </Link>
               </div>
               <p className="mt-0.5 hidden text-sm text-muted-foreground md:block">
-                Subcontracts with balance due.
+                Revenue, cost, profit, and margin by project.
               </p>
             </div>
             <div className="md:hidden divide-y divide-gray-100 dark:divide-border/60">
-              {outstandingSubcontracts.length === 0 ? (
+              {projectHealthRows.length === 0 ? (
                 <div className="flex flex-col items-center py-10">
                   <svg
                     className="h-8 w-8 text-text-secondary dark:text-muted-foreground"
@@ -769,77 +315,196 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                     strokeWidth={1.5}
                     aria-hidden
                   >
-                    <rect x="3" y="5" width="18" height="14" rx="2" />
-                    <path d="M3 10h18" />
+                    <path d="M3 3v18h18" />
+                    <path d="M18 17V9" />
+                    <path d="M13 17V5" />
+                    <path d="M8 17v-3" />
                   </svg>
-                  <p className="mt-3 text-center text-sm text-text-secondary dark:text-muted-foreground">
-                    No outstanding balances.
+                  <p className="mt-3 text-sm text-text-secondary dark:text-muted-foreground">
+                    No projects yet.
                   </p>
                   <Button asChild size="sm" variant="outline" className="mt-4">
-                    <Link href="/subcontractors">View subcontractors</Link>
+                    <Link href="/projects/new">New project</Link>
                   </Button>
                 </div>
               ) : (
-                outstandingSubcontracts.map((r) => (
-                  <Link
-                    key={r.id}
-                    href={`/projects/${r.project_id}/subcontracts`}
-                    className="hh-row-interactive flex min-h-[48px] w-full items-center gap-3 px-4 py-2 text-left"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-text-primary dark:text-foreground">
-                        {r.subcontractor_name}
-                      </p>
-                      <p className="truncate text-sm text-muted-foreground">{r.project_name}</p>
-                    </div>
-                    <span className="shrink-0 text-right text-lg font-semibold tabular-nums text-red-600 dark:text-red-400 md:text-sm md:font-medium">
-                      ${fmtUsd(r.balance)}
-                    </span>
-                  </Link>
-                ))
+                projectHealthRows.map((p) => {
+                  const status = getHealthStatus(p.marginPct);
+                  const risk = riskByProjectId.get(p.id) ?? "LOW";
+                  return (
+                    <Link
+                      key={p.id}
+                      href={`/projects/${p.id}`}
+                      className="hh-row-interactive flex min-h-[48px] w-full items-center gap-3 px-4 py-2 text-left"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-base font-medium text-text-primary dark:text-foreground">
+                          {p.name}
+                        </p>
+                        <p className="truncate text-sm text-muted-foreground">
+                          {fmtPct(p.marginPct)} margin · {risk} risk
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 flex-col items-end gap-1">
+                        <span
+                          className={cn(
+                            "text-right text-lg font-semibold tabular-nums md:text-sm md:font-medium",
+                            p.profit >= 0
+                              ? "text-hh-profit-positive"
+                              : "text-red-600 dark:text-red-400"
+                          )}
+                        >
+                          {p.profit >= 0 ? "" : "−"}${fmtUsd(Math.abs(p.profit))}
+                        </span>
+                        <StatusBadge label={status.label} variant={status.variant} />
+                      </div>
+                    </Link>
+                  );
+                })
               )}
             </div>
             <div className="table-responsive hidden md:block">
-              <table className="w-full min-w-[400px] text-sm md:min-w-0">
+              <table className="w-full min-w-[720px] text-sm md:min-w-0">
                 <thead>
-                  <tr className="border-b border-gray-100 bg-white">
-                    <th className="py-2.5 px-4 text-left text-xs uppercase tracking-wide text-text-secondary">
-                      Subcontractor
-                    </th>
-                    <th className="py-2.5 px-4 text-left text-xs uppercase tracking-wide text-text-secondary">
+                  <tr className="border-b border-gray-100 bg-white dark:border-border dark:bg-muted/50">
+                    <th className="min-w-[200px] py-2.5 px-4 text-left text-xs uppercase tracking-wide text-text-secondary dark:text-muted-foreground">
                       Project
                     </th>
-                    <th className="py-2.5 px-4 text-right text-xs uppercase tracking-wide text-text-secondary tabular-nums">
-                      Balance
+                    <th className="py-2.5 px-4 text-right text-xs uppercase tracking-wide text-text-secondary dark:text-muted-foreground tabular-nums">
+                      Revenue
+                    </th>
+                    <th className="py-2.5 px-4 text-right text-xs uppercase tracking-wide text-text-secondary dark:text-muted-foreground tabular-nums">
+                      Cost
+                    </th>
+                    <th className="py-2.5 px-4 text-right text-xs uppercase tracking-wide text-text-secondary dark:text-muted-foreground tabular-nums">
+                      Profit
+                    </th>
+                    <th className="py-2.5 px-4 text-right text-xs uppercase tracking-wide text-text-secondary dark:text-muted-foreground tabular-nums">
+                      Margin
+                    </th>
+                    <th className="py-2.5 px-4 text-left text-xs uppercase tracking-wide text-text-secondary dark:text-muted-foreground">
+                      Risk
+                    </th>
+                    <th className="py-2.5 px-4 text-right text-xs uppercase tracking-wide text-text-secondary dark:text-muted-foreground tabular-nums">
+                      Progress
+                    </th>
+                    <th className="py-2.5 px-4 text-left text-xs uppercase tracking-wide text-text-secondary dark:text-muted-foreground">
+                      Status
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {outstandingSubcontracts.length === 0 ? (
+                  {projectHealthRows.length === 0 ? (
                     <tr className="border-b">
-                      <td colSpan={3} className="py-6 px-4 text-center text-xs text-text-secondary">
-                        No outstanding balances.
+                      <td colSpan={8} className="py-8 px-4 text-center text-sm text-text-secondary">
+                        No projects yet.
                       </td>
                     </tr>
                   ) : (
-                    outstandingSubcontracts.map((r) => (
-                      <tr key={r.id} className="hh-row-interactive h-10 border-b">
-                        <td className="py-2 px-4 font-medium text-text-primary">
-                          {r.subcontractor_name}
-                        </td>
-                        <td className="py-2 px-4 text-text-secondary">
-                          <Link
-                            href={`/projects/${r.project_id}/subcontracts`}
-                            className="hover:text-text-primary"
+                    projectHealthRows.map((p) => {
+                      const status = getHealthStatus(p.marginPct);
+                      const risk = riskByProjectId.get(p.id) ?? "LOW";
+                      const riskBadge =
+                        risk === "HIGH"
+                          ? {
+                              label: "HIGH",
+                              variant: "muted" as const,
+                              className: "text-red-600 [&>span:first-child]:!bg-red-500",
+                            }
+                          : risk === "MEDIUM"
+                            ? { label: "MEDIUM", variant: "warning" as const }
+                            : { label: "LOW", variant: "success" as const };
+                      const progressPct = p.budget > 0 ? (p.actual / p.budget) * 100 : 0;
+                      const over = progressPct > 100;
+                      return (
+                        <tr
+                          key={p.id}
+                          className="hh-row-interactive h-10 border-b border-gray-100 dark:border-border/60"
+                        >
+                          <td className="max-w-[min(280px_40vw)] py-2 px-4">
+                            <div className="min-w-[180px]">
+                              <Link
+                                href={`/projects/${p.id}`}
+                                className="block truncate font-medium whitespace-nowrap text-text-primary dark:text-foreground hover:underline"
+                                title={p.name}
+                              >
+                                {p.name}
+                              </Link>
+                              <p className="mt-0.5 whitespace-nowrap text-sm text-muted-foreground">
+                                {risk === "HIGH" ? "At risk" : "Active"}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="py-2 px-4 text-right tabular-nums">
+                            ${fmtUsd(p.revenue)}
+                          </td>
+                          <td className="py-2 px-4 text-right tabular-nums">${fmtUsd(p.actual)}</td>
+                          <td
+                            className={cn(
+                              "py-2 px-4 text-right tabular-nums font-medium",
+                              p.profit >= 0 ? "text-hh-profit-positive" : "text-red-600"
+                            )}
                           >
-                            {r.project_name}
-                          </Link>
-                        </td>
-                        <td className="py-2 px-4 text-right tabular-nums font-medium text-red-600">
-                          ${fmtUsd(r.balance)}
-                        </td>
-                      </tr>
-                    ))
+                            {p.profit >= 0 ? "" : "−"}${fmtUsd(Math.abs(p.profit))}
+                          </td>
+                          <td className="py-2 px-4 text-right tabular-nums">
+                            {fmtPct(p.marginPct)}
+                          </td>
+                          <td className="py-2 px-4">
+                            {risk === "HIGH" ? (
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 text-xs px-2 py-0.5">
+                                <span
+                                  className="h-1 w-1 rounded-full bg-red-500 dark:bg-red-400"
+                                  aria-hidden
+                                />
+                                {riskBadge.label}
+                              </span>
+                            ) : risk === "MEDIUM" ? (
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 text-xs px-2 py-0.5">
+                                <span
+                                  className="h-1 w-1 rounded-full bg-amber-500 dark:bg-amber-400"
+                                  aria-hidden
+                                />
+                                {riskBadge.label}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#DCFCE7] text-[#166534] text-xs px-2 py-0.5 font-medium">
+                                <span className="h-1 w-1 rounded-full bg-[#166534]" aria-hidden />
+                                {riskBadge.label}
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2 px-4 text-right tabular-nums">
+                            <div className="flex flex-col items-end gap-1">
+                              <span
+                                className={cn(
+                                  "text-xs tabular-nums",
+                                  over
+                                    ? "text-red-600 dark:text-red-400"
+                                    : "text-text-secondary dark:text-muted-foreground"
+                                )}
+                              >
+                                {Number.isFinite(progressPct) ? fmtPct(progressPct) : "—"}
+                              </span>
+                              <div className="h-0.5 w-24 rounded-full bg-gray-200 dark:bg-gray-700">
+                                <div
+                                  className={cn(
+                                    "h-0.5 rounded-full",
+                                    over
+                                      ? "bg-red-500 dark:bg-red-400"
+                                      : "bg-gray-900 dark:bg-gray-100"
+                                  )}
+                                  style={{ width: `${Math.min(100, Math.max(0, progressPct))}%` }}
+                                />
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-2 px-4">
+                            <StatusBadge label={status.label} variant={status.variant} />
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -850,24 +515,26 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
             <div className="border-b border-gray-100 px-4 py-2 md:py-3 dark:border-border">
               <div className="flex items-center justify-between">
                 <h2 className="text-base font-medium tracking-tight text-text-primary dark:text-foreground md:text-xl">
-                  Overdue Invoices
+                  Recent Activity
                 </h2>
                 <Link
                   href="/financial/invoices"
-                  className="text-sm text-text-secondary hover:text-text-primary transition"
+                  className="text-sm text-text-secondary dark:text-muted-foreground hover:text-text-primary dark:hover:text-foreground transition"
                 >
                   View all
                 </Link>
               </div>
               <p className="mt-0.5 hidden text-sm text-muted-foreground md:block">
-                Invoices past due with balance outstanding.
+                Latest transactions.
               </p>
             </div>
-            <div className="md:hidden divide-y divide-gray-100 dark:divide-border/60">
-              {overdueInvoices.length === 0 ? (
-                <div className="flex flex-col items-center py-10">
+            <div className="divide-y divide-gray-100 dark:divide-border/60">
+              {recentActivity.length === 0 ? (
+                <div className="flex flex-col items-center py-10 md:px-4 md:py-8">
                   <svg
                     className="h-8 w-8 text-text-secondary dark:text-muted-foreground"
+                    width={32}
+                    height={32}
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -875,141 +542,491 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                     aria-hidden
                   >
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <path d="M14 2v6h6" />
+                    <polyline points="14 2 14 8 20 8" />
                   </svg>
                   <p className="mt-3 text-sm text-text-secondary dark:text-muted-foreground">
-                    No overdue invoices.
+                    No activity.
                   </p>
                   <Button asChild size="sm" variant="outline" className="mt-4">
                     <Link href="/financial/invoices">View invoices</Link>
                   </Button>
                 </div>
               ) : (
-                overdueInvoices.map((row) => (
-                  <Link
-                    key={row.id}
-                    href={`/financial/invoices/${row.id}`}
-                    className="hh-row-interactive flex min-h-[48px] w-full items-center gap-3 px-4 py-2 text-left"
+                recentActivity.map((tx) => (
+                  <div
+                    key={tx.id}
+                    className="hh-row-interactive flex min-h-[48px] items-center gap-3 px-4 py-2"
                   >
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-text-primary dark:text-foreground">
-                        {row.projectName || row.projectId || "—"}
-                      </p>
-                      <p className="truncate text-sm text-muted-foreground">
-                        {row.clientName} · {row.daysOverdue}d overdue
-                      </p>
+                    <div
+                      className="hidden h-[30px] w-[30px] shrink-0 items-center justify-center rounded-lg border border-gray-100 bg-page dark:border-border dark:bg-muted md:flex"
+                      aria-hidden
+                    >
+                      <svg
+                        width={12}
+                        height={12}
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={1.5}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="text-text-secondary/75 dark:text-muted-foreground"
+                      >
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" y1="13" x2="8" y2="13" />
+                        <line x1="16" y1="17" x2="8" y2="17" />
+                        <polyline points="10 9 9 9 8 9" />
+                      </svg>
                     </div>
-                    <span className="shrink-0 text-right text-lg font-semibold tabular-nums text-red-600 dark:text-red-400 md:text-sm md:font-medium">
-                      ${fmtUsd(row.balanceDue)}
-                    </span>
-                  </Link>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="truncate text-sm font-medium text-text-primary dark:text-foreground">
+                          {tx.projectName}
+                        </span>
+                        <span className="shrink-0 rounded-full bg-page px-1.5 py-0.5 text-[9px] capitalize text-text-secondary dark:bg-muted dark:text-muted-foreground">
+                          {tx.type === "invoice"
+                            ? "Invoice"
+                            : tx.type === "bill"
+                              ? "Bill"
+                              : tx.type === "expense"
+                                ? "Expense"
+                                : "Labor"}
+                        </span>
+                      </div>
+                      <div className="mt-0.5 truncate text-sm text-muted-foreground">
+                        {tx.description}
+                      </div>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <div className="tabular-nums text-sm text-muted-foreground">{tx.date}</div>
+                      <div
+                        className={cn(
+                          "text-right text-lg font-semibold tabular-nums md:text-sm md:font-medium",
+                          tx.amount < 0 && "text-red-600 dark:text-red-400",
+                          tx.amount >= 0 && "text-hh-profit-positive dark:text-hh-profit-positive"
+                        )}
+                      >
+                        {tx.amount >= 0 ? "" : "−"}${Math.abs(tx.amount).toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
                 ))
               )}
-            </div>
-            <div className="table-responsive hidden md:block">
-              <table className="w-full min-w-[400px] text-sm md:min-w-0">
-                <thead>
-                  <tr className="border-b border-gray-100 bg-white">
-                    <th className="py-2.5 px-4 text-left text-xs uppercase tracking-wide text-text-secondary">
-                      Project
-                    </th>
-                    <th className="py-2.5 px-4 text-left text-xs uppercase tracking-wide text-text-secondary">
-                      Customer
-                    </th>
-                    <th className="py-2.5 px-4 text-right text-xs uppercase tracking-wide text-text-secondary tabular-nums">
-                      Amount Due
-                    </th>
-                    <th className="py-2.5 px-4 text-right text-xs uppercase tracking-wide text-text-secondary tabular-nums">
-                      Days Overdue
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {overdueInvoices.length === 0 ? (
-                    <tr className="border-b">
-                      <td colSpan={4} className="py-6 px-4 text-center text-sm text-text-secondary">
-                        No overdue invoices.
-                      </td>
-                    </tr>
-                  ) : (
-                    overdueInvoices.map((row) => (
-                      <tr key={row.id} className="hh-row-interactive h-10 border-b">
-                        <td className="py-2 px-4">
-                          <Link
-                            href={`/financial/invoices/${row.id}`}
-                            className="font-medium text-text-primary hover:underline"
-                          >
-                            {row.projectName || row.projectId || "—"}
-                          </Link>
-                        </td>
-                        <td className="py-2 px-4 text-text-secondary">{row.clientName}</td>
-                        <td className="py-2 px-4 text-right tabular-nums font-medium text-red-600">
-                          ${fmtUsd(row.balanceDue)}
-                        </td>
-                        <td className="py-2 px-4 text-right tabular-nums text-red-600">
-                          {row.daysOverdue}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
             </div>
           </section>
         </div>
 
-        {upcomingTasks.length > 0 ? (
+        {/* Right column: Financial Summary, Bills Due */}
+        <div className="space-y-2 md:space-y-6">
           <section className={sectionShell}>
             <div className="border-b border-gray-100 px-4 py-2 md:py-3 dark:border-border">
               <h2 className="text-base font-medium tracking-tight text-text-primary dark:text-foreground md:text-xl">
-                Upcoming Tasks
+                Financial Summary
               </h2>
               <p className="mt-0.5 hidden text-sm text-muted-foreground md:block">
-                Auto-generated operational follow-ups.
+                Portfolio snapshot.
               </p>
             </div>
-            <div className="divide-y divide-gray-100 dark:divide-border/60">
-              {upcomingTasks.map((t) => {
-                const isToday = /today/i.test(t.due);
-                const isThisWeek = /this week|week/i.test(t.due) && !isToday;
-                const dotClass = isToday
-                  ? "bg-red-400 dark:bg-red-400"
-                  : isThisWeek
-                    ? "bg-amber-400 dark:bg-amber-400"
-                    : "bg-gray-300 dark:bg-gray-500";
-                const badgeClass = isToday
-                  ? "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 text-[9.5px] px-1.5 py-0.5 rounded-full"
-                  : isThisWeek
-                    ? "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 text-[9.5px] px-1.5 py-0.5 rounded-full"
-                    : "rounded-full bg-page px-1.5 py-0.5 text-[9.5px] text-text-secondary dark:bg-muted dark:text-muted-foreground";
-                return (
+            <div className="p-3 md:p-4">
+              <div className="grid grid-cols-1">
+                {kpis.map((k, i) => (
                   <div
-                    key={t.id}
-                    className="hh-row-interactive flex min-h-[48px] items-start justify-between gap-3 px-4 py-2"
+                    key={k.key}
+                    className={cn(
+                      "flex items-center justify-between py-2.5",
+                      i < kpis.length - 1 && "border-b border-gray-100 dark:border-border/60"
+                    )}
                   >
-                    <div className="flex items-start gap-2 min-w-0 flex-1">
-                      <span
-                        className={cn(
-                          "inline-block h-[5px] w-[5px] rounded-full mt-1.5 shrink-0",
-                          dotClass
-                        )}
-                        aria-hidden
-                      />
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-medium text-text-primary dark:text-foreground">
-                          {t.title}
-                        </div>
-                        <div className="truncate text-sm text-muted-foreground">{t.meta}</div>
-                      </div>
-                    </div>
-                    <span className={cn("shrink-0 tabular-nums", badgeClass)}>{t.due}</span>
+                    <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      {k.icon ? <k.icon className="h-3.5 w-3.5 opacity-60" /> : null}
+                      {k.label}
+                    </span>
+                    <span className="text-lg font-semibold tabular-nums text-text-primary dark:text-foreground md:text-sm md:font-medium">
+                      {k.value}
+                    </span>
                   </div>
-                );
-              })}
+                ))}
+              </div>
+              <div className="mt-2 rounded-lg bg-muted/30 px-4 py-2.5 dark:bg-muted/40 md:mt-3 md:rounded-xl md:border md:border-gray-100 md:bg-page md:py-3 dark:md:border-border dark:md:bg-muted/50">
+                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  <span>Budget usage</span>
+                  <span className="text-lg font-semibold tabular-nums text-text-primary dark:text-foreground md:text-sm md:font-medium">
+                    {budgetUsagePct.toFixed(0)}%
+                  </span>
+                </div>
+                <div className="mt-2 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700">
+                  <div
+                    className="h-1.5 rounded-full bg-gray-900 dark:bg-gray-100"
+                    style={{ width: `${Math.min(100, budgetUsagePct)}%` }}
+                  />
+                </div>
+                <div className="mt-2 flex items-center justify-between text-sm text-muted-foreground">
+                  <span>$0</span>
+                  <span className="text-lg font-semibold tabular-nums text-text-primary dark:text-foreground md:text-sm md:font-medium">
+                    {budgetUsagePct > 0
+                      ? `$${Math.round(stats.totalSpent / (budgetUsagePct / 100) / 1000)}K`
+                      : "—"}
+                  </span>
+                </div>
+                <div className="mt-2 flex items-center justify-between text-sm text-muted-foreground">
+                  <span>Total spent</span>
+                  <span className="text-lg font-semibold tabular-nums text-text-primary dark:text-foreground md:text-sm md:font-medium">
+                    ${stats.totalSpent.toLocaleString()}
+                  </span>
+                </div>
+                <div className="mt-0.5 flex items-center justify-between text-sm text-muted-foreground">
+                  <span>Total profit</span>
+                  <span
+                    className={cn(
+                      "text-lg font-semibold tabular-nums text-text-primary dark:text-foreground md:text-sm md:font-medium",
+                      !profitPositive && "text-red-600 dark:text-red-400"
+                    )}
+                  >
+                    {profitPositive ? "" : "−"}${stats.totalProfit.toLocaleString()}
+                  </span>
+                </div>
+              </div>
             </div>
           </section>
-        ) : null}
+
+          <section className={sectionShell}>
+            <div className="border-b border-gray-100 px-4 py-2 md:py-3 dark:border-border">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-medium tracking-tight text-text-primary dark:text-foreground md:text-xl">
+                  Bills Due
+                </h2>
+                <Link
+                  href="/bills"
+                  className="text-sm text-text-secondary dark:text-muted-foreground hover:text-text-primary dark:hover:text-foreground transition"
+                >
+                  View all
+                </Link>
+              </div>
+              <p className="mt-0.5 hidden text-sm text-muted-foreground md:block">
+                Outstanding, overdue, and due this week.
+              </p>
+            </div>
+            <div className="p-3 md:p-4">
+              <div className="flex justify-between border-b border-gray-100 py-2.5 text-sm dark:border-border/60">
+                <span className="text-muted-foreground">Outstanding</span>
+                <span className="text-lg font-semibold tabular-nums text-text-primary dark:text-foreground md:text-sm md:font-medium">
+                  ${fmtUsd(apBillsSummary.totalOutstanding)}
+                </span>
+              </div>
+              <div className="flex justify-between border-b border-gray-100 py-2.5 text-sm dark:border-border/60">
+                <span className="text-muted-foreground">Overdue</span>
+                <span
+                  className={cn(
+                    "text-lg font-semibold tabular-nums md:text-sm md:font-medium",
+                    apBillsSummary.overdueCount > 0 || apBillsSummary.overdueAmount > 0.005
+                      ? "text-red-600 dark:text-red-400"
+                      : "text-text-primary dark:text-foreground"
+                  )}
+                >
+                  {apBillsSummary.overdueCount} bills · ${fmtUsd(apBillsSummary.overdueAmount)}
+                </span>
+              </div>
+              <div className="flex justify-between py-2.5 text-sm">
+                <span className="text-muted-foreground">Due this week</span>
+                <span className="text-lg font-semibold tabular-nums text-text-primary dark:text-foreground md:text-sm md:font-medium">
+                  {apBillsSummary.dueThisWeekCount} bills · $
+                  {fmtUsd(apBillsSummary.dueThisWeekAmount)}
+                </span>
+              </div>
+              <div className="hidden border-t border-gray-100 pt-3 dark:border-border md:block">
+                <Link
+                  href="/bills/new"
+                  className="inline-flex h-9 items-center justify-center rounded-full bg-black px-4 text-sm font-medium text-white transition hover:scale-[1.02]"
+                >
+                  New bill
+                </Link>
+              </div>
+            </div>
+          </section>
+        </div>
       </div>
+
+      {/* Additional sections: Outstanding Subcontracts, Upcoming Tasks, Overdue Invoices */}
+      <div className="grid grid-cols-1 gap-2 md:gap-6 lg:grid-cols-3">
+        <section className={cn(sectionShell, "lg:col-span-2")}>
+          <div className="border-b border-gray-100 px-4 py-2 md:py-3 dark:border-border">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-medium tracking-tight text-text-primary dark:text-foreground md:text-xl">
+                Outstanding Subcontracts
+              </h2>
+              <Link
+                href="/subcontractors"
+                className="text-sm text-text-secondary hover:text-text-primary transition"
+              >
+                View all
+              </Link>
+            </div>
+            <p className="mt-0.5 hidden text-sm text-muted-foreground md:block">
+              Subcontracts with balance due.
+            </p>
+          </div>
+          <div className="md:hidden divide-y divide-gray-100 dark:divide-border/60">
+            {outstandingSubcontracts.length === 0 ? (
+              <div className="flex flex-col items-center py-10">
+                <svg
+                  className="h-8 w-8 text-text-secondary dark:text-muted-foreground"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                  aria-hidden
+                >
+                  <rect x="3" y="5" width="18" height="14" rx="2" />
+                  <path d="M3 10h18" />
+                </svg>
+                <p className="mt-3 text-center text-sm text-text-secondary dark:text-muted-foreground">
+                  No outstanding balances.
+                </p>
+                <Button asChild size="sm" variant="outline" className="mt-4">
+                  <Link href="/subcontractors">View subcontractors</Link>
+                </Button>
+              </div>
+            ) : (
+              outstandingSubcontracts.map((r) => (
+                <Link
+                  key={r.id}
+                  href={`/projects/${r.project_id}/subcontracts`}
+                  className="hh-row-interactive flex min-h-[48px] w-full items-center gap-3 px-4 py-2 text-left"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-text-primary dark:text-foreground">
+                      {r.subcontractor_name}
+                    </p>
+                    <p className="truncate text-sm text-muted-foreground">{r.project_name}</p>
+                  </div>
+                  <span className="shrink-0 text-right text-lg font-semibold tabular-nums text-red-600 dark:text-red-400 md:text-sm md:font-medium">
+                    ${fmtUsd(r.balance)}
+                  </span>
+                </Link>
+              ))
+            )}
+          </div>
+          <div className="table-responsive hidden md:block">
+            <table className="w-full min-w-[400px] text-sm md:min-w-0">
+              <thead>
+                <tr className="border-b border-gray-100 bg-white">
+                  <th className="py-2.5 px-4 text-left text-xs uppercase tracking-wide text-text-secondary">
+                    Subcontractor
+                  </th>
+                  <th className="py-2.5 px-4 text-left text-xs uppercase tracking-wide text-text-secondary">
+                    Project
+                  </th>
+                  <th className="py-2.5 px-4 text-right text-xs uppercase tracking-wide text-text-secondary tabular-nums">
+                    Balance
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {outstandingSubcontracts.length === 0 ? (
+                  <tr className="border-b">
+                    <td colSpan={3} className="py-6 px-4 text-center text-xs text-text-secondary">
+                      No outstanding balances.
+                    </td>
+                  </tr>
+                ) : (
+                  outstandingSubcontracts.map((r) => (
+                    <tr key={r.id} className="hh-row-interactive h-10 border-b">
+                      <td className="py-2 px-4 font-medium text-text-primary">
+                        {r.subcontractor_name}
+                      </td>
+                      <td className="py-2 px-4 text-text-secondary">
+                        <Link
+                          href={`/projects/${r.project_id}/subcontracts`}
+                          className="hover:text-text-primary"
+                        >
+                          {r.project_name}
+                        </Link>
+                      </td>
+                      <td className="py-2 px-4 text-right tabular-nums font-medium text-red-600">
+                        ${fmtUsd(r.balance)}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className={sectionShell}>
+          <div className="border-b border-gray-100 px-4 py-2 md:py-3 dark:border-border">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-medium tracking-tight text-text-primary dark:text-foreground md:text-xl">
+                Overdue Invoices
+              </h2>
+              <Link
+                href="/financial/invoices"
+                className="text-sm text-text-secondary hover:text-text-primary transition"
+              >
+                View all
+              </Link>
+            </div>
+            <p className="mt-0.5 hidden text-sm text-muted-foreground md:block">
+              Invoices past due with balance outstanding.
+            </p>
+          </div>
+          <div className="md:hidden divide-y divide-gray-100 dark:divide-border/60">
+            {overdueInvoices.length === 0 ? (
+              <div className="flex flex-col items-center py-10">
+                <svg
+                  className="h-8 w-8 text-text-secondary dark:text-muted-foreground"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.5}
+                  aria-hidden
+                >
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <path d="M14 2v6h6" />
+                </svg>
+                <p className="mt-3 text-sm text-text-secondary dark:text-muted-foreground">
+                  No overdue invoices.
+                </p>
+                <Button asChild size="sm" variant="outline" className="mt-4">
+                  <Link href="/financial/invoices">View invoices</Link>
+                </Button>
+              </div>
+            ) : (
+              overdueInvoices.map((row) => (
+                <Link
+                  key={row.id}
+                  href={`/financial/invoices/${row.id}`}
+                  className="hh-row-interactive flex min-h-[48px] w-full items-center gap-3 px-4 py-2 text-left"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-text-primary dark:text-foreground">
+                      {row.projectName || row.projectId || "—"}
+                    </p>
+                    <p className="truncate text-sm text-muted-foreground">
+                      {row.clientName} · {row.daysOverdue}d overdue
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-right text-lg font-semibold tabular-nums text-red-600 dark:text-red-400 md:text-sm md:font-medium">
+                    ${fmtUsd(row.balanceDue)}
+                  </span>
+                </Link>
+              ))
+            )}
+          </div>
+          <div className="table-responsive hidden md:block">
+            <table className="w-full min-w-[400px] text-sm md:min-w-0">
+              <thead>
+                <tr className="border-b border-gray-100 bg-white">
+                  <th className="py-2.5 px-4 text-left text-xs uppercase tracking-wide text-text-secondary">
+                    Project
+                  </th>
+                  <th className="py-2.5 px-4 text-left text-xs uppercase tracking-wide text-text-secondary">
+                    Customer
+                  </th>
+                  <th className="py-2.5 px-4 text-right text-xs uppercase tracking-wide text-text-secondary tabular-nums">
+                    Amount Due
+                  </th>
+                  <th className="py-2.5 px-4 text-right text-xs uppercase tracking-wide text-text-secondary tabular-nums">
+                    Days Overdue
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {overdueInvoices.length === 0 ? (
+                  <tr className="border-b">
+                    <td colSpan={4} className="py-6 px-4 text-center text-sm text-text-secondary">
+                      No overdue invoices.
+                    </td>
+                  </tr>
+                ) : (
+                  overdueInvoices.map((row) => (
+                    <tr key={row.id} className="hh-row-interactive h-10 border-b">
+                      <td className="py-2 px-4">
+                        <Link
+                          href={`/financial/invoices/${row.id}`}
+                          className="font-medium text-text-primary hover:underline"
+                        >
+                          {row.projectName || row.projectId || "—"}
+                        </Link>
+                      </td>
+                      <td className="py-2 px-4 text-text-secondary">{row.clientName}</td>
+                      <td className="py-2 px-4 text-right tabular-nums font-medium text-red-600">
+                        ${fmtUsd(row.balanceDue)}
+                      </td>
+                      <td className="py-2 px-4 text-right tabular-nums text-red-600">
+                        {row.daysOverdue}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      {upcomingTasks.length > 0 ? (
+        <section className={sectionShell}>
+          <div className="border-b border-gray-100 px-4 py-2 md:py-3 dark:border-border">
+            <h2 className="text-base font-medium tracking-tight text-text-primary dark:text-foreground md:text-xl">
+              Upcoming Tasks
+            </h2>
+            <p className="mt-0.5 hidden text-sm text-muted-foreground md:block">
+              Auto-generated operational follow-ups.
+            </p>
+          </div>
+          <div className="divide-y divide-gray-100 dark:divide-border/60">
+            {upcomingTasks.map((t) => {
+              const isToday = /today/i.test(t.due);
+              const isThisWeek = /this week|week/i.test(t.due) && !isToday;
+              const dotClass = isToday
+                ? "bg-red-400 dark:bg-red-400"
+                : isThisWeek
+                  ? "bg-amber-400 dark:bg-amber-400"
+                  : "bg-gray-300 dark:bg-gray-500";
+              const badgeClass = isToday
+                ? "bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 text-[9.5px] px-1.5 py-0.5 rounded-full"
+                : isThisWeek
+                  ? "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 text-[9.5px] px-1.5 py-0.5 rounded-full"
+                  : "rounded-full bg-page px-1.5 py-0.5 text-[9.5px] text-text-secondary dark:bg-muted dark:text-muted-foreground";
+              return (
+                <div
+                  key={t.id}
+                  className="hh-row-interactive flex min-h-[48px] items-start justify-between gap-3 px-4 py-2"
+                >
+                  <div className="flex items-start gap-2 min-w-0 flex-1">
+                    <span
+                      className={cn(
+                        "inline-block h-[5px] w-[5px] rounded-full mt-1.5 shrink-0",
+                        dotClass
+                      )}
+                      aria-hidden
+                    />
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium text-text-primary dark:text-foreground">
+                        {t.title}
+                      </div>
+                      <div className="truncate text-sm text-muted-foreground">{t.meta}</div>
+                    </div>
+                  </div>
+                  <span className={cn("shrink-0 tabular-nums", badgeClass)}>{t.due}</span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
+    </>
+  );
+
+  if (isMain) {
+    return pageBody;
+  }
+
+  return (
+    <div className="min-h-full bg-page dark:bg-background">
+      <div className="page-container page-stack max-md:!gap-2 max-md:!py-2">{pageBody}</div>
     </div>
   );
 }

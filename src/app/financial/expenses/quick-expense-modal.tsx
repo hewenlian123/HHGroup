@@ -30,7 +30,7 @@ import {
 } from "@/lib/expense-payment-preferences";
 import { createBrowserClient } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
-import { ChevronDown, Paperclip } from "lucide-react";
+import { ChevronDown, FileText } from "lucide-react";
 import { useToast } from "@/components/toast/toast-provider";
 import { uiActionLog, uiActionMark } from "@/lib/ui-action-perf";
 import { MatchStatusBadge } from "@/components/base";
@@ -40,6 +40,7 @@ import { AmountDiagnosticsPanel } from "@/components/ocr/amount-diagnostics-pane
 import {
   type AmountRuleDiagnostic,
   type FieldConfidence,
+  type MergedReceiptOcr,
   type OcrSource,
   type ReceiptOcrResult,
   mergeReceiptOcrResults,
@@ -49,6 +50,7 @@ import {
   uploadReceiptToStorage,
   type ExpenseReceiptUploadSlot,
 } from "@/lib/expense-receipt-upload-browser";
+import { compressImageFileForReceiptUpload } from "@/lib/image-compress-browser";
 import {
   deriveExpenseWorkflowStatus,
   EXPENSE_COMMON_ITEM_NONE,
@@ -57,14 +59,16 @@ import {
 
 type QuickExpenseAttachmentSlot = ExpenseReceiptUploadSlot;
 
-const FIELD_LABEL = "text-xs uppercase tracking-wide text-muted-foreground";
-/** iOS Safari avoids input zoom at 16px+; 44px min touch target on small screens. */
-const FIELD_INPUT_CLASS = "max-md:min-h-11 max-md:text-base";
-const CONTROL_H = "h-10";
+const FIELD_LABEL = "block text-xs uppercase tracking-wide text-muted-foreground";
+/** iOS Safari avoids input zoom at 16px+; 48px controls; 12px radius on mobile (Stripe / Settings feel). */
+const FIELD_INPUT_CLASS =
+  "max-md:h-12 max-md:min-h-[48px] max-md:rounded-xl max-md:text-base md:min-h-10 md:rounded-sm md:text-sm";
+const CONTROL_H = "h-10 max-md:h-12 max-md:min-h-[48px] max-md:rounded-xl md:rounded-sm";
 const SELECT_TRIGGER = cn(
   CONTROL_H,
-  "w-full rounded-sm border-border/60 text-sm [&>span]:line-clamp-1 max-md:min-h-11 max-md:text-base"
+  "w-full border-border/60 text-sm [&>span]:line-clamp-1 max-md:text-base"
 );
+const FIELD_GROUP = "flex flex-col gap-1.5";
 const selectPopperContentProps = {
   position: "popper" as const,
   sideOffset: 4,
@@ -117,6 +121,10 @@ function normalizeVendor(v: string): string {
   return (v || "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+function isPdfFile(f: File): boolean {
+  return f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf");
+}
+
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -128,12 +136,24 @@ type Props = {
 export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, expenses }: Props) {
   const { toast } = useToast();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const receiptPickLockRef = React.useRef(false);
+  const replaceClientIdRef = React.useRef<string | null>(null);
   const [processing, setProcessing] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [saveFlash, setSaveFlash] = React.useState(false);
   const [moreOpen, setMoreOpen] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [attachmentSlots, setAttachmentSlots] = React.useState<QuickExpenseAttachmentSlot[]>([]);
+  const receiptPreparing = React.useMemo(
+    () => attachmentSlots.some((s) => s.uploadUiStatus === "preparing"),
+    [attachmentSlots]
+  );
+  const receiptUploading = React.useMemo(
+    () => attachmentSlots.some((s) => s.uploadUiStatus === "uploading"),
+    [attachmentSlots]
+  );
+  /** Compress or upload in flight — block duplicate picks and Save. */
+  const receiptPipelineBusy = receiptPreparing || receiptUploading;
   const { openPreview } = useAttachmentPreview();
 
   React.useEffect(() => {
@@ -148,8 +168,10 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
       if (attachmentSlots.length === 0) return;
       const files = attachmentSlots.map((s) => ({
         url: s.previewUrl,
-        fileName: s.pendingFile?.name ?? "Receipt",
-        fileType: (s.pendingFile?.type === "application/pdf" ? "pdf" : "image") as "pdf" | "image",
+        fileName: s.displayName ?? s.pendingFile?.name ?? "Receipt",
+        fileType: (s.isPdf || s.pendingFile?.type === "application/pdf" ? "pdf" : "image") as
+          | "pdf"
+          | "image",
       }));
       const ix = Math.max(0, Math.min(initialIndex, files.length - 1));
       openPreview(files, ix);
@@ -166,6 +188,16 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
   const [paymentAccountId, setPaymentAccountId] = React.useState("");
   const [paymentAccountRows, setPaymentAccountRows] = React.useState<PaymentAccountRow[]>([]);
   const paymentChoiceTouchedRef = React.useRef(false);
+  /** When true for a field, OCR must not overwrite user input. */
+  const ocrFieldTouchedRef = React.useRef({
+    vendor: false,
+    amount: false,
+    date: false,
+    category: false,
+  });
+  const [ocrBannerKind, setOcrBannerKind] = React.useState<
+    "idle" | "success" | "partial" | "error"
+  >("idle");
   const [ocrSource, setOcrSource] = React.useState<OcrSource>("none");
   const [recognizedItems, setRecognizedItems] = React.useState<string[]>([]);
   const [itemDraft, setItemDraft] = React.useState("");
@@ -200,6 +232,9 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
   const vendorInputRef = React.useRef<HTMLInputElement>(null);
   const amountInputRef = React.useRef<HTMLInputElement>(null);
   const dateInputRef = React.useRef<HTMLInputElement>(null);
+  const formScrollRef = React.useRef<HTMLDivElement>(null);
+  /** Extra bottom padding when the on-screen keyboard reduces visual viewport (iOS Safari). */
+  const [keyboardBottomInset, setKeyboardBottomInset] = React.useState(0);
 
   const supabase = React.useMemo(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -209,8 +244,9 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
 
   const inferCategory = React.useCallback((vendor: string, itemNames: string[] = []) => {
     const haystack = `${vendor} ${itemNames.join(" ")}`.toLowerCase();
-    if (/home depot|lowe'?s|lowes/.test(haystack)) return "Materials";
-    if (/gas|fuel|shell|chevron|exxon|mobil|bp/.test(haystack)) return "Vehicle";
+    if (/home depot|lowe'?s|lowes|costco|walmart|city mill|hardware hawaii/.test(haystack))
+      return "Materials";
+    if (/gas\s+station|gas|fuel|shell|chevron|exxon|mobil|bp\b/.test(haystack)) return "Vehicle";
     if (/restaurant|cafe|coffee|diner|bbq|burger|pizza/.test(haystack)) return "Meals";
     return "Other";
   }, []);
@@ -264,6 +300,81 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
       return null;
     }
   }, []);
+
+  const removeReceiptSlot = React.useCallback((clientId: string) => {
+    setAttachmentSlots((prev) =>
+      prev.filter((s) => {
+        if (s.clientId !== clientId) return true;
+        s.revoke?.();
+        return false;
+      })
+    );
+  }, []);
+
+  const retryReceiptUpload = React.useCallback(
+    async (clientId: string) => {
+      if (!supabase || receiptPickLockRef.current) return;
+      let fileToRetry: File | undefined;
+      setAttachmentSlots((prev) => {
+        const s = prev.find((x) => x.clientId === clientId);
+        fileToRetry = s?.sourceFile ?? s?.pendingFile;
+        if (!fileToRetry) return prev;
+        return prev.map((x) =>
+          x.clientId === clientId
+            ? { ...x, uploadUiStatus: "uploading", uploadError: undefined }
+            : x
+        );
+      });
+      if (!fileToRetry) return;
+      receiptPickLockRef.current = true;
+      try {
+        const result = await uploadReceiptToStorage(
+          supabase,
+          fileToRetry,
+          `r-${clientId.slice(0, 8)}`,
+          {
+            alreadyCompressed: true,
+          }
+        );
+        setAttachmentSlots((prev) =>
+          prev.map((s) => {
+            if (s.clientId !== clientId) return s;
+            if (result.uploadError) {
+              toast({
+                title: "Upload failed",
+                description: result.uploadError,
+                variant: "error",
+              });
+              return {
+                ...s,
+                ...result,
+                uploadUiStatus: "failed",
+                previewUrl: s.previewUrl,
+                revoke: s.revoke,
+                sourceFile: fileToRetry,
+                pendingFile: result.pendingFile,
+              };
+            }
+            s.revoke?.();
+            return {
+              ...s,
+              previewUrl: result.previewUrl,
+              attachmentPath: result.attachmentPath,
+              receiptsPublicUrl: result.receiptsPublicUrl,
+              revoke: result.revoke,
+              pendingFile: undefined,
+              uploadError: undefined,
+              uploadUiStatus: "uploaded",
+              sourceFile: fileToRetry,
+            };
+          })
+        );
+      } finally {
+        receiptPickLockRef.current = false;
+      }
+    },
+    [supabase, toast]
+  );
 
   const enterFallbackEdit = React.useCallback(
     (msg?: string) => {
@@ -319,6 +430,13 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
     setOcrSuggestions(null);
     setCatalogPick(EXPENSE_COMMON_ITEM_NONE);
     if (fileInputRef.current) fileInputRef.current.value = "";
+    ocrFieldTouchedRef.current = {
+      vendor: false,
+      amount: false,
+      date: false,
+      category: false,
+    };
+    setOcrBannerKind("idle");
   }, []);
 
   React.useEffect(() => {
@@ -337,6 +455,26 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
       }
     }, 0);
     return () => window.clearTimeout(t);
+  }, [open]);
+
+  React.useEffect(() => {
+    if (!open) {
+      setKeyboardBottomInset(0);
+      return;
+    }
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => {
+      const gap = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      setKeyboardBottomInset(gap);
+    };
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
   }, [open]);
 
   const onPaymentAccountChange = React.useCallback((id: string) => {
@@ -424,52 +562,30 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
     }
   }, [projectId, projects, suggestedProjectId]);
 
-  const handleFiles = async (files: FileList | File[] | null) => {
-    if (!files || files.length === 0) return;
-    if (processing || saving) return;
-    if (!supabase) {
-      enterFallbackEdit("Storage is unavailable. Please enter expense details manually and save.");
-      return;
-    }
-    setError(null);
-    setProcessing(true);
-    setOcrSource("none");
-    try {
-      const list = Array.from(files).slice(0, 5);
-      const qualityWarning = await assessImageQuality(list[0]);
-      if (qualityWarning) {
-        toast({ title: "Image quality warning", description: qualityWarning, variant: "default" });
-      }
-      setAttachmentSlots((prev) => {
-        for (const s of prev) s.revoke?.();
-        return [];
+  const applyOcrMerge = React.useCallback(
+    (merged: MergedReceiptOcr) => {
+      setVendorName((prev) => {
+        if (ocrFieldTouchedRef.current.vendor) return prev;
+        if (merged.autoFillVendor) return merged.finalVendor;
+        return prev;
       });
-      const slots: QuickExpenseAttachmentSlot[] = [];
-      for (let fi = 0; fi < list.length; fi++) {
-        slots.push(await uploadReceiptToStorage(supabase, list[fi]!, String(fi)));
-      }
-      setAttachmentSlots(slots);
-
-      const ocrResults: Array<{ result: ReceiptOcrResult; source: OcrSource }> = [];
-      for (const file of list) {
-        ocrResults.push(await runReceiptOcrForImageFile(file, { localTimeoutMs: 8000 }));
-      }
-
-      const merged = mergeReceiptOcrResults(ocrResults, {
-        learnStorageKey: OCR_LEARN_KEY,
-        inferCategory,
+      setAmount((prev) => {
+        if (ocrFieldTouchedRef.current.amount) return prev;
+        if (merged.autoFillAmount && merged.sanitizedAmount != null) {
+          return String(merged.sanitizedAmount);
+        }
+        return prev;
       });
-
-      setDate(
-        merged.autoFillDate && merged.clampedPurchase ? merged.clampedPurchase : merged.todayStr
-      );
-      setVendorName(merged.autoFillVendor ? merged.finalVendor : "");
-      setAmount(
-        merged.autoFillAmount && merged.sanitizedAmount != null
-          ? String(merged.sanitizedAmount)
-          : ""
-      );
-      setCategory(merged.mappedCategory);
+      setDate((prev) => {
+        if (ocrFieldTouchedRef.current.date) return prev;
+        if (merged.autoFillDate && merged.clampedPurchase) return merged.clampedPurchase;
+        return prev;
+      });
+      setCategory((prev) => {
+        if (ocrFieldTouchedRef.current.category) return prev;
+        if (merged.mappedCategory) return merged.mappedCategory;
+        return prev;
+      });
       setFieldConfidence({
         vendor: merged.vendorConfidence,
         amount: merged.amountConfidence,
@@ -502,31 +618,262 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
           date: merged.dateConfidence,
         },
       });
-
-      if (
-        merged.vendorConfidence !== "high" ||
-        merged.amountConfidence !== "high" ||
-        merged.dateConfidence !== "high"
-      ) {
-        toast({
-          title: "OCR suggestions",
-          description:
-            "Only high-confidence fields were auto-filled. Review yellow hints and the suggestion box before saving.",
-          variant: "default",
+      setOcrBannerKind(merged.needsReview ? "partial" : "success");
+      setPaymentAccountId((prev) => {
+        if (paymentChoiceTouchedRef.current) return prev;
+        const hint = (merged.suggestedPaymentMethod ?? "").toLowerCase();
+        if (!hint) return prev;
+        const match = paymentAccountRows.find((r) => {
+          const n = (r.name ?? "").toLowerCase();
+          if (!n) return false;
+          if (hint === "cash") return /\bcash\b/.test(n);
+          if (/\b(visa|card|credit|debit|mc|master)\b/.test(hint)) {
+            return /\b(card|visa|credit|debit|master|amex|checking|bank)\b/i.test(n);
+          }
+          return n.includes(hint) || (hint.length >= 3 && n.includes(hint.slice(0, 3)));
         });
+        return match?.id ?? prev;
+      });
+    },
+    [paymentAccountRows]
+  );
+
+  const retryOcr = React.useCallback(async () => {
+    if (receiptPickLockRef.current || saving || receiptPipelineBusy) return;
+    const imageSlots = attachmentSlots.filter((s) => s.sourceFile?.type?.startsWith("image/"));
+    if (!imageSlots.length) {
+      toast({
+        title: "No receipt image",
+        description: "OCR needs a photo. PDFs are not scanned in the browser.",
+        variant: "default",
+      });
+      return;
+    }
+    receiptPickLockRef.current = true;
+    setProcessing(true);
+    setOcrBannerKind("idle");
+    setError(null);
+    try {
+      const ocrResults: Array<{ result: ReceiptOcrResult; source: OcrSource }> = [];
+      for (const s of imageSlots) {
+        if (s.sourceFile) {
+          ocrResults.push(await runReceiptOcrForImageFile(s.sourceFile, { localTimeoutMs: 8000 }));
+        }
       }
+      if (!ocrResults.length) return;
+      const merged = mergeReceiptOcrResults(ocrResults, {
+        learnStorageKey: OCR_LEARN_KEY,
+        inferCategory,
+      });
+      applyOcrMerge(merged);
       setDuplicateConfirmed(false);
       setDuplicateCandidate(null);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Upload failed.";
-      enterFallbackEdit(msg);
+      const msg = e instanceof Error ? e.message : "OCR failed.";
+      setError(msg);
+      setOcrBannerKind("error");
+      toast({ title: "OCR issue", description: msg, variant: "default" });
     } finally {
       setProcessing(false);
+      receiptPickLockRef.current = false;
+    }
+  }, [applyOcrMerge, attachmentSlots, inferCategory, receiptPipelineBusy, saving, toast]);
+
+  const handleFiles = async (files: FileList | File[] | null) => {
+    if (!files || files.length === 0) return;
+    if (receiptPickLockRef.current || saving || processing || receiptPipelineBusy) return;
+    if (!supabase) {
+      enterFallbackEdit("Storage is unavailable. Please enter expense details manually and save.");
+      return;
+    }
+
+    const rawList = Array.from(files).filter((f) => f.size > 0);
+    if (!rawList.length) return;
+
+    const replaceId = replaceClientIdRef.current;
+    replaceClientIdRef.current = null;
+    if (fileInputRef.current) fileInputRef.current.value = "";
+
+    const MAX = 5;
+    let workRaws: File[];
+    let workClientIds: string[];
+
+    if (replaceId) {
+      workRaws = [rawList[0]!];
+      workClientIds = [replaceId];
+    } else {
+      const room = MAX - attachmentSlots.length;
+      if (room <= 0) {
+        toast({
+          title: "Maximum receipts",
+          description: "You can attach up to 5 receipts.",
+          variant: "default",
+        });
+        return;
+      }
+      const take = rawList.slice(0, room);
+      workRaws = take;
+      workClientIds = take.map(() => crypto.randomUUID());
+    }
+
+    receiptPickLockRef.current = true;
+    setError(null);
+
+    const makeImmediateSlot = (raw: File, clientId: string): QuickExpenseAttachmentSlot => {
+      const isPdf = isPdfFile(raw);
+      const url = URL.createObjectURL(raw);
+      return {
+        clientId,
+        previewUrl: url,
+        localPreviewUrl: url,
+        attachmentPath: null,
+        receiptsPublicUrl: null,
+        displayName: raw.name || (isPdf ? "document.pdf" : "Photo"),
+        isPdf,
+        uploadUiStatus: isPdf ? "uploading" : "preparing",
+        sourceFile: raw,
+        revoke: () => URL.revokeObjectURL(url),
+      };
+    };
+
+    try {
+      if (replaceId) {
+        setAttachmentSlots((prev) =>
+          prev.map((s) => {
+            if (s.clientId !== replaceId) return s;
+            s.revoke?.();
+            return makeImmediateSlot(workRaws[0]!, replaceId);
+          })
+        );
+      } else {
+        setAttachmentSlots((prev) => [
+          ...prev,
+          ...workRaws.map((raw, i) => makeImmediateSlot(raw, workClientIds[i]!)),
+        ]);
+      }
+
+      const preparedList = await Promise.all(
+        workRaws.map((raw, i) =>
+          compressImageFileForReceiptUpload(raw).then((prepared) => ({
+            clientId: workClientIds[i]!,
+            prepared,
+          }))
+        )
+      );
+
+      const qualityWarning = await assessImageQuality(preparedList[0]!.prepared);
+      if (qualityWarning) {
+        toast({ title: "Image quality warning", description: qualityWarning, variant: "default" });
+      }
+
+      setAttachmentSlots((prev) =>
+        prev.map((s) => {
+          const hit = preparedList.find((p) => p.clientId === s.clientId);
+          if (!hit) return s;
+          s.revoke?.();
+          const url = URL.createObjectURL(hit.prepared);
+          const pdf = isPdfFile(hit.prepared);
+          return {
+            ...s,
+            previewUrl: url,
+            localPreviewUrl: url,
+            displayName: hit.prepared.name,
+            isPdf: pdf,
+            sourceFile: hit.prepared,
+            uploadUiStatus: "uploading",
+            revoke: () => URL.revokeObjectURL(url),
+          };
+        })
+      );
+
+      const runOcr = async () => {
+        setProcessing(true);
+        setOcrSource("none");
+        try {
+          const ocrResults: Array<{ result: ReceiptOcrResult; source: OcrSource }> = [];
+          for (const { prepared } of preparedList) {
+            ocrResults.push(await runReceiptOcrForImageFile(prepared, { localTimeoutMs: 8000 }));
+          }
+
+          const merged = mergeReceiptOcrResults(ocrResults, {
+            learnStorageKey: OCR_LEARN_KEY,
+            inferCategory,
+          });
+          applyOcrMerge(merged);
+          setDuplicateConfirmed(false);
+          setDuplicateCandidate(null);
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : "OCR failed.";
+          setError(msg);
+          setOcrBannerKind("error");
+          toast({
+            title: "OCR issue",
+            description: msg,
+            variant: "default",
+          });
+        } finally {
+          setProcessing(false);
+        }
+      };
+
+      let firstUploadErr: string | undefined;
+      const runUploads = async () => {
+        await Promise.all(
+          preparedList.map(async ({ clientId, prepared }) => {
+            const result = await uploadReceiptToStorage(supabase, prepared, clientId.slice(0, 8), {
+              alreadyCompressed: true,
+            });
+            if (result.uploadError && !firstUploadErr) firstUploadErr = result.uploadError;
+            setAttachmentSlots((prev) =>
+              prev.map((s) => {
+                if (s.clientId !== clientId) return s;
+                if (result.uploadError) {
+                  return {
+                    ...s,
+                    ...result,
+                    uploadUiStatus: "failed",
+                    previewUrl: s.previewUrl,
+                    revoke: s.revoke,
+                    sourceFile: prepared,
+                    pendingFile: result.pendingFile,
+                  };
+                }
+                s.revoke?.();
+                return {
+                  ...s,
+                  previewUrl: result.previewUrl,
+                  attachmentPath: result.attachmentPath,
+                  receiptsPublicUrl: result.receiptsPublicUrl,
+                  revoke: result.revoke,
+                  pendingFile: undefined,
+                  uploadError: undefined,
+                  uploadUiStatus: "uploaded",
+                  sourceFile: prepared,
+                };
+              })
+            );
+          })
+        );
+        if (firstUploadErr) {
+          toast({
+            title: "Upload failed",
+            description: firstUploadErr,
+            variant: "error",
+          });
+        }
+      };
+
+      await Promise.all([runOcr(), runUploads()]);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Could not process receipts.";
+      toast({ title: "Receipt error", description: msg, variant: "error" });
+    } finally {
+      receiptPickLockRef.current = false;
     }
   };
 
   const handleSave = async (saveAndNew?: boolean) => {
-    if (saving || processing) return;
+    if (saving || receiptPipelineBusy) return;
     const totalAmount = Number(amount);
     if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
       setError("Amount must be greater than 0.");
@@ -570,7 +917,9 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
         slotsToSave = await Promise.all(
           attachmentSlots.map(async (s, i) => {
             if (s.pendingFile && !s.attachmentPath && !s.receiptsPublicUrl) {
-              const u = await uploadReceiptToStorage(supabase, s.pendingFile, `save-${i}`);
+              const u = await uploadReceiptToStorage(supabase, s.pendingFile, `save-${i}`, {
+                alreadyCompressed: true,
+              });
               return { ...u, pendingFile: undefined };
             }
             return s;
@@ -746,7 +1095,12 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
-          className="flex max-h-[min(92dvh,820px)] w-[calc(100vw-1.5rem)] max-w-[560px] flex-col gap-0 overflow-hidden rounded-sm border-border/60 p-0 sm:w-full"
+          className={cn(
+            "flex flex-col gap-0 overflow-hidden border-border/60 p-0 shadow-none",
+            "md:max-h-[min(92dvh,820px)] md:max-w-[560px] md:w-full md:rounded-sm",
+            "max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:left-0 max-md:right-0 max-md:flex max-md:max-h-[94dvh] max-md:min-h-[82dvh] max-md:w-full max-md:max-w-none max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-t-[14px] max-md:rounded-b-none max-md:border-x-0 max-md:border-b-0 max-md:border-t max-md:p-0",
+            "max-md:data-[state=open]:!animate-hh-sheet-in max-md:data-[state=closed]:!animate-hh-sheet-out"
+          )}
           onKeyDown={(e) => {
             if (e.key === "Escape") {
               e.stopPropagation();
@@ -760,14 +1114,20 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
             }
           }}
         >
-          <DialogHeader className="shrink-0 space-y-0 border-b border-border/60 px-4 py-2.5">
-            <DialogTitle className="text-sm font-medium">Quick expense</DialogTitle>
-            <p className="text-[11px] text-muted-foreground">
+          <div
+            className="mx-auto mt-1.5 hidden h-px w-9 shrink-0 rounded-full bg-muted-foreground/25 max-md:block"
+            aria-hidden
+          />
+          <DialogHeader className="shrink-0 space-y-0 border-b border-border/60 bg-background px-4 pb-3 pt-1 max-md:pt-0">
+            <DialogTitle className="text-[17px] font-semibold leading-tight tracking-tight md:text-sm md:font-medium">
+              Quick expense
+            </DialogTitle>
+            <p className="hidden text-[11px] text-muted-foreground md:block">
               Save · Cmd/Ctrl+Enter = save &amp; new · Esc
             </p>
           </DialogHeader>
           <form
-            className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pb-3 pt-2"
+            className="flex min-h-0 flex-1 flex-col overflow-hidden max-md:min-h-0 max-md:flex-1"
             onSubmit={(e) => {
               e.preventDefault();
               void handleSave(false);
@@ -780,77 +1140,95 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
               capture="environment"
               multiple
               className="hidden"
+              data-testid="quick-expense-receipt-input"
+              disabled={saving || receiptPipelineBusy}
               onChange={(e) => {
                 void handleFiles(e.target.files);
               }}
             />
             {!supabase ? (
-              <p className="mb-2 shrink-0 text-xs text-amber-600 dark:text-amber-400">
+              <p className="shrink-0 px-4 pt-2 text-xs text-amber-600 dark:text-amber-400">
                 Supabase not configured — cannot save or scan receipts.
               </p>
             ) : null}
 
-            <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
-              <div className="min-h-0 max-h-[min(50vh_360px)] shrink-0 space-y-2 overflow-y-auto md:max-h-none md:overflow-visible">
-                {ocrSuggestions &&
-                (fieldConfidence.vendor !== "high" ||
-                  fieldConfidence.amount !== "high" ||
-                  fieldConfidence.date !== "high") ? (
-                  <div className="rounded-sm border border-amber-500/40 bg-amber-500/[0.06] px-2.5 py-1.5 text-[11px] text-amber-950 dark:text-amber-100">
-                    <p className="font-medium text-amber-900 dark:text-amber-50">Verify OCR</p>
-                    <ul className="mt-1 list-disc space-y-0.5 pl-3.5 text-amber-900/90 dark:text-amber-100/90">
-                      {fieldConfidence.vendor !== "high" && ocrSuggestions.vendor ? (
-                        <li>Vendor: {ocrSuggestions.vendor}</li>
-                      ) : null}
-                      {fieldConfidence.amount !== "high" && ocrSuggestions.amount ? (
-                        <li>Amount: {ocrSuggestions.amount}</li>
-                      ) : null}
-                      {fieldConfidence.date !== "high" && ocrSuggestions.date ? (
-                        <li>Date: {ocrSuggestions.date}</li>
-                      ) : null}
-                    </ul>
-                  </div>
-                ) : null}
+            <div
+              ref={formScrollRef}
+              style={{
+                paddingBottom:
+                  keyboardBottomInset > 0 ? `${keyboardBottomInset + 12}px` : undefined,
+              }}
+              className={cn(
+                "min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pb-2 pt-2",
+                "scroll-pb-[calc(7.5rem+env(safe-area-inset-bottom))] [-webkit-overflow-scrolling:touch]"
+              )}
+            >
+              {ocrSuggestions &&
+              (fieldConfidence.vendor !== "high" ||
+                fieldConfidence.amount !== "high" ||
+                fieldConfidence.date !== "high") ? (
+                <div className="rounded-xl border border-amber-500/40 bg-amber-500/[0.06] px-2.5 py-1.5 text-[11px] text-amber-950 dark:text-amber-100">
+                  <p className="font-medium text-amber-900 dark:text-amber-50">Verify OCR</p>
+                  <ul className="mt-1 list-disc space-y-0.5 pl-3.5 text-amber-900/90 dark:text-amber-100/90">
+                    {fieldConfidence.vendor !== "high" && ocrSuggestions.vendor ? (
+                      <li>Vendor: {ocrSuggestions.vendor}</li>
+                    ) : null}
+                    {fieldConfidence.amount !== "high" && ocrSuggestions.amount ? (
+                      <li>Amount: {ocrSuggestions.amount}</li>
+                    ) : null}
+                    {fieldConfidence.date !== "high" && ocrSuggestions.date ? (
+                      <li>Date: {ocrSuggestions.date}</li>
+                    ) : null}
+                  </ul>
+                </div>
+              ) : null}
 
-                <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-                  <div className="min-w-0">
-                    <label className={FIELD_LABEL}>Amount</label>
-                    <Input
-                      ref={amountInputRef}
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      inputMode="decimal"
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      className={cn(
-                        "mt-0.5 h-10 tabular-nums",
-                        FIELD_INPUT_CLASS,
-                        fieldConfidence.amount !== "high" && "border-amber-500/50"
-                      )}
-                      disabled={saving || !supabase}
-                    />
-                  </div>
-                  <div className="min-w-0">
-                    <label htmlFor="quick-expense-vendor" className={FIELD_LABEL}>
-                      Vendor
-                    </label>
-                    <Input
-                      id="quick-expense-vendor"
-                      ref={vendorInputRef}
-                      value={vendorName}
-                      onChange={(e) => setVendorName(e.target.value)}
-                      className={cn("mt-0.5 h-10", FIELD_INPUT_CLASS)}
-                      disabled={saving || !supabase}
-                    />
-                  </div>
+              <div className="mt-2 grid grid-cols-1 gap-y-4 md:grid-cols-2 md:gap-x-3 md:gap-y-3">
+                <div className={cn(FIELD_GROUP, "min-w-0 md:col-span-1")}>
+                  <label className={FIELD_LABEL}>Amount</label>
+                  <Input
+                    ref={amountInputRef}
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    inputMode="decimal"
+                    value={amount}
+                    onChange={(e) => {
+                      ocrFieldTouchedRef.current.amount = true;
+                      setAmount(e.target.value);
+                    }}
+                    className={cn(
+                      "tabular-nums",
+                      FIELD_INPUT_CLASS,
+                      fieldConfidence.amount !== "high" && "border-amber-500/50"
+                    )}
+                    disabled={saving || !supabase}
+                  />
+                </div>
+                <div className={cn(FIELD_GROUP, "min-w-0 md:col-span-1")}>
+                  <label htmlFor="quick-expense-vendor" className={FIELD_LABEL}>
+                    Vendor
+                  </label>
+                  <Input
+                    id="quick-expense-vendor"
+                    ref={vendorInputRef}
+                    value={vendorName}
+                    onChange={(e) => {
+                      ocrFieldTouchedRef.current.vendor = true;
+                      setVendorName(e.target.value);
+                    }}
+                    className={FIELD_INPUT_CLASS}
+                    disabled={saving || !supabase}
+                  />
+                </div>
 
-                  <div className="min-w-0">
-                    <label className={FIELD_LABEL}>Project</label>
+                <div className={cn(FIELD_GROUP, "min-w-0 md:col-span-2")}>
+                  <label className={FIELD_LABEL}>Project</label>
+                  <div className="flex flex-col gap-2">
                     <Input
                       value={projectSearch}
                       onChange={(e) => setProjectSearch(e.target.value)}
-                      className={cn("mt-0.5 h-10 text-xs", FIELD_INPUT_CLASS)}
+                      className={cn("text-xs", FIELD_INPUT_CLASS)}
                       placeholder="Search…"
                       disabled={saving}
                     />
@@ -863,7 +1241,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                     >
                       <SelectTrigger
                         id="quick-expense-project-select"
-                        className={cn(SELECT_TRIGGER, "mt-1 text-xs")}
+                        className={cn(SELECT_TRIGGER, "text-xs")}
                       >
                         <SelectValue placeholder="No project" />
                       </SelectTrigger>
@@ -876,113 +1254,248 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                         ))}
                       </SelectContent>
                     </Select>
-                    {projectId && projectId === suggestedProjectId ? (
-                      <div className="mt-1 flex flex-wrap items-center gap-2">
-                        <MatchStatusBadge kind="suggested" />
-                        <span className="text-[10px] text-muted-foreground">
-                          From recent activity.
-                        </span>
-                      </div>
-                    ) : null}
                   </div>
-                  <div className="min-w-0">
-                    <label className={FIELD_LABEL}>Payment</label>
-                    <PaymentAccountSelect
-                      id="quick-expense-payment-select"
-                      value={paymentAccountId}
-                      onValueChange={onPaymentAccountChange}
-                      disabled={saving}
-                      className={cn(SELECT_TRIGGER, "mt-0.5 text-xs")}
-                    />
-                  </div>
-
-                  <div className="min-w-0">
-                    <label className={FIELD_LABEL}>Category</label>
-                    <ExpenseCategorySelect
-                      value={category}
-                      onValueChange={setCategory}
-                      disabled={saving}
-                      className={cn(SELECT_TRIGGER, "mt-0.5 text-xs")}
-                    />
-                  </div>
-                  <div className="min-w-0">
-                    <label className={FIELD_LABEL}>Date</label>
-                    <Input
-                      ref={dateInputRef}
-                      type="date"
-                      value={date}
-                      onChange={(e) => setDate(e.target.value)}
-                      className={cn(
-                        "mt-0.5 h-10",
-                        FIELD_INPUT_CLASS,
-                        fieldConfidence.date !== "high" && "border-amber-500/50"
-                      )}
-                      disabled={saving || !supabase}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  {supabase ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-8 gap-1.5 max-md:min-h-11 touch-manipulation"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={processing || saving}
-                    >
-                      <Paperclip className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                      Add receipt
-                    </Button>
-                  ) : null}
-                  {processing ? (
-                    <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
-                      <InlineLoading aria-hidden />
-                      Scanning…
-                    </span>
-                  ) : null}
-                  {attachmentSlots.length > 0 ? (
-                    <button
-                      type="button"
-                      className="text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-                      onClick={() => openAttachmentSlotsAt(0)}
-                      disabled={saving}
-                    >
-                      {attachmentSlots.length} attached — view
-                    </button>
+                  {projectId && projectId === suggestedProjectId ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <MatchStatusBadge kind="suggested" />
+                      <span className="text-[10px] text-muted-foreground">
+                        From recent activity.
+                      </span>
+                    </div>
                   ) : null}
                 </div>
+                <div className={cn(FIELD_GROUP, "min-w-0 md:col-span-2")}>
+                  <label className={FIELD_LABEL}>Payment</label>
+                  <PaymentAccountSelect
+                    id="quick-expense-payment-select"
+                    value={paymentAccountId}
+                    onValueChange={onPaymentAccountChange}
+                    disabled={saving}
+                    className={cn(SELECT_TRIGGER, "text-xs")}
+                  />
+                </div>
 
-                {duplicateCandidate ? (
-                  <div className="flex flex-wrap items-center gap-2 rounded-sm border border-amber-500/35 px-2 py-1.5 text-[11px] text-amber-800 dark:text-amber-200">
-                    <span className="min-w-0">
-                      Possible duplicate · {duplicateCandidate.vendor} · {duplicateCandidate.date} ·
-                      ${duplicateCandidate.amount.toLocaleString()}
-                    </span>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="btn-outline-ghost h-6 shrink-0 px-2 text-[11px]"
-                      asChild
+                <div className={cn(FIELD_GROUP, "min-w-0 md:col-span-2")}>
+                  <label className={FIELD_LABEL}>Category</label>
+                  <ExpenseCategorySelect
+                    value={category}
+                    onValueChange={(v) => {
+                      ocrFieldTouchedRef.current.category = true;
+                      setCategory(v);
+                    }}
+                    disabled={saving}
+                    className={cn(SELECT_TRIGGER, "text-xs")}
+                  />
+                </div>
+                <div className={cn(FIELD_GROUP, "min-w-0 w-full md:col-span-2")}>
+                  <label className={FIELD_LABEL}>Date</label>
+                  <Input
+                    ref={dateInputRef}
+                    type="date"
+                    value={date}
+                    onChange={(e) => {
+                      ocrFieldTouchedRef.current.date = true;
+                      setDate(e.target.value);
+                    }}
+                    className={cn(
+                      "min-h-[48px] w-full min-w-0 max-md:h-12",
+                      FIELD_INPUT_CLASS,
+                      fieldConfidence.date !== "high" && "border-amber-500/50"
+                    )}
+                    disabled={saving || !supabase}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-4 flex min-w-0 flex-col gap-2">
+                {attachmentSlots.map((slot, idx) => {
+                  const cid = slot.clientId ?? `idx-${idx}`;
+                  const st = slot.uploadUiStatus;
+                  const statusLabel =
+                    st === "preparing"
+                      ? "Preparing image…"
+                      : st === "uploading"
+                        ? "Uploading…"
+                        : st === "failed"
+                          ? "Failed — retry or remove"
+                          : st === "uploaded" || slot.attachmentPath || slot.receiptsPublicUrl
+                            ? "Uploaded"
+                            : "Preview";
+                  return (
+                    <div
+                      key={cid}
+                      className="flex min-w-0 gap-2 border-b border-border/60 pb-2 last:border-b-0"
                     >
-                      <a
-                        href={`/financial/expenses/${duplicateCandidate.id}`}
-                        target="_blank"
-                        rel="noreferrer"
+                      <button
+                        type="button"
+                        className="h-14 w-14 shrink-0 overflow-hidden rounded-sm border border-border/60 touch-manipulation"
+                        onClick={() => openAttachmentSlotsAt(idx)}
+                        disabled={!slot.previewUrl || saving}
+                        aria-label="Preview receipt"
                       >
-                        Open
-                      </a>
-                    </Button>
-                  </div>
+                        {slot.isPdf ? (
+                          <div className="flex h-full w-full flex-col items-center justify-center gap-0.5 px-1 text-[10px] text-muted-foreground">
+                            <FileText className="h-5 w-5 shrink-0" strokeWidth={1.5} aria-hidden />
+                            <span className="truncate">PDF</span>
+                          </div>
+                        ) : (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={slot.previewUrl}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        )}
+                      </button>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-medium leading-snug text-foreground">
+                          {slot.displayName ?? slot.pendingFile?.name ?? "Receipt"}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground">{statusLabel}</p>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 px-2 text-[11px]"
+                            disabled={saving || receiptPipelineBusy}
+                            onClick={() => {
+                              if (slot.clientId) {
+                                replaceClientIdRef.current = slot.clientId;
+                                fileInputRef.current?.click();
+                              }
+                            }}
+                          >
+                            Replace
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 px-2 text-[11px]"
+                            disabled={saving || receiptPipelineBusy}
+                            onClick={() => slot.clientId && removeReceiptSlot(slot.clientId)}
+                          >
+                            Remove
+                          </Button>
+                          {slot.uploadUiStatus === "failed" && slot.clientId ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-8 px-2 text-[11px]"
+                              disabled={saving}
+                              data-testid={idx === 0 ? "quick-expense-receipt-retry" : undefined}
+                              onClick={() => void retryReceiptUpload(slot.clientId!)}
+                            >
+                              Retry
+                            </Button>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                {supabase && attachmentSlots.length < 5 ? (
+                  <button
+                    type="button"
+                    className={cn(
+                      "flex min-h-14 w-full min-w-0 touch-manipulation flex-col items-center justify-center gap-1 rounded-sm border border-dashed border-border/60 px-4 py-3 text-center transition-colors",
+                      "hover:bg-accent/25 active:bg-accent/35",
+                      "disabled:pointer-events-none disabled:opacity-50"
+                    )}
+                    onClick={() => {
+                      replaceClientIdRef.current = null;
+                      fileInputRef.current?.click();
+                    }}
+                    disabled={processing || saving || receiptPipelineBusy}
+                    aria-label="Take photo or upload receipt"
+                  >
+                    <span className="text-sm font-medium text-foreground">
+                      Take photo / Upload receipt
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">
+                      Camera, photo library, or PDF
+                    </span>
+                  </button>
+                ) : null}
+                {receiptPreparing ? (
+                  <p className="text-[11px] text-muted-foreground" role="status">
+                    <span className="inline-flex items-center gap-1.5">
+                      <InlineLoading aria-hidden />
+                      Preparing image…
+                    </span>
+                  </p>
+                ) : null}
+                {!receiptPreparing && receiptUploading ? (
+                  <p className="text-[11px] text-muted-foreground" role="status">
+                    Uploading receipt…
+                  </p>
+                ) : null}
+                {!receiptPipelineBusy && processing ? (
+                  <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                    <InlineLoading aria-hidden />
+                    Processing receipt…
+                  </span>
+                ) : null}
+                {!receiptPipelineBusy && !processing && ocrBannerKind === "success" ? (
+                  <p className="text-[11px] text-emerald-700 dark:text-emerald-400" role="status">
+                    Receipt scanned. Fields autofilled.
+                  </p>
+                ) : null}
+                {!receiptPipelineBusy && !processing && ocrBannerKind === "partial" ? (
+                  <p className="text-[11px] text-amber-800 dark:text-amber-200" role="status">
+                    Could not fully read receipt. Please review.
+                  </p>
+                ) : null}
+                {!receiptPipelineBusy && !processing && ocrBannerKind === "error" ? (
+                  <p className="text-[11px] text-destructive" role="status">
+                    OCR could not run. You can still save or retry.
+                  </p>
+                ) : null}
+                {attachmentSlots.some((s) => s.sourceFile?.type?.startsWith("image/")) ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-fit px-2 text-[11px]"
+                    disabled={processing || receiptPipelineBusy || saving}
+                    data-testid="quick-expense-retry-ocr"
+                    onClick={() => void retryOcr()}
+                  >
+                    Retry OCR
+                  </Button>
                 ) : null}
               </div>
 
-              <div className="mt-1 min-h-0 shrink border-t border-border/60 pt-1.5">
+              {duplicateCandidate ? (
+                <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-amber-500/35 px-2 py-1.5 text-[11px] text-amber-800 dark:text-amber-200">
+                  <span className="min-w-0">
+                    Possible duplicate · {duplicateCandidate.vendor} · {duplicateCandidate.date} · $
+                    {duplicateCandidate.amount.toLocaleString()}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="btn-outline-ghost h-8 min-h-11 shrink-0 px-2 text-[11px] md:min-h-8"
+                    asChild
+                  >
+                    <a
+                      href={`/financial/expenses/${duplicateCandidate.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open
+                    </a>
+                  </Button>
+                </div>
+              ) : null}
+
+              <div className="mt-4 min-h-0 shrink-0 border-t border-border/60 pt-2">
                 <button
                   type="button"
-                  className="flex w-full items-center justify-between gap-2 rounded-sm py-1 text-left text-[11px] text-muted-foreground hover:text-foreground"
+                  className="flex min-h-11 w-full touch-manipulation items-center justify-between gap-2 rounded-sm py-2 text-left text-[11px] text-muted-foreground hover:text-foreground md:min-h-0 md:py-1"
                   onClick={() => setMoreOpen((v) => !v)}
                   aria-expanded={moreOpen}
                 >
@@ -996,7 +1509,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                   />
                 </button>
                 {moreOpen ? (
-                  <div className="max-h-[min(36vh_220px)] space-y-3 overflow-y-auto border-t border-border/40 py-2">
+                  <div className="max-h-[min(36vh,220px)] space-y-3 overflow-y-auto border-t border-border/40 py-2">
                     <div>
                       <label className={FIELD_LABEL}>Items</label>
                       <div className="mt-1 flex flex-wrap gap-1">
@@ -1084,10 +1597,16 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                       <label className={FIELD_LABEL}>Attachments</label>
                       <p className="mt-0.5 text-[11px] text-muted-foreground">
                         {attachmentSlots.length} file(s)
+                        {receiptPreparing
+                          ? " · preparing image"
+                          : receiptUploading
+                            ? " · uploading"
+                            : ""}
                         {attachmentSlots.some(
-                          (s) => s.pendingFile && !s.attachmentPath && !s.receiptsPublicUrl
+                          (s) =>
+                            s.uploadUiStatus === "failed" || (s.pendingFile && !s.attachmentPath)
                         )
-                          ? " · upload pending — retries on save"
+                          ? " · some need retry or will retry on save"
                           : ""}
                       </p>
                       {attachmentSlots.some((s) => s.uploadError) ? (
@@ -1099,20 +1618,24 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                         <div className="mt-1.5 flex flex-wrap gap-1.5">
                           {attachmentSlots.map((s, idx) => (
                             <button
-                              key={idx}
+                              key={s.clientId ?? idx}
                               type="button"
-                              className="overflow-hidden rounded-sm border border-border/60 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                              className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-sm border border-border/60 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                               onClick={() => openAttachmentSlotsAt(idx)}
                               disabled={saving}
                               aria-label={`View attachment ${idx + 1}`}
                             >
-                              {/* eslint-disable-next-line @next/next/no-img-element -- preview URL is blob/signed */}
-                              <img
-                                src={s.previewUrl}
-                                alt=""
-                                className="h-12 w-12 object-cover"
-                                loading="lazy"
-                              />
+                              {s.isPdf ? (
+                                <FileText className="h-5 w-5 text-muted-foreground" aria-hidden />
+                              ) : (
+                                /* eslint-disable-next-line @next/next/no-img-element -- preview URL is blob/signed */
+                                <img
+                                  src={s.previewUrl}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                  loading="lazy"
+                                />
+                              )}
                             </button>
                           ))}
                         </div>
@@ -1144,42 +1667,112 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                   </div>
                 ) : null}
               </div>
+
+              {error ? <p className="mt-3 text-xs text-destructive">{error}</p> : null}
             </div>
 
-            <div className="sticky bottom-0 z-[1] flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border/60 bg-background px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] max-md:flex-col max-md:items-stretch">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-10 max-md:min-h-11 touch-manipulation rounded-sm max-md:w-full"
-                onClick={() => onOpenChange(false)}
-              >
-                Cancel
-              </Button>
-              <div className="flex w-full flex-wrap justify-end gap-2 max-md:flex-col md:w-auto">
+            <div className="z-[2] shrink-0 border-t border-border/60 bg-background px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+              <div className="flex flex-col gap-2 md:hidden">
+                <Button
+                  type="submit"
+                  variant="default"
+                  size="sm"
+                  className="h-12 min-h-[48px] w-full touch-manipulation rounded-xl"
+                  disabled={saving || saveFlash || !supabase || receiptPipelineBusy}
+                >
+                  <SubmitSpinner loading={saving} className="mr-2" />
+                  {saving
+                    ? "Saving…"
+                    : receiptPreparing
+                      ? "Preparing image…"
+                      : receiptUploading
+                        ? "Uploading receipt…"
+                        : processing
+                          ? "Processing receipt…"
+                          : saveFlash
+                            ? "✔ Done"
+                            : "Save"}
+                </Button>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-10 max-md:min-h-11 touch-manipulation rounded-sm max-md:w-full"
+                  className="h-12 min-h-[48px] w-full touch-manipulation rounded-xl shadow-none"
                   onClick={() => void handleSave(true)}
-                  disabled={saving || saveFlash || !supabase}
+                  disabled={saving || saveFlash || !supabase || receiptPipelineBusy}
                 >
-                  {saveFlash ? "✔ Done" : "Save & new"}
+                  {saveFlash
+                    ? "✔ Done"
+                    : receiptPreparing
+                      ? "Preparing image…"
+                      : receiptUploading
+                        ? "Uploading receipt…"
+                        : processing
+                          ? "Processing receipt…"
+                          : "Save & new"}
                 </Button>
                 <Button
-                  type="submit"
+                  type="button"
+                  variant="ghost"
                   size="sm"
-                  className="h-10 max-md:min-h-11 touch-manipulation rounded-sm bg-black px-5 text-white hover:bg-neutral-900 dark:bg-foreground dark:text-background dark:hover:bg-foreground/90 max-md:w-full"
-                  disabled={saving || saveFlash || !supabase}
+                  className="h-11 min-h-[44px] w-full touch-manipulation rounded-xl"
+                  onClick={() => onOpenChange(false)}
                 >
-                  <SubmitSpinner loading={saving} className="mr-2" />
-                  {saving ? "Saving…" : saveFlash ? "✔ Done" : "Save"}
+                  Cancel
                 </Button>
               </div>
+              <div className="hidden md:flex md:flex-row md:items-center md:justify-between md:gap-3">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-10 shrink-0 rounded-md"
+                  onClick={() => onOpenChange(false)}
+                >
+                  Cancel
+                </Button>
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-10 rounded-md shadow-none"
+                    onClick={() => void handleSave(true)}
+                    disabled={saving || saveFlash || !supabase || receiptPipelineBusy}
+                  >
+                    {saveFlash
+                      ? "✔ Done"
+                      : receiptPreparing
+                        ? "Preparing image…"
+                        : receiptUploading
+                          ? "Uploading receipt…"
+                          : processing
+                            ? "Processing receipt…"
+                            : "Save & new"}
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="default"
+                    size="sm"
+                    className="h-10 rounded-md"
+                    disabled={saving || saveFlash || !supabase || receiptPipelineBusy}
+                  >
+                    <SubmitSpinner loading={saving} className="mr-2" />
+                    {saving
+                      ? "Saving…"
+                      : receiptPreparing
+                        ? "Preparing image…"
+                        : receiptUploading
+                          ? "Uploading receipt…"
+                          : processing
+                            ? "Processing receipt…"
+                            : saveFlash
+                              ? "✔ Done"
+                              : "Save"}
+                  </Button>
+                </div>
+              </div>
             </div>
-
-            {error ? <p className="mt-2 shrink-0 px-4 text-xs text-destructive">{error}</p> : null}
           </form>
         </DialogContent>
       </Dialog>

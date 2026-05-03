@@ -1,3 +1,7 @@
+/**
+ * Receipt queue E2E: assert stored/compressed `file_name` (often `.jpg` after client compression),
+ * not only the original upload fixture name — see `docs/receipt-upload-ocr-flow.md`.
+ */
 import { test, expect } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { E2E_PRESERVED_PROJECT_ID, purgeE2EReceiptQueueRows } from "./e2e-cleanup-db";
@@ -44,15 +48,20 @@ test.describe("Expenses: receipt upload queue", () => {
     }
 
     const vendorMark = `E2E-RQ-${Date.now()}`;
-    const queueFileName = `queue-receipt-${Date.now()}.png`;
-    await page.locator("main").locator('input[type="file"][multiple]').setInputFiles({
-      name: queueFileName,
-      mimeType: "image/png",
-      buffer: PNG_1X1,
-    });
+    const ts = Date.now();
+    /** Client compress converts PNG → JPEG and renames to `.jpg` before DB insert. */
+    const queueFileStored = `queue-receipt-${ts}.jpg`;
+    await page
+      .locator("main")
+      .locator('input[type="file"][multiple]')
+      .setInputFiles({
+        name: `queue-receipt-${ts}.png`,
+        mimeType: "image/png",
+        buffer: PNG_1X1,
+      });
 
     const rowForConfirm = page
-      .locator(`[data-testid="receipt-queue-row"][data-queue-file-name="${queueFileName}"]`)
+      .locator(`[data-testid="receipt-queue-row"][data-queue-file-name="${queueFileStored}"]`)
       .first();
     await expect(rowForConfirm).toBeVisible({ timeout: 120_000 });
     await pollReceiptQueueRowUntilConfirmableDom(page, rowForConfirm, {
@@ -103,14 +112,18 @@ test.describe("Expenses: receipt upload queue", () => {
       test.skip(true, "Browser Supabase client not configured (NEXT_PUBLIC_* env).");
     }
 
-    const queueFileName = `queue-validate-${Date.now()}.png`;
-    await page.locator("main").locator('input[type="file"][multiple]').setInputFiles({
-      name: queueFileName,
-      mimeType: "image/png",
-      buffer: PNG_1X1,
-    });
+    const ts = Date.now();
+    const queueFileStored = `queue-validate-${ts}.jpg`;
+    await page
+      .locator("main")
+      .locator('input[type="file"][multiple]')
+      .setInputFiles({
+        name: `queue-validate-${ts}.png`,
+        mimeType: "image/png",
+        buffer: PNG_1X1,
+      });
 
-    const row = receiptQueueRowByFileName(page, queueFileName);
+    const row = receiptQueueRowByFileName(page, queueFileStored);
     await expect(row).toBeVisible({ timeout: 120_000 });
     const vendorIn = row.locator('input[placeholder="Vendor"]:not([disabled])').first();
     await vendorIn.waitFor({ state: "visible", timeout: 120_000 });
@@ -142,14 +155,18 @@ test.describe("Expenses: receipt upload queue", () => {
       test.skip(true, "Browser Supabase client not configured (NEXT_PUBLIC_* env).");
     }
 
-    const queueFileName = `queue-enter-${Date.now()}.png`;
-    await page.locator("main").locator('input[type="file"][multiple]').setInputFiles({
-      name: queueFileName,
-      mimeType: "image/png",
-      buffer: PNG_1X1,
-    });
+    const ts = Date.now();
+    const queueFileStored = `queue-enter-${ts}.jpg`;
+    await page
+      .locator("main")
+      .locator('input[type="file"][multiple]')
+      .setInputFiles({
+        name: `queue-enter-${ts}.png`,
+        mimeType: "image/png",
+        buffer: PNG_1X1,
+      });
 
-    const row = receiptQueueRowByFileName(page, queueFileName);
+    const row = receiptQueueRowByFileName(page, queueFileStored);
     await expect(row).toBeVisible({ timeout: 120_000 });
     const vendorIn = row.locator('input[placeholder="Vendor"]:not([disabled])').first();
     await vendorIn.waitFor({ state: "visible", timeout: 120_000 });
@@ -179,14 +196,18 @@ test.describe("Expenses: receipt upload queue", () => {
     }
 
     const mark = `E2E-SHIFT-${Date.now()}`;
-    const queueFileName = `queue-shift-${Date.now()}.png`;
-    await page.locator("main").locator('input[type="file"][multiple]').setInputFiles({
-      name: queueFileName,
-      mimeType: "image/png",
-      buffer: PNG_1X1,
-    });
+    const ts = Date.now();
+    const queueFileStored = `queue-shift-${ts}.jpg`;
+    await page
+      .locator("main")
+      .locator('input[type="file"][multiple]')
+      .setInputFiles({
+        name: `queue-shift-${ts}.png`,
+        mimeType: "image/png",
+        buffer: PNG_1X1,
+      });
 
-    const row = receiptQueueRowByFileName(page, queueFileName);
+    const row = receiptQueueRowByFileName(page, queueFileStored);
     await expect(row).toBeVisible({ timeout: 120_000 });
     const vendorIn = row.locator('input[placeholder="Vendor"]:not([disabled])').first();
     await vendorIn.waitFor({ state: "visible", timeout: 120_000 });
@@ -203,7 +224,7 @@ test.describe("Expenses: receipt upload queue", () => {
             const { data, error } = await sb
               .from("receipt_queue")
               .select("vendor_name")
-              .eq("file_name", queueFileName)
+              .eq("file_name", queueFileStored)
               .maybeSingle();
             if (error) throw error;
             return String(data?.vendor_name ?? "").trim() === mark;
@@ -224,7 +245,7 @@ test.describe("Expenses: receipt upload queue", () => {
             const { data, error } = await sb
               .from("receipt_queue")
               .select("vendor_name")
-              .eq("file_name", queueFileName)
+              .eq("file_name", queueFileStored)
               .maybeSingle();
             if (error) throw error;
             return String(data?.vendor_name ?? "").trim() === mark;
@@ -260,7 +281,7 @@ test.describe("Expenses: receipt upload queue", () => {
 
     const assertVendorRestoredAfterReload = async () => {
       const rowScope = page
-        .locator(`[data-testid="receipt-queue-row"][data-queue-file-name="${queueFileName}"]`)
+        .locator(`[data-testid="receipt-queue-row"][data-queue-file-name="${queueFileStored}"]`)
         .first();
       await expect
         .poll(
@@ -316,14 +337,16 @@ test.describe("Expenses: receipt upload queue", () => {
       }
 
       const ts = Date.now();
-      const f1 = `queue-multi-a-${ts}.png`;
-      const f2 = `queue-multi-b-${ts}.png`;
+      const f1In = `queue-multi-a-${ts}.png`;
+      const f2In = `queue-multi-b-${ts}.png`;
+      const f1 = `queue-multi-a-${ts}.jpg`;
+      const f2 = `queue-multi-b-${ts}.jpg`;
       await page
         .locator("main")
         .locator('input[type="file"][multiple]')
         .setInputFiles([
-          { name: f1, mimeType: "image/png", buffer: PNG_1X1 },
-          { name: f2, mimeType: "image/png", buffer: PNG_1X1 },
+          { name: f1In, mimeType: "image/png", buffer: PNG_1X1 },
+          { name: f2In, mimeType: "image/png", buffer: PNG_1X1 },
         ]);
 
       const row1 = receiptQueueRowByFileName(page, f1);

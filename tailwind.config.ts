@@ -169,6 +169,15 @@ const config: Config = {
           from: { opacity: "1", transform: "translate(-50%, -50%) scale(1)" },
           to: { opacity: "0", transform: "translate(-50%, -50%) scale(0.96)" },
         },
+        /** Mobile bottom sheet (Quick Expense): slide + fade, ~200ms */
+        "hh-sheet-in": {
+          from: { opacity: "0", transform: "translateY(18px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        "hh-sheet-out": {
+          from: { opacity: "1", transform: "translateY(0)" },
+          to: { opacity: "0", transform: "translateY(18px)" },
+        },
       },
       animation: {
         "receipt-queue-badge": "receipt-queue-badge 220ms cubic-bezier(0.33, 1, 0.68, 1) both",
@@ -179,6 +188,8 @@ const config: Config = {
         "toast-out": "toast-out 180ms ease both",
         "hh-dialog-in": "hh-dialog-in 150ms cubic-bezier(0, 0, 0.2, 1) both",
         "hh-dialog-out": "hh-dialog-out 120ms cubic-bezier(0, 0, 0.2, 1) both",
+        "hh-sheet-in": "hh-sheet-in 200ms cubic-bezier(0, 0, 0.2, 1) both",
+        "hh-sheet-out": "hh-sheet-out 200ms cubic-bezier(0.4, 0, 1, 1) both",
       },
       transitionDuration: {
         micro: "200ms",

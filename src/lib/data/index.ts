@@ -34,7 +34,11 @@ import * as materialCatalogDb from "../material-catalog-db";
 import * as materialSelectionsDb from "../material-selections-db";
 import * as projectCloseoutDb from "../project-closeout-db";
 import * as apBillsDb from "../ap-bills-db";
-import { getCanonicalProjectProfit, getCanonicalProjectProfitBatch } from "../profit-engine";
+import {
+  getCanonicalProjectProfit,
+  getCanonicalProjectProfitBatch,
+  type CanonicalProjectProfit,
+} from "../profit-engine";
 import type { EstimateListItem, EstimateItemRow } from "../estimates-db";
 import type { Commitment } from "../commitments-db";
 import type {
@@ -1355,18 +1359,31 @@ export async function getLaborActualByProject(projectId: string): Promise<number
   return fromEntries + fromInvoices;
 }
 
-export async function getDashboardStats() {
-  const projects = await projectsDb.getProjectsDashboard(200);
+/** Pure aggregation used by `getDashboardStats` and dashboard streaming (same math). */
+export function computeDashboardStatsFromProjects(
+  projects: Awaited<ReturnType<typeof projectsDb.getProjectsDashboard>>,
+  profitMap: Map<string, CanonicalProjectProfit>
+): {
+  totalProjects: number;
+  activeProjects: number;
+  totalBudget: number;
+  totalSpent: number;
+  totalProfit: number;
+} {
   const totalProjects = projects.length;
   const activeProjects = projects.filter((p) => p.status === "active").length;
   const totalBudget = projects.reduce((s, p) => s + p.budget, 0);
-  // Use batch function: 5 queries total regardless of project count (vs 5×N previously).
-  const profitMap = await getCanonicalProjectProfitBatch(projects.map((p) => p.id)).catch(
-    () => new Map()
-  );
   const totalSpent = projects.reduce((s, p) => s + (profitMap.get(p.id)?.actualCost ?? 0), 0);
   const totalProfit = projects.reduce((s, p) => s + (profitMap.get(p.id)?.profit ?? 0), 0);
   return { totalProjects, activeProjects, totalBudget, totalSpent, totalProfit };
+}
+
+export async function getDashboardStats() {
+  const projects = await projectsDb.getProjectsDashboard(200);
+  const profitMap = await getCanonicalProjectProfitBatch(projects.map((p) => p.id)).catch(
+    () => new Map<string, CanonicalProjectProfit>()
+  );
+  return computeDashboardStatsFromProjects(projects, profitMap);
 }
 
 export async function getRecentTransactions(limit = 20): Promise<RecentTransaction[]> {

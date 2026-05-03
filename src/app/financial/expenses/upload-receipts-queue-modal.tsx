@@ -10,6 +10,7 @@ import { createBrowserClient } from "@/lib/supabase";
 import { inferExpenseCategoryFromVendor } from "@/lib/receipt-infer-category";
 import { processReceiptQueueUpload } from "@/lib/receipt-queue-process-upload";
 import { insertReceiptQueueProcessing, notifyReceiptQueueChanged } from "@/lib/receipt-queue";
+import { compressImageFileForReceiptUpload } from "@/lib/image-compress-browser";
 import { Camera, Upload } from "lucide-react";
 import { useToast } from "@/components/toast/toast-provider";
 
@@ -29,6 +30,7 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
   openRef.current = open;
   const [dragOver, setDragOver] = React.useState(false);
   const [captureUploading, setCaptureUploading] = React.useState(false);
+  const [receiptImagePreparing, setReceiptImagePreparing] = React.useState(false);
   const [addedToQueueHint, setAddedToQueueHint] = React.useState(false);
   const addedHintTimerRef = React.useRef<number | null>(null);
 
@@ -87,11 +89,21 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
 
       let firstFailDetail: string | undefined;
       try {
+        setReceiptImagePreparing(true);
+        let compressed: File[];
+        try {
+          compressed = await Promise.all(
+            list.map((file) => compressImageFileForReceiptUpload(file))
+          );
+        } finally {
+          setReceiptImagePreparing(false);
+        }
+
         const outcomes = await Promise.all(
-          list.map(async (file) => {
+          compressed.map(async (prepared) => {
             let qid: string;
             try {
-              qid = await insertReceiptQueueProcessing(supabase, file);
+              qid = await insertReceiptQueueProcessing(supabase, prepared);
             } catch (e) {
               const msg = e instanceof Error ? e.message : "Enqueue failed";
               return { ok: false as const, detail: msg };
@@ -101,8 +113,9 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
               const { storageSaved } = await processReceiptQueueUpload(
                 supabase,
                 qid,
-                file,
-                inferExpenseCategoryFromVendor
+                prepared,
+                inferExpenseCategoryFromVendor,
+                { alreadyCompressed: true }
               );
               if (storageSaved) return { ok: true as const };
               return {
@@ -262,7 +275,7 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
               </div>
               {captureUploading ? (
                 <p className="text-xs text-muted-foreground" role="status" aria-live="polite">
-                  Uploading…
+                  {receiptImagePreparing ? "Preparing image…" : "Uploading…"}
                 </p>
               ) : null}
               <div
@@ -289,7 +302,13 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
                   void enqueueFiles(e.dataTransfer.files, "drop");
                 }}
               >
-                <span>{captureUploading ? "Uploading…" : "Drop files here"}</span>
+                <span>
+                  {captureUploading
+                    ? receiptImagePreparing
+                      ? "Preparing image…"
+                      : "Uploading…"
+                    : "Drop files here"}
+                </span>
               </div>
             </>
           )}

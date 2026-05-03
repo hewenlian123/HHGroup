@@ -3,6 +3,9 @@ import { defaultExpenseListSort, type ExpenseListSort } from "@/lib/expenses-db"
 
 export type { ExpenseListSort };
 
+/** Shared stale window for expenses list + prefetch — reduces hover→nav duplicate refetches. */
+export const expenseListQueryStaleMs = 120_000;
+
 /** Prefix for invalidating every expenses list query (any sort). */
 export const expensesQueryKeyRoot = ["expenses"] as const;
 

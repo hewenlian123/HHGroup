@@ -43,10 +43,12 @@ import {
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { createBrowserClient } from "@/lib/supabase";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { prefetchFinancialRoute } from "@/lib/financial-nav-prefetch";
+import { companyProfileQueryKey, fetchCompanyProfileForNav } from "@/lib/queries/companyProfile";
+import { receiptQueueBadgeQueryKey } from "@/lib/queries/receiptQueue";
 import { RECEIPT_QUEUE_CHANGED_EVENT, fetchReceiptQueueBadgeCount } from "@/lib/receipt-queue";
-import { getCompanyInitials, getCompanyProfile } from "@/lib/company-profile";
+import { getCompanyInitials } from "@/lib/company-profile";
 import { useSystemHealth } from "@/contexts/system-health-context";
 
 const STORAGE_KEY = "hh.sidebarSections";
@@ -187,10 +189,25 @@ export function Sidebar({
     (href: string) => prefetchFinancialRoute(queryClient, prefetchSupabase, href),
     [queryClient, prefetchSupabase]
   );
-  const [orgName, setOrgName] = React.useState("HH Group");
-  const [logoUrl, setLogoUrl] = React.useState<string | null>(null);
   const [openSections, setOpenSections] = React.useState<Record<string, boolean>>(() => ({}));
-  const [receiptQueueCount, setReceiptQueueCount] = React.useState(0);
+  const { data: companyProfile } = useQuery({
+    queryKey: companyProfileQueryKey,
+    queryFn: () => fetchCompanyProfileForNav(prefetchSupabase!),
+    enabled: Boolean(prefetchSupabase),
+    staleTime: 5 * 60_000,
+    refetchOnMount: false,
+  });
+  const orgName = companyProfile?.org_name?.trim() || "HH Group";
+  const logoUrl = companyProfile?.logo_url ?? null;
+
+  const { data: receiptQueueCount = 0 } = useQuery({
+    queryKey: receiptQueueBadgeQueryKey,
+    queryFn: () => fetchReceiptQueueBadgeCount(prefetchSupabase!),
+    enabled: Boolean(prefetchSupabase),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: false,
+  });
   const receiptQueueAnimKey = useReceiptQueueCountAnimKey(receiptQueueCount);
   const sectionsInitDone = React.useRef(false);
   const activeSectionKey = React.useMemo(() => {
@@ -205,53 +222,15 @@ export function Sidebar({
   }, [pathname]);
 
   React.useEffect(() => {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!url || !anon) return;
-
-    const client = createBrowserClient(url, anon);
-    let mounted = true;
-    const load = async () => {
-      try {
-        const profile = await getCompanyProfile(client);
-        if (!mounted || !profile) return;
-        setOrgName(profile.org_name || "HH Group");
-        setLogoUrl(profile.logo_url);
-      } catch {
-        // Keep default fallback branding.
-      }
+    const onQueue = () => {
+      void queryClient.invalidateQueries({
+        queryKey: receiptQueueBadgeQueryKey,
+        refetchType: "active",
+      });
     };
-    void load();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  React.useEffect(() => {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!url || !anon || typeof window === "undefined") return;
-    const client = createBrowserClient(url, anon);
-    let cancelled = false;
-    const load = async () => {
-      try {
-        const n = await fetchReceiptQueueBadgeCount(client);
-        if (!cancelled) setReceiptQueueCount(n);
-      } catch {
-        if (!cancelled) setReceiptQueueCount(0);
-      }
-    };
-    void load();
-    const onQueue = () => void load();
     window.addEventListener(RECEIPT_QUEUE_CHANGED_EVENT, onQueue);
-    const id = window.setInterval(load, 60_000);
-    return () => {
-      cancelled = true;
-      window.removeEventListener(RECEIPT_QUEUE_CHANGED_EVENT, onQueue);
-      window.clearInterval(id);
-    };
-  }, []);
+    return () => window.removeEventListener(RECEIPT_QUEUE_CHANGED_EVENT, onQueue);
+  }, [queryClient]);
 
   React.useEffect(() => {
     if (sectionsInitDone.current) return;
