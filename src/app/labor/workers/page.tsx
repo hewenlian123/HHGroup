@@ -218,7 +218,7 @@ export default function LaborWorkersPage() {
     } finally {
       setSubmitting(false);
     }
-  }, [editorMode, form, refresh]);
+  }, [editorMode, form]);
 
   const handleDelete = React.useCallback(
     async (worker: WorkerRow) => {

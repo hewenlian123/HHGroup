@@ -224,13 +224,17 @@ export default function ExpenseDetailPage() {
       expense ? expense.attachments.map((a) => `${a.id}:${a.url}:${a.mimeType}`).join("|") : "",
     [expense]
   );
+  const expenseAttachments = expense?.attachments ?? null;
 
   React.useEffect(() => {
-    if (!expense || !supabase) return;
+    if (!expenseAttachments || !supabase) {
+      setAttachmentPreviewSrc({});
+      return;
+    }
     let cancelled = false;
     void (async () => {
       const next: Record<string, string | undefined> = {};
-      for (const att of expense.attachments) {
+      for (const att of expenseAttachments) {
         if (!attachmentIsImage(att)) continue;
         const { data, error } = await supabase.storage
           .from("expense-attachments")
@@ -242,7 +246,7 @@ export default function ExpenseDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [expense?.id, attachmentRowKey, supabase]);
+  }, [expenseAttachments, attachmentRowKey, supabase]);
 
   const firstImageAttachment = React.useMemo(
     () => expense?.attachments.find((a) => attachmentIsImage(a)),

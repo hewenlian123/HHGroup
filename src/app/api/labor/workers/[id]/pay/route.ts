@@ -4,7 +4,10 @@ import {
   appendLaborSettlementServiceRoleHint,
   getServerSupabaseInternal,
 } from "@/lib/supabase-server";
-import { createWorkerPaymentWithClient } from "@/lib/worker-payments-db";
+import {
+  createWorkerPaymentWithClient,
+  getWorkerPaymentByIdempotencyKeyWithClient,
+} from "@/lib/worker-payments-db";
 import { computeImplicitSettlement } from "@/lib/worker-payment-implicit-settlement";
 import {
   isLaborUnpaidForWorkerPayroll,
@@ -20,6 +23,7 @@ type PayBody = {
   payment_method?: string;
   payment_date?: string;
   notes?: string | null;
+  idempotency_key?: string | null;
   labor_entry_ids?: string[];
   reimbursement_ids?: string[];
   /** Optional scope: only unpaid labor/reimb for this project participate in implicit settlement. */
@@ -58,6 +62,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const paymentDate = (body.payment_date ?? new Date().toISOString().slice(0, 10)).slice(0, 10);
   const notes = typeof body.notes === "string" ? body.notes.trim() || null : null;
+  const idempotencyKey =
+    typeof body.idempotency_key === "string" && body.idempotency_key.trim().length > 0
+      ? body.idempotency_key.trim().slice(0, 200)
+      : null;
   const projectIdForFilter =
     typeof body.project_id === "string" && body.project_id.trim().length > 0
       ? body.project_id.trim()
@@ -79,6 +87,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const reimbIds = reimbIdsIn ?? [];
 
   try {
+    if (idempotencyKey) {
+      const existing = await getWorkerPaymentByIdempotencyKeyWithClient(admin, idempotencyKey);
+      if (existing) return NextResponse.json({ ok: true, payment: existing, reused: true });
+      if (existing === undefined) {
+        return NextResponse.json(
+          { message: "worker_payments.idempotency_key is required before recording payments." },
+          { status: 503 }
+        );
+      }
+    }
+
     let expectedTotal = 0;
     let plannedLaborIds: string[] = [];
     let plannedReimbIds: string[] = [];
@@ -206,6 +225,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       paymentMethod,
       paymentDate,
       notes,
+      idempotencyKey,
     });
 
     const persistPaymentLaborIds = async (paymentId: string, laborIds: string[]) => {

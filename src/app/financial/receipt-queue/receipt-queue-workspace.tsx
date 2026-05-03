@@ -255,6 +255,8 @@ export function ReceiptQueueWorkspace() {
     total: number;
   } | null>(null);
   const [bulkAdding, setBulkAdding] = React.useState(false);
+  const captureUploadingInFlightRef = React.useRef(false);
+  const bulkAddInFlightRef = React.useRef(false);
   const [previewUrls, setPreviewUrls] = React.useState<Record<string, string>>({});
   const previewUrlsRef = React.useRef(previewUrls);
   previewUrlsRef.current = previewUrls;
@@ -270,6 +272,7 @@ export function ReceiptQueueWorkspace() {
   /** Per-row rAF handles: coalesce rapid typing into ≤1 PATCH per frame (no visible input lag). */
   const rowPatchRafRef = React.useRef<Map<string, number>>(new Map());
   const confirmingRowIdsRef = React.useRef<Set<string>>(new Set());
+  const replacingRowIdsRef = React.useRef<Set<string>>(new Set());
   const pendingPatchesById = React.useRef<Map<string, ReceiptQueuePatch>>(new Map());
   /** Debounced saves continue async after pendingPatches is cleared; await these before refetching rows. */
   const rowSavePromises = React.useRef<Map<string, Promise<void>>>(new Map());
@@ -296,6 +299,51 @@ export function ReceiptQueueWorkspace() {
   } | null>(null);
   const lastConfirmFlashRef = React.useRef<{ key: string; at: number }>({ key: "", at: 0 });
   const hotSavedCooldownRef = React.useRef(0);
+  const mountedRef = React.useRef(false);
+  const componentTimeoutsRef = React.useRef<Set<number>>(new Set());
+  const confirmInvalidTimerRef = React.useRef<number | null>(null);
+
+  const clearSafeTimeout = React.useCallback((timeout: number) => {
+    window.clearTimeout(timeout);
+    componentTimeoutsRef.current.delete(timeout);
+  }, []);
+
+  const scheduleSafeTimeout = React.useCallback((fn: () => void, delayMs: number) => {
+    const timeout = window.setTimeout(() => {
+      componentTimeoutsRef.current.delete(timeout);
+      if (!mountedRef.current) return;
+      fn();
+    }, delayMs);
+    componentTimeoutsRef.current.add(timeout);
+    return timeout;
+  }, []);
+
+  React.useEffect(() => {
+    mountedRef.current = true;
+    const componentTimeouts = componentTimeoutsRef.current;
+    const vendorPaymentTimers = vendorPaymentSuggestTimers.current;
+    const replacingRowIds = replacingRowIdsRef.current;
+    const rowPatchRafs = rowPatchRafRef.current;
+    return () => {
+      mountedRef.current = false;
+      captureUploadingInFlightRef.current = false;
+      bulkAddInFlightRef.current = false;
+      confirmInvalidTimerRef.current = null;
+      for (const timeout of componentTimeouts) {
+        window.clearTimeout(timeout);
+      }
+      componentTimeouts.clear();
+      for (const timeout of vendorPaymentTimers.values()) {
+        window.clearTimeout(timeout);
+      }
+      vendorPaymentTimers.clear();
+      replacingRowIds.clear();
+      for (const raf of rowPatchRafs.values()) {
+        window.cancelAnimationFrame(raf);
+      }
+      rowPatchRafs.clear();
+    };
+  }, []);
 
   const flashConfirmInvalid = React.useCallback(
     (rowId: string, fields: { vendor?: boolean; amount?: boolean }) => {
@@ -310,11 +358,15 @@ export function ReceiptQueueWorkspace() {
         vendor: !!fields.vendor,
         amount: !!fields.amount,
       });
-      window.setTimeout(() => {
+      if (confirmInvalidTimerRef.current) {
+        clearSafeTimeout(confirmInvalidTimerRef.current);
+      }
+      confirmInvalidTimerRef.current = scheduleSafeTimeout(() => {
+        confirmInvalidTimerRef.current = null;
         setConfirmInvalid((cur) => (cur?.rowId === rowId ? null : cur));
       }, 340);
     },
-    []
+    [clearSafeTimeout, scheduleSafeTimeout]
   );
 
   const supabase = React.useMemo(() => {
@@ -497,7 +549,10 @@ export function ReceiptQueueWorkspace() {
   /** Next frame — use after layout when the target row is already mounted. */
   const focusRowField = React.useCallback(
     (field: QueueFocusField, rowId: string) => {
-      requestAnimationFrame(() => applyQueueFieldFocus(field, rowId));
+      requestAnimationFrame(() => {
+        if (!mountedRef.current) return;
+        applyQueueFieldFocus(field, rowId);
+      });
     },
     [applyQueueFieldFocus]
   );
@@ -506,8 +561,13 @@ export function ReceiptQueueWorkspace() {
   const focusRowFieldAfterLayout = React.useCallback(
     (field: QueueFocusField, rowId: string) => {
       queueMicrotask(() => {
+        if (!mountedRef.current) return;
         requestAnimationFrame(() => {
-          requestAnimationFrame(() => applyQueueFieldFocus(field, rowId));
+          if (!mountedRef.current) return;
+          requestAnimationFrame(() => {
+            if (!mountedRef.current) return;
+            applyQueueFieldFocus(field, rowId);
+          });
         });
       });
     },
@@ -552,6 +612,7 @@ export function ReceiptQueueWorkspace() {
     let inner = 0;
     const outer = window.requestAnimationFrame(() => {
       inner = window.requestAnimationFrame(() => {
+        if (!mountedRef.current) return;
         setActiveQueueRowId(row.id);
         focusRowField(field, row.id);
       });
@@ -587,10 +648,12 @@ export function ReceiptQueueWorkspace() {
     const w = settled[2];
     if (w.status === "fulfilled") workerList = w.value as WorkerRow[];
     const mergedList = mergeReceiptQueueFetchWithPrev(list, rowsRef.current);
-    startTransition(() => {
-      setExpenses(expList);
-      setWorkers(workerList);
-    });
+    if (mountedRef.current) {
+      startTransition(() => {
+        setExpenses(expList);
+        setWorkers(workerList);
+      });
+    }
     queryClient.setQueryData(receiptQueueQueryKey, mergedList);
     queryClient.setQueryData(buildExpensesQueryKey(defaultExpenseListSort), expList);
     queryClient.setQueryData(workersQueryKey, workerList);
@@ -617,7 +680,7 @@ export function ReceiptQueueWorkspace() {
     try {
       const expList = await getExpenses(defaultExpenseListSort);
       if (gen !== softRefreshGenRef.current) return;
-      startTransition(() => setExpenses(expList));
+      if (mountedRef.current) startTransition(() => setExpenses(expList));
       queryClient.setQueryData(buildExpensesQueryKey(defaultExpenseListSort), expList);
     } catch {
       /* keep previous expenses for duplicate hints */
@@ -677,6 +740,7 @@ export function ReceiptQueueWorkspace() {
       if (prevRaf != null) cancelAnimationFrame(prevRaf);
       const raf = requestAnimationFrame(() => {
         rowPatchRafRef.current.delete(id);
+        if (!mountedRef.current) return;
         const merged = pendingPatchesById.current.get(id);
         pendingPatchesById.current.delete(id);
         if (!merged || Object.keys(merged).length === 0) return;
@@ -695,7 +759,7 @@ export function ReceiptQueueWorkspace() {
       });
       rowPatchRafRef.current.set(id, raf);
     },
-    [supabase, toast, patchQueueRowMutation]
+    [supabase, toast, patchQueueRowMutation, writeRqDraft]
   );
 
   const patchRowImmediate = React.useCallback(
@@ -706,6 +770,7 @@ export function ReceiptQueueWorkspace() {
       if (inflight) await inflight;
       try {
         await patchQueueRowMutation.mutateAsync({ id, patch });
+        if (!mountedRef.current) return;
         startTransition(() => {
           setRows((r) => r.map((x) => (x.id === id ? { ...x, ...patch } : x)));
         });
@@ -718,7 +783,7 @@ export function ReceiptQueueWorkspace() {
         hotToast.error("Something went wrong");
       }
     },
-    [supabase, toast, patchQueueRowMutation]
+    [supabase, patchQueueRowMutation, writeRqDraft]
   );
 
   const queueVendorPaymentSuggest = React.useCallback(
@@ -727,6 +792,7 @@ export function ReceiptQueueWorkspace() {
       if (prev) clearTimeout(prev);
       const t = window.setTimeout(() => {
         vendorPaymentSuggestTimers.current.delete(rowId);
+        if (!mountedRef.current) return;
         const current = rowsRef.current.find((x) => x.id === rowId);
         if (!current || current.payment_account_id) return;
         if (paymentAccountRows.length === 0) return;
@@ -740,9 +806,17 @@ export function ReceiptQueueWorkspace() {
   );
 
   React.useEffect(() => {
+    let alive = true;
     void getPaymentAccounts()
-      .then(setPaymentAccountRows)
-      .catch(() => setPaymentAccountRows([]));
+      .then((accounts) => {
+        if (alive) setPaymentAccountRows(accounts);
+      })
+      .catch(() => {
+        if (alive) setPaymentAccountRows([]);
+      });
+    return () => {
+      alive = false;
+    };
   }, []);
 
   React.useEffect(() => {
@@ -834,10 +908,14 @@ export function ReceiptQueueWorkspace() {
         }
       }
       if (next) {
+        if (!mountedRef.current) return;
         setActiveQueueRowId(next.id);
         queueMicrotask(() => {
+          if (!mountedRef.current) return;
           requestAnimationFrame(() => {
+            if (!mountedRef.current) return;
             requestAnimationFrame(() => {
+              if (!mountedRef.current) return;
               applyQueueFieldFocus(firstEditableFieldForRow(next!), next!.id);
             });
           });
@@ -885,7 +963,7 @@ export function ReceiptQueueWorkspace() {
         return r;
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Processing failed";
-        hotToast.error(msg);
+        if (mountedRef.current) hotToast.error(msg);
         await patchQueueRowMutation.mutateAsync({
           id: rowId,
           patch: {
@@ -896,7 +974,7 @@ export function ReceiptQueueWorkspace() {
         return { storageSaved: false };
       } finally {
         notifyReceiptQueueChanged();
-        if (!options?.skipRefresh) await refreshAll();
+        if (mountedRef.current && !options?.skipRefresh) await refreshAll();
       }
     },
     [supabase, refreshAll, patchQueueRowMutation]
@@ -904,7 +982,9 @@ export function ReceiptQueueWorkspace() {
 
   const scrollQueueToNewest = React.useCallback(() => {
     window.requestAnimationFrame(() => {
+      if (!mountedRef.current) return;
       window.requestAnimationFrame(() => {
+        if (!mountedRef.current) return;
         queueBottomSentinelRef.current?.scrollIntoView({
           behavior: "smooth",
           block: "end",
@@ -917,8 +997,11 @@ export function ReceiptQueueWorkspace() {
   const focusQueueRowVendor = React.useCallback(
     (rowId: string) => {
       window.requestAnimationFrame(() => {
+        if (!mountedRef.current) return;
         window.requestAnimationFrame(() => {
+          if (!mountedRef.current) return;
           window.requestAnimationFrame(() => {
+            if (!mountedRef.current) return;
             setActiveQueueRowId(rowId);
             focusRowField("vendor", rowId);
             fieldRefs.current.vendor[rowId]?.scrollIntoView({
@@ -932,18 +1015,22 @@ export function ReceiptQueueWorkspace() {
     [focusRowField]
   );
 
-  const flashNewRowHighlights = React.useCallback((rowIds: string[]) => {
-    if (!rowIds.length) return;
-    setNewRowHighlightIds((prev) => [...new Set([...prev, ...rowIds])]);
-    for (const id of rowIds) {
-      window.setTimeout(() => {
-        setNewRowHighlightIds((prev) => prev.filter((x) => x !== id));
-      }, 600);
-    }
-  }, []);
+  const flashNewRowHighlights = React.useCallback(
+    (rowIds: string[]) => {
+      if (!rowIds.length) return;
+      setNewRowHighlightIds((prev) => [...new Set([...prev, ...rowIds])]);
+      for (const id of rowIds) {
+        scheduleSafeTimeout(() => {
+          setNewRowHighlightIds((prev) => prev.filter((x) => x !== id));
+        }, 600);
+      }
+    },
+    [scheduleSafeTimeout]
+  );
 
   const enqueueFiles = React.useCallback(
     async (files: FileList | File[] | null) => {
+      if (captureUploadingInFlightRef.current) return;
       if (!files?.length || !supabase) {
         if (!supabase) toast({ title: "Storage unavailable", variant: "error" });
         return;
@@ -951,6 +1038,7 @@ export function ReceiptQueueWorkspace() {
       const fileList = Array.from(files).filter((f) => f.size > 0);
       if (!fileList.length) return;
 
+      captureUploadingInFlightRef.current = true;
       setCaptureUploading(true);
       setUploadBatchProgress({ done: 0, total: fileList.length });
       let ok = 0;
@@ -976,9 +1064,11 @@ export function ReceiptQueueWorkspace() {
                 detail: "Could not save file to storage.",
               };
             } finally {
-              setUploadBatchProgress((p) =>
-                p ? { ...p, done: Math.min(p.total, p.done + 1) } : p
-              );
+              if (mountedRef.current) {
+                setUploadBatchProgress((p) =>
+                  p ? { ...p, done: Math.min(p.total, p.done + 1) } : p
+                );
+              }
             }
           })
         );
@@ -992,6 +1082,7 @@ export function ReceiptQueueWorkspace() {
         }
 
         const queueList = await refreshAll();
+        if (!mountedRef.current) return;
 
         startTransition(() => {
           if (ok > 0) {
@@ -1014,7 +1105,11 @@ export function ReceiptQueueWorkspace() {
           hotToast.error("Something went wrong");
         }
       } finally {
-        setCaptureUploading(false);
+        captureUploadingInFlightRef.current = false;
+        if (mountedRef.current) {
+          setCaptureUploading(false);
+          setUploadBatchProgress(null);
+        }
       }
     },
     [
@@ -1034,6 +1129,8 @@ export function ReceiptQueueWorkspace() {
         toast({ title: "Storage unavailable", variant: "error" });
         return;
       }
+      if (replacingRowIdsRef.current.has(rowId)) return;
+      replacingRowIdsRef.current.add(rowId);
       void (async () => {
         try {
           await patchQueueRowMutation.mutateAsync({
@@ -1046,22 +1143,25 @@ export function ReceiptQueueWorkspace() {
             },
           });
           notifyReceiptQueueChanged();
-          startTransition(() => {
-            setRows((r) =>
-              r.map((x) =>
-                x.id === rowId
-                  ? {
-                      ...x,
-                      status: "processing",
-                      error_message: null,
-                      storage_path: null,
-                      receipt_public_url: null,
-                    }
-                  : x
-              )
-            );
-          });
+          if (mountedRef.current) {
+            startTransition(() => {
+              setRows((r) =>
+                r.map((x) =>
+                  x.id === rowId
+                    ? {
+                        ...x,
+                        status: "processing",
+                        error_message: null,
+                        storage_path: null,
+                        receipt_public_url: null,
+                      }
+                    : x
+                )
+              );
+            });
+          }
           const r = await runUploadForRow(rowId, file);
+          if (!mountedRef.current) return;
           if (r?.storageSaved) {
             focusQueueRowVendor(rowId);
             flashNewRowHighlights([rowId]);
@@ -1070,16 +1170,23 @@ export function ReceiptQueueWorkspace() {
             hotToast.error("Something went wrong");
           }
         } catch {
-          hotToast.error("Something went wrong");
+          if (mountedRef.current) hotToast.error("Something went wrong");
+        } finally {
+          replacingRowIdsRef.current.delete(rowId);
         }
       })();
       const isPdf = file.type === "application/pdf";
       const blobUrl = URL.createObjectURL(file);
-      setReceiptPreview((p) =>
-        p && p.rowId === rowId
-          ? { ...p, src: blobUrl, isPdf, fileName: file.name || p.fileName }
-          : p
-      );
+      setReceiptPreview((p) => {
+        if (!p || p.rowId !== rowId) {
+          URL.revokeObjectURL(blobUrl);
+          return p;
+        }
+        if (p.src.startsWith("blob:")) {
+          URL.revokeObjectURL(p.src);
+        }
+        return { ...p, src: blobUrl, isPdf, fileName: file.name || p.fileName };
+      });
     },
     [
       supabase,
@@ -1115,9 +1222,19 @@ export function ReceiptQueueWorkspace() {
         const rp = receiptPreviewRef.current;
         if (rp) void downloadReceiptBlob(rp.src, rp.fileName);
       },
-      onClosed: () => setReceiptPreview(null),
+      onClosed: () => {
+        if (mountedRef.current) setReceiptPreview(null);
+      },
     });
   }, [receiptPreview, openPreview, closePreview, replaceRowFile]);
+
+  React.useEffect(() => {
+    const src = receiptPreview?.src;
+    return () => {
+      if (!src?.startsWith("blob:")) return;
+      URL.revokeObjectURL(src);
+    };
+  }, [receiptPreview?.src]);
 
   const runRowExitAnimation = React.useCallback(
     (id: string, options: { flashGreen: boolean; onComplete: () => void }) => {
@@ -1125,10 +1242,11 @@ export function ReceiptQueueWorkspace() {
       const FADE_MS = 240;
       const COLLAPSE_MS = 220;
       const startFade = () => {
+        if (!mountedRef.current) return;
         setRowMotion((s) => ({ ...s, [id]: "fade" }));
-        window.setTimeout(() => {
+        scheduleSafeTimeout(() => {
           setRowMotion((s) => ({ ...s, [id]: "collapse" }));
-          window.setTimeout(() => {
+          scheduleSafeTimeout(() => {
             setRowMotion((s) => {
               const { [id]: removedPhase, ...rest } = s;
               void removedPhase;
@@ -1140,12 +1258,12 @@ export function ReceiptQueueWorkspace() {
       };
       if (options.flashGreen) {
         setRowMotion((s) => ({ ...s, [id]: "success_check" }));
-        window.setTimeout(startFade, CHECK_MS);
+        scheduleSafeTimeout(startFade, CHECK_MS);
       } else {
         startFade();
       }
     },
-    []
+    [scheduleSafeTimeout]
   );
 
   const performRemoveRowCore = React.useCallback(
@@ -1171,6 +1289,7 @@ export function ReceiptQueueWorkspace() {
       setRows((r) => r.filter((x) => x.id !== id));
       uiActionLog("receipt-queue-delete-ui", t0, 100);
       afterLayout(() => {
+        if (!mountedRef.current) return;
         if (!focusFollowDelete) return;
         if (nextRow) {
           applyQueueFieldFocus(firstEditableFieldForRow(nextRow), nextRow.id);
@@ -1183,6 +1302,7 @@ export function ReceiptQueueWorkspace() {
           await deleteReceiptQueueRow(supabase, id);
           notifyReceiptQueueChanged();
         } catch (e) {
+          if (!mountedRef.current) return;
           setRows(prev);
           const msg = e instanceof Error ? e.message : "Remove failed";
           toast({ title: "Receipt queue", description: msg, variant: "error" });
@@ -1264,14 +1384,16 @@ export function ReceiptQueueWorkspace() {
           focusRowFieldAfterLayout(firstEditableFieldForRow(next), next.id);
         } else if (!next && anchorRowId === live.id) {
           afterLayout(() => {
+            if (!mountedRef.current) return;
             emptyQueueRef.current?.focus({ preventScroll: true });
           });
         }
         void (async () => {
           try {
             await finalizeConfirmMutation.mutateAsync(live);
-            hotToast.success("Confirmed");
+            if (mountedRef.current) hotToast.success("Confirmed");
           } catch (err) {
+            if (!mountedRef.current) return;
             setRows(snapshot);
             const msg = err instanceof Error ? err.message : "Confirm failed";
             hotToast.error(msg);
@@ -1287,60 +1409,75 @@ export function ReceiptQueueWorkspace() {
   );
 
   const handleAddAll = React.useCallback(async () => {
+    if (bulkAddInFlightRef.current) return;
     const targets = rows.filter((r) => r.status !== "processing");
     if (!targets.length || !supabase) return;
+    bulkAddInFlightRef.current = true;
     setBulkAdding(true);
     let successCount = 0;
     let failCount = 0;
     const succeededIds = new Set<string>();
-    for (const row of targets) {
-      try {
-        await finalizeReceiptQueueExpense(supabase, row, "bulk");
-        successCount += 1;
-        succeededIds.add(row.id);
-        setRows((r) => r.filter((x) => x.id !== row.id));
-        const prevUrl = previewUrls[row.id];
-        if (prevUrl?.startsWith("blob:")) {
-          try {
-            URL.revokeObjectURL(prevUrl);
-          } catch {
-            /* ignore */
+    try {
+      for (const row of targets) {
+        try {
+          await finalizeReceiptQueueExpense(supabase, row, "bulk");
+          successCount += 1;
+          succeededIds.add(row.id);
+          if (mountedRef.current) {
+            setRows((r) => r.filter((x) => x.id !== row.id));
           }
+          const prevUrl = previewUrls[row.id];
+          if (prevUrl?.startsWith("blob:")) {
+            try {
+              URL.revokeObjectURL(prevUrl);
+            } catch {
+              /* ignore */
+            }
+          }
+        } catch {
+          failCount += 1;
         }
-      } catch {
-        failCount += 1;
+      }
+      if (!mountedRef.current) return;
+      setReceiptPreview((p) => (p && succeededIds.has(p.rowId) ? null : p));
+      if (successCount > 0 || failCount > 0) {
+        await softRefreshQueueAndExpenses();
+      }
+      if (!mountedRef.current) return;
+      if (successCount > 0) {
+        const navT = uiNavMark();
+        router.push("/financial/inbox?focus_unreviewed=1&page=1");
+        requestAnimationFrame(() => {
+          if (mountedRef.current) uiNavLog("receipt-queue-bulk->expenses", navT, 200);
+        });
+      }
+      if (failCount === 0 && successCount > 0) {
+        toast({
+          title: `All ${successCount} expense${successCount === 1 ? "" : "s"} added`,
+          variant: "success",
+        });
+      } else if (failCount > 0) {
+        toast({
+          title: `${successCount} added, ${failCount} failed`,
+          description:
+            successCount === 0
+              ? "Fix rows and try again, or confirm individually."
+              : "Failed rows remain in the queue; fix and retry.",
+          variant: successCount === 0 ? "error" : "default",
+        });
+      }
+    } finally {
+      bulkAddInFlightRef.current = false;
+      if (mountedRef.current) {
+        setBulkAdding(false);
       }
     }
-    setReceiptPreview((p) => (p && succeededIds.has(p.rowId) ? null : p));
-    if (successCount > 0 || failCount > 0) {
-      await softRefreshQueueAndExpenses();
-    }
-    if (successCount > 0) {
-      const navT = uiNavMark();
-      router.push("/financial/inbox?focus_unreviewed=1&page=1");
-      requestAnimationFrame(() => uiNavLog("receipt-queue-bulk->expenses", navT, 200));
-    }
-    if (failCount === 0 && successCount > 0) {
-      toast({
-        title: `All ${successCount} expense${successCount === 1 ? "" : "s"} added`,
-        variant: "success",
-      });
-    } else if (failCount > 0) {
-      toast({
-        title: `${successCount} added, ${failCount} failed`,
-        description:
-          successCount === 0
-            ? "Fix rows and try again, or confirm individually."
-            : "Failed rows remain in the queue; fix and retry.",
-        variant: successCount === 0 ? "error" : "default",
-      });
-    }
-    setBulkAdding(false);
   }, [rows, supabase, toast, softRefreshQueueAndExpenses, router, previewUrls]);
 
   const onReplacePick = React.useCallback((rowId: string) => {
     setReplaceTargetId(rowId);
     requestAnimationFrame(() => {
+      if (!mountedRef.current) return;
       rowReuploadInputRef.current?.click();
     });
   }, []);

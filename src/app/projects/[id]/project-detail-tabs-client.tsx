@@ -181,14 +181,7 @@ export function ProjectDetailTabsClient({
 
   React.useEffect(() => {
     setDisplayProject(project);
-  }, [
-    projectId,
-    project.updated,
-    project.name,
-    project.budget,
-    project.customerId,
-    project.address,
-  ]);
+  }, [project]);
 
   React.useEffect(() => {
     if (tab !== "cost") {

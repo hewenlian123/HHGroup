@@ -10,6 +10,7 @@ const DEBOUNCE_MS = 80;
  * Debounced so burst updates coalesce (e.g. multiple `revalidatePath` + one refresh).
  */
 export function useOnAppSync(callback: () => void, deps: React.DependencyList): void {
+  void deps;
   const cb = React.useRef(callback);
   cb.current = callback;
 
@@ -28,5 +29,5 @@ export function useOnAppSync(callback: () => void, deps: React.DependencyList): 
       window.removeEventListener(HH_APP_SYNC_EVENT, handler);
       if (t != null) clearTimeout(t);
     };
-  }, deps);
+  }, []);
 }

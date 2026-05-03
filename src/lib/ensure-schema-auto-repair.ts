@@ -45,6 +45,25 @@ const AUTO_REPAIR_DDL: string[] = [
   `ALTER TABLE public.labor_entries ADD COLUMN IF NOT EXISTS status text DEFAULT 'pending'`,
   `ALTER TABLE public.labor_entries ADD COLUMN IF NOT EXISTS worker_payment_id uuid`,
   `ALTER TABLE public.worker_payments ADD COLUMN IF NOT EXISTS labor_entry_ids uuid[]`,
+  `ALTER TABLE public.worker_payments ADD COLUMN IF NOT EXISTS idempotency_key text`,
+  `UPDATE public.worker_payments
+   SET idempotency_key = NULL
+   WHERE idempotency_key IS NOT NULL AND btrim(idempotency_key) = ''`,
+  `WITH ranked AS (
+     SELECT id, row_number() OVER (
+       PARTITION BY idempotency_key
+       ORDER BY created_at ASC NULLS LAST, id ASC
+     ) AS rn
+     FROM public.worker_payments
+     WHERE idempotency_key IS NOT NULL AND btrim(idempotency_key) <> ''
+   )
+   UPDATE public.worker_payments wp
+   SET idempotency_key = NULL
+   FROM ranked
+   WHERE wp.id = ranked.id AND ranked.rn > 1`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_worker_payments_idempotency_key
+   ON public.worker_payments (idempotency_key)
+   WHERE idempotency_key IS NOT NULL`,
 
   // 6. labor_workers sync (for schemas where labor_entries FK → labor_workers)
   `CREATE TABLE IF NOT EXISTS public.labor_workers (

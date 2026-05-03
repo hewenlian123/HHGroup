@@ -14,20 +14,24 @@ export function AttachmentPreviewDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const { openPreview, closePreview } = useAttachmentPreview();
+  const attachmentId = attachment?.id ?? null;
+  const attachmentUrl = attachment?.url ?? "";
+  const attachmentFileName = attachment?.fileName ?? "Preview";
+  const attachmentMimeType = attachment?.mimeType ?? "";
 
   React.useEffect(() => {
     if (!open) {
       closePreview();
       return;
     }
-    if (!attachment) return;
-    const isImage = attachment.mimeType.startsWith("image/");
-    const isPdf = attachment.mimeType === "application/pdf";
+    if (!attachmentId) return;
+    const isImage = attachmentMimeType.startsWith("image/");
+    const isPdf = attachmentMimeType === "application/pdf";
     openPreview({
       files: [
         {
-          url: attachment.url,
-          fileName: attachment.fileName ?? "Preview",
+          url: attachmentUrl,
+          fileName: attachmentFileName,
           fileType: isPdf ? "pdf" : "image",
           unsupported: !isImage && !isPdf,
         },
@@ -37,10 +41,10 @@ export function AttachmentPreviewDialog({
     });
   }, [
     open,
-    attachment?.id,
-    attachment?.url,
-    attachment?.fileName,
-    attachment?.mimeType,
+    attachmentId,
+    attachmentUrl,
+    attachmentFileName,
+    attachmentMimeType,
     openPreview,
     closePreview,
     onOpenChange,
