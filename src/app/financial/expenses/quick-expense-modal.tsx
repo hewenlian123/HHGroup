@@ -28,6 +28,7 @@ import {
   persistLastExpensePaymentAccountId,
   rememberExpenseVendorPaymentAccount,
 } from "@/lib/expense-payment-preferences";
+import { dedupeExpenseReceiptUploadSlots } from "@/lib/expense-attachment-dedupe";
 import { createBrowserClient } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { ChevronDown, FileText } from "lucide-react";
@@ -337,37 +338,39 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
           }
         );
         setAttachmentSlots((prev) =>
-          prev.map((s) => {
-            if (s.clientId !== clientId) return s;
-            if (result.uploadError) {
-              toast({
-                title: "Upload failed",
-                description: result.uploadError,
-                variant: "error",
-              });
+          dedupeExpenseReceiptUploadSlots(
+            prev.map((s) => {
+              if (s.clientId !== clientId) return s;
+              if (result.uploadError) {
+                toast({
+                  title: "Upload failed",
+                  description: result.uploadError,
+                  variant: "error",
+                });
+                return {
+                  ...s,
+                  ...result,
+                  uploadUiStatus: "failed",
+                  previewUrl: s.previewUrl,
+                  revoke: s.revoke,
+                  sourceFile: fileToRetry,
+                  pendingFile: result.pendingFile,
+                };
+              }
+              s.revoke?.();
               return {
                 ...s,
-                ...result,
-                uploadUiStatus: "failed",
-                previewUrl: s.previewUrl,
-                revoke: s.revoke,
+                previewUrl: result.previewUrl,
+                attachmentPath: result.attachmentPath,
+                receiptsPublicUrl: result.receiptsPublicUrl,
+                revoke: result.revoke,
+                pendingFile: undefined,
+                uploadError: undefined,
+                uploadUiStatus: "uploaded",
                 sourceFile: fileToRetry,
-                pendingFile: result.pendingFile,
               };
-            }
-            s.revoke?.();
-            return {
-              ...s,
-              previewUrl: result.previewUrl,
-              attachmentPath: result.attachmentPath,
-              receiptsPublicUrl: result.receiptsPublicUrl,
-              revoke: result.revoke,
-              pendingFile: undefined,
-              uploadError: undefined,
-              uploadUiStatus: "uploaded",
-              sourceFile: fileToRetry,
-            };
-          })
+            })
+          )
         );
       } finally {
         receiptPickLockRef.current = false;
@@ -864,6 +867,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
       };
 
       await Promise.all([runOcr(), runUploads()]);
+      setAttachmentSlots((prev) => dedupeExpenseReceiptUploadSlots(prev));
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Could not process receipts.";
       toast({ title: "Receipt error", description: msg, variant: "error" });
@@ -912,10 +916,14 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
         paymentChoiceTouchedRef.current = true;
       }
 
-      let slotsToSave = attachmentSlots;
+      const slotsDeduped = dedupeExpenseReceiptUploadSlots(attachmentSlots);
+      if (slotsDeduped.length !== attachmentSlots.length) {
+        setAttachmentSlots(slotsDeduped);
+      }
+      let slotsToSave = slotsDeduped;
       if (supabase) {
         slotsToSave = await Promise.all(
-          attachmentSlots.map(async (s, i) => {
+          slotsDeduped.map(async (s, i) => {
             if (s.pendingFile && !s.attachmentPath && !s.receiptsPublicUrl) {
               const u = await uploadReceiptToStorage(supabase, s.pendingFile, `save-${i}`, {
                 alreadyCompressed: true,

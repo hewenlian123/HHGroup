@@ -303,6 +303,8 @@ export function ReceiptQueueWorkspace() {
   } | null>(null);
   const [bulkAdding, setBulkAdding] = React.useState(false);
   const captureUploadingInFlightRef = React.useRef(false);
+  /** Same physical capture can fire `change` twice after `inFlight` clears; skip duplicate single-file enqueues. */
+  const recentSingleFileEnqueueRef = React.useRef<{ sig: string; t: number } | null>(null);
   const bulkAddInFlightRef = React.useRef(false);
   const [previewUrls, setPreviewUrls] = React.useState<Record<string, string>>({});
   const previewUrlsRef = React.useRef(previewUrls);
@@ -1125,6 +1127,18 @@ export function ReceiptQueueWorkspace() {
       const fileList = Array.from(files).filter((f) => f.size > 0);
       if (!fileList.length) return;
 
+      const SINGLE_FILE_DEDUP_MS = 4000;
+      if (fileList.length === 1) {
+        const f = fileList[0];
+        const sig = `${f.name}\0${f.size}\0${f.lastModified}`;
+        const prev = recentSingleFileEnqueueRef.current;
+        const now = Date.now();
+        if (prev && prev.sig === sig && now - prev.t < SINGLE_FILE_DEDUP_MS) {
+          return;
+        }
+        recentSingleFileEnqueueRef.current = { sig, t: now };
+      }
+
       captureUploadingInFlightRef.current = true;
       setCaptureUploading(true);
       setUploadBatchProgress({ done: 0, total: fileList.length });
@@ -1505,7 +1519,6 @@ export function ReceiptQueueWorkspace() {
     runRowExitAnimation(live.id, {
       flashGreen: true,
       onComplete: () => {
-        confirmingRowIdsRef.current.delete(live.id);
         const snapshot = rowsRef.current;
         const remainingAfter = snapshot.filter((x) => x.id !== live.id);
         const t0 = uiActionMark();
@@ -1531,6 +1544,8 @@ export function ReceiptQueueWorkspace() {
             setRows(snapshot);
             const msg = err instanceof Error ? err.message : "Confirm failed";
             hotToast.error(msg);
+          } finally {
+            confirmingRowIdsRef.current.delete(live.id);
           }
         })();
       },

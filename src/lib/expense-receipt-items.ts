@@ -1,4 +1,8 @@
 import type { Expense } from "@/lib/data";
+import {
+  collapseMirrorReceiptUrlAndExpenseAttachmentItems,
+  dedupeExpenseReceiptItemsByStorageKey,
+} from "@/lib/expense-attachment-dedupe";
 
 export type ExpenseReceiptItem = { url: string; fileName: string };
 
@@ -22,12 +26,9 @@ export function getExpenseReceiptItemsFromParts(parts: {
     const name = (a.fileName ?? "").trim();
     items.push({ url: u, fileName: name !== "" ? name : "Attachment" });
   }
-  const seen = new Set<string>();
-  return items.filter((i) => {
-    if (seen.has(i.url)) return false;
-    seen.add(i.url);
-    return true;
-  });
+  return collapseMirrorReceiptUrlAndExpenseAttachmentItems(
+    dedupeExpenseReceiptItemsByStorageKey(items)
+  );
 }
 
 export function getExpenseReceiptItems(expense: Expense): ExpenseReceiptItem[] {
