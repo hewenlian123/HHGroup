@@ -430,13 +430,13 @@ export function AttachmentPreviewModal({
                   </>
                 ) : null}
 
-                <div className="flex min-h-0 w-full flex-1 max-h-[min(85vh_calc(90vh-8rem))] items-center justify-center overflow-hidden">
+                <div className="flex w-full flex-1 min-h-[min(40vh,320px)] max-h-[min(85vh,calc(90vh-8rem))] items-center justify-center overflow-hidden">
                   {sessionIsLoading ? (
                     <div
                       className="flex w-full flex-col items-center justify-center gap-3 px-6 py-8"
                       aria-busy
                     >
-                      <Skeleton className="h-[min(50vh_280px)] w-full max-w-2xl rounded-md" />
+                      <Skeleton className="h-[min(50vh,280px)] w-full max-w-2xl rounded-md" />
                       <span className="sr-only">Loading preview</span>
                     </div>
                   ) : unsupported ? (
@@ -444,7 +444,7 @@ export function AttachmentPreviewModal({
                       Preview not available for this file type.
                     </p>
                   ) : !fileUrl ? (
-                    <p className="text-sm text-muted-foreground">Preview not available.</p>
+                    <p className="text-sm text-muted-foreground">Receipt not available.</p>
                   ) : (
                     <div className="relative h-full w-full">
                       <AnimatePresence initial={false} custom={navDirection} mode="popLayout">
