@@ -18,10 +18,12 @@ import {
 import {
   getExpenseTotal,
   deleteExpense,
+  getPaymentAccounts,
   updateExpense,
   updateExpenseReceiptUrl,
   updateExpenseForReview,
   type Expense,
+  type PaymentAccountRow,
 } from "@/lib/data";
 import { createBrowserClient } from "@/lib/supabase";
 import {
@@ -69,6 +71,7 @@ import { fetchFinancialProjects, financialProjectsQueryKey } from "@/lib/queries
 import { isDefaultExpenseListSort } from "@/lib/expenses-db";
 import { cn } from "@/lib/utils";
 import { ExpensesListSkeleton } from "@/components/financial/expenses-list-skeleton";
+import type { ExpenseListBulkActionsApi } from "./expense-inbox-transaction-list";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -87,9 +90,11 @@ import {
   rememberExpenseVendorPaymentAccount,
 } from "@/lib/expense-payment-preferences";
 import { resolvePreviewSignedUrl } from "@/lib/storage-signed-url";
+import { buildExpenseDateGroups } from "@/lib/expense-list-date-groups";
 import { expenseInboxDuplicateIdSet } from "@/lib/expense-inbox-dup";
 import {
   expenseMatchesExpensesArchivePool,
+  countExpensesMatchingInboxPool,
   expenseMatchesInboxPool,
   expenseNeedsReviewFromDb,
   validateMarkDoneRequiresProjectAndCategory,
@@ -603,6 +608,8 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
   const [deletingExpenseId, setDeletingExpenseId] = React.useState<string | null>(null);
   const expensesRef = React.useRef<Expense[]>([]);
   expensesRef.current = expenses;
+  const previewExpenseRef = React.useRef<Expense | null>(null);
+  previewExpenseRef.current = previewExpense;
 
   const safeProjects = React.useMemo(
     () => (Array.isArray(projectsData) ? projectsData : []) as ProjectRow[],
@@ -617,14 +624,9 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     [workers]
   );
 
-  const inboxDupAll = React.useMemo(
-    () => expenseInboxDuplicateIdSet(expensesForListing, getExpenseTotal),
-    [expensesForListing]
-  );
   const inboxAttentionCount = React.useMemo(
-    () =>
-      expensesForListing.filter((e) => expenseMatchesInboxPool(e, inboxDupAll.has(e.id))).length,
-    [expensesForListing, inboxDupAll]
+    () => countExpensesMatchingInboxPool(expensesForListing),
+    [expensesForListing]
   );
   const archivedExpenses = React.useMemo(
     () => expensesForListing.filter(expenseMatchesExpensesArchivePool),
@@ -722,14 +724,24 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
   }, [baseFilteredExpenses, inboxMode, expenseSort]);
 
   const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
+  /** Page size counts **date groups** (calendar days), not individual expenses. */
   const [pageSize, setPageSize] = React.useState(25);
   const total = filteredSortedExpenses.length;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const allDateGroups = React.useMemo(
+    () => buildExpenseDateGroups(filteredSortedExpenses),
+    [filteredSortedExpenses]
+  );
+  const totalDateGroups = allDateGroups.length;
+  const totalPages = Math.max(1, Math.ceil(totalDateGroups / pageSize));
   const curPage = Math.min(page, totalPages);
-  const pageRows = React.useMemo(() => {
+  const visibleDateGroups = React.useMemo(() => {
     const start = (curPage - 1) * pageSize;
-    return filteredSortedExpenses.slice(start, start + pageSize);
-  }, [curPage, filteredSortedExpenses, pageSize]);
+    return allDateGroups.slice(start, start + pageSize);
+  }, [allDateGroups, curPage, pageSize]);
+  const flatListRows = React.useMemo(
+    () => visibleDateGroups.flatMap((g) => g.rows),
+    [visibleDateGroups]
+  );
 
   const setPageSizeAndReset = React.useCallback(
     (next: number) => {
@@ -741,12 +753,15 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     [router, searchParams, listPath]
   );
 
-  const pageRowsRef = React.useRef(pageRows);
-  pageRowsRef.current = pageRows;
+  const listRowsRef = React.useRef(flatListRows);
+  listRowsRef.current = flatListRows;
   const listViewRef = React.useRef(listView);
   listViewRef.current = listView;
 
-  const pageRowIdsKey = React.useMemo(() => pageRows.map((r) => r.id).join("|"), [pageRows]);
+  const listRowIdsKey = React.useMemo(
+    () => flatListRows.map((r) => r.id).join("|"),
+    [flatListRows]
+  );
 
   /** Latest sort for mutation callbacks (avoid stale closure vs. `buildExpensesQueryKey`). */
   const expenseSortRef = React.useRef(expenseSort);
@@ -758,17 +773,17 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
       return;
     }
     setActiveExpenseId((cur) => {
-      const ids = pageRowIdsKey ? pageRowIdsKey.split("|").filter(Boolean) : [];
+      const ids = listRowIdsKey ? listRowIdsKey.split("|").filter(Boolean) : [];
       if (cur && ids.includes(cur)) return cur;
       return ids[0] ?? null;
     });
-  }, [listView, pageRowIdsKey]);
+  }, [listView, listRowIdsKey]);
 
   React.useEffect(() => {
     if (!activeExpenseId || listView !== "unreviewed") return;
     const el = rowElsRef.current[activeExpenseId];
     el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }, [activeExpenseId, listView, pageRowIdsKey]);
+  }, [activeExpenseId, listView, listRowIdsKey]);
 
   const setPage = React.useCallback(
     (nextPage: number) => {
@@ -1007,6 +1022,10 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
           (old: Expense[] | undefined) =>
             old ? old.map((e) => (e.id === payload.expenseId ? final : e)) : old
         );
+        void queryClient.invalidateQueries({
+          queryKey: expensesQueryKeyRoot,
+          refetchType: "active",
+        });
         const pa = final.paymentAccountId?.trim();
         if (pa && (final.vendorName ?? "").trim()) {
           rememberExpenseVendorPaymentAccount(final.vendorName!.trim(), pa);
@@ -1019,6 +1038,25 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
         hotToast.error("Something went wrong");
         return null;
       }
+    },
+    [queryClient]
+  );
+
+  const handlePreviewAttachmentsUpdated = React.useCallback(
+    (expense: Expense) => {
+      flushSync(() => {
+        setExpenses((prev) => prev.map((e) => (e.id === expense.id ? expense : e)));
+        setPreviewExpense(expense);
+      });
+      queryClient.setQueryData(
+        buildExpensesQueryKey(expenseSortRef.current),
+        (old: Expense[] | undefined) =>
+          old ? old.map((e) => (e.id === expense.id ? expense : e)) : old
+      );
+      void queryClient.invalidateQueries({
+        queryKey: expensesQueryKeyRoot,
+        refetchType: "active",
+      });
     },
     [queryClient]
   );
@@ -1051,6 +1089,10 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
           (old: Expense[] | undefined) =>
             old ? old.map((e) => (e.id === expense.id ? final : e)) : old
         );
+        void queryClient.invalidateQueries({
+          queryKey: expensesQueryKeyRoot,
+          refetchType: "active",
+        });
         hotToast.success("Marked done");
         if (inboxMode) {
           flushSync(() => {
@@ -1109,7 +1151,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     (expense: Expense) => {
       if (typeof window === "undefined" || !window.confirm("Delete this expense?")) return;
       const prev = expensesRef.current;
-      const rowsBefore = pageRowsRef.current;
+      const rowsBefore = listRowsRef.current;
       const nextId = neighborRowIdAfterRemove(rowsBefore, expense.id);
       const t0 = uiActionMark();
       setDeletingExpenseId(expense.id);
@@ -1149,7 +1191,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                 setActiveExpenseId(nextId);
                 focusFirstFocusableInContainer(li);
               } else {
-                const first = pageRowsRef.current[0];
+                const first = listRowsRef.current[0];
                 setActiveExpenseId(first?.id ?? null);
                 if (first) {
                   const firstLi = rowElsRef.current[first.id];
@@ -1184,8 +1226,8 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
       focusUnreviewedConsumedRef.current = false;
       return;
     }
-    if (!inboxMode || listView !== "unreviewed" || pageRows.length === 0) return;
-    const first = pageRows[0];
+    if (!inboxMode || listView !== "unreviewed" || flatListRows.length === 0) return;
+    const first = flatListRows[0];
     if (!first || !expensesRef.current.some((e) => e.id === first.id)) return;
     if (focusUnreviewedConsumedRef.current) return;
     focusUnreviewedConsumedRef.current = true;
@@ -1206,8 +1248,8 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     inboxMode,
     listPath,
     listView,
-    pageRowIdsKey,
-    pageRows,
+    listRowIdsKey,
+    flatListRows,
     openExpensePreview,
     router,
     searchParams,
@@ -1219,7 +1261,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     previewOpen,
     quickExpenseOpen,
     uploadReceiptsOpen,
-    pageRows,
+    listRows: flatListRows,
     activeExpenseId,
   });
   kbRef.current = {
@@ -1228,7 +1270,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     previewOpen,
     quickExpenseOpen,
     uploadReceiptsOpen,
-    pageRows,
+    listRows: flatListRows,
     activeExpenseId,
   };
 
@@ -1245,7 +1287,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
       if ((e.key === "d" || e.key === "D") && !e.metaKey && !e.ctrlKey && !e.altKey) {
         if (inEditable) return;
         e.preventDefault();
-        const row = k.pageRows.find((r) => r.id === k.activeExpenseId);
+        const row = k.listRows.find((r) => r.id === k.activeExpenseId);
         if (row && typeof window !== "undefined" && window.confirm("Delete this expense?")) {
           void handleDelete(row);
         }
@@ -1255,15 +1297,15 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         if (inEditable) return;
         e.preventDefault();
-        const idx = k.pageRows.findIndex((r) => r.id === k.activeExpenseId);
+        const idx = k.listRows.findIndex((r) => r.id === k.activeExpenseId);
         if (e.key === "ArrowDown") {
           const n =
-            idx < 0 ? Math.min(0, k.pageRows.length - 1) : Math.min(idx + 1, k.pageRows.length - 1);
-          const r = k.pageRows[n];
+            idx < 0 ? Math.min(0, k.listRows.length - 1) : Math.min(idx + 1, k.listRows.length - 1);
+          const r = k.listRows[n];
           if (r) setActiveExpenseId(r.id);
         } else {
           const n = idx < 0 ? 0 : Math.max(idx - 1, 0);
-          const r = k.pageRows[n];
+          const r = k.listRows[n];
           if (r) setActiveExpenseId(r.id);
         }
       }
@@ -1299,6 +1341,15 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
           const persisted = (saved.status ?? "pending") === next;
           if (persisted) {
             setExpenses((list) => list.map((e) => (e.id === expense.id ? saved : e)));
+            queryClient.setQueryData(
+              buildExpensesQueryKey(expenseSortRef.current),
+              (old: Expense[] | undefined) =>
+                old ? old.map((e) => (e.id === expense.id ? saved : e)) : old
+            );
+            void queryClient.invalidateQueries({
+              queryKey: expensesQueryKeyRoot,
+              refetchType: "active",
+            });
           } else {
             toast({
               title: "Status changed locally",
@@ -1312,7 +1363,260 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
         }
       })();
     },
-    [toast]
+    [toast, queryClient]
+  );
+
+  const [paymentAccountsForBulk, setPaymentAccountsForBulk] = React.useState<PaymentAccountRow[]>(
+    []
+  );
+  React.useEffect(() => {
+    void getPaymentAccounts()
+      .then(setPaymentAccountsForBulk)
+      .catch(() => setPaymentAccountsForBulk([]));
+  }, []);
+
+  const [bulkBusy, setBulkBusy] = React.useState(false);
+
+  const mergeSavedExpenseInCaches = React.useCallback(
+    (saved: Expense) => {
+      setExpenses((list) => list.map((e) => (e.id === saved.id ? saved : e)));
+      queryClient.setQueryData(
+        buildExpensesQueryKey(expenseSortRef.current),
+        (old: Expense[] | undefined) =>
+          old ? old.map((e) => (e.id === saved.id ? saved : e)) : old
+      );
+    },
+    [queryClient]
+  );
+
+  const bulkRunMarkDone = React.useCallback(
+    async (ids: string[]) => {
+      setBulkBusy(true);
+      let ok = 0;
+      let skipped = 0;
+      try {
+        for (const id of ids) {
+          const expense = expensesRef.current.find((e) => e.id === id);
+          if (!expense || !expenseNeedsReviewFromDb(expense.status)) {
+            skipped++;
+            continue;
+          }
+          const gate = validateMarkDoneRequiresProjectAndCategory(expense);
+          if (gate) {
+            skipped++;
+            continue;
+          }
+          try {
+            const saved = await updateExpenseForReview(id, { status: "reviewed" });
+            if (saved && (saved.status ?? "pending") === "reviewed") {
+              mergeSavedExpenseInCaches(saved);
+              ok++;
+            } else {
+              skipped++;
+            }
+          } catch {
+            skipped++;
+          }
+        }
+        void queryClient.invalidateQueries({
+          queryKey: expensesQueryKeyRoot,
+          refetchType: "active",
+        });
+        if (ok > 0) {
+          toast({
+            title: `Marked ${ok} done${skipped > 0 ? ` · ${skipped} skipped` : ""}`,
+            variant: "success",
+          });
+        } else if (skipped > 0) {
+          hotToast.error("No expenses could be marked done. Check project, category, and status.");
+        }
+      } finally {
+        setBulkBusy(false);
+      }
+    },
+    [mergeSavedExpenseInCaches, queryClient, toast]
+  );
+
+  const bulkRunSetProject = React.useCallback(
+    async (ids: string[], projectId: string | null) => {
+      setBulkBusy(true);
+      let ok = 0;
+      try {
+        for (const id of ids) {
+          const saved = await updateExpenseForReview(id, { projectId });
+          if (saved) {
+            mergeSavedExpenseInCaches(saved);
+            ok++;
+          }
+        }
+        void queryClient.invalidateQueries({
+          queryKey: expensesQueryKeyRoot,
+          refetchType: "active",
+        });
+        if (ok > 0) {
+          toast({
+            title: `Updated project on ${ok} expense${ok !== 1 ? "s" : ""}`,
+            variant: "success",
+          });
+        }
+      } catch {
+        hotToast.error("Bulk project update failed");
+      } finally {
+        setBulkBusy(false);
+      }
+    },
+    [mergeSavedExpenseInCaches, queryClient, toast]
+  );
+
+  const bulkRunSetCategory = React.useCallback(
+    async (ids: string[], category: string) => {
+      setBulkBusy(true);
+      let ok = 0;
+      try {
+        for (const id of ids) {
+          const saved = await updateExpenseForReview(id, { category });
+          if (saved) {
+            mergeSavedExpenseInCaches(saved);
+            ok++;
+          }
+        }
+        void queryClient.invalidateQueries({
+          queryKey: expensesQueryKeyRoot,
+          refetchType: "active",
+        });
+        if (ok > 0) {
+          toast({
+            title: `Updated category on ${ok} expense${ok !== 1 ? "s" : ""}`,
+            variant: "success",
+          });
+        }
+      } catch {
+        hotToast.error("Bulk category update failed");
+      } finally {
+        setBulkBusy(false);
+      }
+    },
+    [mergeSavedExpenseInCaches, queryClient, toast]
+  );
+
+  const bulkRunSetPayment = React.useCallback(
+    async (ids: string[], paymentAccountId: string | null) => {
+      setBulkBusy(true);
+      let ok = 0;
+      try {
+        for (const id of ids) {
+          const saved = await updateExpenseForReview(id, { paymentAccountId });
+          if (saved) {
+            mergeSavedExpenseInCaches(saved);
+            ok++;
+          }
+        }
+        void queryClient.invalidateQueries({
+          queryKey: expensesQueryKeyRoot,
+          refetchType: "active",
+        });
+        if (ok > 0) {
+          toast({
+            title: `Updated payment on ${ok} expense${ok !== 1 ? "s" : ""}`,
+            variant: "success",
+          });
+        }
+      } catch {
+        hotToast.error("Bulk payment update failed");
+      } finally {
+        setBulkBusy(false);
+      }
+    },
+    [mergeSavedExpenseInCaches, queryClient, toast]
+  );
+
+  const bulkRunDeleteMany = React.useCallback(
+    async (ids: string[]) => {
+      if (typeof window === "undefined") return false;
+      if (!window.confirm(`Delete ${ids.length} expenses? This cannot be undone.`)) {
+        return false;
+      }
+      setBulkBusy(true);
+      const prev = expensesRef.current;
+      try {
+        let ok = 0;
+        for (const id of ids) {
+          const expense = expensesRef.current.find((e) => e.id === id);
+          if (!expense) continue;
+          expense.attachments?.forEach((a) => {
+            if (a.url?.startsWith("blob:")) URL.revokeObjectURL(a.url);
+          });
+          setExpenses((list) => list.filter((e) => e.id !== id));
+          const deleted = await deleteExpense(id);
+          if (!deleted) {
+            setExpenses(prev);
+            toast({ title: "Delete failed", variant: "error" });
+            return false;
+          }
+          queryClient.setQueriesData<Expense[]>({ queryKey: [...expensesQueryKeyRoot] }, (old) =>
+            Array.isArray(old) ? old.filter((e) => e.id !== id) : old
+          );
+          const wasPreviewing = previewExpenseRef.current?.id === id;
+          flushSync(() => {
+            setPreviewExpense((cur) => (cur?.id === id ? null : cur));
+          });
+          if (wasPreviewing) setPreviewOpen(false);
+          ok++;
+        }
+        void queryClient.invalidateQueries({
+          queryKey: expensesQueryKeyRoot,
+          refetchType: "active",
+        });
+        if (ok > 0) {
+          toast({ title: `Deleted ${ok} expense${ok !== 1 ? "s" : ""}`, variant: "success" });
+        }
+        return true;
+      } catch {
+        setExpenses(prev);
+        toast({ title: "Delete failed", variant: "error" });
+        return false;
+      } finally {
+        setBulkBusy(false);
+      }
+    },
+    [queryClient, toast]
+  );
+
+  const bulkDownloadComingSoon = React.useCallback(() => {
+    toast({
+      title: "Download",
+      description: "Bulk download is not available yet.",
+      variant: "default",
+    });
+  }, [toast]);
+
+  const bulkActionsApi = React.useMemo<ExpenseListBulkActionsApi>(
+    () => ({
+      pool: inboxMode ? "inbox" : "expenses",
+      busy: bulkBusy,
+      projects: safeProjects,
+      categories: categoriesList,
+      paymentAccounts: paymentAccountsForBulk,
+      runMarkDone: bulkRunMarkDone,
+      runSetProject: bulkRunSetProject,
+      runSetCategory: bulkRunSetCategory,
+      runSetPayment: bulkRunSetPayment,
+      runDeleteMany: bulkRunDeleteMany,
+      onDownloadComingSoon: bulkDownloadComingSoon,
+    }),
+    [
+      inboxMode,
+      bulkBusy,
+      safeProjects,
+      categoriesList,
+      paymentAccountsForBulk,
+      bulkRunMarkDone,
+      bulkRunSetProject,
+      bulkRunSetCategory,
+      bulkRunSetPayment,
+      bulkRunDeleteMany,
+      bulkDownloadComingSoon,
+    ]
   );
 
   const possibleDuplicateIds = React.useMemo(
@@ -1337,8 +1641,9 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
 
   const showEmptyOnboardingCtas = !hasNarrowingFilters && expensesForListing.length === 0;
 
-  const deskStart = total === 0 ? 0 : (curPage - 1) * pageSize + 1;
-  const deskEnd = Math.min(total, curPage * pageSize);
+  const groupDeskStart = totalDateGroups === 0 ? 0 : (curPage - 1) * pageSize + 1;
+  const groupDeskEnd = Math.min(totalDateGroups, curPage * pageSize);
+  const expensesOnVisibleGroups = visibleDateGroups.reduce((s, g) => s + g.itemCount, 0);
 
   const previewExpenseLive = React.useMemo(() => {
     if (!previewExpense) return null;
@@ -1347,21 +1652,21 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
 
   const previewModalNav = React.useMemo(() => {
     if (!previewOpen || !previewExpenseLive) return undefined;
-    const idx = pageRows.findIndex((r) => r.id === previewExpenseLive.id);
+    const idx = filteredSortedExpenses.findIndex((r) => r.id === previewExpenseLive.id);
     if (idx < 0) return undefined;
     return {
       canPrev: idx > 0,
-      canNext: idx < pageRows.length - 1,
+      canNext: idx < filteredSortedExpenses.length - 1,
       onPrev: () => {
-        const prev = pageRows[idx - 1];
+        const prev = filteredSortedExpenses[idx - 1];
         if (prev) setPreviewExpense(prev);
       },
       onNext: () => {
-        const next = pageRows[idx + 1];
+        const next = filteredSortedExpenses[idx + 1];
         if (next) setPreviewExpense(next);
       },
     };
-  }, [previewOpen, previewExpenseLive, pageRows]);
+  }, [previewOpen, previewExpenseLive, filteredSortedExpenses]);
 
   const previewPossibleDuplicate =
     previewExpenseLive != null && possibleDuplicateIds.has(previewExpenseLive.id);
@@ -1847,10 +2152,13 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                 <>
                   <div className="w-full overflow-hidden bg-background md:bg-white dark:md:bg-gray-950">
                     <ExpenseInboxTransactionList
-                      pageRows={pageRows}
+                      dateChunks={visibleDateGroups}
                       possibleDuplicateIds={possibleDuplicateIds}
+                      bulkActions={bulkActionsApi}
                       api={{
                         listView,
+                        dateGroupPool: inboxMode ? "inbox" : "expenses",
+                        autoExpandDateGroups: hasNarrowingFilters,
                         activeExpenseId,
                         setActiveExpenseId,
                         rowElsRef,
@@ -1867,7 +2175,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                     <p className="tabular-nums">
                       {total === 0
                         ? "Showing 0 results"
-                        : `Showing ${deskStart} to ${deskEnd} of ${total} results`}
+                        : `Date groups ${groupDeskStart}–${groupDeskEnd} of ${totalDateGroups} · ${expensesOnVisibleGroups} expenses on this page · ${total} total`}
                     </p>
                     <div className="flex flex-wrap items-center gap-3 md:gap-4">
                       <div className="flex items-center gap-1">
@@ -1899,7 +2207,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="whitespace-nowrap text-gray-600 dark:text-gray-400">
-                          Rows per page
+                          Groups per page
                         </span>
                         <Select
                           value={String(pageSize)}
@@ -1955,6 +2263,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
             setCategoriesList={setCategoriesList}
             onSave={handlePreviewModalSave}
             onMarkReviewed={handlePreviewMarkReviewed}
+            onAttachmentsUpdated={handlePreviewAttachmentsUpdated}
             previewNav={previewModalNav}
             possibleDuplicate={previewPossibleDuplicate}
           />

@@ -79,6 +79,11 @@ export function expenseHasCategoryForWorkflow(expense: Expense): boolean {
   return cat !== "" && cat !== "—";
 }
 
+export function expenseHasPaymentMethodForWorkflow(expense: Expense): boolean {
+  const pm = (expense.paymentMethod ?? "").trim();
+  return pm !== "" && pm !== "—";
+}
+
 /** Status written when user marks an expense done from Inbox (`reviewed`; legacy `done` if present). */
 export function expenseIsArchivedDoneDbStatus(status: string | undefined | null): boolean {
   const s = String(status ?? "")
@@ -104,17 +109,42 @@ export function expenseMissingReceiptForInbox(expense: Expense): boolean {
   return getExpenseReceiptItems(expense).length === 0;
 }
 
+/** DB statuses treated as Done / settled for Inbox pool (first gate: never Inbox). */
+const INBOX_POOL_COMPLETED_STATUSES = new Set([
+  "reviewed",
+  "done",
+  "completed",
+  "approved",
+  "paid",
+  "reimbursed",
+  "reimbursable",
+]);
+
+/** Incomplete statuses allowed in the Inbox pool (missing fields cannot override these rules). */
+const INBOX_POOL_INCOMPLETE_STATUSES = new Set(["needs_review", "pending", "unreviewed", "draft"]);
+
 /**
- * Inbox queue: needs workflow attention — pending DB review, missing classification,
- * missing receipt, or duplicate hint (hint computed separately).
+ * Inbox pool = incomplete workflow statuses only (`needs_review`, `pending`, `unreviewed`, `draft`, or empty).
+ * Done-like rows (`reviewed`, `done`, `paid`, …) never appear in Inbox, even with missing receipt / project / category / payment.
+ * `duplicateHint` is ignored for pool membership (duplicate UI may still flag rows that appear elsewhere).
  */
-export function expenseMatchesInboxPool(expense: Expense, duplicateHint: boolean): boolean {
-  if (duplicateHint) return true;
-  if (expenseNeedsReviewFromDb(expense.status)) return true;
-  if (!expenseHasProjectForWorkflow(expense)) return true;
-  if (!expenseHasCategoryForWorkflow(expense)) return true;
-  if (expenseMissingReceiptForInbox(expense)) return true;
-  return false;
+export function expenseMatchesInboxPool(expense: Expense, _duplicateHint?: boolean): boolean {
+  void _duplicateHint;
+  const s = String(expense.status ?? "")
+    .trim()
+    .toLowerCase();
+  if (s && INBOX_POOL_COMPLETED_STATUSES.has(s)) return false;
+  if (!s) return true;
+  return INBOX_POOL_INCOMPLETE_STATUSES.has(s);
+}
+
+/** Sidebar “Inbox” badge and Inbox KPI “In queue” — same rule as `expenseMatchesInboxPool` per row. */
+export function countExpensesMatchingInboxPool(expenses: readonly Expense[]): number {
+  let n = 0;
+  for (const e of expenses) {
+    if (expenseMatchesInboxPool(e)) n++;
+  }
+  return n;
 }
 
 /**

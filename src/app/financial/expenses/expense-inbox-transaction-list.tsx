@@ -8,11 +8,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { getExpenseTotal, type Expense } from "@/lib/data";
+import { getExpenseTotal, type Expense, type PaymentAccountRow } from "@/lib/data";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import {
   Banknote,
   Building2,
+  ChevronRight,
   Fuel,
   HelpCircle,
   MoreHorizontal,
@@ -26,6 +27,12 @@ import {
   expenseNeedsReviewFromDb,
 } from "@/lib/expense-workflow-status";
 import { getExpenseReceiptItems } from "@/lib/expense-receipt-items";
+import {
+  readDateGroupExpandedMap,
+  writeDateGroupExpandedMap,
+  type ExpenseDateGroup,
+} from "@/lib/expense-list-date-groups";
+import { ExpenseBulkActionBar } from "./expense-bulk-action-bar";
 
 /**
  * Under description: receipt preview or missing receipt (own line, aligned with text block); other signals below.
@@ -305,23 +312,12 @@ function inboxStatusBadgeStyle(status: string | undefined): { dot: string; label
   };
 }
 
-/** Preserve parent `pageRows` order; split into contiguous status runs for section headers. */
-function chunkRowsByStatusBucket(rows: Expense[]): { needsReview: boolean; rows: Expense[] }[] {
-  const chunks: { needsReview: boolean; rows: Expense[] }[] = [];
-  for (const row of rows) {
-    const needsReview = expenseNeedsReviewFromDb(row.status);
-    const last = chunks[chunks.length - 1];
-    if (!last || last.needsReview !== needsReview) {
-      chunks.push({ needsReview, rows: [row] });
-    } else {
-      last.rows.push(row);
-    }
-  }
-  return chunks;
-}
-
 export type ExpenseInboxApi = {
   listView: "all" | "unreviewed";
+  /** localStorage pool for date-section expand preferences */
+  dateGroupPool: "inbox" | "expenses";
+  /** Expand every date group (search / filters active) */
+  autoExpandDateGroups: boolean;
   activeExpenseId: string | null;
   setActiveExpenseId: (id: string | null) => void;
   rowElsRef: React.MutableRefObject<Record<string, HTMLTableRowElement | HTMLLIElement | null>>;
@@ -331,6 +327,22 @@ export type ExpenseInboxApi = {
   openReceiptPreview: (row: Expense) => void;
   openExpensePreview: (row: Expense, opts?: { mode?: "preview" | "edit" }) => void;
   handleDelete: (expense: Expense) => void;
+};
+
+/** Bulk operations: parent runs sequential API calls + cache updates. */
+export type ExpenseListBulkActionsApi = {
+  pool: "inbox" | "expenses";
+  busy: boolean;
+  projects: { id: string; name: string | null }[];
+  categories: string[];
+  paymentAccounts: PaymentAccountRow[];
+  runMarkDone: (ids: string[]) => Promise<void>;
+  runSetProject: (ids: string[], projectId: string | null) => Promise<void>;
+  runSetCategory: (ids: string[], category: string) => Promise<void>;
+  runSetPayment: (ids: string[], paymentAccountId: string | null) => Promise<void>;
+  /** Return `false` on cancel or hard failure — selection is kept. Otherwise clear selection. */
+  runDeleteMany: (ids: string[]) => Promise<boolean | void>;
+  onDownloadComingSoon: () => void;
 };
 
 const InboxCtx = React.createContext<ExpenseInboxApi | null>(null);
@@ -403,21 +415,86 @@ function RowActionsMenu({ row }: { row: Expense }) {
 
 const COL_COUNT = 6;
 
-function DesktopSectionHeader({ needsReview, count }: { needsReview: boolean; count: number }) {
+function formatGroupMoney(n: number): string {
+  return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function DateGroupDesktopHeader({
+  chunk,
+  expanded,
+  autoExpand,
+  onToggle,
+  groupSelect,
+}: {
+  chunk: ExpenseDateGroup;
+  expanded: boolean;
+  autoExpand: boolean;
+  onToggle: () => void;
+  groupSelect?: {
+    show: boolean;
+    checked: boolean;
+    indeterminate: boolean;
+    onToggleGroup: () => void;
+  };
+}) {
+  const groupCbRef = React.useRef<HTMLInputElement>(null);
+  React.useEffect(() => {
+    const el = groupCbRef.current;
+    if (el) el.indeterminate = Boolean(groupSelect?.indeterminate);
+  }, [groupSelect?.indeterminate, groupSelect?.show]);
+
   return (
-    <tr className="border-b border-gray-100 bg-gray-50/70 dark:border-gray-800 dark:bg-gray-900/30">
-      <td colSpan={COL_COUNT} className="h-9 px-4 py-0 align-middle">
-        <div className="flex h-9 items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400">
-          <span
+    <tr className="border-b border-border/60 bg-muted/10 dark:bg-muted/5">
+      <td colSpan={COL_COUNT} className="p-0 align-middle">
+        <div className="flex min-w-0 items-stretch">
+          {groupSelect?.show ? (
+            <div className="flex shrink-0 items-center border-r border-border/50 px-2 dark:border-border/40">
+              <input
+                ref={groupCbRef}
+                type="checkbox"
+                checked={groupSelect.checked}
+                onChange={groupSelect.onToggleGroup}
+                onClick={(e) => e.stopPropagation()}
+                className="h-4 w-4 shrink-0 rounded border-gray-300 text-foreground dark:border-gray-600"
+                aria-label={`Select all for ${chunk.dateLabel}`}
+              />
+            </div>
+          ) : null}
+          <button
+            type="button"
+            onClick={onToggle}
+            disabled={autoExpand}
+            aria-expanded={expanded}
             className={cn(
-              "h-1 w-1 shrink-0 rounded-full",
-              needsReview ? "bg-orange-500" : "bg-emerald-500"
+              "flex min-w-0 flex-1 cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm transition-colors",
+              "hover:bg-muted/20 disabled:cursor-default disabled:hover:bg-transparent"
             )}
-            aria-hidden
-          />
-          <span>
-            {needsReview ? "Needs Review" : "Done"} ({count})
-          </span>
+          >
+            <ChevronRight
+              className={cn(
+                "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150",
+                expanded && "rotate-90"
+              )}
+              aria-hidden
+            />
+            <span className="font-medium text-foreground">{chunk.dateLabel}</span>
+            <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-muted-foreground">
+              <span className="tabular-nums">{chunk.itemCount}</span>
+              <span aria-hidden>·</span>
+              <span className="tabular-nums text-red-600 dark:text-red-500/90">
+                −${formatGroupMoney(chunk.totalAmount)}
+              </span>
+              {chunk.missingReceiptCount > 0 ? (
+                <>
+                  <span aria-hidden>·</span>
+                  <span className="text-amber-700/90 dark:text-amber-400/85">
+                    {chunk.missingReceiptCount} missing receipt
+                    {chunk.missingReceiptCount !== 1 ? "s" : ""}
+                  </span>
+                </>
+              ) : null}
+            </span>
+          </button>
         </div>
       </td>
     </tr>
@@ -425,19 +502,34 @@ function DesktopSectionHeader({ needsReview, count }: { needsReview: boolean; co
 }
 
 function DesktopRows({
-  pageRows,
+  dateChunks,
+  expandedByDate,
+  autoExpandDateGroups,
+  onToggleDateKey,
   possibleDuplicateIds,
   selectedIds,
+  selectionEnabled,
+  showSelectionUi,
   toggleSelected,
+  onGutterSelect,
+  onModifierRowClick,
+  onToggleDateGroupRows,
 }: {
-  pageRows: Expense[];
+  dateChunks: ExpenseDateGroup[];
+  expandedByDate: Record<string, boolean>;
+  autoExpandDateGroups: boolean;
+  onToggleDateKey: (dateKey: string, chunkIndex: number) => void;
   possibleDuplicateIds: ReadonlySet<string>;
   selectedIds: ReadonlySet<string>;
+  selectionEnabled: boolean;
+  showSelectionUi: boolean;
   toggleSelected: (id: string, checked: boolean) => void;
+  onGutterSelect: (id: string) => void;
+  onModifierRowClick: (id: string, shiftKey: boolean) => void;
+  onToggleDateGroupRows: (rowIds: string[]) => void;
 }) {
   const a = useInbox();
   const dupIds = possibleDuplicateIds;
-  const chunks = React.useMemo(() => chunkRowsByStatusBucket(pageRows), [pageRows]);
 
   const projectBadgeClass =
     "inline-flex h-6 max-h-6 max-w-[10rem] items-center gap-1 truncate rounded-md border border-gray-200 bg-gray-50 px-1.5 py-0 text-[11px] font-medium text-gray-700 shadow-none dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-200";
@@ -446,155 +538,286 @@ function DesktopRows({
 
   return (
     <>
-      {chunks.map((chunk, chunkIdx) => (
-        <React.Fragment key={`chunk-${chunk.needsReview ? "nr" : "dn"}-${chunkIdx}`}>
-          <DesktopSectionHeader needsReview={chunk.needsReview} count={chunk.rows.length} />
-          {chunk.rows.map((row) => {
-            const rowTotal = getExpenseTotal(row);
-            const projLabel = projectLabel(row, a.projectNameById);
-            const status = row.status ?? "pending";
-            const inboxSt = inboxStatusBadgeStyle(status);
-            const catLabel = primaryCategory(row);
-            const missingProject = !expenseHasProjectForWorkflow(row);
-            const missingCategory = !expenseHasCategoryForWorkflow(row);
-            const showDupHint = dupIds.has(row.id);
-            const vendorRaw = row.vendorName ?? "";
-            const syntheticVendor = looksLikeTestOrSyntheticVendor(vendorRaw);
-            const vendorTitle = inboxPrimaryVendorTitle(vendorRaw);
-            const secondaryLine = inboxSecondaryMetaLine(row, vendorRaw, syntheticVendor);
+      {dateChunks.map((chunk, chunkIdx) => {
+        const expanded =
+          autoExpandDateGroups ||
+          (expandedByDate[chunk.dateKey] !== undefined
+            ? expandedByDate[chunk.dateKey]
+            : chunkIdx === 0);
+        const rowIds = chunk.rows.map((r) => r.id);
+        const selIn = rowIds.filter((id) => selectedIds.has(id)).length;
+        const groupSelect =
+          selectionEnabled && showSelectionUi
+            ? {
+                show: true as const,
+                checked: selIn === rowIds.length && rowIds.length > 0,
+                indeterminate: selIn > 0 && selIn < rowIds.length,
+                onToggleGroup: () => onToggleDateGroupRows(rowIds),
+              }
+            : undefined;
+        return (
+          <React.Fragment key={`dgrp-${chunk.dateKey}-${chunkIdx}`}>
+            <DateGroupDesktopHeader
+              chunk={chunk}
+              expanded={expanded}
+              autoExpand={autoExpandDateGroups}
+              onToggle={() => onToggleDateKey(chunk.dateKey, chunkIdx)}
+              groupSelect={groupSelect}
+            />
+            {expanded
+              ? chunk.rows.map((row) => {
+                  const rowTotal = getExpenseTotal(row);
+                  const projLabel = projectLabel(row, a.projectNameById);
+                  const status = row.status ?? "pending";
+                  const inboxSt = inboxStatusBadgeStyle(status);
+                  const catLabel = primaryCategory(row);
+                  const missingProject = !expenseHasProjectForWorkflow(row);
+                  const missingCategory = !expenseHasCategoryForWorkflow(row);
+                  const showDupHint = dupIds.has(row.id);
+                  const vendorRaw = row.vendorName ?? "";
+                  const syntheticVendor = looksLikeTestOrSyntheticVendor(vendorRaw);
+                  const vendorTitle = inboxPrimaryVendorTitle(vendorRaw);
+                  const secondaryLine = inboxSecondaryMetaLine(row, vendorRaw, syntheticVendor);
+                  const rowSelected = selectedIds.has(row.id);
 
-            return (
-              <tr
-                key={`desk-${row.id}`}
-                ref={(el) => {
-                  a.rowElsRef.current[row.id] = el;
-                }}
-                className={cn(
-                  "exp-row group min-h-[62px] cursor-pointer border-b border-gray-100 bg-white transition-colors duration-150 hover:bg-gray-50/70 [&>td]:align-middle [&>td]:px-3 [&>td]:py-2.5 dark:border-gray-800 dark:bg-gray-950 dark:hover:bg-gray-900/70",
-                  a.deletingExpenseId === row.id &&
-                    "pointer-events-none opacity-0 duration-300 ease-out",
-                  a.listView === "unreviewed" &&
-                    a.activeExpenseId === row.id &&
-                    "ring-1 ring-inset ring-orange-200 dark:ring-orange-900/50"
-                )}
-                onClick={(e) => {
-                  if (inboxRowActivateIgnored(e.target)) return;
-                  if (a.listView === "unreviewed") a.setActiveExpenseId(row.id);
-                  a.openExpensePreview(row);
-                }}
-              >
-                <td className="min-w-0 max-w-[min(36rem,52vw)]">
-                  <div className="flex items-start gap-2">
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.has(row.id)}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        toggleSelected(row.id, e.target.checked);
+                  return (
+                    <tr
+                      key={`desk-${row.id}`}
+                      ref={(el) => {
+                        a.rowElsRef.current[row.id] = el;
                       }}
-                      onClick={(e) => e.stopPropagation()}
-                      className="mt-1 h-4 w-4 shrink-0 rounded border-gray-300 text-foreground opacity-70 transition-opacity checked:opacity-100 group-hover:opacity-100"
-                      aria-label={`Select ${vendorTitle}`}
-                    />
-                    <VendorAvatar vendor={vendorRaw} />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium leading-tight text-gray-900 dark:text-gray-950">
-                        {vendorTitle}
-                      </p>
-                      <p className="mt-0.5 truncate text-xs leading-snug text-gray-500 dark:text-gray-500">
-                        {secondaryLine}
-                      </p>
-                      <InboxDescriptionSignals
-                        row={row}
-                        onReceiptPreview={() => a.openReceiptPreview(row)}
-                        missingProject={missingProject}
-                        missingCategory={missingCategory}
-                        duplicate={showDupHint}
-                      />
-                    </div>
-                  </div>
-                </td>
-                <td className="w-[148px] shrink-0">
-                  <span className={cn(projectBadgeClass, "max-w-[9rem]")} title={projLabel}>
-                    <Building2 className="h-2.5 w-2.5 shrink-0 text-gray-400" aria-hidden />
-                    {projLabel}
-                  </span>
-                </td>
-                <td className="w-[104px] shrink-0">
-                  <span className={cn(categoryBadgeClass, "max-w-full")} title={catLabel}>
-                    {catLabel}
-                  </span>
-                </td>
-                <td className="w-[128px] shrink-0 whitespace-nowrap">
-                  <span
-                    className={cn(
-                      "inline-flex h-6 max-h-6 items-center gap-1 rounded-full border px-2 py-0 text-[11px] font-medium shadow-none",
-                      expenseNeedsReviewFromDb(status)
-                        ? "border-orange-200/60 bg-orange-50/80 text-orange-900/90 dark:border-orange-500/20 dark:bg-orange-950/30 dark:text-orange-100"
-                        : "border-emerald-200/60 bg-emerald-50/80 text-emerald-900/90 dark:border-emerald-500/20 dark:bg-emerald-950/30 dark:text-emerald-100"
-                    )}
-                  >
-                    <span
-                      className={cn("h-1 w-1 shrink-0 rounded-full", inboxSt.dot)}
-                      aria-hidden
-                    />
-                    {inboxSt.label}
-                  </span>
-                </td>
-                <td className="w-[96px] shrink-0 whitespace-nowrap text-right tabular-nums">
-                  <span className="text-sm font-medium text-red-600 dark:text-red-500/90">
-                    −$
-                    {rowTotal.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </span>
-                </td>
-                <td className="w-10 shrink-0 text-right">
-                  <RowActionsMenu row={row} />
-                </td>
-              </tr>
-            );
-          })}
-        </React.Fragment>
-      ))}
+                      className={cn(
+                        "exp-row group min-h-[62px] cursor-pointer border-b border-gray-100 bg-white transition-colors duration-150 hover:bg-gray-50/70 [&>td]:align-middle [&>td]:px-3 [&>td]:py-2.5 dark:border-gray-800 dark:bg-gray-950 dark:hover:bg-gray-900/70",
+                        a.deletingExpenseId === row.id &&
+                          "pointer-events-none opacity-0 duration-300 ease-out",
+                        a.listView === "unreviewed" &&
+                          a.activeExpenseId === row.id &&
+                          "ring-1 ring-inset ring-orange-200 dark:ring-orange-900/50",
+                        rowSelected && "bg-muted/25 dark:bg-muted/15"
+                      )}
+                      onClick={(e) => {
+                        if (selectionEnabled && (e.metaKey || e.ctrlKey || e.shiftKey)) {
+                          e.preventDefault();
+                          onModifierRowClick(row.id, e.shiftKey);
+                          return;
+                        }
+                        if (inboxRowActivateIgnored(e.target)) return;
+                        if (a.listView === "unreviewed") a.setActiveExpenseId(row.id);
+                        a.openExpensePreview(row);
+                      }}
+                    >
+                      <td className="min-w-0 max-w-[min(36rem,52vw)]">
+                        <div className="flex items-start gap-2">
+                          {!selectionEnabled ? null : showSelectionUi ? (
+                            <input
+                              type="checkbox"
+                              checked={rowSelected}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                toggleSelected(row.id, e.target.checked);
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              className="mt-1 h-4 w-4 shrink-0 rounded border-gray-300 text-foreground dark:border-gray-600"
+                              aria-label={`Select ${vendorTitle}`}
+                            />
+                          ) : (
+                            <button
+                              type="button"
+                              className="mt-1 h-4 w-4 shrink-0 rounded-sm border border-transparent hover:border-border/80 focus-visible:outline focus-visible:ring-1 focus-visible:ring-ring"
+                              aria-label={`Select ${vendorTitle}`}
+                              title="Select"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onGutterSelect(row.id);
+                              }}
+                            />
+                          )}
+                          <VendorAvatar vendor={vendorRaw} />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium leading-tight text-gray-900 dark:text-gray-950">
+                              {vendorTitle}
+                            </p>
+                            <p className="mt-0.5 truncate text-xs leading-snug text-gray-500 dark:text-gray-500">
+                              {secondaryLine}
+                            </p>
+                            <InboxDescriptionSignals
+                              row={row}
+                              onReceiptPreview={() => a.openReceiptPreview(row)}
+                              missingProject={missingProject}
+                              missingCategory={missingCategory}
+                              duplicate={showDupHint}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="w-[148px] shrink-0">
+                        <span className={cn(projectBadgeClass, "max-w-[9rem]")} title={projLabel}>
+                          <Building2 className="h-2.5 w-2.5 shrink-0 text-gray-400" aria-hidden />
+                          {projLabel}
+                        </span>
+                      </td>
+                      <td className="w-[104px] shrink-0">
+                        <span className={cn(categoryBadgeClass, "max-w-full")} title={catLabel}>
+                          {catLabel}
+                        </span>
+                      </td>
+                      <td className="w-[128px] shrink-0 whitespace-nowrap">
+                        <span
+                          className={cn(
+                            "inline-flex h-6 max-h-6 items-center gap-1 rounded-full border px-2 py-0 text-[11px] font-medium shadow-none",
+                            expenseNeedsReviewFromDb(status)
+                              ? "border-orange-200/60 bg-orange-50/80 text-orange-900/90 dark:border-orange-500/20 dark:bg-orange-950/30 dark:text-orange-100"
+                              : "border-emerald-200/60 bg-emerald-50/80 text-emerald-900/90 dark:border-emerald-500/20 dark:bg-emerald-950/30 dark:text-emerald-100"
+                          )}
+                        >
+                          <span
+                            className={cn("h-1 w-1 shrink-0 rounded-full", inboxSt.dot)}
+                            aria-hidden
+                          />
+                          {inboxSt.label}
+                        </span>
+                      </td>
+                      <td className="w-[96px] shrink-0 whitespace-nowrap text-right tabular-nums">
+                        <span className="text-sm font-medium text-red-600 dark:text-red-500/90">
+                          −$
+                          {rowTotal.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </span>
+                      </td>
+                      <td className="w-10 shrink-0 text-right">
+                        <RowActionsMenu row={row} />
+                      </td>
+                    </tr>
+                  );
+                })
+              : null}
+          </React.Fragment>
+        );
+      })}
     </>
   );
 }
 
-function MobileSectionHeader({ needsReview, count }: { needsReview: boolean; count: number }) {
+function DateGroupMobileHeader({
+  chunk,
+  expanded,
+  autoExpand,
+  onToggle,
+  groupSelect,
+}: {
+  chunk: ExpenseDateGroup;
+  expanded: boolean;
+  autoExpand: boolean;
+  onToggle: () => void;
+  groupSelect?: {
+    show: boolean;
+    checked: boolean;
+    indeterminate: boolean;
+    onToggleGroup: () => void;
+  };
+}) {
+  const groupCbRef = React.useRef<HTMLInputElement>(null);
+  React.useEffect(() => {
+    const el = groupCbRef.current;
+    if (el) el.indeterminate = Boolean(groupSelect?.indeterminate);
+  }, [groupSelect?.indeterminate, groupSelect?.show]);
+
   return (
-    <li className="list-none border-b border-gray-100 bg-gray-50/70 px-3 py-0 dark:border-gray-800 dark:bg-gray-900/30">
-      <div className="flex h-9 items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-400">
-        <span
+    <li className="list-none border-b border-border/60 bg-muted/10 p-0 dark:bg-muted/5">
+      <div className="flex min-w-0 items-stretch">
+        {groupSelect?.show ? (
+          <div className="flex shrink-0 items-center border-r border-border/50 px-2 dark:border-border/40">
+            <input
+              ref={groupCbRef}
+              type="checkbox"
+              checked={groupSelect.checked}
+              onChange={groupSelect.onToggleGroup}
+              onClick={(e) => e.stopPropagation()}
+              className="h-4 w-4 shrink-0 rounded border-gray-300 text-foreground dark:border-gray-600"
+              aria-label={`Select all for ${chunk.dateLabel}`}
+            />
+          </div>
+        ) : null}
+        <button
+          type="button"
+          onClick={onToggle}
+          disabled={autoExpand}
+          aria-expanded={expanded}
           className={cn(
-            "h-1 w-1 shrink-0 rounded-full",
-            needsReview ? "bg-orange-500" : "bg-emerald-500"
+            "flex min-w-0 flex-1 cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm transition-colors",
+            "hover:bg-muted/20 disabled:cursor-default disabled:hover:bg-transparent"
           )}
-          aria-hidden
-        />
-        <span>
-          {needsReview ? "Needs Review" : "Done"} ({count})
-        </span>
+        >
+          <ChevronRight
+            className={cn(
+              "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150",
+              expanded && "rotate-90"
+            )}
+            aria-hidden
+          />
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className="font-medium text-foreground">{chunk.dateLabel}</span>
+            <span className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+              <span className="tabular-nums">{chunk.itemCount} items</span>
+              <span aria-hidden>·</span>
+              <span className="tabular-nums text-red-600 dark:text-red-500/90">
+                −${formatGroupMoney(chunk.totalAmount)}
+              </span>
+              {chunk.missingReceiptCount > 0 ? (
+                <>
+                  <span aria-hidden>·</span>
+                  <span className="text-amber-700/90 dark:text-amber-400/85">
+                    {chunk.missingReceiptCount} missing receipt
+                    {chunk.missingReceiptCount !== 1 ? "s" : ""}
+                  </span>
+                </>
+              ) : null}
+            </span>
+          </div>
+        </button>
       </div>
     </li>
   );
 }
 
 function MobileRows({
-  pageRows,
+  dateChunks,
+  expandedByDate,
+  autoExpandDateGroups,
+  onToggleDateKey,
   possibleDuplicateIds,
   selectedIds,
+  selectionEnabled,
+  showSelectionUi,
   toggleSelected,
+  onGutterSelect,
+  onModifierRowClick,
+  onToggleDateGroupRows,
+  longPressHandlers,
 }: {
-  pageRows: Expense[];
+  dateChunks: ExpenseDateGroup[];
+  expandedByDate: Record<string, boolean>;
+  autoExpandDateGroups: boolean;
+  onToggleDateKey: (dateKey: string, chunkIndex: number) => void;
   possibleDuplicateIds: ReadonlySet<string>;
   selectedIds: ReadonlySet<string>;
+  selectionEnabled: boolean;
+  showSelectionUi: boolean;
   toggleSelected: (id: string, checked: boolean) => void;
+  onGutterSelect: (id: string) => void;
+  onModifierRowClick: (id: string, shiftKey: boolean) => void;
+  onToggleDateGroupRows: (rowIds: string[]) => void;
+  longPressHandlers: (rowId: string) => {
+    onTouchStart: (e: React.TouchEvent) => void;
+    onTouchEnd: () => void;
+    onTouchCancel: () => void;
+    onTouchMove: (e: React.TouchEvent) => void;
+  };
 }) {
   const a = useInbox();
   const dupIds = possibleDuplicateIds;
-  const chunks = React.useMemo(() => chunkRowsByStatusBucket(pageRows), [pageRows]);
   const projectBadgeClass =
     "inline-flex h-6 max-h-6 max-w-full items-center truncate rounded-md border border-gray-200 bg-gray-50 px-1.5 py-0 text-[11px] font-medium text-gray-700 shadow-none dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-200";
   const categoryBadgeClass =
@@ -602,124 +825,328 @@ function MobileRows({
 
   return (
     <>
-      {chunks.map((chunk, chunkIdx) => (
-        <React.Fragment key={`mchunk-${chunk.needsReview ? "nr" : "dn"}-${chunkIdx}`}>
-          <MobileSectionHeader needsReview={chunk.needsReview} count={chunk.rows.length} />
-          {chunk.rows.map((row) => {
-            const rowTotal = getExpenseTotal(row);
-            const projLabel = projectLabel(row, a.projectNameById);
-            const status = row.status ?? "pending";
-            const inboxSt = inboxStatusBadgeStyle(status);
-            const catLabel = primaryCategory(row);
-            const missingProject = !expenseHasProjectForWorkflow(row);
-            const missingCategory = !expenseHasCategoryForWorkflow(row);
-            const showDupHint = dupIds.has(row.id);
-            const vendorRaw = row.vendorName ?? "";
-            const syntheticVendor = looksLikeTestOrSyntheticVendor(vendorRaw);
-            const vendorTitle = inboxPrimaryVendorTitle(vendorRaw);
-            const secondaryLine = inboxSecondaryMetaLine(row, vendorRaw, syntheticVendor);
+      {dateChunks.map((chunk, chunkIdx) => {
+        const expanded =
+          autoExpandDateGroups ||
+          (expandedByDate[chunk.dateKey] !== undefined
+            ? expandedByDate[chunk.dateKey]
+            : chunkIdx === 0);
+        const rowIds = chunk.rows.map((r) => r.id);
+        const selIn = rowIds.filter((id) => selectedIds.has(id)).length;
+        const groupSelect =
+          selectionEnabled && showSelectionUi
+            ? {
+                show: true as const,
+                checked: selIn === rowIds.length && rowIds.length > 0,
+                indeterminate: selIn > 0 && selIn < rowIds.length,
+                onToggleGroup: () => onToggleDateGroupRows(rowIds),
+              }
+            : undefined;
+        return (
+          <React.Fragment key={`mgrp-${chunk.dateKey}-${chunkIdx}`}>
+            <DateGroupMobileHeader
+              chunk={chunk}
+              expanded={expanded}
+              autoExpand={autoExpandDateGroups}
+              onToggle={() => onToggleDateKey(chunk.dateKey, chunkIdx)}
+              groupSelect={groupSelect}
+            />
+            {expanded
+              ? chunk.rows.map((row) => {
+                  const rowTotal = getExpenseTotal(row);
+                  const projLabel = projectLabel(row, a.projectNameById);
+                  const status = row.status ?? "pending";
+                  const inboxSt = inboxStatusBadgeStyle(status);
+                  const catLabel = primaryCategory(row);
+                  const missingProject = !expenseHasProjectForWorkflow(row);
+                  const missingCategory = !expenseHasCategoryForWorkflow(row);
+                  const showDupHint = dupIds.has(row.id);
+                  const vendorRaw = row.vendorName ?? "";
+                  const syntheticVendor = looksLikeTestOrSyntheticVendor(vendorRaw);
+                  const vendorTitle = inboxPrimaryVendorTitle(vendorRaw);
+                  const secondaryLine = inboxSecondaryMetaLine(row, vendorRaw, syntheticVendor);
+                  const rowSelected = selectedIds.has(row.id);
+                  const lp = longPressHandlers(row.id);
 
-            return (
-              <li
-                key={row.id}
-                ref={(el) => {
-                  a.rowElsRef.current[row.id] = el;
-                }}
-                className={cn(
-                  "exp-row group list-none cursor-pointer border-b border-gray-100 bg-white px-3 py-2.5 transition-colors duration-150 hover:bg-gray-50/70 dark:border-gray-800 dark:bg-gray-950 dark:hover:bg-gray-900/70",
-                  "min-h-[62px]",
-                  a.deletingExpenseId === row.id &&
-                    "pointer-events-none opacity-0 duration-300 ease-out",
-                  a.listView === "unreviewed" &&
-                    a.activeExpenseId === row.id &&
-                    "ring-1 ring-inset ring-orange-200 dark:ring-orange-900/50"
-                )}
-                onClick={(e) => {
-                  if (inboxRowActivateIgnored(e.target)) return;
-                  if (a.listView === "unreviewed") a.setActiveExpenseId(row.id);
-                  a.openExpensePreview(row);
-                }}
-              >
-                <div className="flex gap-2">
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.has(row.id)}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      toggleSelected(row.id, e.target.checked);
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="mt-1 h-4 w-4 shrink-0 rounded border-border opacity-70 transition-opacity checked:opacity-100 group-hover:opacity-100"
-                    aria-label={`Select ${vendorTitle}`}
-                  />
-                  <VendorAvatar vendor={vendorRaw} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium leading-tight text-gray-900 dark:text-gray-100">
-                          {vendorTitle}
-                        </p>
-                        <p className="mt-0.5 truncate text-xs leading-snug text-gray-500 dark:text-gray-500">
-                          {secondaryLine}
-                        </p>
-                        <InboxDescriptionSignals
-                          row={row}
-                          onReceiptPreview={() => a.openReceiptPreview(row)}
-                          missingProject={missingProject}
-                          missingCategory={missingCategory}
-                          duplicate={showDupHint}
-                        />
-                      </div>
-                      <div className="flex shrink-0 flex-col items-end gap-1">
-                        <span className="text-sm font-medium tabular-nums text-red-600 dark:text-red-500/90">
-                          −$
-                          {rowTotal.toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                      <span className={projectBadgeClass}>{projLabel}</span>
-                      <span className={categoryBadgeClass}>{catLabel}</span>
-                      <span
-                        className={cn(
-                          "inline-flex h-6 max-h-6 items-center gap-1 rounded-full border px-2 py-0 text-[11px] font-medium shadow-none",
-                          expenseNeedsReviewFromDb(status)
-                            ? "border-orange-200/60 bg-orange-50/80 text-orange-900/90 dark:border-orange-500/20 dark:bg-orange-950/30 dark:text-orange-100"
-                            : "border-emerald-200/60 bg-emerald-50/80 text-emerald-900/90 dark:border-emerald-500/20 dark:bg-emerald-950/30 dark:text-emerald-100"
+                  return (
+                    <li
+                      key={row.id}
+                      ref={(el) => {
+                        a.rowElsRef.current[row.id] = el;
+                      }}
+                      className={cn(
+                        "exp-row group list-none cursor-pointer border-b border-gray-100 bg-white px-3 py-2.5 transition-colors duration-150 hover:bg-gray-50/70 dark:border-gray-800 dark:bg-gray-950 dark:hover:bg-gray-900/70",
+                        "min-h-[62px]",
+                        a.deletingExpenseId === row.id &&
+                          "pointer-events-none opacity-0 duration-300 ease-out",
+                        a.listView === "unreviewed" &&
+                          a.activeExpenseId === row.id &&
+                          "ring-1 ring-inset ring-orange-200 dark:ring-orange-900/50",
+                        rowSelected && "bg-muted/25 dark:bg-muted/15"
+                      )}
+                      onTouchStart={
+                        selectionEnabled && !showSelectionUi ? lp.onTouchStart : undefined
+                      }
+                      onTouchEnd={selectionEnabled && !showSelectionUi ? lp.onTouchEnd : undefined}
+                      onTouchCancel={
+                        selectionEnabled && !showSelectionUi ? lp.onTouchCancel : undefined
+                      }
+                      onTouchMove={
+                        selectionEnabled && !showSelectionUi ? lp.onTouchMove : undefined
+                      }
+                      onClick={(e) => {
+                        if (selectionEnabled && (e.metaKey || e.ctrlKey || e.shiftKey)) {
+                          e.preventDefault();
+                          onModifierRowClick(row.id, e.shiftKey);
+                          return;
+                        }
+                        if (inboxRowActivateIgnored(e.target)) return;
+                        if (a.listView === "unreviewed") a.setActiveExpenseId(row.id);
+                        a.openExpensePreview(row);
+                      }}
+                    >
+                      <div className="flex gap-2">
+                        {!selectionEnabled ? null : showSelectionUi ? (
+                          <input
+                            type="checkbox"
+                            checked={rowSelected}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              toggleSelected(row.id, e.target.checked);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="mt-1 h-4 w-4 shrink-0 rounded border-border dark:border-gray-600"
+                            aria-label={`Select ${vendorTitle}`}
+                          />
+                        ) : (
+                          <button
+                            type="button"
+                            className="mt-1 h-4 w-4 shrink-0 rounded-sm border border-transparent hover:border-border/80 focus-visible:outline focus-visible:ring-1 focus-visible:ring-ring"
+                            aria-label={`Select ${vendorTitle}`}
+                            title="Select (long-press row)"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onGutterSelect(row.id);
+                            }}
+                          />
                         )}
-                      >
-                        <span className={cn("h-1 w-1 rounded-full", inboxSt.dot)} aria-hidden />
-                        {inboxSt.label}
-                      </span>
-                      <RowActionsMenu row={row} />
-                    </div>
-                  </div>
-                </div>
-              </li>
-            );
-          })}
-        </React.Fragment>
-      ))}
+                        <VendorAvatar vendor={vendorRaw} />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium leading-tight text-gray-900 dark:text-gray-100">
+                                {vendorTitle}
+                              </p>
+                              <p className="mt-0.5 truncate text-xs leading-snug text-gray-500 dark:text-gray-500">
+                                {secondaryLine}
+                              </p>
+                              <InboxDescriptionSignals
+                                row={row}
+                                onReceiptPreview={() => a.openReceiptPreview(row)}
+                                missingProject={missingProject}
+                                missingCategory={missingCategory}
+                                duplicate={showDupHint}
+                              />
+                            </div>
+                            <div className="flex shrink-0 flex-col items-end gap-1">
+                              <span className="text-sm font-medium tabular-nums text-red-600 dark:text-red-500/90">
+                                −$
+                                {rowTotal.toLocaleString(undefined, {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                            <span className={projectBadgeClass}>{projLabel}</span>
+                            <span className={categoryBadgeClass}>{catLabel}</span>
+                            <span
+                              className={cn(
+                                "inline-flex h-6 max-h-6 items-center gap-1 rounded-full border px-2 py-0 text-[11px] font-medium shadow-none",
+                                expenseNeedsReviewFromDb(status)
+                                  ? "border-orange-200/60 bg-orange-50/80 text-orange-900/90 dark:border-orange-500/20 dark:bg-orange-950/30 dark:text-orange-100"
+                                  : "border-emerald-200/60 bg-emerald-50/80 text-emerald-900/90 dark:border-emerald-500/20 dark:bg-emerald-950/30 dark:text-emerald-100"
+                              )}
+                            >
+                              <span
+                                className={cn("h-1 w-1 rounded-full", inboxSt.dot)}
+                                aria-hidden
+                              />
+                              {inboxSt.label}
+                            </span>
+                            <RowActionsMenu row={row} />
+                          </div>
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })
+              : null}
+          </React.Fragment>
+        );
+      })}
     </>
   );
 }
 
 export function ExpenseInboxTransactionList({
-  pageRows,
+  dateChunks,
   possibleDuplicateIds,
   api,
+  bulkActions,
 }: {
-  pageRows: Expense[];
-  /** Duplicate hint among currently loaded rows only (e.g. current page). */
+  /** Date groups to render (already built from the full filtered list; parent may paginate groups). */
+  dateChunks: ExpenseDateGroup[];
+  /** Duplicate hint for the full filtered list (or broader scope). */
   possibleDuplicateIds?: ReadonlySet<string>;
   api: ExpenseInboxApi;
+  /** When set, bulk bar + selection mode are enabled. */
+  bulkActions?: ExpenseListBulkActionsApi;
 }) {
   const dupIds = possibleDuplicateIds ?? new Set<string>();
   const desktopLayout = useDesktopTableLayout();
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(() => new Set());
+  const selectionAnchorRef = React.useRef<string | null>(null);
+  const longPressTimerRef = React.useRef<number | null>(null);
+  const longPressStartRef = React.useRef<{ x: number; y: number } | null>(null);
+
+  const visibleOrderedIds = React.useMemo(
+    () => dateChunks.flatMap((c) => c.rows.map((r) => r.id)),
+    [dateChunks]
+  );
+  const showSelectionUi = selectedIds.size > 0;
+  const selectionEnabled = Boolean(bulkActions);
+
+  const clearBulkSelection = React.useCallback(() => {
+    setSelectedIds(new Set());
+    selectionAnchorRef.current = null;
+  }, []);
+
+  React.useEffect(() => {
+    if (selectedIds.size === 0) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") clearBulkSelection();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selectedIds.size, clearBulkSelection]);
+
+  const clearLongPressTimer = React.useCallback(() => {
+    if (longPressTimerRef.current != null) {
+      window.clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    longPressStartRef.current = null;
+  }, []);
+
+  const onGutterSelect = React.useCallback((id: string) => {
+    setSelectedIds(new Set([id]));
+    selectionAnchorRef.current = id;
+  }, []);
+
+  const onModifierRowClick = React.useCallback(
+    (id: string, shiftKey: boolean) => {
+      if (shiftKey && selectionAnchorRef.current) {
+        const anchor = selectionAnchorRef.current;
+        const ids = visibleOrderedIds;
+        const i1 = ids.indexOf(anchor);
+        const i2 = ids.indexOf(id);
+        if (i1 >= 0 && i2 >= 0) {
+          const lo = Math.min(i1, i2);
+          const hi = Math.max(i1, i2);
+          setSelectedIds(new Set(ids.slice(lo, hi + 1)));
+        }
+        return;
+      }
+      if (!shiftKey) {
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          if (next.has(id)) next.delete(id);
+          else next.add(id);
+          return next;
+        });
+        selectionAnchorRef.current = id;
+      }
+    },
+    [visibleOrderedIds]
+  );
+
+  const onToggleDateGroupRows = React.useCallback((rowIds: string[]) => {
+    setSelectedIds((prev) => {
+      const allOn = rowIds.length > 0 && rowIds.every((rid) => prev.has(rid));
+      const next = new Set(prev);
+      if (allOn) rowIds.forEach((rid) => next.delete(rid));
+      else rowIds.forEach((rid) => next.add(rid));
+      return next;
+    });
+    selectionAnchorRef.current = rowIds[0] ?? null;
+  }, []);
+
+  const longPressHandlers = React.useCallback(
+    (rowId: string) => ({
+      onTouchStart: (e: React.TouchEvent) => {
+        if (e.touches.length !== 1) return;
+        clearLongPressTimer();
+        const t = e.touches[0];
+        longPressStartRef.current = { x: t.clientX, y: t.clientY };
+        longPressTimerRef.current = window.setTimeout(() => {
+          longPressTimerRef.current = null;
+          onGutterSelect(rowId);
+        }, 520);
+      },
+      onTouchEnd: clearLongPressTimer,
+      onTouchCancel: clearLongPressTimer,
+      onTouchMove: (e: React.TouchEvent) => {
+        if (!longPressStartRef.current || !e.touches[0]) return;
+        const t = e.touches[0];
+        const dx = Math.abs(t.clientX - longPressStartRef.current.x);
+        const dy = Math.abs(t.clientY - longPressStartRef.current.y);
+        if (dx > 12 || dy > 12) clearLongPressTimer();
+      },
+    }),
+    [clearLongPressTimer, onGutterSelect]
+  );
+
+  const dateChunksIdentity = React.useMemo(
+    () => dateChunks.map((c) => `${c.dateKey}:${c.rows.map((r) => r.id).join(",")}`).join("|"),
+    [dateChunks]
+  );
+  const [expandedByDate, setExpandedByDate] = React.useState<Record<string, boolean>>({});
+
+  React.useEffect(() => {
+    clearBulkSelection();
+  }, [dateChunksIdentity, clearBulkSelection]);
+
+  React.useEffect(() => {
+    if (api.autoExpandDateGroups) {
+      setExpandedByDate(Object.fromEntries(dateChunks.map((c) => [c.dateKey, true])));
+      return;
+    }
+    const fromLs = readDateGroupExpandedMap(api.dateGroupPool);
+    setExpandedByDate(() => {
+      const next: Record<string, boolean> = {};
+      dateChunks.forEach((c, i) => {
+        if (fromLs[c.dateKey] !== undefined) next[c.dateKey] = fromLs[c.dateKey];
+        else next[c.dateKey] = i === 0;
+      });
+      return next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- dateChunks mirrored by dateChunksIdentity
+  }, [dateChunksIdentity, api.autoExpandDateGroups, api.dateGroupPool]);
+
+  const onToggleDateKey = React.useCallback(
+    (dateKey: string, chunkIndex: number) => {
+      if (api.autoExpandDateGroups) return;
+      setExpandedByDate((prev) => {
+        const current = prev[dateKey] !== undefined ? prev[dateKey]! : chunkIndex === 0;
+        const nextVal = !current;
+        writeDateGroupExpandedMap(api.dateGroupPool, { [dateKey]: nextVal });
+        return { ...prev, [dateKey]: nextVal };
+      });
+    },
+    [api.autoExpandDateGroups, api.dateGroupPool]
+  );
 
   const toggleSelected = React.useCallback((id: string, checked: boolean) => {
     setSelectedIds((prev) => {
@@ -730,51 +1157,104 @@ export function ExpenseInboxTransactionList({
     });
   }, []);
 
+  const runBulk = React.useCallback(
+    async (fn: (ids: string[]) => Promise<boolean | void>) => {
+      if (!bulkActions) return;
+      const ids = [...selectedIds];
+      if (ids.length === 0) return;
+      const result = await fn(ids);
+      if (result !== false) clearBulkSelection();
+    },
+    [bulkActions, selectedIds, clearBulkSelection]
+  );
+
   return (
     <InboxCtx.Provider value={api}>
-      {desktopLayout ? (
-        <div className="overflow-x-auto bg-white dark:bg-gray-950">
-          <table className="w-full min-w-[820px] border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-950">
-                <th className="h-9 px-3 align-middle text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                  Description
-                </th>
-                <th className="h-9 w-[148px] shrink-0 px-3 align-middle text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                  Project
-                </th>
-                <th className="h-9 w-[104px] shrink-0 px-3 align-middle text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                  Category
-                </th>
-                <th className="h-9 w-[128px] shrink-0 px-3 align-middle text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                  Status
-                </th>
-                <th className="h-9 w-[96px] shrink-0 px-3 align-middle text-right text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                  Amount
-                </th>
-                <th className="h-9 w-10 shrink-0 px-2 align-middle text-right" aria-hidden />
-              </tr>
-            </thead>
-            <tbody>
-              <DesktopRows
-                pageRows={pageRows}
-                possibleDuplicateIds={dupIds}
-                selectedIds={selectedIds}
-                toggleSelected={toggleSelected}
-              />
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <ul className="exp-divide flex flex-col border-y border-border/60">
-          <MobileRows
-            pageRows={pageRows}
-            possibleDuplicateIds={dupIds}
-            selectedIds={selectedIds}
-            toggleSelected={toggleSelected}
+      <div className="flex min-w-0 flex-col">
+        {bulkActions && showSelectionUi ? (
+          <ExpenseBulkActionBar
+            selectedCount={selectedIds.size}
+            busy={bulkActions.busy}
+            pool={bulkActions.pool}
+            projects={bulkActions.projects}
+            categories={bulkActions.categories}
+            paymentAccounts={bulkActions.paymentAccounts}
+            onClear={clearBulkSelection}
+            onMarkDone={() => void runBulk(bulkActions.runMarkDone)}
+            onAssignProject={(projectId) =>
+              void runBulk((ids) => bulkActions.runSetProject(ids, projectId))
+            }
+            onSetCategory={(category) =>
+              void runBulk((ids) => bulkActions.runSetCategory(ids, category))
+            }
+            onSetPayment={(paymentAccountId) =>
+              void runBulk((ids) => bulkActions.runSetPayment(ids, paymentAccountId))
+            }
+            onDeleteMany={() => void runBulk(bulkActions.runDeleteMany)}
+            onDownload={bulkActions.onDownloadComingSoon}
           />
-        </ul>
-      )}
+        ) : null}
+        {desktopLayout ? (
+          <div className="overflow-x-auto bg-white dark:bg-gray-950">
+            <table className="w-full min-w-[820px] border-collapse text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-950">
+                  <th className="h-9 px-3 align-middle text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Description
+                  </th>
+                  <th className="h-9 w-[148px] shrink-0 px-3 align-middle text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Project
+                  </th>
+                  <th className="h-9 w-[104px] shrink-0 px-3 align-middle text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Category
+                  </th>
+                  <th className="h-9 w-[128px] shrink-0 px-3 align-middle text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Status
+                  </th>
+                  <th className="h-9 w-[96px] shrink-0 px-3 align-middle text-right text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Amount
+                  </th>
+                  <th className="h-9 w-10 shrink-0 px-2 align-middle text-right" aria-hidden />
+                </tr>
+              </thead>
+              <tbody>
+                <DesktopRows
+                  dateChunks={dateChunks}
+                  expandedByDate={expandedByDate}
+                  autoExpandDateGroups={api.autoExpandDateGroups}
+                  onToggleDateKey={onToggleDateKey}
+                  possibleDuplicateIds={dupIds}
+                  selectedIds={selectedIds}
+                  selectionEnabled={selectionEnabled}
+                  showSelectionUi={selectionEnabled && showSelectionUi}
+                  toggleSelected={toggleSelected}
+                  onGutterSelect={onGutterSelect}
+                  onModifierRowClick={onModifierRowClick}
+                  onToggleDateGroupRows={onToggleDateGroupRows}
+                />
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <ul className="exp-divide flex flex-col border-y border-border/60">
+            <MobileRows
+              dateChunks={dateChunks}
+              expandedByDate={expandedByDate}
+              autoExpandDateGroups={api.autoExpandDateGroups}
+              onToggleDateKey={onToggleDateKey}
+              possibleDuplicateIds={dupIds}
+              selectedIds={selectedIds}
+              selectionEnabled={selectionEnabled}
+              showSelectionUi={selectionEnabled && showSelectionUi}
+              toggleSelected={toggleSelected}
+              onGutterSelect={onGutterSelect}
+              onModifierRowClick={onModifierRowClick}
+              onToggleDateGroupRows={onToggleDateGroupRows}
+              longPressHandlers={longPressHandlers}
+            />
+          </ul>
+        )}
+      </div>
     </InboxCtx.Provider>
   );
 }

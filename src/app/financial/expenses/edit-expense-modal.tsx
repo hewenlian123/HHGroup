@@ -5,7 +5,6 @@ import * as React from "react";
 import { flushSync } from "react-dom";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
-import { InlineLoading } from "@/components/ui/skeleton";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,13 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import {
-  deleteExpenseAttachment,
-  getExpenseTotal,
-  insertExpenseAttachmentRecord,
-  type Expense,
-  type ExpenseAttachment,
-} from "@/lib/data";
+import { getExpenseTotal, type Expense, type ExpenseAttachment } from "@/lib/data";
 import { useToast } from "@/components/toast/toast-provider";
 import { inferAttachmentPreviewType } from "@/components/attachment-preview-modal";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
@@ -41,6 +34,14 @@ import {
   EXPENSE_WORKER_SELECT_NONE,
 } from "@/lib/expense-workflow-status";
 import { cn } from "@/lib/utils";
+import { ExpenseEditAttachmentsSection } from "./expense-edit-attachments-section";
+
+function attachmentIsImage(att: ExpenseAttachment): boolean {
+  if (att.mimeType.startsWith("image/")) return true;
+  return (
+    /\.(jpe?g|png|gif|webp)$/i.test(att.fileName) || /\.(jpe?g|png|gif|webp)(\?|#|$)/i.test(att.url)
+  );
+}
 
 type ProjectOption = { id: string; name: string | null };
 type WorkerOption = { id: string; name: string };
@@ -69,22 +70,6 @@ export type ExpenseReviewSavePatch = {
   paymentAccountId: string | null;
   paymentAccountName: string | null;
 };
-
-function attachmentIsImage(att: ExpenseAttachment): boolean {
-  if (att.mimeType.startsWith("image/")) return true;
-  return (
-    /\.(jpe?g|png|gif|webp)$/i.test(att.fileName) || /\.(jpe?g|png|gif|webp)(\?|#|$)/i.test(att.url)
-  );
-}
-
-function storageFileType(file: File): "image" | "pdf" | null {
-  if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
-    return "pdf";
-  }
-  if (file.type.startsWith("image/")) return "image";
-  if (/\.(jpe?g|png|gif|webp)$/i.test(file.name)) return "image";
-  return null;
-}
 
 type Props = {
   expense: Expense | null;
@@ -123,10 +108,7 @@ export function EditExpenseModal({
   const [paymentAccountsLocal, setPaymentAccountsLocal] = React.useState<PaymentAccountRow[]>([]);
   const [attachments, setAttachments] = React.useState<ExpenseAttachment[]>([]);
   const [thumbById, setThumbById] = React.useState<Record<string, string | null>>({});
-  const [uploadBusy, setUploadBusy] = React.useState(false);
   const { openPreview } = useAttachmentPreview();
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const cameraInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     if (expense) {
@@ -211,84 +193,6 @@ export function EditExpenseModal({
     [resolvePreviewUrl, toast, openPreview]
   );
 
-  const handleUploadFiles = React.useCallback(
-    async (files: FileList | null) => {
-      if (!files?.length || !expense) return;
-      if (!supabase) {
-        toast({
-          title: "Upload failed",
-          description: "Supabase is not configured.",
-          variant: "error",
-        });
-        return;
-      }
-      setUploadBusy(true);
-      try {
-        for (let i = 0; i < files.length; i++) {
-          const file = files[i]!;
-          const ft = storageFileType(file);
-          if (!ft) {
-            toast({
-              title: "Skipped file",
-              description: `${file.name} is not an image or PDF.`,
-              variant: "error",
-            });
-            continue;
-          }
-          const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_") || "file";
-          const filePath = `expenses/${expense.id}/${Date.now()}-${i}-${safeName}`;
-          const { error: upErr } = await supabase.storage
-            .from("expense-attachments")
-            .upload(filePath, file, {
-              contentType: file.type || undefined,
-              upsert: false,
-            });
-          if (upErr) throw upErr;
-          const next = await insertExpenseAttachmentRecord(expense.id, {
-            storagePath: filePath,
-            fileType: ft,
-          });
-          if (next) {
-            setAttachments(next.attachments ?? []);
-            onExpenseAttachmentsUpdated?.(next);
-          }
-        }
-        toast({ title: "Attachment(s) added", variant: "success" });
-      } catch (e) {
-        toast({
-          title: "Upload failed",
-          description: e instanceof Error ? e.message : "Unknown error",
-          variant: "error",
-        });
-      } finally {
-        setUploadBusy(false);
-      }
-    },
-    [expense, supabase, toast, onExpenseAttachmentsUpdated]
-  );
-
-  const handleDeleteAttachment = React.useCallback(
-    async (att: ExpenseAttachment) => {
-      if (!expense) return;
-      if (!window.confirm("Delete this attachment?")) return;
-      try {
-        const next = await deleteExpenseAttachment(expense.id, att.id);
-        if (next) {
-          setAttachments(next.attachments ?? []);
-          onExpenseAttachmentsUpdated?.(next);
-          toast({ title: "Attachment removed", variant: "success" });
-        }
-      } catch (e) {
-        toast({
-          title: "Delete failed",
-          description: e instanceof Error ? e.message : "Unknown error",
-          variant: "error",
-        });
-      }
-    },
-    [expense, toast, onExpenseAttachmentsUpdated]
-  );
-
   const handleSave = () => {
     if (!expense || saving) return;
     const numAmount = parseFloat(amount);
@@ -341,28 +245,6 @@ export function EditExpenseModal({
           {expense ? (
             <>
               <div className="max-h-[min(88vh,680px)] min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  className="hidden"
-                  accept="image/*,application/pdf,.pdf"
-                  multiple
-                  onChange={(e) => {
-                    void handleUploadFiles(e.target.files);
-                    e.target.value = "";
-                  }}
-                />
-                <input
-                  ref={cameraInputRef}
-                  type="file"
-                  className="hidden"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={(e) => {
-                    void handleUploadFiles(e.target.files);
-                    e.target.value = "";
-                  }}
-                />
                 <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2 space-y-1.5">
                     <label className={FIELD_LABEL}>Vendor</label>
@@ -519,99 +401,19 @@ export function EditExpenseModal({
                   </div>
                 </div>
 
-                <div className="border-t border-gray-100 pt-2">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="exp-dlg-muted text-[11px] font-medium">Attachments</span>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="exp-btn-secondary h-8 rounded-sm"
-                        disabled={!supabase || uploadBusy || saving}
-                        onClick={() => fileInputRef.current?.click()}
-                      >
-                        {uploadBusy ? (
-                          <>
-                            <InlineLoading className="mr-1.5" />
-                            Uploading…
-                          </>
-                        ) : (
-                          "+ Add attachment"
-                        )}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="btn-outline-ghost exp-btn-secondary h-8 rounded-sm"
-                        disabled={!supabase || uploadBusy || saving}
-                        onClick={() => cameraInputRef.current?.click()}
-                      >
-                        Camera
-                      </Button>
-                    </div>
-                  </div>
-                  {!supabase ? (
-                    <p className="exp-dlg-muted mt-2 text-xs">
-                      Configure Supabase to add attachments.
-                    </p>
-                  ) : attachments.length === 0 ? (
-                    <p className="exp-dlg-muted mt-1.5 text-[11px]">No attachments yet.</p>
-                  ) : (
-                    <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto">
-                      {attachments.map((att) => {
-                        const thumb = thumbById[att.id];
-                        const isPdf = !attachmentIsImage(att);
-                        return (
-                          <li
-                            key={att.id}
-                            className="flex items-center gap-2 border-b border-gray-100/80 py-1.5 last:border-0"
-                          >
-                            <button
-                              type="button"
-                              className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-sm border border-gray-100"
-                              onClick={() => void openAttachmentPreview(att)}
-                              aria-label="Preview"
-                            >
-                              {isPdf ? (
-                                <span className="text-[9px] font-medium text-text-secondary">
-                                  PDF
-                                </span>
-                              ) : thumb ? (
-                                /* eslint-disable-next-line @next/next/no-img-element */
-                                <img src={thumb} alt="" className="h-full w-full object-cover" />
-                              ) : (
-                                <InlineLoading className="h-4 w-4" size="md" />
-                              )}
-                            </button>
-                            <span className="min-w-0 flex-1 truncate text-xs text-text-primary">
-                              {att.fileName}
-                            </span>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="btn-outline-ghost h-7 shrink-0 px-2 text-xs text-[#9CA3AF] hover:bg-[#F3F4F6] hover:text-text-primary"
-                              onClick={() => void openAttachmentPreview(att)}
-                            >
-                              View
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="btn-outline-ghost h-7 shrink-0 px-2 text-xs text-[#9CA3AF] hover:bg-[#FEF2F2] hover:text-[#B91C1C]"
-                              onClick={() => void handleDeleteAttachment(att)}
-                              disabled={saving}
-                            >
-                              Remove
-                            </Button>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
+                <div className="border-t border-border/60 pt-3">
+                  <span className={cn(FIELD_LABEL, "mb-2 block")}>Attachments</span>
+                  <ExpenseEditAttachmentsSection
+                    expense={expense}
+                    supabase={supabase}
+                    attachments={attachments}
+                    setAttachments={setAttachments}
+                    thumbById={thumbById}
+                    disabled={saving}
+                    onExpenseUpdated={onExpenseAttachmentsUpdated}
+                    onPreviewAttachment={(att) => void openAttachmentPreview(att)}
+                    showDelete
+                  />
                 </div>
               </div>
               <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border/60 px-4 py-3">

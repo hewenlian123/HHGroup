@@ -44,10 +44,17 @@ import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { createBrowserClient } from "@/lib/supabase";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { readStoredExpenseSort } from "@/lib/expense-list-sort-storage";
+import { countExpensesMatchingInboxPool } from "@/lib/expense-workflow-status";
 import { prefetchFinancialRoute } from "@/lib/financial-nav-prefetch";
 import { companyProfileQueryKey, fetchCompanyProfileForNav } from "@/lib/queries/companyProfile";
-import { receiptQueueBadgeQueryKey } from "@/lib/queries/receiptQueue";
-import { RECEIPT_QUEUE_CHANGED_EVENT, fetchReceiptQueueBadgeCount } from "@/lib/receipt-queue";
+import {
+  buildExpensesQueryKey,
+  expenseListQueryStaleMs,
+  expensesQueryKeyRoot,
+  fetchExpenses,
+} from "@/lib/queries/expenses";
+import { RECEIPT_QUEUE_CHANGED_EVENT } from "@/lib/receipt-queue";
 import { getCompanyInitials } from "@/lib/company-profile";
 import { useSystemHealth } from "@/contexts/system-health-context";
 
@@ -200,15 +207,17 @@ export function Sidebar({
   const orgName = companyProfile?.org_name?.trim() || "HH Group";
   const logoUrl = companyProfile?.logo_url ?? null;
 
-  const { data: receiptQueueCount = 0 } = useQuery({
-    queryKey: receiptQueueBadgeQueryKey,
-    queryFn: () => fetchReceiptQueueBadgeCount(prefetchSupabase!),
+  const expenseSortForInboxBadge = readStoredExpenseSort();
+  const { data: expenseInboxPoolCount = 0 } = useQuery({
+    queryKey: buildExpensesQueryKey(expenseSortForInboxBadge),
+    queryFn: () => fetchExpenses(expenseSortForInboxBadge),
+    select: (rows) => countExpensesMatchingInboxPool(rows),
     enabled: Boolean(prefetchSupabase),
-    staleTime: 30_000,
+    staleTime: expenseListQueryStaleMs,
     refetchInterval: 60_000,
     refetchOnWindowFocus: false,
   });
-  const receiptQueueAnimKey = useReceiptQueueCountAnimKey(receiptQueueCount);
+  const expenseInboxPoolAnimKey = useReceiptQueueCountAnimKey(expenseInboxPoolCount);
   const sectionsInitDone = React.useRef(false);
   const activeSectionKey = React.useMemo(() => {
     for (const section of sections) {
@@ -224,7 +233,7 @@ export function Sidebar({
   React.useEffect(() => {
     const onQueue = () => {
       void queryClient.invalidateQueries({
-        queryKey: receiptQueueBadgeQueryKey,
+        queryKey: expensesQueryKeyRoot,
         refetchType: "active",
       });
     };
@@ -377,7 +386,7 @@ export function Sidebar({
                     const Icon = item.icon;
                     const navLabel =
                       item.href === "/financial/inbox"
-                        ? `Inbox (${receiptQueueCount})`
+                        ? `Inbox (${expenseInboxPoolCount})`
                         : item.label;
                     if (item.href === "/financial/inbox" && Icon) {
                       return (
@@ -392,9 +401,9 @@ export function Sidebar({
                         >
                           <div className="relative flex shrink-0 items-center justify-center">
                             <Icon className={navIconClass(active)} strokeWidth={1.75} />
-                            {receiptQueueCount > 0 ? (
+                            {expenseInboxPoolCount > 0 ? (
                               <span
-                                key={receiptQueueAnimKey}
+                                key={expenseInboxPoolAnimKey}
                                 className={cn(
                                   "absolute -right-2 -top-1 z-[1] flex min-h-[15px] min-w-[15px] items-center justify-center rounded-sm px-1 text-[10px] font-semibold tabular-nums leading-none animate-receipt-queue-badge",
                                   active
@@ -403,7 +412,7 @@ export function Sidebar({
                                 )}
                                 aria-hidden
                               >
-                                {receiptQueueCount > 99 ? "99+" : receiptQueueCount}
+                                {expenseInboxPoolCount > 99 ? "99+" : expenseInboxPoolCount}
                               </span>
                             ) : null}
                           </div>
@@ -458,7 +467,7 @@ export function Sidebar({
                         const Icon = item.icon;
                         const navLabel =
                           item.href === "/financial/inbox"
-                            ? `Inbox (${receiptQueueCount})`
+                            ? `Inbox (${expenseInboxPoolCount})`
                             : item.label;
                         if (item.href === "/financial/inbox" && Icon) {
                           return (
@@ -475,10 +484,10 @@ export function Sidebar({
                               <span className="flex min-w-0 flex-1 items-baseline gap-0">
                                 <span className="truncate">Inbox </span>
                                 <span
-                                  key={receiptQueueAnimKey}
+                                  key={expenseInboxPoolAnimKey}
                                   className="inline-block shrink-0 origin-center rounded-sm px-0.5 tabular-nums animate-receipt-queue-badge"
                                 >
-                                  ({receiptQueueCount})
+                                  ({expenseInboxPoolCount})
                                 </span>
                               </span>
                             </Link>
