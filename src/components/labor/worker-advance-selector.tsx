@@ -15,10 +15,17 @@ type Props = {
   advances: WorkerAdvanceOption[];
   selectedIds: string[];
   onChange: (nextSelectedIds: string[]) => void;
+  disabled?: boolean;
 };
 
-export function WorkerAdvanceSelector({ advances, selectedIds, onChange }: Props) {
+export function WorkerAdvanceSelector({
+  advances,
+  selectedIds,
+  onChange,
+  disabled = false,
+}: Props) {
   const toggle = (id: string) => {
+    if (disabled) return;
     if (selectedIds.includes(id)) {
       onChange(selectedIds.filter((x) => x !== id));
     } else {
@@ -42,12 +49,13 @@ export function WorkerAdvanceSelector({ advances, selectedIds, onChange }: Props
           return (
             <label
               key={a.id}
-              className="flex items-start gap-2 px-3 py-2 text-xs hover:bg-muted/40 cursor-pointer"
+              className="flex items-start gap-2 px-3 py-2 text-xs hover:bg-muted/40 cursor-pointer has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60"
             >
               <input
                 type="checkbox"
                 className="mt-[2px] h-3.5 w-3.5 rounded border border-border/70"
                 checked={checked}
+                disabled={disabled}
                 onChange={() => toggle(a.id)}
               />
               <div className="flex-1 space-y-0.5">

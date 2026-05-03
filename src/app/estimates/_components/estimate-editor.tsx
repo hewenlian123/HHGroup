@@ -1170,25 +1170,27 @@ function LineItemRow({
 
   React.useLayoutEffect(() => {
     if (isLocked) return;
-    lineLiveValuesRef.current[row.id] = () => ({
+    const registry = lineLiveValuesRef.current;
+    registry[row.id] = () => ({
       qty,
       unit,
       unitCost,
       markupPct: row.markupPct,
     });
     return () => {
-      delete lineLiveValuesRef.current[row.id];
+      delete registry[row.id];
     };
   }, [isLocked, row.id, row.markupPct, qty, unit, unitCost, lineLiveValuesRef]);
 
   React.useLayoutEffect(() => {
     if (isLocked) return;
-    lineDescriptionApplyRef.current[row.id] = (name: string, body: string) => {
+    const registry = lineDescriptionApplyRef.current;
+    registry[row.id] = (name: string, body: string) => {
       setTitle(name);
       setDesc(body);
     };
     return () => {
-      delete lineDescriptionApplyRef.current[row.id];
+      delete registry[row.id];
     };
   }, [isLocked, row.id, lineDescriptionApplyRef]);
 

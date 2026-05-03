@@ -177,6 +177,7 @@ export function ExpenseInboxPreviewModal({
 
   const prevOpenRef = React.useRef(false);
   const prevExpenseIdRef = React.useRef<string | null>(null);
+  const expenseId = expense?.id ?? null;
   React.useEffect(() => {
     const wasOpen = prevOpenRef.current;
     prevOpenRef.current = open;
@@ -190,13 +191,13 @@ export function ExpenseInboxPreviewModal({
   }, [open, enterMode]);
 
   React.useEffect(() => {
-    if (!open || !expense) return;
+    if (!open || !expenseId) return;
     const prevId = prevExpenseIdRef.current;
-    if (prevId !== null && prevId !== expense.id) {
+    if (prevId !== null && prevId !== expenseId) {
       setMode("preview");
     }
-    prevExpenseIdRef.current = expense.id;
-  }, [open, expense?.id]);
+    prevExpenseIdRef.current = expenseId;
+  }, [open, expenseId]);
 
   React.useEffect(() => {
     if (!expense) return;

@@ -248,7 +248,7 @@ export default function SubcontractorsPage() {
     } finally {
       setSubmitting(false);
     }
-  }, [configured, editorMode, form, refresh, supabase]);
+  }, [configured, editorMode, form, supabase]);
 
   const handleDelete = React.useCallback(
     async (row: SubcontractorRow) => {

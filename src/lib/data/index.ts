@@ -1284,6 +1284,7 @@ export async function createWorkerPayment(
         payment_date: input.paymentDate,
         notes: input.notes,
         project_id: input.projectId ?? null,
+        idempotency_key: input.idempotencyKey ?? null,
       }),
     });
     const body = (await res.json().catch(() => ({}))) as {

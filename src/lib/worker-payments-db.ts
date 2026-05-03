@@ -19,6 +19,7 @@ export type WorkerPayment = {
   createdAt: string;
   /** Denormalized labor_entries.id[] settled by this payment (audit / receipt). */
   laborEntryIds: string[] | null;
+  idempotencyKey?: string | null;
 };
 
 export type CreateWorkerPaymentInput = {
@@ -30,6 +31,7 @@ export type CreateWorkerPaymentInput = {
   amount: number;
   paymentMethod: string;
   notes?: string | null;
+  idempotencyKey?: string | null;
 };
 
 function client() {
@@ -91,7 +93,26 @@ function fromRow(r: Record<string, unknown>): WorkerPayment {
     notes: ((r.note ?? r.notes) as string | null) ?? null,
     createdAt,
     laborEntryIds: parseLaborEntryIds(r.labor_entry_ids),
+    idempotencyKey: (r.idempotency_key as string | null) ?? null,
   };
+}
+
+export async function getWorkerPaymentByIdempotencyKeyWithClient(
+  c: SupabaseClient,
+  idempotencyKey: string
+): Promise<WorkerPayment | null | undefined> {
+  const key = idempotencyKey.trim();
+  if (!key) return null;
+  const { data, error } = await c
+    .from("worker_payments")
+    .select("*")
+    .eq("idempotency_key", key)
+    .maybeSingle();
+  if (!error) return data ? fromRow(data as Record<string, unknown>) : null;
+  if (isUnknownColumnError(error)) return undefined;
+  if (isMissingTable(error))
+    throw new Error("未找到 worker_payments 表。请先创建该表后再记录付款。");
+  throw new Error(error.message ?? "Failed to load worker payment.");
 }
 
 /**
@@ -107,16 +128,28 @@ export async function createWorkerPaymentWithClient(
   if (!method) throw new Error("Payment method is required.");
 
   const trimmedNote = input.notes?.trim() || null;
+  const idempotencyKey = input.idempotencyKey?.trim() || null;
+  if (idempotencyKey) {
+    const existing = await getWorkerPaymentByIdempotencyKeyWithClient(c, idempotencyKey);
+    if (existing) return existing;
+  }
 
   type Row = Record<string, unknown>;
   const attempts: Row[] = [];
-  for (const totalField of ["total_amount", "amount"] as const) {
-    const base: Row = { worker_id: input.workerId, payment_method: method, [totalField]: amt };
-    if (trimmedNote) {
-      attempts.push({ ...base, note: trimmedNote });
-      attempts.push({ ...base, notes: trimmedNote });
+  const pushAttempts = (includeIdempotencyKey: boolean) => {
+    for (const totalField of ["total_amount", "amount"] as const) {
+      const base: Row = { worker_id: input.workerId, payment_method: method, [totalField]: amt };
+      if (includeIdempotencyKey && idempotencyKey) base.idempotency_key = idempotencyKey;
+      if (trimmedNote) {
+        attempts.push({ ...base, note: trimmedNote });
+        attempts.push({ ...base, notes: trimmedNote });
+      }
+      attempts.push(base);
     }
-    attempts.push(base);
+  };
+  pushAttempts(true);
+  if (!idempotencyKey) {
+    pushAttempts(false);
   }
 
   let lastError: { message?: string } | null = null;
@@ -124,6 +157,14 @@ export async function createWorkerPaymentWithClient(
     const { data, error } = await c.from("worker_payments").insert(payload).select("*").single();
     if (!error && data) return fromRow(data as Record<string, unknown>);
     lastError = error;
+    if (
+      idempotencyKey &&
+      error &&
+      (/duplicate key|unique/i.test(error.message ?? "") || error.code === "23505")
+    ) {
+      const existing = await getWorkerPaymentByIdempotencyKeyWithClient(c, idempotencyKey);
+      if (existing) return existing;
+    }
     if (error && isMissingTable(error)) {
       throw new Error("未找到 worker_payments 表。请先创建该表后再记录付款。");
     }
