@@ -112,7 +112,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   />
                   <main
                     className={cn(
-                      "flex-1 scroll-smooth overflow-y-auto overflow-x-hidden bg-page pb-14 sm:pb-0"
+                      "flex-1 scroll-smooth overflow-y-auto overflow-x-hidden bg-page",
+                      "pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pb-0"
                     )}
                   >
                     {children}

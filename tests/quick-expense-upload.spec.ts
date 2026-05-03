@@ -43,7 +43,7 @@ test.describe("Quick Expense: upload and save", () => {
     await page.getByRole("option", { name: E2E_PRESERVED_PROJECT_LABEL }).click();
     await waitForQuickExpenseProjectLabel(dialog, E2E_PRESERVED_PROJECT_LABEL);
 
-    const grid = dialog.locator(".grid.grid-cols-2").first();
+    const grid = dialog.locator("form div.grid").first();
     await expect(grid).toBeVisible();
     await expect(grid.getByText("Amount", { exact: true })).toBeVisible();
     await expect(grid.getByText("Vendor", { exact: true })).toBeVisible();
@@ -122,11 +122,9 @@ test.describe("Quick Expense: upload and save", () => {
       buffer: PNG_1X1,
     });
 
-    await expect(dialog.getByText(/Scanning/i)).toBeVisible({ timeout: 15_000 });
-    await expect(dialog.getByText(/Scanning/i)).not.toBeVisible({ timeout: 90_000 });
-
-    await expect(dialog.getByRole("button", { name: /attached — view/i })).toBeVisible({
-      timeout: 15_000,
+    await expect(dialog.locator('img[alt=""]').first()).toBeVisible({ timeout: 15_000 });
+    await expect(dialog.getByText("Uploaded", { exact: true }).first()).toBeVisible({
+      timeout: 90_000,
     });
 
     const vendorMark = `E2E-QE-${Date.now()}`;
@@ -184,5 +182,58 @@ test.describe("Quick Expense: upload and save", () => {
     await expensesVendorSearch(page).fill(vendorMark);
     const dataRow = expenseListRow(page, vendorMark);
     await expect(dataRow).toBeVisible({ timeout: 20_000 });
+  });
+
+  test("mobile iPhone: receipt input attrs, preview on pick, failed upload keeps preview + retry", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/financial/expenses", { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
+
+    await clickVisibleQuickExpenseButton(page);
+    const dialog = page.getByRole("dialog", { name: /Quick expense/i });
+    await expect(dialog).toBeVisible({ timeout: 15_000 });
+
+    if (
+      await dialog
+        .getByText(/Supabase not configured/i)
+        .isVisible()
+        .catch(() => false)
+    ) {
+      test.skip(true, "Browser Supabase client not configured (NEXT_PUBLIC_* env).");
+    }
+
+    await page.route("**/api/quick-expense/upload-attachment**", (route) =>
+      route.fulfill({ status: 500, contentType: "application/json", body: "{}" })
+    );
+    await page.route("**/storage/v1/object/**", (route) =>
+      route.fulfill({ status: 403, contentType: "application/json", body: "{}" })
+    );
+
+    const fileInput = dialog.getByTestId("quick-expense-receipt-input");
+    await expect(fileInput).toHaveAttribute("accept", "image/*,application/pdf");
+    await expect(fileInput).toHaveAttribute("capture", "environment");
+
+    await fileInput.setInputFiles({
+      name: "receipt.png",
+      mimeType: "image/png",
+      buffer: PNG_1X1,
+    });
+
+    await expect(dialog.locator('img[alt=""]').first()).toBeVisible({ timeout: 15_000 });
+    await expect(dialog.getByTestId("quick-expense-receipt-retry")).toBeVisible({
+      timeout: 90_000,
+    });
+
+    const noOverflow = await page.evaluate(() => {
+      const tol = 2;
+      const root = document.documentElement;
+      const main = document.querySelector("main");
+      const exp = document.querySelector(".expenses-ui");
+      const check = (el: Element | null) => !el || el.scrollWidth <= el.clientWidth + tol;
+      return root.scrollWidth <= root.clientWidth + tol && check(main) && check(exp);
+    });
+    expect(noOverflow).toBe(true);
   });
 });

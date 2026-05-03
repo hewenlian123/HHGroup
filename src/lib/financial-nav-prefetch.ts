@@ -1,9 +1,10 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { readStoredExpenseSort } from "@/lib/expense-list-sort-storage";
 import {
   buildExpensesQueryKey,
-  defaultExpenseListSort,
   expenseCategoriesQueryKey,
+  expenseListQueryStaleMs,
   fetchExpenseCategories,
   fetchExpenses,
   fetchWorkers,
@@ -11,18 +12,22 @@ import {
 } from "@/lib/queries/expenses";
 import {
   fetchFinancialProjects,
-  fetchReceiptQueue,
   financialProjectsQueryKey,
+  fetchReceiptQueue,
   receiptQueueQueryKey,
 } from "@/lib/queries/receiptQueue";
 
-const prefetchStale = 30_000;
+const prefetchStale = expenseListQueryStaleMs;
 
-export function prefetchExpensesPageData(queryClient: QueryClient): Promise<void> {
-  return Promise.all([
+export function prefetchExpensesPageData(
+  queryClient: QueryClient,
+  supabase: SupabaseClient | null
+): Promise<void> {
+  const sort = readStoredExpenseSort();
+  const tasks: Promise<unknown>[] = [
     queryClient.prefetchQuery({
-      queryKey: buildExpensesQueryKey(defaultExpenseListSort),
-      queryFn: () => fetchExpenses(defaultExpenseListSort),
+      queryKey: buildExpensesQueryKey(sort),
+      queryFn: () => fetchExpenses(sort),
       staleTime: prefetchStale,
     }),
     queryClient.prefetchQuery({
@@ -35,7 +40,17 @@ export function prefetchExpensesPageData(queryClient: QueryClient): Promise<void
       queryFn: fetchWorkers,
       staleTime: prefetchStale,
     }),
-  ]).then(() => undefined);
+  ];
+  if (supabase) {
+    tasks.push(
+      queryClient.prefetchQuery({
+        queryKey: financialProjectsQueryKey,
+        queryFn: () => fetchFinancialProjects(supabase),
+        staleTime: prefetchStale,
+      })
+    );
+  }
+  return Promise.all(tasks).then(() => undefined);
 }
 
 export function prefetchReceiptQueuePageData(
@@ -47,11 +62,6 @@ export function prefetchReceiptQueuePageData(
     queryClient.prefetchQuery({
       queryKey: receiptQueueQueryKey,
       queryFn: () => fetchReceiptQueue(supabase),
-      staleTime: prefetchStale,
-    }),
-    queryClient.prefetchQuery({
-      queryKey: buildExpensesQueryKey(defaultExpenseListSort),
-      queryFn: () => fetchExpenses(defaultExpenseListSort),
       staleTime: prefetchStale,
     }),
     queryClient.prefetchQuery({
@@ -78,7 +88,7 @@ export function prefetchFinancialRoute(
     href === "/financial/inbox" ||
     href.startsWith("/financial/inbox?")
   ) {
-    void prefetchExpensesPageData(queryClient);
+    void prefetchExpensesPageData(queryClient, supabase);
     return;
   }
   if (href === "/financial/receipt-queue" || href.startsWith("/financial/receipt-queue?")) {

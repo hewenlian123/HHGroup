@@ -373,7 +373,13 @@ export async function expectExpenseVendorRowArchiveOrInbox(
     .toBe(true);
 }
 
-/** Card row on `/financial/receipt-queue` (`data-testid="receipt-queue-row"`). */
+/**
+ * Card row on `/financial/receipt-queue` (`data-testid="receipt-queue-row"`).
+ *
+ * Receipt upload tests should assert against the **stored/compressed** file name (e.g. `.jpg` after
+ * `compressImageFileForReceiptUpload`), not only the original `setInputFiles` name — see
+ * `docs/receipt-upload-ocr-flow.md`.
+ */
 export function receiptQueueRowByFileName(page: Page, fileName: string): Locator {
   return page.getByTestId("receipt-queue-row").filter({ hasText: fileName }).first();
 }

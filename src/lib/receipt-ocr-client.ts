@@ -11,6 +11,8 @@ export type ReceiptOcrResult = {
   ocr_status?: "ok" | "fallback";
   ocr_reason?: string;
   raw_text?: string;
+  /** e.g. cash, card, debit — when model / heuristics infer from receipt */
+  payment_method?: string;
   confidence?: {
     vendor?: "high" | "medium" | "low";
     amount?: "high" | "medium" | "low";
@@ -121,6 +123,10 @@ async function fileToDataUrl(file: File): Promise<string> {
   }
 }
 
+function isSubtotalOrTaxLine(line: string): boolean {
+  return /\b(subtotal|sub-total|tax\s*:|sales\s*tax|vat|gst)\b/i.test(line);
+}
+
 function pickLikelyAmount(text: string): number {
   const lines = text
     .split(/\r?\n/)
@@ -128,6 +134,7 @@ function pickLikelyAmount(text: string): number {
     .filter(Boolean);
   let best = 0;
   for (const line of lines) {
+    if (isSubtotalOrTaxLine(line)) continue;
     const nums = line.match(/\$?\s*\d{1,4}(?:,\d{3})*(?:\.\d{2})?/g) ?? [];
     const parsed = nums
       .map((raw) => {
@@ -139,7 +146,9 @@ function pickLikelyAmount(text: string): number {
       .filter((n) => Number.isFinite(n) && n > 0);
     if (parsed.length === 0) continue;
     const lineBest = Math.max(...parsed);
-    if (/\b(total|amount due|balance due|grand total)\b/i.test(line)) {
+    if (
+      /\b(total|amount\s+due|balance\s+due|grand\s+total|amount\s+paid|fuel\s+total)\b/i.test(line)
+    ) {
       return lineBest;
     }
     if (lineBest > best) best = lineBest;
@@ -147,7 +156,7 @@ function pickLikelyAmount(text: string): number {
   return best;
 }
 
-function parseDateFromText(text: string): string | null {
+export function parseDateFromText(text: string): string | null {
   const lines = text.split(/\r?\n/).map((l) => l.trim());
   const labeled = lines.find((line) =>
     /\b(date|purchase|purchased|sale|transaction|invoice)\b/i.test(line)
@@ -168,6 +177,19 @@ function parseDateFromText(text: string): string | null {
     const month = a > 12 ? b : a;
     const day = a > 12 ? a : b;
     return `${y}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  }
+  // M/D/YY or MM-DD-YY (2-digit year)
+  const m3 = hay.match(/\b(\d{1,2})[/-](\d{1,2})[/-](\d{2})\b/);
+  if (m3) {
+    let y = Number(m3[3]);
+    y += y >= 70 ? 1900 : 2000;
+    const a = Number(m3[1]);
+    const b = Number(m3[2]);
+    const month = a > 12 ? b : a;
+    const day = a > 12 ? a : b;
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      return `${String(y)}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
   }
   return null;
 }
@@ -202,23 +224,40 @@ function normalizeVendor(v: string): string {
   return (v || "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-function detectKnownVendor(text: string): string | null {
+export function detectKnownVendor(text: string): string | null {
   const t = text.toLowerCase();
   if (t.includes("home depot")) return "Home Depot";
-  if (t.includes("lowe") || t.includes("lowe's")) return "Lowe's";
+  if (/\blowe'?s?\b/.test(t) || t.includes("lowes")) return "Lowe's";
   if (t.includes("walmart")) return "Walmart";
   if (t.includes("costco")) return "Costco";
+  if (t.includes("city mill")) return "City Mill";
+  if (t.includes("hardware hawaii")) return "Hardware Hawaii";
+  if (
+    /\b(shell|chevron|exxon|mobil|bp|76 gas|texaco|sunoco|fuel|gas\s+station|gasoline)\b/i.test(t)
+  ) {
+    return "Gas station";
+  }
   return null;
 }
 
 function parseVendorSpecificAmount(text: string, vendor: string): number {
   const lines = text.split(/\r?\n/);
   const candidates: number[] = [];
-  const rules =
-    vendor === "Home Depot" || vendor === "Lowe's" || vendor === "Walmart" || vendor === "Costco"
-      ? [/\btotal\b/i, /\bsubtotal\b/i, /\btax\b/i]
-      : [/\bfuel total\b/i, /\btotal\b/i];
+  const bigRetail =
+    vendor === "Home Depot" ||
+    vendor === "Lowe's" ||
+    vendor === "Walmart" ||
+    vendor === "Costco" ||
+    vendor === "City Mill" ||
+    vendor === "Hardware Hawaii";
+  const rules = bigRetail
+    ? [/\bgrand\s+total\b/i, /\btotal\b/i, /\bbalance\s+due\b/i, /\bamount\s+paid\b/i]
+    : vendor === "Gas station"
+      ? [/\bfuel\s+total\b/i, /\btotal\b/i, /\bamount\s+paid\b/i]
+      : [/\btotal\b/i, /\bbalance\s+due\b/i, /\bamount\s+paid\b/i];
   for (const line of lines) {
+    if (isSubtotalOrTaxLine(line)) continue;
+    if (/\bsubtotal\b/i.test(line)) continue;
     if (!rules.some((r) => r.test(line))) continue;
     const nums = line.match(/\$?\s*\d{1,4}(?:,\d{3})*(?:\.\d{2})?/g) ?? [];
     for (const raw of nums) {
@@ -235,7 +274,18 @@ function parseVendorSpecificAmount(text: string, vendor: string): number {
   return candidates.length ? Math.max(...candidates) : 0;
 }
 
-function parseAmountProduction(
+/** Infer card/cash from receipt text (payment account matching is done in UI). */
+export function inferPaymentMethodFromText(text: string): string | null {
+  const t = (text ?? "").toLowerCase();
+  if (/\bcash\b|\bcurrency\b/i.test(t) && !/\bcredit\b/.test(t)) return "cash";
+  if (/\bvisa\b/.test(t)) return "visa";
+  if (/\bmastercard\b|\bmaster\s*card\b|\bmc\b/.test(t)) return "card";
+  if (/\bamex\b|\bamerican\s*express\b/.test(t)) return "card";
+  if (/\bdebit\b|\bcredit\b|\bchip\b|\btap\b/.test(t)) return "card";
+  return null;
+}
+
+export function parseAmountProduction(
   text: string,
   vendor: string
 ): {
@@ -250,9 +300,18 @@ function parseAmountProduction(
     .filter(Boolean);
   const matchedRules: string[] = [];
   const diagnostics: AmountRuleDiagnostic[] = [];
-  const strictPatterns = [/\btotal\b/i, /\bamount\b/i, /\bbalance due\b/i, /\bfuel total\b/i];
+  const strictPatterns = [
+    /\bgrand\s+total\b/i,
+    /\btotal\b/i,
+    /\bamount\s+due\b/i,
+    /\bbalance\s+due\b/i,
+    /\bamount\s+paid\b/i,
+    /\bfuel\s+total\b/i,
+  ];
   const labeled: number[] = [];
   for (const line of lines) {
+    if (isSubtotalOrTaxLine(line)) continue;
+    if (/\bsubtotal\b/i.test(line)) continue;
     const hit = strictPatterns.some((p) => p.test(line));
     if (!hit) continue;
     matchedRules.push(`label:${line}`);
@@ -421,6 +480,10 @@ export type MergedReceiptOcr = {
   autoFillVendor: boolean;
   autoFillAmount: boolean;
   autoFillDate: boolean;
+  /** True when any critical field is not high-confidence — caller should not overwrite user edits; prompt review. */
+  needsReview: boolean;
+  /** Hint for payment account picker (lowercase token). */
+  suggestedPaymentMethod: string | null;
   finalItems: string[];
   mappedCategory: string;
   source: OcrSource;
@@ -522,7 +585,17 @@ export function mergeReceiptOcrResults(
   const autoFillVendor =
     vendorConfidence === "high" && finalVendor !== "Needs Review" && finalVendor !== "Unknown";
   const autoFillAmount = amountConfidence === "high" && sanitizedAmount != null;
+  /** Only autofill date when date confidence is high (avoid wrong dates from noisy OCR). */
   const autoFillDate = dateConfidence === "high" && clampedPurchase != null;
+
+  const apiPayment = ocrResults
+    .map((r) => (r.result.payment_method ?? "").trim())
+    .find((s) => s.length > 0);
+  const suggestedPaymentMethod =
+    (apiPayment ? apiPayment.toLowerCase() : null) ?? inferPaymentMethodFromText(mergedText);
+
+  const needsReview =
+    vendorConfidence !== "high" || amountConfidence !== "high" || dateConfidence !== "high";
 
   return {
     mergedText,
@@ -538,6 +611,8 @@ export function mergeReceiptOcrResults(
     autoFillVendor,
     autoFillAmount,
     autoFillDate,
+    needsReview,
+    suggestedPaymentMethod,
     finalItems,
     mappedCategory,
     source,

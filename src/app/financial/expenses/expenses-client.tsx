@@ -43,24 +43,21 @@ import {
   neighborRowIdAfterRemove,
   scrollElementIntoViewNearest,
 } from "@/lib/list-flow";
+import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
-import { QuickExpenseModal } from "./quick-expense-modal";
-import { UploadReceiptsQueueModal } from "./upload-receipts-queue-modal";
 import type { ExpenseReviewSavePatch } from "./edit-expense-modal";
-import {
-  ExpenseInboxPreviewModal,
-  type ExpenseInboxPreviewSavePayload,
-} from "./expense-inbox-preview-modal";
+import type { ExpenseInboxPreviewSavePayload } from "./expense-inbox-preview-modal";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { useDelayedPending } from "@/hooks/use-delayed-pending";
 import hotToast from "react-hot-toast";
 import { useToast } from "@/components/toast/toast-provider";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { EXPENSE_SORT_STORAGE_KEY, readStoredExpenseSort } from "@/lib/expense-list-sort-storage";
 import {
   buildExpensesQueryKey,
-  defaultExpenseListSort,
   expenseCategoriesQueryKey,
+  expenseListQueryStaleMs,
   expensesQueryKeyRoot,
   fetchExpenseCategories,
   fetchExpenses,
@@ -68,6 +65,7 @@ import {
   type ExpenseListSort,
   workersQueryKey,
 } from "@/lib/queries/expenses";
+import { fetchFinancialProjects, financialProjectsQueryKey } from "@/lib/queries/receiptQueue";
 import { isDefaultExpenseListSort } from "@/lib/expenses-db";
 import { cn } from "@/lib/utils";
 import { ExpensesListSkeleton } from "@/components/financial/expenses-list-skeleton";
@@ -89,7 +87,6 @@ import {
   rememberExpenseVendorPaymentAccount,
 } from "@/lib/expense-payment-preferences";
 import { resolvePreviewSignedUrl } from "@/lib/storage-signed-url";
-import { ExpenseInboxTransactionList } from "./expense-inbox-transaction-list";
 import { expenseInboxDuplicateIdSet } from "@/lib/expense-inbox-dup";
 import {
   expenseMatchesExpensesArchivePool,
@@ -101,6 +98,23 @@ import { getExpenseReceiptItems, type ExpenseReceiptItem } from "@/lib/expense-r
 
 type ProjectRow = { id: string; name: string | null; status?: string | null };
 type WorkerRow = { id: string; name: string };
+
+const QuickExpenseModal = dynamic(
+  () => import("./quick-expense-modal").then((m) => m.QuickExpenseModal),
+  { ssr: false }
+);
+const UploadReceiptsQueueModal = dynamic(
+  () => import("./upload-receipts-queue-modal").then((m) => m.UploadReceiptsQueueModal),
+  { ssr: false }
+);
+const ExpenseInboxPreviewModal = dynamic(
+  () => import("./expense-inbox-preview-modal").then((m) => m.ExpenseInboxPreviewModal),
+  { ssr: false }
+);
+const ExpenseInboxTransactionList = dynamic(
+  () => import("./expense-inbox-transaction-list").then((m) => m.ExpenseInboxTransactionList),
+  { ssr: false, loading: () => <ExpensesListSkeleton /> }
+);
 
 function mergeExpenseReviewPatch(e: Expense, p: ExpenseReviewSavePatch): Expense {
   const nextLines =
@@ -195,26 +209,6 @@ function extractExpenseTags(expense: Expense): string[] {
       .slice(0, 3);
   }
   return Array.from(new Set(expense.lines.map((l) => l.category).filter(Boolean))).slice(0, 3);
-}
-
-const EXPENSE_SORT_STORAGE_KEY = "hh-expenses-sort-v1";
-
-function readStoredExpenseSort(): ExpenseListSort {
-  if (typeof window === "undefined") return defaultExpenseListSort;
-  try {
-    const raw = localStorage.getItem(EXPENSE_SORT_STORAGE_KEY);
-    if (!raw) return defaultExpenseListSort;
-    const p = JSON.parse(raw) as Partial<ExpenseListSort>;
-    if (
-      (p.field === "date" || p.field === "amount" || p.field === "vendor") &&
-      (p.order === "asc" || p.order === "desc")
-    ) {
-      return { field: p.field, order: p.order };
-    }
-  } catch {
-    /* ignore */
-  }
-  return defaultExpenseListSort;
 }
 
 type ExpensesAdvancedFiltersFieldsProps = {
@@ -348,6 +342,7 @@ function TransactionInboxEntryActions({
   className,
   uploadLabel = "Upload",
   quickButtonSize = "sm",
+  compact = false,
 }: {
   onQuick: () => void;
   onUpload: () => void;
@@ -355,14 +350,25 @@ function TransactionInboxEntryActions({
   className?: string;
   uploadLabel?: string;
   quickButtonSize?: "sm" | "default";
+  /** Tighter header row: icon-only upload, 44px touch targets. */
+  compact?: boolean;
 }) {
   return (
-    <div className={cn("flex flex-wrap items-center justify-end gap-1.5", className)}>
+    <div
+      className={cn(
+        "flex flex-wrap items-center justify-end",
+        compact ? "gap-0.5" : "gap-1.5",
+        className
+      )}
+    >
       <Button
         type="button"
         variant="default"
-        size={quickButtonSize}
-        className="shrink-0 shadow-none"
+        size={compact ? "sm" : quickButtonSize}
+        className={cn(
+          "shrink-0 shadow-none touch-manipulation",
+          compact && "h-9 px-2.5 text-xs font-medium"
+        )}
         onClick={onQuick}
       >
         Quick
@@ -371,11 +377,15 @@ function TransactionInboxEntryActions({
         type="button"
         variant="outline"
         size="sm"
-        className="shrink-0 shadow-none"
+        className={cn(
+          "inline-flex shrink-0 touch-manipulation items-center justify-center shadow-none",
+          compact ? "h-9 min-h-11 min-w-11 px-0 sm:min-h-9 sm:min-w-0 sm:px-3" : ""
+        )}
         onClick={onUpload}
+        aria-label={compact ? `${uploadLabel} receipts` : undefined}
       >
-        <Upload className="mr-1 h-3.5 w-3.5 shrink-0" aria-hidden />
-        {uploadLabel}
+        <Upload className={cn("h-4 w-4 shrink-0", !compact && "mr-1")} aria-hidden />
+        {compact ? <span className="sr-only">{uploadLabel} receipts</span> : uploadLabel}
       </Button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -383,7 +393,10 @@ function TransactionInboxEntryActions({
             type="button"
             variant="ghost"
             size="icon"
-            className="h-8 w-8 shrink-0 shadow-none"
+            className={cn(
+              "shrink-0 shadow-none touch-manipulation",
+              compact ? "h-9 min-h-11 min-w-11 sm:min-h-9 sm:min-w-9" : "h-8 w-8"
+            )}
             aria-label="More actions"
           >
             <MoreHorizontal className="h-4 w-4 shrink-0" aria-hidden />
@@ -425,9 +438,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     () => queryClient.getQueryData<WorkerRow[]>(workersQueryKey),
     [queryClient]
   );
-  const [projects, setProjects] = React.useState<ProjectRow[]>([]);
   const [workers, setWorkers] = React.useState<WorkerRow[]>(() => readCachedWorkers() ?? []);
-  const [projectsError, setProjectsError] = React.useState<string | null>(null);
   const [expenses, setExpenses] = React.useState<Expense[]>(
     () => queryClient.getQueryData<Expense[]>(buildExpensesQueryKey(readStoredExpenseSort())) ?? []
   );
@@ -445,6 +456,8 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     queryKey: buildExpensesQueryKey(expenseSort),
     queryFn: () => fetchExpenses(expenseSort),
     placeholderData: keepPreviousData,
+    staleTime: expenseListQueryStaleMs,
+    refetchOnMount: false,
   });
 
   React.useEffect(() => {
@@ -458,12 +471,37 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     queryKey: expenseCategoriesQueryKey,
     queryFn: fetchExpenseCategories,
     placeholderData: keepPreviousData,
+    staleTime: expenseListQueryStaleMs,
+    refetchOnMount: false,
   });
   const { data: workersQueryData } = useQuery({
     queryKey: workersQueryKey,
     queryFn: fetchWorkers,
     placeholderData: keepPreviousData,
+    staleTime: expenseListQueryStaleMs,
+    refetchOnMount: false,
   });
+
+  const {
+    data: projectsData,
+    isError: projectsIsError,
+    error: projectsQueryError,
+  } = useQuery({
+    queryKey: financialProjectsQueryKey,
+    queryFn: () => fetchFinancialProjects(supabase!),
+    enabled: configured && Boolean(supabase),
+    placeholderData: keepPreviousData,
+    staleTime: expenseListQueryStaleMs,
+    refetchOnMount: false,
+  });
+
+  const projectsError = React.useMemo(() => {
+    if (!configured) return "Supabase is not configured.";
+    if (!projectsIsError || !projectsQueryError) return null;
+    return projectsQueryError instanceof Error
+      ? projectsQueryError.message
+      : "Failed to load projects.";
+  }, [configured, projectsIsError, projectsQueryError]);
 
   React.useLayoutEffect(() => {
     if (expensesQueryData === undefined) return;
@@ -566,36 +604,10 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
   const expensesRef = React.useRef<Expense[]>([]);
   expensesRef.current = expenses;
 
-  const projectsFetchGenRef = React.useRef(0);
-  React.useEffect(() => {
-    if (!supabase) {
-      setProjectsError("Supabase is not configured.");
-      setProjects([]);
-      return;
-    }
-    const gen = ++projectsFetchGenRef.current;
-    let cancelled = false;
-    (async () => {
-      const { data: projectsData, error } = await supabase
-        .from("projects")
-        .select("id,name,status")
-        .order("name");
-      if (cancelled || gen !== projectsFetchGenRef.current) return;
-      if (error) {
-        setProjectsError(error.message ?? "Failed to load projects.");
-        setProjects([]);
-        return;
-      }
-      setProjectsError(null);
-      const safe = projectsData ?? [];
-      setProjects(Array.isArray(safe) ? safe : []);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [supabase]);
-
-  const safeProjects = React.useMemo(() => projects ?? [], [projects]);
+  const safeProjects = React.useMemo(
+    () => (Array.isArray(projectsData) ? projectsData : []) as ProjectRow[],
+    [projectsData]
+  );
   const projectNameById = React.useMemo(
     () => new Map(safeProjects.map((p) => [p.id, p.name ?? p.id])),
     [safeProjects]
@@ -1049,9 +1061,22 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
 
   useOnAppSync(
     React.useCallback(() => {
-      void queryClient.invalidateQueries({ queryKey: expensesQueryKeyRoot });
-      void queryClient.invalidateQueries({ queryKey: expenseCategoriesQueryKey });
-      void queryClient.invalidateQueries({ queryKey: workersQueryKey });
+      void queryClient.invalidateQueries({
+        queryKey: expensesQueryKeyRoot,
+        refetchType: "active",
+      });
+      void queryClient.invalidateQueries({
+        queryKey: expenseCategoriesQueryKey,
+        refetchType: "active",
+      });
+      void queryClient.invalidateQueries({
+        queryKey: workersQueryKey,
+        refetchType: "active",
+      });
+      void queryClient.invalidateQueries({
+        queryKey: financialProjectsQueryKey,
+        refetchType: "active",
+      });
     }, [queryClient]),
     []
   );
@@ -1331,15 +1356,33 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     : "Tracked project costs and completed expenses";
 
   return (
-    <div className="expenses-ui" data-expenses-query-status={expensesQueryStatus}>
-      <div className="expenses-ui-content mx-auto w-full max-w-[430px] px-3 py-2.5 sm:max-w-[460px] md:max-w-[1280px] md:px-8 md:py-8">
-        <div className="space-y-5">
-          <div className="flex h-11 items-center justify-between gap-2 border-b border-gray-100/80 dark:border-border/60 md:hidden">
-            <div className="min-w-0">
-              <h1 className="truncate text-lg font-semibold text-gray-900 dark:text-foreground">
-                {pageTitle}
-              </h1>
-              <p className="line-clamp-2 text-[11px] leading-snug text-gray-500 dark:text-muted-foreground">
+    <div
+      className="expenses-ui min-w-0 overflow-x-hidden"
+      data-expenses-query-status={expensesQueryStatus}
+    >
+      <div className="expenses-ui-content mx-auto w-full min-w-0 max-w-[430px] px-3 py-2 sm:max-w-[460px] md:max-w-[1280px] md:px-8 md:py-8">
+        <div className="space-y-3 max-md:pb-1 md:space-y-5">
+          <div className="flex items-start justify-between gap-2 border-b border-gray-100/80 pb-2.5 dark:border-border/60 md:hidden">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-gray-900 dark:text-foreground">
+                  {pageTitle}
+                </h1>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 shrink-0 px-2 text-[11px] font-medium text-gray-500 hover:text-gray-900 dark:text-muted-foreground dark:hover:text-foreground"
+                  onClick={() =>
+                    startTransition(() =>
+                      router.push(inboxMode ? "/financial/expenses" : "/financial/inbox")
+                    )
+                  }
+                >
+                  {inboxMode ? "Expenses" : "Inbox"}
+                </Button>
+              </div>
+              <p className="mt-0.5 hidden text-[11px] leading-snug text-gray-500 dark:text-muted-foreground sm:line-clamp-2">
                 {pageDescription}
               </p>
             </div>
@@ -1347,8 +1390,8 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
               onQuick={() => setQuickExpenseOpen(true)}
               onUpload={() => setUploadReceiptsOpen(true)}
               onNewExpense={handleNew}
-              quickButtonSize="default"
-              className="shrink-0 justify-end gap-1"
+              compact
+              className="shrink-0 justify-end"
             />
           </div>
 
@@ -1380,108 +1423,101 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <div className="flex h-[76px] items-center gap-2.5 rounded-xl border border-gray-200/70 bg-white px-3 shadow-[0_1px_2px_rgba(16,24,40,0.06)] dark:border-gray-800 dark:bg-gray-950">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-                <AlertCircle className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+          <div className="grid grid-cols-2 gap-1.5 md:grid-cols-4 md:gap-3">
+            <div className="flex min-h-[52px] items-center gap-1.5 rounded-xl border border-gray-200/90 bg-white px-2 py-1.5 shadow-none md:h-[76px] md:gap-2.5 md:px-3 md:py-2 dark:border-gray-800 dark:bg-gray-950">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 md:h-8 md:w-8 dark:bg-gray-800 dark:text-gray-400">
+                <AlertCircle className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
               </span>
               <div className="min-w-0">
-                <p className="text-[10px] font-medium leading-tight text-gray-500 dark:text-gray-400">
+                <p className="text-[8px] font-medium uppercase tracking-wide leading-none text-gray-500 md:text-[9px] md:normal-case md:tracking-normal dark:text-gray-400">
                   {inboxMode ? "In queue" : "Archived"}
                 </p>
-                <p className="text-xl font-semibold tabular-nums leading-tight text-gray-900 dark:text-gray-100">
+                <p className="mt-0.5 text-base font-semibold tabular-nums leading-none text-gray-900 md:text-xl dark:text-gray-100">
                   {inboxMode ? summary.inboxQueueCount : summary.archivedCount}
                 </p>
               </div>
             </div>
-            <div className="flex h-[76px] items-center justify-between gap-2 rounded-xl border border-gray-200/70 bg-white px-3 shadow-[0_1px_2px_rgba(16,24,40,0.06)] dark:border-gray-800 dark:bg-gray-950">
-              <div className="flex min-w-0 items-center gap-2.5">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-                  <CalendarDays className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+            <div className="flex min-h-[52px] items-center justify-between gap-1 rounded-xl border border-gray-200/90 bg-white px-2 py-1.5 shadow-none md:h-[76px] md:gap-2 md:px-3 md:py-2 dark:border-gray-800 dark:bg-gray-950">
+              <div className="flex min-w-0 items-center gap-1.5 md:gap-2.5">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 md:h-8 md:w-8 dark:bg-gray-800 dark:text-gray-400">
+                  <CalendarDays
+                    className="h-3 w-3 md:h-3.5 md:w-3.5"
+                    strokeWidth={1.75}
+                    aria-hidden
+                  />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-[10px] font-medium leading-tight text-gray-500 dark:text-gray-400">
+                  <p className="text-[8px] font-medium uppercase tracking-wide leading-none text-gray-500 md:text-[9px] md:normal-case md:tracking-normal dark:text-gray-400">
                     This Month
                   </p>
-                  <p className="text-xl font-semibold tabular-nums leading-tight text-gray-900 dark:text-gray-100">
+                  <p className="mt-0.5 text-base font-semibold tabular-nums leading-none text-gray-900 md:text-xl dark:text-gray-100">
                     ${summary.monthTotal.toLocaleString()}
                   </p>
                 </div>
               </div>
-              <KpiSparkline />
+              <KpiSparkline className="hidden shrink-0 opacity-50 md:block" />
             </div>
-            <div className="flex h-[76px] items-center justify-between gap-2 rounded-xl border border-gray-200/70 bg-white px-3 shadow-[0_1px_2px_rgba(16,24,40,0.06)] dark:border-gray-800 dark:bg-gray-950">
-              <div className="flex min-w-0 items-center gap-2.5">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-                  <DollarSign className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+            <div className="flex min-h-[52px] items-center justify-between gap-1 rounded-xl border border-gray-200/90 bg-white px-2 py-1.5 shadow-none md:h-[76px] md:gap-2 md:px-3 md:py-2 dark:border-gray-800 dark:bg-gray-950">
+              <div className="flex min-w-0 items-center gap-1.5 md:gap-2.5">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 md:h-8 md:w-8 dark:bg-gray-800 dark:text-gray-400">
+                  <DollarSign
+                    className="h-3 w-3 md:h-3.5 md:w-3.5"
+                    strokeWidth={1.75}
+                    aria-hidden
+                  />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-[10px] font-medium leading-tight text-gray-500 dark:text-gray-400">
+                  <p className="text-[8px] font-medium uppercase tracking-wide leading-none text-gray-500 md:text-[9px] md:normal-case md:tracking-normal dark:text-gray-400">
                     {archiveMode ? "Total (archived)" : "Total (all)"}
                   </p>
-                  <p className="text-xl font-semibold tabular-nums leading-tight text-gray-900 dark:text-gray-100">
+                  <p className="mt-0.5 text-base font-semibold tabular-nums leading-none text-gray-900 md:text-xl dark:text-gray-100">
                     ${summary.allTotal.toLocaleString()}
                   </p>
                 </div>
               </div>
-              <KpiSparkline className="text-emerald-300 dark:text-emerald-900/40" />
+              <KpiSparkline className="hidden shrink-0 text-emerald-300 opacity-50 dark:text-emerald-900/40 md:block" />
             </div>
-            <div className="flex h-[76px] items-center justify-between gap-2 rounded-xl border border-gray-200/70 bg-white px-3 shadow-[0_1px_2px_rgba(16,24,40,0.06)] dark:border-gray-800 dark:bg-gray-950">
-              <div className="flex min-w-0 items-center gap-2.5">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-                  <RefreshCw className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+            <div className="flex min-h-[52px] items-center justify-between gap-1 rounded-xl border border-gray-200/90 bg-white px-2 py-1.5 shadow-none md:h-[76px] md:gap-2 md:px-3 md:py-2 dark:border-gray-800 dark:bg-gray-950">
+              <div className="flex min-w-0 items-center gap-1.5 md:gap-2.5">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 md:h-8 md:w-8 dark:bg-gray-800 dark:text-gray-400">
+                  <RefreshCw className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-[10px] font-medium leading-tight text-gray-500 dark:text-gray-400">
+                  <p className="text-[8px] font-medium uppercase tracking-wide leading-none text-gray-500 md:text-[9px] md:normal-case md:tracking-normal dark:text-gray-400">
                     Reimbursements
                   </p>
-                  <p className="text-xl font-semibold tabular-nums leading-tight text-gray-900 dark:text-gray-100">
+                  <p className="mt-0.5 text-base font-semibold tabular-nums leading-none text-gray-900 md:text-xl dark:text-gray-100">
                     ${summary.reimbursementTotal.toLocaleString()}
                   </p>
                 </div>
               </div>
-              <KpiSparkline className="text-violet-300 dark:text-violet-900/40" />
+              <KpiSparkline className="hidden shrink-0 text-violet-300 opacity-50 dark:text-violet-900/40 md:block" />
             </div>
           </div>
 
-          {/* Mobile: cross-nav + search + filters drawer */}
-          <div className="flex flex-col gap-2 md:hidden">
+          {/* Mobile: search + filters drawer (pool switch lives in header) */}
+          <div className="flex w-full min-w-0 items-center gap-2 md:hidden">
+            <Input
+              placeholder="Search…"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="h-11 min-h-11 min-w-0 flex-1 rounded-xl border border-gray-200/90 bg-white text-base text-gray-900 shadow-none dark:border-border/60 dark:bg-card dark:text-foreground"
+            />
             <Button
               type="button"
               variant="outline"
               size="sm"
-              className="h-9 w-fit shrink-0 shadow-none"
-              onClick={() =>
-                startTransition(() =>
-                  router.push(inboxMode ? "/financial/expenses" : "/financial/inbox")
-                )
-              }
+              className="relative h-11 min-h-11 w-[5.75rem] shrink-0 gap-1 rounded-xl border-gray-200/90 px-2 dark:border-border/60"
+              onClick={() => setFiltersDrawerOpen(true)}
             >
-              {inboxMode ? "Open Expenses" : "Open Inbox"}
+              <Filter className="h-4 w-4 shrink-0" aria-hidden />
+              <span className="truncate text-xs font-medium">
+                Filters
+                {activeAdvancedFilterCount > 0 ? (
+                  <span className="text-muted-foreground"> · {activeAdvancedFilterCount}</span>
+                ) : null}
+              </span>
             </Button>
-            <div className="flex w-full min-w-0 items-center gap-2">
-              <Input
-                placeholder="Search…"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                className="h-10 min-w-0 flex-1 rounded-sm border border-gray-100/80 bg-white text-sm text-gray-900 shadow-none dark:border-border/60 dark:bg-card dark:text-foreground"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="relative h-10 shrink-0 gap-1 border-gray-100/80 px-2.5 dark:border-border/60"
-                onClick={() => setFiltersDrawerOpen(true)}
-              >
-                <Filter className="h-4 w-4 shrink-0" aria-hidden />
-                <span className="max-w-[5.5rem] truncate text-xs font-medium">
-                  Filters
-                  {activeAdvancedFilterCount > 0 ? (
-                    <span className="text-muted-foreground"> · {activeAdvancedFilterCount}</span>
-                  ) : null}
-                </span>
-              </Button>
-            </div>
           </div>
           <Sheet open={filtersDrawerOpen} onOpenChange={setFiltersDrawerOpen}>
             <SheetContent
@@ -1727,7 +1763,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                     ) : null}
                   </div>
                   <div
-                    className="flex flex-col items-center border-b border-gray-100/80 py-10 md:hidden dark:border-border/60"
+                    className="flex flex-col items-center border-b border-gray-100/80 py-6 md:hidden dark:border-border/60"
                     tabIndex={-1}
                     data-expenses-empty-mobile
                   >
@@ -1871,36 +1907,42 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
           </section>
         </div>
 
-        <QuickExpenseModal
-          open={quickExpenseOpen}
-          onOpenChange={setQuickExpenseOpen}
-          onSuccess={refresh}
-          projects={safeProjects}
-          expenses={expensesForListing}
-        />
-        <UploadReceiptsQueueModal
-          open={uploadReceiptsOpen}
-          onOpenChange={setUploadReceiptsOpen}
-          onSuccess={refresh}
-        />
-        <ExpenseInboxPreviewModal
-          expense={previewExpenseLive}
-          open={previewOpen}
-          onOpenChange={(o) => {
-            setPreviewOpen(o);
-            if (!o) setPreviewExpense(null);
-          }}
-          enterMode={previewEnterMode}
-          projects={safeProjects}
-          workers={workers}
-          projectNameById={projectNameById}
-          supabase={supabase}
-          setCategoriesList={setCategoriesList}
-          onSave={handlePreviewModalSave}
-          onMarkReviewed={handlePreviewMarkReviewed}
-          previewNav={previewModalNav}
-          possibleDuplicate={previewPossibleDuplicate}
-        />
+        {quickExpenseOpen ? (
+          <QuickExpenseModal
+            open={quickExpenseOpen}
+            onOpenChange={setQuickExpenseOpen}
+            onSuccess={refresh}
+            projects={safeProjects}
+            expenses={expensesForListing}
+          />
+        ) : null}
+        {uploadReceiptsOpen ? (
+          <UploadReceiptsQueueModal
+            open={uploadReceiptsOpen}
+            onOpenChange={setUploadReceiptsOpen}
+            onSuccess={refresh}
+          />
+        ) : null}
+        {previewOpen ? (
+          <ExpenseInboxPreviewModal
+            expense={previewExpenseLive}
+            open={previewOpen}
+            onOpenChange={(o) => {
+              setPreviewOpen(o);
+              if (!o) setPreviewExpense(null);
+            }}
+            enterMode={previewEnterMode}
+            projects={safeProjects}
+            workers={workers}
+            projectNameById={projectNameById}
+            supabase={supabase}
+            setCategoriesList={setCategoriesList}
+            onSave={handlePreviewModalSave}
+            onMarkReviewed={handlePreviewMarkReviewed}
+            previewNav={previewModalNav}
+            possibleDuplicate={previewPossibleDuplicate}
+          />
+        ) : null}
       </div>
     </div>
   );

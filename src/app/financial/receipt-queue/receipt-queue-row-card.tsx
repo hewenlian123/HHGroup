@@ -68,6 +68,7 @@ export type ReceiptQueueRowCardProps = {
   onConfirm: (row: ReceiptQueueRow) => void;
   onRemove: (id: string) => void;
   onEditableKeyDown: React.KeyboardEventHandler<HTMLInputElement | HTMLSelectElement>;
+  onRetryOcr?: (id: string) => void;
 };
 
 function rowSnapshotEqual(a: ReceiptQueueRow, b: ReceiptQueueRow): boolean {
@@ -106,6 +107,7 @@ function propsEqual(prev: ReceiptQueueRowCardProps, next: ReceiptQueueRowCardPro
   if (prev.statusVariant !== next.statusVariant) return false;
   if (prev.bulkAdding !== next.bulkAdding) return false;
   if (prev.captureUploading !== next.captureUploading) return false;
+  if (prev.onRetryOcr !== next.onRetryOcr) return false;
   if (prev.projects !== next.projects) return false;
   if (prev.workers !== next.workers) return false;
   return true;
@@ -153,6 +155,7 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
   onConfirm,
   onRemove,
   onEditableKeyDown,
+  onRetryOcr,
 }: ReceiptQueueRowCardProps) {
   const busy = row.status === "processing";
   const id = row.id;
@@ -390,6 +393,25 @@ export const ReceiptQueueRowCard = React.memo(function ReceiptQueueRowCard({
           onClick={() => onReplace(id)}
         >
           Re-upload
+        </Button>
+      ) : null}
+      {onRetryOcr &&
+      row.status === "pending" &&
+      row.mime_type.startsWith("image/") &&
+      row.receipt_public_url ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className={cn(
+            "btn-outline-ghost px-1.5",
+            layout === "mobile" ? "h-10 min-h-10 text-xs" : "h-6 text-[10px]"
+          )}
+          data-testid="receipt-queue-retry-ocr"
+          disabled={busy || rowLocked}
+          onClick={() => onRetryOcr(id)}
+        >
+          Retry OCR
         </Button>
       ) : null}
     </>

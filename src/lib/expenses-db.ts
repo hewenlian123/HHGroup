@@ -162,6 +162,37 @@ function isMissingFunction(err: { message?: string } | null): boolean {
 
 const HINT = "Run supabase/migrations/202602280008_create_expenses.sql";
 
+/** Batch PostgREST `expense_lines` by header ids (avoids N+1 in `getExpenses`). */
+const EXPENSE_LINES_IN_CHUNK = 120;
+
+async function fetchExpenseLinesGroupedByExpenseId(
+  c: SupabaseClient,
+  expenseIds: string[]
+): Promise<Map<string, ExpenseLineRow[]>> {
+  const map = new Map<string, ExpenseLineRow[]>();
+  if (expenseIds.length === 0) return map;
+
+  for (let i = 0; i < expenseIds.length; i += EXPENSE_LINES_IN_CHUNK) {
+    const slice = expenseIds.slice(i, i + EXPENSE_LINES_IN_CHUNK);
+    const { data: lineRows, error: lineErr } = await c
+      .from("expense_lines")
+      .select("*")
+      .in("expense_id", slice);
+    if (lineErr && !isMissingTable(lineErr)) {
+      throw new Error(lineErr.message ?? "Failed to load expense lines.");
+    }
+    for (const raw of lineRows ?? []) {
+      const row = raw as ExpenseLineRow;
+      const eid = row.expense_id;
+      if (!eid) continue;
+      const arr = map.get(eid) ?? [];
+      arr.push(row);
+      map.set(eid, arr);
+    }
+  }
+  return map;
+}
+
 async function getLinkedBankTxId(expenseId: string): Promise<string | null> {
   const c = client();
   const { data } = await c
@@ -561,17 +592,14 @@ export async function getExpenses(
   const paymentNameMap = await fetchPaymentAccountNameMap(
     rowModels.map((r) => r.payment_account_id)
   );
+  const linesByExpenseId = await fetchExpenseLinesGroupedByExpenseId(
+    c,
+    rowModels.map((r) => r.id).filter(Boolean)
+  );
   const result: Expense[] = [];
   for (const row of rowModels) {
     const r = row;
-    const { data: lineRows, error: lineErr } = await c
-      .from("expense_lines")
-      .select("*")
-      .eq("expense_id", r.id);
-    if (lineErr && !isMissingTable(lineErr)) {
-      throw new Error(lineErr.message ?? "Failed to load expense lines.");
-    }
-    const lines = (lineRows ?? []) as ExpenseLineRow[];
+    const lines = linesByExpenseId.get(r.id) ?? [];
     const attachments = await getAttachments(r.id);
     const linkedBankTxId = await getLinkedBankTxId(r.id);
     result.push(await toExpense(r, lines, attachments, linkedBankTxId, paymentNameMap));

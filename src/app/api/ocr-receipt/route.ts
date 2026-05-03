@@ -8,6 +8,7 @@ export type ReceiptOcrResult = {
   ocr_status?: "ok" | "fallback";
   ocr_reason?: string;
   raw_text?: string;
+  payment_method?: string;
   confidence?: {
     vendor?: "high" | "medium" | "low";
     amount?: "high" | "medium" | "low";
@@ -110,9 +111,10 @@ export async function POST(request: NextRequest) {
                 type: "text",
                 text: `Extract receipt information from this image. Reply with ONLY a JSON object (no markdown, no code block) with these exact keys:
 vendor_name (string, merchant/store name),
-total_amount (number, total paid),
+total_amount (number, FINAL amount paid — prefer labels: Total, Grand Total, Balance Due, Amount Paid; NEVER use Subtotal, Tax alone, or partial lines),
 purchase_date (string, YYYY-MM-DD if visible else null),
-items (optional array of { name: string, amount: number } for line items).
+items (optional array of { name: string, amount: number } for line items),
+payment_method (optional string: cash | card | debit | credit | unknown — infer from receipt if visible),
 raw_text (string, short OCR text dump: store/title/total/date lines),
 confidence (object with vendor, amount, date each one of: high | medium | low),
 If something is not visible use: vendor_name "Unknown", total_amount 0, purchase_date null.`,
@@ -168,6 +170,8 @@ If something is not visible use: vendor_name "Unknown", total_amount 0, purchase
         : [],
       ocr_status: "ok",
       raw_text: typeof parsed.raw_text === "string" ? parsed.raw_text : "",
+      payment_method:
+        typeof parsed.payment_method === "string" ? parsed.payment_method.trim() : undefined,
       confidence:
         typeof parsed.confidence === "object" && parsed.confidence
           ? {

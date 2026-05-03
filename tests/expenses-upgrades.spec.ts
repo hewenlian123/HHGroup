@@ -143,7 +143,7 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
     expect(box && box.height).toBeTruthy();
     if (box) expect(box.height).toBeLessThan(760);
 
-    await expect(dialog.locator(".grid.grid-cols-2").first()).toBeVisible();
+    await expect(dialog.locator("form div.grid").first()).toBeVisible();
 
     await dialog.locator("input[type='number']").fill("77.01");
     const vendorMark = `E2E-QP-${Date.now()}`;

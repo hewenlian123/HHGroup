@@ -27,7 +27,9 @@ test.describe("Expense receipt preview (layout)", () => {
     const shotPath = resolve(process.cwd(), "test-results/receipt-preview-dialog-layout.png");
     mkdirSync(dirname(shotPath), { recursive: true });
     const vendorMark = `E2E-PV-${Date.now()}`;
-    const queueFileName = `receipt-layout-${Date.now()}.png`;
+    const ts = Date.now();
+    /** PNG uploads are compressed to JPEG; DB row uses `.jpg` file_name. */
+    const queueFileStored = `receipt-layout-${ts}.jpg`;
 
     await page.goto("/financial/receipt-queue", { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
@@ -47,13 +49,16 @@ test.describe("Expense receipt preview (layout)", () => {
       await purgeE2EReceiptQueueRows(createClient(sbUrl, sbService));
     }
 
-    await page.locator("main").locator('input[type="file"][multiple]').setInputFiles({
-      name: queueFileName,
-      mimeType: "image/png",
-      buffer: PNG_1X1,
-    });
+    await page
+      .locator("main")
+      .locator('input[type="file"][multiple]')
+      .setInputFiles({
+        name: `receipt-layout-${ts}.png`,
+        mimeType: "image/png",
+        buffer: PNG_1X1,
+      });
 
-    const queueRow = receiptQueueRowByFileName(page, queueFileName);
+    const queueRow = receiptQueueRowByFileName(page, queueFileStored);
     await expect(queueRow).toBeVisible({ timeout: 120_000 });
     await prepareReceiptQueueRowForConfirm(page, queueRow, {
       vendor: vendorMark,
@@ -86,7 +91,7 @@ test.describe("Expense receipt preview (layout)", () => {
 
     // Soft refresh can refetch before debounced queue patches land; re-resolve row after preview closes.
     const rowForConfirm = page
-      .locator(`[data-testid="receipt-queue-row"][data-queue-file-name="${queueFileName}"]`)
+      .locator(`[data-testid="receipt-queue-row"][data-queue-file-name="${queueFileStored}"]`)
       .first();
     await expect(rowForConfirm).toBeVisible({ timeout: 120_000 });
     await pollReceiptQueueRowUntilConfirmableDom(

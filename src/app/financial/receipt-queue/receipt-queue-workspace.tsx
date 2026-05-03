@@ -22,6 +22,7 @@ import { createBrowserClient } from "@/lib/supabase";
 import { inferExpenseCategoryFromVendor } from "@/lib/receipt-infer-category";
 import {
   processReceiptQueueUpload,
+  scheduleReceiptQueueOcr,
   type ProcessReceiptQueueResult,
 } from "@/lib/receipt-queue-process-upload";
 import { finalizeReceiptQueueExpense } from "@/lib/receipt-queue-expense";
@@ -71,6 +72,7 @@ import {
   neighborRowIdAfterRemove,
   scrollElementIntoViewNearest,
 } from "@/lib/list-flow";
+import { compressImageFileForReceiptUpload } from "@/lib/image-compress-browser";
 
 type ProjectRow = { id: string; name: string | null; status?: string | null };
 type WorkerRow = { id: string; name: string };
@@ -125,15 +127,6 @@ async function downloadReceiptBlob(src: string, fileName: string) {
   }
 }
 
-function queueStatusBadge(status: ReceiptQueueRow["status"]): {
-  label: string;
-  variant: "default" | "success" | "warning" | "danger" | "muted";
-} {
-  if (status === "processing") return { label: "Processing", variant: "muted" };
-  if (status === "failed") return { label: "Failed", variant: "danger" };
-  return { label: "Pending", variant: "warning" };
-}
-
 function amountIsMissing(row: ReceiptQueueRow): boolean {
   const raw = String(row.amount ?? "")
     .replace(/,/g, "")
@@ -141,6 +134,20 @@ function amountIsMissing(row: ReceiptQueueRow): boolean {
   if (raw === "") return true;
   const n = parseFloat(raw);
   return !Number.isFinite(n) || n <= 0;
+}
+
+function queueRowStatusDisplay(row: ReceiptQueueRow): {
+  label: string;
+  variant: "default" | "success" | "warning" | "danger" | "muted";
+} {
+  if (row.status === "failed") return { label: "Failed", variant: "danger" };
+  if (row.status === "processing") return { label: "Processing", variant: "muted" };
+  if (row.status === "pending") {
+    const incomplete = row.vendor_name.trim() === "" || amountIsMissing(row);
+    if (incomplete) return { label: "Needs review", variant: "warning" };
+    return { label: "Ready", variant: "success" };
+  }
+  return { label: "Pending", variant: "warning" };
 }
 
 /** Rows that need user attention (not while still processing upload/OCR). */
@@ -250,6 +257,20 @@ export function ReceiptQueueWorkspace() {
   const [workers, setWorkers] = React.useState<WorkerRow[]>(() => readCachedWorkers() ?? []);
   const [dragOver, setDragOver] = React.useState(false);
   const [captureUploading, setCaptureUploading] = React.useState(false);
+  /** True while client-side image compression runs (before queue insert / storage upload). */
+  const [receiptImagePreparing, setReceiptImagePreparing] = React.useState(false);
+  /** Back camera prompt on narrow viewports for file picker / re-upload inputs. */
+  const [mobileFileCapture, setMobileFileCapture] = React.useState<"environment" | undefined>(
+    undefined
+  );
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 767px)");
+    const sync = () => setMobileFileCapture(mq.matches ? "environment" : undefined);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
   const [uploadBatchProgress, setUploadBatchProgress] = React.useState<{
     done: number;
     total: number;
@@ -950,7 +971,7 @@ export function ReceiptQueueWorkspace() {
     async (
       rowId: string,
       file: File,
-      options?: { skipRefresh?: boolean }
+      options?: { skipRefresh?: boolean; alreadyCompressed?: boolean }
     ): Promise<ProcessReceiptQueueResult | null> => {
       if (!supabase) return null;
       try {
@@ -958,7 +979,8 @@ export function ReceiptQueueWorkspace() {
           supabase,
           rowId,
           file,
-          inferExpenseCategoryFromVendor
+          inferExpenseCategoryFromVendor,
+          { alreadyCompressed: options?.alreadyCompressed }
         );
         return r;
       } catch (e) {
@@ -992,6 +1014,49 @@ export function ReceiptQueueWorkspace() {
       });
     });
   }, []);
+
+  const retryOcrRowIdsRef = React.useRef(new Set<string>());
+  const onRetryRowOcr = React.useCallback(
+    async (rowId: string) => {
+      if (!supabase || retryOcrRowIdsRef.current.has(rowId)) return;
+      const row = rows.find((r) => r.id === rowId);
+      if (!row) return;
+      const isPdf =
+        row.mime_type === "application/pdf" || row.file_name.toLowerCase().endsWith(".pdf");
+      if (isPdf) {
+        toast({
+          title: "PDF",
+          description: "OCR retry works on images only.",
+          variant: "default",
+        });
+        return;
+      }
+      const src = row.receipt_public_url;
+      if (!src) {
+        toast({ title: "No file", description: "Receipt URL missing.", variant: "error" });
+        return;
+      }
+      retryOcrRowIdsRef.current.add(rowId);
+      try {
+        const res = await fetch(src);
+        if (!res.ok) throw new Error(String(res.status));
+        const blob = await res.blob();
+        const file = new File([blob], row.file_name || "receipt.jpg", {
+          type: row.mime_type || "image/jpeg",
+        });
+        scheduleReceiptQueueOcr(supabase, row.id, file, inferExpenseCategoryFromVendor, () => {
+          notifyReceiptQueueChanged();
+          void refreshAll();
+        });
+        hotToast.success("Re-running OCR…");
+      } catch {
+        hotToast.error("Could not retry OCR");
+      } finally {
+        window.setTimeout(() => retryOcrRowIdsRef.current.delete(rowId), 1500);
+      }
+    },
+    [supabase, rows, toast, refreshAll]
+  );
 
   /** Focus vendor after DOM has row refs (post-refresh). */
   const focusQueueRowVendor = React.useCallback(
@@ -1046,18 +1111,31 @@ export function ReceiptQueueWorkspace() {
       let firstFailDetail: string | undefined;
 
       try {
+        if (mountedRef.current) setReceiptImagePreparing(true);
+        let compressedFiles: File[];
+        try {
+          compressedFiles = await Promise.all(
+            fileList.map((file) => compressImageFileForReceiptUpload(file))
+          );
+        } finally {
+          if (mountedRef.current) setReceiptImagePreparing(false);
+        }
+
         const outcomes = await Promise.all(
-          fileList.map(async (file) => {
+          compressedFiles.map(async (prepared) => {
             try {
               let qid: string;
               try {
-                qid = await insertReceiptQueueProcessing(supabase, file);
+                qid = await insertReceiptQueueProcessing(supabase, prepared);
               } catch (e) {
                 const msg = e instanceof Error ? e.message : "Enqueue failed";
                 return { ok: false as const, detail: msg };
               }
               notifyReceiptQueueChanged();
-              const r = await runUploadForRow(qid, file, { skipRefresh: true });
+              const r = await runUploadForRow(qid, prepared, {
+                skipRefresh: true,
+                alreadyCompressed: true,
+              });
               if (r?.storageSaved) return { ok: true as const, rowId: qid };
               return {
                 ok: false as const,
@@ -1131,8 +1209,27 @@ export function ReceiptQueueWorkspace() {
       }
       if (replacingRowIdsRef.current.has(rowId)) return;
       replacingRowIdsRef.current.add(rowId);
+      const isPdf = file.type === "application/pdf";
+      const blobUrl = URL.createObjectURL(file);
+      setReceiptPreview((p) => {
+        if (!p || p.rowId !== rowId) {
+          URL.revokeObjectURL(blobUrl);
+          return p;
+        }
+        if (p.src.startsWith("blob:")) {
+          URL.revokeObjectURL(p.src);
+        }
+        return { ...p, src: blobUrl, isPdf, fileName: file.name || p.fileName };
+      });
       void (async () => {
         try {
+          if (mountedRef.current) setReceiptImagePreparing(true);
+          let prepared: File;
+          try {
+            prepared = await compressImageFileForReceiptUpload(file);
+          } finally {
+            if (mountedRef.current) setReceiptImagePreparing(false);
+          }
           await patchQueueRowMutation.mutateAsync({
             id: rowId,
             patch: {
@@ -1160,7 +1257,7 @@ export function ReceiptQueueWorkspace() {
               );
             });
           }
-          const r = await runUploadForRow(rowId, file);
+          const r = await runUploadForRow(rowId, prepared, { alreadyCompressed: true });
           if (!mountedRef.current) return;
           if (r?.storageSaved) {
             focusQueueRowVendor(rowId);
@@ -1175,18 +1272,6 @@ export function ReceiptQueueWorkspace() {
           replacingRowIdsRef.current.delete(rowId);
         }
       })();
-      const isPdf = file.type === "application/pdf";
-      const blobUrl = URL.createObjectURL(file);
-      setReceiptPreview((p) => {
-        if (!p || p.rowId !== rowId) {
-          URL.revokeObjectURL(blobUrl);
-          return p;
-        }
-        if (p.src.startsWith("blob:")) {
-          URL.revokeObjectURL(p.src);
-        }
-        return { ...p, src: blobUrl, isPdf, fileName: file.name || p.fileName };
-      });
     },
     [
       supabase,
@@ -1198,11 +1283,14 @@ export function ReceiptQueueWorkspace() {
     ]
   );
 
+  /**
+   * Sync inline receipt preview to the global attachment modal.
+   * When `receiptPreview` is null we must NOT call `closePreview()` on every render — that always
+   * schedules state in AttachmentPreviewProvider and caused "Maximum update depth exceeded" loops.
+   * Cleanup runs when the preview session ends or `receiptPreview` changes.
+   */
   React.useEffect(() => {
-    if (!receiptPreview) {
-      closePreview();
-      return;
-    }
+    if (!receiptPreview) return;
     openPreview({
       url: receiptPreview.src,
       fileName: receiptPreview.fileName,
@@ -1226,6 +1314,9 @@ export function ReceiptQueueWorkspace() {
         if (mountedRef.current) setReceiptPreview(null);
       },
     });
+    return () => {
+      closePreview();
+    };
   }, [receiptPreview, openPreview, closePreview, replaceRowFile]);
 
   React.useEffect(() => {
@@ -1736,6 +1827,19 @@ export function ReceiptQueueWorkspace() {
             </Button>
           </div>
         ) : null}
+        {supabase && captureUploading ? (
+          <p
+            className="md:hidden text-xs text-[#6b7280] dark:text-muted-foreground"
+            role="status"
+            aria-live="polite"
+          >
+            {receiptImagePreparing
+              ? "Preparing image…"
+              : uploadBatchProgress
+                ? `Upload ${uploadBatchProgress.done} / ${uploadBatchProgress.total}…`
+                : "Uploading…"}
+          </p>
+        ) : null}
 
         {rows.some((r) => r.status === "processing") ? (
           <p
@@ -1756,7 +1860,7 @@ export function ReceiptQueueWorkspace() {
             <input
               ref={cameraInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,application/pdf"
               capture="environment"
               className="hidden"
               disabled={captureUploading}
@@ -1769,6 +1873,7 @@ export function ReceiptQueueWorkspace() {
               ref={uploadInputRef}
               type="file"
               accept="image/*,application/pdf"
+              capture={mobileFileCapture}
               multiple
               className="hidden"
               disabled={captureUploading}
@@ -1781,6 +1886,7 @@ export function ReceiptQueueWorkspace() {
               ref={rowReuploadInputRef}
               type="file"
               accept="image/*,application/pdf"
+              capture={mobileFileCapture}
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0];
@@ -1835,9 +1941,11 @@ export function ReceiptQueueWorkspace() {
                 role="status"
                 aria-live="polite"
               >
-                {uploadBatchProgress
-                  ? `Upload progress: ${uploadBatchProgress.done} / ${uploadBatchProgress.total} (OCR continues in background)`
-                  : "Uploading…"}
+                {receiptImagePreparing
+                  ? "Preparing image…"
+                  : uploadBatchProgress
+                    ? `Upload progress: ${uploadBatchProgress.done} / ${uploadBatchProgress.total} (OCR continues in background)`
+                    : "Uploading…"}
               </p>
             ) : null}
             <div
@@ -2003,7 +2111,7 @@ export function ReceiptQueueWorkspace() {
                 <div className="flex flex-col gap-4 md:gap-3">
                   {displayedRows.map((row) => {
                     const prev = previewUrls[row.id];
-                    const st = queueStatusBadge(row.status);
+                    const st = queueRowStatusDisplay(row);
                     const dup = dupWarning(row);
                     const needsHighlight = rowNeedsFix(row) && row.status !== "processing";
                     const vendorMissing =
@@ -2051,6 +2159,7 @@ export function ReceiptQueueWorkspace() {
                         onConfirm={stableConfirmRow}
                         onRemove={stableRemoveRow}
                         onEditableKeyDown={onEditableKeyDown}
+                        onRetryOcr={onRetryRowOcr}
                       />
                     );
                   })}

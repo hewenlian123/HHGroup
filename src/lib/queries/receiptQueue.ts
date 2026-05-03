@@ -3,6 +3,9 @@ import { fetchReceiptQueueRows, type ReceiptQueueRow } from "@/lib/receipt-queue
 
 export const receiptQueueQueryKey = ["receipt_queue"] as const;
 
+/** Sidebar badge count — distinct from full queue rows query (different PostgREST request shape). */
+export const receiptQueueBadgeQueryKey = ["receipt_queue", "badge_count"] as const;
+
 export type FinancialProjectRow = { id: string; name: string | null; status?: string | null };
 
 export const financialProjectsQueryKey = ["financial_projects"] as const;

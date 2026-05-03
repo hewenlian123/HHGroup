@@ -84,7 +84,7 @@ export function BottomNav({ className }: { className?: string }) {
   return (
     <nav
       className={cn(
-        "flex h-14 items-center justify-around border-t border-gray-100 bg-white print:hidden dark:border-border dark:bg-background",
+        "flex min-h-14 items-center justify-around border-t border-gray-100 bg-white pb-[env(safe-area-inset-bottom)] print:hidden dark:border-border dark:bg-background",
         className
       )}
       aria-label="Bottom navigation"

@@ -22,9 +22,10 @@ export type ProcessReceiptQueueResult = {
 export async function uploadReceiptQueueFileOnly(
   supabase: BrowserSupabase,
   rowId: string,
-  file: File
+  file: File,
+  options?: { alreadyCompressed?: boolean }
 ): Promise<ProcessReceiptQueueResult> {
-  const slot = await uploadReceiptToStorage(supabase, file, rowId);
+  const slot = await uploadReceiptToStorage(supabase, file, rowId, options);
   const uploadFailed = !!(slot.uploadError && !slot.attachmentPath && !slot.receiptsPublicUrl);
   const storageSaved = Boolean(slot.attachmentPath || slot.receiptsPublicUrl);
   await updateReceiptQueueRow(supabase, rowId, {
@@ -103,7 +104,12 @@ export function scheduleReceiptQueueOcr(
           patch.expense_date = merged.clampedPurchase;
         }
       }
-      if (catCur === "Other" && merged.mappedCategory && merged.mappedCategory !== "Other") {
+      if (
+        !merged.needsReview &&
+        catCur === "Other" &&
+        merged.mappedCategory &&
+        merged.mappedCategory !== "Other"
+      ) {
         patch.category = merged.mappedCategory;
       }
     }
@@ -124,9 +130,10 @@ export async function processReceiptQueueUpload(
   supabase: BrowserSupabase,
   rowId: string,
   file: File,
-  inferCategory: (vendor: string) => string
+  inferCategory: (vendor: string) => string,
+  options?: { alreadyCompressed?: boolean }
 ): Promise<ProcessReceiptQueueResult> {
-  const result = await uploadReceiptQueueFileOnly(supabase, rowId, file);
+  const result = await uploadReceiptQueueFileOnly(supabase, rowId, file, options);
   scheduleReceiptQueueOcr(supabase, rowId, file, inferCategory, () => {
     notifyReceiptQueueChanged();
   });
