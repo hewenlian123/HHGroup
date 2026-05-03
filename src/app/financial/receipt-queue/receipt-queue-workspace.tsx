@@ -73,21 +73,47 @@ import {
   scrollElementIntoViewNearest,
 } from "@/lib/list-flow";
 import { compressImageFileForReceiptUpload } from "@/lib/image-compress-browser";
+import { parseSupabaseStorageObjectUrl, resolvePreviewSignedUrl } from "@/lib/storage-signed-url";
 
 type ProjectRow = { id: string; name: string | null; status?: string | null };
 type WorkerRow = { id: string; name: string };
 
-async function signStoragePath(
+/** Strip accidental bucket prefix from DB `storage_path` before signing. */
+function normalizeQueueStoragePath(raw: string): string {
+  const p = raw.trim().replace(/^\/+/, "");
+  const lower = p.toLowerCase();
+  if (lower.startsWith("expense-attachments/")) return p.slice("expense-attachments/".length);
+  if (lower.startsWith("receipts/")) return p.slice("receipts/".length);
+  return p;
+}
+
+async function resolveQueueReceiptPreviewUrl(
   supabase: NonNullable<ReturnType<typeof createBrowserClient>>,
-  path: string
+  row: ReceiptQueueRow
 ): Promise<string | null> {
-  const clean = path.replace(/^\/+/, "");
-  for (const bucket of ["expense-attachments", "receipts"] as const) {
-    const { data } = await supabase.storage.from(bucket).createSignedUrl(clean, 3600);
-    if (data?.signedUrl) return data.signedUrl;
-  }
-  const { data: pub } = supabase.storage.from("receipts").getPublicUrl(clean);
-  return pub?.publicUrl ?? null;
+  const pub = (row.receipt_public_url ?? "").trim();
+  const pathRaw = (row.storage_path ?? "").trim();
+  const urlCandidate = /^https?:\/\//i.test(pub)
+    ? pub
+    : pathRaw
+      ? normalizeQueueStoragePath(pathRaw)
+      : "";
+  if (!urlCandidate) return null;
+
+  const resolved = await resolvePreviewSignedUrl({
+    supabase,
+    rawUrlOrPath: urlCandidate,
+    ttlSec: 3600,
+    bucketCandidates: ["expense-attachments", "receipts"],
+  });
+  if (/^https?:\/\//i.test(resolved)) return resolved;
+
+  const parsed = /^https?:\/\//i.test(pub) ? parseSupabaseStorageObjectUrl(pub) : null;
+  const pathOnly = parsed?.path ?? (pathRaw ? normalizeQueueStoragePath(pathRaw) : "");
+  const bucket = parsed?.bucket ?? "receipts";
+  if (!pathOnly) return null;
+  const { data } = supabase.storage.from(bucket).getPublicUrl(pathOnly);
+  return data?.publicUrl ?? null;
 }
 
 /** When a refetch races replication, prefer non-empty server fields; otherwise keep prior UI state. */
@@ -733,16 +759,8 @@ export function ReceiptQueueWorkspace() {
     void (async () => {
       const next: Record<string, string> = {};
       for (const row of rows) {
-        const pub = (row.receipt_public_url ?? "").trim();
-        if (/^https?:\/\//i.test(pub)) {
-          next[row.id] = pub;
-          continue;
-        }
-        const path = row.storage_path?.trim();
-        if (path) {
-          const signed = await signStoragePath(supabase, path);
-          if (signed) next[row.id] = signed;
-        }
+        const url = await resolveQueueReceiptPreviewUrl(supabase, row);
+        if (url) next[row.id] = url;
       }
       if (!cancelled) setPreviewUrls(next);
     })();
@@ -1283,11 +1301,17 @@ export function ReceiptQueueWorkspace() {
     ]
   );
 
+  const replaceRowFileRef = React.useRef(replaceRowFile);
+  replaceRowFileRef.current = replaceRowFile;
+
   /**
    * Sync inline receipt preview to the global attachment modal.
    * When `receiptPreview` is null we must NOT call `closePreview()` on every render — that always
    * schedules state in AttachmentPreviewProvider and caused "Maximum update depth exceeded" loops.
    * Cleanup runs when the preview session ends or `receiptPreview` changes.
+   *
+   * Do not list `replaceRowFile` in deps: `patchQueueRowMutation` churn would re-run cleanup
+   * (`closePreview` → `onClosed` → clear `receiptPreview`) and close the modal right after open.
    */
   React.useEffect(() => {
     if (!receiptPreview) return;
@@ -1304,7 +1328,7 @@ export function ReceiptQueueWorkspace() {
         e.target.value = "";
         const rp = receiptPreviewRef.current;
         if (!f?.size || !rp) return;
-        replaceRowFile(rp.rowId, f);
+        replaceRowFileRef.current(rp.rowId, f);
       },
       onDownload: () => {
         const rp = receiptPreviewRef.current;
@@ -1317,7 +1341,7 @@ export function ReceiptQueueWorkspace() {
     return () => {
       closePreview();
     };
-  }, [receiptPreview, openPreview, closePreview, replaceRowFile]);
+  }, [receiptPreview, openPreview, closePreview]);
 
   React.useEffect(() => {
     const src = receiptPreview?.src;
@@ -1583,9 +1607,26 @@ export function ReceiptQueueWorkspace() {
   queueHandlersRef.current.openPreview = (id: string) => {
     const row = rowsRef.current.find((r) => r.id === id);
     if (!row) return;
-    const src = previewUrlsRef.current[row.id];
     if (row.status === "processing") return;
-    if (!src) {
+
+    const openWithSrc = (src: string) => {
+      const isPdf =
+        row.mime_type === "application/pdf" || row.file_name.toLowerCase().endsWith(".pdf");
+      setReceiptPreview({
+        rowId: row.id,
+        src,
+        isPdf,
+        fileName: row.file_name || "Receipt",
+      });
+    };
+
+    const srcFromMap = previewUrlsRef.current[row.id];
+    if (srcFromMap) {
+      openWithSrc(srcFromMap);
+      return;
+    }
+
+    if (!supabase) {
       toast({
         title: "No receipt preview",
         description: "File is still processing or missing. Re-upload if this persists.",
@@ -1593,14 +1634,24 @@ export function ReceiptQueueWorkspace() {
       });
       return;
     }
-    const isPdf =
-      row.mime_type === "application/pdf" || row.file_name.toLowerCase().endsWith(".pdf");
-    setReceiptPreview({
-      rowId: row.id,
-      src,
-      isPdf,
-      fileName: row.file_name || "Receipt",
-    });
+
+    void (async () => {
+      const resolved = await resolveQueueReceiptPreviewUrl(supabase, row);
+      if (!resolved) {
+        if (mountedRef.current) {
+          toast({
+            title: "No receipt preview",
+            description: "File is still processing or missing. Re-upload if this persists.",
+            variant: "error",
+          });
+        }
+        return;
+      }
+      // Do not gate success on mountedRef: Strict Mode runs effect cleanup (mountedRef=false)
+      // before remount; an in-flight resolve would otherwise never open the modal.
+      setPreviewUrls((m) => (m[row.id] === resolved ? m : { ...m, [row.id]: resolved }));
+      openWithSrc(resolved);
+    })();
   };
 
   const stableConfirmRow = React.useCallback((row: ReceiptQueueRow) => {
