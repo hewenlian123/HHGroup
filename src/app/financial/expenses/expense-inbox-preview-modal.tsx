@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { InlineLoading } from "@/components/ui/skeleton";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import {
   Select,
@@ -38,6 +37,8 @@ import {
   EXPENSE_WORKER_SELECT_NONE,
 } from "@/lib/expense-workflow-status";
 import { getExpenseReceiptItemsFromParts } from "@/lib/expense-receipt-items";
+import { dedupeExpenseAttachmentsByStorageKey } from "@/lib/expense-attachment-dedupe";
+import { ExpenseEditAttachmentsSection } from "./expense-edit-attachments-section";
 
 type ProjectOption = { id: string; name: string | null };
 type WorkerOption = { id: string; name: string };
@@ -138,6 +139,8 @@ type Props = {
   };
   /** Hint only: possible duplicate among loaded inbox rows. */
   possibleDuplicate?: boolean;
+  /** After attachment upload/remove in edit mode — sync list + React Query. */
+  onAttachmentsUpdated?: (expense: Expense) => void;
 };
 
 export function ExpenseInboxPreviewModal({
@@ -154,6 +157,7 @@ export function ExpenseInboxPreviewModal({
   onMarkReviewed,
   previewNav,
   possibleDuplicate = false,
+  onAttachmentsUpdated,
 }: Props) {
   const { toast } = useToast();
   const { openPreview } = useAttachmentPreview();
@@ -211,7 +215,7 @@ export function ExpenseInboxPreviewModal({
     setSourceType(expense.sourceType ?? "company");
     setPaymentMethod((expense.paymentMethod ?? "").trim() || PAYMENT_METHOD_OPTIONS[0]);
     setPaymentAccountId(expense.paymentAccountId ?? "");
-    setAttachments(expense.attachments ?? []);
+    setAttachments(dedupeExpenseAttachmentsByStorageKey(expense.attachments ?? []));
   }, [expense]);
 
   React.useEffect(() => {
@@ -386,7 +390,7 @@ export function ExpenseInboxPreviewModal({
     setSourceType(expense.sourceType ?? "company");
     setPaymentMethod((expense.paymentMethod ?? "").trim() || PAYMENT_METHOD_OPTIONS[0]);
     setPaymentAccountId(expense.paymentAccountId ?? "");
-    setAttachments(expense.attachments ?? []);
+    setAttachments(dedupeExpenseAttachmentsByStorageKey(expense.attachments ?? []));
     setMode("preview");
   };
 
@@ -694,54 +698,17 @@ export function ExpenseInboxPreviewModal({
               </ModalSection>
 
               <ModalSection title="Attachments">
-                {!supabase || attachments.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    {attachments.length === 0
-                      ? "No attachments."
-                      : "Configure Supabase to preview."}
-                  </p>
-                ) : (
-                  <ul className="max-h-40 space-y-1 overflow-y-auto">
-                    {attachments.map((att) => {
-                      const thumb = thumbById[att.id];
-                      const isPdf = !attachmentIsImage(att);
-                      return (
-                        <li
-                          key={att.id}
-                          className="flex items-center gap-2 border-b border-border/40 py-2 last:border-0"
-                        >
-                          <button
-                            type="button"
-                            className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-sm border border-border/60"
-                            onClick={() => void openAttachmentPreview(att)}
-                            aria-label="Preview"
-                          >
-                            {isPdf ? (
-                              <span className="text-[10px] font-medium text-muted-foreground">
-                                PDF
-                              </span>
-                            ) : thumb ? (
-                              /* eslint-disable-next-line @next/next/no-img-element */
-                              <img src={thumb} alt="" className="h-full w-full object-cover" />
-                            ) : (
-                              <InlineLoading className="h-4 w-4" size="md" />
-                            )}
-                          </button>
-                          <span className="min-w-0 flex-1 truncate text-sm">{att.fileName}</span>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="h-8 shrink-0 px-2 text-xs"
-                            onClick={() => void openAttachmentPreview(att)}
-                          >
-                            View
-                          </Button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
+                <ExpenseEditAttachmentsSection
+                  expense={expense}
+                  supabase={supabase}
+                  attachments={attachments}
+                  setAttachments={setAttachments}
+                  thumbById={thumbById}
+                  disabled={saving}
+                  onExpenseUpdated={onAttachmentsUpdated}
+                  onPreviewAttachment={(att) => void openAttachmentPreview(att)}
+                  showDelete
+                />
               </ModalSection>
             </div>
           )}
