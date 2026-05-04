@@ -326,6 +326,7 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
           className={cn(
             "!z-[100]",
             "bg-[rgba(15,23,42,0.22)] backdrop-blur-[3px]",
+            "max-md:bg-black/35 max-md:backdrop-blur-none",
             "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
           )}
         />
@@ -353,10 +354,12 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
             "p-0 md:rounded-[24px] md:p-6",
             "max-md:inset-0 max-md:rounded-none max-md:border-0 max-md:shadow-none",
             "max-md:pt-[max(1rem,env(safe-area-inset-top))] max-md:pb-[max(1rem,env(safe-area-inset-bottom))] max-md:pl-[max(1rem,env(safe-area-inset-left))] max-md:pr-[max(1rem,env(safe-area-inset-right))]",
+            /** iOS Safari: enter animations can leave sheet at opacity 0 (backdrop visible, body missing). Open state: opaque + no stray transform. */
+            "max-md:data-[state=open]:!opacity-100 max-md:data-[state=open]:[transform:none]",
             "duration-200 ease-out",
             "md:max-h-[min(92vh,900px)]",
             "md:left-1/2 md:top-1/2 md:max-w-[460px] md:-translate-x-1/2 md:-translate-y-1/2 md:data-[state=closed]:animate-out md:data-[state=open]:animate-in md:data-[state=closed]:fade-out-0 md:data-[state=open]:fade-in-0 md:data-[state=closed]:zoom-out-95 md:data-[state=open]:zoom-in-95",
-            "max-md:data-[state=closed]:animate-out max-md:data-[state=open]:animate-in max-md:data-[state=closed]:fade-out-0 max-md:data-[state=open]:fade-in-0"
+            "max-md:data-[state=closed]:animate-out max-md:data-[state=closed]:fade-out-0"
           )}
         >
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
