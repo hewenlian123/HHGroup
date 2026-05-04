@@ -3,15 +3,19 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion, type PanInfo, type Variants } from "framer-motion";
-import { ChevronLeft, ChevronRight, Download, ExternalLink, RefreshCw, X } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  ExternalLink,
+  RefreshCw,
+  Trash2,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InlineLoading, Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import {
-  classifyStorageUrlPrefix,
-  preflightPreviewUrl,
-  type PreviewUrlPreflightResult,
-} from "@/lib/preview-url-preflight";
+import { preflightPreviewUrl, type PreviewUrlPreflightResult } from "@/lib/preview-url-preflight";
 
 export type AttachmentPreviewFileType = "image" | "pdf";
 
@@ -22,6 +26,8 @@ export type AttachmentPreviewFileItem = {
   unsupported?: boolean;
   /** Optional MIME for debug (e.g. receipt row `mime_type`). */
   mimeType?: string;
+  /** When set (e.g. Edit Expense), `onDeleteCurrent` may remove this attachment server-side. */
+  attachmentId?: string;
 };
 
 export function inferAttachmentPreviewType(
@@ -32,12 +38,6 @@ export function inferAttachmentPreviewType(
   const u = (fileUrl ?? "").toLowerCase();
   if (n.endsWith(".pdf") || /\.pdf(\?|#|$)/i.test(u)) return "pdf";
   return "image";
-}
-
-export function isReceiptPreviewDebugEnabled(): boolean {
-  return (
-    process.env.NODE_ENV === "development" || process.env.NEXT_PUBLIC_DEBUG_RECEIPT_PREVIEW === "1"
-  );
 }
 
 function safeDownloadName(name: string): string {
@@ -65,17 +65,227 @@ export async function downloadPreviewBlob(fileUrl: string, fileName: string): Pr
 
 const DRAG_THRESHOLD = 72;
 const SWIPE_TOUCH_MIN = 56;
+const ZOOM_MIN = 1;
+const ZOOM_MAX = 4;
+const WHEEL_ZOOM_SENS = 0.0015;
 
 type PreflightPhase = "idle" | "checking" | "ok" | "error";
 
+function ZoomableImageFrame({
+  effectiveUrl,
+  imgPhase,
+  imgClassName,
+  onImgLoad,
+  onImgError,
+  onZoomPanChange,
+}: {
+  effectiveUrl: string;
+  imgPhase: "loading" | "ready" | "error";
+  imgClassName: string;
+  onImgLoad: (e: React.SyntheticEvent<HTMLImageElement>) => void;
+  onImgError: () => void;
+  onZoomPanChange?: (zoomed: boolean) => void;
+}) {
+  const [scale, setScale] = React.useState(1);
+  const [tx, setTx] = React.useState(0);
+  const [ty, setTy] = React.useState(0);
+  const pinchStartDist = React.useRef<number | null>(null);
+  const pinchStartScale = React.useRef(1);
+  const panStart = React.useRef<{ x: number; y: number; tx: number; ty: number } | null>(null);
+
+  React.useEffect(() => {
+    setScale(1);
+    setTx(0);
+    setTy(0);
+    pinchStartDist.current = null;
+    panStart.current = null;
+  }, [effectiveUrl]);
+
+  React.useEffect(() => {
+    onZoomPanChange?.(scale > ZOOM_MIN + 0.02 || Math.abs(tx) > 2 || Math.abs(ty) > 2);
+  }, [scale, tx, ty, onZoomPanChange]);
+
+  const onWheel = React.useCallback((e: React.WheelEvent) => {
+    if (!e.ctrlKey && !e.metaKey) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setScale((s) => {
+      const next = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, s - e.deltaY * WHEEL_ZOOM_SENS));
+      if (next <= ZOOM_MIN + 0.001) {
+        setTx(0);
+        setTy(0);
+      }
+      return next;
+    });
+  }, []);
+
+  const onDoubleClick = React.useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setScale((s) => {
+      if (s > ZOOM_MIN + 0.05) {
+        setTx(0);
+        setTy(0);
+        return ZOOM_MIN;
+      }
+      return Math.min(2.25, ZOOM_MAX);
+    });
+  }, []);
+
+  const onTouchStart = React.useCallback(
+    (e: React.TouchEvent) => {
+      if (e.touches.length === 2) {
+        const [a, b] = [e.touches[0], e.touches[1]];
+        const dx = a.clientX - b.clientX;
+        const dy = a.clientY - b.clientY;
+        pinchStartDist.current = Math.hypot(dx, dy);
+        pinchStartScale.current = scale;
+        panStart.current = null;
+        return;
+      }
+      if (e.touches.length === 1 && scale > ZOOM_MIN + 0.02) {
+        const t = e.touches[0];
+        panStart.current = { x: t.clientX, y: t.clientY, tx, ty };
+        e.stopPropagation();
+      }
+    },
+    [scale, tx, ty]
+  );
+
+  const onTouchMove = React.useCallback(
+    (e: React.TouchEvent) => {
+      if (e.touches.length === 2 && pinchStartDist.current != null) {
+        const [a, b] = [e.touches[0], e.touches[1]];
+        const dx = a.clientX - b.clientX;
+        const dy = a.clientY - b.clientY;
+        const d = Math.hypot(dx, dy);
+        const ratio = d / pinchStartDist.current;
+        const next = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, pinchStartScale.current * ratio));
+        setScale(next);
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      if (e.touches.length === 1 && panStart.current && scale > ZOOM_MIN + 0.02) {
+        const t = e.touches[0];
+        const p = panStart.current;
+        setTx(p.tx + (t.clientX - p.x));
+        setTy(p.ty + (t.clientY - p.y));
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    },
+    [scale]
+  );
+
+  const onTouchEnd = React.useCallback(() => {
+    pinchStartDist.current = null;
+    panStart.current = null;
+  }, []);
+
+  return (
+    <div
+      className="relative flex max-h-[min(78dvh,78vh)] max-w-full touch-none items-center justify-center overflow-hidden"
+      style={{ touchAction: "none" }}
+      onWheel={onWheel}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchEnd}
+    >
+      <div
+        role="presentation"
+        onDoubleClick={onDoubleClick}
+        className="flex max-h-full max-w-full items-center justify-center"
+        style={{
+          transform: `translate3d(${tx}px, ${ty}px, 0) scale(${scale})`,
+          transformOrigin: "center center",
+          willChange: "transform",
+        }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={effectiveUrl}
+          alt=""
+          data-no-image-preview
+          decoding="async"
+          loading="eager"
+          draggable={false}
+          onLoad={onImgLoad}
+          onError={onImgError}
+          className={imgClassName}
+        />
+      </div>
+      {imgPhase === "ready" && scale <= ZOOM_MIN + 0.02 ? (
+        <p className="pointer-events-none absolute bottom-1 left-1/2 z-[1] -translate-x-1/2 rounded-sm bg-black/55 px-2 py-0.5 text-[10px] text-white/80 max-md:block md:hidden">
+          Pinch to zoom · double-tap
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function PdfPreviewFrame({ src, title }: { src: string; title: string }) {
+  const loadedRef = React.useRef(false);
+  const [showFallback, setShowFallback] = React.useState(false);
+  React.useEffect(() => {
+    loadedRef.current = false;
+    setShowFallback(false);
+    const t = window.setTimeout(() => {
+      if (!loadedRef.current) setShowFallback(true);
+    }, 12000);
+    return () => window.clearTimeout(t);
+  }, [src]);
+
+  return (
+    <div className="relative flex min-h-[50dvh] w-full flex-1 flex-col bg-black">
+      <iframe
+        title={title}
+        src={src}
+        onLoad={() => {
+          loadedRef.current = true;
+          setShowFallback(false);
+        }}
+        className="min-h-[50dvh] h-[min(78dvh,78vh)] w-full flex-1 border-0 bg-zinc-900"
+      />
+      {showFallback ? (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/80 px-4 text-center">
+          <p className="text-sm text-zinc-300">PDF preview is unavailable in-app.</p>
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="border-white/20 bg-white/10 text-white hover:bg-white/15"
+              onClick={() => window.open(src, "_blank", "noopener,noreferrer")}
+            >
+              <ExternalLink className="mr-2 h-3.5 w-3.5" />
+              Open
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="border-white/20 bg-white/10 text-white hover:bg-white/15"
+              onClick={() => void downloadPreviewBlob(src, title)}
+            >
+              <Download className="mr-2 h-3.5 w-3.5" />
+              Download
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function ReceiptPreviewImageArea({
   displayUrl,
-  fileName,
-  mimeHint,
   onRefreshPreviewUrl,
   downloadBusy,
   onDownload,
   defaultDownload,
+  onZoomPanChange,
 }: {
   displayUrl: string;
   fileName: string;
@@ -84,19 +294,15 @@ function ReceiptPreviewImageArea({
   downloadBusy: boolean;
   onDownload?: () => void | Promise<void>;
   defaultDownload: () => void | Promise<void>;
+  onZoomPanChange?: (zoomed: boolean) => void;
 }) {
-  const showDebug = isReceiptPreviewDebugEnabled();
   const [preflightPhase, setPreflightPhase] = React.useState<PreflightPhase>("idle");
   const [preflightResult, setPreflightResult] = React.useState<PreviewUrlPreflightResult | null>(
     null
   );
   const [imgPhase, setImgPhase] = React.useState<"loading" | "ready" | "error">("loading");
-  const [imgErrorDetail, setImgErrorDetail] = React.useState<string | null>(null);
-  const [naturalSize, setNaturalSize] = React.useState({ w: 0, h: 0 });
   const [retryKey, setRetryKey] = React.useState(0);
   const [localUrl, setLocalUrl] = React.useState(displayUrl);
-  const containerRef = React.useRef<HTMLDivElement | null>(null);
-  const [containerH, setContainerH] = React.useState(0);
   const onRefreshRef = React.useRef(onRefreshPreviewUrl);
   onRefreshRef.current = onRefreshPreviewUrl;
 
@@ -104,8 +310,6 @@ function ReceiptPreviewImageArea({
     setLocalUrl(displayUrl);
     setRetryKey(0);
     setImgPhase("loading");
-    setImgErrorDetail(null);
-    setNaturalSize({ w: 0, h: 0 });
     setPreflightPhase("idle");
     setPreflightResult(null);
   }, [displayUrl]);
@@ -157,23 +361,6 @@ function ReceiptPreviewImageArea({
     };
   }, [effectiveUrl]);
 
-  React.useEffect(() => {
-    const el = containerRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(() => {
-      setContainerH(el.clientHeight);
-    });
-    ro.observe(el);
-    setContainerH(el.clientHeight);
-    return () => ro.disconnect();
-  }, [preflightPhase, imgPhase]);
-
-  const inferredImage = inferAttachmentPreviewType(fileName, effectiveUrl) === "image";
-  const inferredPdf = inferAttachmentPreviewType(fileName, effectiveUrl) === "pdf";
-  const mime = (mimeHint ?? "").trim();
-  const isImageMime = mime.startsWith("image/");
-  const isPdfMime = mime === "application/pdf";
-
   const openTab = () => {
     window.open(effectiveUrl, "_blank", "noopener,noreferrer");
   };
@@ -213,37 +400,8 @@ function ReceiptPreviewImageArea({
   );
 
   return (
-    <div className="flex w-full min-h-[280px] flex-col items-stretch gap-2">
-      {showDebug ? (
-        <div
-          className="rounded-sm border border-dashed border-border/80 bg-muted/30 px-2 py-1.5 font-mono text-[10px] leading-snug text-muted-foreground"
-          data-testid="receipt-preview-debug"
-        >
-          <div>fileUrl: {effectiveUrl ? `string(len=${effectiveUrl.length})` : "(missing)"}</div>
-          <div>mime hint: {mime || "—"}</div>
-          <div>
-            infer: isPdf={String(inferredPdf)} isImage={String(inferredImage)} | mime: isPdf=
-            {String(isPdfMime)} isImage={String(isImageMime)}
-          </div>
-          <div>URL prefix: {classifyStorageUrlPrefix(effectiveUrl)}</div>
-          <div>
-            preflight: {preflightPhase}
-            {preflightResult?.status != null ? ` status=${preflightResult.status}` : ""}{" "}
-            {preflightResult?.method ? `via ${preflightResult.method}` : ""}
-            {preflightResult?.error ? ` err=${preflightResult.error}` : ""}
-          </div>
-          <div>
-            img: phase={imgPhase} natural={naturalSize.w}×{naturalSize.h} | err=
-            {imgErrorDetail ?? "—"}
-          </div>
-          <div>container clientHeight: {containerH}</div>
-        </div>
-      ) : null}
-
-      <div
-        ref={containerRef}
-        className="relative flex min-h-[280px] w-full flex-1 flex-col items-center justify-center gap-4 px-2 py-3"
-      >
+    <div className="flex w-full min-h-[280px] flex-col items-stretch">
+      <div className="relative flex min-h-[280px] w-full flex-1 flex-col items-center justify-center gap-4 px-2 py-3">
         {preflightPhase === "checking" ? (
           <div className="flex flex-col items-center gap-2" aria-busy>
             <Skeleton className="h-40 w-full max-w-md rounded-sm" />
@@ -304,7 +462,6 @@ function ReceiptPreviewImageArea({
                   className="touch-manipulation"
                   onClick={() => {
                     setImgPhase("loading");
-                    setImgErrorDetail(null);
                     setRetryKey((k) => k + 1);
                   }}
                 >
@@ -313,28 +470,20 @@ function ReceiptPreviewImageArea({
                 </Button>
               </div>
             ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={effectiveUrl}
-                alt=""
-                data-no-image-preview
-                decoding="async"
-                loading="eager"
-                draggable={false}
-                onLoad={(e) => {
-                  const el = e.currentTarget;
-                  setNaturalSize({ w: el.naturalWidth, h: el.naturalHeight });
-                  setImgPhase("ready");
-                  setImgErrorDetail(null);
-                }}
-                onError={() => {
-                  setImgErrorDetail("img onError (decode / network / CORS)");
-                  setImgPhase("error");
-                }}
-                className={cn(
-                  "max-h-[70vh] max-w-full object-contain",
+              <ZoomableImageFrame
+                effectiveUrl={effectiveUrl}
+                imgPhase={imgPhase}
+                onZoomPanChange={onZoomPanChange}
+                imgClassName={cn(
+                  "max-h-[min(78dvh,78vh)] max-w-[min(100vw-1.5rem,100%)] object-contain select-none",
                   imgPhase === "ready" ? "opacity-100" : "opacity-0"
                 )}
+                onImgLoad={() => {
+                  setImgPhase("ready");
+                }}
+                onImgError={() => {
+                  setImgPhase("error");
+                }}
               />
             )}
           </>
@@ -378,6 +527,8 @@ export type AttachmentPreviewModalProps = {
   extraFooter?: React.ReactNode;
   /** Re-resolve signed URL after HTTP 403/404 on preflight (receipt flows). */
   onRefreshPreviewUrl?: () => Promise<string | null>;
+  /** Edit Expense only: delete attachment row after confirm; hidden when current slide has no `attachmentId`. */
+  onDeleteCurrent?: (attachmentId: string) => Promise<void>;
 };
 
 export function AttachmentPreviewModal({
@@ -397,9 +548,12 @@ export function AttachmentPreviewModal({
   replaceAccept = "image/*,.pdf,application/pdf",
   extraFooter,
   onRefreshPreviewUrl,
+  onDeleteCurrent,
 }: AttachmentPreviewModalProps) {
   const [mounted, setMounted] = React.useState(false);
   const [navDirection, setNavDirection] = React.useState(1);
+  const [imageZoomed, setImageZoomed] = React.useState(false);
+  const [deleteBusy, setDeleteBusy] = React.useState(false);
   const touchStartRef = React.useRef<{ x: number; y: number } | null>(null);
 
   const itemCount = files.length;
@@ -414,6 +568,10 @@ export function AttachmentPreviewModal({
   const fileType = current.fileType ?? inferAttachmentPreviewType(fileName, fileUrl);
   const unsupported = current.unsupported ?? false;
   const mimeHint = current.mimeType;
+
+  React.useEffect(() => {
+    setImageZoomed(false);
+  }, [safeIndex, fileUrl]);
 
   React.useEffect(() => setMounted(true), []);
 
@@ -494,21 +652,40 @@ export function AttachmentPreviewModal({
     else void downloadPreviewBlob(fileUrl, fileName);
   }, [onDownload, downloadBusy, fileUrl, fileName, sessionIsLoading]);
 
+  const attachmentId = current.attachmentId;
+  const canDelete = Boolean(onDeleteCurrent && attachmentId);
+
+  const handleDelete = React.useCallback(async () => {
+    if (!onDeleteCurrent || !attachmentId || deleteBusy || sessionIsLoading) return;
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm(`Delete “${fileName}” from this expense?`)
+    ) {
+      return;
+    }
+    setDeleteBusy(true);
+    try {
+      await onDeleteCurrent(attachmentId);
+    } finally {
+      setDeleteBusy(false);
+    }
+  }, [onDeleteCurrent, attachmentId, deleteBusy, sessionIsLoading, fileName]);
+
   const onTouchStartCapture = React.useCallback(
     (e: React.TouchEvent) => {
-      if (itemCount <= 1) return;
+      if (imageZoomed || itemCount <= 1) return;
       if (e.touches.length !== 1) return;
       touchStartRef.current = {
         x: e.touches[0].clientX,
         y: e.touches[0].clientY,
       };
     },
-    [itemCount]
+    [imageZoomed, itemCount]
   );
 
   const onTouchEndCapture = React.useCallback(
     (e: React.TouchEvent) => {
-      if (itemCount <= 1) return;
+      if (imageZoomed || itemCount <= 1) return;
       const start = touchStartRef.current;
       touchStartRef.current = null;
       if (!start || e.changedTouches.length !== 1) return;
@@ -520,225 +697,222 @@ export function AttachmentPreviewModal({
         else goNext();
       }
     },
-    [goNext, goPrev, itemCount]
+    [imageZoomed, goNext, goPrev, itemCount]
   );
 
   if (!mounted) return null;
 
   const titleBase = fileName || "File";
-  const title = itemCount > 1 ? `${titleBase} (${safeIndex + 1}/${itemCount})` : titleBase;
+  const headerTitle = itemCount > 1 ? `${titleBase} · ${safeIndex + 1} / ${itemCount}` : titleBase;
 
   const showNav = itemCount > 1;
-  const enableMotionDrag = showNav;
+  const enableMotionDrag = showNav && !imageZoomed;
 
-  const dialogTransition = {
-    opacity: { duration: 0.18, ease: "easeOut" as const },
-    scale: { type: "spring" as const, stiffness: 420, damping: 34, mass: 0.85 },
-  };
-  const dialogExitTransition = {
-    opacity: { duration: 0.15, ease: "easeOut" as const },
-    scale: { duration: 0.15, ease: "easeOut" as const },
-  };
+  const showFooter =
+    Boolean(extraFooter) ||
+    Boolean(showReplace && replaceInputRef && onReplaceClick && onReplaceInputChange);
+
+  const navBtnClass =
+    "h-11 w-11 shrink-0 touch-manipulation rounded-sm border border-white/15 bg-black/50 text-zinc-100 hover:bg-white/10 max-md:h-12 max-md:w-12";
 
   return createPortal(
     <AnimatePresence>
-      {isOpen
-        ? [
-            <motion.div
-              key="attachment-preview-backdrop"
-              className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-sm"
-              aria-hidden
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0, transition: { duration: 0.15, ease: "easeOut" } }}
-              transition={{ duration: 0.18, ease: "easeOut" }}
-              onClick={onClose}
-            />,
-            <motion.div
-              key="attachment-preview-dialog"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="attachment-preview-title"
-              data-attachment-preview-modal
-              className="fixed left-1/2 top-1/2 z-[201] flex max-h-[90vh] w-full max-w-[90vw] flex-col overflow-hidden rounded-sm border border-border/60 bg-background shadow-none max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:left-0 max-md:right-0 max-md:max-h-[min(92dvh,calc(100vh-env(safe-area-inset-bottom)))] max-md:w-full max-md:max-w-none max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-b-none max-md:rounded-t-sm"
-              style={{ transformOrigin: "center center" }}
-              initial={{ opacity: 0, scale: 0.95, x: "-50%", y: "-50%" }}
-              animate={{ opacity: 1, scale: 1, x: "-50%", y: "-50%" }}
-              exit={{
-                opacity: 0,
-                scale: 0.95,
-                x: "-50%",
-                y: "-50%",
-                transition: dialogExitTransition,
-              }}
-              transition={dialogTransition}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <header className="relative flex shrink-0 flex-col gap-1 border-b border-border/60 px-4 py-3 pr-12">
-                <div className="flex min-w-0 items-center gap-2">
-                  <h2
-                    id="attachment-preview-title"
-                    className="min-w-0 flex-1 truncate text-sm font-medium text-foreground"
-                    title={title}
-                  >
-                    <span className="sr-only">Receipt preview — </span>
-                    {titleBase}
-                  </h2>
-                  {showNav ? (
-                    <span
-                      className="shrink-0 tabular-nums text-xs text-muted-foreground"
-                      aria-live="polite"
-                    >
-                      {safeIndex + 1} / {itemCount}
-                    </span>
-                  ) : null}
-                </div>
+      {isOpen ? (
+        <motion.div
+          key="attachment-preview-shell"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="attachment-preview-title"
+          data-attachment-preview-modal
+          className="fixed inset-0 z-[201] flex min-h-0 flex-col bg-black text-zinc-100"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0, transition: { duration: 0.18, ease: "easeOut" } }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+        >
+          <header className="flex shrink-0 items-center gap-2 border-b border-white/10 px-3 py-2.5 pt-[max(0.5rem,env(safe-area-inset-top))]">
+            <div className="min-w-0 flex-1">
+              <h2
+                id="attachment-preview-title"
+                className="truncate text-sm font-medium text-zinc-50"
+                title={headerTitle}
+              >
+                <span className="sr-only">Attachment preview — </span>
+                {titleBase}
+              </h2>
+              {showNav ? (
+                <p className="tabular-nums text-xs text-zinc-500" aria-live="polite">
+                  {safeIndex + 1} / {itemCount}
+                </p>
+              ) : null}
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-11 w-11 touch-manipulation text-zinc-100 hover:bg-white/10 max-md:h-12 max-md:w-12"
+                aria-label="Download"
+                disabled={!fileUrl || sessionIsLoading || unsupported || downloadBusy}
+                onClick={() => void handleDownload()}
+              >
+                {downloadBusy ? (
+                  <InlineLoading className="text-zinc-100" size="md" aria-label="Downloading" />
+                ) : (
+                  <Download className="h-5 w-5" />
+                )}
+              </Button>
+              {canDelete ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-11 w-11 touch-manipulation text-zinc-100 hover:bg-red-500/20 hover:text-red-200 max-md:h-12 max-md:w-12"
+                  aria-label="Delete attachment"
+                  disabled={!fileUrl || sessionIsLoading || unsupported || deleteBusy}
+                  onClick={() => void handleDelete()}
+                >
+                  {deleteBusy ? (
+                    <InlineLoading className="text-zinc-100" size="md" aria-label="Deleting" />
+                  ) : (
+                    <Trash2 className="h-5 w-5" />
+                  )}
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-11 w-11 touch-manipulation text-zinc-100 hover:bg-white/10 max-md:h-12 max-md:w-12"
+                aria-label="Close"
+                onClick={onClose}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+          </header>
+
+          <div
+            className="relative flex min-h-0 flex-1 flex-col"
+            onTouchStartCapture={onTouchStartCapture}
+            onTouchEndCapture={onTouchEndCapture}
+          >
+            {showNav ? (
+              <>
                 <Button
                   type="button"
                   variant="outline"
                   size="icon"
-                  className="btn-outline-ghost absolute right-2 top-2 h-9 w-9 shrink-0 rounded-sm touch-manipulation max-md:h-11 max-md:w-11"
-                  aria-label="Close"
-                  onClick={onClose}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </header>
-
-              <div
-                className="relative flex min-h-[320px] min-w-0 flex-1 flex-col px-4 py-2"
-                onTouchStartCapture={onTouchStartCapture}
-                onTouchEndCapture={onTouchEndCapture}
-              >
-                {showNav ? (
-                  <>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="btn-outline-ghost absolute left-1 top-1/2 z-20 h-9 w-9 -translate-y-1/2 rounded-sm touch-manipulation max-md:h-11 max-md:w-11"
-                      aria-label="Previous attachment"
-                      onClick={goPrev}
-                    >
-                      <ChevronLeft className="h-5 w-5" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="btn-outline-ghost absolute right-1 top-1/2 z-20 h-9 w-9 -translate-y-1/2 rounded-sm touch-manipulation max-md:h-11 max-md:w-11"
-                      aria-label="Next attachment"
-                      onClick={goNext}
-                    >
-                      <ChevronRight className="h-5 w-5" />
-                    </Button>
-                  </>
-                ) : null}
-
-                <div className="flex w-full flex-1 min-h-[320px] max-h-[min(85vh,calc(90vh-8rem))] flex-col items-stretch justify-center overflow-auto">
-                  {sessionIsLoading ? (
-                    <div
-                      className="flex w-full flex-col items-center justify-center gap-3 px-6 py-8"
-                      aria-busy
-                    >
-                      <Skeleton className="h-[min(50vh,280px)] w-full max-w-2xl rounded-md" />
-                      <span className="sr-only">Loading preview</span>
-                    </div>
-                  ) : unsupported ? (
-                    <p className="px-4 text-center text-sm text-muted-foreground">
-                      Preview not available for this file type.
-                    </p>
-                  ) : !fileUrl ? (
-                    <p className="text-sm text-muted-foreground">Receipt not available.</p>
-                  ) : (
-                    <div className="relative flex min-h-[320px] w-full flex-1 flex-col">
-                      <AnimatePresence initial={false} custom={navDirection} mode="wait">
-                        <motion.div
-                          key={`${safeIndex}-${fileUrl}`}
-                          custom={navDirection}
-                          variants={slideVariants}
-                          initial="enter"
-                          animate="center"
-                          exit="exit"
-                          transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-                          drag={enableMotionDrag ? "x" : false}
-                          dragConstraints={{ left: 0, right: 0 }}
-                          dragElastic={0.12}
-                          onDragEnd={handleDragEnd}
-                          className="relative flex min-h-[320px] w-full flex-1 flex-col items-center justify-center"
-                        >
-                          {fileType === "pdf" ? (
-                            <iframe
-                              title={fileName}
-                              src={fileUrl}
-                              className="min-h-[280px] h-[min(70vh,720px)] w-full flex-1 border-0"
-                            />
-                          ) : (
-                            <ReceiptPreviewImageArea
-                              displayUrl={fileUrl}
-                              fileName={fileName}
-                              mimeHint={mimeHint}
-                              onRefreshPreviewUrl={onRefreshPreviewUrl}
-                              downloadBusy={downloadBusy}
-                              onDownload={onDownload}
-                              defaultDownload={() => void downloadPreviewBlob(fileUrl, fileName)}
-                            />
-                          )}
-                        </motion.div>
-                      </AnimatePresence>
-                    </div>
+                  className={cn(
+                    navBtnClass,
+                    "absolute left-2 top-1/2 z-20 -translate-y-1/2 max-md:left-1"
                   )}
-                </div>
-              </div>
-
-              <footer className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-border/60 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-                {extraFooter}
-                {showReplace && replaceInputRef && onReplaceClick && onReplaceInputChange ? (
-                  <>
-                    <input
-                      ref={replaceInputRef}
-                      type="file"
-                      className="hidden"
-                      accept={replaceAccept}
-                      capture="environment"
-                      onChange={onReplaceInputChange}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-8 max-md:min-h-11 touch-manipulation"
-                      disabled={replaceBusy}
-                      onClick={onReplaceClick}
-                    >
-                      <RefreshCw className="mr-2 h-3.5 w-3.5" />
-                      {replaceBusy ? "Replacing…" : "Replace"}
-                    </Button>
-                  </>
-                ) : null}
+                  aria-label="Previous attachment"
+                  onClick={goPrev}
+                >
+                  <ChevronLeft className="h-6 w-6" />
+                </Button>
                 <Button
                   type="button"
-                  size="sm"
-                  className="h-8 max-md:min-h-11 touch-manipulation"
-                  disabled={!fileUrl || sessionIsLoading || unsupported || downloadBusy}
-                  onClick={() => void handleDownload()}
-                >
-                  {downloadBusy ? (
-                    <>
-                      <InlineLoading className="mr-2" size="md" aria-hidden />
-                      Downloading…
-                    </>
-                  ) : (
-                    <>
-                      <Download className="mr-2 h-3.5 w-3.5" />
-                      Download
-                    </>
+                  variant="outline"
+                  size="icon"
+                  className={cn(
+                    navBtnClass,
+                    "absolute right-2 top-1/2 z-20 -translate-y-1/2 max-md:right-1"
                   )}
+                  aria-label="Next attachment"
+                  onClick={goNext}
+                >
+                  <ChevronRight className="h-6 w-6" />
                 </Button>
-              </footer>
-            </motion.div>,
-          ]
-        : null}
+              </>
+            ) : null}
+
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-3 pb-2 pt-1 max-md:px-2">
+              {sessionIsLoading ? (
+                <div
+                  className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-4"
+                  aria-busy
+                >
+                  <Skeleton className="h-[min(55dvh,420px)] w-full max-w-3xl rounded-sm bg-zinc-800" />
+                  <span className="sr-only">Loading preview</span>
+                </div>
+              ) : unsupported ? (
+                <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-4 text-center">
+                  <p className="text-sm text-zinc-400">Preview not available for this file type.</p>
+                </div>
+              ) : !fileUrl ? (
+                <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-4">
+                  <p className="text-sm text-zinc-400">Receipt not available.</p>
+                </div>
+              ) : (
+                <div className="relative flex min-h-0 w-full flex-1 flex-col">
+                  <AnimatePresence initial={false} custom={navDirection} mode="wait">
+                    <motion.div
+                      key={`${safeIndex}-${fileUrl}`}
+                      custom={navDirection}
+                      variants={slideVariants}
+                      initial="enter"
+                      animate="center"
+                      exit="exit"
+                      transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                      drag={enableMotionDrag ? "x" : false}
+                      dragConstraints={{ left: 0, right: 0 }}
+                      dragElastic={0.12}
+                      onDragEnd={handleDragEnd}
+                      className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center overflow-hidden"
+                    >
+                      {fileType === "pdf" ? (
+                        <PdfPreviewFrame src={fileUrl} title={fileName} />
+                      ) : (
+                        <ReceiptPreviewImageArea
+                          displayUrl={fileUrl}
+                          fileName={fileName}
+                          mimeHint={mimeHint}
+                          onRefreshPreviewUrl={onRefreshPreviewUrl}
+                          downloadBusy={downloadBusy}
+                          onDownload={onDownload}
+                          defaultDownload={() => void downloadPreviewBlob(fileUrl, fileName)}
+                          onZoomPanChange={setImageZoomed}
+                        />
+                      )}
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {showFooter ? (
+            <footer className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-white/10 px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))]">
+              {extraFooter}
+              {showReplace && replaceInputRef && onReplaceClick && onReplaceInputChange ? (
+                <>
+                  <input
+                    ref={replaceInputRef}
+                    type="file"
+                    className="hidden"
+                    accept={replaceAccept}
+                    capture="environment"
+                    onChange={onReplaceInputChange}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-9 touch-manipulation border-white/20 bg-white/5 text-zinc-100 hover:bg-white/10 max-md:min-h-11"
+                    disabled={replaceBusy}
+                    onClick={onReplaceClick}
+                  >
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                    {replaceBusy ? "Replacing…" : "Replace"}
+                  </Button>
+                </>
+              ) : null}
+            </footer>
+          ) : null}
+        </motion.div>
+      ) : null}
     </AnimatePresence>,
     document.body
   );

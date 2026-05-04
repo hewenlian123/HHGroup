@@ -19,7 +19,10 @@ import {
 import { getExpenseTotal, type Expense, type ExpenseAttachment } from "@/lib/data";
 import { useToast } from "@/components/toast/toast-provider";
 import { inferAttachmentPreviewType } from "@/components/attachment-preview-modal";
-import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
+import {
+  useAttachmentPreview,
+  type AttachmentPreviewFileItem,
+} from "@/contexts/attachment-preview-context";
 import { ExpenseCategorySelect } from "@/components/expense-category-select";
 import { PaymentAccountSelect } from "@/components/payment-account-select";
 import type { PaymentAccountRow } from "@/lib/data";
@@ -36,8 +39,15 @@ import {
   EXPENSE_PROJECT_SELECT_NONE,
   EXPENSE_WORKER_SELECT_NONE,
 } from "@/lib/expense-workflow-status";
-import { getExpenseReceiptItemsFromParts } from "@/lib/expense-receipt-items";
-import { dedupeExpenseAttachmentsByStorageKey } from "@/lib/expense-attachment-dedupe";
+import {
+  getExpenseReceiptItemsFromParts,
+  resolveExpenseReceiptItemsPreviewUrls,
+  type ExpenseReceiptItem,
+} from "@/lib/expense-receipt-items";
+import {
+  dedupeExpenseAttachmentsByStorageKey,
+  expenseAttachmentStorageDedupeKey,
+} from "@/lib/expense-attachment-dedupe";
 import { ExpenseEditAttachmentsSection } from "./expense-edit-attachments-section";
 
 type ProjectOption = { id: string; name: string | null };
@@ -64,6 +74,27 @@ function attachmentIsImage(att: ExpenseAttachment): boolean {
   if (att.mimeType.startsWith("image/")) return true;
   return (
     /\.(jpe?g|png|gif|webp)$/i.test(att.fileName) || /\.(jpe?g|png|gif|webp)(\?|#|$)/i.test(att.url)
+  );
+}
+
+function receiptLineItemsToPreviewFiles(items: ExpenseReceiptItem[]): AttachmentPreviewFileItem[] {
+  return items.map((it, i) => ({
+    url: /^https?:\/\//i.test((it.url ?? "").trim()) ? (it.url ?? "").trim() : "",
+    fileName: it.fileName ?? `File ${i + 1}`,
+    fileType: inferAttachmentPreviewType(it.fileName ?? "", it.url ?? ""),
+  }));
+}
+
+function receiptItemsNeedSignedUrls(
+  rawItems: ExpenseReceiptItem[],
+  shellFiles: AttachmentPreviewFileItem[]
+): boolean {
+  return (
+    shellFiles.every((f) => !(f.url ?? "").trim()) ||
+    rawItems.some((it) => {
+      const u = (it.url ?? "").trim();
+      return u.length > 0 && !/^https?:\/\//i.test(u);
+    })
   );
 }
 
@@ -160,7 +191,13 @@ export function ExpenseInboxPreviewModal({
   onAttachmentsUpdated,
 }: Props) {
   const { toast } = useToast();
-  const { openPreview } = useAttachmentPreview();
+  const { openPreview, patchPreview, closePreview } = useAttachmentPreview();
+  const patchPreviewRef = React.useRef(patchPreview);
+  const closePreviewRef = React.useRef(closePreview);
+  patchPreviewRef.current = patchPreview;
+  closePreviewRef.current = closePreview;
+  const inboxPreviewSessionRef = React.useRef(0);
+  const inboxPreviewIndexRef = React.useRef(0);
   const [mode, setMode] = React.useState<"preview" | "edit">("preview");
   const [markBusy, setMarkBusy] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
@@ -178,6 +215,17 @@ export function ExpenseInboxPreviewModal({
   const [paymentAccountsLocal, setPaymentAccountsLocal] = React.useState<PaymentAccountRow[]>([]);
   const [attachments, setAttachments] = React.useState<ExpenseAttachment[]>([]);
   const [thumbById, setThumbById] = React.useState<Record<string, string | null>>({});
+
+  const expensePreviewRef = React.useRef(expense);
+  const attachmentsPreviewRef = React.useRef(attachments);
+
+  React.useEffect(() => {
+    attachmentsPreviewRef.current = attachments;
+  }, [attachments]);
+
+  React.useEffect(() => {
+    if (expense) expensePreviewRef.current = expense;
+  }, [expense]);
 
   const prevOpenRef = React.useRef(false);
   const prevExpenseIdRef = React.useRef<string | null>(null);
@@ -251,40 +299,6 @@ export function ExpenseInboxPreviewModal({
     };
   }, [open, supabase, attachments]);
 
-  const resolvePreviewUrl = React.useCallback(
-    async (att: ExpenseAttachment): Promise<string> => {
-      const raw = (att.url ?? "").trim();
-      if (!raw || !supabase) return "";
-      return await resolvePreviewSignedUrl({
-        supabase,
-        rawUrlOrPath: raw,
-        ttlSec: 3600,
-        bucketCandidates: ["expense-attachments", "receipts"],
-      });
-    },
-    [supabase]
-  );
-
-  const openAttachmentPreview = React.useCallback(
-    async (att: ExpenseAttachment) => {
-      const url = await resolvePreviewUrl(att);
-      if (!url) {
-        toast({
-          title: "Preview unavailable",
-          description: "Could not load file URL.",
-          variant: "error",
-        });
-        return;
-      }
-      openPreview({
-        url,
-        fileName: att.fileName || "Attachment",
-        fileType: inferAttachmentPreviewType(att.fileName, url),
-      });
-    },
-    [resolvePreviewUrl, toast, openPreview]
-  );
-
   const receiptItems = React.useMemo(() => {
     if (!expense) return [];
     return getExpenseReceiptItemsFromParts({
@@ -293,39 +307,151 @@ export function ExpenseInboxPreviewModal({
     });
   }, [expense, attachments]);
 
+  const openAttachmentPreview = React.useCallback(
+    async (att: ExpenseAttachment) => {
+      if (!expense || !supabase) {
+        toast({
+          title: "Preview unavailable",
+          description: !supabase ? "Supabase is not configured." : "No expense loaded.",
+          variant: "error",
+        });
+        return;
+      }
+      const items = receiptItems;
+      if (items.length === 0) {
+        toast({
+          title: "Nothing to preview",
+          description: "This expense has no receipt or attachment files yet.",
+          variant: "default",
+        });
+        return;
+      }
+      const shellFiles = receiptLineItemsToPreviewFiles(items);
+      const initialIndex = Math.max(
+        0,
+        items.findIndex(
+          (x) =>
+            expenseAttachmentStorageDedupeKey(x.url) === expenseAttachmentStorageDedupeKey(att.url)
+        )
+      );
+      const needsSigned = receiptItemsNeedSignedUrls(items, shellFiles);
+      const session = ++inboxPreviewSessionRef.current;
+      inboxPreviewIndexRef.current = initialIndex;
+
+      openPreview({
+        files: shellFiles,
+        initialIndex,
+        isLoading: needsSigned,
+        onIndexChange: (i) => {
+          inboxPreviewIndexRef.current = i;
+        },
+        onRefreshPreviewUrl: async () => {
+          if (inboxPreviewSessionRef.current !== session) return null;
+          const ex = expensePreviewRef.current;
+          const atts = attachmentsPreviewRef.current;
+          if (!ex || !supabase) return null;
+          const raws = getExpenseReceiptItemsFromParts({
+            receiptUrl: ex.receiptUrl,
+            attachments: atts,
+          });
+          const resolved = await resolveExpenseReceiptItemsPreviewUrls(raws, supabase);
+          patchPreviewRef.current({ files: receiptLineItemsToPreviewFiles(resolved) });
+          const idx = inboxPreviewIndexRef.current;
+          return (resolved[idx]?.url ?? "").trim() || null;
+        },
+      });
+
+      if (!needsSigned) return;
+
+      void resolveExpenseReceiptItemsPreviewUrls(items, supabase)
+        .then((resolved) => {
+          if (inboxPreviewSessionRef.current !== session) return;
+          patchPreviewRef.current({
+            isLoading: false,
+            files: receiptLineItemsToPreviewFiles(resolved),
+          });
+        })
+        .catch((e) => {
+          if (inboxPreviewSessionRef.current !== session) return;
+          toast({
+            title: "Preview failed",
+            description: e instanceof Error ? e.message : "Could not prepare preview.",
+            variant: "error",
+          });
+          closePreviewRef.current();
+        });
+    },
+    [expense, supabase, receiptItems, toast, openPreview]
+  );
+
   const openReceiptItemPreview = React.useCallback(
     async (item: { url: string; fileName: string }) => {
-      const raw = item.url.trim();
-      if (!raw) return;
-      if (!supabase) {
+      if (!expense || !supabase) {
         toast({
           title: "Preview unavailable",
-          description: "Supabase is not configured.",
+          description: !supabase ? "Supabase is not configured." : "No expense loaded.",
           variant: "error",
         });
         return;
       }
-      const url = await resolvePreviewSignedUrl({
-        supabase,
-        rawUrlOrPath: raw,
-        ttlSec: 3600,
-        bucketCandidates: ["expense-attachments", "receipts"],
-      });
-      if (!url) {
-        toast({
-          title: "Preview unavailable",
-          description: "Could not load file URL.",
-          variant: "error",
-        });
-        return;
-      }
+      const items = receiptItems;
+      if (items.length === 0) return;
+      const shellFiles = receiptLineItemsToPreviewFiles(items);
+      const initialIndex = Math.max(
+        0,
+        items.findIndex(
+          (x) =>
+            expenseAttachmentStorageDedupeKey(x.url) === expenseAttachmentStorageDedupeKey(item.url)
+        )
+      );
+      const needsSigned = receiptItemsNeedSignedUrls(items, shellFiles);
+      const session = ++inboxPreviewSessionRef.current;
+      inboxPreviewIndexRef.current = initialIndex;
+
       openPreview({
-        url,
-        fileName: item.fileName,
-        fileType: inferAttachmentPreviewType(item.fileName, url),
+        files: shellFiles,
+        initialIndex,
+        isLoading: needsSigned,
+        onIndexChange: (i) => {
+          inboxPreviewIndexRef.current = i;
+        },
+        onRefreshPreviewUrl: async () => {
+          if (inboxPreviewSessionRef.current !== session) return null;
+          const ex = expensePreviewRef.current;
+          const atts = attachmentsPreviewRef.current;
+          if (!ex || !supabase) return null;
+          const raws = getExpenseReceiptItemsFromParts({
+            receiptUrl: ex.receiptUrl,
+            attachments: atts,
+          });
+          const resolved = await resolveExpenseReceiptItemsPreviewUrls(raws, supabase);
+          patchPreviewRef.current({ files: receiptLineItemsToPreviewFiles(resolved) });
+          const idx = inboxPreviewIndexRef.current;
+          return (resolved[idx]?.url ?? "").trim() || null;
+        },
       });
+
+      if (!needsSigned) return;
+
+      void resolveExpenseReceiptItemsPreviewUrls(items, supabase)
+        .then((resolved) => {
+          if (inboxPreviewSessionRef.current !== session) return;
+          patchPreviewRef.current({
+            isLoading: false,
+            files: receiptLineItemsToPreviewFiles(resolved),
+          });
+        })
+        .catch((e) => {
+          if (inboxPreviewSessionRef.current !== session) return;
+          toast({
+            title: "Preview failed",
+            description: e instanceof Error ? e.message : "Could not prepare preview.",
+            variant: "error",
+          });
+          closePreviewRef.current();
+        });
     },
-    [supabase, toast, openPreview]
+    [expense, supabase, receiptItems, toast, openPreview]
   );
 
   const handleSave = async () => {
