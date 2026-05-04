@@ -72,7 +72,7 @@ test.describe("Inbox draft upload receipt", () => {
       buffer: uniqueReceiptPdfBytes(ts),
     };
 
-    await page.getByRole("button", { name: /inbox draft/i }).click();
+    await page.getByRole("button", { name: /upload receipt/i }).click();
     const dialog = page.getByRole("dialog");
     await expect(dialog.getByRole("heading", { name: /upload receipt/i })).toBeVisible({
       timeout: 15_000,
@@ -165,7 +165,7 @@ test.describe("Inbox draft upload receipt", () => {
 
     await page.goto(E2E_FINANCIAL_INBOX_URL, { waitUntil: "domcontentloaded", timeout: 90_000 });
     await waitForExpensesQuerySuccess(page, 90_000);
-    await page.getByRole("button", { name: /inbox draft/i }).click();
+    await page.getByRole("button", { name: /upload receipt/i }).click();
     const dialog2 = page.getByRole("dialog");
     await dialog2.locator('input[type="file"][multiple]').setInputFiles(filePayload);
     await expect(dialog2.getByText(/Selected receipts/i)).toBeVisible({ timeout: 15_000 });

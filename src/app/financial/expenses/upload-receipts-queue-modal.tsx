@@ -138,6 +138,8 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
   const [addedToQueueHint, setAddedToQueueHint] = React.useState(false);
   const [uploadFailed, setUploadFailed] = React.useState(false);
   const addedHintTimerRef = React.useRef<number | null>(null);
+  /** Ignore outside closes briefly after open — same pointer/touch can otherwise dismiss on iOS (Radix). */
+  const suppressOutsideUntilRef = React.useRef(0);
 
   const supabase = React.useMemo(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -169,7 +171,9 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
   }, []);
 
   React.useEffect(() => {
-    if (!open) {
+    if (open) {
+      suppressOutsideUntilRef.current = Date.now() + 400;
+    } else {
       setPendingItems([]);
       setAddedToQueueHint(false);
       setUploadFailed(false);
@@ -320,243 +324,260 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
       <DialogPortal>
         <DialogOverlay
           className={cn(
+            "!z-[100]",
             "bg-[rgba(15,23,42,0.22)] backdrop-blur-[3px]",
             "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
           )}
         />
         <DialogPrimitive.Content
+          onOpenAutoFocus={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => {
             if (busy) e.preventDefault();
           }}
           onPointerDownOutside={(e) => {
-            if (busy) e.preventDefault();
+            if (busy) {
+              e.preventDefault();
+              return;
+            }
+            if (Date.now() < suppressOutsideUntilRef.current) e.preventDefault();
           }}
           onInteractOutside={(e) => {
-            if (busy) e.preventDefault();
+            if (busy) {
+              e.preventDefault();
+              return;
+            }
+            if (Date.now() < suppressOutsideUntilRef.current) e.preventDefault();
           }}
           className={cn(
-            "fixed z-[51] flex max-h-[85vh] w-full flex-col overflow-hidden overflow-x-hidden border border-black/[0.06] bg-background shadow-[0_12px_40px_-8px_rgba(15,23,42,0.18)] outline-none dark:border-white/[0.08] dark:shadow-[0_12px_48px_-12px_rgba(0,0,0,0.55)]",
-            "rounded-[24px] p-6",
+            "fixed !z-[101] flex min-h-0 w-full max-md:h-full flex-col overflow-hidden overflow-x-hidden border border-black/[0.06] bg-background shadow-[0_12px_40px_-8px_rgba(15,23,42,0.18)] outline-none dark:border-white/[0.08] dark:shadow-[0_12px_48px_-12px_rgba(0,0,0,0.55)]",
+            "p-0 md:rounded-[24px] md:p-6",
+            "max-md:inset-0 max-md:rounded-none max-md:border-0 max-md:shadow-none",
+            "max-md:pt-[max(1rem,env(safe-area-inset-top))] max-md:pb-[max(1rem,env(safe-area-inset-bottom))] max-md:pl-[max(1rem,env(safe-area-inset-left))] max-md:pr-[max(1rem,env(safe-area-inset-right))]",
             "duration-200 ease-out",
-            "md:left-1/2 md:top-1/2 md:max-h-[min(92vh,900px)] md:max-w-[460px] md:-translate-x-1/2 md:-translate-y-1/2 md:data-[state=closed]:animate-out md:data-[state=open]:animate-in md:data-[state=closed]:fade-out-0 md:data-[state=open]:fade-in-0 md:data-[state=closed]:zoom-out-95 md:data-[state=open]:zoom-in-95",
-            "max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:max-h-[85vh] max-md:translate-y-0 max-md:rounded-b-none max-md:rounded-t-[24px] max-md:border-x-0 max-md:border-b-0 max-md:pb-[max(1.5rem,env(safe-area-inset-bottom))] max-md:pt-6 max-md:data-[state=closed]:animate-out max-md:data-[state=open]:animate-in max-md:data-[state=closed]:fade-out-0 max-md:data-[state=open]:fade-in-0 max-md:data-[state=open]:slide-in-from-bottom-6 max-md:data-[state=closed]:slide-out-to-bottom-4"
+            "md:max-h-[min(92vh,900px)]",
+            "md:left-1/2 md:top-1/2 md:max-w-[460px] md:-translate-x-1/2 md:-translate-y-1/2 md:data-[state=closed]:animate-out md:data-[state=open]:animate-in md:data-[state=closed]:fade-out-0 md:data-[state=open]:fade-in-0 md:data-[state=closed]:zoom-out-95 md:data-[state=open]:zoom-in-95",
+            "max-md:data-[state=closed]:animate-out max-md:data-[state=open]:animate-in max-md:data-[state=closed]:fade-out-0 max-md:data-[state=open]:fade-in-0"
           )}
         >
-          <DialogPrimitive.Close
-            type="button"
-            disabled={busy}
-            className={cn(
-              "absolute right-5 top-5 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:pointer-events-none disabled:opacity-40",
-              "touch-manipulation"
-            )}
-            aria-label="Close"
-          >
-            <X className="h-5 w-5" strokeWidth={1.5} />
-          </DialogPrimitive.Close>
-
-          <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto">
-            <div className="space-y-2 pr-10 text-left">
-              <DialogTitle className="text-[22px] font-semibold tracking-[-0.02em] text-foreground">
-                Upload receipt
-              </DialogTitle>
-              <DialogDescription className="text-[13px] leading-relaxed text-muted-foreground sm:text-sm">
-                Photos and PDFs are saved to Inbox as drafts. Review and approve before they count
-                as expenses.
-              </DialogDescription>
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <div className="relative z-10 flex shrink-0 items-start justify-between gap-3 border-b border-border/60 bg-background pb-4 max-md:gap-2 max-md:pb-3">
+              <div className="min-w-0 flex-1 space-y-2 text-left">
+                <DialogTitle className="text-[22px] font-semibold tracking-[-0.02em] text-foreground">
+                  Upload receipt
+                </DialogTitle>
+                <DialogDescription className="text-[13px] leading-relaxed text-muted-foreground sm:text-sm">
+                  Photos and PDFs are saved to Inbox as drafts. Review and approve before they count
+                  as expenses.
+                </DialogDescription>
+              </div>
+              <DialogPrimitive.Close
+                type="button"
+                disabled={busy}
+                data-testid="upload-receipt-modal-close"
+                className={cn(
+                  "relative z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:pointer-events-none disabled:opacity-40",
+                  "touch-manipulation"
+                )}
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" strokeWidth={1.5} />
+              </DialogPrimitive.Close>
             </div>
 
-            {!supabase ? (
-              <p className="text-sm text-amber-600 dark:text-amber-400">
-                Configure Supabase to upload.
-              </p>
-            ) : (
-              <>
-                <input
-                  ref={cameraInputRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="hidden"
-                  disabled={busy}
-                  onChange={(e) => {
-                    addPendingFiles(e.target.files);
-                    e.target.value = "";
-                  }}
-                />
-                <input
-                  ref={uploadInputRef}
-                  type="file"
-                  accept="image/*,application/pdf"
-                  multiple
-                  className="hidden"
-                  disabled={busy}
-                  onChange={(e) => {
-                    addPendingFiles(e.target.files);
-                    e.target.value = "";
-                  }}
-                />
-
-                <div className="flex flex-col gap-3">
-                  <button
-                    type="button"
+            <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto pt-6 max-md:pt-4">
+              {!supabase ? (
+                <p className="text-sm text-amber-600 dark:text-amber-400">
+                  Configure Supabase to upload.
+                </p>
+              ) : (
+                <>
+                  <input
+                    ref={cameraInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
                     disabled={busy}
-                    onClick={() => cameraInputRef.current?.click()}
-                    className={cn(
-                      "group flex min-h-[76px] w-full items-center gap-4 rounded-[20px] border border-black/[0.07] bg-background px-4 py-4 text-left transition-[transform,background-color,border-color] active:scale-[0.995] disabled:pointer-events-none disabled:opacity-45 dark:border-white/[0.09]",
-                      "hover:bg-muted/35 hover:border-black/[0.1] dark:hover:border-white/[0.12]",
-                      "touch-manipulation"
-                    )}
-                  >
-                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted/55 dark:bg-muted/40">
-                      <Camera className="h-5 w-5 text-foreground/80" strokeWidth={1.5} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-[15px] font-medium tracking-[-0.01em] text-foreground">
-                        Take Photo
-                      </span>
-                      <span className="mt-0.5 block text-[13px] text-muted-foreground">
-                        Scan one receipt
-                      </span>
-                    </span>
-                    <ChevronRight
-                      className="h-5 w-5 shrink-0 text-muted-foreground/70 transition-transform group-hover:translate-x-0.5"
-                      strokeWidth={1.5}
-                    />
-                  </button>
-
-                  <button
-                    type="button"
+                    onChange={(e) => {
+                      addPendingFiles(e.target.files);
+                      e.target.value = "";
+                    }}
+                  />
+                  <input
+                    ref={uploadInputRef}
+                    type="file"
+                    accept="image/*,application/pdf"
+                    multiple
+                    className="hidden"
                     disabled={busy}
-                    onClick={() => uploadInputRef.current?.click()}
-                    className={cn(
-                      "group flex min-h-[76px] w-full items-center gap-4 rounded-[20px] border border-black/[0.07] bg-background px-4 py-4 text-left transition-[transform,background-color,border-color] active:scale-[0.995] disabled:pointer-events-none disabled:opacity-45 dark:border-white/[0.09]",
-                      "hover:bg-muted/35 hover:border-black/[0.1] dark:hover:border-white/[0.12]",
-                      "touch-manipulation"
-                    )}
-                  >
-                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted/55 dark:bg-muted/40">
-                      <Upload className="h-5 w-5 text-foreground/80" strokeWidth={1.5} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-[15px] font-medium tracking-[-0.01em] text-foreground">
-                        Upload Files
+                    onChange={(e) => {
+                      addPendingFiles(e.target.files);
+                      e.target.value = "";
+                    }}
+                  />
+
+                  <div className="flex flex-col gap-3">
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => cameraInputRef.current?.click()}
+                      className={cn(
+                        "group flex min-h-[76px] w-full items-center gap-4 rounded-[20px] border border-black/[0.07] bg-background px-4 py-4 text-left transition-[transform,background-color,border-color] active:scale-[0.995] disabled:pointer-events-none disabled:opacity-45 dark:border-white/[0.09]",
+                        "hover:bg-muted/35 hover:border-black/[0.1] dark:hover:border-white/[0.12]",
+                        "touch-manipulation"
+                      )}
+                    >
+                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted/55 dark:bg-muted/40">
+                        <Camera className="h-5 w-5 text-foreground/80" strokeWidth={1.5} />
                       </span>
-                      <span className="mt-0.5 block text-[13px] text-muted-foreground">
-                        Photos or PDFs · Multiple files
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[15px] font-medium tracking-[-0.01em] text-foreground">
+                          Take Photo
+                        </span>
+                        <span className="mt-0.5 block text-[13px] text-muted-foreground">
+                          Scan one receipt
+                        </span>
                       </span>
-                    </span>
-                    <ChevronRight
-                      className="h-5 w-5 shrink-0 text-muted-foreground/70 transition-transform group-hover:translate-x-0.5"
-                      strokeWidth={1.5}
-                    />
-                  </button>
-                </div>
+                      <ChevronRight
+                        className="h-5 w-5 shrink-0 text-muted-foreground/70 transition-transform group-hover:translate-x-0.5"
+                        strokeWidth={1.5}
+                      />
+                    </button>
 
-                <div
-                  role="presentation"
-                  aria-label="Drop receipts to add to selection"
-                  onDragEnter={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (!busy) setDragOver(true);
-                  }}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    e.dataTransfer.dropEffect = busy ? "none" : "copy";
-                  }}
-                  onDragLeave={(e) => {
-                    if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false);
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setDragOver(false);
-                    if (busy) return;
-                    addPendingFiles(e.dataTransfer.files);
-                  }}
-                  className={cn(
-                    "flex w-full flex-col items-center justify-center overflow-hidden rounded-[18px] border border-dashed px-4 transition-[border-color,background-color] duration-200",
-                    "min-h-[72px] md:min-h-[96px]",
-                    "border-black/[0.14] bg-muted/[0.35] dark:border-white/[0.12] dark:bg-muted/25",
-                    !busy &&
-                      "hover:border-black/[0.22] hover:bg-muted/45 dark:hover:border-white/[0.18]",
-                    dragOver &&
-                      !busy &&
-                      "border-foreground/22 bg-muted/55 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.06)] dark:bg-muted/40",
-                    busy && "pointer-events-none opacity-45"
-                  )}
-                >
-                  <div className="hidden w-full flex-col items-center justify-center gap-0.5 py-3 text-center md:flex">
-                    <span className="text-[14px] font-medium tracking-[-0.01em] text-foreground/90">
-                      Drop receipts here
-                    </span>
-                    <span className="text-[12px] text-muted-foreground">
-                      Photos or PDFs · Multiple files supported
-                    </span>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => uploadInputRef.current?.click()}
+                      className={cn(
+                        "group flex min-h-[76px] w-full items-center gap-4 rounded-[20px] border border-black/[0.07] bg-background px-4 py-4 text-left transition-[transform,background-color,border-color] active:scale-[0.995] disabled:pointer-events-none disabled:opacity-45 dark:border-white/[0.09]",
+                        "hover:bg-muted/35 hover:border-black/[0.1] dark:hover:border-white/[0.12]",
+                        "touch-manipulation"
+                      )}
+                    >
+                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted/55 dark:bg-muted/40">
+                        <Upload className="h-5 w-5 text-foreground/80" strokeWidth={1.5} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[15px] font-medium tracking-[-0.01em] text-foreground">
+                          Upload Files
+                        </span>
+                        <span className="mt-0.5 block text-[13px] text-muted-foreground">
+                          Photos or PDFs · Multiple files
+                        </span>
+                      </span>
+                      <ChevronRight
+                        className="h-5 w-5 shrink-0 text-muted-foreground/70 transition-transform group-hover:translate-x-0.5"
+                        strokeWidth={1.5}
+                      />
+                    </button>
                   </div>
-                  <p className="w-full px-1 py-2 text-center text-[13px] leading-snug text-foreground/85 md:hidden">
-                    Drop or upload multiple receipts
-                  </p>
-                </div>
 
-                {pendingItems.length > 0 ? (
-                  <div className="flex flex-col gap-2">
-                    <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
-                      Selected receipts
-                    </p>
-                    <div className="flex max-h-[min(40vh,280px)] flex-col gap-2 overflow-y-auto pr-0.5">
-                      {pendingItems.map((item) => (
-                        <PendingReceiptRow
-                          key={item.id}
-                          item={item}
-                          disabled={busy}
-                          onRemove={() =>
-                            setPendingItems((prev) => prev.filter((p) => p.id !== item.id))
-                          }
-                        />
-                      ))}
-                    </div>
-                    <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:justify-end sm:gap-2">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        disabled={busy}
-                        className="h-11 rounded-xl"
-                        onClick={handleCancelSelection}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        disabled={busy || pendingItems.length === 0}
-                        className="h-11 rounded-xl"
-                        onClick={handleConfirmUpload}
-                      >
-                        Confirm Upload ({pendingItems.length})
-                      </Button>
-                    </div>
-                  </div>
-                ) : null}
-
-                <div className="flex flex-col gap-3">
                   <div
-                    role="status"
-                    aria-live="polite"
+                    role="presentation"
+                    aria-label="Drop receipts to add to selection"
+                    onDragEnter={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (!busy) setDragOver(true);
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.dataTransfer.dropEffect = busy ? "none" : "copy";
+                    }}
+                    onDragLeave={(e) => {
+                      if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setDragOver(false);
+                      if (busy) return;
+                      addPendingFiles(e.dataTransfer.files);
+                    }}
                     className={cn(
-                      "inline-flex w-fit max-w-full items-center rounded-full border border-black/[0.06] bg-muted/25 px-3 py-1.5 text-[12px] font-medium tracking-wide text-muted-foreground dark:border-white/[0.08] dark:bg-muted/20"
+                      "flex w-full flex-col items-center justify-center overflow-hidden rounded-[18px] border border-dashed px-4 transition-[border-color,background-color] duration-200",
+                      "min-h-[72px] md:min-h-[96px]",
+                      "border-black/[0.14] bg-muted/[0.35] dark:border-white/[0.12] dark:bg-muted/25",
+                      !busy &&
+                        "hover:border-black/[0.22] hover:bg-muted/45 dark:hover:border-white/[0.18]",
+                      dragOver &&
+                        !busy &&
+                        "border-foreground/22 bg-muted/55 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.06)] dark:bg-muted/40",
+                      busy && "pointer-events-none opacity-45"
                     )}
                   >
-                    {STATUS_COPY[statusPhase]}
+                    <div className="hidden w-full flex-col items-center justify-center gap-0.5 py-3 text-center md:flex">
+                      <span className="text-[14px] font-medium tracking-[-0.01em] text-foreground/90">
+                        Drop receipts here
+                      </span>
+                      <span className="text-[12px] text-muted-foreground">
+                        Photos or PDFs · Multiple files supported
+                      </span>
+                    </div>
+                    <p className="w-full px-1 py-2 text-center text-[13px] leading-snug text-foreground/85 md:hidden">
+                      Drop or upload multiple receipts
+                    </p>
                   </div>
-                  <p className="text-[12px] leading-snug text-muted-foreground/90">
-                    Drafts stay in Inbox until approved.
-                  </p>
-                </div>
-              </>
-            )}
+
+                  {pendingItems.length > 0 ? (
+                    <div className="flex flex-col gap-2">
+                      <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
+                        Selected receipts
+                      </p>
+                      <div className="flex max-h-[min(40vh,280px)] flex-col gap-2 overflow-y-auto pr-0.5">
+                        {pendingItems.map((item) => (
+                          <PendingReceiptRow
+                            key={item.id}
+                            item={item}
+                            disabled={busy}
+                            onRemove={() =>
+                              setPendingItems((prev) => prev.filter((p) => p.id !== item.id))
+                            }
+                          />
+                        ))}
+                      </div>
+                      <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:justify-end sm:gap-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          disabled={busy}
+                          className="h-11 rounded-xl"
+                          onClick={handleCancelSelection}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={busy || pendingItems.length === 0}
+                          className="h-11 rounded-xl"
+                          onClick={handleConfirmUpload}
+                        >
+                          Confirm Upload ({pendingItems.length})
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className="flex flex-col gap-3">
+                    <div
+                      role="status"
+                      aria-live="polite"
+                      className={cn(
+                        "inline-flex w-fit max-w-full items-center rounded-full border border-black/[0.06] bg-muted/25 px-3 py-1.5 text-[12px] font-medium tracking-wide text-muted-foreground dark:border-white/[0.08] dark:bg-muted/20"
+                      )}
+                    >
+                      {STATUS_COPY[statusPhase]}
+                    </div>
+                    <p className="text-[12px] leading-snug text-muted-foreground/90">
+                      Drafts stay in Inbox until approved.
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </DialogPrimitive.Content>
       </DialogPortal>
