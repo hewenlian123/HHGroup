@@ -43,9 +43,10 @@ import {
 } from "@/lib/expense-workflow-status";
 import {
   getExpenseReceiptItemsFromParts,
-  resolveExpenseReceiptItemsPreviewUrls,
+  resolveExpenseReceiptItemsPreviewUrlsWithCache,
   type ExpenseReceiptItem,
 } from "@/lib/expense-receipt-items";
+import { buildReceiptPreviewShellFiles } from "@/lib/receipt-preview-shell-files";
 import {
   dedupeExpenseAttachmentsByStorageKey,
   expenseAttachmentStorageDedupeKey,
@@ -85,19 +86,6 @@ function receiptLineItemsToPreviewFiles(items: ExpenseReceiptItem[]): Attachment
     fileName: it.fileName ?? `File ${i + 1}`,
     fileType: inferAttachmentPreviewType(it.fileName ?? "", it.url ?? ""),
   }));
-}
-
-function receiptItemsNeedSignedUrls(
-  rawItems: ExpenseReceiptItem[],
-  shellFiles: AttachmentPreviewFileItem[]
-): boolean {
-  return (
-    shellFiles.every((f) => !(f.url ?? "").trim()) ||
-    rawItems.some((it) => {
-      const u = (it.url ?? "").trim();
-      return u.length > 0 && !/^https?:\/\//i.test(u);
-    })
-  );
 }
 
 function sourceTypeLabel(t: Expense["sourceType"]): string {
@@ -193,11 +181,9 @@ export function ExpenseInboxPreviewModal({
   onAttachmentsUpdated,
 }: Props) {
   const { toast } = useToast();
-  const { openPreview, patchPreview, closePreview } = useAttachmentPreview();
+  const { openPreview, patchPreview } = useAttachmentPreview();
   const patchPreviewRef = React.useRef(patchPreview);
-  const closePreviewRef = React.useRef(closePreview);
   patchPreviewRef.current = patchPreview;
-  closePreviewRef.current = closePreview;
   const inboxPreviewSessionRef = React.useRef(0);
   const inboxPreviewIndexRef = React.useRef(0);
   const [mode, setMode] = React.useState<"preview" | "edit">("preview");
@@ -309,8 +295,13 @@ export function ExpenseInboxPreviewModal({
     });
   }, [expense, attachments]);
 
+  const receiptItemsRef = React.useRef(receiptItems);
+  React.useEffect(() => {
+    receiptItemsRef.current = receiptItems;
+  }, [receiptItems]);
+
   const openAttachmentPreview = React.useCallback(
-    async (att: ExpenseAttachment) => {
+    (att: ExpenseAttachment) => {
       if (!expense || !supabase) {
         toast({
           title: "Preview unavailable",
@@ -328,7 +319,7 @@ export function ExpenseInboxPreviewModal({
         });
         return;
       }
-      const shellFiles = receiptLineItemsToPreviewFiles(items);
+      const shellFiles = buildReceiptPreviewShellFiles(items);
       const initialIndex = Math.max(
         0,
         items.findIndex(
@@ -336,14 +327,44 @@ export function ExpenseInboxPreviewModal({
             expenseAttachmentStorageDedupeKey(x.url) === expenseAttachmentStorageDedupeKey(att.url)
         )
       );
-      const needsSigned = receiptItemsNeedSignedUrls(items, shellFiles);
       const session = ++inboxPreviewSessionRef.current;
       inboxPreviewIndexRef.current = initialIndex;
+      const needsResolve = shellFiles.some((f) => f.pendingSignedUrl);
+
+      const resolveAndPatch = () => {
+        void resolveExpenseReceiptItemsPreviewUrlsWithCache(receiptItemsRef.current, supabase)
+          .then((resolved) => {
+            if (inboxPreviewSessionRef.current !== session) return;
+            patchPreviewRef.current({
+              files: receiptLineItemsToPreviewFiles(resolved),
+            });
+          })
+          .catch(() => {
+            if (inboxPreviewSessionRef.current !== session) return;
+            patchPreviewRef.current({
+              files: buildReceiptPreviewShellFiles(receiptItemsRef.current).map((f) => ({
+                ...f,
+                pendingSignedUrl: false,
+                signedUrlResolveFailed: true,
+              })),
+            });
+          });
+      };
 
       openPreview({
         files: shellFiles,
         initialIndex,
-        isLoading: needsSigned,
+        isLoading: false,
+        onRetrySignedUrlResolve: () => {
+          patchPreviewRef.current({
+            files: buildReceiptPreviewShellFiles(receiptItemsRef.current).map((f) => ({
+              ...f,
+              pendingSignedUrl: needsResolve,
+              signedUrlResolveFailed: false,
+            })),
+          });
+          resolveAndPatch();
+        },
         onIndexChange: (i) => {
           inboxPreviewIndexRef.current = i;
         },
@@ -356,38 +377,20 @@ export function ExpenseInboxPreviewModal({
             receiptUrl: ex.receiptUrl,
             attachments: atts,
           });
-          const resolved = await resolveExpenseReceiptItemsPreviewUrls(raws, supabase);
+          const resolved = await resolveExpenseReceiptItemsPreviewUrlsWithCache(raws, supabase);
           patchPreviewRef.current({ files: receiptLineItemsToPreviewFiles(resolved) });
           const idx = inboxPreviewIndexRef.current;
           return (resolved[idx]?.url ?? "").trim() || null;
         },
       });
 
-      if (!needsSigned) return;
-
-      void resolveExpenseReceiptItemsPreviewUrls(items, supabase)
-        .then((resolved) => {
-          if (inboxPreviewSessionRef.current !== session) return;
-          patchPreviewRef.current({
-            isLoading: false,
-            files: receiptLineItemsToPreviewFiles(resolved),
-          });
-        })
-        .catch((e) => {
-          if (inboxPreviewSessionRef.current !== session) return;
-          toast({
-            title: "Preview failed",
-            description: e instanceof Error ? e.message : "Could not prepare preview.",
-            variant: "error",
-          });
-          closePreviewRef.current();
-        });
+      if (needsResolve) resolveAndPatch();
     },
     [expense, supabase, receiptItems, toast, openPreview]
   );
 
   const openReceiptItemPreview = React.useCallback(
-    async (item: { url: string; fileName: string }) => {
+    (item: { url: string; fileName: string }) => {
       if (!expense || !supabase) {
         toast({
           title: "Preview unavailable",
@@ -398,7 +401,7 @@ export function ExpenseInboxPreviewModal({
       }
       const items = receiptItems;
       if (items.length === 0) return;
-      const shellFiles = receiptLineItemsToPreviewFiles(items);
+      const shellFiles = buildReceiptPreviewShellFiles(items);
       const initialIndex = Math.max(
         0,
         items.findIndex(
@@ -406,14 +409,44 @@ export function ExpenseInboxPreviewModal({
             expenseAttachmentStorageDedupeKey(x.url) === expenseAttachmentStorageDedupeKey(item.url)
         )
       );
-      const needsSigned = receiptItemsNeedSignedUrls(items, shellFiles);
       const session = ++inboxPreviewSessionRef.current;
       inboxPreviewIndexRef.current = initialIndex;
+      const needsResolve = shellFiles.some((f) => f.pendingSignedUrl);
+
+      const resolveAndPatch = () => {
+        void resolveExpenseReceiptItemsPreviewUrlsWithCache(receiptItemsRef.current, supabase)
+          .then((resolved) => {
+            if (inboxPreviewSessionRef.current !== session) return;
+            patchPreviewRef.current({
+              files: receiptLineItemsToPreviewFiles(resolved),
+            });
+          })
+          .catch(() => {
+            if (inboxPreviewSessionRef.current !== session) return;
+            patchPreviewRef.current({
+              files: buildReceiptPreviewShellFiles(receiptItemsRef.current).map((f) => ({
+                ...f,
+                pendingSignedUrl: false,
+                signedUrlResolveFailed: true,
+              })),
+            });
+          });
+      };
 
       openPreview({
         files: shellFiles,
         initialIndex,
-        isLoading: needsSigned,
+        isLoading: false,
+        onRetrySignedUrlResolve: () => {
+          patchPreviewRef.current({
+            files: buildReceiptPreviewShellFiles(receiptItemsRef.current).map((f) => ({
+              ...f,
+              pendingSignedUrl: needsResolve,
+              signedUrlResolveFailed: false,
+            })),
+          });
+          resolveAndPatch();
+        },
         onIndexChange: (i) => {
           inboxPreviewIndexRef.current = i;
         },
@@ -426,32 +459,14 @@ export function ExpenseInboxPreviewModal({
             receiptUrl: ex.receiptUrl,
             attachments: atts,
           });
-          const resolved = await resolveExpenseReceiptItemsPreviewUrls(raws, supabase);
+          const resolved = await resolveExpenseReceiptItemsPreviewUrlsWithCache(raws, supabase);
           patchPreviewRef.current({ files: receiptLineItemsToPreviewFiles(resolved) });
           const idx = inboxPreviewIndexRef.current;
           return (resolved[idx]?.url ?? "").trim() || null;
         },
       });
 
-      if (!needsSigned) return;
-
-      void resolveExpenseReceiptItemsPreviewUrls(items, supabase)
-        .then((resolved) => {
-          if (inboxPreviewSessionRef.current !== session) return;
-          patchPreviewRef.current({
-            isLoading: false,
-            files: receiptLineItemsToPreviewFiles(resolved),
-          });
-        })
-        .catch((e) => {
-          if (inboxPreviewSessionRef.current !== session) return;
-          toast({
-            title: "Preview failed",
-            description: e instanceof Error ? e.message : "Could not prepare preview.",
-            variant: "error",
-          });
-          closePreviewRef.current();
-        });
+      if (needsResolve) resolveAndPatch();
     },
     [expense, supabase, receiptItems, toast, openPreview]
   );

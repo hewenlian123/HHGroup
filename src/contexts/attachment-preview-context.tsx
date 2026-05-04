@@ -29,6 +29,8 @@ type SessionOptions = {
   onRefreshPreviewUrl?: () => Promise<string | null>;
   /** Edit Expense: delete current attachment by id (modal only shows control when slide has `attachmentId`). */
   onDeleteCurrent?: (attachmentId: string) => Promise<void>;
+  /** Retry resolving signed URLs after initial batch failure (receipt flows). */
+  onRetrySignedUrlResolve?: () => void;
 };
 
 export type AttachmentPreviewOpenMultiPayload = SessionOptions & {
@@ -90,6 +92,7 @@ type ModalState = {
   extraFooter?: React.ReactNode;
   onRefreshPreviewUrl?: () => Promise<string | null>;
   onDeleteCurrent?: (attachmentId: string) => Promise<void>;
+  onRetrySignedUrlResolve?: () => void;
 };
 
 function emptyModalState(): ModalState {
@@ -124,6 +127,8 @@ function applySessionOptions(
   if (s.onClosed !== undefined) onClosedRef.current = s.onClosed;
   if (s.onRefreshPreviewUrl !== undefined) base.onRefreshPreviewUrl = s.onRefreshPreviewUrl;
   if (s.onDeleteCurrent !== undefined) base.onDeleteCurrent = s.onDeleteCurrent;
+  if (s.onRetrySignedUrlResolve !== undefined)
+    base.onRetrySignedUrlResolve = s.onRetrySignedUrlResolve;
 }
 
 type AttachmentPreviewContextValue = {
@@ -341,6 +346,8 @@ export function AttachmentPreviewProvider({ children }: { children: React.ReactN
       if (patch.onRefreshPreviewUrl !== undefined)
         next.onRefreshPreviewUrl = patch.onRefreshPreviewUrl;
       if (patch.onDeleteCurrent !== undefined) next.onDeleteCurrent = patch.onDeleteCurrent;
+      if (patch.onRetrySignedUrlResolve !== undefined)
+        next.onRetrySignedUrlResolve = patch.onRetrySignedUrlResolve;
 
       return next;
     });
@@ -391,6 +398,7 @@ export function AttachmentPreviewProvider({ children }: { children: React.ReactN
         extraFooter={state.extraFooter}
         onRefreshPreviewUrl={state.onRefreshPreviewUrl}
         onDeleteCurrent={state.onDeleteCurrent}
+        onRetrySignedUrlResolve={state.onRetrySignedUrlResolve}
       />
     </AttachmentPreviewContext.Provider>
   );

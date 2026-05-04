@@ -103,9 +103,10 @@ import {
 import { isInboxUploadExpenseReference } from "@/lib/inbox-upload-constants";
 import {
   getExpenseReceiptItems,
-  resolveExpenseReceiptItemsPreviewUrls,
+  resolveExpenseReceiptItemsPreviewUrlsWithCache,
   type ExpenseReceiptItem,
 } from "@/lib/expense-receipt-items";
+import { buildReceiptPreviewShellFiles } from "@/lib/receipt-preview-shell-files";
 
 type ProjectRow = { id: string; name: string | null; status?: string | null };
 type WorkerRow = { id: string; name: string };
@@ -834,6 +835,10 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
   const receiptPreviewRef = React.useRef(receiptPreview);
   receiptPreviewRef.current = receiptPreview;
   const receiptPreviewSessionRef = React.useRef(0);
+  const receiptPreviewItemsRef = React.useRef<ExpenseReceiptItem[]>([]);
+  React.useEffect(() => {
+    if (receiptPreview?.items?.length) receiptPreviewItemsRef.current = receiptPreview.items;
+  }, [receiptPreview]);
   const {
     openPreview,
     closePreview,
@@ -893,6 +898,16 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     [supabase, toast, refresh, patchPreview, mapReceiptItemsToPreviewFiles]
   );
 
+  const prefetchReceiptUrls = React.useCallback(
+    (row: Expense) => {
+      if (!supabase) return;
+      const raw = getExpenseReceiptItems(row);
+      if (raw.length === 0) return;
+      void resolveExpenseReceiptItemsPreviewUrlsWithCache(raw, supabase);
+    },
+    [supabase]
+  );
+
   const openReceiptPreview = React.useCallback(
     (row: Expense) => {
       const raw = getExpenseReceiptItems(row);
@@ -905,26 +920,60 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
         return;
       }
 
-      const shellFiles = raw.map((it, i) => ({
-        url: /^https?:\/\//i.test((it.url ?? "").trim()) ? (it.url ?? "").trim() : "",
-        fileName: it.fileName ?? `Receipt ${i + 1}`,
-        fileType: (receiptItemLooksPdf(it) ? "pdf" : "image") as "pdf" | "image",
+      const shellFiles = buildReceiptPreviewShellFiles(raw).map((f, i) => ({
+        ...f,
+        fileType: (receiptItemLooksPdf(raw[i]!) ? "pdf" : "image") as "pdf" | "image",
       }));
-
-      const needsSigned =
-        shellFiles.every((f) => !f.url) ||
-        raw.some((it) => {
-          const u = (it.url ?? "").trim();
-          return u.length > 0 && !/^https?:\/\//i.test(u);
-        });
+      const needsResolve = shellFiles.some((f) => f.pendingSignedUrl);
 
       setReceiptPreview({ items: raw, index: 0, expenseId: row.id });
+      receiptPreviewItemsRef.current = raw;
       const previewSession = ++receiptPreviewSessionRef.current;
+
+      const resolveAndPatch = () => {
+        void resolveExpenseReceiptItemsPreviewUrlsWithCache(
+          receiptPreviewItemsRef.current,
+          supabase
+        )
+          .then((items) => {
+            if (receiptPreviewSessionRef.current !== previewSession) return;
+            patchPreviewRef.current({
+              files: mapReceiptItemsToPreviewFiles(items),
+            });
+            setReceiptPreview((p) => (p && p.expenseId === row.id ? { ...p, items } : p));
+          })
+          .catch(() => {
+            if (receiptPreviewSessionRef.current !== previewSession) return;
+            patchPreviewRef.current({
+              files: buildReceiptPreviewShellFiles(receiptPreviewItemsRef.current).map((f, i) => ({
+                ...f,
+                fileType: (receiptItemLooksPdf(receiptPreviewItemsRef.current[i]!)
+                  ? "pdf"
+                  : "image") as "pdf" | "image",
+                pendingSignedUrl: false,
+                signedUrlResolveFailed: true,
+              })),
+            });
+          });
+      };
 
       openPreview({
         files: shellFiles,
         initialIndex: 0,
-        isLoading: needsSigned,
+        isLoading: false,
+        onRetrySignedUrlResolve: () => {
+          patchPreviewRef.current({
+            files: buildReceiptPreviewShellFiles(receiptPreviewItemsRef.current).map((f, i) => ({
+              ...f,
+              fileType: (receiptItemLooksPdf(receiptPreviewItemsRef.current[i]!)
+                ? "pdf"
+                : "image") as "pdf" | "image",
+              pendingSignedUrl: needsResolve,
+              signedUrlResolveFailed: false,
+            })),
+          });
+          resolveAndPatch();
+        },
         onIndexChange: (i: number) => {
           setReceiptPreview((p) => (p ? { ...p, index: i } : p));
         },
@@ -936,7 +985,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
         onRefreshPreviewUrl: async () => {
           const rp = receiptPreviewRef.current;
           if (!rp || !supabase) return null;
-          const resolved = await resolveExpenseReceiptItemsPreviewUrls(rp.items, supabase);
+          const resolved = await resolveExpenseReceiptItemsPreviewUrlsWithCache(rp.items, supabase);
           const nextFiles = mapReceiptItemsToPreviewFiles(resolved);
           const u = (nextFiles[rp.index]?.url ?? "").trim();
           if (u) {
@@ -953,31 +1002,12 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
         },
       });
 
-      if (!needsSigned) return;
-
-      void resolveExpenseReceiptItemsPreviewUrls(raw, supabase)
-        .then((items) => {
-          if (receiptPreviewSessionRef.current !== previewSession) return;
-          patchPreview({
-            isLoading: false,
-            files: mapReceiptItemsToPreviewFiles(items),
-          });
-          setReceiptPreview((p) => (p && p.expenseId === row.id ? { ...p, items } : p));
-        })
-        .catch((e) => {
-          if (receiptPreviewSessionRef.current !== previewSession) return;
-          const msg = e instanceof Error ? e.message : "Could not prepare preview.";
-          toast({ title: "Preview failed", description: msg, variant: "error" });
-          closePreview();
-          setReceiptPreview(null);
-        });
+      if (needsResolve) resolveAndPatch();
     },
     [
       supabase,
       toast,
       openPreview,
-      patchPreview,
-      closePreview,
       receiptReplacing,
       onReceiptReplaceInputChange,
       mapReceiptItemsToPreviewFiles,
@@ -2213,6 +2243,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                         deletingExpenseId,
                         toggleStatus,
                         openReceiptPreview,
+                        prefetchReceiptUrls,
                         openExpensePreview,
                         handleDelete,
                       }}

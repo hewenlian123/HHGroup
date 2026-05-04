@@ -41,6 +41,7 @@ import { ExpenseBulkActionBar } from "./expense-bulk-action-bar";
 function InboxDescriptionSignals({
   row,
   onReceiptPreview,
+  onReceiptPrefetch,
   missingProject,
   missingCategory,
   duplicate,
@@ -48,6 +49,8 @@ function InboxDescriptionSignals({
   row: Expense;
   /** Same handler as historically wired: resolves URLs and opens global attachment preview. */
   onReceiptPreview: () => void;
+  /** Optional: prefetch signed URLs before click (hover / touch). */
+  onReceiptPrefetch?: () => void;
   missingProject: boolean;
   missingCategory: boolean;
   duplicate: boolean;
@@ -55,6 +58,10 @@ function InboxDescriptionSignals({
   const items = React.useMemo(() => getExpenseReceiptItems(row), [row]);
   const hasReceipt = items.length > 0;
   const extraSignals = missingCategory || duplicate;
+  const touchPrimedRef = React.useRef(false);
+  React.useEffect(() => {
+    touchPrimedRef.current = false;
+  }, [row.id]);
 
   return (
     <div className="mt-1 min-w-0 space-y-0.5">
@@ -63,6 +70,12 @@ function InboxDescriptionSignals({
           <button
             type="button"
             className="inline-flex cursor-pointer items-center gap-1 rounded-sm border-0 bg-transparent p-0 font-normal text-muted-foreground hover:text-foreground hover:underline focus-visible:outline focus-visible:ring-1 focus-visible:ring-ring"
+            onMouseEnter={() => onReceiptPrefetch?.()}
+            onTouchStart={() => {
+              if (touchPrimedRef.current) return;
+              touchPrimedRef.current = true;
+              onReceiptPrefetch?.();
+            }}
             onClick={(e) => {
               e.stopPropagation();
               onReceiptPreview();
@@ -335,6 +348,8 @@ export type ExpenseInboxApi = {
   deletingExpenseId: string | null;
   toggleStatus: (expense: Expense) => void;
   openReceiptPreview: (row: Expense) => void;
+  /** Warm signed receipt URLs on hover / first touch (desktop / mobile). */
+  prefetchReceiptUrls?: (row: Expense) => void;
   openExpensePreview: (row: Expense, opts?: { mode?: "preview" | "edit" }) => void;
   handleDelete: (expense: Expense) => void;
   /** `INBOX-UP-*` `referenceNo` values to flash after upload deep-link. */
@@ -662,6 +677,7 @@ function DesktopRows({
                             <InboxDescriptionSignals
                               row={row}
                               onReceiptPreview={() => a.openReceiptPreview(row)}
+                              onReceiptPrefetch={() => a.prefetchReceiptUrls?.(row)}
                               missingProject={missingProject}
                               missingCategory={missingCategory}
                               duplicate={showDupHint}
@@ -968,6 +984,7 @@ function MobileRows({
                               <InboxDescriptionSignals
                                 row={row}
                                 onReceiptPreview={() => a.openReceiptPreview(row)}
+                                onReceiptPrefetch={() => a.prefetchReceiptUrls?.(row)}
                                 missingProject={missingProject}
                                 missingCategory={missingCategory}
                                 duplicate={showDupHint}
