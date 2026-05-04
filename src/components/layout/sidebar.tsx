@@ -93,7 +93,7 @@ const sections: { key: (typeof SECTION_KEYS)[number]; label: string; items: NavI
       { href: "/site-photos", label: "Site Photos", icon: Camera },
       { href: "/inspection-log", label: "Inspection Log", icon: ClipboardCheck },
       { href: "/materials/catalog", label: "Material Catalog", icon: Package },
-      { href: "/financial/inbox", label: "Inbox", icon: Inbox },
+      { href: "/financial/inbox", label: "Inbox draft", icon: Inbox },
     ],
   },
   {
@@ -386,7 +386,7 @@ export function Sidebar({
                     const Icon = item.icon;
                     const navLabel =
                       item.href === "/financial/inbox"
-                        ? `Inbox (${expenseInboxPoolCount})`
+                        ? `Inbox draft (${expenseInboxPoolCount})`
                         : item.label;
                     if (item.href === "/financial/inbox" && Icon) {
                       return (
@@ -467,7 +467,7 @@ export function Sidebar({
                         const Icon = item.icon;
                         const navLabel =
                           item.href === "/financial/inbox"
-                            ? `Inbox (${expenseInboxPoolCount})`
+                            ? `Inbox draft (${expenseInboxPoolCount})`
                             : item.label;
                         if (item.href === "/financial/inbox" && Icon) {
                           return (
@@ -482,7 +482,7 @@ export function Sidebar({
                             >
                               <Icon className={navIconClass(active)} strokeWidth={1.75} />
                               <span className="flex min-w-0 flex-1 items-baseline gap-0">
-                                <span className="truncate">Inbox </span>
+                                <span className="truncate">Inbox draft </span>
                                 <span
                                   key={expenseInboxPoolAnimKey}
                                   className="inline-block shrink-0 origin-center rounded-sm px-0.5 tabular-nums animate-receipt-queue-badge"

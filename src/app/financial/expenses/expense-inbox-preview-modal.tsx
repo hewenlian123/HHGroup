@@ -30,12 +30,14 @@ import { persistLastExpensePaymentAccountId } from "@/lib/expense-payment-prefer
 import { resolvePreviewSignedUrl } from "@/lib/storage-signed-url";
 import type { ExpenseReviewSavePatch } from "./edit-expense-modal";
 import { cn } from "@/lib/utils";
+import { isInboxUploadExpenseReference } from "@/lib/inbox-upload-constants";
 import {
   deriveExpenseWorkflowStatus,
   expenseHasCategoryForWorkflow,
   expenseHasProjectForWorkflow,
   expenseNeedsReviewFromDb,
   expenseStatusUiLabel,
+  validateApproveInboxUploadDraft,
   EXPENSE_PROJECT_SELECT_NONE,
   EXPENSE_WORKER_SELECT_NONE,
 } from "@/lib/expense-workflow-status";
@@ -470,7 +472,11 @@ export function ExpenseInboxPreviewModal({
           null)
         : null;
       const pm = paymentMethod.trim() || PAYMENT_METHOD_OPTIONS[0];
-      const workflowStatus = deriveExpenseWorkflowStatus(projectId, category || "Other");
+      let workflowStatus = deriveExpenseWorkflowStatus(projectId, category || "Other");
+      /* INBOX-UP drafts must stay in the Inbox pool until explicit Approve — DB `reviewed` removes them from Inbox. */
+      if (isInboxUploadExpenseReference(expense.referenceNo) && workflowStatus === "reviewed") {
+        workflowStatus = "needs_review";
+      }
       const saved = await onSave({
         expenseId: expense.id,
         date: expenseDate.slice(0, 10),
@@ -496,6 +502,33 @@ export function ExpenseInboxPreviewModal({
 
   const handleMarkReviewed = async () => {
     if (!expense || markBusy) return;
+    if (isInboxUploadExpenseReference(expense.referenceNo)) {
+      const gate = validateApproveInboxUploadDraft(expense);
+      if (gate === "project") {
+        toast({
+          title: "Choose a project first",
+          description: "Tap Edit, set project, then save — then you can approve.",
+          variant: "default",
+        });
+        return;
+      }
+      if (gate === "category") {
+        toast({
+          title: "Choose a category first",
+          description: "Tap Edit, set category, then save — then you can approve.",
+          variant: "default",
+        });
+        return;
+      }
+      if (gate === "payment") {
+        toast({
+          title: "Choose a payment account first",
+          description: "Tap Edit, set payment account, then save — then you can approve.",
+          variant: "default",
+        });
+        return;
+      }
+    }
     flushSync(() => setMarkBusy(true));
     try {
       await onMarkReviewed(expense);
@@ -523,6 +556,7 @@ export function ExpenseInboxPreviewModal({
   if (!expense) return null;
 
   const showMarkDone = expenseNeedsReviewFromDb(expense.status);
+  const inboxUploadPreview = isInboxUploadExpenseReference(expense.referenceNo);
   const missingProject = !expenseHasProjectForWorkflow(expense);
   const missingCategory = !expenseHasCategoryForWorkflow(expense);
   const missingReceipt = receiptItems.length === 0;
@@ -896,7 +930,7 @@ export function ExpenseInboxPreviewModal({
                   onClick={() => void handleMarkReviewed()}
                 >
                   <SubmitSpinner loading={markBusy} className="mr-2" />
-                  Mark Done
+                  {inboxUploadPreview ? "Approve" : "Mark Done"}
                 </Button>
               ) : null}
             </div>

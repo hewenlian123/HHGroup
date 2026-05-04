@@ -92,6 +92,8 @@ export default defineConfig({
    * - Readiness uses `/financial/expenses` so a broken dev that only serves `/` is not treated as healthy
    *
    * Port is derived from E2E_BASE_URL (defaults to :3000).
+   *
+   * Local `next dev` cold start can exceed 180s; Playwright only waits for `url` (not your whole test).
    */
   webServer:
     process.env.E2E_WEB_SERVER === "off" || !isLocalE2eBase
@@ -111,13 +113,34 @@ export default defineConfig({
           const reuseExistingServer = pipelineCi
             ? false
             : process.env.E2E_PLAYWRIGHT_REUSE_DEV_SERVER !== "0";
-          return {
-            command: useStart ? `PORT=${port} npm run start` : `npm run dev:safe -- -p ${port}`,
-            url: `${resolvedBase}/financial/expenses`,
+          const command = useStart
+            ? `PORT=${port} npm run start`
+            : `npm run dev:safe -- -p ${port}`;
+          const readinessUrl = `${resolvedBase}/financial/expenses`;
+          /** `next start` in CI; local default is `next dev` — allow extra time for first compile. */
+          const webServerTimeoutMs = useStart ? 120_000 : 300_000;
+          const server = {
+            command,
+            url: readinessUrl,
             reuseExistingServer,
-            timeout: useStart ? 120_000 : 180_000,
+            timeout: webServerTimeoutMs,
             env: buildWebServerEnv(),
           };
+          console.log(
+            "[playwright] webServer\n" +
+              JSON.stringify(
+                {
+                  command: server.command,
+                  baseURL: resolvedBase,
+                  readinessUrl: server.url,
+                  timeoutMs: server.timeout,
+                  reuseExistingServer: server.reuseExistingServer,
+                },
+                null,
+                2
+              )
+          );
+          return server;
         })(),
   use: {
     baseURL: (process.env.E2E_BASE_URL || "http://localhost:3000").replace(/\/$/, ""),

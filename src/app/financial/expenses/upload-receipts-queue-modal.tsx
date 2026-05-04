@@ -1,17 +1,21 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { useRouter } from "next/navigation";
+import { Camera, ChevronRight, FileText, Upload, X } from "lucide-react";
+import {
+  Dialog,
+  DialogDescription,
+  DialogPortal,
+  DialogOverlay,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { InlineLoading } from "@/components/ui/skeleton";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { createBrowserClient } from "@/lib/supabase";
-import { inferExpenseCategoryFromVendor } from "@/lib/receipt-infer-category";
-import { processReceiptQueueUpload } from "@/lib/receipt-queue-process-upload";
-import { insertReceiptQueueProcessing, notifyReceiptQueueChanged } from "@/lib/receipt-queue";
-import { compressImageFileForReceiptUpload } from "@/lib/image-compress-browser";
-import { Camera, Upload } from "lucide-react";
+import { createInboxDraftFromReceiptFile } from "@/lib/expense-inbox-draft-upload-browser";
+import { notifyReceiptQueueChanged } from "@/lib/receipt-queue";
 import { useToast } from "@/components/toast/toast-provider";
 
 type Props = {
@@ -20,18 +24,119 @@ type Props = {
   onSuccess: () => void;
 };
 
-type CaptureSource = "camera" | "files" | "drop";
+type PendingItem = { id: string; file: File };
+
+type StatusPhase = "ready" | "preparing" | "creating" | "added" | "failed";
+
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(n < 10 * 1024 ? 1 : 0)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function pendingKey(file: File): string {
+  return `${file.name}:${file.size}`;
+}
+
+function appendPendingDeduped(prev: PendingItem[], files: File[]): PendingItem[] {
+  const seen = new Set(prev.map((p) => pendingKey(p.file)));
+  const next = [...prev];
+  for (const file of files) {
+    if (file.size <= 0) continue;
+    const k = pendingKey(file);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    next.push({ id: crypto.randomUUID(), file });
+  }
+  return next;
+}
+
+function resolveStatusPhase(
+  captureUploading: boolean,
+  receiptImagePreparing: boolean,
+  addedToQueueHint: boolean,
+  uploadFailed: boolean
+): StatusPhase {
+  if (addedToQueueHint) return "added";
+  if (uploadFailed && !captureUploading) return "failed";
+  if (captureUploading && receiptImagePreparing) return "preparing";
+  if (captureUploading) return "creating";
+  return "ready";
+}
+
+const STATUS_COPY: Record<StatusPhase, string> = {
+  ready: "Ready",
+  preparing: "Preparing...",
+  creating: "Creating drafts...",
+  added: "Added to Inbox",
+  failed: "Upload failed",
+};
+
+function PendingReceiptRow({
+  item,
+  disabled,
+  onRemove,
+}: {
+  item: PendingItem;
+  disabled: boolean;
+  onRemove: () => void;
+}) {
+  const [preview, setPreview] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const f = item.file;
+    if (f.type.startsWith("image/")) {
+      const u = URL.createObjectURL(f);
+      setPreview(u);
+      return () => {
+        URL.revokeObjectURL(u);
+      };
+    }
+    setPreview(null);
+    return undefined;
+  }, [item.file, item.id]);
+
+  return (
+    <div className="flex min-h-[52px] items-center gap-3 rounded-xl border border-black/[0.06] bg-muted/[0.2] px-3 py-2.5 dark:border-white/[0.08]">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted/50">
+        {preview ? (
+          // eslint-disable-next-line @next/next/no-img-element -- blob preview for local file selection
+          <img src={preview} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <FileText className="h-5 w-5 text-muted-foreground" strokeWidth={1.5} />
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[13px] font-medium text-foreground">{item.file.name}</p>
+        <p className="text-[11px] tabular-nums text-muted-foreground">
+          {formatBytes(item.file.size)}
+        </p>
+      </div>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={onRemove}
+        className={cn(
+          "shrink-0 rounded-md px-2 py-1.5 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+        )}
+      >
+        Remove
+      </button>
+    </div>
+  );
+}
 
 export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Props) {
+  const router = useRouter();
   const { toast } = useToast();
   const cameraInputRef = React.useRef<HTMLInputElement>(null);
   const uploadInputRef = React.useRef<HTMLInputElement>(null);
-  const openRef = React.useRef(open);
-  openRef.current = open;
   const [dragOver, setDragOver] = React.useState(false);
+  const [pendingItems, setPendingItems] = React.useState<PendingItem[]>([]);
   const [captureUploading, setCaptureUploading] = React.useState(false);
   const [receiptImagePreparing, setReceiptImagePreparing] = React.useState(false);
   const [addedToQueueHint, setAddedToQueueHint] = React.useState(false);
+  const [uploadFailed, setUploadFailed] = React.useState(false);
   const addedHintTimerRef = React.useRef<number | null>(null);
 
   const supabase = React.useMemo(() => {
@@ -56,9 +161,18 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
     }, 1000);
   }, []);
 
+  const addPendingFiles = React.useCallback((files: FileList | File[] | null) => {
+    if (!files?.length) return;
+    const list = Array.from(files).filter((f) => f.size > 0);
+    if (!list.length) return;
+    setPendingItems((prev) => appendPendingDeduped(prev, list));
+  }, []);
+
   React.useEffect(() => {
     if (!open) {
+      setPendingItems([]);
       setAddedToQueueHint(false);
+      setUploadFailed(false);
       if (addedHintTimerRef.current) {
         window.clearTimeout(addedHintTimerRef.current);
         addedHintTimerRef.current = null;
@@ -73,247 +187,379 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
     []
   );
 
-  const enqueueFiles = React.useCallback(
-    async (files: FileList | File[] | null, source: CaptureSource = "files") => {
-      if (!files?.length || !supabase) {
+  const performUpload = React.useCallback(
+    async (list: File[]) => {
+      if (!list.length || !supabase) {
         if (!supabase) toast({ title: "Storage unavailable", variant: "error" });
         return;
       }
-      const list = Array.from(files).filter((f) => f.size > 0);
-      if (!list.length) return;
 
+      setUploadFailed(false);
       setCaptureUploading(true);
       let ok = 0;
       let fail = 0;
-      let shouldReopenCamera = false;
+      let dup = 0;
+      const createdReferenceNos: string[] = [];
 
       let firstFailDetail: string | undefined;
       try {
         setReceiptImagePreparing(true);
-        let compressed: File[];
         try {
-          compressed = await Promise.all(
-            list.map((file) => compressImageFileForReceiptUpload(file))
+          const outcomes = await Promise.all(
+            list.map(async (file) => {
+              try {
+                const r = await createInboxDraftFromReceiptFile(supabase, file);
+                if (!r.ok) return { ok: false as const, detail: r.message };
+                if (r.duplicate)
+                  return { ok: true as const, duplicate: true, referenceNo: r.referenceNo };
+                notifyReceiptQueueChanged();
+                return { ok: true as const, duplicate: false, referenceNo: r.referenceNo };
+              } catch (e) {
+                const msg = e instanceof Error ? e.message : "Could not create draft expense";
+                return { ok: false as const, detail: msg };
+              }
+            })
           );
+
+          for (const o of outcomes) {
+            if (o.ok) {
+              if (o.duplicate) dup += 1;
+              else {
+                ok += 1;
+                createdReferenceNos.push(o.referenceNo);
+              }
+            } else {
+              fail += 1;
+              if (!firstFailDetail && "detail" in o) firstFailDetail = o.detail;
+            }
+          }
         } finally {
           setReceiptImagePreparing(false);
         }
 
-        const outcomes = await Promise.all(
-          compressed.map(async (prepared) => {
-            let qid: string;
-            try {
-              qid = await insertReceiptQueueProcessing(supabase, prepared);
-            } catch (e) {
-              const msg = e instanceof Error ? e.message : "Enqueue failed";
-              return { ok: false as const, detail: msg };
-            }
-            notifyReceiptQueueChanged();
-            try {
-              const { storageSaved } = await processReceiptQueueUpload(
-                supabase,
-                qid,
-                prepared,
-                inferExpenseCategoryFromVendor,
-                { alreadyCompressed: true }
-              );
-              if (storageSaved) return { ok: true as const };
-              return {
-                ok: false as const,
-                detail: "Could not save file to storage.",
-              };
-            } catch (e) {
-              const msg = e instanceof Error ? e.message : "Processing failed";
-              return { ok: false as const, detail: msg };
-            } finally {
-              notifyReceiptQueueChanged();
-            }
-          })
-        );
-
-        for (const o of outcomes) {
-          if (o.ok) ok += 1;
-          else {
-            fail += 1;
-            if (!firstFailDetail) firstFailDetail = o.detail;
+        if (ok > 0) {
+          setUploadFailed(false);
+          flashAddedToQueueHint();
+          if (createdReferenceNos.length > 0) {
+            const sp = new URLSearchParams();
+            sp.set("highlight", createdReferenceNos.join(","));
+            router.push(`/financial/inbox?${sp.toString()}`);
+            onOpenChange(false);
           }
         }
 
-        if (ok > 0) {
-          flashAddedToQueueHint();
+        if (ok > 0 && fail > 0) {
           toast({
-            title: ok === 1 ? "✔ Receipt added to queue" : `✔ ${ok} receipts added`,
+            title: `${ok} added, ${fail} failed`,
+            variant: "default",
+          });
+        } else if (ok > 0 && fail === 0) {
+          toast({
+            title: ok === 1 ? "Added 1 draft to Inbox" : `Added ${ok} drafts to Inbox`,
             variant: "success",
           });
         }
-        if (fail > 0) {
+
+        if (dup > 0 && ok === 0 && fail === 0) {
           toast({
-            title: "❌ Upload failed",
-            description:
-              fail === list.length && firstFailDetail
-                ? `${firstFailDetail} Tap to try again.`
-                : `${fail} of ${list.length} could not be saved. Tap to retry.`,
-            variant: "error",
-            durationMs: 8000,
-            onClick: openRetryPicker,
+            title: "Already uploaded",
+            description: "This file was already added as a draft.",
+            variant: "default",
+          });
+        } else if (dup > 0 && (ok > 0 || fail > 0)) {
+          toast({
+            title: `${dup} duplicate file${dup !== 1 ? "s" : ""} skipped`,
+            variant: "default",
           });
         }
 
-        if (ok > 0 && source === "camera") {
-          shouldReopenCamera = true;
+        if (fail > 0) {
+          if (ok === 0) {
+            setUploadFailed(true);
+            toast({
+              title: "❌ Upload failed",
+              description:
+                fail === list.length && firstFailDetail
+                  ? `${firstFailDetail} Tap to try again.`
+                  : `${fail} of ${list.length} could not be saved. Tap to retry.`,
+              variant: "error",
+              durationMs: 8000,
+              onClick: openRetryPicker,
+            });
+          }
         }
       } finally {
         setCaptureUploading(false);
+        setPendingItems([]);
         onSuccess();
-        if (shouldReopenCamera && openRef.current) {
-          window.queueMicrotask(() => {
-            window.requestAnimationFrame(() => {
-              if (!openRef.current) return;
-              cameraInputRef.current?.click();
-            });
-          });
-        }
       }
     },
-    [supabase, toast, onSuccess, openRetryPicker, flashAddedToQueueHint]
+    [supabase, toast, onSuccess, openRetryPicker, flashAddedToQueueHint, router, onOpenChange]
   );
+
+  const handleConfirmUpload = React.useCallback(() => {
+    const files = pendingItems.map((p) => p.file);
+    void performUpload(files);
+  }, [pendingItems, performUpload]);
+
+  const busy = captureUploading;
+  const statusPhase = resolveStatusPhase(
+    captureUploading,
+    receiptImagePreparing,
+    addedToQueueHint,
+    uploadFailed
+  );
+
+  const handleCancelSelection = React.useCallback(() => {
+    if (busy) return;
+    setPendingItems([]);
+  }, [busy]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="relative max-h-[92vh] w-full max-w-md overflow-y-auto rounded-sm border-border/60">
-        {addedToQueueHint ? (
-          <div
-            role="status"
-            aria-live="polite"
-            className="pointer-events-none absolute right-14 top-4 z-[2] max-w-[min(12rem_calc(100%-5rem))] truncate rounded-sm border border-emerald-200/70 bg-emerald-50/95 px-2 py-0.5 text-[11px] font-medium leading-tight text-emerald-900 dark:border-emerald-900/45 dark:bg-emerald-950/55 dark:text-emerald-100"
-          >
-            ✔ Added to queue
-          </div>
-        ) : null}
-        <DialogHeader className="space-y-1.5 border-b border-border/60 pb-3 text-left">
-          <DialogTitle className="text-base font-medium">Upload receipts</DialogTitle>
-          <p className="text-xs font-normal text-muted-foreground">
-            <span className="font-medium text-foreground/80">Take photo</span> reopens after each
-            successful save for rapid capture until you close this dialog. Files are saved to your{" "}
-            <Link
-              href="/financial/receipt-queue"
-              className="font-medium text-foreground/80 underline-offset-2 hover:underline"
-              onClick={() => onOpenChange(false)}
-            >
-              Receipt queue
-            </Link>
-            ; you can finish later from the sidebar.
-          </p>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          {!supabase ? (
-            <p className="text-sm text-amber-600 dark:text-amber-400">
-              Configure Supabase to upload.
-            </p>
-          ) : (
-            <>
-              <input
-                ref={cameraInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                className="hidden"
-                disabled={captureUploading}
-                onChange={(e) => {
-                  void enqueueFiles(e.target.files, "camera");
-                  e.target.value = "";
-                }}
-              />
-              <input
-                ref={uploadInputRef}
-                type="file"
-                accept="image/*,application/pdf"
-                multiple
-                className="hidden"
-                disabled={captureUploading}
-                onChange={(e) => {
-                  void enqueueFiles(e.target.files, "files");
-                  e.target.value = "";
-                }}
-              />
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-9"
-                  disabled={captureUploading}
-                  onClick={() => cameraInputRef.current?.click()}
-                >
-                  {captureUploading ? (
-                    <InlineLoading className="mr-1.5" aria-hidden />
-                  ) : (
-                    <Camera className="mr-1.5 h-3.5 w-3.5" />
-                  )}
-                  Take photo
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-9"
-                  disabled={captureUploading}
-                  onClick={() => uploadInputRef.current?.click()}
-                >
-                  {captureUploading ? (
-                    <InlineLoading className="mr-1.5" aria-hidden />
-                  ) : (
-                    <Upload className="mr-1.5 h-3.5 w-3.5" />
-                  )}
-                  Upload files
-                </Button>
-                <Button variant="outline" size="sm" className="h-9" asChild>
-                  <Link href="/financial/receipt-queue" onClick={() => onOpenChange(false)}>
-                    Open queue
-                  </Link>
-                </Button>
-              </div>
-              {captureUploading ? (
-                <p className="text-xs text-muted-foreground" role="status" aria-live="polite">
-                  {receiptImagePreparing ? "Preparing image…" : "Uploading…"}
-                </p>
-              ) : null}
-              <div
-                className={cn(
-                  "flex min-h-[72px] flex-col items-center justify-center gap-1 border border-dashed border-border/60 py-6 text-xs text-muted-foreground transition-colors",
-                  dragOver && !captureUploading && "border-foreground/50",
-                  captureUploading && "pointer-events-none opacity-60"
-                )}
-                onDragEnter={(e) => {
-                  e.preventDefault();
-                  if (!captureUploading) setDragOver(true);
-                }}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  e.dataTransfer.dropEffect = captureUploading ? "none" : "copy";
-                }}
-                onDragLeave={(e) => {
-                  if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false);
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setDragOver(false);
-                  if (captureUploading) return;
-                  void enqueueFiles(e.dataTransfer.files, "drop");
-                }}
-              >
-                <span>
-                  {captureUploading
-                    ? receiptImagePreparing
-                      ? "Preparing image…"
-                      : "Uploading…"
-                    : "Drop files here"}
-                </span>
-              </div>
-            </>
+      <DialogPortal>
+        <DialogOverlay
+          className={cn(
+            "bg-[rgba(15,23,42,0.22)] backdrop-blur-[3px]",
+            "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
           )}
-        </div>
-      </DialogContent>
+        />
+        <DialogPrimitive.Content
+          onEscapeKeyDown={(e) => {
+            if (busy) e.preventDefault();
+          }}
+          onPointerDownOutside={(e) => {
+            if (busy) e.preventDefault();
+          }}
+          onInteractOutside={(e) => {
+            if (busy) e.preventDefault();
+          }}
+          className={cn(
+            "fixed z-[51] flex max-h-[85vh] w-full flex-col overflow-hidden overflow-x-hidden border border-black/[0.06] bg-background shadow-[0_12px_40px_-8px_rgba(15,23,42,0.18)] outline-none dark:border-white/[0.08] dark:shadow-[0_12px_48px_-12px_rgba(0,0,0,0.55)]",
+            "rounded-[24px] p-6",
+            "duration-200 ease-out",
+            "md:left-1/2 md:top-1/2 md:max-h-[min(92vh,900px)] md:max-w-[460px] md:-translate-x-1/2 md:-translate-y-1/2 md:data-[state=closed]:animate-out md:data-[state=open]:animate-in md:data-[state=closed]:fade-out-0 md:data-[state=open]:fade-in-0 md:data-[state=closed]:zoom-out-95 md:data-[state=open]:zoom-in-95",
+            "max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:max-h-[85vh] max-md:translate-y-0 max-md:rounded-b-none max-md:rounded-t-[24px] max-md:border-x-0 max-md:border-b-0 max-md:pb-[max(1.5rem,env(safe-area-inset-bottom))] max-md:pt-6 max-md:data-[state=closed]:animate-out max-md:data-[state=open]:animate-in max-md:data-[state=closed]:fade-out-0 max-md:data-[state=open]:fade-in-0 max-md:data-[state=open]:slide-in-from-bottom-6 max-md:data-[state=closed]:slide-out-to-bottom-4"
+          )}
+        >
+          <DialogPrimitive.Close
+            type="button"
+            disabled={busy}
+            className={cn(
+              "absolute right-5 top-5 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:pointer-events-none disabled:opacity-40",
+              "touch-manipulation"
+            )}
+            aria-label="Close"
+          >
+            <X className="h-5 w-5" strokeWidth={1.5} />
+          </DialogPrimitive.Close>
+
+          <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto">
+            <div className="space-y-2 pr-10 text-left">
+              <DialogTitle className="text-[22px] font-semibold tracking-[-0.02em] text-foreground">
+                Upload receipt
+              </DialogTitle>
+              <DialogDescription className="text-[13px] leading-relaxed text-muted-foreground sm:text-sm">
+                Photos and PDFs are saved to Inbox as drafts. Review and approve before they count
+                as expenses.
+              </DialogDescription>
+            </div>
+
+            {!supabase ? (
+              <p className="text-sm text-amber-600 dark:text-amber-400">
+                Configure Supabase to upload.
+              </p>
+            ) : (
+              <>
+                <input
+                  ref={cameraInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  disabled={busy}
+                  onChange={(e) => {
+                    addPendingFiles(e.target.files);
+                    e.target.value = "";
+                  }}
+                />
+                <input
+                  ref={uploadInputRef}
+                  type="file"
+                  accept="image/*,application/pdf"
+                  multiple
+                  className="hidden"
+                  disabled={busy}
+                  onChange={(e) => {
+                    addPendingFiles(e.target.files);
+                    e.target.value = "";
+                  }}
+                />
+
+                <div className="flex flex-col gap-3">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => cameraInputRef.current?.click()}
+                    className={cn(
+                      "group flex min-h-[76px] w-full items-center gap-4 rounded-[20px] border border-black/[0.07] bg-background px-4 py-4 text-left transition-[transform,background-color,border-color] active:scale-[0.995] disabled:pointer-events-none disabled:opacity-45 dark:border-white/[0.09]",
+                      "hover:bg-muted/35 hover:border-black/[0.1] dark:hover:border-white/[0.12]",
+                      "touch-manipulation"
+                    )}
+                  >
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted/55 dark:bg-muted/40">
+                      <Camera className="h-5 w-5 text-foreground/80" strokeWidth={1.5} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[15px] font-medium tracking-[-0.01em] text-foreground">
+                        Take Photo
+                      </span>
+                      <span className="mt-0.5 block text-[13px] text-muted-foreground">
+                        Scan one receipt
+                      </span>
+                    </span>
+                    <ChevronRight
+                      className="h-5 w-5 shrink-0 text-muted-foreground/70 transition-transform group-hover:translate-x-0.5"
+                      strokeWidth={1.5}
+                    />
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => uploadInputRef.current?.click()}
+                    className={cn(
+                      "group flex min-h-[76px] w-full items-center gap-4 rounded-[20px] border border-black/[0.07] bg-background px-4 py-4 text-left transition-[transform,background-color,border-color] active:scale-[0.995] disabled:pointer-events-none disabled:opacity-45 dark:border-white/[0.09]",
+                      "hover:bg-muted/35 hover:border-black/[0.1] dark:hover:border-white/[0.12]",
+                      "touch-manipulation"
+                    )}
+                  >
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted/55 dark:bg-muted/40">
+                      <Upload className="h-5 w-5 text-foreground/80" strokeWidth={1.5} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[15px] font-medium tracking-[-0.01em] text-foreground">
+                        Upload Files
+                      </span>
+                      <span className="mt-0.5 block text-[13px] text-muted-foreground">
+                        Photos or PDFs · Multiple files
+                      </span>
+                    </span>
+                    <ChevronRight
+                      className="h-5 w-5 shrink-0 text-muted-foreground/70 transition-transform group-hover:translate-x-0.5"
+                      strokeWidth={1.5}
+                    />
+                  </button>
+                </div>
+
+                <div
+                  role="presentation"
+                  aria-label="Drop receipts to add to selection"
+                  onDragEnter={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!busy) setDragOver(true);
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.dataTransfer.dropEffect = busy ? "none" : "copy";
+                  }}
+                  onDragLeave={(e) => {
+                    if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOver(false);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setDragOver(false);
+                    if (busy) return;
+                    addPendingFiles(e.dataTransfer.files);
+                  }}
+                  className={cn(
+                    "flex w-full flex-col items-center justify-center overflow-hidden rounded-[18px] border border-dashed px-4 transition-[border-color,background-color] duration-200",
+                    "min-h-[72px] md:min-h-[96px]",
+                    "border-black/[0.14] bg-muted/[0.35] dark:border-white/[0.12] dark:bg-muted/25",
+                    !busy &&
+                      "hover:border-black/[0.22] hover:bg-muted/45 dark:hover:border-white/[0.18]",
+                    dragOver &&
+                      !busy &&
+                      "border-foreground/22 bg-muted/55 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.06)] dark:bg-muted/40",
+                    busy && "pointer-events-none opacity-45"
+                  )}
+                >
+                  <div className="hidden w-full flex-col items-center justify-center gap-0.5 py-3 text-center md:flex">
+                    <span className="text-[14px] font-medium tracking-[-0.01em] text-foreground/90">
+                      Drop receipts here
+                    </span>
+                    <span className="text-[12px] text-muted-foreground">
+                      Photos or PDFs · Multiple files supported
+                    </span>
+                  </div>
+                  <p className="w-full px-1 py-2 text-center text-[13px] leading-snug text-foreground/85 md:hidden">
+                    Drop or upload multiple receipts
+                  </p>
+                </div>
+
+                {pendingItems.length > 0 ? (
+                  <div className="flex flex-col gap-2">
+                    <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-muted-foreground">
+                      Selected receipts
+                    </p>
+                    <div className="flex max-h-[min(40vh,280px)] flex-col gap-2 overflow-y-auto pr-0.5">
+                      {pendingItems.map((item) => (
+                        <PendingReceiptRow
+                          key={item.id}
+                          item={item}
+                          disabled={busy}
+                          onRemove={() =>
+                            setPendingItems((prev) => prev.filter((p) => p.id !== item.id))
+                          }
+                        />
+                      ))}
+                    </div>
+                    <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:justify-end sm:gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={busy}
+                        className="h-11 rounded-xl"
+                        onClick={handleCancelSelection}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={busy || pendingItems.length === 0}
+                        className="h-11 rounded-xl"
+                        onClick={handleConfirmUpload}
+                      >
+                        Confirm Upload ({pendingItems.length})
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="flex flex-col gap-3">
+                  <div
+                    role="status"
+                    aria-live="polite"
+                    className={cn(
+                      "inline-flex w-fit max-w-full items-center rounded-full border border-black/[0.06] bg-muted/25 px-3 py-1.5 text-[12px] font-medium tracking-wide text-muted-foreground dark:border-white/[0.08] dark:bg-muted/20"
+                    )}
+                  >
+                    {STATUS_COPY[statusPhase]}
+                  </div>
+                  <p className="text-[12px] leading-snug text-muted-foreground/90">
+                    Drafts stay in Inbox until approved.
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+        </DialogPrimitive.Content>
+      </DialogPortal>
     </Dialog>
   );
 }

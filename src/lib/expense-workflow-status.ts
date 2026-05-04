@@ -89,7 +89,7 @@ export function expenseIsArchivedDoneDbStatus(status: string | undefined | null)
   const s = String(status ?? "")
     .trim()
     .toLowerCase();
-  return s === "reviewed" || s === "done";
+  return s === "reviewed" || s === "done" || s === "approved";
 }
 
 /**
@@ -101,6 +101,19 @@ export function validateMarkDoneRequiresProjectAndCategory(
 ): "project" | "category" | null {
   if (!expenseHasProjectForWorkflow(expense)) return "project";
   if (!expenseHasCategoryForWorkflow(expense)) return "category";
+  return null;
+}
+
+/**
+ * Inbox upload → Approve: require project, category, and payment account on file-backed drafts (`INBOX-UP-` ref).
+ */
+export function validateApproveInboxUploadDraft(
+  expense: Expense
+): "project" | "category" | "payment" | null {
+  if (!expenseHasProjectForWorkflow(expense)) return "project";
+  if (!expenseHasCategoryForWorkflow(expense)) return "category";
+  const pa = (expense.paymentAccountId ?? "").trim();
+  if (!pa) return "payment";
   return null;
 }
 

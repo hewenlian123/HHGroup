@@ -777,7 +777,7 @@ export function ProjectDetailTabsClient({
                     <Link href="/financial/expenses/new">Add expense</Link>
                   </Button>
                   <Button variant="outline" size="sm" className="h-8 text-[13px]" asChild>
-                    <Link href={expensesProjectHref}>Upload receipt</Link>
+                    <Link href={inboxProjectHref}>Inbox draft</Link>
                   </Button>
                   <Button
                     variant="outline"

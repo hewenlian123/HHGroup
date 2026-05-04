@@ -52,6 +52,7 @@ import type { ExpenseReviewSavePatch } from "./edit-expense-modal";
 import type { ExpenseInboxPreviewSavePayload } from "./expense-inbox-preview-modal";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { useDelayedPending } from "@/hooks/use-delayed-pending";
+import { useInboxUploadHighlight } from "@/hooks/use-inbox-upload-highlight";
 import hotToast from "react-hot-toast";
 import { useToast } from "@/components/toast/toast-provider";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -96,8 +97,10 @@ import {
   countExpensesMatchingInboxPool,
   expenseMatchesInboxPool,
   expenseNeedsReviewFromDb,
+  validateApproveInboxUploadDraft,
   validateMarkDoneRequiresProjectAndCategory,
 } from "@/lib/expense-workflow-status";
+import { isInboxUploadExpenseReference } from "@/lib/inbox-upload-constants";
 import {
   getExpenseReceiptItems,
   resolveExpenseReceiptItemsPreviewUrls,
@@ -325,7 +328,7 @@ function TransactionInboxEntryActions({
   onUpload,
   onNewExpense,
   className,
-  uploadLabel = "Upload",
+  uploadLabel = "Inbox draft",
   quickButtonSize = "sm",
   compact = false,
 }: {
@@ -367,10 +370,10 @@ function TransactionInboxEntryActions({
           compact ? "h-9 min-h-11 min-w-11 px-0 sm:min-h-9 sm:min-w-0 sm:px-3" : ""
         )}
         onClick={onUpload}
-        aria-label={compact ? `${uploadLabel} receipts` : undefined}
+        aria-label={compact ? uploadLabel : undefined}
       >
         <Upload className={cn("h-4 w-4 shrink-0", !compact && "mr-1")} aria-hidden />
-        {compact ? <span className="sr-only">{uploadLabel} receipts</span> : uploadLabel}
+        {compact ? <span className="sr-only">{uploadLabel}</span> : uploadLabel}
       </Button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -774,6 +777,37 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     [router, searchParams, listPath]
   );
 
+  const clearNarrowingFiltersForUploadHighlight = React.useCallback(() => {
+    setSearchInput("");
+    setDebouncedSearch("");
+    setProjectFilter("");
+    setCategoryFilter("");
+    setSourceTypeFilter("");
+    setExpenseDateFilter({ kind: "all" });
+    const sp = new URLSearchParams(searchParams.toString());
+    sp.delete("project_id");
+    sp.set("page", "1");
+    const qs = sp.toString();
+    startTransition(() => router.replace(qs ? `${listPath}?${qs}` : listPath, { scroll: false }));
+  }, [router, searchParams, listPath]);
+
+  const { rowHighlightRefs, autoExpandDateGroupsForHighlight } = useInboxUploadHighlight({
+    inboxMode,
+    highlightParam: searchParams.get("highlight"),
+    expensesForListing,
+    filteredSortedExpenses,
+    flatListRows,
+    curPage,
+    pageSize,
+    setPage,
+    rowElsRef,
+    listPath,
+    bundleWaiting,
+    listBusyFetching: expensesQueryFetching,
+    replaceRoute: (href, opts) => router.replace(href, opts),
+    onClearNarrowingFilters: clearNarrowingFiltersForUploadHighlight,
+  });
+
   const manualRefreshGenRef = React.useRef(0);
   const refresh = React.useCallback(async () => {
     const gen = ++manualRefreshGenRef.current;
@@ -1043,7 +1077,10 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
 
   const handlePreviewMarkReviewed = React.useCallback(
     async (expense: Expense) => {
-      const gate = validateMarkDoneRequiresProjectAndCategory(expense);
+      const inboxRef = isInboxUploadExpenseReference(expense.referenceNo);
+      const gate = inboxRef
+        ? validateApproveInboxUploadDraft(expense)
+        : validateMarkDoneRequiresProjectAndCategory(expense);
       if (gate === "project") {
         hotToast.error("Please select a project before marking as done");
         return;
@@ -1052,15 +1089,24 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
         hotToast.error("Please select a category before marking as done");
         return;
       }
+      if (gate === "payment") {
+        hotToast.error("Please select a payment account before approving");
+        return;
+      }
+      if (inboxRef && String(expense.status ?? "").toLowerCase() === "approved") {
+        hotToast.error("Already approved");
+        return;
+      }
+      const targetStatus = inboxRef ? ("approved" as const) : ("reviewed" as const);
       const prevList = expensesRef.current;
       flushSync(() => {
         setExpenses((list) =>
-          list.map((e) => (e.id === expense.id ? { ...e, status: "reviewed" as const } : e))
+          list.map((e) => (e.id === expense.id ? { ...e, status: targetStatus } : e))
         );
       });
       try {
-        const saved = await updateExpenseForReview(expense.id, { status: "reviewed" });
-        const final = saved ?? { ...expense, status: "reviewed" as const };
+        const saved = await updateExpenseForReview(expense.id, { status: targetStatus });
+        const final = saved ?? { ...expense, status: targetStatus };
         flushSync(() => {
           setExpenses((list) => list.map((e) => (e.id === expense.id ? final : e)));
         });
@@ -1073,7 +1119,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
           queryKey: expensesQueryKeyRoot,
           refetchType: "active",
         });
-        hotToast.success("Marked done");
+        hotToast.success(inboxRef ? "Approved" : "Marked done");
         if (inboxMode) {
           flushSync(() => {
             setPreviewOpen(false);
@@ -1298,8 +1344,11 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     (expense: Expense) => {
       const current = expense.status ?? "pending";
       const goingDone = expenseNeedsReviewFromDb(current);
+      const inboxRef = isInboxUploadExpenseReference(expense.referenceNo);
       if (goingDone) {
-        const gate = validateMarkDoneRequiresProjectAndCategory(expense);
+        const gate = inboxRef
+          ? validateApproveInboxUploadDraft(expense)
+          : validateMarkDoneRequiresProjectAndCategory(expense);
         if (gate === "project") {
           hotToast.error("Please select a project before marking as done");
           return;
@@ -1308,8 +1357,16 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
           hotToast.error("Please select a category before marking as done");
           return;
         }
+        if (gate === "payment") {
+          hotToast.error("Please select a payment account before approving");
+          return;
+        }
+        if (inboxRef && String(current).toLowerCase() === "approved") {
+          hotToast.error("Already approved");
+          return;
+        }
       }
-      const next = goingDone ? "reviewed" : "needs_review";
+      const next = goingDone ? (inboxRef ? "approved" : "reviewed") : "needs_review";
       const prev = expensesRef.current;
       const t0 = uiActionMark();
       setExpenses((list) => list.map((e) => (e.id === expense.id ? { ...e, status: next } : e)));
@@ -1381,14 +1438,22 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
             skipped++;
             continue;
           }
-          const gate = validateMarkDoneRequiresProjectAndCategory(expense);
+          const inboxRef = isInboxUploadExpenseReference(expense.referenceNo);
+          const gate = inboxRef
+            ? validateApproveInboxUploadDraft(expense)
+            : validateMarkDoneRequiresProjectAndCategory(expense);
           if (gate) {
             skipped++;
             continue;
           }
+          if (inboxRef && String(expense.status ?? "").toLowerCase() === "approved") {
+            skipped++;
+            continue;
+          }
+          const targetStatus = inboxRef ? "approved" : "reviewed";
           try {
-            const saved = await updateExpenseForReview(id, { status: "reviewed" });
-            if (saved && (saved.status ?? "pending") === "reviewed") {
+            const saved = await updateExpenseForReview(id, { status: targetStatus });
+            if (saved && (saved.status ?? "pending") === targetStatus) {
               mergeSavedExpenseInCaches(saved);
               ok++;
             } else {
@@ -1651,7 +1716,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
   const previewPossibleDuplicate =
     previewExpenseLive != null && possibleDuplicateIds.has(previewExpenseLive.id);
 
-  const pageTitle = inboxMode ? "Inbox" : "Expenses";
+  const pageTitle = inboxMode ? "Inbox draft" : "Expenses";
   const pageDescription = inboxMode
     ? "Review and process incoming transactions"
     : "Tracked project costs and completed expenses";
@@ -1680,7 +1745,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                     )
                   }
                 >
-                  {inboxMode ? "Expenses" : "Inbox"}
+                  {inboxMode ? "Expenses" : "Inbox draft"}
                 </Button>
               </div>
               <p className="mt-0.5 hidden text-[11px] leading-snug text-gray-500 dark:text-muted-foreground sm:line-clamp-2">
@@ -1712,7 +1777,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                       router.push(inboxMode ? "/financial/expenses" : "/financial/inbox")
                     }
                   >
-                    {inboxMode ? "Expenses" : "Inbox"}
+                    {inboxMode ? "Expenses" : "Inbox draft"}
                   </Button>
                   <TransactionInboxEntryActions
                     onQuick={() => setQuickExpenseOpen(true)}
@@ -1853,7 +1918,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                     }}
                   >
                     <Upload className="mr-2 h-4 w-4 shrink-0" aria-hidden />
-                    Upload receipts
+                    Inbox draft
                   </Button>
                   <Button
                     type="button"
@@ -1925,7 +1990,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                       )
                     }
                   >
-                    {inboxMode ? "Expenses" : "Inbox"}
+                    {inboxMode ? "Expenses" : "Inbox draft"}
                   </Button>
                 </div>
                 <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 lg:max-w-xl">
@@ -2138,7 +2203,9 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                       api={{
                         listView,
                         dateGroupPool: inboxMode ? "inbox" : "expenses",
-                        autoExpandDateGroups: hasNarrowingFilters,
+                        autoExpandDateGroups:
+                          hasNarrowingFilters || autoExpandDateGroupsForHighlight,
+                        highlightReferenceNos: rowHighlightRefs,
                         activeExpenseId,
                         setActiveExpenseId,
                         rowElsRef,
