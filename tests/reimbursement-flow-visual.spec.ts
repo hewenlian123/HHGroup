@@ -18,8 +18,9 @@ import { expensesVendorSearch, waitForExpensesQuerySuccess } from "./e2e-expense
 import { logE2ESupabaseEnvDiagnostics } from "./e2e-supabase-env-diagnostic";
 import {
   cleanupReimbursementVisualTestData,
-  countExpensesByReferenceNo,
   ensureReimbursementVisualWorker,
+  fetchReimbursementExpenseSnapshot,
+  logUploadReceiptOptionsSnapshot,
   ensureScreenshotDir,
   fetchReimbursementStatus,
   getReimbursementVisualAdmin,
@@ -36,7 +37,7 @@ import {
 test.describe("Reimbursement flow (visual steps)", () => {
   test.describe.configure({ timeout: 240_000 });
 
-  test.beforeAll(async () => {
+  test.beforeAll(async ({ request }) => {
     logE2ESupabaseEnvDiagnostics("[reimbursement-flow-visual]");
     try {
       mkdirSync(dirname(screenshotPath("01-worker-receipt-upload")), { recursive: true });
@@ -48,6 +49,10 @@ test.describe("Reimbursement flow (visual steps)", () => {
     if (!admin) return;
     await cleanupReimbursementVisualTestData(admin);
     await ensureReimbursementVisualWorker(admin);
+    await logUploadReceiptOptionsSnapshot(
+      request,
+      "beforeAll after ensureReimbursementVisualWorker"
+    );
   });
 
   test("Worker Receipt → Approve → Expense → Pay (screenshots)", async ({
@@ -55,20 +60,37 @@ test.describe("Reimbursement flow (visual steps)", () => {
     request,
   }, testInfo) => {
     const admin = getReimbursementVisualAdmin();
-    test.skip(
-      !admin,
-      "Requires NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY (see .env.test)."
-    );
+    if (!admin) {
+      test.skip(
+        true,
+        "Requires NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY (see .env.test)."
+      );
+      return;
+    }
     const db = admin;
 
     await page.setViewportSize({ width: 1400, height: 900 });
+
+    page.on("console", (msg) => {
+      const text = msg.text();
+      if (text.includes("[UploadReceipt]")) {
+        console.log(`[reimbursement-visual][browser:${msg.type()}] ${text}`);
+      }
+    });
+    page.on("pageerror", (err) => {
+      console.error("[reimbursement-visual][pageerror]", err);
+    });
 
     let reimbursementId = "";
 
     await test.step("01 — Worker receipt upload", async () => {
       await ensureReimbursementVisualWorker(db);
+      await logUploadReceiptOptionsSnapshot(
+        request,
+        "step01 after ensureReimbursementVisualWorker"
+      );
       try {
-        await waitUntilWorkerAppearsInUploadOptions(request);
+        await waitUntilWorkerAppearsInUploadOptions(request, 120_000, db);
       } catch (e) {
         test.skip(
           true,
@@ -90,17 +112,36 @@ test.describe("Reimbursement flow (visual steps)", () => {
       });
       await page.locator("form select").first().selectOption(REIMBURSEMENT_VISUAL_WORKER_ID);
 
-      await page.locator('input[placeholder="商家名称"]').fill(REIMBURSEMENT_VISUAL_VENDOR);
-      await page.locator('input[placeholder="0.00"]').fill(REIMBURSEMENT_VISUAL_AMOUNT);
-      await page.locator('input[placeholder="选填"]').fill(REIMBURSEMENT_VISUAL_NOTES);
-
       await page.locator('input[type="file"]').setInputFiles({
         name: "e2e-reimbursement.png",
         mimeType: "image/png",
         buffer: MIN_RECEIPT_PNG,
       });
 
+      await expect(page.getByRole("button", { name: "e2e-reimbursement.png" })).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect(page.getByText(/Recognizing receipt/i)).not.toBeVisible({ timeout: 30_000 });
+
+      await page.locator('input[type="date"]').fill("2026-05-04");
+      await page.locator('input[placeholder="商家名称"]').fill(REIMBURSEMENT_VISUAL_VENDOR);
+      await page.locator('input[placeholder="0.00"]').fill(REIMBURSEMENT_VISUAL_AMOUNT);
+      await page.locator('input[placeholder="选填"]').fill(REIMBURSEMENT_VISUAL_NOTES);
+
+      await expect(page.locator('input[placeholder="商家名称"]')).toHaveValue(
+        REIMBURSEMENT_VISUAL_VENDOR
+      );
+      await expect(page.locator('input[placeholder="0.00"]')).toHaveValue(
+        REIMBURSEMENT_VISUAL_AMOUNT
+      );
+
+      const submitResp = page.waitForResponse(
+        (r) => r.url().includes("/api/upload-receipt/submit") && r.request().method() === "POST",
+        { timeout: 90_000 }
+      );
       await page.getByRole("button", { name: /Submit Receipt/i }).click();
+      const submitResult = await submitResp;
+      expect(submitResult.ok(), await submitResult.text()).toBeTruthy();
 
       await expect(page.getByText("提交成功")).toBeVisible({ timeout: 120_000 });
       await page.screenshot({ path: screenshotPath("01-worker-receipt-upload"), fullPage: true });
@@ -117,13 +158,12 @@ test.describe("Reimbursement flow (visual steps)", () => {
       ) {
         test.skip(true, "Backend / Supabase unavailable.");
       }
-      await page.getByLabel("Search receipts").fill(REIMBURSEMENT_VISUAL_VENDOR);
-      await expect(
-        page.locator("tbody tr").filter({ hasText: REIMBURSEMENT_VISUAL_VENDOR }).first()
-      ).toBeVisible({
-        timeout: 60_000,
-      });
-      await expect(page.getByText("Pending").first()).toBeVisible();
+      const receiptRow = page
+        .locator("tbody tr")
+        .filter({ hasText: REIMBURSEMENT_VISUAL_VENDOR })
+        .first();
+      await expect(receiptRow).toBeVisible({ timeout: 60_000 });
+      await expect(receiptRow.getByText("Pending")).toBeVisible();
       await page.screenshot({ path: screenshotPath("02-reimbursement-pending"), fullPage: true });
     });
 
@@ -153,13 +193,12 @@ test.describe("Reimbursement flow (visual steps)", () => {
       });
 
       await page.goto("/labor/reimbursements", { waitUntil: "domcontentloaded", timeout: 90_000 });
-      await page.getByLabel("Search reimbursements").fill(REIMBURSEMENT_VISUAL_VENDOR);
-      await expect(
-        page.locator("tbody tr").filter({ hasText: REIMBURSEMENT_VISUAL_VENDOR }).first()
-      ).toBeVisible({
-        timeout: 60_000,
-      });
-      await expect(page.getByText("pending").first()).toBeVisible();
+      const reimbursementRow = page
+        .locator("tbody tr")
+        .filter({ hasText: REIMBURSEMENT_VISUAL_VENDOR })
+        .first();
+      await expect(reimbursementRow).toBeVisible({ timeout: 60_000 });
+      await expect(reimbursementRow.getByText("pending")).toBeVisible();
       await page.screenshot({ path: screenshotPath("03-approve-reimbursement"), fullPage: true });
     });
 
@@ -173,7 +212,8 @@ test.describe("Reimbursement flow (visual steps)", () => {
       await expensesVendorSearch(page).fill(referenceNo());
       await page.waitForTimeout(500);
 
-      const nBeforePay = await countExpensesByReferenceNo(request, referenceNo());
+      const beforePay = await fetchReimbursementExpenseSnapshot(db, reimbursementId);
+      const nBeforePay = beforePay.expenses.length;
       expect(nBeforePay).toBeLessThanOrEqual(1);
 
       await page.screenshot({
@@ -184,14 +224,9 @@ test.describe("Reimbursement flow (visual steps)", () => {
 
     await test.step("05 — Pay worker (Mark reimbursement as paid)", async () => {
       await page.goto("/labor/reimbursements", { waitUntil: "domcontentloaded", timeout: 90_000 });
-      await page.getByLabel("Search reimbursements").fill(REIMBURSEMENT_VISUAL_VENDOR);
-      await expect(
-        page.locator("tbody tr").filter({ hasText: REIMBURSEMENT_VISUAL_VENDOR }).first()
-      ).toBeVisible({
-        timeout: 60_000,
-      });
+      const row = page.locator("tbody tr").filter({ hasText: REIMBURSEMENT_VISUAL_VENDOR }).first();
+      await expect(row).toBeVisible({ timeout: 60_000 });
 
-      const row = page.locator("tbody tr").filter({ hasText: REIMBURSEMENT_VISUAL_VENDOR });
       await row.getByRole("button", { name: "Actions", exact: true }).click();
       await page.getByRole("menuitem", { name: "Mark as Paid" }).click();
 
@@ -208,6 +243,17 @@ test.describe("Reimbursement flow (visual steps)", () => {
       await dialog.getByRole("button", { name: "Mark as Paid", exact: true }).click();
       const payRes = await payPost;
       expect(payRes.ok(), await payRes.text()).toBeTruthy();
+      const payBody = (await payRes.json()) as {
+        expenseId?: string | null;
+        expenseWarning?: string | null;
+        reimbursement?: { status?: string | null };
+      };
+      expect(
+        payBody.expenseWarning,
+        "Mark Paid must not hide expense creation failure"
+      ).toBeFalsy();
+      expect(payBody.expenseId, "Mark Paid should create or link the expense").toBeTruthy();
+      expect(String(payBody.reimbursement?.status ?? "").toLowerCase()).toBe("paid");
 
       await expect(dialog).not.toBeVisible({ timeout: 30_000 });
       await page.screenshot({ path: screenshotPath("05-pay-worker"), fullPage: true });
@@ -217,20 +263,32 @@ test.describe("Reimbursement flow (visual steps)", () => {
       const status = await fetchReimbursementStatus(db, reimbursementId);
       expect(String(status ?? "").toLowerCase()).toBe("paid");
 
-      const n = await countExpensesByReferenceNo(request, referenceNo());
-      expect(n, `Expected exactly one expense for ${referenceNo()}`).toBe(1);
+      const expenseSnapshot = await fetchReimbursementExpenseSnapshot(db, reimbursementId);
+      expect(
+        expenseSnapshot.expenses.length,
+        `Expected exactly one expense for ${referenceNo()}`
+      ).toBe(1);
+      const [expense] = expenseSnapshot.expenses;
+      expect(expense.reference_no === referenceNo() || expense.source_id === reimbursementId).toBe(
+        true
+      );
+      expect(String(expense.status ?? "").toLowerCase()).toBe("paid");
+      expect(Number(expense.total ?? expense.amount ?? 0)).toBeCloseTo(
+        Number(REIMBURSEMENT_VISUAL_AMOUNT),
+        2
+      );
+      expect(expenseSnapshot.lineRows.length, "Expected at least one expense line").toBeGreaterThan(
+        0
+      );
+      expect(expenseSnapshot.lineTotal).toBeCloseTo(Number(REIMBURSEMENT_VISUAL_AMOUNT), 2);
 
       await page.goto("/financial/expenses", { waitUntil: "domcontentloaded", timeout: 90_000 });
       await waitForExpensesQuerySuccess(page, 120_000);
       await expensesVendorSearch(page).fill(REIMBURSEMENT_VISUAL_VENDOR);
       await page.waitForTimeout(600);
-      // Expenses page lists archived/reviewed rows; reimbursement-created rows may be status `paid` and not appear in this pool — API count above is authoritative.
-      const n2 = await countExpensesByReferenceNo(request, referenceNo());
-      expect(n2).toBe(1);
-
-      await page.goto("/labor/reimbursements", { waitUntil: "domcontentloaded", timeout: 90_000 });
-      await page.getByLabel("Search reimbursements").fill(REIMBURSEMENT_VISUAL_VENDOR);
-      await page.waitForTimeout(400);
+      // Expenses page rendering is visual coverage; the DB snapshot above is the authoritative funds assertion.
+      const afterExpensesPage = await fetchReimbursementExpenseSnapshot(db, reimbursementId);
+      expect(afterExpensesPage.expenses.length).toBe(1);
 
       await page.screenshot({ path: screenshotPath("06-final-state"), fullPage: true });
 
