@@ -27,6 +27,8 @@ type SessionOptions = {
   onClosed?: () => void;
   /** Re-sign or re-resolve preview URL after HTTP 403/404 (receipt flows). */
   onRefreshPreviewUrl?: () => Promise<string | null>;
+  /** Edit Expense: delete current attachment by id (modal only shows control when slide has `attachmentId`). */
+  onDeleteCurrent?: (attachmentId: string) => Promise<void>;
 };
 
 export type AttachmentPreviewOpenMultiPayload = SessionOptions & {
@@ -87,6 +89,7 @@ type ModalState = {
   replaceAccept: string;
   extraFooter?: React.ReactNode;
   onRefreshPreviewUrl?: () => Promise<string | null>;
+  onDeleteCurrent?: (attachmentId: string) => Promise<void>;
 };
 
 function emptyModalState(): ModalState {
@@ -120,6 +123,7 @@ function applySessionOptions(
   if (s.extraFooter !== undefined) base.extraFooter = s.extraFooter;
   if (s.onClosed !== undefined) onClosedRef.current = s.onClosed;
   if (s.onRefreshPreviewUrl !== undefined) base.onRefreshPreviewUrl = s.onRefreshPreviewUrl;
+  if (s.onDeleteCurrent !== undefined) base.onDeleteCurrent = s.onDeleteCurrent;
 }
 
 type AttachmentPreviewContextValue = {
@@ -336,6 +340,7 @@ export function AttachmentPreviewProvider({ children }: { children: React.ReactN
       if (patch.onClosed !== undefined) onClosedRef.current = patch.onClosed;
       if (patch.onRefreshPreviewUrl !== undefined)
         next.onRefreshPreviewUrl = patch.onRefreshPreviewUrl;
+      if (patch.onDeleteCurrent !== undefined) next.onDeleteCurrent = patch.onDeleteCurrent;
 
       return next;
     });
@@ -385,6 +390,7 @@ export function AttachmentPreviewProvider({ children }: { children: React.ReactN
         replaceAccept={state.replaceAccept}
         extraFooter={state.extraFooter}
         onRefreshPreviewUrl={state.onRefreshPreviewUrl}
+        onDeleteCurrent={state.onDeleteCurrent}
       />
     </AttachmentPreviewContext.Provider>
   );

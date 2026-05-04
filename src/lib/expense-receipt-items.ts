@@ -1,8 +1,10 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Expense } from "@/lib/data";
 import {
   collapseMirrorReceiptUrlAndExpenseAttachmentItems,
   dedupeExpenseReceiptItemsByStorageKey,
 } from "@/lib/expense-attachment-dedupe";
+import { resolvePreviewSignedUrl } from "@/lib/storage-signed-url";
 
 export type ExpenseReceiptItem = { url: string; fileName: string };
 
@@ -48,4 +50,28 @@ export function expenseHasReceiptSignal(
 ): boolean {
   if ((receiptUrl ?? "").trim() !== "") return true;
   return attachmentCount > 0;
+}
+
+/** Resolve storage paths / non-http URLs to signed HTTPS for attachment preview modals. */
+export async function resolveExpenseReceiptItemsPreviewUrls(
+  items: ExpenseReceiptItem[],
+  supabase: SupabaseClient | null
+): Promise<ExpenseReceiptItem[]> {
+  if (!supabase) return items;
+  const next: ExpenseReceiptItem[] = [];
+  for (const item of items) {
+    const raw = (item.url ?? "").trim();
+    if (!raw || raw.startsWith("blob:")) {
+      next.push(item);
+      continue;
+    }
+    const urlOut = await resolvePreviewSignedUrl({
+      supabase,
+      rawUrlOrPath: raw,
+      ttlSec: 3600,
+      bucketCandidates: ["expense-attachments", "receipts"],
+    });
+    next.push(urlOut ? { ...item, url: urlOut } : item);
+  }
+  return next;
 }

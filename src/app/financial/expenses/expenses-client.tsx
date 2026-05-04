@@ -89,7 +89,6 @@ import {
   persistLastExpensePaymentAccountId,
   rememberExpenseVendorPaymentAccount,
 } from "@/lib/expense-payment-preferences";
-import { resolvePreviewSignedUrl } from "@/lib/storage-signed-url";
 import { buildExpenseDateGroups } from "@/lib/expense-list-date-groups";
 import { expenseInboxDuplicateIdSet } from "@/lib/expense-inbox-dup";
 import {
@@ -99,7 +98,11 @@ import {
   expenseNeedsReviewFromDb,
   validateMarkDoneRequiresProjectAndCategory,
 } from "@/lib/expense-workflow-status";
-import { getExpenseReceiptItems, type ExpenseReceiptItem } from "@/lib/expense-receipt-items";
+import {
+  getExpenseReceiptItems,
+  resolveExpenseReceiptItemsPreviewUrls,
+  type ExpenseReceiptItem,
+} from "@/lib/expense-receipt-items";
 
 type ProjectRow = { id: string; name: string | null; status?: string | null };
 type WorkerRow = { id: string; name: string };
@@ -165,29 +168,6 @@ function receiptItemLooksPdf(item: ExpenseReceiptItem | undefined): boolean {
   const name = (item.fileName ?? "").toLowerCase();
   const u = (item.url ?? "").toLowerCase();
   return name.endsWith(".pdf") || u.endsWith(".pdf") || u.includes("application/pdf");
-}
-
-async function resolveReceiptPreviewUrls(
-  items: ExpenseReceiptItem[],
-  supabase: ReturnType<typeof createBrowserClient> | null
-): Promise<ExpenseReceiptItem[]> {
-  if (!supabase) return items;
-  const next: ExpenseReceiptItem[] = [];
-  for (const item of items) {
-    const raw = (item.url ?? "").trim();
-    if (!raw || raw.startsWith("blob:")) {
-      next.push(item);
-      continue;
-    }
-    const urlOut = await resolvePreviewSignedUrl({
-      supabase,
-      rawUrlOrPath: raw,
-      ttlSec: 3600,
-      bucketCandidates: ["expense-attachments", "receipts"],
-    });
-    next.push(urlOut ? { ...item, url: urlOut } : item);
-  }
-  return next;
 }
 
 function normalizedVendorLabel(vendor: string): string {
@@ -922,7 +902,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
         onRefreshPreviewUrl: async () => {
           const rp = receiptPreviewRef.current;
           if (!rp || !supabase) return null;
-          const resolved = await resolveReceiptPreviewUrls(rp.items, supabase);
+          const resolved = await resolveExpenseReceiptItemsPreviewUrls(rp.items, supabase);
           const nextFiles = mapReceiptItemsToPreviewFiles(resolved);
           const u = (nextFiles[rp.index]?.url ?? "").trim();
           if (u) {
@@ -941,7 +921,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
 
       if (!needsSigned) return;
 
-      void resolveReceiptPreviewUrls(raw, supabase)
+      void resolveExpenseReceiptItemsPreviewUrls(raw, supabase)
         .then((items) => {
           if (receiptPreviewSessionRef.current !== previewSession) return;
           patchPreview({
