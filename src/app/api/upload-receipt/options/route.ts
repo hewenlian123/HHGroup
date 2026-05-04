@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 /**
  * Public-friendly dropdown data (no auth). Workers + projects for receipt upload form.
  * Prefers service role (RLS bypass); falls back to URL + anon so local dev works without
