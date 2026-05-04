@@ -17,6 +17,7 @@ function fmtUsd(n: number): string {
 
 const navItems = [
   { href: "/finance", label: "Overview" },
+  { href: "/financial/owner", label: "Owner dashboard" },
   { href: "/financial/invoices", label: "Invoices" },
   { href: "/bills", label: "Bills" },
   { href: "/financial/expenses", label: "Expenses" },
