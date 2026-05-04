@@ -26,6 +26,28 @@ if (!process.env.E2E_BASE_URL) {
 const isLocalE2eBase = /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?$/i.test(resolvedBase);
 
 /**
+ * Env passed to `npm run dev` / `next start` when Playwright spawns the webServer.
+ * Avoid forcing `SUPABASE_SERVICE_ROLE_KEY=""` — that overrides `.env.local` loaded by Next and makes API routes fall back to anon + RLS.
+ */
+function buildWebServerEnv(): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...process.env };
+  const keys = [
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    "SUPABASE_SERVICE_ROLE_KEY",
+  ] as const;
+  for (const key of keys) {
+    const raw = env[key];
+    if (raw === undefined || String(raw).trim() === "") {
+      delete env[key];
+    } else {
+      env[key] = String(raw).trim();
+    }
+  }
+  return env;
+}
+
+/**
  * Worker-payment + delete-mutation files must **always** have a matching project.
  * If `CI=true` (Cursor/VS Code often sets this) and we omit `chromium-delete-mutations`,
  * those tests match no project and the UI shows them as permanently skipped.
@@ -72,18 +94,21 @@ export default defineConfig({
           const pipelineCi = process.env.CI === "true";
           const forceDev = process.env.E2E_WEB_SERVER === "dev";
           const useStart = pipelineCi && !forceDev;
+          /**
+           * Default: reuse an already-running dev server on the port (fast local iteration).
+           * Set `E2E_PLAYWRIGHT_REUSE_DEV_SERVER=0` to force Playwright to spawn its own server so
+           * `buildWebServerEnv()` is applied (fixes `/api/upload-receipt/options` when a manually
+           * started `next dev` had no `SUPABASE_SERVICE_ROLE_KEY`). Stop the other process on the port first.
+           */
+          const reuseExistingServer = pipelineCi
+            ? false
+            : process.env.E2E_PLAYWRIGHT_REUSE_DEV_SERVER !== "0";
           return {
             command: useStart ? `PORT=${port} npm run start` : `npm run dev:safe -- -p ${port}`,
             url: `${resolvedBase}/financial/expenses`,
-            /** Only pipeline CI must own the port; local/Cursor often sets `CI=1`. */
-            reuseExistingServer: !pipelineCi,
+            reuseExistingServer,
             timeout: useStart ? 120_000 : 180_000,
-            env: {
-              ...process.env,
-              NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
-              NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
-              SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
-            },
+            env: buildWebServerEnv(),
           };
         })(),
   use: {
