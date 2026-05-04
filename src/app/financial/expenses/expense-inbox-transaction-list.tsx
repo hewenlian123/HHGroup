@@ -26,6 +26,7 @@ import {
   expenseHasProjectForWorkflow,
   expenseNeedsReviewFromDb,
 } from "@/lib/expense-workflow-status";
+import { isInboxUploadExpenseReference } from "@/lib/inbox-upload-constants";
 import { getExpenseReceiptItems } from "@/lib/expense-receipt-items";
 import {
   readDateGroupExpandedMap,
@@ -300,6 +301,15 @@ function inboxRowActivateIgnored(target: EventTarget | null): boolean {
 }
 
 function inboxStatusBadgeStyle(status: string | undefined): { dot: string; label: string } {
+  const s = String(status ?? "")
+    .trim()
+    .toLowerCase();
+  if (s === "draft") {
+    return { dot: "bg-slate-400", label: "Draft" };
+  }
+  if (s === "approved") {
+    return { dot: "bg-emerald-500", label: "Approved" };
+  }
   if (expenseNeedsReviewFromDb(status)) {
     return {
       dot: "bg-orange-500",
@@ -327,6 +337,8 @@ export type ExpenseInboxApi = {
   openReceiptPreview: (row: Expense) => void;
   openExpensePreview: (row: Expense, opts?: { mode?: "preview" | "edit" }) => void;
   handleDelete: (expense: Expense) => void;
+  /** `INBOX-UP-*` `referenceNo` values to flash after upload deep-link. */
+  highlightReferenceNos?: ReadonlySet<string> | null;
 };
 
 /** Bulk operations: parent runs sequential API calls + cache updates. */
@@ -370,6 +382,7 @@ function RowActionsMenu({ row }: { row: Expense }) {
   const a = useInbox();
   const status = row.status ?? "pending";
   const showMarkDone = expenseNeedsReviewFromDb(status);
+  const inboxUploadRow = isInboxUploadExpenseReference(row.referenceNo);
 
   return (
     <DropdownMenu>
@@ -394,7 +407,7 @@ function RowActionsMenu({ row }: { row: Expense }) {
         </DropdownMenuItem>
         {showMarkDone ? (
           <DropdownMenuItem className="cursor-pointer" onClick={() => a.toggleStatus(row)}>
-            Mark Done
+            {inboxUploadRow ? "Approve" : "Mark Done"}
           </DropdownMenuItem>
         ) : null}
         <DropdownMenuItem
@@ -579,17 +592,23 @@ function DesktopRows({
                   const vendorTitle = inboxPrimaryVendorTitle(vendorRaw);
                   const secondaryLine = inboxSecondaryMetaLine(row, vendorRaw, syntheticVendor);
                   const rowSelected = selectedIds.has(row.id);
+                  const uploadHighlight =
+                    !!row.referenceNo && (a.highlightReferenceNos?.has(row.referenceNo) ?? false);
+                  const isInboxUploadDraft = isInboxUploadExpenseReference(row.referenceNo);
 
                   return (
                     <tr
                       key={`desk-${row.id}`}
+                      data-inbox-upload-draft={isInboxUploadDraft ? "" : undefined}
                       ref={(el) => {
                         a.rowElsRef.current[row.id] = el;
                       }}
                       className={cn(
-                        "exp-row group min-h-[62px] cursor-pointer border-b border-gray-100 bg-white transition-colors duration-150 hover:bg-gray-50/70 [&>td]:align-middle [&>td]:px-3 [&>td]:py-2.5 dark:border-gray-800 dark:bg-gray-950 dark:hover:bg-gray-900/70",
+                        "exp-row group min-h-[62px] cursor-pointer border-b border-gray-100 bg-white transition-colors duration-700 ease-out hover:bg-gray-50/70 [&>td]:align-middle [&>td]:px-3 [&>td]:py-2.5 dark:border-gray-800 dark:bg-gray-950 dark:hover:bg-gray-900/70",
                         a.deletingExpenseId === row.id &&
                           "pointer-events-none opacity-0 duration-300 ease-out",
+                        uploadHighlight &&
+                          "bg-emerald-500/[0.06] shadow-[inset_0_0_0_1px_rgba(16,185,129,0.28)] dark:bg-emerald-500/[0.08] dark:shadow-[inset_0_0_0_1px_rgba(16,185,129,0.22)]",
                         a.listView === "unreviewed" &&
                           a.activeExpenseId === row.id &&
                           "ring-1 ring-inset ring-orange-200 dark:ring-orange-900/50",
@@ -867,18 +886,24 @@ function MobileRows({
                   const secondaryLine = inboxSecondaryMetaLine(row, vendorRaw, syntheticVendor);
                   const rowSelected = selectedIds.has(row.id);
                   const lp = longPressHandlers(row.id);
+                  const uploadHighlight =
+                    !!row.referenceNo && (a.highlightReferenceNos?.has(row.referenceNo) ?? false);
+                  const isInboxUploadDraft = isInboxUploadExpenseReference(row.referenceNo);
 
                   return (
                     <li
                       key={row.id}
+                      data-inbox-upload-draft={isInboxUploadDraft ? "" : undefined}
                       ref={(el) => {
                         a.rowElsRef.current[row.id] = el;
                       }}
                       className={cn(
-                        "exp-row group list-none cursor-pointer border-b border-gray-100 bg-white px-3 py-2.5 transition-colors duration-150 hover:bg-gray-50/70 dark:border-gray-800 dark:bg-gray-950 dark:hover:bg-gray-900/70",
+                        "exp-row group list-none cursor-pointer border-b border-gray-100 bg-white px-3 py-2.5 transition-colors duration-700 ease-out hover:bg-gray-50/70 dark:border-gray-800 dark:bg-gray-950 dark:hover:bg-gray-900/70",
                         "min-h-[62px]",
                         a.deletingExpenseId === row.id &&
                           "pointer-events-none opacity-0 duration-300 ease-out",
+                        uploadHighlight &&
+                          "bg-emerald-500/[0.06] shadow-[inset_0_0_0_1px_rgba(16,185,129,0.28)] dark:bg-emerald-500/[0.08] dark:shadow-[inset_0_0_0_1px_rgba(16,185,129,0.22)]",
                         a.listView === "unreviewed" &&
                           a.activeExpenseId === row.id &&
                           "ring-1 ring-inset ring-orange-200 dark:ring-orange-900/50",

@@ -7,6 +7,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
 import { dedupeExpenseAttachmentsByStorageKey } from "@/lib/expense-attachment-dedupe";
 import { expenseHasReceiptSignal } from "@/lib/expense-receipt-items";
+import { expenseCountsTowardCanonicalProjectCost } from "@/lib/expense-canonical-cost";
 import { deriveExpenseWorkflowStatus } from "@/lib/expense-workflow-status";
 import { isConfirmedExpenseStatus } from "@/lib/project-expense-cost-status";
 
@@ -925,6 +926,8 @@ export async function createQuickExpense(payload: {
   notes?: string;
   projectId?: string | null;
   paymentAccountId?: string | null;
+  /** Dedupe key for inbox upload drafts (`INBOX-UP-…`); optional for other callers. */
+  referenceNo?: string | null;
   /** Defaults: receipt_upload when receiptUrl set, else company. */
   sourceType?: "company" | "receipt_upload" | "reimbursement";
   /** When set, overrides default status (receipt → needs_review, else pending). */
@@ -955,7 +958,7 @@ export async function createQuickExpense(payload: {
     /** Legacy/newer schemas expose `vendor`; mirror label so sort + list mapping never see NULL. */
     vendor,
     notes: notes || null,
-    reference_no: null,
+    reference_no: payload.referenceNo?.trim() || null,
     total,
     /** Some schemas use NOT NULL `amount` on expenses (legacy); mirror `total` for quick create. */
     amount: total,
@@ -1021,7 +1024,7 @@ export async function createQuickExpense(payload: {
       expense_date: date,
       vendor,
       notes: notes || null,
-      reference_no: null,
+      reference_no: payload.referenceNo?.trim() || null,
       total,
       amount: total,
       line_count: 1,
@@ -1034,7 +1037,7 @@ export async function createQuickExpense(payload: {
       expense_date: date,
       vendor,
       notes: notes || null,
-      reference_no: null,
+      reference_no: payload.referenceNo?.trim() || null,
       total,
       line_count: 1,
       status: "pending",
@@ -2089,8 +2092,33 @@ export async function getProjectExpenseLines(
 
 export async function getExpenseTotalsByProject(projectId: string): Promise<number> {
   const c = client();
-  const { data: rows } = await c.from("expense_lines").select("amount").eq("project_id", projectId);
-  return (rows ?? []).reduce((s, r) => s + Number(r.amount || 0), 0);
+  const { data: rows } = await c
+    .from("expense_lines")
+    .select("amount, expense_id")
+    .eq("project_id", projectId);
+  if (!rows?.length) return 0;
+  const lineRows = rows as Array<{ amount?: unknown; expense_id?: string }>;
+  const eids = [...new Set(lineRows.map((r) => r.expense_id).filter((id): id is string => !!id))];
+  const { data: hdrs, error: hdrErr } = await c
+    .from("expenses")
+    .select("id, status, reference_no")
+    .in("id", eids);
+  if (hdrErr || !hdrs) {
+    return lineRows.reduce((s, row) => s + Number(row.amount || 0), 0);
+  }
+  const allow = new Set(
+    hdrs
+      .filter((h: { id?: string; status?: string | null; reference_no?: string | null }) =>
+        expenseCountsTowardCanonicalProjectCost(h)
+      )
+      .map((h: { id?: string }) => h.id)
+      .filter((id): id is string => typeof id === "string")
+  );
+  return lineRows.reduce((s, row) => {
+    const eid = row.expense_id ?? "";
+    if (!eid || !allow.has(eid)) return s;
+    return s + Number(row.amount || 0);
+  }, 0);
 }
 
 export async function getTotalExpenses(): Promise<number> {
@@ -2132,10 +2160,14 @@ export async function getExpensesTotalForMonth(year: number, month: number): Pro
   const end = `${y}-${m}-${String(lastDay).padStart(2, "0")}`;
   const { data: expenseRows } = await c
     .from("expenses")
-    .select("id")
+    .select("id, status, reference_no")
     .gte("expense_date", start)
     .lte("expense_date", end);
-  const ids = (expenseRows ?? []).map((r: { id: string }) => r.id);
+  const ids = (expenseRows ?? [])
+    .filter((r: { id?: string; status?: string | null; reference_no?: string | null }) =>
+      expenseCountsTowardCanonicalProjectCost(r)
+    )
+    .map((r: { id: string }) => r.id);
   if (ids.length === 0) return 0;
   const { data: lineRows } = await c.from("expense_lines").select("amount").in("expense_id", ids);
   return (lineRows ?? []).reduce((s, r) => s + Number((r as { amount?: number }).amount || 0), 0);

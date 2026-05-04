@@ -47,6 +47,15 @@ export default function nextConfig(phase) {
       }
       return workerBalancesNoStore;
     },
+    /** `_diag` is not a valid App Router segment (underscore = private folder). Alias for bookmarks/curl. */
+    async rewrites() {
+      return [
+        {
+          source: "/api/_diag/upload-receipt-supabase",
+          destination: "/api/diag/upload-receipt-supabase",
+        },
+      ];
+    },
     eslint: {
       ignoreDuringBuilds: true,
     },

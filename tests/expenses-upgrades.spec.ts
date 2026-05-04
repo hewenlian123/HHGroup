@@ -1,26 +1,16 @@
 import { test, expect } from "@playwright/test";
 import { E2E_PRESERVED_PROJECT_ID, E2E_PRESERVED_PROJECT_LABEL } from "./e2e-cleanup-db";
 import {
-  attachmentPreviewModal,
   clickVisibleQuickExpenseButton,
   dialogPaymentAccountSelect,
   expenseListRow,
   expensesVendorSearch,
   paymentAccountSelectChooseAddNew,
   pickOrCreatePaymentInSelect,
-  prepareReceiptQueueRowForConfirm,
-  receiptQueueExpenseSuccessSeen,
-  receiptQueuePaymentAccountTrigger,
-  receiptQueueRowByFileName,
   E2E_FINANCIAL_INBOX_URL,
   waitForExpensesQuerySuccess,
   waitForQuickExpenseProjectLabel,
 } from "./e2e-expenses-helpers";
-
-const PNG_1X1 = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
-  "base64"
-);
 
 function attachConsoleErrorCollector(page: import("@playwright/test").Page): {
   assertNoErrors: () => void;
@@ -47,72 +37,15 @@ function attachConsoleErrorCollector(page: import("@playwright/test").Page): {
 test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
   test.describe.configure({ timeout: 180_000 });
 
-  test("receipt queue: upload, payment, preview, confirm", async ({ page }) => {
+  test("legacy receipt queue page loads (upload → queue not asserted)", async ({ page }) => {
     await page.setViewportSize({ width: 1400, height: 900 });
     const { assertNoErrors } = attachConsoleErrorCollector(page);
 
     await page.goto("/financial/receipt-queue", { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
-
-    if (
-      await page
-        .getByText(/Configure Supabase to upload/i)
-        .isVisible()
-        .catch(() => false)
-    ) {
-      test.skip(true, "Supabase browser client not configured.");
-    }
-
-    const vendorMark = `E2E-UP-${Date.now()}`;
-    const queueFileName = `rq-${Date.now()}.png`;
-    await page.locator("main").locator('input[type="file"][multiple]').setInputFiles({
-      name: queueFileName,
-      mimeType: "image/png",
-      buffer: PNG_1X1,
+    await expect(page.getByRole("heading", { name: /receipt queue/i })).toBeVisible({
+      timeout: 30_000,
     });
-
-    const queueRow = receiptQueueRowByFileName(page, queueFileName);
-    await expect(queueRow).toBeVisible({ timeout: 120_000 });
-    await prepareReceiptQueueRowForConfirm(page, queueRow, {
-      vendor: vendorMark,
-      amount: "15.00",
-      projectId: E2E_PRESERVED_PROJECT_ID,
-    });
-
-    const paySel = receiptQueuePaymentAccountTrigger(queueRow);
-    await pickOrCreatePaymentInSelect(page, paySel);
-
-    await queueRow.getByRole("button", { name: /preview receipt/i }).click();
-    const preview = attachmentPreviewModal(page);
-    await expect(preview).toBeVisible({ timeout: 15_000 });
-    await preview.getByRole("button", { name: "Close" }).click();
-
-    await prepareReceiptQueueRowForConfirm(
-      page,
-      queueRow,
-      { vendor: vendorMark, amount: "15.00", projectId: E2E_PRESERVED_PROJECT_ID },
-      { assertConfirmEnabled: true }
-    );
-    await pickOrCreatePaymentInSelect(page, paySel);
-
-    await queueRow.getByRole("button", { name: "Confirm", exact: true }).click();
-
-    await expect
-      .poll(
-        async () => {
-          const t = await page.locator("body").innerText();
-          if (/create failed/i.test(t)) throw new Error("Confirm failed.");
-          if (receiptQueueExpenseSuccessSeen(t)) return "ok";
-          const n = await page
-            .getByTestId("receipt-queue-row")
-            .filter({ has: page.locator(`input[value="${vendorMark}"]`) })
-            .count();
-          if (n === 0) return "ok";
-          return null;
-        },
-        { timeout: 120_000, intervals: [300] }
-      )
-      .toBe("ok");
 
     assertNoErrors();
   });

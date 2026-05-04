@@ -1,3 +1,4 @@
+import { expenseCountsTowardCanonicalProjectCost } from "@/lib/expense-canonical-cost";
 import { getSupabaseClient } from "@/lib/supabase";
 
 export type CanonicalProjectProfit = {
@@ -82,6 +83,32 @@ function isMissingColumn(err: { message?: string } | null): boolean {
  * null = not yet detected; true = has direct project_id column; false = must join through expenses.
  */
 let expenseLinesHasProjectId: boolean | null = null;
+
+/** Filter parent expense headers for canonical cost (excludes inbox upload drafts, etc.). */
+async function buildEligibleExpenseIdSetForCost(
+  c: ReturnType<typeof client>,
+  expenseIds: string[]
+): Promise<Set<string> | null> {
+  const uniq = [...new Set(expenseIds.filter((id) => id && id.length > 0))];
+  if (uniq.length === 0) return new Set();
+  const { data, error } = await c
+    .from("expenses")
+    .select("id, status, reference_no")
+    .in("id", uniq);
+  if (error || !data) {
+    devLogFail("expenses (canonical cost filter)", error);
+    return null;
+  }
+  const out = new Set<string>();
+  for (const row of data as Array<{
+    id: string;
+    status?: string | null;
+    reference_no?: string | null;
+  }>) {
+    if (expenseCountsTowardCanonicalProjectCost(row)) out.add(row.id);
+  }
+  return out;
+}
 
 type LaborCostRow = {
   project_id?: string | null;
@@ -192,11 +219,15 @@ async function getExpenseCostHeaderOnlyLines(projectId: string): Promise<number>
   if (expenseIds.length === 0) return 0;
   const { data: hdrs, error: hErr } = await c
     .from("expenses")
-    .select("id")
+    .select("id, status, reference_no")
     .in("id", expenseIds)
     .eq("project_id", projectId);
   if (hErr || !hdrs?.length) return 0;
-  const allowed = new Set((hdrs as Array<{ id: string }>).map((h) => h.id));
+  const allowed = new Set(
+    (hdrs as Array<{ id: string; status?: string | null; reference_no?: string | null }>)
+      .filter((h) => expenseCountsTowardCanonicalProjectCost(h))
+      .map((h) => h.id)
+  );
   return (lines as Array<{ expense_id: string; amount?: unknown }>)
     .filter((l) => allowed.has(l.expense_id))
     .reduce((s, l) => s + toNum(l.amount), 0);
@@ -213,10 +244,22 @@ async function getExpenseCostForProject(projectId: string): Promise<number> {
   if (expenseLinesHasProjectId === true) {
     const { data, error } = await c
       .from("expense_lines")
-      .select("amount")
+      .select("amount, expense_id")
       .eq("project_id", projectId);
     if (!error && Array.isArray(data)) {
-      const direct = (data as Array<{ amount?: unknown }>).reduce((s, e) => s + toNum(e.amount), 0);
+      const lineRows = data as Array<{ amount?: unknown; expense_id?: string }>;
+      const eids = [
+        ...new Set(
+          lineRows.map((r) => r.expense_id).filter((id): id is string => typeof id === "string")
+        ),
+      ];
+      const eligible = await buildEligibleExpenseIdSetForCost(c, eids);
+      const allow = eligible ?? new Set(eids);
+      const direct = lineRows.reduce((s, row) => {
+        const eid = row.expense_id ?? "";
+        if (!eid || !allow.has(eid)) return s;
+        return s + toNum(row.amount);
+      }, 0);
       const headerOnly = await getExpenseCostHeaderOnlyLines(projectId);
       return direct + headerOnly;
     }
@@ -237,15 +280,27 @@ async function getExpenseCostForProject(projectId: string): Promise<number> {
 
   if (!error) {
     expenseLinesHasProjectId = true;
-    const full = await c.from("expense_lines").select("amount").eq("project_id", projectId);
+    const full = await c
+      .from("expense_lines")
+      .select("amount, expense_id")
+      .eq("project_id", projectId);
     if (full.error) {
       devLogFail("expense_lines (full)", full.error);
       return 0;
     }
-    const direct = (full.data as Array<{ amount?: unknown }>).reduce(
-      (s, e) => s + toNum(e.amount),
-      0
-    );
+    const lineRows = (full.data ?? []) as Array<{ amount?: unknown; expense_id?: string }>;
+    const eids = [
+      ...new Set(
+        lineRows.map((r) => r.expense_id).filter((id): id is string => typeof id === "string")
+      ),
+    ];
+    const eligible = await buildEligibleExpenseIdSetForCost(c, eids);
+    const allow = eligible ?? new Set(eids);
+    const direct = lineRows.reduce((s, row) => {
+      const eid = row.expense_id ?? "";
+      if (!eid || !allow.has(eid)) return s;
+      return s + toNum(row.amount);
+    }, 0);
     const headerOnly = await getExpenseCostHeaderOnlyLines(projectId);
     return direct + headerOnly;
   }
@@ -267,7 +322,7 @@ async function getExpenseCostViaJoin(projectId: string): Promise<number> {
   const c = client();
   const { data: headers, error: e1 } = await c
     .from("expenses")
-    .select("id")
+    .select("id, status, reference_no")
     .eq("project_id", projectId);
   if (e1) {
     if (isMissingColumn(e1)) return 0;
@@ -275,6 +330,11 @@ async function getExpenseCostViaJoin(projectId: string): Promise<number> {
     return 0;
   }
   const ids = (headers ?? [])
+    .filter((h: { id?: string; status?: string | null; reference_no?: string | null }) =>
+      expenseCountsTowardCanonicalProjectCost(
+        h as { status?: string | null; reference_no?: string | null }
+      )
+    )
     .map((h: { id?: string }) => h.id)
     .filter((id): id is string => typeof id === "string" && id.length > 0);
   if (ids.length === 0) return 0;
@@ -466,10 +526,16 @@ async function getExpenseCostBatch(projectIds: string[]): Promise<Map<string, nu
   if (expenseLinesHasProjectId === true) {
     const { data, error } = await c
       .from("expense_lines")
-      .select("project_id, amount")
+      .select("project_id, amount, expense_id")
       .in("project_id", projectIds);
     if (!error && Array.isArray(data)) {
-      for (const e of data as Array<{ project_id?: string; amount?: unknown }>) {
+      const rows = data as Array<{ project_id?: string; amount?: unknown; expense_id?: string }>;
+      const eids = [...new Set(rows.map((r) => r.expense_id).filter((id): id is string => !!id))];
+      const eligible = await buildEligibleExpenseIdSetForCost(c, eids);
+      const allow = eligible ?? new Set(eids);
+      for (const e of rows) {
+        const eid = e.expense_id ?? "";
+        if (!eid || !allow.has(eid)) continue;
         const pid = e.project_id ?? "";
         map.set(pid, (map.get(pid) ?? 0) + toNum(e.amount));
       }
@@ -492,10 +558,20 @@ async function getExpenseCostBatch(projectIds: string[]): Promise<Map<string, nu
     expenseLinesHasProjectId = true;
     const full = await c
       .from("expense_lines")
-      .select("project_id, amount")
+      .select("project_id, amount, expense_id")
       .in("project_id", projectIds);
     if (!full.error && Array.isArray(full.data)) {
-      for (const e of full.data as Array<{ project_id?: string; amount?: unknown }>) {
+      const rows = full.data as Array<{
+        project_id?: string;
+        amount?: unknown;
+        expense_id?: string;
+      }>;
+      const eids = [...new Set(rows.map((r) => r.expense_id).filter((id): id is string => !!id))];
+      const eligible = await buildEligibleExpenseIdSetForCost(c, eids);
+      const allow = eligible ?? new Set(eids);
+      for (const e of rows) {
+        const eid = e.expense_id ?? "";
+        if (!eid || !allow.has(eid)) continue;
         const pid = e.project_id ?? "";
         map.set(pid, (map.get(pid) ?? 0) + toNum(e.amount));
       }
@@ -521,7 +597,7 @@ async function getExpenseCostBatchViaJoin(projectIds: string[]): Promise<Map<str
   const c = client();
   const { data: headers, error } = await c
     .from("expenses")
-    .select("id, project_id")
+    .select("id, project_id, status, reference_no")
     .in("project_id", projectIds);
   if (error) {
     if (isMissingColumn(error)) return map;
@@ -531,10 +607,16 @@ async function getExpenseCostBatchViaJoin(projectIds: string[]): Promise<Map<str
   const byExpense = new Map<string, string>();
   const expenseIds: string[] = [];
   for (const h of headers ?? []) {
-    const row = h as { id?: string; project_id?: string | null };
+    const row = h as {
+      id?: string;
+      project_id?: string | null;
+      status?: string | null;
+      reference_no?: string | null;
+    };
     const eid = row.id != null ? String(row.id) : "";
     const pid = row.project_id != null ? String(row.project_id) : "";
     if (!eid || !pid || !map.has(pid)) continue;
+    if (!expenseCountsTowardCanonicalProjectCost(row)) continue;
     byExpense.set(eid, pid);
     expenseIds.push(eid);
   }

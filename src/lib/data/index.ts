@@ -1811,6 +1811,7 @@ export async function createQuickExpense(payload: {
   notes?: string;
   projectId?: string | null;
   paymentAccountId?: string | null;
+  referenceNo?: string | null;
   sourceType?: "company" | "receipt_upload" | "reimbursement";
   initialStatus?: NonNullable<Expense["status"]>;
 }): Promise<Expense> {

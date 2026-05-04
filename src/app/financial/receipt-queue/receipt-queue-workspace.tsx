@@ -1779,8 +1779,8 @@ export function ReceiptQueueWorkspace() {
         <div className="hidden md:block">
           <PageHeader
             className="items-start gap-1 border-0 pb-0 sm:items-start [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:tracking-tight [&_h1]:text-[#111827] [&_p]:max-w-2xl [&_p]:text-sm [&_p]:leading-relaxed [&_p]:text-[#6b7280]"
-            title="Receipt Queue"
-            description="Uploads persist across sessions. Enter saves the row and moves to the next field, then the next row that needs attention. Shift+Enter saves this row and flushes all pending edits. Add all imports in bulk (needs review)."
+            title="Receipt queue (legacy)"
+            description="Internal review table for rows created via the legacy pipeline. For new receipts, use Operations → Inbox draft (/financial/inbox). Uploads here persist across sessions; Enter / Shift+Enter behave as before."
             actions={
               <div className="flex flex-wrap items-center justify-end gap-2">
                 <Button
@@ -1818,10 +1818,10 @@ export function ReceiptQueueWorkspace() {
           />
         </div>
         <MobileListHeader
-          title="Receipt Queue"
+          title="Receipt queue (legacy)"
           fab={
             <MobileFabButton
-              ariaLabel="Upload files"
+              ariaLabel="Legacy queue — add files"
               onClick={() => uploadInputRef.current?.click()}
             />
           }
