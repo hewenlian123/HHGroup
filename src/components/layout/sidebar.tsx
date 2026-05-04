@@ -100,6 +100,7 @@ const sections: { key: (typeof SECTION_KEYS)[number]; label: string; items: NavI
     key: "FINANCE",
     label: "FINANCE",
     items: [
+      { href: "/financial/owner", label: "Owner dashboard", icon: LayoutDashboard },
       { href: "/financial/invoices", label: "Invoices", icon: FileText },
       { href: "/financial/payments", label: "Payments Received", icon: CircleDollarSign },
       { href: "/financial/commissions", label: "Commission Payments", icon: Percent },

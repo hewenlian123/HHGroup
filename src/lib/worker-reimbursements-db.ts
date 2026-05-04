@@ -155,6 +155,25 @@ function isColumnMissingError(err: { message?: string }): boolean {
   return m.includes("column") && (m.includes("does not exist") || m.includes("schema cache"));
 }
 
+/**
+ * Sum of worker reimbursements with status `approved` (approved but not yet marked paid).
+ * Safe $0 if table missing or query fails. Overlap with worker balance aggregates is possible when
+ * approved rows are also counted as open reimbursements there.
+ */
+export async function sumUnpaidApprovedWorkerReimbursements(): Promise<number> {
+  try {
+    const c = client();
+    const { data, error } = await c.from(TABLE_NAME).select("amount").eq("status", "approved");
+    if (error) {
+      if (isTableMissingError(error)) return 0;
+      return 0;
+    }
+    return (data ?? []).reduce((s, r) => s + Number((r as { amount?: number }).amount ?? 0), 0);
+  } catch {
+    return 0;
+  }
+}
+
 /** Paid reimbursements allocated to a project. Safe $0 if table missing or query fails. */
 export async function sumPaidWorkerReimbursementsForProject(projectId: string): Promise<number> {
   try {

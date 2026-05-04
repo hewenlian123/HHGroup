@@ -2173,6 +2173,35 @@ export async function getExpensesTotalForMonth(year: number, month: number): Pro
   return (lineRows ?? []).reduce((s, r) => s + Number((r as { amount?: number }).amount || 0), 0);
 }
 
+/**
+ * Heuristic for “missing receipt” alerts: rows in date range with no `receipt_url`.
+ * Attachment-only receipts may still exist; inbox review is the source of truth.
+ */
+export async function countExpensesWithoutReceiptUrlInRange(
+  start: string,
+  end: string
+): Promise<number> {
+  const c = client();
+  const { data: rows, error } = await c
+    .from("expenses")
+    .select("receipt_url, status, reference_no")
+    .gte("expense_date", start.slice(0, 10))
+    .lte("expense_date", end.slice(0, 10));
+  if (error) return 0;
+  let n = 0;
+  for (const r of rows ?? []) {
+    if (
+      !expenseCountsTowardCanonicalProjectCost(
+        r as { status?: string | null; reference_no?: string | null }
+      )
+    )
+      continue;
+    const ru = (r as { receipt_url?: string | null }).receipt_url;
+    if ((ru ?? "").trim() === "") n++;
+  }
+  return n;
+}
+
 /** Unlinked expenses for bank tx suggestion. */
 export async function getUnlinkedExpenses(): Promise<Expense[]> {
   const c = client();

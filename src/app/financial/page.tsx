@@ -36,7 +36,10 @@ export default async function FinancialPage() {
   return (
     <div className="page-container page-stack py-6">
       <PageHeader title="Financial" description="Financial overview and reports." />
-      <div className="flex items-center gap-4 border-b border-border/60 pb-3 text-sm text-muted-foreground">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-border/60 pb-3 text-sm text-muted-foreground">
+        <Link href="/financial/owner" className="hover:text-foreground">
+          Owner dashboard
+        </Link>
         <Link href="/financial/dashboard" className="hover:text-foreground">
           Company Dashboard
         </Link>
