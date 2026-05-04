@@ -5,6 +5,7 @@ import {
   dedupeExpenseReceiptItemsByStorageKey,
 } from "@/lib/expense-attachment-dedupe";
 import { resolvePreviewSignedUrl } from "@/lib/storage-signed-url";
+import { resolvePreviewSignedUrlWithMemoryCache } from "@/lib/receipt-preview-url-cache";
 
 export type ExpenseReceiptItem = { url: string; fileName: string };
 
@@ -66,6 +67,30 @@ export async function resolveExpenseReceiptItemsPreviewUrls(
       continue;
     }
     const urlOut = await resolvePreviewSignedUrl({
+      supabase,
+      rawUrlOrPath: raw,
+      ttlSec: 3600,
+      bucketCandidates: ["expense-attachments", "receipts"],
+    });
+    next.push(urlOut ? { ...item, url: urlOut } : item);
+  }
+  return next;
+}
+
+/** Same as `resolveExpenseReceiptItemsPreviewUrls` but uses the tab-session signed-URL cache + request dedupe. */
+export async function resolveExpenseReceiptItemsPreviewUrlsWithCache(
+  items: ExpenseReceiptItem[],
+  supabase: SupabaseClient | null
+): Promise<ExpenseReceiptItem[]> {
+  if (!supabase) return items;
+  const next: ExpenseReceiptItem[] = [];
+  for (const item of items) {
+    const raw = (item.url ?? "").trim();
+    if (!raw || raw.startsWith("blob:")) {
+      next.push(item);
+      continue;
+    }
+    const urlOut = await resolvePreviewSignedUrlWithMemoryCache({
       supabase,
       rawUrlOrPath: raw,
       ttlSec: 3600,

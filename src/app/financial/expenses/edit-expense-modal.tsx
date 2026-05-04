@@ -31,9 +31,10 @@ import {
 } from "@/contexts/attachment-preview-context";
 import {
   getExpenseReceiptItemsFromParts,
-  resolveExpenseReceiptItemsPreviewUrls,
+  resolveExpenseReceiptItemsPreviewUrlsWithCache,
   type ExpenseReceiptItem,
 } from "@/lib/expense-receipt-items";
+import { buildReceiptPreviewShellFiles } from "@/lib/receipt-preview-shell-files";
 import {
   dedupeExpenseAttachmentsByStorageKey,
   expenseAttachmentStorageDedupeKey,
@@ -85,19 +86,6 @@ function receiptItemsToPreviewFiles(items: ReceiptPreviewItem[]): AttachmentPrev
     fileType: inferAttachmentPreviewType(it.fileName ?? "", it.url ?? ""),
     attachmentId: it.attachmentId,
   }));
-}
-
-function receiptItemsNeedSignedUrls(
-  rawItems: ExpenseReceiptItem[],
-  shellFiles: AttachmentPreviewFileItem[]
-): boolean {
-  return (
-    shellFiles.every((f) => !(f.url ?? "").trim()) ||
-    rawItems.some((it) => {
-      const u = (it.url ?? "").trim();
-      return u.length > 0 && !/^https?:\/\//i.test(u);
-    })
-  );
 }
 
 type ProjectOption = { id: string; name: string | null };
@@ -239,7 +227,7 @@ export function EditExpenseModal({
   }, [open, supabase, attachments]);
 
   const openAttachmentPreview = React.useCallback(
-    async (att: ExpenseAttachment) => {
+    (att: ExpenseAttachment) => {
       const ex = expense;
       if (!ex) return;
       if (!supabase) {
@@ -264,7 +252,7 @@ export function EditExpenseModal({
         return;
       }
       const enriched = enrichReceiptItemsWithAttachmentIds(rawItems, deduped);
-      const shellFiles = receiptItemsToPreviewFiles(enriched);
+      const shellFiles = buildReceiptPreviewShellFiles(enriched);
       const initialIndex = Math.max(
         0,
         enriched.findIndex(
@@ -272,14 +260,72 @@ export function EditExpenseModal({
             expenseAttachmentStorageDedupeKey(x.url) === expenseAttachmentStorageDedupeKey(att.url)
         )
       );
-      const needsSigned = receiptItemsNeedSignedUrls(rawItems, shellFiles);
       const session = ++editPreviewSessionRef.current;
       editPreviewIndexRef.current = initialIndex;
+      const needsResolve = shellFiles.some((f) => f.pendingSignedUrl);
+
+      const resolveAndPatch = () => {
+        const ex0 = expensePreviewRef.current;
+        const atts0 = dedupeExpenseAttachmentsByStorageKey(attachmentsPreviewRef.current);
+        if (!ex0) return;
+        const raws0 = getExpenseReceiptItemsFromParts({
+          receiptUrl: ex0.receiptUrl,
+          attachments: atts0,
+        });
+        const enriched0 = enrichReceiptItemsWithAttachmentIds(raws0, atts0);
+        void resolveExpenseReceiptItemsPreviewUrlsWithCache(enriched0, supabase)
+          .then((resolved) => {
+            if (editPreviewSessionRef.current !== session) return;
+            const merged = resolved.map((it, i) => ({
+              ...it,
+              attachmentId: enriched0[i]?.attachmentId,
+            }));
+            patchPreviewRef.current({
+              files: receiptItemsToPreviewFiles(merged),
+            });
+          })
+          .catch(() => {
+            if (editPreviewSessionRef.current !== session) return;
+            const ex1 = expensePreviewRef.current;
+            const atts1 = dedupeExpenseAttachmentsByStorageKey(attachmentsPreviewRef.current);
+            if (!ex1) return;
+            const raws1 = getExpenseReceiptItemsFromParts({
+              receiptUrl: ex1.receiptUrl,
+              attachments: atts1,
+            });
+            const enriched1 = enrichReceiptItemsWithAttachmentIds(raws1, atts1);
+            patchPreviewRef.current({
+              files: buildReceiptPreviewShellFiles(enriched1).map((f) => ({
+                ...f,
+                pendingSignedUrl: false,
+                signedUrlResolveFailed: true,
+              })),
+            });
+          });
+      };
 
       openPreview({
         files: shellFiles,
         initialIndex,
-        isLoading: needsSigned,
+        isLoading: false,
+        onRetrySignedUrlResolve: () => {
+          const ex1 = expensePreviewRef.current;
+          const atts1 = dedupeExpenseAttachmentsByStorageKey(attachmentsPreviewRef.current);
+          if (!ex1) return;
+          const raws1 = getExpenseReceiptItemsFromParts({
+            receiptUrl: ex1.receiptUrl,
+            attachments: atts1,
+          });
+          const enriched1 = enrichReceiptItemsWithAttachmentIds(raws1, atts1);
+          patchPreviewRef.current({
+            files: buildReceiptPreviewShellFiles(enriched1).map((f) => ({
+              ...f,
+              pendingSignedUrl: needsResolve,
+              signedUrlResolveFailed: false,
+            })),
+          });
+          resolveAndPatch();
+        },
         onIndexChange: (i) => {
           editPreviewIndexRef.current = i;
         },
@@ -293,8 +339,15 @@ export function EditExpenseModal({
             attachments: atts,
           });
           const enriched2 = enrichReceiptItemsWithAttachmentIds(raws, atts);
-          const resolved = await resolveExpenseReceiptItemsPreviewUrls(enriched2, supabase);
-          patchPreviewRef.current({ files: receiptItemsToPreviewFiles(resolved) });
+          const resolved = await resolveExpenseReceiptItemsPreviewUrlsWithCache(
+            enriched2,
+            supabase
+          );
+          patchPreviewRef.current({
+            files: receiptItemsToPreviewFiles(
+              resolved.map((it, i) => ({ ...it, attachmentId: enriched2[i]?.attachmentId }))
+            ),
+          });
           const idx = editPreviewIndexRef.current;
           return (resolved[idx]?.url ?? "").trim() || null;
         },
@@ -317,32 +370,15 @@ export function EditExpenseModal({
             return;
           }
           const enriched3 = enrichReceiptItemsWithAttachmentIds(raws2, nextAtts);
-          const resolved3 = await resolveExpenseReceiptItemsPreviewUrls(enriched3, supabase);
+          const resolved3 = await resolveExpenseReceiptItemsPreviewUrlsWithCache(
+            enriched3,
+            supabase
+          );
           patchPreviewRef.current({ files: receiptItemsToPreviewFiles(resolved3) });
         },
       });
 
-      if (!needsSigned) return;
-
-      void resolveExpenseReceiptItemsPreviewUrls(enriched, supabase)
-        .then((resolved) => {
-          if (editPreviewSessionRef.current !== session) return;
-          patchPreviewRef.current({
-            isLoading: false,
-            files: receiptItemsToPreviewFiles(
-              resolved.map((it, i) => ({ ...it, attachmentId: enriched[i]?.attachmentId }))
-            ),
-          });
-        })
-        .catch((e) => {
-          if (editPreviewSessionRef.current !== session) return;
-          toast({
-            title: "Preview failed",
-            description: e instanceof Error ? e.message : "Could not prepare preview.",
-            variant: "error",
-          });
-          closePreviewRef.current();
-        });
+      if (needsResolve) resolveAndPatch();
     },
     [expense, supabase, attachments, toast, openPreview, onExpenseAttachmentsUpdated]
   );

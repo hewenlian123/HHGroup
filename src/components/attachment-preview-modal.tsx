@@ -28,6 +28,10 @@ export type AttachmentPreviewFileItem = {
   mimeType?: string;
   /** When set (e.g. Edit Expense), `onDeleteCurrent` may remove this attachment server-side. */
   attachmentId?: string;
+  /** Signed URL not ready yet — show inline skeleton; modal stays open immediately. */
+  pendingSignedUrl?: boolean;
+  /** Batch signed-URL resolve failed before any URL was shown. */
+  signedUrlResolveFailed?: boolean;
 };
 
 export function inferAttachmentPreviewType(
@@ -633,6 +637,7 @@ function ReceiptPreviewImageArea({
   const [imgPhase, setImgPhase] = React.useState<"loading" | "ready" | "error">("loading");
   const [retryKey, setRetryKey] = React.useState(0);
   const [localUrl, setLocalUrl] = React.useState(displayUrl);
+  const [bitmapReady, setBitmapReady] = React.useState(false);
   const onRefreshRef = React.useRef(onRefreshPreviewUrl);
   onRefreshRef.current = onRefreshPreviewUrl;
 
@@ -642,6 +647,7 @@ function ReceiptPreviewImageArea({
     setImgPhase("loading");
     setPreflightPhase("idle");
     setPreflightResult(null);
+    setBitmapReady(false);
   }, [displayUrl]);
 
   const effectiveUrl =
@@ -690,6 +696,27 @@ function ReceiptPreviewImageArea({
       cancelled = true;
     };
   }, [effectiveUrl]);
+
+  React.useEffect(() => {
+    if (preflightPhase !== "ok" || !effectiveUrl.trim()) {
+      setBitmapReady(false);
+      return;
+    }
+    let cancelled = false;
+    setBitmapReady(false);
+    const img = new Image();
+    img.decoding = "async";
+    img.onload = () => {
+      if (!cancelled) setBitmapReady(true);
+    };
+    img.onerror = () => {
+      if (!cancelled) setBitmapReady(true);
+    };
+    img.src = effectiveUrl;
+    return () => {
+      cancelled = true;
+    };
+  }, [preflightPhase, effectiveUrl]);
 
   const openTab = () => {
     window.open(effectiveUrl, "_blank", "noopener,noreferrer");
@@ -778,7 +805,7 @@ function ReceiptPreviewImageArea({
 
         {preflightPhase === "ok" ? (
           <>
-            {imgPhase === "loading" ? (
+            {(!bitmapReady || imgPhase === "loading") && imgPhase !== "error" ? (
               <Skeleton className="pointer-events-none absolute inset-x-2 top-6 h-[min(68dvh,520px)] w-[min(calc(100%-1rem),56rem)] max-w-full rounded-sm bg-zinc-800/90" />
             ) : null}
             {imgPhase === "error" ? (
@@ -786,7 +813,7 @@ function ReceiptPreviewImageArea({
                 className="flex max-w-md flex-col items-center gap-3 text-center"
                 data-testid="receipt-preview-img-error"
               >
-                <p className="text-sm text-zinc-400">Receipt image failed to load.</p>
+                <p className="text-sm text-zinc-400">Unable to load receipt</p>
                 {failureActions}
                 <Button
                   type="button"
@@ -802,13 +829,13 @@ function ReceiptPreviewImageArea({
                   Retry
                 </Button>
               </div>
-            ) : (
+            ) : bitmapReady ? (
               <ZoomableImageFrame
                 effectiveUrl={effectiveUrl}
                 imgPhase={imgPhase}
                 onZoomPanChange={onZoomPanChange}
                 imgClassName={cn(
-                  "max-h-[min(92dvh,calc(100dvh-6.5rem))] max-w-[min(100vw-1rem,100%)] object-contain select-none transition-opacity duration-500 ease-out",
+                  "max-h-[min(92dvh,calc(100dvh-6.5rem))] max-w-[min(100vw-1rem,100%)] object-contain select-none transition-opacity duration-300 ease-out",
                   imgPhase === "ready" ? "opacity-100" : "opacity-0"
                 )}
                 onImgLoad={() => {
@@ -818,7 +845,7 @@ function ReceiptPreviewImageArea({
                   setImgPhase("error");
                 }}
               />
-            )}
+            ) : null}
           </>
         ) : null}
       </div>
@@ -862,6 +889,8 @@ export type AttachmentPreviewModalProps = {
   onRefreshPreviewUrl?: () => Promise<string | null>;
   /** Edit Expense only: delete attachment row after confirm; hidden when current slide has no `attachmentId`. */
   onDeleteCurrent?: (attachmentId: string) => Promise<void>;
+  /** Retry batch signed-URL resolution after failure. */
+  onRetrySignedUrlResolve?: () => void;
 };
 
 export function AttachmentPreviewModal({
@@ -882,6 +911,7 @@ export function AttachmentPreviewModal({
   extraFooter,
   onRefreshPreviewUrl,
   onDeleteCurrent,
+  onRetrySignedUrlResolve,
 }: AttachmentPreviewModalProps) {
   const [mounted, setMounted] = React.useState(false);
   const [navDirection, setNavDirection] = React.useState(1);
@@ -901,6 +931,8 @@ export function AttachmentPreviewModal({
   const fileType = current.fileType ?? inferAttachmentPreviewType(fileName, fileUrl);
   const unsupported = current.unsupported ?? false;
   const mimeHint = current.mimeType;
+  const pendingSignedUrl = current.pendingSignedUrl ?? false;
+  const signedUrlResolveFailed = current.signedUrlResolveFailed ?? false;
 
   React.useEffect(() => {
     setImageZoomed(false);
@@ -1063,10 +1095,10 @@ export function AttachmentPreviewModal({
           aria-labelledby="attachment-preview-title"
           data-attachment-preview-modal
           className="fixed inset-0 z-[201] flex min-h-0 flex-col bg-gradient-to-b from-zinc-900 via-zinc-950 to-black text-zinc-100 before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(ellipse_85%_65%_at_50%_35%,rgba(255,255,255,0.06),transparent_58%)]"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0, transition: { duration: 0.18, ease: "easeOut" } }}
-          transition={{ duration: 0.2, ease: "easeOut" }}
+          initial={{ opacity: 0, scale: 0.97 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.16, ease: "easeOut" } }}
+          transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
         >
           <header className="relative z-10 flex shrink-0 items-center gap-3 border-b border-white/10 px-3 py-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
             <div className="min-w-0 flex-1">
@@ -1181,6 +1213,30 @@ export function AttachmentPreviewModal({
               ) : unsupported ? (
                 <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-4 text-center">
                   <p className="text-sm text-zinc-400">Preview not available for this file type.</p>
+                </div>
+              ) : !fileUrl && pendingSignedUrl ? (
+                <div
+                  className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-4"
+                  aria-busy
+                >
+                  <Skeleton className="h-[min(72dvh,560px)] w-full max-w-[min(100vw-2rem,56rem)] rounded-sm bg-zinc-800/90" />
+                  <span className="sr-only">Loading receipt preview</span>
+                </div>
+              ) : !fileUrl && signedUrlResolveFailed ? (
+                <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-4 text-center">
+                  <p className="text-sm text-zinc-400">Unable to load receipt</p>
+                  {onRetrySignedUrlResolve ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="touch-manipulation border-white/20 bg-white/10 text-zinc-100 hover:bg-white/15"
+                      onClick={() => onRetrySignedUrlResolve()}
+                    >
+                      <RefreshCw className="mr-2 h-3.5 w-3.5" />
+                      Retry
+                    </Button>
+                  ) : null}
                 </div>
               ) : !fileUrl ? (
                 <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-4">
