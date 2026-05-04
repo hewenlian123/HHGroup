@@ -107,16 +107,13 @@ import {
   type ExpenseReceiptItem,
 } from "@/lib/expense-receipt-items";
 import { buildReceiptPreviewShellFiles } from "@/lib/receipt-preview-shell-files";
+import { UploadReceiptsQueueModal } from "./upload-receipts-queue-modal";
 
 type ProjectRow = { id: string; name: string | null; status?: string | null };
 type WorkerRow = { id: string; name: string };
 
 const QuickExpenseModal = dynamic(
   () => import("./quick-expense-modal").then((m) => m.QuickExpenseModal),
-  { ssr: false }
-);
-const UploadReceiptsQueueModal = dynamic(
-  () => import("./upload-receipts-queue-modal").then((m) => m.UploadReceiptsQueueModal),
   { ssr: false }
 );
 const ExpenseInboxPreviewModal = dynamic(
@@ -329,7 +326,7 @@ function TransactionInboxEntryActions({
   onUpload,
   onNewExpense,
   className,
-  uploadLabel = "Inbox draft",
+  uploadLabel = "Upload receipt",
   quickButtonSize = "sm",
   compact = false,
 }: {
@@ -366,6 +363,7 @@ function TransactionInboxEntryActions({
         type="button"
         variant="outline"
         size="sm"
+        data-testid={compact ? "mobile-upload-receipt" : undefined}
         className={cn(
           "inline-flex shrink-0 touch-manipulation items-center justify-center shadow-none",
           compact ? "h-9 min-h-11 min-w-11 px-0 sm:min-h-9 sm:min-w-0 sm:px-3" : ""
@@ -582,6 +580,11 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
   } | null>(null);
   const [quickExpenseOpen, setQuickExpenseOpen] = React.useState(false);
   const [uploadReceiptsOpen, setUploadReceiptsOpen] = React.useState(false);
+
+  /** Defer opening so the gesture that triggered open cannot close the dialog as an “outside” interaction (iOS / Radix). */
+  const openUploadReceiptsModal = React.useCallback(() => {
+    queueMicrotask(() => setUploadReceiptsOpen(true));
+  }, []);
   const [filtersDrawerOpen, setFiltersDrawerOpen] = React.useState(false);
   const [filtersPopoverOpen, setFiltersPopoverOpen] = React.useState(false);
   const receiptReplaceRef = React.useRef<HTMLInputElement>(null);
@@ -1784,7 +1787,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
             </div>
             <TransactionInboxEntryActions
               onQuick={() => setQuickExpenseOpen(true)}
-              onUpload={() => setUploadReceiptsOpen(true)}
+              onUpload={openUploadReceiptsModal}
               onNewExpense={handleNew}
               compact
               className="shrink-0 justify-end"
@@ -1811,7 +1814,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                   </Button>
                   <TransactionInboxEntryActions
                     onQuick={() => setQuickExpenseOpen(true)}
-                    onUpload={() => setUploadReceiptsOpen(true)}
+                    onUpload={openUploadReceiptsModal}
                     onNewExpense={handleNew}
                   />
                 </div>
@@ -1943,12 +1946,12 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                     size="sm"
                     className="h-10 w-full shrink-0 rounded-sm shadow-none"
                     onClick={() => {
-                      setUploadReceiptsOpen(true);
                       setFiltersDrawerOpen(false);
+                      openUploadReceiptsModal();
                     }}
                   >
                     <Upload className="mr-2 h-4 w-4 shrink-0" aria-hidden />
-                    Inbox draft
+                    Upload receipt
                   </Button>
                   <Button
                     type="button"
@@ -2124,7 +2127,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                       <div className="mt-4 flex justify-center">
                         <TransactionInboxEntryActions
                           onQuick={() => setQuickExpenseOpen(true)}
-                          onUpload={() => setUploadReceiptsOpen(true)}
+                          onUpload={openUploadReceiptsModal}
                           onNewExpense={handleNew}
                           className="justify-center"
                         />
@@ -2191,7 +2194,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                       <div className="mt-4 flex w-full max-w-sm justify-center px-2">
                         <TransactionInboxEntryActions
                           onQuick={() => setQuickExpenseOpen(true)}
-                          onUpload={() => setUploadReceiptsOpen(true)}
+                          onUpload={openUploadReceiptsModal}
                           onNewExpense={handleNew}
                           quickButtonSize="default"
                           className="max-w-full justify-center gap-1"
@@ -2318,13 +2321,11 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
             expenses={expensesForListing}
           />
         ) : null}
-        {uploadReceiptsOpen ? (
-          <UploadReceiptsQueueModal
-            open={uploadReceiptsOpen}
-            onOpenChange={setUploadReceiptsOpen}
-            onSuccess={refresh}
-          />
-        ) : null}
+        <UploadReceiptsQueueModal
+          open={uploadReceiptsOpen}
+          onOpenChange={setUploadReceiptsOpen}
+          onSuccess={refresh}
+        />
         {previewOpen ? (
           <ExpenseInboxPreviewModal
             expense={previewExpenseLive}

@@ -79,7 +79,7 @@ test.describe("Inbox View Receipt preview UX", () => {
 
     await test.step("upload inbox draft image (PNG)", async () => {
       await page
-        .getByRole("button", { name: /inbox draft/i })
+        .getByRole("button", { name: /upload receipt/i })
         .first()
         .click();
       const dialog = page.getByRole("dialog");
