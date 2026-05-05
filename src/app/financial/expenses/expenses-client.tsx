@@ -100,7 +100,10 @@ import {
   validateApproveInboxUploadDraft,
   validateMarkDoneRequiresProjectAndCategory,
 } from "@/lib/expense-workflow-status";
-import { isInboxUploadExpenseReference } from "@/lib/inbox-upload-constants";
+import {
+  isInboxUploadExpenseReference,
+  stripInboxUploadNoiseFromText,
+} from "@/lib/inbox-upload-constants";
 import {
   getExpenseReceiptItems,
   resolveExpenseReceiptItemsPreviewUrlsWithCache,
@@ -145,7 +148,8 @@ function mergeExpenseReviewPatch(e: Expense, p: ExpenseReviewSavePatch): Expense
     ...e,
     date: p.date !== undefined ? p.date : e.date,
     vendorName: p.vendorName,
-    notes: p.notes ?? e.notes,
+    notes:
+      p.notes !== undefined ? stripInboxUploadNoiseFromText(p.notes ?? "") || undefined : e.notes,
     status: p.status,
     workerId: p.workerId,
     sourceType: p.sourceType !== undefined ? p.sourceType : e.sourceType,
@@ -185,7 +189,7 @@ function expenseHasReceipt(e: Expense): boolean {
 }
 
 function extractExpenseTags(expense: Expense): string[] {
-  const notes = expense.notes ?? "";
+  const notes = stripInboxUploadNoiseFromText(expense.notes ?? "");
   const m = notes.match(/items:\s*(.+)$/im);
   if (m?.[1]) {
     return m[1]
@@ -651,7 +655,10 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
       const q = debouncedSearch.toLowerCase();
       list = list.filter((e) => {
         const vendorQ = normalizedVendorLabel(e.vendorName).toLowerCase().includes(q);
-        const refQ = e.referenceNo?.toLowerCase().includes(q);
+        const refQ =
+          e.referenceNo &&
+          !isInboxUploadExpenseReference(e.referenceNo) &&
+          e.referenceNo.toLowerCase().includes(q);
         const memoQ = e.lines.some((l) => (l.memo ?? "").toLowerCase().includes(q));
         const tagQ = extractExpenseTags(e).some((t) => t.toLowerCase().includes(q));
         const amtQ = getExpenseTotal(e).toFixed(2).includes(q.replace(/[$,]/g, ""));

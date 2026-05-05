@@ -30,7 +30,10 @@ import { persistLastExpensePaymentAccountId } from "@/lib/expense-payment-prefer
 import { resolvePreviewSignedUrl } from "@/lib/storage-signed-url";
 import type { ExpenseReviewSavePatch } from "./edit-expense-modal";
 import { cn } from "@/lib/utils";
-import { isInboxUploadExpenseReference } from "@/lib/inbox-upload-constants";
+import {
+  isInboxUploadExpenseReference,
+  stripInboxUploadNoiseFromText,
+} from "@/lib/inbox-upload-constants";
 import {
   deriveExpenseWorkflowStatus,
   expenseHasCategoryForWorkflow,
@@ -246,7 +249,7 @@ export function ExpenseInboxPreviewModal({
     setProjectId(expense.lines[0]?.projectId ?? expense.headerProjectId ?? null);
     setWorkerId(expense.workerId ?? null);
     setCategory(expense.lines[0]?.category ?? "Other");
-    setNotes(expense.notes ?? "");
+    setNotes(stripInboxUploadNoiseFromText(expense.notes ?? ""));
     setExpenseDate((expense.date ?? "").slice(0, 10));
     setSourceType(expense.sourceType ?? "company");
     setPaymentMethod((expense.paymentMethod ?? "").trim() || PAYMENT_METHOD_OPTIONS[0]);
@@ -559,7 +562,7 @@ export function ExpenseInboxPreviewModal({
     setProjectId(expense.lines[0]?.projectId ?? expense.headerProjectId ?? null);
     setWorkerId(expense.workerId ?? null);
     setCategory(expense.lines[0]?.category ?? "Other");
-    setNotes(expense.notes ?? "");
+    setNotes(stripInboxUploadNoiseFromText(expense.notes ?? ""));
     setExpenseDate((expense.date ?? "").slice(0, 10));
     setSourceType(expense.sourceType ?? "company");
     setPaymentMethod((expense.paymentMethod ?? "").trim() || PAYMENT_METHOD_OPTIONS[0]);
@@ -643,7 +646,10 @@ export function ExpenseInboxPreviewModal({
                   </PreviewRow>
                   <PreviewRow label="Date">{(expense.date ?? "—").slice(0, 10)}</PreviewRow>
                   <PreviewRow label="Notes">
-                    {(expense.notes ?? "").trim() !== "" ? expense.notes : "—"}
+                    {(() => {
+                      const n = stripInboxUploadNoiseFromText((expense.notes ?? "").trim());
+                      return n !== "" ? n : "—";
+                    })()}
                   </PreviewRow>
                 </div>
               </ModalSection>

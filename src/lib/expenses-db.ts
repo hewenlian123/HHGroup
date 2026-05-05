@@ -10,6 +10,7 @@ import { expenseHasReceiptSignal } from "@/lib/expense-receipt-items";
 import { expenseCountsTowardCanonicalProjectCost } from "@/lib/expense-canonical-cost";
 import { deriveExpenseWorkflowStatus } from "@/lib/expense-workflow-status";
 import { isConfirmedExpenseStatus } from "@/lib/project-expense-cost-status";
+import { stripInboxUploadNoiseFromText } from "@/lib/inbox-upload-constants";
 
 export type ExpenseAttachment = {
   id: string;
@@ -1429,7 +1430,10 @@ export async function updateExpense(
     updates.payment_method = patch.paymentMethod;
   }
   if (patch.referenceNo !== undefined) updates.reference_no = patch.referenceNo || null;
-  if (patch.notes !== undefined) updates.notes = patch.notes || null;
+  if (patch.notes !== undefined) {
+    const cleaned = stripInboxUploadNoiseFromText(patch.notes ?? "");
+    updates.notes = cleaned || null;
+  }
   if (patch.cardName !== undefined) updates.card_name = patch.cardName?.trim() || null;
   if (patch.accountId !== undefined) updates.account_id = patch.accountId ?? null;
   if (patch.paymentAccountId !== undefined)
@@ -1505,7 +1509,10 @@ export async function updateExpenseForReview(
     expUpdates.vendor = patch.vendorName;
     expUpdates.vendor_name = patch.vendorName;
   }
-  if (patch.notes !== undefined) expUpdates.notes = patch.notes || null;
+  if (patch.notes !== undefined) {
+    const cleaned = stripInboxUploadNoiseFromText(patch.notes ?? "");
+    expUpdates.notes = cleaned || null;
+  }
   if (patch.status != null) expUpdates.status = expenseStatusForDatabase(String(patch.status));
   if (patch.workerId !== undefined) expUpdates.worker_id = patch.workerId;
   if (patch.sourceType != null)
