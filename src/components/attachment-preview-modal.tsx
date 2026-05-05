@@ -19,6 +19,18 @@ import { preflightPreviewUrl, type PreviewUrlPreflightResult } from "@/lib/previ
 
 export type AttachmentPreviewFileType = "image" | "pdf";
 
+export const ATTACHMENT_PREVIEW_MODAL_SELECTOR = "[data-attachment-preview-modal]";
+
+export function eventTargetsAttachmentPreviewModal(
+  event: Event & { detail?: { originalEvent?: Event } }
+): boolean {
+  const targets = [event.target, event.detail?.originalEvent?.target];
+  return targets.some((target) => {
+    if (!(target instanceof Element)) return false;
+    return Boolean(target.closest(ATTACHMENT_PREVIEW_MODAL_SELECTOR));
+  });
+}
+
 export type AttachmentPreviewFileItem = {
   url: string;
   fileName?: string;
@@ -1095,6 +1107,7 @@ export function AttachmentPreviewModal({
           aria-labelledby="attachment-preview-title"
           data-attachment-preview-modal
           className="fixed inset-0 z-[201] flex min-h-0 flex-col bg-gradient-to-b from-zinc-900 via-zinc-950 to-black text-zinc-100 before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(ellipse_85%_65%_at_50%_35%,rgba(255,255,255,0.06),transparent_58%)]"
+          style={{ zIndex: 10000, pointerEvents: "auto" }}
           initial={{ opacity: 0, scale: 0.97 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.16, ease: "easeOut" } }}

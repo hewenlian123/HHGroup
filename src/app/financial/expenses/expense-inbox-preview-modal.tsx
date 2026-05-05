@@ -18,7 +18,10 @@ import {
 } from "@/components/ui/select";
 import { getExpenseTotal, type Expense, type ExpenseAttachment } from "@/lib/data";
 import { useToast } from "@/components/toast/toast-provider";
-import { inferAttachmentPreviewType } from "@/components/attachment-preview-modal";
+import {
+  eventTargetsAttachmentPreviewModal,
+  inferAttachmentPreviewType,
+} from "@/components/attachment-preview-modal";
 import {
   useAttachmentPreview,
   type AttachmentPreviewFileItem,
@@ -40,20 +43,19 @@ import {
   expenseHasProjectForWorkflow,
   expenseNeedsReviewFromDb,
   expenseStatusUiLabel,
+  preserveConfirmedExpenseStatusOnCompleteSave,
   validateApproveInboxUploadDraft,
   EXPENSE_PROJECT_SELECT_NONE,
   EXPENSE_WORKER_SELECT_NONE,
 } from "@/lib/expense-workflow-status";
 import {
+  getExpenseDisplayAttachments,
   getExpenseReceiptItemsFromParts,
   resolveExpenseReceiptItemsPreviewUrlsWithCache,
   type ExpenseReceiptItem,
 } from "@/lib/expense-receipt-items";
 import { buildReceiptPreviewShellFiles } from "@/lib/receipt-preview-shell-files";
-import {
-  dedupeExpenseAttachmentsByStorageKey,
-  expenseAttachmentStorageDedupeKey,
-} from "@/lib/expense-attachment-dedupe";
+import { expenseAttachmentStorageDedupeKey } from "@/lib/expense-attachment-dedupe";
 import { ExpenseEditAttachmentsSection } from "./expense-edit-attachments-section";
 
 type ProjectOption = { id: string; name: string | null };
@@ -254,7 +256,7 @@ export function ExpenseInboxPreviewModal({
     setSourceType(expense.sourceType ?? "company");
     setPaymentMethod((expense.paymentMethod ?? "").trim() || PAYMENT_METHOD_OPTIONS[0]);
     setPaymentAccountId(expense.paymentAccountId ?? "");
-    setAttachments(dedupeExpenseAttachmentsByStorageKey(expense.attachments ?? []));
+    setAttachments(getExpenseDisplayAttachments(expense));
   }, [expense]);
 
   React.useEffect(() => {
@@ -490,9 +492,16 @@ export function ExpenseInboxPreviewModal({
           null)
         : null;
       const pm = paymentMethod.trim() || PAYMENT_METHOD_OPTIONS[0];
-      let workflowStatus = deriveExpenseWorkflowStatus(projectId, category || "Other");
+      let workflowStatus = preserveConfirmedExpenseStatusOnCompleteSave(
+        expense.status,
+        deriveExpenseWorkflowStatus(projectId, category || "Other")
+      );
       /* INBOX-UP drafts must stay in the Inbox pool until explicit Approve — DB `reviewed` removes them from Inbox. */
-      if (isInboxUploadExpenseReference(expense.referenceNo) && workflowStatus === "reviewed") {
+      if (
+        isInboxUploadExpenseReference(expense.referenceNo) &&
+        workflowStatus === "reviewed" &&
+        expenseNeedsReviewFromDb(expense.status)
+      ) {
         workflowStatus = "needs_review";
       }
       const saved = await onSave({
@@ -567,7 +576,7 @@ export function ExpenseInboxPreviewModal({
     setSourceType(expense.sourceType ?? "company");
     setPaymentMethod((expense.paymentMethod ?? "").trim() || PAYMENT_METHOD_OPTIONS[0]);
     setPaymentAccountId(expense.paymentAccountId ?? "");
-    setAttachments(dedupeExpenseAttachmentsByStorageKey(expense.attachments ?? []));
+    setAttachments(getExpenseDisplayAttachments(expense));
     setMode("preview");
   };
 
@@ -593,7 +602,15 @@ export function ExpenseInboxPreviewModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="expenses-ui-dialog flex max-h-[min(92vh,820px)] w-full max-w-[560px] flex-col gap-0 overflow-hidden border-border/60 p-0">
+      <DialogContent
+        onPointerDownOutside={(e) => {
+          if (eventTargetsAttachmentPreviewModal(e)) e.preventDefault();
+        }}
+        onInteractOutside={(e) => {
+          if (eventTargetsAttachmentPreviewModal(e)) e.preventDefault();
+        }}
+        className="expenses-ui-dialog flex max-h-[min(92vh,820px)] w-full max-w-[560px] flex-col gap-0 overflow-hidden border-border/60 p-0"
+      >
         <DialogHeader className="shrink-0 border-b border-border/60 px-4 py-3">
           <DialogTitle className="text-sm font-semibold text-foreground">
             {mode === "preview" ? "Expense" : "Edit expense"}

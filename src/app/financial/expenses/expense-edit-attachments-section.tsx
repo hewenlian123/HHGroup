@@ -10,7 +10,10 @@ import {
   type Expense,
   type ExpenseAttachment,
 } from "@/lib/data";
-import { dedupeExpenseAttachmentsByStorageKey } from "@/lib/expense-attachment-dedupe";
+import {
+  getExpenseDisplayAttachments,
+  isExpenseReceiptUrlAttachmentId,
+} from "@/lib/expense-receipt-items";
 import { useToast } from "@/components/toast/toast-provider";
 import { cn } from "@/lib/utils";
 import {
@@ -59,8 +62,8 @@ export function ExpenseEditAttachmentsSection({
 
   const applyDedupedAttachments = React.useCallback(
     (next: Expense | null | undefined) => {
-      if (!next?.attachments) return;
-      setAttachments(dedupeExpenseAttachmentsByStorageKey(next.attachments));
+      if (!next) return;
+      setAttachments(getExpenseDisplayAttachments(next));
     },
     [setAttachments]
   );
@@ -133,6 +136,7 @@ export function ExpenseEditAttachmentsSection({
     async (e: React.MouseEvent, att: ExpenseAttachment) => {
       e.preventDefault();
       e.stopPropagation();
+      if (isExpenseReceiptUrlAttachmentId(att.id)) return;
       if (!window.confirm("Delete this attachment?")) return;
       try {
         const next = await deleteExpenseAttachment(expense.id, att.id);
@@ -256,8 +260,13 @@ export function ExpenseEditAttachmentsSection({
             {attachments.map((att) => {
               const thumb = thumbById[att.id];
               const isPdf = !attachmentIsImage(att);
+              const canDelete = showDelete && !isExpenseReceiptUrlAttachmentId(att.id);
               return (
-                <div key={att.id} className={cn(CARD_FRAME, "group/card")}>
+                <div
+                  key={att.id}
+                  data-testid="edit-expense-existing-attachment"
+                  className={cn(CARD_FRAME, "group/card")}
+                >
                   <button
                     type="button"
                     className="flex h-full w-full flex-col items-stretch justify-stretch outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
@@ -283,7 +292,7 @@ export function ExpenseEditAttachmentsSection({
                       </div>
                     )}
                   </button>
-                  {showDelete ? (
+                  {canDelete ? (
                     <button
                       type="button"
                       className={cn(
