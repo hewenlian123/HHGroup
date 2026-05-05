@@ -101,3 +101,58 @@
 .expenses-ui-dialog .exp-btn-secondary:hover {
   background-color: #f9fafb !important;
 }
+
+/* Portal content lives under <body>, so these mobile safety rules are intentionally global. */
+@media (max-width: 767px) {
+  .upload-receipt-mobile-overlay {
+    z-index: 9998 !important;
+    background: rgb(0 0 0 / 0.35) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    animation: none !important;
+    transition: none !important;
+    pointer-events: auto !important;
+  }
+
+  .upload-receipt-mobile-dialog {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 9999 !important;
+    width: 100vw !important;
+    max-width: none !important;
+    height: 100vh !important;
+    min-height: 100vh !important;
+    min-height: -webkit-fill-available !important;
+    max-height: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    pointer-events: auto !important;
+    animation: none !important;
+    transition: none !important;
+    isolation: isolate;
+    overscroll-behavior: contain;
+  }
+
+  .upload-receipt-mobile-dialog[data-state="open"] {
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
+  }
+}
+
+@supports (height: 100dvh) {
+  @media (max-width: 767px) {
+    .upload-receipt-mobile-dialog {
+      height: 100dvh !important;
+      max-height: 100dvh !important;
+    }
+  }
+}
+
+@supports (min-height: 100svh) {
+  @media (max-width: 767px) {
+    .upload-receipt-mobile-dialog {
+      min-height: 100svh !important;
+    }
+  }
+}

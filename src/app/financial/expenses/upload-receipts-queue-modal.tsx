@@ -22,11 +22,15 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  uploadButtonClicked?: boolean;
 };
 
 type PendingItem = { id: string; file: File };
 
 type StatusPhase = "ready" | "preparing" | "creating" | "added" | "failed";
+type UploadDebugLastAction = "idle" | "take-photo" | "upload-files" | "close";
+
+const UPLOAD_RECEIPT_DEBUG_ENABLED = process.env.NODE_ENV !== "production";
 
 function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
@@ -126,17 +130,26 @@ function PendingReceiptRow({
   );
 }
 
-export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Props) {
+export function UploadReceiptsQueueModal({
+  open,
+  onOpenChange,
+  onSuccess,
+  uploadButtonClicked = false,
+}: Props) {
   const router = useRouter();
   const { toast } = useToast();
-  const cameraInputRef = React.useRef<HTMLInputElement>(null);
-  const uploadInputRef = React.useRef<HTMLInputElement>(null);
+  const cameraInputRef = React.useRef<HTMLInputElement | null>(null);
+  const uploadInputRef = React.useRef<HTMLInputElement | null>(null);
   const [dragOver, setDragOver] = React.useState(false);
   const [pendingItems, setPendingItems] = React.useState<PendingItem[]>([]);
   const [captureUploading, setCaptureUploading] = React.useState(false);
   const [receiptImagePreparing, setReceiptImagePreparing] = React.useState(false);
   const [addedToQueueHint, setAddedToQueueHint] = React.useState(false);
   const [uploadFailed, setUploadFailed] = React.useState(false);
+  const [lastDebugAction, setLastDebugAction] = React.useState<UploadDebugLastAction>("idle");
+  const [dialogMounted, setDialogMounted] = React.useState(false);
+  const [cameraInputMounted, setCameraInputMounted] = React.useState(false);
+  const [uploadInputMounted, setUploadInputMounted] = React.useState(false);
   const addedHintTimerRef = React.useRef<number | null>(null);
   /** Ignore outside closes briefly after open — same pointer/touch can otherwise dismiss on iOS (Radix). */
   const suppressOutsideUntilRef = React.useRef(0);
@@ -149,6 +162,46 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
 
   const openRetryPicker = React.useCallback(() => {
     uploadInputRef.current?.click();
+  }, []);
+
+  const setDialogContentNode = React.useCallback((node: HTMLDivElement | null) => {
+    if (UPLOAD_RECEIPT_DEBUG_ENABLED) setDialogMounted(Boolean(node));
+  }, []);
+
+  const setCameraInputNode = React.useCallback((node: HTMLInputElement | null) => {
+    cameraInputRef.current = node;
+    if (UPLOAD_RECEIPT_DEBUG_ENABLED) setCameraInputMounted(Boolean(node));
+  }, []);
+
+  const setUploadInputNode = React.useCallback((node: HTMLInputElement | null) => {
+    uploadInputRef.current = node;
+    if (UPLOAD_RECEIPT_DEBUG_ENABLED) setUploadInputMounted(Boolean(node));
+  }, []);
+
+  const fileInputsMounted = cameraInputMounted && uploadInputMounted;
+
+  React.useEffect(() => {
+    if (!UPLOAD_RECEIPT_DEBUG_ENABLED) return;
+    console.info("[UploadReceiptModal] modal open", open);
+  }, [open]);
+
+  React.useEffect(() => {
+    if (!UPLOAD_RECEIPT_DEBUG_ENABLED) return;
+    console.info("[UploadReceiptModal] dialog mounted", dialogMounted);
+  }, [dialogMounted]);
+
+  React.useEffect(() => {
+    if (!UPLOAD_RECEIPT_DEBUG_ENABLED) return;
+    console.info("[UploadReceiptModal] file input mounted", fileInputsMounted);
+  }, [fileInputsMounted]);
+
+  React.useEffect(() => {
+    if (!UPLOAD_RECEIPT_DEBUG_ENABLED) return;
+    console.info("[UploadReceiptModal] last action", lastDebugAction);
+  }, [lastDebugAction]);
+
+  const setDebugLastAction = React.useCallback((action: UploadDebugLastAction) => {
+    if (UPLOAD_RECEIPT_DEBUG_ENABLED) setLastDebugAction(action);
   }, []);
 
   const flashAddedToQueueHint = React.useCallback(() => {
@@ -306,6 +359,28 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
     void performUpload(files);
   }, [pendingItems, performUpload]);
 
+  const handleDialogOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      if (!nextOpen) setDebugLastAction("close");
+      onOpenChange(nextOpen);
+    },
+    [onOpenChange, setDebugLastAction]
+  );
+
+  const handleTakePhotoClick = React.useCallback(() => {
+    setDebugLastAction("take-photo");
+    cameraInputRef.current?.click();
+  }, [setDebugLastAction]);
+
+  const handleUploadFilesClick = React.useCallback(() => {
+    setDebugLastAction("upload-files");
+    uploadInputRef.current?.click();
+  }, [setDebugLastAction]);
+
+  const handleCloseClick = React.useCallback(() => {
+    setDebugLastAction("close");
+  }, [setDebugLastAction]);
+
   const busy = captureUploading;
   const statusPhase = resolveStatusPhase(
     captureUploading,
@@ -320,17 +395,19 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
   }, [busy]);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogPortal>
         <DialogOverlay
           className={cn(
-            "!z-[100]",
+            "upload-receipt-mobile-overlay !z-[100] max-md:!z-[9998]",
             "bg-[rgba(15,23,42,0.22)] backdrop-blur-[3px]",
-            "max-md:bg-black/35 max-md:backdrop-blur-none",
+            "max-md:bg-black/35 max-md:!backdrop-blur-none",
+            "max-md:data-[state=open]:!animate-none max-md:data-[state=closed]:!animate-none max-md:!duration-0",
             "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
           )}
         />
         <DialogPrimitive.Content
+          ref={setDialogContentNode}
           onOpenAutoFocus={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => {
             if (busy) e.preventDefault();
@@ -350,12 +427,14 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
             if (Date.now() < suppressOutsideUntilRef.current) e.preventDefault();
           }}
           className={cn(
-            "fixed !z-[101] flex min-h-0 w-full max-md:h-full flex-col overflow-hidden overflow-x-hidden border border-black/[0.06] bg-background shadow-[0_12px_40px_-8px_rgba(15,23,42,0.18)] outline-none dark:border-white/[0.08] dark:shadow-[0_12px_48px_-12px_rgba(0,0,0,0.55)]",
+            "upload-receipt-mobile-dialog fixed !z-[101] flex min-h-0 w-full flex-col overflow-hidden overflow-x-hidden border border-black/[0.06] bg-background shadow-[0_12px_40px_-8px_rgba(15,23,42,0.18)] outline-none dark:border-white/[0.08] dark:shadow-[0_12px_48px_-12px_rgba(0,0,0,0.55)]",
             "p-0 md:rounded-[24px] md:p-6",
-            "max-md:inset-0 max-md:rounded-none max-md:border-0 max-md:shadow-none",
+            "max-md:fixed max-md:inset-0 max-md:!z-[9999] max-md:h-screen max-md:min-h-screen max-md:max-h-none max-md:w-screen max-md:max-w-none max-md:rounded-none max-md:border-0 max-md:shadow-none",
+            "max-md:h-[100dvh] max-md:min-h-[100svh] max-md:max-h-[100dvh]",
             "max-md:pt-[max(1rem,env(safe-area-inset-top))] max-md:pb-[max(1rem,env(safe-area-inset-bottom))] max-md:pl-[max(1rem,env(safe-area-inset-left))] max-md:pr-[max(1rem,env(safe-area-inset-right))]",
             /** iOS Safari: enter animations can leave sheet at opacity 0 (backdrop visible, body missing). Open state: opaque + no stray transform. */
-            "max-md:data-[state=open]:!opacity-100 max-md:data-[state=open]:[transform:none]",
+            "max-md:pointer-events-auto max-md:!opacity-100 max-md:!transform-none max-md:data-[state=open]:!opacity-100 max-md:data-[state=open]:!transform-none",
+            "max-md:data-[state=open]:!animate-none max-md:data-[state=closed]:!animate-none max-md:!transition-none max-md:!duration-0",
             "duration-200 ease-out",
             "md:max-h-[min(92vh,900px)]",
             "md:left-1/2 md:top-1/2 md:max-w-[460px] md:-translate-x-1/2 md:-translate-y-1/2 md:data-[state=closed]:animate-out md:data-[state=open]:animate-in md:data-[state=closed]:fade-out-0 md:data-[state=open]:fade-in-0 md:data-[state=closed]:zoom-out-95 md:data-[state=open]:zoom-in-95",
@@ -382,48 +461,54 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
                   "touch-manipulation"
                 )}
                 aria-label="Close"
+                onClick={handleCloseClick}
               >
                 <X className="h-5 w-5" strokeWidth={1.5} />
               </DialogPrimitive.Close>
             </div>
 
             <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto pt-6 max-md:pt-4">
+              <input
+                ref={setCameraInputNode}
+                data-testid="upload-receipt-camera-input"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="sr-only"
+                tabIndex={-1}
+                disabled={busy}
+                onChange={(e) => {
+                  addPendingFiles(e.target.files);
+                  e.target.value = "";
+                }}
+              />
+              <input
+                ref={setUploadInputNode}
+                data-testid="upload-receipt-files-input"
+                type="file"
+                accept="image/*,application/pdf"
+                multiple
+                className="sr-only"
+                tabIndex={-1}
+                disabled={busy}
+                onChange={(e) => {
+                  addPendingFiles(e.target.files);
+                  e.target.value = "";
+                }}
+              />
+
               {!supabase ? (
                 <p className="text-sm text-amber-600 dark:text-amber-400">
                   Configure Supabase to upload.
                 </p>
               ) : (
                 <>
-                  <input
-                    ref={cameraInputRef}
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    className="hidden"
-                    disabled={busy}
-                    onChange={(e) => {
-                      addPendingFiles(e.target.files);
-                      e.target.value = "";
-                    }}
-                  />
-                  <input
-                    ref={uploadInputRef}
-                    type="file"
-                    accept="image/*,application/pdf"
-                    multiple
-                    className="hidden"
-                    disabled={busy}
-                    onChange={(e) => {
-                      addPendingFiles(e.target.files);
-                      e.target.value = "";
-                    }}
-                  />
-
                   <div className="flex flex-col gap-3">
                     <button
                       type="button"
                       disabled={busy}
-                      onClick={() => cameraInputRef.current?.click()}
+                      data-testid="upload-receipt-take-photo"
+                      onClick={handleTakePhotoClick}
                       className={cn(
                         "group flex min-h-[76px] w-full items-center gap-4 rounded-[20px] border border-black/[0.07] bg-background px-4 py-4 text-left transition-[transform,background-color,border-color] active:scale-[0.995] disabled:pointer-events-none disabled:opacity-45 dark:border-white/[0.09]",
                         "hover:bg-muted/35 hover:border-black/[0.1] dark:hover:border-white/[0.12]",
@@ -450,7 +535,8 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
                     <button
                       type="button"
                       disabled={busy}
-                      onClick={() => uploadInputRef.current?.click()}
+                      data-testid="upload-receipt-upload-files"
+                      onClick={handleUploadFilesClick}
                       className={cn(
                         "group flex min-h-[76px] w-full items-center gap-4 rounded-[20px] border border-black/[0.07] bg-background px-4 py-4 text-left transition-[transform,background-color,border-color] active:scale-[0.995] disabled:pointer-events-none disabled:opacity-45 dark:border-white/[0.09]",
                         "hover:bg-muted/35 hover:border-black/[0.1] dark:hover:border-white/[0.12]",
@@ -581,6 +667,19 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
                 </>
               )}
             </div>
+            {UPLOAD_RECEIPT_DEBUG_ENABLED ? (
+              <div
+                aria-hidden="true"
+                data-testid="upload-receipt-mobile-debug"
+                className="pointer-events-none fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-[max(0.75rem,env(safe-area-inset-left))] z-[10000] max-w-[calc(100vw-1.5rem)] rounded-md border border-amber-300/70 bg-amber-50/95 px-2.5 py-2 text-[10px] leading-4 text-amber-950 shadow-sm md:hidden"
+              >
+                <div>upload button clicked: {String(uploadButtonClicked)}</div>
+                <div>modal open: {String(open)}</div>
+                <div>dialog mounted: {String(dialogMounted)}</div>
+                <div>file input mounted: {String(fileInputsMounted)}</div>
+                <div>last action: {lastDebugAction}</div>
+              </div>
+            ) : null}
           </div>
         </DialogPrimitive.Content>
       </DialogPortal>
