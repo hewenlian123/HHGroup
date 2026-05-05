@@ -24,13 +24,18 @@ import {
   type ExpenseAttachment,
 } from "@/lib/data";
 import { useToast } from "@/components/toast/toast-provider";
-import { inferAttachmentPreviewType } from "@/components/attachment-preview-modal";
+import {
+  eventTargetsAttachmentPreviewModal,
+  inferAttachmentPreviewType,
+} from "@/components/attachment-preview-modal";
 import {
   useAttachmentPreview,
   type AttachmentPreviewFileItem,
 } from "@/contexts/attachment-preview-context";
 import {
+  getExpenseDisplayAttachments,
   getExpenseReceiptItemsFromParts,
+  isExpenseReceiptUrlAttachmentId,
   resolveExpenseReceiptItemsPreviewUrlsWithCache,
   type ExpenseReceiptItem,
 } from "@/lib/expense-receipt-items";
@@ -48,6 +53,7 @@ import {
   deriveExpenseWorkflowStatus,
   expenseNeedsReviewFromDb,
   expenseStatusUiLabel,
+  preserveConfirmedExpenseStatusOnCompleteSave,
   EXPENSE_PROJECT_SELECT_NONE,
   EXPENSE_WORKER_SELECT_NONE,
 } from "@/lib/expense-workflow-status";
@@ -76,7 +82,8 @@ function enrichReceiptItemsWithAttachmentIds(
   return items.map((it) => {
     const k = expenseAttachmentStorageDedupeKey(it.url);
     const match = k ? keyToAtt.get(k) : undefined;
-    return { ...it, attachmentId: match?.id };
+    const attachmentId = isExpenseReceiptUrlAttachmentId(match?.id) ? undefined : match?.id;
+    return { ...it, attachmentId };
   });
 }
 
@@ -190,7 +197,7 @@ export function EditExpenseModal({
       setExpenseDate((expense.date ?? "").slice(0, 10));
       setSourceType(expense.sourceType ?? "company");
       setPaymentAccountId(expense.paymentAccountId ?? "");
-      setAttachments(expense.attachments ?? []);
+      setAttachments(getExpenseDisplayAttachments(expense));
     }
   }, [expense]);
 
@@ -353,11 +360,12 @@ export function EditExpenseModal({
           return (resolved[idx]?.url ?? "").trim() || null;
         },
         onDeleteCurrent: async (attachmentId) => {
+          if (isExpenseReceiptUrlAttachmentId(attachmentId)) return;
           const ex3 = expensePreviewRef.current;
           if (!ex3) return;
           const nextExp = await deleteExpenseAttachment(ex3.id, attachmentId);
           if (!nextExp) return;
-          const nextAtts = dedupeExpenseAttachmentsByStorageKey(nextExp.attachments ?? []);
+          const nextAtts = getExpenseDisplayAttachments(nextExp);
           setAttachments(nextAtts);
           onExpenseAttachmentsUpdated?.(nextExp);
           expensePreviewRef.current = nextExp;
@@ -399,7 +407,10 @@ export function EditExpenseModal({
           expense.paymentAccountName ??
           null)
         : null;
-      const workflowStatus = deriveExpenseWorkflowStatus(projectId, category || "Other");
+      const workflowStatus = preserveConfirmedExpenseStatusOnCompleteSave(
+        expense.status,
+        deriveExpenseWorkflowStatus(projectId, category || "Other")
+      );
       onSave({
         expenseId: expense.id,
         date: expenseDate.slice(0, 10),
@@ -427,7 +438,15 @@ export function EditExpenseModal({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="expenses-ui-dialog flex max-h-[min(92vh,820px)] w-full max-w-[560px] flex-col gap-0 overflow-hidden border-border/60 p-0">
+        <DialogContent
+          onPointerDownOutside={(e) => {
+            if (eventTargetsAttachmentPreviewModal(e)) e.preventDefault();
+          }}
+          onInteractOutside={(e) => {
+            if (eventTargetsAttachmentPreviewModal(e)) e.preventDefault();
+          }}
+          className="expenses-ui-dialog flex max-h-[min(92vh,820px)] w-full max-w-[560px] flex-col gap-0 overflow-hidden border-border/60 p-0"
+        >
           <DialogHeader className="shrink-0 border-b border-border/60 px-4 py-3">
             <DialogTitle className="text-sm font-semibold text-foreground">
               Edit expense

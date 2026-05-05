@@ -26,10 +26,7 @@ import {
   expenseHasProjectForWorkflow,
   expenseNeedsReviewFromDb,
 } from "@/lib/expense-workflow-status";
-import {
-  isInboxUploadExpenseReference,
-  stripInboxUploadNoiseFromText,
-} from "@/lib/inbox-upload-constants";
+import { isInboxUploadExpenseReference } from "@/lib/inbox-upload-constants";
 import { getExpenseReceiptItems } from "@/lib/expense-receipt-items";
 import {
   readDateGroupExpandedMap,
@@ -186,21 +183,12 @@ function inboxPrimaryVendorTitle(vendor: string): string {
   return (vendor ?? "").trim() || "Unknown Vendor";
 }
 
-function inboxDescriptionIdSegment(e: Expense, vendorRaw: string, synthetic: boolean): string {
-  if (synthetic) {
-    const v = vendorRaw.trim();
-    if (v) return v.length > 48 ? `${v.slice(0, 45)}…` : v;
-  }
-  return inboxSubtitleIdPart(e);
-}
-
-/** Single secondary line: ID · Date · Payment · Source */
-function inboxSecondaryMetaLine(e: Expense, vendorRaw: string, synthetic: boolean): string {
-  const idSeg = inboxDescriptionIdSegment(e, vendorRaw, synthetic);
+/** Single secondary line: Date · Payment · Source. Technical refs stay out of display. */
+function inboxSecondaryMetaLine(e: Expense): string {
   const dateSeg = inboxSubtitleDate(e.date);
   const paySeg = paymentMethodDisplayLabel(e.paymentMethod);
   const srcSeg = sourceTypeLabel(e.sourceType);
-  return `${idSeg} · ${dateSeg} · ${paySeg} · ${srcSeg}`;
+  return `${dateSeg} · ${paySeg} · ${srcSeg}`;
 }
 
 function sourceTypeLabel(t: Expense["sourceType"]): string {
@@ -217,20 +205,6 @@ function paymentMethodDisplayLabel(pm: string | undefined): string {
 function primaryCategory(e: Expense): string {
   const c = e.lines[0]?.category;
   return c && c.trim() !== "" ? c : "—";
-}
-
-/** Line 2: ID / description snippet · date · payment · source */
-function inboxSubtitleIdPart(e: Expense): string {
-  const ref = (e.referenceNo ?? "").trim();
-  const refForDisplay = ref && !isInboxUploadExpenseReference(ref) ? ref : "";
-  if (refForDisplay) {
-    return refForDisplay.length > 36 ? `${refForDisplay.slice(0, 33)}…` : refForDisplay;
-  }
-  const notes = stripInboxUploadNoiseFromText((e.notes ?? "").trim());
-  if (notes) return notes.length > 36 ? `${notes.slice(0, 33)}…` : notes;
-  const compact = e.id.replace(/-/g, "");
-  if (compact.length <= 14) return compact || "—";
-  return `${compact.slice(0, 14)}…`;
 }
 
 function inboxSubtitleDate(iso: string | undefined): string {
@@ -609,9 +583,8 @@ function DesktopRows({
                   const missingCategory = !expenseHasCategoryForWorkflow(row);
                   const showDupHint = dupIds.has(row.id);
                   const vendorRaw = row.vendorName ?? "";
-                  const syntheticVendor = looksLikeTestOrSyntheticVendor(vendorRaw);
                   const vendorTitle = inboxPrimaryVendorTitle(vendorRaw);
-                  const secondaryLine = inboxSecondaryMetaLine(row, vendorRaw, syntheticVendor);
+                  const secondaryLine = inboxSecondaryMetaLine(row);
                   const rowSelected = selectedIds.has(row.id);
                   const uploadHighlight =
                     !!row.referenceNo && (a.highlightReferenceNos?.has(row.referenceNo) ?? false);
@@ -620,6 +593,7 @@ function DesktopRows({
                   return (
                     <tr
                       key={`desk-${row.id}`}
+                      data-expense-id={row.id}
                       data-inbox-upload-draft={isInboxUploadDraft ? "" : undefined}
                       ref={(el) => {
                         a.rowElsRef.current[row.id] = el;
@@ -903,9 +877,8 @@ function MobileRows({
                   const missingCategory = !expenseHasCategoryForWorkflow(row);
                   const showDupHint = dupIds.has(row.id);
                   const vendorRaw = row.vendorName ?? "";
-                  const syntheticVendor = looksLikeTestOrSyntheticVendor(vendorRaw);
                   const vendorTitle = inboxPrimaryVendorTitle(vendorRaw);
-                  const secondaryLine = inboxSecondaryMetaLine(row, vendorRaw, syntheticVendor);
+                  const secondaryLine = inboxSecondaryMetaLine(row);
                   const rowSelected = selectedIds.has(row.id);
                   const lp = longPressHandlers(row.id);
                   const uploadHighlight =
@@ -915,6 +888,7 @@ function MobileRows({
                   return (
                     <li
                       key={row.id}
+                      data-expense-id={row.id}
                       data-inbox-upload-draft={isInboxUploadDraft ? "" : undefined}
                       ref={(el) => {
                         a.rowElsRef.current[row.id] = el;

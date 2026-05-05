@@ -61,6 +61,30 @@ export function deriveExpenseWorkflowStatus(
   return hasProject && hasCategory ? "reviewed" : "needs_review";
 }
 
+/**
+ * A complete edit should not downgrade an already archived/approved expense back
+ * to `reviewed`; preserve the stronger confirmed status unless the edit makes it incomplete.
+ */
+export function preserveConfirmedExpenseStatusOnCompleteSave(
+  currentStatus: Expense["status"] | string | null | undefined,
+  nextStatus: "reviewed" | "needs_review"
+): NonNullable<Expense["status"]> {
+  if (nextStatus !== "reviewed") return nextStatus;
+  const s = String(currentStatus ?? "")
+    .trim()
+    .toLowerCase();
+  if (
+    s === "reviewed" ||
+    s === "approved" ||
+    s === "paid" ||
+    s === "reimbursed" ||
+    s === "reimbursable"
+  ) {
+    return s as NonNullable<Expense["status"]>;
+  }
+  return nextStatus;
+}
+
 /** Effective project id for inbox workflow (first line, else header). */
 export function expenseEffectiveProjectId(expense: Expense): string | null {
   const lineId = expense.lines[0]?.projectId ?? null;
