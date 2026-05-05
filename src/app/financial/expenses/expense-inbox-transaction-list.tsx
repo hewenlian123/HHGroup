@@ -26,7 +26,10 @@ import {
   expenseHasProjectForWorkflow,
   expenseNeedsReviewFromDb,
 } from "@/lib/expense-workflow-status";
-import { isInboxUploadExpenseReference } from "@/lib/inbox-upload-constants";
+import {
+  isInboxUploadExpenseReference,
+  stripInboxUploadNoiseFromText,
+} from "@/lib/inbox-upload-constants";
 import { getExpenseReceiptItems } from "@/lib/expense-receipt-items";
 import {
   readDateGroupExpandedMap,
@@ -219,8 +222,11 @@ function primaryCategory(e: Expense): string {
 /** Line 2: ID / description snippet · date · payment · source */
 function inboxSubtitleIdPart(e: Expense): string {
   const ref = (e.referenceNo ?? "").trim();
-  if (ref) return ref.length > 36 ? `${ref.slice(0, 33)}…` : ref;
-  const notes = (e.notes ?? "").trim();
+  const refForDisplay = ref && !isInboxUploadExpenseReference(ref) ? ref : "";
+  if (refForDisplay) {
+    return refForDisplay.length > 36 ? `${refForDisplay.slice(0, 33)}…` : refForDisplay;
+  }
+  const notes = stripInboxUploadNoiseFromText((e.notes ?? "").trim());
   if (notes) return notes.length > 36 ? `${notes.slice(0, 33)}…` : notes;
   const compact = e.id.replace(/-/g, "");
   if (compact.length <= 14) return compact || "—";

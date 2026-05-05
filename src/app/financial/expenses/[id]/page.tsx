@@ -55,6 +55,10 @@ import {
   deriveExpenseWorkflowStatus,
   EXPENSE_ACCOUNT_SELECT_NONE,
 } from "@/lib/expense-workflow-status";
+import {
+  isInboxUploadExpenseReference,
+  stripInboxUploadNoiseFromText,
+} from "@/lib/inbox-upload-constants";
 
 function useAsyncDisabled(name: string | null, fn: (n: string) => Promise<boolean>): boolean {
   const [disabled, setDisabled] = React.useState(false);
@@ -633,7 +637,11 @@ export default function ExpenseDetailPage() {
               </label>
               <Input
                 name="referenceNo"
-                defaultValue={expense.referenceNo ?? ""}
+                defaultValue={
+                  isInboxUploadExpenseReference(expense.referenceNo ?? undefined)
+                    ? ""
+                    : (expense.referenceNo ?? "")
+                }
                 className="mt-1 h-10 rounded-sm"
                 placeholder="Optional"
               />
@@ -645,7 +653,7 @@ export default function ExpenseDetailPage() {
             </label>
             <Textarea
               name="notes"
-              defaultValue={expense.notes ?? ""}
+              defaultValue={stripInboxUploadNoiseFromText(expense.notes ?? "")}
               className="mt-1 min-h-[88px] rounded-sm text-sm"
               placeholder="Optional"
               rows={3}

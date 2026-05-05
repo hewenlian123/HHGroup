@@ -52,6 +52,7 @@ import {
   EXPENSE_WORKER_SELECT_NONE,
 } from "@/lib/expense-workflow-status";
 import { cn } from "@/lib/utils";
+import { stripInboxUploadNoiseFromText } from "@/lib/inbox-upload-constants";
 import { ExpenseEditAttachmentsSection } from "./expense-edit-attachments-section";
 
 function attachmentIsImage(att: ExpenseAttachment): boolean {
@@ -185,7 +186,7 @@ export function EditExpenseModal({
       setProjectId(expense.lines[0]?.projectId ?? expense.headerProjectId ?? null);
       setWorkerId(expense.workerId ?? null);
       setCategory(expense.lines[0]?.category ?? "Other");
-      setNotes(expense.notes ?? "");
+      setNotes(stripInboxUploadNoiseFromText(expense.notes ?? ""));
       setExpenseDate((expense.date ?? "").slice(0, 10));
       setSourceType(expense.sourceType ?? "company");
       setPaymentAccountId(expense.paymentAccountId ?? "");
