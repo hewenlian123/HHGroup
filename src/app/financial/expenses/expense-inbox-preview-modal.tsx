@@ -57,6 +57,7 @@ import {
 import { buildReceiptPreviewShellFiles } from "@/lib/receipt-preview-shell-files";
 import { expenseAttachmentStorageDedupeKey } from "@/lib/expense-attachment-dedupe";
 import { ExpenseEditAttachmentsSection } from "./expense-edit-attachments-section";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type ProjectOption = { id: string; name: string | null };
 type WorkerOption = { id: string; name: string };
@@ -79,10 +80,31 @@ export type ExpenseInboxPreviewSavePayload = ExpenseReviewSavePatch & {
 };
 
 function attachmentIsImage(att: ExpenseAttachment): boolean {
-  if (att.mimeType.startsWith("image/")) return true;
-  return (
-    /\.(jpe?g|png|gif|webp)$/i.test(att.fileName) || /\.(jpe?g|png|gif|webp)(\?|#|$)/i.test(att.url)
-  );
+  const mt = (att.mimeType ?? "").trim().toLowerCase();
+  if (mt.startsWith("image/")) return true;
+  const blob = `${att.fileName} ${att.url}`;
+  if (/\.pdf(\?|#|$)/i.test(blob)) return false;
+  return /\.(jpe?g|png|gif|webp|avif|heic|heif)(\?|#|$)/i.test(blob);
+}
+
+function findAttachmentForReceiptItem(
+  item: ExpenseReceiptItem,
+  list: ExpenseAttachment[]
+): ExpenseAttachment | undefined {
+  const key = expenseAttachmentStorageDedupeKey(item.url);
+  if (!key) return undefined;
+  return list.find((a) => expenseAttachmentStorageDedupeKey(a.url) === key);
+}
+
+/** Uses attachment mime when matched; otherwise URL/filename extension (incl. HEIC). */
+function receiptItemIsImage(
+  item: ExpenseReceiptItem,
+  match: ExpenseAttachment | undefined
+): boolean {
+  if (match) return attachmentIsImage(match);
+  const blob = `${item.fileName} ${item.url}`;
+  if (/\.pdf(\?|#|$)/i.test(blob)) return false;
+  return /\.(jpe?g|png|gif|webp|avif|heic|heif)(\?|#|$)/i.test(blob);
 }
 
 function receiptLineItemsToPreviewFiles(items: ExpenseReceiptItem[]): AttachmentPreviewFileItem[] {
@@ -208,6 +230,13 @@ export function ExpenseInboxPreviewModal({
   const [paymentAccountsLocal, setPaymentAccountsLocal] = React.useState<PaymentAccountRow[]>([]);
   const [attachments, setAttachments] = React.useState<ExpenseAttachment[]>([]);
   const [thumbById, setThumbById] = React.useState<Record<string, string | null>>({});
+  /** Preview-mode attachment thumbnails: keyed by storage dedupe key (same signing path as list thumbs). */
+  const [previewThumbSignedByDedupeKey, setPreviewThumbSignedByDedupeKey] = React.useState<
+    Record<string, string | null>
+  >({});
+  const [previewThumbErrorByKey, setPreviewThumbErrorByKey] = React.useState<
+    Record<string, boolean>
+  >({});
 
   const expensePreviewRef = React.useRef(expense);
   const attachmentsPreviewRef = React.useRef(attachments);
@@ -260,6 +289,11 @@ export function ExpenseInboxPreviewModal({
   }, [expense]);
 
   React.useEffect(() => {
+    setPreviewThumbErrorByKey({});
+    setPreviewThumbSignedByDedupeKey({});
+  }, [expenseId]);
+
+  React.useEffect(() => {
     if (!open || !supabase || attachments.length === 0) {
       setThumbById({});
       return;
@@ -299,6 +333,44 @@ export function ExpenseInboxPreviewModal({
       attachments,
     });
   }, [expense, attachments]);
+
+  React.useEffect(() => {
+    if (!open || !supabase) {
+      setPreviewThumbSignedByDedupeKey({});
+      return;
+    }
+    const imageItems = receiptItems.filter((item) => {
+      const m = findAttachmentForReceiptItem(item, attachments);
+      return receiptItemIsImage(item, m);
+    });
+    if (imageItems.length === 0) {
+      setPreviewThumbSignedByDedupeKey({});
+      return;
+    }
+    let alive = true;
+    void (async () => {
+      const next: Record<string, string | null> = {};
+      for (const item of imageItems) {
+        const k = expenseAttachmentStorageDedupeKey(item.url);
+        const raw = (item.url ?? "").trim();
+        if (!raw) {
+          next[k] = null;
+          continue;
+        }
+        const signed = await resolvePreviewSignedUrl({
+          supabase,
+          rawUrlOrPath: raw,
+          ttlSec: 3600,
+          bucketCandidates: ["expense-attachments", "receipts"],
+        });
+        next[k] = signed || null;
+      }
+      if (alive) setPreviewThumbSignedByDedupeKey(next);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [open, supabase, receiptItems, attachments]);
 
   const receiptItemsRef = React.useRef(receiptItems);
   React.useEffect(() => {
@@ -703,22 +775,100 @@ export function ExpenseInboxPreviewModal({
               </ModalSection>
 
               <ModalSection title="Attachments">
-                <div className="pt-1">
+                <div className="pt-1" data-testid="expense-preview-attachments">
                   {receiptItems.length === 0 ? (
                     <span className="text-sm text-muted-foreground">—</span>
                   ) : (
-                    <ul className="space-y-1">
-                      {receiptItems.map((item, idx) => (
-                        <li key={`${item.url}-${idx}`}>
-                          <button
-                            type="button"
-                            className="text-left text-sm text-foreground underline-offset-2 hover:underline"
-                            onClick={() => void openReceiptItemPreview(item)}
-                          >
-                            {item.fileName}
-                          </button>
-                        </li>
-                      ))}
+                    <ul className="space-y-3">
+                      {receiptItems.map((item, idx) => {
+                        const match = findAttachmentForReceiptItem(item, attachments);
+                        const isImg = receiptItemIsImage(item, match);
+                        const dedupeKey = expenseAttachmentStorageDedupeKey(item.url);
+                        const thumbState =
+                          isImg && dedupeKey !== ""
+                            ? previewThumbSignedByDedupeKey[dedupeKey]
+                            : undefined;
+                        const loadFailed = previewThumbErrorByKey[dedupeKey] ?? false;
+
+                        if (!isImg) {
+                          return (
+                            <li key={`${item.url}-${idx}`}>
+                              <button
+                                type="button"
+                                className="text-left text-sm text-foreground underline-offset-2 hover:underline"
+                                onClick={() => void openReceiptItemPreview(item)}
+                              >
+                                {item.fileName}
+                              </button>
+                            </li>
+                          );
+                        }
+
+                        const ariaPreview =
+                          receiptItems.length > 1
+                            ? `Preview receipt attachment ${idx + 1} of ${receiptItems.length}`
+                            : "Preview receipt attachment";
+
+                        if (thumbState === undefined) {
+                          return (
+                            <li key={`${item.url}-${idx}`}>
+                              <Skeleton className="h-[200px] max-h-[240px] w-full rounded-sm" />
+                            </li>
+                          );
+                        }
+
+                        if (thumbState === null || loadFailed) {
+                          return (
+                            <li key={`${item.url}-${idx}`}>
+                              <div className="flex flex-col gap-1 border-b border-border/60 py-2.5 last:border-b-0">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0 flex-1">
+                                    <p className="truncate text-sm text-foreground">
+                                      {item.fileName}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      Preview unavailable
+                                    </p>
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 shrink-0 rounded-sm"
+                                    onClick={() => void openReceiptItemPreview(item)}
+                                  >
+                                    Open
+                                  </Button>
+                                </div>
+                              </div>
+                            </li>
+                          );
+                        }
+
+                        return (
+                          <li key={`${item.url}-${idx}`}>
+                            <button
+                              type="button"
+                              className="block w-full max-w-full overflow-hidden rounded-sm border border-border/60 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                              onClick={() => void openReceiptItemPreview(item)}
+                              aria-label={ariaPreview}
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element -- signed URL from resolvePreviewSignedUrl */}
+                              <img
+                                src={thumbState}
+                                alt=""
+                                className="max-h-[240px] w-full object-contain"
+                                onError={() =>
+                                  setPreviewThumbErrorByKey((prev) => ({
+                                    ...prev,
+                                    [dedupeKey]: true,
+                                  }))
+                                }
+                              />
+                            </button>
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
                 </div>

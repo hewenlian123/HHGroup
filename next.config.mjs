@@ -18,9 +18,10 @@ const withPWA = withPWAInit({
 });
 
 export default function nextConfig(phase) {
+  const distDir = (process.env.NEXT_DIST_DIR || ".next").trim() || ".next";
   const base = {
-    // Use single distDir so "rm -rf .next" cleans dev and prod; avoids 404s from stale .next-dev
-    distDir: ".next",
+    // Playwright can set NEXT_DIST_DIR=.next-e2e to avoid stale or cloud-evicted local .next output.
+    distDir,
     // Worker balances must never be cached at Vercel Edge (stale rows after DB deletes).
     async headers() {
       const workerBalancesNoStore = [

@@ -117,6 +117,10 @@ export default defineConfig({
             ? `PORT=${port} npm run start`
             : `npm run dev:safe -- -p ${port}`;
           const readinessUrl = `${resolvedBase}/financial/expenses`;
+          const env = buildWebServerEnv();
+          if (!useStart && !env.NEXT_DIST_DIR) {
+            env.NEXT_DIST_DIR = ".next-e2e";
+          }
           /** `next start` in CI; local default is `next dev` — allow extra time for first compile. */
           const webServerTimeoutMs = useStart ? 120_000 : 300_000;
           const server = {
@@ -124,7 +128,7 @@ export default defineConfig({
             url: readinessUrl,
             reuseExistingServer,
             timeout: webServerTimeoutMs,
-            env: buildWebServerEnv(),
+            env,
           };
           console.log(
             "[playwright] webServer\n" +
@@ -132,6 +136,7 @@ export default defineConfig({
                 {
                   command: server.command,
                   baseURL: resolvedBase,
+                  distDir: server.env.NEXT_DIST_DIR || ".next",
                   readinessUrl: server.url,
                   timeoutMs: server.timeout,
                   reuseExistingServer: server.reuseExistingServer,
