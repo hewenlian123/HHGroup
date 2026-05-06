@@ -11,12 +11,15 @@ import {
 import { getExpenseTotal, type Expense, type PaymentAccountRow } from "@/lib/data";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import {
+  AlertTriangle,
   Banknote,
   Building2,
   ChevronRight,
+  Copy,
   Fuel,
   HelpCircle,
   MoreHorizontal,
+  Paperclip,
   ShoppingBag,
   Trash2,
 } from "lucide-react";
@@ -26,7 +29,10 @@ import {
   expenseHasProjectForWorkflow,
   expenseNeedsReviewFromDb,
 } from "@/lib/expense-workflow-status";
-import { isInboxUploadExpenseReference } from "@/lib/inbox-upload-constants";
+import {
+  isInboxUploadExpenseReference,
+  stripInboxUploadNoiseFromText,
+} from "@/lib/inbox-upload-constants";
 import { getExpenseReceiptItems } from "@/lib/expense-receipt-items";
 import {
   readDateGroupExpandedMap,
@@ -64,12 +70,12 @@ function InboxDescriptionSignals({
   }, [row.id]);
 
   return (
-    <div className="mt-1 min-w-0 space-y-0.5">
-      <div className="text-xs leading-snug">
+    <div className="mt-1.5 min-w-0 space-y-1">
+      <div className="text-[11px] leading-snug">
         {hasReceipt ? (
           <button
             type="button"
-            className="inline-flex cursor-pointer items-center gap-1 rounded-sm border-0 bg-transparent p-0 font-normal text-muted-foreground hover:text-foreground hover:underline focus-visible:outline focus-visible:ring-1 focus-visible:ring-ring"
+            className="inline-flex min-h-[32px] cursor-pointer items-center gap-1.5 rounded-md border border-transparent bg-emerald-500/[0.07] px-1.5 py-1 font-medium text-emerald-800 transition-colors duration-200 hover:border-emerald-500/20 hover:bg-emerald-500/[0.11] focus-visible:outline focus-visible:ring-1 focus-visible:ring-ring dark:text-emerald-300/95 dark:hover:border-emerald-500/25 dark:hover:bg-emerald-500/[0.14]"
             onMouseEnter={() => onReceiptPrefetch?.()}
             onTouchStart={() => {
               if (touchPrimedRef.current) return;
@@ -85,46 +91,47 @@ function InboxDescriptionSignals({
             }
             title="Preview receipt"
           >
-            <span aria-hidden className="select-none">
-              👁
+            <Paperclip className="h-3.5 w-3.5 shrink-0 opacity-90" strokeWidth={2} aria-hidden />
+            <span>
+              Receipt
+              {items.length > 1 ? (
+                <span className="ml-1 tabular-nums font-semibold text-emerald-900/80 dark:text-emerald-200/90">
+                  ({items.length})
+                </span>
+              ) : null}
             </span>
-            Receipt
-            {items.length > 1 ? (
-              <span className="tabular-nums text-muted-foreground/80">({items.length})</span>
-            ) : null}
           </button>
         ) : (
-          <span className="inline-flex items-center gap-1 text-orange-500/90 dark:text-orange-400/80">
-            <span aria-hidden className="select-none">
-              ⚠
-            </span>
-            Missing receipt
+          <span className="inline-flex min-h-[32px] items-center gap-1.5 rounded-md border border-amber-500/15 bg-amber-500/[0.06] px-1.5 py-1 text-muted-foreground dark:border-amber-500/12 dark:bg-amber-500/[0.08]">
+            <span
+              className="inline-flex h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500/70 dark:bg-amber-400/75"
+              aria-hidden
+            />
+            <span className="font-medium text-amber-950/75 dark:text-amber-100/75">No receipt</span>
           </span>
         )}
       </div>
       {missingProject ? (
-        <div className="text-xs leading-snug text-orange-600 dark:text-orange-400">
-          <span aria-hidden className="select-none">
-            ⚠{" "}
-          </span>
+        <div className="flex items-start gap-1 text-[11px] leading-snug text-amber-800/85 dark:text-amber-200/80">
+          <AlertTriangle
+            className="mt-0.5 h-3 w-3 shrink-0 opacity-80"
+            strokeWidth={2}
+            aria-hidden
+          />
           Missing project
         </div>
       ) : null}
       {extraSignals ? (
-        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs leading-snug text-muted-foreground">
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] leading-snug text-muted-foreground">
           {missingCategory ? (
-            <span className="inline-flex items-center gap-1 text-yellow-700/85 dark:text-yellow-400/85">
-              <span aria-hidden className="select-none">
-                ⚠
-              </span>
+            <span className="inline-flex items-center gap-1 text-amber-900/75 dark:text-amber-200/75">
+              <AlertTriangle className="h-3 w-3 shrink-0 opacity-75" strokeWidth={2} aria-hidden />
               Missing category
             </span>
           ) : null}
           {duplicate ? (
-            <span className="inline-flex items-center gap-1 text-violet-600/90 dark:text-violet-400/85">
-              <span aria-hidden className="select-none">
-                ⚠
-              </span>
+            <span className="inline-flex items-center gap-1 text-violet-700/80 dark:text-violet-300/85">
+              <Copy className="h-3 w-3 shrink-0 opacity-75" strokeWidth={2} aria-hidden />
               Duplicate
             </span>
           ) : null}
@@ -132,6 +139,11 @@ function InboxDescriptionSignals({
       ) : null}
     </div>
   );
+}
+
+/** Strip inbox dedupe tokens / noise from vendor strings for display only (does not change stored data). */
+function expenseVendorDisplayRaw(raw: string | undefined | null): string {
+  return stripInboxUploadNoiseFromText(String(raw ?? "")).trim();
 }
 
 /** Strip E2E test prefix from project display names (e.g. "E2E-PM-HH Unified" → "HH Unified"). */
@@ -387,7 +399,7 @@ function RowActionsMenu({ row }: { row: Expense }) {
           type="button"
           variant="ghost"
           size="icon"
-          className="exp-icon-btn h-8 w-8 shrink-0 rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+          className="exp-icon-btn h-11 min-h-11 w-11 shrink-0 rounded-md text-muted-foreground transition-colors duration-200 hover:bg-zinc-100 hover:text-foreground dark:hover:bg-muted md:h-8 md:min-h-0 md:w-8"
           aria-label="Row actions"
           onClick={(e) => e.stopPropagation()}
         >
@@ -453,7 +465,7 @@ function DateGroupDesktopHeader({
   }, [groupSelect?.indeterminate, groupSelect?.show]);
 
   return (
-    <tr className="border-b border-border/60 bg-muted/10 dark:bg-muted/5">
+    <tr className="border-b border-zinc-100/80 bg-zinc-50/45 dark:border-border/50 dark:bg-muted/10">
       <td colSpan={COL_COUNT} className="p-0 align-middle">
         <div className="flex min-w-0 items-stretch">
           {groupSelect?.show ? (
@@ -475,13 +487,13 @@ function DateGroupDesktopHeader({
             disabled={autoExpand}
             aria-expanded={expanded}
             className={cn(
-              "flex min-w-0 flex-1 cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm transition-colors",
-              "hover:bg-muted/20 disabled:cursor-default disabled:hover:bg-transparent"
+              "flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm transition-colors duration-200 ease-out md:min-h-0",
+              "hover:bg-muted/25 disabled:cursor-default disabled:hover:bg-transparent"
             )}
           >
             <ChevronRight
               className={cn(
-                "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150",
+                "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ease-out",
                 expanded && "rotate-90"
               )}
               aria-hidden
@@ -496,7 +508,7 @@ function DateGroupDesktopHeader({
               {chunk.missingReceiptCount > 0 ? (
                 <>
                   <span aria-hidden>·</span>
-                  <span className="text-amber-700/90 dark:text-amber-400/85">
+                  <span className="text-amber-800/70 dark:text-amber-400/65">
                     {chunk.missingReceiptCount} missing receipt
                     {chunk.missingReceiptCount !== 1 ? "s" : ""}
                   </span>
@@ -541,9 +553,9 @@ function DesktopRows({
   const dupIds = possibleDuplicateIds;
 
   const projectBadgeClass =
-    "inline-flex h-6 max-h-6 max-w-[10rem] items-center gap-1 truncate rounded-md border border-gray-200 bg-gray-50 px-1.5 py-0 text-[11px] font-medium text-gray-700 shadow-none dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-200";
+    "inline-flex h-6 max-h-6 max-w-[10rem] items-center gap-1 truncate rounded-md border border-zinc-200/85 bg-zinc-50/95 px-1.5 py-0 text-[11px] font-medium text-zinc-800 shadow-none transition-colors duration-200 dark:border-border/55 dark:bg-muted/30 dark:text-zinc-200";
   const categoryBadgeClass =
-    "inline-flex h-6 max-h-6 max-w-[6.5rem] items-center truncate rounded-md border border-gray-200 bg-gray-50 px-1.5 py-0 text-[11px] font-normal text-gray-700 shadow-none dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-300";
+    "inline-flex h-6 max-h-6 max-w-[6.5rem] items-center truncate rounded-md border border-zinc-200/85 bg-white px-1.5 py-0 text-[11px] font-normal text-zinc-700 shadow-none transition-colors duration-200 dark:border-border/55 dark:bg-muted/20 dark:text-zinc-300";
 
   return (
     <>
@@ -584,7 +596,8 @@ function DesktopRows({
                   const missingCategory = !expenseHasCategoryForWorkflow(row);
                   const showDupHint = dupIds.has(row.id);
                   const vendorRaw = row.vendorName ?? "";
-                  const vendorTitle = inboxPrimaryVendorTitle(vendorRaw);
+                  const vendorClean = expenseVendorDisplayRaw(vendorRaw);
+                  const vendorTitle = inboxPrimaryVendorTitle(vendorClean);
                   const secondaryLine = inboxSecondaryMetaLine(row);
                   const rowSelected = selectedIds.has(row.id);
                   const uploadHighlight =
@@ -600,15 +613,16 @@ function DesktopRows({
                         a.rowElsRef.current[row.id] = el;
                       }}
                       className={cn(
-                        "exp-row group min-h-[62px] cursor-pointer border-b border-gray-100 bg-white transition-colors duration-700 ease-out hover:bg-gray-50/70 [&>td]:align-middle [&>td]:px-3 [&>td]:py-2.5 dark:border-gray-800 dark:bg-gray-950 dark:hover:bg-gray-900/70",
+                        "exp-row group min-h-[52px] cursor-pointer border-b border-zinc-100/90 bg-white transition-[background-color,box-shadow] duration-200 ease-out hover:bg-zinc-50/95 [&>td]:align-middle [&>td]:px-3 [&>td]:py-3 dark:border-border/50 dark:bg-card dark:hover:bg-muted/25",
                         a.deletingExpenseId === row.id &&
                           "pointer-events-none opacity-0 duration-300 ease-out",
                         uploadHighlight &&
                           "bg-emerald-500/[0.06] shadow-[inset_0_0_0_1px_rgba(16,185,129,0.28)] dark:bg-emerald-500/[0.08] dark:shadow-[inset_0_0_0_1px_rgba(16,185,129,0.22)]",
                         a.listView === "unreviewed" &&
                           a.activeExpenseId === row.id &&
-                          "ring-1 ring-inset ring-orange-200 dark:ring-orange-900/50",
-                        rowSelected && "bg-muted/25 dark:bg-muted/15"
+                          "ring-1 ring-inset ring-orange-400/35 dark:ring-orange-500/30",
+                        rowSelected &&
+                          "bg-zinc-100/95 ring-1 ring-inset ring-zinc-300/65 dark:bg-zinc-900/50 dark:ring-zinc-600/55"
                       )}
                       onClick={(e) => {
                         if (selectionEnabled && (e.metaKey || e.ctrlKey || e.shiftKey)) {
@@ -647,12 +661,15 @@ function DesktopRows({
                               }}
                             />
                           )}
-                          <VendorAvatar vendor={vendorRaw} />
+                          <VendorAvatar vendor={vendorClean} />
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium leading-tight text-gray-900 dark:text-gray-950">
+                            <p
+                              className="line-clamp-2 min-w-0 max-w-full break-words text-sm font-semibold leading-snug text-zinc-900 md:line-clamp-none md:truncate md:font-medium dark:text-zinc-100"
+                              title={vendorClean || vendorTitle}
+                            >
                               {vendorTitle}
                             </p>
-                            <p className="mt-0.5 truncate text-xs leading-snug text-gray-500 dark:text-gray-500">
+                            <p className="mt-1 truncate text-[11px] leading-snug text-muted-foreground">
                               {secondaryLine}
                             </p>
                             <InboxDescriptionSignals
@@ -694,7 +711,7 @@ function DesktopRows({
                         </span>
                       </td>
                       <td className="w-[96px] shrink-0 whitespace-nowrap text-right tabular-nums">
-                        <span className="text-sm font-medium text-red-600 dark:text-red-500/90">
+                        <span className="text-sm font-semibold text-red-600 dark:text-red-500/90">
                           −$
                           {rowTotal.toLocaleString(undefined, {
                             minimumFractionDigits: 2,
@@ -741,7 +758,7 @@ function DateGroupMobileHeader({
   }, [groupSelect?.indeterminate, groupSelect?.show]);
 
   return (
-    <li className="list-none border-b border-border/60 bg-muted/10 p-0 dark:bg-muted/5">
+    <li className="list-none border-b border-zinc-100/80 bg-zinc-50/40 p-0 dark:border-border/50 dark:bg-muted/10">
       <div className="flex min-w-0 items-stretch">
         {groupSelect?.show ? (
           <div className="flex shrink-0 items-center border-r border-border/50 px-2 dark:border-border/40">
@@ -762,13 +779,13 @@ function DateGroupMobileHeader({
           disabled={autoExpand}
           aria-expanded={expanded}
           className={cn(
-            "flex min-w-0 flex-1 cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm transition-colors",
-            "hover:bg-muted/20 disabled:cursor-default disabled:hover:bg-transparent"
+            "flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-2 px-3 py-2.5 text-left text-sm transition-colors duration-200 ease-out",
+            "hover:bg-muted/30 disabled:cursor-default disabled:hover:bg-transparent"
           )}
         >
           <ChevronRight
             className={cn(
-              "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150",
+              "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ease-out",
               expanded && "rotate-90"
             )}
             aria-hidden
@@ -784,7 +801,7 @@ function DateGroupMobileHeader({
               {chunk.missingReceiptCount > 0 ? (
                 <>
                   <span aria-hidden>·</span>
-                  <span className="text-amber-700/90 dark:text-amber-400/85">
+                  <span className="text-amber-800/70 dark:text-amber-400/65">
                     {chunk.missingReceiptCount} missing receipt
                     {chunk.missingReceiptCount !== 1 ? "s" : ""}
                   </span>
@@ -835,9 +852,9 @@ function MobileRows({
   const a = useInbox();
   const dupIds = possibleDuplicateIds;
   const projectBadgeClass =
-    "inline-flex h-6 max-h-6 max-w-full items-center truncate rounded-md border border-gray-200 bg-gray-50 px-1.5 py-0 text-[11px] font-medium text-gray-700 shadow-none dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-200";
+    "inline-flex h-6 max-h-6 max-w-full items-center truncate rounded-md border border-zinc-200/85 bg-zinc-50/95 px-1.5 py-0 text-[11px] font-medium text-zinc-800 shadow-none transition-colors duration-200 dark:border-border/55 dark:bg-muted/30 dark:text-zinc-200";
   const categoryBadgeClass =
-    "inline-flex h-6 max-h-6 max-w-full items-center truncate rounded-md border border-gray-200 bg-gray-50 px-1.5 py-0 text-[11px] font-normal text-gray-700 shadow-none dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-300";
+    "inline-flex h-6 max-h-6 max-w-full items-center truncate rounded-md border border-zinc-200/85 bg-white px-1.5 py-0 text-[11px] font-normal text-zinc-700 shadow-none transition-colors duration-200 dark:border-border/55 dark:bg-muted/20 dark:text-zinc-300";
 
   return (
     <>
@@ -878,7 +895,8 @@ function MobileRows({
                   const missingCategory = !expenseHasCategoryForWorkflow(row);
                   const showDupHint = dupIds.has(row.id);
                   const vendorRaw = row.vendorName ?? "";
-                  const vendorTitle = inboxPrimaryVendorTitle(vendorRaw);
+                  const vendorClean = expenseVendorDisplayRaw(vendorRaw);
+                  const vendorTitle = inboxPrimaryVendorTitle(vendorClean);
                   const secondaryLine = inboxSecondaryMetaLine(row);
                   const rowSelected = selectedIds.has(row.id);
                   const lp = longPressHandlers(row.id);
@@ -895,16 +913,17 @@ function MobileRows({
                         a.rowElsRef.current[row.id] = el;
                       }}
                       className={cn(
-                        "exp-row group list-none cursor-pointer border-b border-gray-100 bg-white px-3 py-2.5 transition-colors duration-700 ease-out hover:bg-gray-50/70 dark:border-gray-800 dark:bg-gray-950 dark:hover:bg-gray-900/70",
-                        "min-h-[62px]",
+                        "exp-row group list-none cursor-pointer border-b border-zinc-100/90 bg-white px-3 py-3.5 transition-[background-color,box-shadow] duration-200 ease-out hover:bg-zinc-50/95 dark:border-border/50 dark:bg-card dark:hover:bg-muted/25",
+                        "min-h-[52px]",
                         a.deletingExpenseId === row.id &&
                           "pointer-events-none opacity-0 duration-300 ease-out",
                         uploadHighlight &&
                           "bg-emerald-500/[0.06] shadow-[inset_0_0_0_1px_rgba(16,185,129,0.28)] dark:bg-emerald-500/[0.08] dark:shadow-[inset_0_0_0_1px_rgba(16,185,129,0.22)]",
                         a.listView === "unreviewed" &&
                           a.activeExpenseId === row.id &&
-                          "ring-1 ring-inset ring-orange-200 dark:ring-orange-900/50",
-                        rowSelected && "bg-muted/25 dark:bg-muted/15"
+                          "ring-1 ring-inset ring-orange-400/35 dark:ring-orange-500/30",
+                        rowSelected &&
+                          "bg-zinc-100/95 ring-1 ring-inset ring-zinc-300/65 dark:bg-zinc-900/50 dark:ring-zinc-600/55"
                       )}
                       onTouchStart={
                         selectionEnabled && !showSelectionUi ? lp.onTouchStart : undefined
@@ -952,14 +971,17 @@ function MobileRows({
                             }}
                           />
                         )}
-                        <VendorAvatar vendor={vendorRaw} />
+                        <VendorAvatar vendor={vendorClean} />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-medium leading-tight text-gray-900 dark:text-gray-100">
+                            <div className="min-w-0 flex-1">
+                              <p
+                                className="line-clamp-2 min-w-0 break-words text-sm font-semibold leading-snug text-zinc-900 dark:text-zinc-100"
+                                title={vendorClean || vendorTitle}
+                              >
                                 {vendorTitle}
                               </p>
-                              <p className="mt-0.5 truncate text-xs leading-snug text-gray-500 dark:text-gray-500">
+                              <p className="mt-1 truncate text-[11px] leading-snug text-muted-foreground">
                                 {secondaryLine}
                               </p>
                               <InboxDescriptionSignals
@@ -971,8 +993,8 @@ function MobileRows({
                                 duplicate={showDupHint}
                               />
                             </div>
-                            <div className="flex shrink-0 flex-col items-end gap-1">
-                              <span className="text-sm font-medium tabular-nums text-red-600 dark:text-red-500/90">
+                            <div className="flex max-w-[42%] shrink-0 flex-col items-end gap-1">
+                              <span className="text-sm font-semibold tabular-nums text-red-600 dark:text-red-500/90">
                                 −$
                                 {rowTotal.toLocaleString(undefined, {
                                   minimumFractionDigits: 2,
@@ -1218,10 +1240,10 @@ export function ExpenseInboxTransactionList({
           />
         ) : null}
         {desktopLayout ? (
-          <div className="overflow-x-auto bg-white dark:bg-gray-950">
+          <div className="overflow-x-auto bg-white dark:bg-card">
             <table className="w-full min-w-[820px] border-collapse text-sm">
               <thead>
-                <tr className="border-b border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-950">
+                <tr className="border-b border-zinc-100 bg-zinc-50/55 dark:border-border/50 dark:bg-muted/15">
                   <th className="h-9 px-3 align-middle text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                     Description
                   </th>
@@ -1259,7 +1281,7 @@ export function ExpenseInboxTransactionList({
             </table>
           </div>
         ) : (
-          <ul className="exp-divide flex flex-col border-y border-border/60">
+          <ul className="exp-divide flex flex-col border-y border-zinc-100/90 dark:border-border/50">
             <MobileRows
               dateChunks={dateChunks}
               expandedByDate={expandedByDate}
