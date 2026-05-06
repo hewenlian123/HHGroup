@@ -88,12 +88,15 @@ export function MobileSearchFiltersRow({
   onOpenFilters,
   activeFilterCount,
   filterSheetOpen,
+  filtersTriggerClassName,
 }: {
   searchSlot: React.ReactNode;
   onOpenFilters: () => void;
   activeFilterCount: number;
   /** For aria-expanded */
   filterSheetOpen: boolean;
+  /** e.g. min-h-[44px] to align with touch-sized search inputs */
+  filtersTriggerClassName?: string;
 }) {
   return (
     <div className="flex items-center gap-2 md:hidden">
@@ -102,7 +105,7 @@ export function MobileSearchFiltersRow({
         type="button"
         variant="outline"
         size="sm"
-        className="h-9 shrink-0 gap-1.5 rounded-sm px-2.5"
+        className={cn("h-9 shrink-0 gap-1.5 rounded-sm px-2.5", filtersTriggerClassName)}
         onClick={onOpenFilters}
         aria-expanded={filterSheetOpen}
       >
