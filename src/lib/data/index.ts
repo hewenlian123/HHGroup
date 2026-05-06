@@ -1718,10 +1718,20 @@ export async function isPaymentMethodDisabled(name: string): Promise<boolean> {
   return refDataDb.isPaymentMethodDisabled(name);
 }
 
-export type { PaymentAccountRow, PaymentAccountType } from "../payment-accounts-db";
+export type {
+  PaymentAccountPickerRow,
+  PaymentAccountRow,
+  PaymentAccountType,
+} from "../payment-accounts-db";
 
 export async function getPaymentAccounts(): Promise<PaymentAccountRow[]> {
   return paymentAccountsDb.getPaymentAccounts();
+}
+
+export async function getPaymentAccountsForExpensePicker(
+  currentAccountId: string | null | undefined
+): Promise<import("../payment-accounts-db").PaymentAccountPickerRow[]> {
+  return paymentAccountsDb.getPaymentAccountsForExpensePicker(currentAccountId);
 }
 
 export async function addPaymentAccount(
@@ -1867,6 +1877,7 @@ export async function updateExpenseForReview(
     amount: number;
     sourceType: Expense["sourceType"];
     paymentAccountId: string | null;
+    paymentMethod: string;
   }>
 ): Promise<Expense | null> {
   return expensesDb.updateExpenseForReview(expenseId, patch);

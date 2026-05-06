@@ -17,7 +17,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { addExpenseCategory, getExpenseCategories } from "@/lib/data";
+import { addExpenseCategory } from "@/lib/data";
+import { pickerItemsByStoredName, type ExpenseOptionPickerItem } from "@/lib/expense-options-db";
 import { useToast } from "@/components/toast/toast-provider";
 import { cn } from "@/lib/utils";
 
@@ -33,17 +34,12 @@ export type ExpenseCategorySelectProps = {
   onKeyDown?: React.KeyboardEventHandler<HTMLElement>;
   /** Notified with refreshed names after load or after creating a category */
   onCategoriesUpdated?: (names: string[]) => void;
+  /** Existing expense forms preserve old archived values; new-expense forms should pick active values only. */
+  preserveArchivedValue?: boolean;
   /** Forwarded to the native select for keyboard / focus navigation (e.g. receipt queue). */
   "data-queue-row-id"?: string;
   "data-queue-field"?: string;
 };
-
-function mergeOptions(names: string[], current: string): string[] {
-  const s = new Set(names.map((n) => n.trim()).filter(Boolean));
-  const cur = current.trim();
-  if (cur) s.add(cur);
-  return [...s].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
-}
 
 export function ExpenseCategorySelect({
   value,
@@ -54,11 +50,12 @@ export function ExpenseCategorySelect({
   autoFocus,
   onKeyDown,
   onCategoriesUpdated,
+  preserveArchivedValue = true,
   "data-queue-row-id": dataQueueRowId,
   "data-queue-field": dataQueueField,
 }: ExpenseCategorySelectProps) {
   const { toast } = useToast();
-  const [options, setOptions] = React.useState<string[]>([]);
+  const [items, setItems] = React.useState<ExpenseOptionPickerItem[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [addOpen, setAddOpen] = React.useState(false);
   const [newName, setNewName] = React.useState("");
@@ -67,28 +64,34 @@ export function ExpenseCategorySelect({
   const onCategoriesUpdatedRef = React.useRef(onCategoriesUpdated);
   onCategoriesUpdatedRef.current = onCategoriesUpdated;
 
-  React.useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      setLoading(true);
-      try {
-        const names = await getExpenseCategories();
-        if (cancelled) return;
-        setOptions(names);
-        onCategoriesUpdatedRef.current?.(names);
-      } catch (e) {
-        if (cancelled) return;
-        const msg = e instanceof Error ? e.message : "Failed to load categories";
-        toast({ title: "Categories", description: msg, variant: "error" });
-        setOptions([]);
-      } finally {
-        if (!cancelled) setLoading(false);
+  const refresh = React.useCallback(async () => {
+    setLoading(true);
+    try {
+      const next = await pickerItemsByStoredName("category", preserveArchivedValue ? value : null);
+      setItems(next);
+      onCategoriesUpdatedRef.current?.(
+        next.filter((item) => !item.archived).map((item) => item.value)
+      );
+      const current = value.trim().toLowerCase();
+      if (
+        !preserveArchivedValue &&
+        current &&
+        !next.some((item) => item.value.toLowerCase() === current)
+      ) {
+        onValueChange(next[0]?.value ?? "");
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [toast]);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to load categories";
+      toast({ title: "Categories", description: msg, variant: "error" });
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [onValueChange, preserveArchivedValue, toast, value]);
+
+  React.useEffect(() => {
+    void refresh();
+  }, [refresh]);
 
   React.useEffect(() => {
     if (addOpen) {
@@ -98,7 +101,12 @@ export function ExpenseCategorySelect({
     }
   }, [addOpen]);
 
-  const merged = React.useMemo(() => mergeOptions(options, value), [options, value]);
+  const knownValues = new Set(items.map((item) => item.value));
+  const radixValue = knownValues.has(value)
+    ? value
+    : value.trim() && preserveArchivedValue
+      ? value
+      : (items[0]?.value ?? "");
 
   const handleCreate = async () => {
     const trimmed = newName.trim();
@@ -107,7 +115,7 @@ export function ExpenseCategorySelect({
       return;
     }
     const lower = trimmed.toLowerCase();
-    if (merged.some((n) => n.toLowerCase() === lower)) {
+    if (items.some((item) => item.value.toLowerCase() === lower && !item.archived)) {
       toast({
         title: "Duplicate category",
         description: `“${trimmed}” already exists.`,
@@ -129,9 +137,11 @@ export function ExpenseCategorySelect({
           variant: "default",
         });
       }
-      const names = await getExpenseCategories();
-      setOptions(names);
-      onCategoriesUpdatedRef.current?.(names);
+      const next = await pickerItemsByStoredName("category", created);
+      setItems(next);
+      onCategoriesUpdatedRef.current?.(
+        next.filter((item) => !item.archived).map((item) => item.value)
+      );
       onValueChange(created);
       setAddOpen(false);
     } catch (e) {
@@ -145,7 +155,7 @@ export function ExpenseCategorySelect({
   return (
     <>
       <Select
-        value={value}
+        value={radixValue}
         disabled={disabled || loading}
         onValueChange={(v) => {
           if (v === ADD_NEW_VALUE) {
@@ -167,9 +177,9 @@ export function ExpenseCategorySelect({
           <SelectValue placeholder="Category" />
         </SelectTrigger>
         <SelectContent>
-          {merged.map((c) => (
-            <SelectItem key={c} value={c}>
-              {c}
+          {items.map((item) => (
+            <SelectItem key={`${item.value}-${item.archived ? "a" : "x"}`} value={item.value}>
+              {item.label}
             </SelectItem>
           ))}
           <SelectItem value={ADD_NEW_VALUE}>+ Add new category</SelectItem>

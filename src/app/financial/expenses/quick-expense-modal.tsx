@@ -1286,7 +1286,9 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                 <div className={cn(FIELD_GROUP, "min-w-0 md:col-span-2")}>
                   <label className={FIELD_LABEL}>Category</label>
                   <ExpenseCategorySelect
+                    id="quick-expense-category-select"
                     value={category}
+                    preserveArchivedValue={false}
                     onValueChange={(v) => {
                       ocrFieldTouchedRef.current.category = true;
                       setCategory(v);

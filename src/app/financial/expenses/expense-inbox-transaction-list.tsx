@@ -192,9 +192,10 @@ function inboxSecondaryMetaLine(e: Expense): string {
 }
 
 function sourceTypeLabel(t: Expense["sourceType"]): string {
-  if (t === "reimbursement") return "Reimbursement";
-  if (t === "receipt_upload") return "Receipt";
-  return "Company";
+  if (t === "reimbursement") return "Worker reimbursement";
+  if (t === "receipt_upload") return "Receipt upload";
+  if (t === "bank_import") return "Bank import";
+  return "Manual";
 }
 
 function paymentMethodDisplayLabel(pm: string | undefined): string {
