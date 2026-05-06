@@ -384,6 +384,38 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
     }
   };
 
+  const handleMarkDeducted = async (row: AdvanceRow) => {
+    setBusyId(row.id);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/labor/advances/${row.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "deducted" }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message ?? "Failed to mark as deducted.");
+      }
+      const r = await res.json();
+      handleSaved({
+        id: r.id,
+        workerId: r.workerId,
+        workerName: (r.workerName as string)?.trim() || row.workerName,
+        projectId: r.projectId,
+        projectName: r.projectName,
+        amount: r.amount,
+        advanceDate: r.advanceDate,
+        status: (r.status as AdvanceRow["status"]) ?? "deducted",
+        notes: r.notes,
+      });
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Failed to mark as deducted.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const handleDialogSave = async (draft: {
     id?: string;
     workerId: string;
@@ -863,6 +895,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                         advance={row}
                         layout="mobile"
                         onEdit={() => openEdit(row)}
+                        onMarkDeducted={() => handleMarkDeducted(row)}
                         onDelete={() => handleDelete(row)}
                         disabled={busyId === row.id}
                       />
@@ -1059,6 +1092,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                             advance={row}
                             layout="desktop"
                             onEdit={() => openEdit(row)}
+                            onMarkDeducted={() => handleMarkDeducted(row)}
                             onDelete={() => handleDelete(row)}
                             disabled={busyId === row.id}
                           />

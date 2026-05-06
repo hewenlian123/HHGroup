@@ -15,6 +15,7 @@ import type { AdvanceRow } from "./worker-advances-client";
 type Props = {
   advance: AdvanceRow;
   onEdit: () => void;
+  onMarkDeducted: () => void;
   onDelete: () => void;
   disabled?: boolean;
   layout?: "desktop" | "mobile";
@@ -23,10 +24,13 @@ type Props = {
 export function WorkerAdvanceActionsMenu({
   advance,
   onEdit,
+  onMarkDeducted,
   onDelete,
   disabled,
   layout = "desktop",
 }: Props) {
+  const canMarkDeducted = advance.status === "pending";
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -51,6 +55,15 @@ export function WorkerAdvanceActionsMenu({
       >
         <DropdownMenuItem className="cursor-pointer text-sm" onSelect={() => onEdit()}>
           Edit
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="cursor-pointer text-sm"
+          disabled={!canMarkDeducted}
+          onSelect={() => {
+            if (canMarkDeducted) onMarkDeducted();
+          }}
+        >
+          Mark as deducted
         </DropdownMenuItem>
         <DropdownMenuItem
           className={cn(
