@@ -593,14 +593,9 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
   } | null>(null);
   const [quickExpenseOpen, setQuickExpenseOpen] = React.useState(false);
   const [uploadReceiptsOpen, setUploadReceiptsOpen] = React.useState(false);
-  const [uploadReceiptButtonClicked, setUploadReceiptButtonClicked] = React.useState(false);
 
   /** Open directly from the user gesture; the modal itself suppresses early outside interactions on iOS. */
   const openUploadReceiptsModal = React.useCallback(() => {
-    if (process.env.NODE_ENV !== "production") {
-      console.info("[UploadReceiptModal] upload button clicked");
-      setUploadReceiptButtonClicked(true);
-    }
     setUploadReceiptsOpen(true);
   }, []);
   const [filtersDrawerOpen, setFiltersDrawerOpen] = React.useState(false);
@@ -2441,7 +2436,6 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
           open={uploadReceiptsOpen}
           onOpenChange={setUploadReceiptsOpen}
           onSuccess={refresh}
-          uploadButtonClicked={uploadReceiptButtonClicked}
         />
         {previewOpen ? (
           <ExpenseInboxPreviewModal

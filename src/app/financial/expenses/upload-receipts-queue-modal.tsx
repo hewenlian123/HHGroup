@@ -22,15 +22,11 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
-  uploadButtonClicked?: boolean;
 };
 
 type PendingItem = { id: string; file: File };
 
 type StatusPhase = "ready" | "preparing" | "creating" | "added" | "failed";
-type UploadDebugLastAction = "idle" | "take-photo" | "upload-files" | "close";
-
-const UPLOAD_RECEIPT_DEBUG_ENABLED = process.env.NODE_ENV !== "production";
 
 function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
@@ -130,12 +126,7 @@ function PendingReceiptRow({
   );
 }
 
-export function UploadReceiptsQueueModal({
-  open,
-  onOpenChange,
-  onSuccess,
-  uploadButtonClicked = false,
-}: Props) {
+export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Props) {
   const router = useRouter();
   const { toast } = useToast();
   const cameraInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -146,10 +137,6 @@ export function UploadReceiptsQueueModal({
   const [receiptImagePreparing, setReceiptImagePreparing] = React.useState(false);
   const [addedToQueueHint, setAddedToQueueHint] = React.useState(false);
   const [uploadFailed, setUploadFailed] = React.useState(false);
-  const [lastDebugAction, setLastDebugAction] = React.useState<UploadDebugLastAction>("idle");
-  const [dialogMounted, setDialogMounted] = React.useState(false);
-  const [cameraInputMounted, setCameraInputMounted] = React.useState(false);
-  const [uploadInputMounted, setUploadInputMounted] = React.useState(false);
   const addedHintTimerRef = React.useRef<number | null>(null);
   /** Ignore outside closes briefly after open — same pointer/touch can otherwise dismiss on iOS (Radix). */
   const suppressOutsideUntilRef = React.useRef(0);
@@ -164,44 +151,12 @@ export function UploadReceiptsQueueModal({
     uploadInputRef.current?.click();
   }, []);
 
-  const setDialogContentNode = React.useCallback((node: HTMLDivElement | null) => {
-    if (UPLOAD_RECEIPT_DEBUG_ENABLED) setDialogMounted(Boolean(node));
-  }, []);
-
   const setCameraInputNode = React.useCallback((node: HTMLInputElement | null) => {
     cameraInputRef.current = node;
-    if (UPLOAD_RECEIPT_DEBUG_ENABLED) setCameraInputMounted(Boolean(node));
   }, []);
 
   const setUploadInputNode = React.useCallback((node: HTMLInputElement | null) => {
     uploadInputRef.current = node;
-    if (UPLOAD_RECEIPT_DEBUG_ENABLED) setUploadInputMounted(Boolean(node));
-  }, []);
-
-  const fileInputsMounted = cameraInputMounted && uploadInputMounted;
-
-  React.useEffect(() => {
-    if (!UPLOAD_RECEIPT_DEBUG_ENABLED) return;
-    console.info("[UploadReceiptModal] modal open", open);
-  }, [open]);
-
-  React.useEffect(() => {
-    if (!UPLOAD_RECEIPT_DEBUG_ENABLED) return;
-    console.info("[UploadReceiptModal] dialog mounted", dialogMounted);
-  }, [dialogMounted]);
-
-  React.useEffect(() => {
-    if (!UPLOAD_RECEIPT_DEBUG_ENABLED) return;
-    console.info("[UploadReceiptModal] file input mounted", fileInputsMounted);
-  }, [fileInputsMounted]);
-
-  React.useEffect(() => {
-    if (!UPLOAD_RECEIPT_DEBUG_ENABLED) return;
-    console.info("[UploadReceiptModal] last action", lastDebugAction);
-  }, [lastDebugAction]);
-
-  const setDebugLastAction = React.useCallback((action: UploadDebugLastAction) => {
-    if (UPLOAD_RECEIPT_DEBUG_ENABLED) setLastDebugAction(action);
   }, []);
 
   const flashAddedToQueueHint = React.useCallback(() => {
@@ -361,25 +316,18 @@ export function UploadReceiptsQueueModal({
 
   const handleDialogOpenChange = React.useCallback(
     (nextOpen: boolean) => {
-      if (!nextOpen) setDebugLastAction("close");
       onOpenChange(nextOpen);
     },
-    [onOpenChange, setDebugLastAction]
+    [onOpenChange]
   );
 
   const handleTakePhotoClick = React.useCallback(() => {
-    setDebugLastAction("take-photo");
     cameraInputRef.current?.click();
-  }, [setDebugLastAction]);
+  }, []);
 
   const handleUploadFilesClick = React.useCallback(() => {
-    setDebugLastAction("upload-files");
     uploadInputRef.current?.click();
-  }, [setDebugLastAction]);
-
-  const handleCloseClick = React.useCallback(() => {
-    setDebugLastAction("close");
-  }, [setDebugLastAction]);
+  }, []);
 
   const busy = captureUploading;
   const statusPhase = resolveStatusPhase(
@@ -407,7 +355,6 @@ export function UploadReceiptsQueueModal({
           )}
         />
         <DialogPrimitive.Content
-          ref={setDialogContentNode}
           onOpenAutoFocus={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => {
             if (busy) e.preventDefault();
@@ -461,7 +408,6 @@ export function UploadReceiptsQueueModal({
                   "touch-manipulation"
                 )}
                 aria-label="Close"
-                onClick={handleCloseClick}
               >
                 <X className="h-5 w-5" strokeWidth={1.5} />
               </DialogPrimitive.Close>
@@ -667,19 +613,6 @@ export function UploadReceiptsQueueModal({
                 </>
               )}
             </div>
-            {UPLOAD_RECEIPT_DEBUG_ENABLED ? (
-              <div
-                aria-hidden="true"
-                data-testid="upload-receipt-mobile-debug"
-                className="pointer-events-none fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-[max(0.75rem,env(safe-area-inset-left))] z-[10000] max-w-[calc(100vw-1.5rem)] rounded-md border border-amber-300/70 bg-amber-50/95 px-2.5 py-2 text-[10px] leading-4 text-amber-950 shadow-sm md:hidden"
-              >
-                <div>upload button clicked: {String(uploadButtonClicked)}</div>
-                <div>modal open: {String(open)}</div>
-                <div>dialog mounted: {String(dialogMounted)}</div>
-                <div>file input mounted: {String(fileInputsMounted)}</div>
-                <div>last action: {lastDebugAction}</div>
-              </div>
-            ) : null}
           </div>
         </DialogPrimitive.Content>
       </DialogPortal>
