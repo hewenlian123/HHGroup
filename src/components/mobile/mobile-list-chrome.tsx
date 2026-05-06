@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Filter, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 /** Vertical rhythm on small screens; horizontal padding comes from `.page-container`. */
@@ -34,14 +35,20 @@ export function MobileFabPlus({ href, ariaLabel }: { href: string; ariaLabel: st
 export function MobileFabButton({
   ariaLabel,
   onClick,
+  className,
 }: {
   ariaLabel: string;
   onClick: () => void;
+  /** e.g. `h-11 w-11` for 44px minimum tap targets */
+  className?: string;
 }) {
   return (
     <button
       type="button"
-      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black text-white"
+      className={cn(
+        "flex h-10 w-10 shrink-0 touch-manipulation items-center justify-center rounded-full bg-black text-white",
+        className
+      )}
       aria-label={ariaLabel}
       onClick={onClick}
     >

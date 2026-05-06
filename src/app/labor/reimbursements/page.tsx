@@ -32,7 +32,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Search } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  DollarSign,
+  MoreHorizontal,
+  Paperclip,
+  Search,
+  Wallet,
+} from "lucide-react";
 import {
   MobileEmptyState,
   MobileFabButton,
@@ -56,6 +64,76 @@ function todayLocalISODate(): string {
 }
 
 const STATUS_OPTIONS: WorkerReimbursementStatus[] = ["pending", "paid"];
+
+const rbShell =
+  "rounded-xl border border-zinc-200/70 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_4px_24px_rgba(0,0,0,0.045)] dark:border-border/50 dark:bg-card/80 dark:shadow-none md:rounded-2xl";
+
+const rbKpiIcon =
+  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 md:h-8 md:w-8 dark:bg-muted dark:text-muted-foreground";
+
+function hasReceiptUrl(r: WorkerReimbursement): boolean {
+  return Boolean((r.receiptUrl ?? "").trim());
+}
+
+const receiptPillAttachedInteractive =
+  "inline-flex max-w-full shrink-0 items-center gap-1 rounded-full border border-emerald-500/12 bg-emerald-500/[0.04] px-2 py-0.5 text-[10px] font-medium tabular-nums text-emerald-950 shadow-none transition-colors hover:bg-emerald-500/[0.08] dark:border-emerald-500/14 dark:bg-emerald-500/[0.06] dark:text-emerald-100/88";
+
+const receiptPillMissing =
+  "inline-flex max-w-full shrink-0 items-center gap-1 rounded-full border border-amber-500/10 bg-amber-500/[0.03] px-2 py-0.5 text-[10px] font-normal tabular-nums text-amber-900/65 dark:border-amber-500/10 dark:bg-amber-500/[0.04] dark:text-amber-100/60";
+
+function ReimbursementStatusChip({
+  status,
+  hasReceipt,
+}: {
+  status: WorkerReimbursementStatus;
+  hasReceipt?: boolean;
+}) {
+  const chipBase =
+    "inline-flex w-fit min-h-[22px] shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium tabular-nums tracking-tight shadow-none";
+  if (status === "paid") {
+    return (
+      <span
+        className={cn(
+          chipBase,
+          "border-zinc-200/70 bg-zinc-50/70 text-zinc-600 dark:border-border/50 dark:bg-muted/20 dark:text-muted-foreground"
+        )}
+      >
+        <span
+          className="h-1 w-1 shrink-0 rounded-full bg-zinc-400/60 dark:bg-zinc-500/70"
+          aria-hidden
+        />
+        Paid
+      </span>
+    );
+  }
+  if (hasReceipt) {
+    return (
+      <span
+        className={cn(
+          chipBase,
+          "border-emerald-500/10 bg-emerald-500/[0.03] text-emerald-900/78 dark:border-emerald-500/12 dark:bg-emerald-500/[0.05] dark:text-emerald-100/82"
+        )}
+      >
+        <span className="h-1 w-1 shrink-0 rounded-full bg-emerald-500/50" aria-hidden />
+        Ready to pay
+      </span>
+    );
+  }
+  return (
+    <span
+      className={cn(
+        chipBase,
+        "border-amber-500/8 bg-amber-500/[0.025] text-amber-900/72 dark:border-amber-500/10 dark:bg-amber-500/[0.04] dark:text-amber-100/72"
+      )}
+    >
+      <span
+        className="h-1 w-1 shrink-0 rounded-full bg-amber-500/50 dark:bg-amber-400/50"
+        aria-hidden
+      />
+      Pending
+    </span>
+  );
+}
 
 export default function WorkerReimbursementsPage() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -186,6 +264,23 @@ export default function WorkerReimbursementsPage() {
     });
     return sorted;
   }, [rows, query, workerById, projectById, sort]);
+
+  const reimbursementStats = React.useMemo(() => {
+    const pending = rows.filter((r) => r.status === "pending");
+    const paid = rows.filter((r) => r.status === "paid");
+    const pendingTotal = pending.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    const paidTotal = paid.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    const missingReceipt = pending.filter((r) => !hasReceiptUrl(r)).length;
+    const readyToPay = pending.filter((r) => hasReceiptUrl(r)).length;
+    return {
+      pendingCount: pending.length,
+      missingReceipt,
+      readyToPay,
+      pendingTotal,
+      paidCount: paid.length,
+      paidTotal,
+    };
+  }, [rows]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paged = React.useMemo(() => {
@@ -458,17 +553,21 @@ export default function WorkerReimbursementsPage() {
   function ActionsDropdown({ r }: { r: WorkerReimbursement }) {
     const isBusy = busyId === r.id;
     return (
-      <div className="flex items-center justify-end gap-2">
-        <DeleteRowAction disabled={isBusy} onDelete={() => handleDelete(r.id)} />
+      <div className="flex items-center justify-end gap-0.5 opacity-100 transition-opacity duration-200 md:gap-1 md:opacity-[0.28] md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+        <DeleteRowAction
+          disabled={isBusy}
+          className="h-11 w-11 text-muted-foreground/45 hover:bg-zinc-100/90 hover:text-red-600 dark:hover:bg-muted/45 md:h-8 md:w-8 md:text-muted-foreground/35 md:hover:text-red-600"
+          onDelete={() => handleDelete(r.id)}
+        />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
-              variant="outline"
+              variant="ghost"
               size="icon"
-              className="btn-outline-ghost h-8 w-8 min-h-[44px] min-w-[44px] rounded-sm touch-manipulation"
+              className="h-11 w-11 min-h-[44px] min-w-[44px] rounded-sm text-muted-foreground/55 touch-manipulation hover:bg-zinc-100/70 hover:text-foreground dark:hover:bg-muted/40 md:h-8 md:w-8 md:min-h-8 md:min-w-8 md:text-muted-foreground/35 md:hover:text-foreground"
               aria-label="Actions"
             >
-              <MoreHorizontal className="h-4 w-4" />
+              <MoreHorizontal className="h-4 w-4 opacity-55 md:opacity-50" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="min-w-[10rem]">
@@ -516,35 +615,41 @@ export default function WorkerReimbursementsPage() {
 
   return (
     <div
-      className={cn("page-container page-stack py-6", mobileListPagePaddingClass, "max-md:!gap-3")}
+      className={cn(
+        "mx-auto flex w-full max-w-[430px] flex-col gap-0.5 bg-zinc-50 px-4 py-1 pb-2.5 dark:bg-background sm:max-w-[460px] md:max-w-6xl md:gap-0.5 md:px-6 md:pb-3 md:pt-0.5",
+        mobileListPagePaddingClass,
+        "max-md:!gap-0.5"
+      )}
     >
       <div className="hidden md:block">
         <PageHeader
+          className="gap-1 border-b border-zinc-200/70 pb-1 dark:border-border/60 lg:items-baseline lg:gap-x-4 [&_h1]:text-lg [&_h1]:font-semibold [&_h1]:tracking-tight [&_h1]:text-zinc-900 [&_p]:mt-0 [&_p]:text-[13px] [&_p]:leading-snug [&_p]:text-muted-foreground dark:[&_h1]:text-foreground"
           title="Worker Reimbursements"
-          subtitle="Construction finance: approve, pay, and track worker reimbursements."
+          subtitle="Review pending reimbursements, receipts, and payouts before marking paid."
           actions={
-            <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+            <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center lg:justify-end">
               <Link
                 href="/financial/workers"
-                className="text-sm text-muted-foreground hover:text-foreground max-md:min-h-11 max-md:inline-flex max-md:items-center sm:mr-2"
+                className="text-sm text-muted-foreground transition-colors hover:text-foreground max-md:min-h-11 max-md:inline-flex max-md:items-center sm:mr-2 md:text-[13px] md:text-muted-foreground/85 md:hover:text-foreground"
               >
                 Worker Balances
               </Link>
               <Link
                 href="/labor/receipts"
-                className="text-sm text-muted-foreground hover:text-foreground max-md:min-h-11 max-md:inline-flex max-md:items-center sm:mr-2"
+                className="text-sm text-muted-foreground transition-colors hover:text-foreground max-md:min-h-11 max-md:inline-flex max-md:items-center sm:mr-2 md:text-[13px] md:text-muted-foreground/85 md:hover:text-foreground"
               >
                 Receipt Uploads
               </Link>
               <Link
                 href="/labor"
-                className="text-sm text-muted-foreground hover:text-foreground max-md:min-h-11 max-md:inline-flex max-md:items-center sm:mr-2"
+                className="text-sm text-muted-foreground transition-colors hover:text-foreground max-md:min-h-11 max-md:inline-flex max-md:items-center sm:mr-2 md:text-[13px] md:text-muted-foreground/85 md:hover:text-foreground"
               >
                 Labor
               </Link>
               <Button
                 size="sm"
-                className="w-full max-md:min-h-11 sm:w-auto"
+                variant="outline"
+                className="w-full max-md:min-h-11 sm:w-auto md:shadow-none"
                 onClick={openNewReimbursementForm}
               >
                 + New Reimbursement
@@ -555,8 +660,114 @@ export default function WorkerReimbursementsPage() {
       </div>
       <MobileListHeader
         title="Reimbursements"
-        fab={<MobileFabButton ariaLabel="New reimbursement" onClick={openNewReimbursementForm} />}
+        fab={
+          <MobileFabButton
+            ariaLabel="New reimbursement"
+            onClick={openNewReimbursementForm}
+            className="h-11 w-11 min-h-[44px] min-w-[44px]"
+          />
+        }
       />
+
+      <div
+        className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-zinc-100/90 pb-0.5 dark:border-border/50 md:pb-0.5"
+        aria-label="Reimbursement queue summary"
+      >
+        <span className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-zinc-200/85 bg-white px-2.5 py-1.5 text-[11px] text-muted-foreground shadow-[0_1px_0_rgba(0,0,0,0.03)] dark:border-border/55 dark:bg-card md:min-h-9">
+          <span className="font-semibold tabular-nums text-foreground">
+            {reimbursementStats.pendingCount}
+          </span>
+          Pending
+        </span>
+        <span className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-amber-500/15 bg-amber-500/[0.05] px-2.5 py-1.5 text-[11px] text-amber-950/75 dark:border-amber-500/12 dark:bg-amber-500/[0.07] dark:text-amber-100/80 md:min-h-9">
+          <span className="font-semibold tabular-nums text-amber-950 dark:text-amber-50">
+            {reimbursementStats.missingReceipt}
+          </span>
+          Missing receipt
+        </span>
+        <span className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-emerald-500/18 bg-emerald-500/[0.06] px-2.5 py-1.5 text-[11px] text-emerald-950/80 dark:border-emerald-500/22 dark:bg-emerald-500/10 dark:text-emerald-100/85 md:min-h-9">
+          <span className="font-semibold tabular-nums text-emerald-950 dark:text-emerald-50">
+            {reimbursementStats.readyToPay}
+          </span>
+          Ready to pay
+        </span>
+      </div>
+
+      <div className="-mt-px grid grid-cols-2 gap-1.5 md:grid-cols-4 md:gap-1.5">
+        <div
+          className={cn(
+            rbShell,
+            "flex min-h-[48px] items-center gap-1.5 px-2 py-1.5 md:h-[62px] md:gap-2 md:px-3 md:py-1.5"
+          )}
+        >
+          <span className={rbKpiIcon}>
+            <AlertCircle className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+              In queue
+            </p>
+            <p className="mt-0.5 text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
+              {reimbursementStats.pendingCount}
+            </p>
+          </div>
+        </div>
+        <div
+          className={cn(
+            rbShell,
+            "flex min-h-[48px] items-center gap-1.5 px-2 py-1.5 md:h-[62px] md:gap-2 md:px-3 md:py-1.5"
+          )}
+        >
+          <span className={rbKpiIcon}>
+            <DollarSign className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+              Owed (pending)
+            </p>
+            <p className="mt-0.5 truncate text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
+              ${fmtUsd(reimbursementStats.pendingTotal)}
+            </p>
+          </div>
+        </div>
+        <div
+          className={cn(
+            rbShell,
+            "flex min-h-[48px] items-center gap-1.5 px-2 py-1.5 md:h-[62px] md:gap-2 md:px-3 md:py-1.5"
+          )}
+        >
+          <span className={rbKpiIcon}>
+            <CheckCircle2 className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+              Paid items
+            </p>
+            <p className="mt-0.5 text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
+              {reimbursementStats.paidCount}
+            </p>
+          </div>
+        </div>
+        <div
+          className={cn(
+            rbShell,
+            "flex min-h-[48px] items-center gap-1.5 px-2 py-1.5 md:h-[62px] md:gap-2 md:px-3 md:py-1.5"
+          )}
+        >
+          <span className={rbKpiIcon}>
+            <Wallet className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+              Paid out
+            </p>
+            <p className="mt-0.5 truncate text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
+              ${fmtUsd(reimbursementStats.paidTotal)}
+            </p>
+          </div>
+        </div>
+      </div>
+
       <MobileSearchFiltersRow
         filterSheetOpen={filtersOpen}
         onOpenFilters={() => setFiltersOpen(true)}
@@ -568,7 +779,7 @@ export default function WorkerReimbursementsPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Worker, project, vendor…"
-              className="h-10 pl-8 text-sm"
+              className="h-11 min-h-[44px] pl-8 text-sm md:h-10 md:min-h-0"
               aria-label="Search reimbursements"
             />
           </div>
@@ -628,8 +839,8 @@ export default function WorkerReimbursementsPage() {
           Project Settings → API → Reload schema.
         </div>
       ) : null}
-      <FilterBar className="hidden md:block">
-        <div className="flex w-full flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+      <FilterBar className="hidden md:block md:pt-0 md:pb-0">
+        <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
           <div className="space-y-1 min-w-[200px] flex-1">
             <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Search
@@ -799,38 +1010,112 @@ export default function WorkerReimbursementsPage() {
             message="No reimbursements yet."
           />
         ) : (
-          <div className="divide-y divide-gray-100 dark:divide-border/60">
+          <div className="flex flex-col gap-1.5">
             {paged.map((r) => (
-              <div key={r.id} className="flex min-h-[48px] flex-col gap-2 py-2.5">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex min-w-0 flex-1 items-start gap-2">
-                    {r.status === "pending" ? (
+              <div
+                key={r.id}
+                className={cn(
+                  rbShell,
+                  "flex flex-col gap-2 px-3 py-2.5 shadow-[0_1px_0_rgba(0,0,0,0.04),0_2px_12px_rgba(0,0,0,0.04)]",
+                  r.status === "pending" &&
+                    hasReceiptUrl(r) &&
+                    "border-l-[3px] border-l-emerald-500/35 pl-[calc(0.75rem-3px)]",
+                  r.status === "pending" &&
+                    !hasReceiptUrl(r) &&
+                    "border-l-[3px] border-l-amber-500/30 pl-[calc(0.75rem-3px)]"
+                )}
+              >
+                <div className="flex items-start gap-2">
+                  {r.status === "pending" ? (
+                    <label className="flex min-h-[44px] min-w-[44px] shrink-0 cursor-pointer items-center justify-center rounded-sm touch-manipulation">
                       <input
                         type="checkbox"
                         aria-label={`Select ${workerName(r)}`}
                         checked={selectedIds.has(r.id)}
                         onChange={() => toggleSelection(r.id, r.status)}
-                        className="mt-0.5 h-4 w-4 shrink-0 rounded border-input"
+                        className="h-4 w-4 shrink-0 rounded border-input"
                       />
+                    </label>
+                  ) : null}
+                  <div className="min-w-0 flex-1 space-y-0.5">
+                    <p className="truncate text-[14px] font-semibold leading-snug tracking-tight text-zinc-900 dark:text-foreground">
+                      {workerName(r)}
+                    </p>
+                    {r.paidAt ? (
+                      <p className="text-[10px] tabular-nums text-muted-foreground/70">
+                        Paid {String(r.paidAt).slice(0, 10)}
+                      </p>
                     ) : null}
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-foreground">
-                        {workerName(r)}
+                    <p className="truncate text-[11px] leading-snug text-muted-foreground">
+                      {r.projectId && projectName(r) !== "—" ? projectName(r) : "No project"}
+                    </p>
+                    <p className="truncate text-[12px] font-medium leading-snug text-zinc-800 dark:text-zinc-100">
+                      {r.vendor?.trim() ? r.vendor : "No vendor"}
+                    </p>
+                    {r.description?.trim() ? (
+                      <p className="line-clamp-2 text-[11px] leading-snug text-muted-foreground">
+                        {r.description.trim()}
                       </p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {projectName(r)} · {r.vendor ?? "—"}
-                      </p>
-                      <p className="mt-1 text-xs tabular-nums text-muted-foreground">
-                        {r.reimbursementDate || (r.createdAt ?? "").slice(0, 10)}
-                      </p>
+                    ) : null}
+                    <p className="text-[10px] tabular-nums text-muted-foreground">
+                      {r.reimbursementDate || (r.createdAt ?? "").slice(0, 10)}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1.5">
+                    <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
+                      <span className="text-base font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-foreground">
+                        ${fmtUsd(r.amount)}
+                      </span>
+                      <ReimbursementStatusChip status={r.status} hasReceipt={hasReceiptUrl(r)} />
+                      {r.receiptUrl ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const u = r.receiptUrl;
+                            if (!u) return;
+                            void (async () => {
+                              const signed = await resolvePreviewSignedUrl({
+                                supabase,
+                                rawUrlOrPath: u,
+                                ttlSec: 3600,
+                                bucketCandidates: [
+                                  "worker-receipts",
+                                  "receipts",
+                                  "expense-attachments",
+                                ],
+                              });
+                              openPreview({ url: signed || u, fileName: "Receipt" });
+                            })();
+                          }}
+                          aria-label="Preview receipt"
+                          className={cn(
+                            receiptPillAttachedInteractive,
+                            "min-h-[44px] touch-manipulation md:min-h-0"
+                          )}
+                        >
+                          <Paperclip
+                            className="h-3 w-3 shrink-0 opacity-90"
+                            strokeWidth={2}
+                            aria-hidden
+                          />
+                          Receipt
+                        </button>
+                      ) : (
+                        <span
+                          className={cn(receiptPillMissing, "min-h-[44px] md:min-h-0")}
+                          aria-label="No receipt"
+                        >
+                          <span
+                            className="h-1 w-1 shrink-0 rounded-full bg-amber-400/55 dark:bg-amber-400/45"
+                            aria-hidden
+                          />
+                          No receipt
+                        </span>
+                      )}
                     </div>
                   </div>
-                  <div className="flex shrink-0 flex-col items-end gap-1">
-                    <span className="text-sm font-medium tabular-nums">${fmtUsd(r.amount)}</span>
-                    <span className="text-xs capitalize text-muted-foreground">{r.status}</span>
-                  </div>
                 </div>
-                <div className="flex justify-end pl-6">
+                <div className="flex justify-end border-t border-zinc-100/80 pt-1.5 dark:border-border/45">
                   <ActionsDropdown r={r} />
                 </div>
               </div>
@@ -840,155 +1125,218 @@ export default function WorkerReimbursementsPage() {
       </div>
 
       {/* Desktop: table */}
-      <div className="table-responsive hidden overflow-x-auto border-b border-gray-100 md:block dark:border-border/60">
-        <table className="w-full min-w-[640px] border-collapse text-sm table-row-compact lg:min-w-0">
-          <thead>
-            <tr className="border-b border-gray-100 bg-white dark:border-border/60 dark:bg-muted/30">
-              <th className="w-10 py-2 px-2 text-center">
-                <input
-                  type="checkbox"
-                  aria-label="Select all pending on page"
-                  checked={
-                    pendingOnPage.length > 0 && pendingOnPage.every((r) => selectedIds.has(r.id))
-                  }
-                  onChange={selectAllPendingOnPage}
-                  className="h-4 w-4 rounded border-input"
-                />
-              </th>
-              <th
-                className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground cursor-pointer select-none tabular-nums"
-                onClick={() => toggleSort("reimbursementDate")}
-              >
-                Date
-              </th>
-              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Worker
-              </th>
-              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Project
-              </th>
-              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Vendor
-              </th>
-              <th
-                className="text-right py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground tabular-nums cursor-pointer select-none"
-                onClick={() => toggleSort("amount")}
-              >
-                Amount
-              </th>
-              <th
-                className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground cursor-pointer select-none"
-                onClick={() => toggleSort("status")}
-              >
-                Status
-              </th>
-              <th className="text-left py-2 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Receipt
-              </th>
-              <th className="w-44 text-right py-2 px-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr className="border-b border-border/40">
-                <td colSpan={9} className="py-6 px-3 text-center text-muted-foreground text-xs">
-                  Loading…
-                </td>
-              </tr>
-            ) : paged.length === 0 ? (
-              <tr className="border-b border-border/40">
-                <td colSpan={9} className="py-6 px-3 text-center text-muted-foreground text-xs">
-                  No reimbursements yet.
-                </td>
-              </tr>
-            ) : (
-              paged.map((r) => (
-                <tr
-                  key={r.id}
-                  className={cn(
-                    listTableRowClassName,
-                    "group border-b border-gray-100/80 dark:border-border/40"
-                  )}
-                  onClick={() => handleEdit(r)}
-                >
-                  <td className="w-10 py-2 px-2 text-center" onClick={(e) => e.stopPropagation()}>
-                    {r.status === "pending" ? (
+      <div className="hidden md:block">
+        <div className={cn(rbShell, "overflow-hidden")}>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[900px] border-collapse text-sm lg:min-w-0">
+              <thead>
+                <tr className="border-b border-zinc-100 bg-zinc-50/90 dark:border-border/60 dark:bg-muted/20">
+                  <th className="w-12 px-2 py-1.5 text-center">
+                    <div className="flex min-h-10 min-w-10 items-center justify-center">
                       <input
                         type="checkbox"
-                        aria-label={`Select ${workerName(r)} $${fmtUsd(r.amount)}`}
-                        checked={selectedIds.has(r.id)}
-                        onChange={() => toggleSelection(r.id, r.status)}
+                        aria-label="Select all pending on page"
+                        checked={
+                          pendingOnPage.length > 0 &&
+                          pendingOnPage.every((r) => selectedIds.has(r.id))
+                        }
+                        onChange={selectAllPendingOnPage}
                         className="h-4 w-4 rounded border-input"
                       />
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </td>
-                  <td className="py-2 px-3 text-muted-foreground tabular-nums">
-                    {r.reimbursementDate || (r.createdAt ?? "").slice(0, 10)}
-                  </td>
-                  <td
-                    className={cn(
-                      "py-2 px-3 font-medium",
-                      listTablePrimaryCellClassName,
-                      "hover:underline"
-                    )}
+                    </div>
+                  </th>
+                  <th
+                    className="w-[88px] whitespace-nowrap px-3 py-1.5 text-left text-[10px] font-medium uppercase tracking-wide text-muted-foreground cursor-pointer select-none tabular-nums"
+                    onClick={() => toggleSort("reimbursementDate")}
                   >
-                    {workerName(r)}
-                  </td>
-                  <td className="py-2 px-3 text-muted-foreground">{projectName(r)}</td>
-                  <td
-                    className="py-2 px-3 text-muted-foreground max-w-[120px] truncate"
-                    title={r.vendor ?? undefined}
+                    Date
+                  </th>
+                  <th className="min-w-[128px] px-3 py-1.5 text-left text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Worker
+                  </th>
+                  <th className="max-w-[140px] min-w-[100px] px-3 py-1.5 text-left text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Project
+                  </th>
+                  <th className="min-w-[160px] px-3 py-1.5 text-left text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Review item
+                  </th>
+                  <th
+                    className="w-[92px] whitespace-nowrap px-3 py-1.5 text-right text-[10px] font-medium uppercase tracking-wide text-muted-foreground cursor-pointer select-none tabular-nums"
+                    onClick={() => toggleSort("amount")}
                   >
-                    {r.vendor ?? "—"}
-                  </td>
-                  <td
-                    className={cn(
-                      "py-2 px-3 text-right tabular-nums font-medium",
-                      listTableAmountCellClassName
-                    )}
+                    Amount
+                  </th>
+                  <th
+                    className="w-[108px] whitespace-nowrap px-3 py-1.5 text-left text-[10px] font-medium uppercase tracking-wide text-muted-foreground cursor-pointer select-none"
+                    onClick={() => toggleSort("status")}
                   >
-                    ${fmtUsd(r.amount)}
-                  </td>
-                  <td className="py-2 px-3 text-muted-foreground">{r.status}</td>
-                  <td className="py-2 px-3" onClick={(e) => e.stopPropagation()}>
-                    {r.receiptUrl ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const u = r.receiptUrl;
-                          if (!u) return;
-                          void (async () => {
-                            const signed = await resolvePreviewSignedUrl({
-                              supabase,
-                              rawUrlOrPath: u,
-                              ttlSec: 3600,
-                              bucketCandidates: [
-                                "worker-receipts",
-                                "receipts",
-                                "expense-attachments",
-                              ],
-                            });
-                            openPreview({ url: signed || u, fileName: "Receipt" });
-                          })();
-                        }}
-                        className="cursor-pointer text-xs text-primary transition-transform hover:scale-105 hover:underline"
-                      >
-                        View
-                      </button>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </td>
-                  <td className="py-2 px-3 text-right" onClick={(e) => e.stopPropagation()}>
-                    <ActionsDropdown r={r} />
-                  </td>
+                    Status
+                  </th>
+                  <th className="w-[88px] whitespace-nowrap px-3 py-1.5 text-left text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Receipt
+                  </th>
+                  <th className="w-24 px-3 py-1.5 text-right text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Actions
+                  </th>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr className="border-b border-border/40">
+                    <td colSpan={9} className="px-3 py-8 text-center text-muted-foreground text-xs">
+                      Loading…
+                    </td>
+                  </tr>
+                ) : paged.length === 0 ? (
+                  <tr className="border-b border-border/40">
+                    <td colSpan={9} className="px-3 py-8 text-center text-muted-foreground text-xs">
+                      No reimbursements yet.
+                    </td>
+                  </tr>
+                ) : (
+                  paged.map((r) => (
+                    <tr
+                      key={r.id}
+                      className={cn(
+                        listTableRowClassName,
+                        "group border-b border-zinc-100/80 transition-colors hover:bg-zinc-50/70 dark:border-border/40 dark:hover:bg-muted/15",
+                        r.status === "pending" &&
+                          hasReceiptUrl(r) &&
+                          "bg-emerald-500/[0.03] shadow-[inset_3px_0_0_0_rgba(16,185,129,0.28)] hover:bg-emerald-500/[0.05] dark:bg-emerald-500/[0.04] dark:hover:bg-emerald-500/[0.06] dark:shadow-[inset_3px_0_0_0_rgba(52,211,153,0.22)]",
+                        r.status === "pending" &&
+                          !hasReceiptUrl(r) &&
+                          "bg-amber-500/[0.03] shadow-[inset_3px_0_0_0_rgba(245,158,11,0.26)] hover:bg-amber-500/[0.045] dark:bg-amber-500/[0.05] dark:hover:bg-amber-500/[0.07] dark:shadow-[inset_3px_0_0_0_rgba(251,191,36,0.2)]"
+                      )}
+                      onClick={() => handleEdit(r)}
+                    >
+                      <td
+                        className="w-12 px-2 py-2 text-center align-middle"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {r.status === "pending" ? (
+                          <div className="flex min-h-10 min-w-10 items-center justify-center">
+                            <input
+                              type="checkbox"
+                              aria-label={`Select ${workerName(r)} $${fmtUsd(r.amount)}`}
+                              checked={selectedIds.has(r.id)}
+                              onChange={() => toggleSelection(r.id, r.status)}
+                              className="h-4 w-4 rounded border-input"
+                            />
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 align-middle text-[11px] text-muted-foreground tabular-nums leading-snug">
+                        {r.reimbursementDate || (r.createdAt ?? "").slice(0, 10)}
+                      </td>
+                      <td
+                        className={cn(
+                          "min-w-0 px-3 py-2 align-middle leading-snug",
+                          listTablePrimaryCellClassName,
+                          "text-zinc-900 dark:text-foreground"
+                        )}
+                      >
+                        <div className="min-w-0 space-y-0.5">
+                          <span className="line-clamp-2 text-[13px] font-semibold tracking-tight">
+                            {workerName(r)}
+                          </span>
+                          {r.paidAt ? (
+                            <span className="block text-[10px] tabular-nums leading-none text-muted-foreground/70">
+                              Paid {String(r.paidAt).slice(0, 10)}
+                            </span>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td className="max-w-[160px] px-3 py-2 align-middle">
+                        {r.projectId && projectName(r) !== "—" ? (
+                          <span className="line-clamp-2 text-[12px] leading-snug text-muted-foreground">
+                            {projectName(r)}
+                          </span>
+                        ) : (
+                          <span className="text-[12px] text-muted-foreground/45">No project</span>
+                        )}
+                      </td>
+                      <td className="min-w-0 px-3 py-2 align-middle leading-snug">
+                        <div className="min-w-0 space-y-0.5">
+                          <span className="line-clamp-2 text-[12px] font-medium leading-snug text-zinc-800 dark:text-zinc-100">
+                            {r.vendor?.trim() ? r.vendor : "No vendor"}
+                          </span>
+                          {r.description?.trim() ? (
+                            <span className="line-clamp-2 text-[11px] leading-snug text-muted-foreground">
+                              {r.description.trim()}
+                            </span>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td
+                        className={cn(
+                          "whitespace-nowrap px-3 py-2 text-right align-middle text-base font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-foreground",
+                          listTableAmountCellClassName
+                        )}
+                      >
+                        ${fmtUsd(r.amount)}
+                      </td>
+                      <td className="px-3 py-2 align-middle whitespace-nowrap">
+                        <ReimbursementStatusChip status={r.status} hasReceipt={hasReceiptUrl(r)} />
+                      </td>
+                      <td
+                        className="px-3 py-2 align-middle whitespace-nowrap"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {r.receiptUrl ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const u = r.receiptUrl;
+                              if (!u) return;
+                              void (async () => {
+                                const signed = await resolvePreviewSignedUrl({
+                                  supabase,
+                                  rawUrlOrPath: u,
+                                  ttlSec: 3600,
+                                  bucketCandidates: [
+                                    "worker-receipts",
+                                    "receipts",
+                                    "expense-attachments",
+                                  ],
+                                });
+                                openPreview({ url: signed || u, fileName: "Receipt" });
+                              })();
+                            }}
+                            aria-label="Preview receipt"
+                            className={receiptPillAttachedInteractive}
+                          >
+                            <Paperclip
+                              className="h-3 w-3 shrink-0 opacity-90"
+                              strokeWidth={2}
+                              aria-hidden
+                            />
+                            Receipt
+                          </button>
+                        ) : (
+                          <span className={receiptPillMissing}>
+                            <span
+                              className="h-1 w-1 shrink-0 rounded-full bg-amber-400/55 dark:bg-amber-400/45"
+                              aria-hidden
+                            />
+                            No receipt
+                          </span>
+                        )}
+                      </td>
+                      <td
+                        className="px-3 py-2 text-right align-middle"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <ActionsDropdown r={r} />
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       <div className="flex items-center justify-between pt-3 text-sm text-muted-foreground">
@@ -1001,7 +1349,7 @@ export default function WorkerReimbursementsPage() {
           <Button
             size="sm"
             variant="outline"
-            className="h-8 rounded-sm"
+            className="h-11 min-h-[44px] rounded-sm px-4 md:h-8 md:min-h-8"
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
           >
@@ -1010,7 +1358,7 @@ export default function WorkerReimbursementsPage() {
           <Button
             size="sm"
             variant="outline"
-            className="h-8 rounded-sm"
+            className="h-11 min-h-[44px] rounded-sm px-4 md:h-8 md:min-h-8"
             disabled={page >= totalPages}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
           >

@@ -198,7 +198,7 @@ test.describe("Reimbursement flow (visual steps)", () => {
         .filter({ hasText: REIMBURSEMENT_VISUAL_VENDOR })
         .first();
       await expect(reimbursementRow).toBeVisible({ timeout: 60_000 });
-      await expect(reimbursementRow.getByText("pending")).toBeVisible();
+      await expect(reimbursementRow.getByText(/pending|ready to pay/i)).toBeVisible();
       await page.screenshot({ path: screenshotPath("03-approve-reimbursement"), fullPage: true });
     });
 
