@@ -2,6 +2,7 @@
 
 import "./expenses-ui-theme.css";
 import * as React from "react";
+import Link from "next/link";
 import { flushSync } from "react-dom";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
@@ -16,7 +17,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getExpenseTotal, type Expense, type ExpenseAttachment } from "@/lib/data";
+import {
+  getExpenseTotal,
+  isExpenseCategoryDisabled,
+  isPaymentMethodDisabled,
+  type Expense,
+  type ExpenseAttachment,
+} from "@/lib/data";
 import { useToast } from "@/components/toast/toast-provider";
 import {
   eventTargetsAttachmentPreviewModal,
@@ -27,11 +34,14 @@ import {
   type AttachmentPreviewFileItem,
 } from "@/contexts/attachment-preview-context";
 import { ExpenseCategorySelect } from "@/components/expense-category-select";
+import { ExpensePaymentMethodSelect } from "@/components/expense-payment-method-select";
+import { ExpensePaymentSourceSelect } from "@/components/expense-payment-source-select";
 import { PaymentAccountSelect } from "@/components/payment-account-select";
 import type { PaymentAccountRow } from "@/lib/data";
 import { persistLastExpensePaymentAccountId } from "@/lib/expense-payment-preferences";
 import { resolvePreviewSignedUrl } from "@/lib/storage-signed-url";
 import type { ExpenseReviewSavePatch } from "./edit-expense-modal";
+import { defaultPaymentMethodName, isPaymentAccountOptionActive } from "@/lib/expense-options-db";
 import { cn } from "@/lib/utils";
 import {
   isInboxUploadExpenseReference,
@@ -62,8 +72,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 type ProjectOption = { id: string; name: string | null };
 type WorkerOption = { id: string; name: string };
 
-const PAYMENT_METHOD_OPTIONS = ["Amex", "Visa", "Cash", "Company"] as const;
-
 const FIELD_LABEL = "text-xs uppercase tracking-wide text-muted-foreground";
 const INPUT_CLASS = "h-10 rounded-sm border-border/60 text-sm max-md:min-h-11 max-md:text-base";
 const SELECT_TRIGGER_CLASS =
@@ -75,9 +83,7 @@ const selectPopperContentProps = {
   className: "z-[200] max-h-[min(280px,var(--radix-select-content-available-height))]",
 };
 
-export type ExpenseInboxPreviewSavePayload = ExpenseReviewSavePatch & {
-  paymentMethod: string;
-};
+export type ExpenseInboxPreviewSavePayload = ExpenseReviewSavePatch;
 
 function attachmentIsImage(att: ExpenseAttachment): boolean {
   const mt = (att.mimeType ?? "").trim().toLowerCase();
@@ -116,9 +122,10 @@ function receiptLineItemsToPreviewFiles(items: ExpenseReceiptItem[]): Attachment
 }
 
 function sourceTypeLabel(t: Expense["sourceType"]): string {
-  if (t === "reimbursement") return "Reimbursement";
+  if (t === "reimbursement") return "Worker reimbursement";
   if (t === "receipt_upload") return "Receipt upload";
-  return "Company";
+  if (t === "bank_import") return "Bank import";
+  return "Manual";
 }
 
 function paymentMethodLabel(pm: string | undefined): string {
@@ -230,6 +237,9 @@ export function ExpenseInboxPreviewModal({
   const [paymentAccountsLocal, setPaymentAccountsLocal] = React.useState<PaymentAccountRow[]>([]);
   const [attachments, setAttachments] = React.useState<ExpenseAttachment[]>([]);
   const [thumbById, setThumbById] = React.useState<Record<string, string | null>>({});
+  const [previewPmArchived, setPreviewPmArchived] = React.useState(false);
+  const [previewCatArchived, setPreviewCatArchived] = React.useState(false);
+  const [previewPaArchived, setPreviewPaArchived] = React.useState(false);
   /** Preview-mode attachment thumbnails: keyed by storage dedupe key (same signing path as list thumbs). */
   const [previewThumbSignedByDedupeKey, setPreviewThumbSignedByDedupeKey] = React.useState<
     Record<string, string | null>
@@ -283,10 +293,50 @@ export function ExpenseInboxPreviewModal({
     setNotes(stripInboxUploadNoiseFromText(expense.notes ?? ""));
     setExpenseDate((expense.date ?? "").slice(0, 10));
     setSourceType(expense.sourceType ?? "company");
-    setPaymentMethod((expense.paymentMethod ?? "").trim() || PAYMENT_METHOD_OPTIONS[0]);
+    setPaymentMethod((expense.paymentMethod ?? "").trim());
     setPaymentAccountId(expense.paymentAccountId ?? "");
     setAttachments(getExpenseDisplayAttachments(expense));
   }, [expense]);
+
+  React.useEffect(() => {
+    const pm = expense?.paymentMethod?.trim();
+    if (!pm) {
+      setPreviewPmArchived(false);
+      return;
+    }
+    void isPaymentMethodDisabled(pm).then(setPreviewPmArchived);
+  }, [expense?.paymentMethod, expense?.id]);
+
+  React.useEffect(() => {
+    const cat = expense?.lines[0]?.category?.trim();
+    if (!cat) {
+      setPreviewCatArchived(false);
+      return;
+    }
+    void isExpenseCategoryDisabled(cat).then(setPreviewCatArchived);
+  }, [expense?.lines, expense?.id]);
+
+  React.useEffect(() => {
+    const aid = expense?.paymentAccountId?.trim();
+    if (!aid) {
+      setPreviewPaArchived(false);
+      return;
+    }
+    void isPaymentAccountOptionActive(aid).then((a) => setPreviewPaArchived(!a));
+  }, [expense?.paymentAccountId, expense?.id]);
+
+  React.useEffect(() => {
+    if (!expense || !open || mode !== "edit") return;
+    const pm = (expense.paymentMethod ?? "").trim();
+    if (pm) return;
+    let cancelled = false;
+    void defaultPaymentMethodName().then((d) => {
+      if (!cancelled && d) setPaymentMethod(d);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [expense, open, mode]);
 
   React.useEffect(() => {
     setPreviewThumbErrorByKey({});
@@ -563,7 +613,7 @@ export function ExpenseInboxPreviewModal({
           expense.paymentAccountName ??
           null)
         : null;
-      const pm = paymentMethod.trim() || PAYMENT_METHOD_OPTIONS[0];
+      const pm = paymentMethod.trim() || (await defaultPaymentMethodName()) || "Cash";
       let workflowStatus = preserveConfirmedExpenseStatusOnCompleteSave(
         expense.status,
         deriveExpenseWorkflowStatus(projectId, category || "Other")
@@ -646,7 +696,7 @@ export function ExpenseInboxPreviewModal({
     setNotes(stripInboxUploadNoiseFromText(expense.notes ?? ""));
     setExpenseDate((expense.date ?? "").slice(0, 10));
     setSourceType(expense.sourceType ?? "company");
-    setPaymentMethod((expense.paymentMethod ?? "").trim() || PAYMENT_METHOD_OPTIONS[0]);
+    setPaymentMethod((expense.paymentMethod ?? "").trim());
     setPaymentAccountId(expense.paymentAccountId ?? "");
     setAttachments(getExpenseDisplayAttachments(expense));
     setMode("preview");
@@ -664,12 +714,6 @@ export function ExpenseInboxPreviewModal({
     projectId && String(projectId).trim() !== "" ? projectId : EXPENSE_PROJECT_SELECT_NONE;
   const workerRadixValue =
     workerId && String(workerId).trim() !== "" ? workerId : EXPENSE_WORKER_SELECT_NONE;
-  const pmInList = (PAYMENT_METHOD_OPTIONS as readonly string[]).includes(paymentMethod);
-  const paymentMethodRadixValue =
-    pmInList || !paymentMethod.trim()
-      ? paymentMethod.trim() || PAYMENT_METHOD_OPTIONS[0]
-      : paymentMethod;
-
   const previewDivide = "divide-y divide-border/60";
 
   return (
@@ -749,7 +793,9 @@ export function ExpenseInboxPreviewModal({
                     {projectLabelFromExpense(expense, projectNameById)}
                   </PreviewRow>
                   <PreviewRow label="Category">
-                    {expense.lines[0]?.category?.trim() ? expense.lines[0].category : "—"}
+                    {expense.lines[0]?.category?.trim()
+                      ? `${expense.lines[0].category}${previewCatArchived ? " (Archived)" : ""}`
+                      : "—"}
                   </PreviewRow>
                   <PreviewRow label="Worker">
                     {expense.workerId
@@ -766,10 +812,16 @@ export function ExpenseInboxPreviewModal({
               <ModalSection title="Payment">
                 <div className={previewDivide}>
                   <PreviewRow label="Payment method">
-                    {paymentMethodLabel(expense.paymentMethod)}
+                    {(() => {
+                      const raw = paymentMethodLabel(expense.paymentMethod);
+                      if (raw === "—") return "—";
+                      return `${raw}${previewPmArchived ? " (Archived)" : ""}`;
+                    })()}
                   </PreviewRow>
                   <PreviewRow label="Payment account">
-                    {expense.paymentAccountName?.trim() || "—"}
+                    {expense.paymentAccountName?.trim()
+                      ? `${expense.paymentAccountName}${previewPaArchived ? " (Archived)" : ""}`
+                      : "—"}
                   </PreviewRow>
                 </div>
               </ModalSection>
@@ -949,8 +1001,17 @@ export function ExpenseInboxPreviewModal({
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <label className={FIELD_LABEL}>Category</label>
+                    <div className="flex items-center justify-between gap-2">
+                      <label className={FIELD_LABEL}>Category</label>
+                      <Link
+                        href="/settings/expenses"
+                        className="text-[11px] text-muted-foreground underline-offset-4 hover:underline"
+                      >
+                        Manage
+                      </Link>
+                    </div>
                     <ExpenseCategorySelect
+                      id="edit-expense-category-select"
                       value={category}
                       onValueChange={setCategory}
                       disabled={saving}
@@ -981,21 +1042,21 @@ export function ExpenseInboxPreviewModal({
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <label className={FIELD_LABEL}>Payment source</label>
-                    <Select
-                      value={sourceType ?? "company"}
+                    <div className="flex items-center justify-between gap-2">
+                      <label className={FIELD_LABEL}>Payment source</label>
+                      <Link
+                        href="/settings/expenses"
+                        className="text-[11px] text-muted-foreground underline-offset-4 hover:underline"
+                      >
+                        Manage
+                      </Link>
+                    </div>
+                    <ExpensePaymentSourceSelect
+                      value={(sourceType ?? "company") as NonNullable<Expense["sourceType"]>}
+                      onValueChange={(v) => setSourceType(v)}
                       disabled={saving}
-                      onValueChange={(v) => setSourceType(v as NonNullable<Expense["sourceType"]>)}
-                    >
-                      <SelectTrigger className={SELECT_TRIGGER_CLASS}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent {...selectPopperContentProps}>
-                        <SelectItem value="company">Company</SelectItem>
-                        <SelectItem value="receipt_upload">Receipt upload</SelectItem>
-                        <SelectItem value="reimbursement">Reimbursement</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      className={SELECT_TRIGGER_CLASS}
+                    />
                   </div>
                 </div>
               </ModalSection>
@@ -1003,32 +1064,33 @@ export function ExpenseInboxPreviewModal({
               <ModalSection title="Payment">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <label className={FIELD_LABEL}>Payment method</label>
-                    <Select
-                      value={paymentMethodRadixValue}
-                      disabled={saving}
-                      onValueChange={(v) => setPaymentMethod(v)}
-                    >
-                      <SelectTrigger
-                        id="edit-expense-payment-method-select"
-                        className={SELECT_TRIGGER_CLASS}
+                    <div className="flex items-center justify-between gap-2">
+                      <label className={FIELD_LABEL}>Payment method</label>
+                      <Link
+                        href="/settings/expenses"
+                        className="text-[11px] text-muted-foreground underline-offset-4 hover:underline"
                       >
-                        <SelectValue placeholder="Method" />
-                      </SelectTrigger>
-                      <SelectContent {...selectPopperContentProps}>
-                        {!pmInList && paymentMethod.trim() ? (
-                          <SelectItem value={paymentMethod}>{paymentMethod}</SelectItem>
-                        ) : null}
-                        {PAYMENT_METHOD_OPTIONS.map((opt) => (
-                          <SelectItem key={opt} value={opt}>
-                            {opt}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                        Manage
+                      </Link>
+                    </div>
+                    <ExpensePaymentMethodSelect
+                      id="edit-expense-payment-method-select"
+                      value={paymentMethod}
+                      onValueChange={setPaymentMethod}
+                      disabled={saving}
+                      className={SELECT_TRIGGER_CLASS}
+                    />
                   </div>
                   <div className="space-y-1.5">
-                    <label className={FIELD_LABEL}>Payment account</label>
+                    <div className="flex items-center justify-between gap-2">
+                      <label className={FIELD_LABEL}>Payment account</label>
+                      <Link
+                        href="/settings/expenses"
+                        className="text-[11px] text-muted-foreground underline-offset-4 hover:underline"
+                      >
+                        Manage
+                      </Link>
+                    </div>
                     <PaymentAccountSelect
                       id="edit-expense-payment-select"
                       value={paymentAccountId}

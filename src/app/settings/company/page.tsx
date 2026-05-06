@@ -591,6 +591,14 @@ export default function SettingsCompanyPage() {
             size="sm"
             className="h-9 w-full justify-start rounded-sm"
           >
+            <Link href="/settings/expenses">Expenses</Link>
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="h-9 w-full justify-start rounded-sm"
+          >
             <Link href="/settings/lists">Lists</Link>
           </Button>
           <Button

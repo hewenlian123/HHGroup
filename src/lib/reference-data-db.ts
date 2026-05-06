@@ -1,8 +1,10 @@
 /**
  * Reference data: expense categories, vendors, payment methods — Supabase only.
  * Tables: categories (type='expense'), vendors, payment_methods.
+ * Expense categories + payment methods prefer `expense_options` when migrated.
  */
 
+import * as expenseOpts from "@/lib/expense-options-db";
 import { getSupabaseClient } from "@/lib/supabase";
 
 function client() {
@@ -43,6 +45,14 @@ const DEFAULT_VENDORS = [
 const DEFAULT_PAYMENT_METHODS = ["ACH", "Card", "Cash", "Check", "Wire", "Zelle"];
 
 async function ensureExpenseCategoriesExist(): Promise<void> {
+  if (await expenseOpts.expenseOptionsTableAvailable()) {
+    const rows = await expenseOpts.listExpenseOptionsByType("category");
+    if (rows.length > 0) return;
+    for (const name of DEFAULT_CATEGORIES) {
+      await expenseOpts.insertExpenseOption({ type: "category", name });
+    }
+    return;
+  }
   const c = client();
   const { data: existing, error } = await c
     .from("categories")
@@ -57,8 +67,15 @@ async function ensureExpenseCategoriesExist(): Promise<void> {
 }
 
 export async function getExpenseCategories(includeDisabled = false): Promise<string[]> {
-  const c = client();
   await ensureExpenseCategoriesExist();
+  if (await expenseOpts.expenseOptionsTableAvailable()) {
+    const rows = await expenseOpts.listExpenseOptionsByType("category");
+    const list = includeDisabled ? rows : rows.filter((r) => r.active);
+    return list
+      .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name))
+      .map((r) => r.name);
+  }
+  const c = client();
   const { data: rows, error } = await c
     .from("categories")
     .select("name, status")
@@ -76,6 +93,18 @@ export async function getExpenseCategories(includeDisabled = false): Promise<str
 export async function addExpenseCategory(name: string): Promise<string> {
   const trimmed = name.trim();
   if (!trimmed) return "";
+  if (await expenseOpts.expenseOptionsTableAvailable()) {
+    const rows = await expenseOpts.listExpenseOptionsByType("category");
+    const hit = rows.find((r) => r.name.toLowerCase() === trimmed.toLowerCase());
+    if (hit) {
+      if (!hit.active) {
+        await expenseOpts.setExpenseOptionActive(hit.id, true);
+      }
+      return hit.name;
+    }
+    const row = await expenseOpts.insertExpenseOption({ type: "category", name: trimmed });
+    return row?.name ?? "";
+  }
   const c = client();
   const { data: existing } = await c
     .from("categories")
@@ -127,10 +156,16 @@ export async function getCategoryUsageCount(name: string): Promise<number> {
 }
 
 export async function renameExpenseCategory(oldName: string, newName: string): Promise<boolean> {
-  const c = client();
   const oldTrim = oldName.trim();
   const newTrim = newName.trim();
   if (!newTrim || oldTrim.toLowerCase() === newTrim.toLowerCase()) return false;
+  if (await expenseOpts.expenseOptionsTableAvailable()) {
+    const rows = await expenseOpts.listExpenseOptionsByType("category");
+    const hit = rows.find((r) => r.name.toLowerCase() === oldTrim.toLowerCase());
+    if (!hit) return false;
+    return expenseOpts.renameExpenseOptionById(hit.id, newTrim, "category", oldTrim);
+  }
+  const c = client();
   const { data: row } = await c
     .from("categories")
     .select("id")
@@ -147,6 +182,12 @@ export async function renameExpenseCategory(oldName: string, newName: string): P
 }
 
 export async function disableExpenseCategory(name: string): Promise<boolean> {
+  if (await expenseOpts.expenseOptionsTableAvailable()) {
+    const rows = await expenseOpts.listExpenseOptionsByType("category");
+    const hit = rows.find((r) => r.name.toLowerCase() === name.trim().toLowerCase());
+    if (!hit) return false;
+    return (await expenseOpts.setExpenseOptionActive(hit.id, false)).ok;
+  }
   const c = client();
   const { error } = await c
     .from("categories")
@@ -157,6 +198,12 @@ export async function disableExpenseCategory(name: string): Promise<boolean> {
 }
 
 export async function enableExpenseCategory(name: string): Promise<boolean> {
+  if (await expenseOpts.expenseOptionsTableAvailable()) {
+    const rows = await expenseOpts.listExpenseOptionsByType("category");
+    const hit = rows.find((r) => r.name.toLowerCase() === name.trim().toLowerCase());
+    if (!hit) return false;
+    return (await expenseOpts.setExpenseOptionActive(hit.id, true)).ok;
+  }
   const c = client();
   const { error } = await c
     .from("categories")
@@ -168,12 +215,23 @@ export async function enableExpenseCategory(name: string): Promise<boolean> {
 
 export async function deleteExpenseCategory(name: string): Promise<boolean> {
   if ((await getCategoryUsageCount(name.trim())) > 0) return false;
+  if (await expenseOpts.expenseOptionsTableAvailable()) {
+    const rows = await expenseOpts.listExpenseOptionsByType("category");
+    const hit = rows.find((r) => r.name.toLowerCase() === name.trim().toLowerCase());
+    if (!hit) return false;
+    return (await expenseOpts.setExpenseOptionActive(hit.id, false)).ok;
+  }
   const c = client();
   await c.from("categories").delete().eq("type", "expense").ilike("name", name.trim());
   return true;
 }
 
 export async function isExpenseCategoryDisabled(name: string): Promise<boolean> {
+  if (await expenseOpts.expenseOptionsTableAvailable()) {
+    const rows = await expenseOpts.listExpenseOptionsByType("category");
+    const hit = rows.find((r) => r.name.toLowerCase() === name.trim().toLowerCase());
+    return hit ? !hit.active : false;
+  }
   const c = client();
   const { data: row } = await c
     .from("categories")
@@ -307,6 +365,14 @@ export async function isVendorDisabled(name: string): Promise<boolean> {
 }
 
 async function ensurePaymentMethodsExist(): Promise<void> {
+  if (await expenseOpts.expenseOptionsTableAvailable()) {
+    const rows = await expenseOpts.listExpenseOptionsByType("payment_method");
+    if (rows.length > 0) return;
+    for (const name of DEFAULT_PAYMENT_METHODS) {
+      await expenseOpts.insertExpenseOption({ type: "payment_method", name });
+    }
+    return;
+  }
   const c = client();
   const { data: existing, error } = await c.from("payment_methods").select("id").limit(1);
   if (error && isMissingTable(error)) return;
@@ -317,8 +383,15 @@ async function ensurePaymentMethodsExist(): Promise<void> {
 }
 
 export async function getPaymentMethods(includeDisabled = false): Promise<string[]> {
-  const c = client();
   await ensurePaymentMethodsExist();
+  if (await expenseOpts.expenseOptionsTableAvailable()) {
+    const rows = await expenseOpts.listExpenseOptionsByType("payment_method");
+    const list = includeDisabled ? rows : rows.filter((r) => r.active);
+    return list
+      .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name))
+      .map((r) => r.name);
+  }
+  const c = client();
   const { data: rows, error } = await c
     .from("payment_methods")
     .select("name, status")
@@ -335,6 +408,16 @@ export async function getPaymentMethods(includeDisabled = false): Promise<string
 export async function addPaymentMethod(name: string): Promise<string> {
   const trimmed = name.trim();
   if (!trimmed) return "";
+  if (await expenseOpts.expenseOptionsTableAvailable()) {
+    const rows = await expenseOpts.listExpenseOptionsByType("payment_method");
+    const hit = rows.find((r) => r.name.toLowerCase() === trimmed.toLowerCase());
+    if (hit) {
+      if (!hit.active) await expenseOpts.setExpenseOptionActive(hit.id, true);
+      return hit.name;
+    }
+    const row = await expenseOpts.insertExpenseOption({ type: "payment_method", name: trimmed });
+    return row?.name ?? "";
+  }
   const c = client();
   const { data: existing } = await c
     .from("payment_methods")
@@ -367,26 +450,41 @@ export async function getPaymentMethodUsageCount(name: string): Promise<number> 
 }
 
 export async function renamePaymentMethod(oldName: string, newName: string): Promise<boolean> {
+  const oldTrim = oldName.trim();
+  const newTrim = newName.trim();
+  if (!newTrim || oldTrim.toLowerCase() === newTrim.toLowerCase()) return false;
+  if (await expenseOpts.expenseOptionsTableAvailable()) {
+    const rows = await expenseOpts.listExpenseOptionsByType("payment_method");
+    const hit = rows.find((r) => r.name.toLowerCase() === oldTrim.toLowerCase());
+    if (!hit) return false;
+    return expenseOpts.renameExpenseOptionById(hit.id, newTrim, "payment_method", oldTrim);
+  }
   const c = client();
   const { data: row } = await c
     .from("payment_methods")
     .select("id")
-    .ilike("name", oldName.trim())
+    .ilike("name", oldTrim)
     .maybeSingle();
   if (!row) return false;
   await c
     .from("payment_methods")
-    .update({ name: newName.trim() })
+    .update({ name: newTrim })
     .eq("id", (row as { id: string }).id);
   const { error } = await c
     .from("expenses")
-    .update({ payment_method: newName.trim() })
-    .ilike("payment_method", oldName.trim());
+    .update({ payment_method: newTrim })
+    .ilike("payment_method", oldTrim);
   if (error && isMissingColumn(error)) return true;
   return true;
 }
 
 export async function disablePaymentMethod(name: string): Promise<boolean> {
+  if (await expenseOpts.expenseOptionsTableAvailable()) {
+    const rows = await expenseOpts.listExpenseOptionsByType("payment_method");
+    const hit = rows.find((r) => r.name.toLowerCase() === name.trim().toLowerCase());
+    if (!hit) return false;
+    return (await expenseOpts.setExpenseOptionActive(hit.id, false)).ok;
+  }
   const c = client();
   const { error } = await c
     .from("payment_methods")
@@ -396,6 +494,12 @@ export async function disablePaymentMethod(name: string): Promise<boolean> {
 }
 
 export async function enablePaymentMethod(name: string): Promise<boolean> {
+  if (await expenseOpts.expenseOptionsTableAvailable()) {
+    const rows = await expenseOpts.listExpenseOptionsByType("payment_method");
+    const hit = rows.find((r) => r.name.toLowerCase() === name.trim().toLowerCase());
+    if (!hit) return false;
+    return (await expenseOpts.setExpenseOptionActive(hit.id, true)).ok;
+  }
   const c = client();
   const { error } = await c
     .from("payment_methods")
@@ -406,12 +510,23 @@ export async function enablePaymentMethod(name: string): Promise<boolean> {
 
 export async function deletePaymentMethod(name: string): Promise<boolean> {
   if ((await getPaymentMethodUsageCount(name.trim())) > 0) return false;
+  if (await expenseOpts.expenseOptionsTableAvailable()) {
+    const rows = await expenseOpts.listExpenseOptionsByType("payment_method");
+    const hit = rows.find((r) => r.name.toLowerCase() === name.trim().toLowerCase());
+    if (!hit) return false;
+    return (await expenseOpts.setExpenseOptionActive(hit.id, false)).ok;
+  }
   const c = client();
   await c.from("payment_methods").delete().ilike("name", name.trim());
   return true;
 }
 
 export async function isPaymentMethodDisabled(name: string): Promise<boolean> {
+  if (await expenseOpts.expenseOptionsTableAvailable()) {
+    const rows = await expenseOpts.listExpenseOptionsByType("payment_method");
+    const hit = rows.find((r) => r.name.toLowerCase() === name.trim().toLowerCase());
+    return hit ? !hit.active : false;
+  }
   const c = client();
   const { data: row } = await c
     .from("payment_methods")

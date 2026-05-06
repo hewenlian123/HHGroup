@@ -2,6 +2,7 @@
 
 import "./expenses-ui-theme.css";
 import * as React from "react";
+import Link from "next/link";
 import { flushSync } from "react-dom";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,8 @@ import {
   expenseAttachmentStorageDedupeKey,
 } from "@/lib/expense-attachment-dedupe";
 import { ExpenseCategorySelect } from "@/components/expense-category-select";
+import { ExpensePaymentMethodSelect } from "@/components/expense-payment-method-select";
+import { ExpensePaymentSourceSelect } from "@/components/expense-payment-source-select";
 import { PaymentAccountSelect } from "@/components/payment-account-select";
 import type { PaymentAccountRow } from "@/lib/data";
 import { persistLastExpensePaymentAccountId } from "@/lib/expense-payment-preferences";
@@ -57,6 +60,7 @@ import {
   EXPENSE_PROJECT_SELECT_NONE,
   EXPENSE_WORKER_SELECT_NONE,
 } from "@/lib/expense-workflow-status";
+import { defaultPaymentMethodName } from "@/lib/expense-options-db";
 import { cn } from "@/lib/utils";
 import { stripInboxUploadNoiseFromText } from "@/lib/inbox-upload-constants";
 import { ExpenseEditAttachmentsSection } from "./expense-edit-attachments-section";
@@ -122,6 +126,7 @@ export type ExpenseReviewSavePatch = {
   sourceType: Expense["sourceType"];
   paymentAccountId: string | null;
   paymentAccountName: string | null;
+  paymentMethod: string;
 };
 
 type Props = {
@@ -157,6 +162,7 @@ export function EditExpenseModal({
   const [notes, setNotes] = React.useState("");
   const [expenseDate, setExpenseDate] = React.useState("");
   const [sourceType, setSourceType] = React.useState<Expense["sourceType"]>("company");
+  const [paymentMethod, setPaymentMethod] = React.useState("");
   const [paymentAccountId, setPaymentAccountId] = React.useState("");
   const [paymentAccountsLocal, setPaymentAccountsLocal] = React.useState<PaymentAccountRow[]>([]);
   const [attachments, setAttachments] = React.useState<ExpenseAttachment[]>([]);
@@ -196,10 +202,24 @@ export function EditExpenseModal({
       setNotes(stripInboxUploadNoiseFromText(expense.notes ?? ""));
       setExpenseDate((expense.date ?? "").slice(0, 10));
       setSourceType(expense.sourceType ?? "company");
+      setPaymentMethod((expense.paymentMethod ?? "").trim());
       setPaymentAccountId(expense.paymentAccountId ?? "");
       setAttachments(getExpenseDisplayAttachments(expense));
     }
   }, [expense]);
+
+  React.useEffect(() => {
+    if (!expense || !open) return;
+    const pm = (expense.paymentMethod ?? "").trim();
+    if (pm) return;
+    let cancelled = false;
+    void defaultPaymentMethodName().then((d) => {
+      if (!cancelled && d) setPaymentMethod(d);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [expense, open]);
 
   React.useEffect(() => {
     if (!open || !supabase || attachments.length === 0) {
@@ -400,34 +420,42 @@ export function EditExpenseModal({
       return;
     }
     flushSync(() => setSaving(true));
-    try {
-      const paId = paymentAccountId.trim() || null;
-      const paName = paId
-        ? (paymentAccountsLocal.find((a) => a.id === paId)?.name ??
-          expense.paymentAccountName ??
-          null)
-        : null;
-      const workflowStatus = preserveConfirmedExpenseStatusOnCompleteSave(
-        expense.status,
-        deriveExpenseWorkflowStatus(projectId, category || "Other")
-      );
-      onSave({
-        expenseId: expense.id,
-        date: expenseDate.slice(0, 10),
-        vendorName: vendorName.trim(),
-        amount: numAmount,
-        projectId: projectId || null,
-        workerId: workerId || null,
-        category: category || "Other",
-        notes: notes.trim() || undefined,
-        status: workflowStatus,
-        sourceType,
-        paymentAccountId: paId,
-        paymentAccountName: paName,
-      });
-    } finally {
-      setSaving(false);
-    }
+    void (async () => {
+      try {
+        const paId = paymentAccountId.trim() || null;
+        const paName = paId
+          ? (paymentAccountsLocal.find((a) => a.id === paId)?.name ??
+            expense.paymentAccountName ??
+            null)
+          : null;
+        const pm =
+          paymentMethod.trim() ||
+          (await defaultPaymentMethodName()) ||
+          (expense.paymentMethod ?? "").trim() ||
+          "Cash";
+        const workflowStatus = preserveConfirmedExpenseStatusOnCompleteSave(
+          expense.status,
+          deriveExpenseWorkflowStatus(projectId, category || "Other")
+        );
+        onSave({
+          expenseId: expense.id,
+          date: expenseDate.slice(0, 10),
+          vendorName: vendorName.trim(),
+          amount: numAmount,
+          projectId: projectId || null,
+          workerId: workerId || null,
+          category: category || "Other",
+          notes: notes.trim() || undefined,
+          status: workflowStatus,
+          sourceType,
+          paymentAccountId: paId,
+          paymentAccountName: paName,
+          paymentMethod: pm,
+        });
+      } finally {
+        flushSync(() => setSaving(false));
+      }
+    })();
   };
 
   const projectRadixValue =
@@ -511,8 +539,17 @@ export function EditExpenseModal({
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <label className={FIELD_LABEL}>Category</label>
+                    <div className="flex items-center justify-between gap-2">
+                      <label className={FIELD_LABEL}>Category</label>
+                      <Link
+                        href="/settings/expenses"
+                        className="text-[11px] text-muted-foreground underline-offset-4 hover:underline"
+                      >
+                        Manage
+                      </Link>
+                    </div>
                     <ExpenseCategorySelect
+                      id="edit-expense-category-select"
                       value={category}
                       onValueChange={setCategory}
                       disabled={saving}
@@ -520,7 +557,33 @@ export function EditExpenseModal({
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className={FIELD_LABEL}>Payment account</label>
+                    <div className="flex items-center justify-between gap-2">
+                      <label className={FIELD_LABEL}>Payment method</label>
+                      <Link
+                        href="/settings/expenses"
+                        className="text-[11px] text-muted-foreground underline-offset-4 hover:underline"
+                      >
+                        Manage
+                      </Link>
+                    </div>
+                    <ExpensePaymentMethodSelect
+                      id="edit-expense-payment-method-select"
+                      value={paymentMethod}
+                      onValueChange={setPaymentMethod}
+                      disabled={saving}
+                      className={SELECT_TRIGGER}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <label className={FIELD_LABEL}>Payment account</label>
+                      <Link
+                        href="/settings/expenses"
+                        className="text-[11px] text-muted-foreground underline-offset-4 hover:underline"
+                      >
+                        Manage
+                      </Link>
+                    </div>
                     <PaymentAccountSelect
                       id="edit-expense-payment-select"
                       value={paymentAccountId}
@@ -556,21 +619,21 @@ export function EditExpenseModal({
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <label className={FIELD_LABEL}>Payment source</label>
-                    <Select
-                      value={sourceType ?? "company"}
+                    <div className="flex items-center justify-between gap-2">
+                      <label className={FIELD_LABEL}>Payment source</label>
+                      <Link
+                        href="/settings/expenses"
+                        className="text-[11px] text-muted-foreground underline-offset-4 hover:underline"
+                      >
+                        Manage
+                      </Link>
+                    </div>
+                    <ExpensePaymentSourceSelect
+                      value={(sourceType ?? "company") as NonNullable<Expense["sourceType"]>}
+                      onValueChange={(v) => setSourceType(v)}
                       disabled={saving}
-                      onValueChange={(v) => setSourceType(v as NonNullable<Expense["sourceType"]>)}
-                    >
-                      <SelectTrigger className={SELECT_TRIGGER}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent {...selectPopperContentProps}>
-                        <SelectItem value="company">Company</SelectItem>
-                        <SelectItem value="receipt_upload">Receipt upload</SelectItem>
-                        <SelectItem value="reimbursement">Reimbursement</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      className={SELECT_TRIGGER}
+                    />
                   </div>
                   <div className="col-span-2 space-y-1.5">
                     <label className={FIELD_LABEL}>Status</label>

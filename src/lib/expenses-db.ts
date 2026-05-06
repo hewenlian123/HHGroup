@@ -9,6 +9,7 @@ import { dedupeExpenseAttachmentsByStorageKey } from "@/lib/expense-attachment-d
 import { expenseHasReceiptSignal } from "@/lib/expense-receipt-items";
 import { expenseCountsTowardCanonicalProjectCost } from "@/lib/expense-canonical-cost";
 import { deriveExpenseWorkflowStatus } from "@/lib/expense-workflow-status";
+import { defaultPaymentMethodName } from "@/lib/expense-options-db";
 import { isConfirmedExpenseStatus } from "@/lib/project-expense-cost-status";
 import { stripInboxUploadNoiseFromText } from "@/lib/inbox-upload-constants";
 
@@ -62,8 +63,8 @@ export type Expense = {
   paymentAccountName?: string | null;
   /** Optional header-level project (expense_lines may also carry project per line). */
   headerProjectId?: string | null;
-  /** company | reimbursement | receipt_upload */
-  sourceType?: "company" | "reimbursement" | "receipt_upload";
+  /** company | reimbursement | receipt_upload | bank_import */
+  sourceType?: "company" | "reimbursement" | "receipt_upload" | "bank_import";
 };
 
 /** List sort for `/financial/expenses` (Supabase + stable in-memory pass). */
@@ -273,7 +274,7 @@ function toExpenseLine(r: ExpenseLineRow): ExpenseLine {
 
 function deriveSourceType(row: ExpenseRow): Expense["sourceType"] {
   const st = (row.source_type ?? "").trim().toLowerCase();
-  if (st === "reimbursement" || st === "receipt_upload" || st === "company")
+  if (st === "reimbursement" || st === "receipt_upload" || st === "company" || st === "bank_import")
     return st as Expense["sourceType"];
   if ((row.source ?? "").trim() === WORKER_REIMBURSEMENT_SOURCE) return "reimbursement";
   return "company";
@@ -315,8 +316,10 @@ export function expenseSourceTypeForDatabase(
     .toLowerCase()
     .replace(/[\s-]+/g, "_");
   if (v === "receipt_upload" || v === "receipt" || v === "upload") return "receipt_upload";
-  if (v === "reimbursement" || v === "reimburse") return "reimbursement";
-  if (v === "company") return "company";
+  if (v === "reimbursement" || v === "reimburse" || v === "worker_reimbursement")
+    return "reimbursement";
+  if (v === "bank_import" || v === "bank") return "bank_import";
+  if (v === "company" || v === "manual") return "company";
   return "company";
 }
 
@@ -711,7 +714,7 @@ export async function getExpenseCardNames(paymentMethod: string): Promise<string
 export async function createExpense(payload: {
   date: string;
   vendorName: string;
-  paymentMethod: string;
+  paymentMethod?: string | null;
   referenceNo?: string;
   notes?: string;
   cardName?: string | null;
@@ -735,6 +738,8 @@ export async function createExpense(payload: {
   const lines = payload.lines?.length ? payload.lines : [];
   const totalAmount = lines.reduce((s, l) => s + (Number(l.amount) || 0), 0);
   if (!(totalAmount > 0)) throw new Error("Amount must be greater than 0");
+  const paymentMethodValue =
+    payload.paymentMethod?.trim() || (await defaultPaymentMethodName()) || "Other";
 
   const byProject = new Map<string | null, typeof lines>();
   for (const l of lines) {
@@ -794,7 +799,7 @@ export async function createExpense(payload: {
       let expRow: { id: string } | null = null;
       let ins = await c
         .from("expenses")
-        .insert({ ...insertPayload, payment_method: payload.paymentMethod ?? "Card" })
+        .insert({ ...insertPayload, payment_method: paymentMethodValue })
         .select("id")
         .single();
       if (ins.error && isMissingColumn(ins.error)) {
@@ -811,7 +816,7 @@ export async function createExpense(payload: {
             total: totalGroupAmount,
             amount: totalGroupAmount,
             line_count: group.length,
-            payment_method: payload.paymentMethod ?? "Card",
+            payment_method: paymentMethodValue,
           })
           .select("id")
           .single();
@@ -826,7 +831,7 @@ export async function createExpense(payload: {
             reference_no: payload.referenceNo?.trim() || null,
             total: totalGroupAmount,
             line_count: group.length,
-            payment_method: payload.paymentMethod ?? "Card",
+            payment_method: paymentMethodValue,
           })
           .select("id")
           .single();
@@ -881,7 +886,6 @@ export async function createExpense(payload: {
 
   if (!firstId) throw new Error("Failed to create expense: no id returned.");
 
-  const paymentMethodValue = payload.paymentMethod ?? "Card";
   const cardNameValue = payload.cardName?.trim() || null;
   const updatePayload: Record<string, unknown> = {
     card_name: cardNameValue,
@@ -930,7 +934,7 @@ export async function createQuickExpense(payload: {
   /** Dedupe key for inbox upload drafts (`INBOX-UP-…`); optional for other callers. */
   referenceNo?: string | null;
   /** Defaults: receipt_upload when receiptUrl set, else company. */
-  sourceType?: "company" | "receipt_upload" | "reimbursement";
+  sourceType?: "company" | "receipt_upload" | "reimbursement" | "bank_import";
   /** When set, overrides default status (receipt → needs_review, else pending). */
   initialStatus?: NonNullable<Expense["status"]>;
 }): Promise<Expense> {
@@ -946,6 +950,7 @@ export async function createQuickExpense(payload: {
   const sourceType = expenseSourceTypeForDatabase(
     payload.sourceType ?? (receiptUrl ? "receipt_upload" : "company")
   );
+  const paymentMethodValue = (await defaultPaymentMethodName()) || "Other";
   /** Prefer explicit payload (Quick modal); else derive from project+category before receipt fallback. */
   const workflowDefault = deriveExpenseWorkflowStatus(projectId, category);
   const resolvedStatus = expenseStatusForDatabase(
@@ -973,7 +978,7 @@ export async function createQuickExpense(payload: {
   }
   let result = await c
     .from("expenses")
-    .insert({ ...insertRow, payment_method: "Other" })
+    .insert({ ...insertRow, payment_method: paymentMethodValue })
     .select("id")
     .single();
   if (result.error && isMissingColumn(result.error)) {
@@ -981,7 +986,7 @@ export async function createQuickExpense(payload: {
     delete noSt.source_type;
     result = await c
       .from("expenses")
-      .insert({ ...noSt, payment_method: "Other" })
+      .insert({ ...noSt, payment_method: paymentMethodValue })
       .select("id")
       .single();
   }
@@ -991,7 +996,7 @@ export async function createQuickExpense(payload: {
     delete noAmt.amount;
     result = await c
       .from("expenses")
-      .insert({ ...noAmt, payment_method: "Other" })
+      .insert({ ...noAmt, payment_method: paymentMethodValue })
       .select("id")
       .single();
   }
@@ -1001,7 +1006,7 @@ export async function createQuickExpense(payload: {
       .insert({
         ...insertRow,
         status: "pending",
-        payment_method: "Other",
+        payment_method: paymentMethodValue,
       })
       .select("id")
       .single();
@@ -1500,6 +1505,7 @@ export async function updateExpenseForReview(
     amount: number;
     sourceType: Expense["sourceType"];
     paymentAccountId: string | null;
+    paymentMethod: string;
   }>
 ): Promise<Expense | null> {
   const c = client();
@@ -1519,6 +1525,10 @@ export async function updateExpenseForReview(
     expUpdates.source_type = expenseSourceTypeForDatabase(String(patch.sourceType));
   if (patch.paymentAccountId !== undefined) {
     expUpdates.payment_account_id = patch.paymentAccountId?.trim() || null;
+  }
+  if (patch.paymentMethod !== undefined) {
+    const pm = patch.paymentMethod.trim();
+    if (pm) expUpdates.payment_method = pm;
   }
   if (Object.keys(expUpdates).length > 0) {
     let res = await c.from("expenses").update(expUpdates).eq("id", expenseId);
@@ -1543,6 +1553,15 @@ export async function updateExpenseForReview(
     }
     if (err && isMissingColumn(err) && patch.paymentAccountId !== undefined) {
       delete expUpdates.payment_account_id;
+      if (Object.keys(expUpdates).length > 0) {
+        res = await c.from("expenses").update(expUpdates).eq("id", expenseId);
+        err = res.error;
+      } else {
+        err = null;
+      }
+    }
+    if (err && isMissingColumn(err) && patch.paymentMethod !== undefined) {
+      delete expUpdates.payment_method;
       if (Object.keys(expUpdates).length > 0) {
         res = await c.from("expenses").update(expUpdates).eq("id", expenseId);
         err = res.error;

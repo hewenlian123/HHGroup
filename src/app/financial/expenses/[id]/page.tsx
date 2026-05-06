@@ -21,6 +21,7 @@ import {
   getVendors,
   getAccounts,
   addExpenseCategory,
+  addPaymentMethod,
   addVendor,
   isVendorDisabled,
   getExpenseTotal,
@@ -37,6 +38,7 @@ import {
   type PaymentAccountRow,
 } from "@/lib/data";
 import { PaymentAccountSelect } from "@/components/payment-account-select";
+import { ExpensePaymentMethodSelect } from "@/components/expense-payment-method-select";
 import {
   persistLastExpensePaymentAccountId,
   rememberExpenseVendorPaymentAccount,
@@ -111,6 +113,8 @@ export default function ExpenseDetailPage() {
   const [expense, setExpense] = React.useState<Expense | null>(null);
   const [notFoundState, setNotFoundState] = React.useState(false);
   const [vendorName, setVendorName] = React.useState("");
+  const [paymentMethod, setPaymentMethod] = React.useState("");
+  const paymentMethodDirtyRef = React.useRef(false);
   const [accountId, setAccountId] = React.useState("");
   const [paymentAccountId, setPaymentAccountId] = React.useState("");
   const [toastMessage, setToastMessage] = React.useState<string | null>(null);
@@ -153,6 +157,8 @@ export default function ExpenseDetailPage() {
       else {
         setExpense(e);
         setVendorName(e.vendorName);
+        setPaymentMethod(e.paymentMethod ?? "");
+        paymentMethodDirtyRef.current = false;
         setAccountId(e.accountId ?? "");
         setPaymentAccountId(e.paymentAccountId ?? "");
       }
@@ -184,6 +190,8 @@ export default function ExpenseDetailPage() {
     const e = await getExpenseById(id);
     if (e) {
       setExpense(e);
+      if (!paymentMethodDirtyRef.current) setPaymentMethod(e.paymentMethod ?? "");
+      setAccountId(e.accountId ?? "");
       setPaymentAccountId(e.paymentAccountId ?? "");
     }
   }, [id]);
@@ -442,11 +450,13 @@ export default function ExpenseDetailPage() {
     await updateExpense(expense.id, {
       date: (formData.get("date") as string) || expense.date,
       vendorName,
+      paymentMethod: paymentMethod.trim() || (expense.paymentMethod ?? "").trim() || "Other",
       accountId: accountId || undefined,
       paymentAccountId: paymentAccountId.trim() || null,
       referenceNo: (formData.get("referenceNo") as string) || undefined,
       notes: (formData.get("notes") as string) || undefined,
     });
+    paymentMethodDirtyRef.current = false;
     const pa = paymentAccountId.trim();
     if (pa && vendorName.trim()) {
       rememberExpenseVendorPaymentAccount(vendorName.trim(), pa);
@@ -629,6 +639,20 @@ export default function ExpenseDetailPage() {
                 }}
                 onAccountsUpdated={handlePaymentAccountsUpdated}
                 className="mt-1 h-10 w-full rounded-sm border-border/60 text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Payment method
+              </label>
+              <ExpensePaymentMethodSelect
+                id="expense-detail-payment-method-select"
+                value={paymentMethod}
+                onValueChange={(next) => {
+                  paymentMethodDirtyRef.current = true;
+                  setPaymentMethod(next);
+                }}
+                className="mt-1"
               />
             </div>
             <div>
@@ -821,12 +845,10 @@ export default function ExpenseDetailPage() {
             projects={projects}
             categories={categories}
             vendorsList={vendorsList}
-            paymentMethodsList={accounts.map((a) =>
-              a.lastFour ? `${a.name} •••• ${a.lastFour}` : a.name
-            )}
+            paymentMethodsList={[]}
             onAddCategory={addExpenseCategory}
             onAddVendor={addVendor}
-            onAddPaymentMethod={async (name) => name}
+            onAddPaymentMethod={addPaymentMethod}
             onToast={setToastMessage}
             isExpenseCategoryDisabled={() => false}
             isVendorDisabled={() => false}

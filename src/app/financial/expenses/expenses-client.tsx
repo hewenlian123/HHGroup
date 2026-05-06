@@ -19,7 +19,6 @@ import {
   getExpenseTotal,
   deleteExpense,
   getPaymentAccounts,
-  updateExpense,
   updateExpenseReceiptUrl,
   updateExpenseForReview,
   type Expense,
@@ -155,17 +154,10 @@ function mergeExpenseReviewPatch(e: Expense, p: ExpenseReviewSavePatch): Expense
     sourceType: p.sourceType !== undefined ? p.sourceType : e.sourceType,
     paymentAccountId: p.paymentAccountId,
     paymentAccountName: p.paymentAccountName,
+    paymentMethod: p.paymentMethod !== undefined ? p.paymentMethod : e.paymentMethod,
     lines: nextLines,
     headerProjectId: p.projectId,
   };
-}
-
-function mergeExpenseWithPaymentMethod(
-  e: Expense,
-  patch: ExpenseReviewSavePatch,
-  paymentMethod: string
-): Expense {
-  return { ...mergeExpenseReviewPatch(e, patch), paymentMethod };
 }
 
 function receiptItemLooksPdf(item: ExpenseReceiptItem | undefined): boolean {
@@ -281,9 +273,10 @@ function ExpensesAdvancedFiltersFields({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value={EXPENSE_FILTER_ALL}>Source</SelectItem>
-          <SelectItem value="company">Company</SelectItem>
-          <SelectItem value="receipt_upload">Receipt</SelectItem>
-          <SelectItem value="reimbursement">Reimbursement</SelectItem>
+          <SelectItem value="company">Manual</SelectItem>
+          <SelectItem value="receipt_upload">Receipt upload</SelectItem>
+          <SelectItem value="reimbursement">Worker reimbursement</SelectItem>
+          <SelectItem value="bank_import">Bank import</SelectItem>
         </SelectContent>
       </Select>
       <Select value={`${expenseSort.field}|${expenseSort.order}`} onValueChange={onSortValueChange}>
@@ -1042,35 +1035,29 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
       const prevList = expensesRef.current;
       const target = prevList.find((e) => e.id === payload.expenseId);
       if (!target) return null;
-      const { paymentMethod: pm, ...reviewPatch } = payload;
-      const merged = mergeExpenseWithPaymentMethod(target, reviewPatch, pm);
+      const merged = mergeExpenseReviewPatch(target, payload);
       const t0 = uiActionMark();
       flushSync(() => {
         setExpenses((prev) => prev.map((e) => (e.id === payload.expenseId ? merged : e)));
       });
       uiActionLog("expense-preview-save-ui", t0, 100);
       try {
+        const pmTrim =
+          payload.paymentMethod.trim() || (target.paymentMethod ?? "").trim() || "Cash";
         const next = await updateExpenseForReview(payload.expenseId, {
-          date: reviewPatch.date,
-          vendorName: reviewPatch.vendorName,
-          amount: reviewPatch.amount,
-          projectId: reviewPatch.projectId,
-          workerId: reviewPatch.workerId,
-          category: reviewPatch.category,
-          notes: reviewPatch.notes,
-          status: reviewPatch.status,
-          sourceType: reviewPatch.sourceType,
-          paymentAccountId: reviewPatch.paymentAccountId,
+          date: payload.date,
+          vendorName: payload.vendorName,
+          amount: payload.amount,
+          projectId: payload.projectId,
+          workerId: payload.workerId,
+          category: payload.category,
+          notes: payload.notes,
+          status: payload.status,
+          sourceType: payload.sourceType,
+          paymentAccountId: payload.paymentAccountId,
+          paymentMethod: pmTrim,
         });
         let final: Expense = next ?? merged;
-        const pmTrim = pm.trim();
-        if (pmTrim !== (target.paymentMethod ?? "").trim()) {
-          const pmNext = await updateExpense(payload.expenseId, { paymentMethod: pmTrim });
-          if (pmNext) final = pmNext;
-        } else if (next) {
-          final = next;
-        }
-        // Keep UI aligned with the modal even if `updateExpense` verification returns null (stale read).
         if (pmTrim) final = { ...final, paymentMethod: pmTrim };
         flushSync(() => {
           setExpenses((prev) => prev.map((e) => (e.id === payload.expenseId ? final : e)));

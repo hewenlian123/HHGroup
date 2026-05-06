@@ -1,8 +1,10 @@
 import { expect, type Page, type Locator, type Response } from "@playwright/test";
+import { createClient } from "@supabase/supabase-js";
 
 /**
- * Use after creating expenses in E2E: `/financial/expenses` lists only the archive pool
- * (`reviewed`/`done` with project + category). New rows usually stay on Inbox until Mark Done.
+ * Inbox (`/financial/inbox`) shows the **incomplete** pool only (`needs_review` / `pending` / `draft` / empty).
+ * Quick expense with project + category defaults to `reviewed` (see `createQuickExpense`) — those rows
+ * appear on **Expenses** (`/financial/expenses` archive pool), not Inbox.
  */
 export const E2E_FINANCIAL_INBOX_URL = "/financial/inbox";
 
@@ -14,6 +16,14 @@ export function expenseListRow(page: Page, text: string | RegExp): Locator {
   return page
     .locator("main table tbody tr.exp-row, main ul.exp-divide > li.exp-row")
     .filter({ hasText: text })
+    .first();
+}
+
+export function expenseListRowById(page: Page, expenseId: string): Locator {
+  return page
+    .locator(
+      `main table tbody tr.exp-row[data-expense-id="${expenseId}"], main ul.exp-divide > li.exp-row[data-expense-id="${expenseId}"]`
+    )
     .first();
 }
 
@@ -277,6 +287,103 @@ export async function waitForExpensesQuerySuccess(page: Page, timeoutMs = 120_00
       { timeout: timeoutMs, intervals: [100] }
     )
     .toBe(true);
+}
+
+export type E2ESeededExpenseDbSnapshot = {
+  expenseId: string;
+  vendor_name: string | null;
+  vendor: string | null;
+  status: string | null;
+  source_type: string | null;
+  project_id: string | null;
+  payment_method: string | null;
+  expense_date: string | null;
+  line_category: string | null;
+  line_project_id: string | null;
+};
+
+/**
+ * Fails fast with a clear log when a Quick expense (or any) row is missing before UI waits.
+ * Retries briefly because the modal can close before PostgREST visibility.
+ */
+export async function assertE2EExpenseVisibleInDatabase(
+  vendorMark: string,
+  opts?: { timeoutMs?: number }
+): Promise<E2ESeededExpenseDbSnapshot> {
+  const timeoutMs = opts?.timeoutMs ?? 45_000;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+  if (!url || !key) {
+    throw new Error(
+      "[E2E] assertE2EExpenseVisibleInDatabase: set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (or anon) for DB checks."
+    );
+  }
+  const deadline = Date.now() + timeoutMs;
+  let lastMessage = "";
+  while (Date.now() < deadline) {
+    const sb = createClient(url, key);
+    const { data: rows, error } = await sb
+      .from("expenses")
+      .select(
+        "id, vendor_name, vendor, status, source_type, project_id, payment_method, expense_date, created_at"
+      )
+      .or(`vendor_name.eq.${vendorMark},vendor.eq.${vendorMark}`)
+      .order("created_at", { ascending: false })
+      .limit(5);
+    if (error) {
+      lastMessage = error.message;
+    } else if (rows && rows.length > 0) {
+      const exp = rows[0] as {
+        id: string;
+        vendor_name: string | null;
+        vendor: string | null;
+        status: string | null;
+        source_type: string | null;
+        project_id: string | null;
+        payment_method: string | null;
+        expense_date: string | null;
+      };
+      const { data: line } = await sb
+        .from("expense_lines")
+        .select("category, project_id")
+        .eq("expense_id", exp.id)
+        .limit(1)
+        .maybeSingle();
+      const snap: E2ESeededExpenseDbSnapshot = {
+        expenseId: exp.id,
+        vendor_name: exp.vendor_name,
+        vendor: exp.vendor,
+        status: exp.status,
+        source_type: exp.source_type,
+        project_id: exp.project_id,
+        payment_method: exp.payment_method,
+        expense_date: exp.expense_date,
+        line_category: (line?.category as string | null) ?? null,
+        line_project_id: (line?.project_id as string | null) ?? null,
+      };
+      // eslint-disable-next-line no-console
+      console.log("[E2E] expense row in DB (vendor mark)", vendorMark, snap);
+      if (rows.length > 1) {
+        // eslint-disable-next-line no-console
+        console.warn(`[E2E] Multiple (${rows.length}) expenses matched vendor mark; using newest.`);
+      }
+      return snap;
+    }
+    await new Promise((r) => setTimeout(r, 350));
+  }
+  throw new Error(
+    `[E2E] No expense in DB for vendor mark "${vendorMark}" after ${timeoutMs}ms. Last error: ${lastMessage || "none"}`
+  );
+}
+
+/** Navigate to archive list and wait for query + shell — use after Quick expense (reviewed → archive pool). */
+export async function gotoArchivedExpenseListReady(page: Page, timeoutMs = 120_000): Promise<void> {
+  await page.goto("/financial/expenses", { waitUntil: "domcontentloaded", timeout: 90_000 });
+  await waitForExpensesQuerySuccess(page, timeoutMs);
+  await waitForVisibleQuickExpenseButton(page, timeoutMs);
+  await page.locator("main").first().waitFor({ state: "visible", timeout: 30_000 });
 }
 
 /**

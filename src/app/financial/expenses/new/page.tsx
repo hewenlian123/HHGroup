@@ -235,7 +235,6 @@ export default function NewExpensePage() {
       const created = await createExpense({
         date,
         vendorName: vendorName.trim(),
-        paymentMethod: "Other",
         referenceNo: referenceNo.trim() || undefined,
         notes: notes.trim() || undefined,
         accountId: accountId || undefined,
@@ -378,6 +377,7 @@ export default function NewExpensePage() {
                         <label className={FIELD_LABEL}>Category</label>
                         <ExpenseCategorySelect
                           value={lines[0]?.category ?? "Other"}
+                          preserveArchivedValue={false}
                           onValueChange={(v) => {
                             setLines((prev) => {
                               const row = prev[0] ?? newLine();
@@ -653,6 +653,7 @@ export default function NewExpensePage() {
                     </Select>
                     <ExpenseCategorySelect
                       value={l.category}
+                      preserveArchivedValue={false}
                       onValueChange={(v) =>
                         setLines((prev) =>
                           prev.map((x) => (x.id === l.id ? { ...x, category: v } : x))

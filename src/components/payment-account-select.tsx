@@ -20,8 +20,8 @@ import {
 } from "@/components/ui/select";
 import {
   addPaymentAccount,
-  getPaymentAccounts,
-  type PaymentAccountRow,
+  getPaymentAccountsForExpensePicker,
+  type PaymentAccountPickerRow,
   type PaymentAccountType,
 } from "@/lib/data";
 import { useToast } from "@/components/toast/toast-provider";
@@ -38,7 +38,7 @@ export type PaymentAccountSelectProps = {
   id?: string;
   autoFocus?: boolean;
   onKeyDown?: React.KeyboardEventHandler<HTMLElement>;
-  onAccountsUpdated?: (rows: PaymentAccountRow[]) => void;
+  onAccountsUpdated?: (rows: PaymentAccountPickerRow[]) => void;
   /** When `value` is set but not in the loaded list yet (e.g. stale id), show this label in the trigger */
   fallbackDisplayName?: string;
   "data-queue-row-id"?: string;
@@ -59,7 +59,7 @@ export function PaymentAccountSelect({
   "data-queue-field": dataQueueField,
 }: PaymentAccountSelectProps) {
   const { toast } = useToast();
-  const [accounts, setAccounts] = React.useState<PaymentAccountRow[]>([]);
+  const [accounts, setAccounts] = React.useState<PaymentAccountPickerRow[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [addOpen, setAddOpen] = React.useState(false);
   const [newName, setNewName] = React.useState("");
@@ -74,7 +74,7 @@ export function PaymentAccountSelect({
     void (async () => {
       setLoading(true);
       try {
-        const rows = await getPaymentAccounts();
+        const rows = await getPaymentAccountsForExpensePicker(value);
         if (cancelled) return;
         setAccounts(rows);
         onAccountsUpdatedRef.current?.(rows);
@@ -90,7 +90,7 @@ export function PaymentAccountSelect({
     return () => {
       cancelled = true;
     };
-  }, [toast]);
+  }, [toast, value]);
 
   React.useEffect(() => {
     if (addOpen) {
@@ -123,7 +123,7 @@ export function PaymentAccountSelect({
         toast({ title: "Payment", description: "Could not add account.", variant: "error" });
         return;
       }
-      const next = await getPaymentAccounts();
+      const next = await getPaymentAccountsForExpensePicker(row.id);
       setAccounts(next);
       onAccountsUpdatedRef.current?.(next);
       if (row.name.toLowerCase() !== lower) {
@@ -174,7 +174,7 @@ export function PaymentAccountSelect({
           <SelectItem value={EMPTY_VALUE}>—</SelectItem>
           {accounts.map((a) => (
             <SelectItem key={a.id} value={a.id}>
-              {a.name}
+              {a.archived ? `${a.name} (Archived)` : a.name}
             </SelectItem>
           ))}
           {value && !selectedKnown && value !== "" ? (
