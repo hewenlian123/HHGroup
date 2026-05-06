@@ -1,6 +1,6 @@
-/* Expenses route: Apple-style layered grays (scoped under .expenses-ui) */
+/* Expenses route: HH Finance OS — page tint aligns with Finance Owner (zinc-50); shell bg from Tailwind */
 .expenses-ui {
-  --exp-page-bg: #f6f7f9;
+  --exp-page-bg: transparent;
   --exp-content-bg: transparent;
   --exp-primary: #111827;
   --exp-secondary: #4b5563;

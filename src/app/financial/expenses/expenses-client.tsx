@@ -127,6 +127,19 @@ const ExpenseInboxTransactionList = dynamic(
   { ssr: false, loading: () => <ExpensesListSkeleton /> }
 );
 
+/** HH Finance OS — visual parity with Finance Owner dashboard (presentation only). */
+const financeOsPageWrap =
+  "expenses-ui min-w-0 overflow-x-hidden bg-zinc-50 pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] dark:bg-background";
+
+const financeOsCard =
+  "rounded-2xl border border-zinc-200/70 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_4px_24px_rgba(0,0,0,0.045)] transition-[border-color,box-shadow] duration-200 ease-out dark:border-border/50 dark:bg-card/80 dark:shadow-none";
+
+const financeOsCardInteractive =
+  "hover:border-zinc-300/85 hover:shadow-[0_6px_28px_rgba(0,0,0,0.055)] dark:hover:border-border";
+
+const financeOsListShell =
+  "overflow-hidden rounded-xl border border-zinc-200/70 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_4px_24px_rgba(0,0,0,0.045)] transition-[border-color,box-shadow] duration-200 ease-out dark:border-border/50 dark:bg-card/80 dark:shadow-none md:rounded-2xl";
+
 function mergeExpenseReviewPatch(e: Expense, p: ExpenseReviewSavePatch): Expense {
   const nextLines =
     e.lines.length > 0
@@ -1754,23 +1767,20 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     : "Tracked project costs and completed expenses";
 
   return (
-    <div
-      className="expenses-ui min-w-0 overflow-x-hidden"
-      data-expenses-query-status={expensesQueryStatus}
-    >
-      <div className="expenses-ui-content mx-auto w-full min-w-0 max-w-[430px] px-3 py-2 sm:max-w-[460px] md:max-w-[1280px] md:px-8 md:py-8">
-        <div className="space-y-3 max-md:pb-1 md:space-y-5">
-          <div className="flex items-start justify-between gap-2 border-b border-gray-100/80 pb-2.5 dark:border-border/60 md:hidden">
+    <div className={financeOsPageWrap} data-expenses-query-status={expensesQueryStatus}>
+      <div className="expenses-ui-content mx-auto w-full min-w-0 max-w-[430px] px-3 py-3 sm:max-w-[460px] md:max-w-[1280px] md:px-8 md:py-8">
+        <div className="space-y-4 max-md:pb-1 md:space-y-6">
+          <div className="flex items-start justify-between gap-3 border-b border-zinc-200/80 pb-3 dark:border-border/60 md:hidden">
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-gray-900 dark:text-foreground">
+                <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-zinc-900 dark:text-foreground">
                   {pageTitle}
                 </h1>
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-8 shrink-0 px-2 text-[11px] font-medium text-gray-500 hover:text-gray-900 dark:text-muted-foreground dark:hover:text-foreground"
+                  className="h-9 min-h-9 shrink-0 px-2 text-[11px] font-medium text-muted-foreground transition-colors duration-200 hover:bg-zinc-100/90 hover:text-foreground dark:hover:bg-muted/40"
                   onClick={() =>
                     startTransition(() =>
                       router.push(inboxMode ? "/financial/expenses" : "/financial/inbox")
@@ -1780,7 +1790,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                   {inboxMode ? "Expenses" : "Inbox draft"}
                 </Button>
               </div>
-              <p className="mt-0.5 hidden text-[11px] leading-snug text-gray-500 dark:text-muted-foreground sm:line-clamp-2">
+              <p className="mt-1 hidden text-[11px] leading-snug text-muted-foreground sm:line-clamp-2">
                 {pageDescription}
               </p>
             </div>
@@ -1795,7 +1805,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
 
           <div className="hidden md:block">
             <PageHeader
-              className="[&_h1]:font-semibold [&_h1]:text-gray-900 [&_p]:text-sm [&_p]:text-gray-600 dark:[&_h1]:text-foreground dark:[&_p]:text-muted-foreground"
+              className="border-b border-zinc-200/70 pb-5 dark:border-border/60 [&_h1]:font-semibold [&_h1]:text-lg [&_h1]:tracking-tight [&_h1]:text-zinc-900 [&_p]:text-sm [&_p]:text-muted-foreground dark:[&_h1]:text-foreground"
               title={pageTitle}
               description={pageDescription}
               actions={
@@ -1804,7 +1814,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-8 shrink-0 shadow-none"
+                    className="h-9 shrink-0 shadow-none transition-colors duration-200 hover:bg-zinc-50 dark:hover:bg-muted/40"
                     onClick={() =>
                       router.push(inboxMode ? "/financial/expenses" : "/financial/inbox")
                     }
@@ -1821,23 +1831,35 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-1.5 md:grid-cols-4 md:gap-3">
-            <div className="flex min-h-[52px] items-center gap-1.5 rounded-xl border border-gray-200/90 bg-white px-2 py-1.5 shadow-none md:h-[76px] md:gap-2.5 md:px-3 md:py-2 dark:border-gray-800 dark:bg-gray-950">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 md:h-8 md:w-8 dark:bg-gray-800 dark:text-gray-400">
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-3">
+            <div
+              className={cn(
+                financeOsCard,
+                financeOsCardInteractive,
+                "flex min-h-[52px] items-center gap-1.5 px-2 py-2 md:h-[76px] md:gap-2.5 md:px-3 md:py-2"
+              )}
+            >
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 md:h-8 md:w-8 dark:bg-muted dark:text-muted-foreground">
                 <AlertCircle className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
               </span>
               <div className="min-w-0">
-                <p className="text-[8px] font-medium uppercase tracking-wide leading-none text-gray-500 md:text-[9px] md:normal-case md:tracking-normal dark:text-gray-400">
+                <p className="text-[8px] font-medium uppercase tracking-wide leading-none text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
                   {inboxMode ? "In queue" : "Archived"}
                 </p>
-                <p className="mt-0.5 text-base font-semibold tabular-nums leading-none text-gray-900 md:text-xl dark:text-gray-100">
+                <p className="mt-0.5 text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
                   {inboxMode ? summary.inboxQueueCount : summary.archivedCount}
                 </p>
               </div>
             </div>
-            <div className="flex min-h-[52px] items-center justify-between gap-1 rounded-xl border border-gray-200/90 bg-white px-2 py-1.5 shadow-none md:h-[76px] md:gap-2 md:px-3 md:py-2 dark:border-gray-800 dark:bg-gray-950">
+            <div
+              className={cn(
+                financeOsCard,
+                financeOsCardInteractive,
+                "flex min-h-[52px] items-center justify-between gap-1 px-2 py-2 md:h-[76px] md:gap-2 md:px-3 md:py-2"
+              )}
+            >
               <div className="flex min-w-0 items-center gap-1.5 md:gap-2.5">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 md:h-8 md:w-8 dark:bg-gray-800 dark:text-gray-400">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 md:h-8 md:w-8 dark:bg-muted dark:text-muted-foreground">
                   <CalendarDays
                     className="h-3 w-3 md:h-3.5 md:w-3.5"
                     strokeWidth={1.75}
@@ -1845,19 +1867,25 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                   />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-[8px] font-medium uppercase tracking-wide leading-none text-gray-500 md:text-[9px] md:normal-case md:tracking-normal dark:text-gray-400">
+                  <p className="text-[8px] font-medium uppercase tracking-wide leading-none text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
                     This Month
                   </p>
-                  <p className="mt-0.5 text-base font-semibold tabular-nums leading-none text-gray-900 md:text-xl dark:text-gray-100">
+                  <p className="mt-0.5 text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
                     ${summary.monthTotal.toLocaleString()}
                   </p>
                 </div>
               </div>
               <KpiSparkline className="hidden shrink-0 opacity-50 md:block" />
             </div>
-            <div className="flex min-h-[52px] items-center justify-between gap-1 rounded-xl border border-gray-200/90 bg-white px-2 py-1.5 shadow-none md:h-[76px] md:gap-2 md:px-3 md:py-2 dark:border-gray-800 dark:bg-gray-950">
+            <div
+              className={cn(
+                financeOsCard,
+                financeOsCardInteractive,
+                "flex min-h-[52px] items-center justify-between gap-1 px-2 py-2 md:h-[76px] md:gap-2 md:px-3 md:py-2"
+              )}
+            >
               <div className="flex min-w-0 items-center gap-1.5 md:gap-2.5">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 md:h-8 md:w-8 dark:bg-gray-800 dark:text-gray-400">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 md:h-8 md:w-8 dark:bg-muted dark:text-muted-foreground">
                   <DollarSign
                     className="h-3 w-3 md:h-3.5 md:w-3.5"
                     strokeWidth={1.75}
@@ -1865,26 +1893,32 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                   />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-[8px] font-medium uppercase tracking-wide leading-none text-gray-500 md:text-[9px] md:normal-case md:tracking-normal dark:text-gray-400">
+                  <p className="text-[8px] font-medium uppercase tracking-wide leading-none text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
                     {archiveMode ? "Total (archived)" : "Total (all)"}
                   </p>
-                  <p className="mt-0.5 text-base font-semibold tabular-nums leading-none text-gray-900 md:text-xl dark:text-gray-100">
+                  <p className="mt-0.5 text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
                     ${summary.allTotal.toLocaleString()}
                   </p>
                 </div>
               </div>
               <KpiSparkline className="hidden shrink-0 text-emerald-300 opacity-50 dark:text-emerald-900/40 md:block" />
             </div>
-            <div className="flex min-h-[52px] items-center justify-between gap-1 rounded-xl border border-gray-200/90 bg-white px-2 py-1.5 shadow-none md:h-[76px] md:gap-2 md:px-3 md:py-2 dark:border-gray-800 dark:bg-gray-950">
+            <div
+              className={cn(
+                financeOsCard,
+                financeOsCardInteractive,
+                "flex min-h-[52px] items-center justify-between gap-1 px-2 py-2 md:h-[76px] md:gap-2 md:px-3 md:py-2"
+              )}
+            >
               <div className="flex min-w-0 items-center gap-1.5 md:gap-2.5">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-500 md:h-8 md:w-8 dark:bg-gray-800 dark:text-gray-400">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 md:h-8 md:w-8 dark:bg-muted dark:text-muted-foreground">
                   <RefreshCw className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-[8px] font-medium uppercase tracking-wide leading-none text-gray-500 md:text-[9px] md:normal-case md:tracking-normal dark:text-gray-400">
+                  <p className="text-[8px] font-medium uppercase tracking-wide leading-none text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
                     Reimbursements
                   </p>
-                  <p className="mt-0.5 text-base font-semibold tabular-nums leading-none text-gray-900 md:text-xl dark:text-gray-100">
+                  <p className="mt-0.5 text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
                     ${summary.reimbursementTotal.toLocaleString()}
                   </p>
                 </div>
@@ -1899,13 +1933,13 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
               placeholder="Search…"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              className="h-11 min-h-11 min-w-0 flex-1 rounded-xl border border-gray-200/90 bg-white text-base text-gray-900 shadow-none dark:border-border/60 dark:bg-card dark:text-foreground"
+              className="h-11 min-h-11 min-w-0 flex-1 rounded-lg border border-zinc-200/90 bg-white text-base text-foreground shadow-none transition-[border-color,box-shadow] duration-200 placeholder:text-muted-foreground focus-visible:border-zinc-400/80 dark:border-border/60 dark:bg-card"
             />
             <Button
               type="button"
               variant="outline"
               size="sm"
-              className="relative h-11 min-h-11 w-[5.75rem] shrink-0 gap-1 rounded-xl border-gray-200/90 px-2 dark:border-border/60"
+              className="relative h-11 min-h-11 w-[5.75rem] shrink-0 gap-1 rounded-lg border-zinc-200/90 px-2 shadow-none transition-colors duration-200 hover:bg-zinc-50 dark:border-border/60 dark:hover:bg-muted/40"
               onClick={() => setFiltersDrawerOpen(true)}
             >
               <Filter className="h-4 w-4 shrink-0" aria-hidden />
@@ -2007,15 +2041,15 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
               </div>
             ) : null}
 
-            {/* Filters + table: one white card on md+ */}
-            <div className="overflow-hidden md:rounded-2xl md:border md:border-gray-200/70 md:bg-white md:shadow-sm dark:md:border-gray-800 dark:md:bg-gray-950">
-              <div className="hidden flex-wrap items-center justify-between gap-3 border-b border-gray-100 bg-white px-4 py-3 dark:border-gray-800 dark:bg-gray-950 md:flex">
+            {/* Filters + table: Finance OS card shell */}
+            <div className={financeOsListShell}>
+              <div className="hidden flex-wrap items-center justify-between gap-3 border-b border-zinc-100 bg-zinc-50/40 px-4 py-3 dark:border-border/60 dark:bg-muted/10 md:flex">
                 <div className="flex flex-wrap items-center gap-1.5">
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-9 shrink-0 rounded-lg border-gray-200 bg-white text-xs font-medium text-gray-700 shadow-none hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:hover:bg-gray-900"
+                    className="h-9 shrink-0 rounded-lg border-zinc-200/90 bg-white text-xs font-medium shadow-none transition-colors duration-200 hover:bg-zinc-50 dark:border-border dark:bg-card dark:hover:bg-muted/30"
                     onClick={() =>
                       startTransition(() =>
                         router.push(inboxMode ? "/financial/expenses" : "/financial/inbox")
@@ -2035,7 +2069,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                       placeholder="Search…"
                       value={searchInput}
                       onChange={(e) => setSearchInput(e.target.value)}
-                      className="h-9 rounded-lg border-gray-200 bg-white py-1 pl-8 pr-14 text-sm shadow-none dark:border-gray-700 dark:bg-gray-950 dark:text-gray-100"
+                      className="h-9 rounded-lg border-zinc-200/90 bg-white py-1 pl-8 pr-14 text-sm shadow-none transition-[border-color] duration-200 focus-visible:border-zinc-400/80 dark:border-border dark:bg-card dark:text-foreground"
                     />
                     <kbd className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 select-none rounded border border-gray-200 bg-white px-1.5 py-0.5 font-sans text-[10px] font-medium text-gray-400 lg:inline dark:border-gray-600 dark:bg-gray-800 dark:text-gray-500">
                       ⌘K
@@ -2047,7 +2081,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="h-9 shrink-0 gap-1.5 rounded-lg border-gray-200 px-3 dark:border-gray-700 dark:bg-gray-950 dark:hover:bg-gray-900"
+                        className="h-9 shrink-0 gap-1.5 rounded-lg border-zinc-200/90 px-3 shadow-none transition-colors duration-200 hover:bg-zinc-50 dark:border-border dark:bg-card dark:hover:bg-muted/30"
                       >
                         <Filter className="h-4 w-4 shrink-0" aria-hidden />
                         <span className="text-xs font-medium">
@@ -2064,7 +2098,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                     <PopoverContent
                       align="end"
                       sideOffset={8}
-                      className="z-50 overflow-visible w-[min(calc(100vw-2rem),22rem)] rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-950"
+                      className="z-50 w-[min(calc(100vw-2rem),22rem)] overflow-visible rounded-xl border border-zinc-200/80 bg-white p-3 shadow-[0_8px_32px_rgba(0,0,0,0.08)] dark:border-border dark:bg-popover"
                     >
                       <ExpensesAdvancedFiltersFields
                         projectFilter={projectFilter}
@@ -2080,99 +2114,98 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                         safeProjects={safeProjects}
                         categoriesList={categoriesList}
                         projectsError={projectsError}
-                        selectTriggerClassName="h-9 w-full rounded-lg border border-gray-200 bg-white text-xs shadow-none dark:border-gray-700 dark:bg-gray-950"
+                        selectTriggerClassName="h-9 w-full rounded-lg border border-zinc-200/90 bg-white text-xs shadow-none transition-colors duration-200 dark:border-border dark:bg-card"
                       />
                     </PopoverContent>
                   </Popover>
                 </div>
               </div>
               {inboxMode ? (
-                <p className="hidden border-b border-gray-100 px-4 py-1.5 text-[11px] leading-snug text-gray-500 dark:border-gray-800 dark:text-gray-400 md:block">
+                <p className="hidden border-b border-zinc-100 px-4 py-2 text-[11px] leading-snug text-muted-foreground dark:border-border/60 md:block">
                   Enter: save · Shift+Enter: save only · Tab: field · ↑↓ row · D delete · Esc cancel
                 </p>
               ) : null}
               {showExpensesSkeleton && expenses.length === 0 ? (
-                <div className="border-t border-gray-100 px-4 py-8 dark:border-gray-800 md:border-t-0">
+                <div className="border-t border-zinc-100 px-4 py-8 dark:border-border/60 md:border-t-0">
                   <ExpensesListSkeleton rows={8} showStatCards={false} />
                 </div>
               ) : total === 0 ? (
                 <>
                   <div
-                    className="hidden min-h-[min(55vh,480px)] flex-col justify-center border-t border-gray-100 px-6 py-16 text-center dark:border-gray-800 md:flex"
+                    className="hidden min-h-[280px] flex-col justify-center border-t border-zinc-100 px-6 py-14 text-center dark:border-border/60 md:flex"
                     tabIndex={-1}
                     data-expenses-empty
                   >
-                    <p className="text-sm font-semibold text-gray-900 dark:text-foreground">
-                      No transactions found
-                    </p>
-                    <p className="mt-0.5 text-sm text-gray-600 dark:text-muted-foreground">
-                      {inboxMode
-                        ? hasNarrowingFilters
-                          ? "Try clearing filters or search."
-                          : expensesForListing.length === 0
-                            ? "Add an expense to get started."
-                            : summary.inboxQueueCount === 0
-                              ? "Nothing needs attention. Open Expenses to see archived costs."
-                              : "No matching items."
-                        : hasNarrowingFilters
-                          ? "Adjust filters or search."
-                          : expensesForListing.length === 0
-                            ? "Add an expense to get started."
-                            : summary.archivedCount === 0
-                              ? "No archived expenses yet. Mark items done from Inbox."
-                              : "No matching archived expenses."}
-                    </p>
-                    {showEmptyOnboardingCtas ? (
-                      <div className="mt-4 flex justify-center">
-                        <TransactionInboxEntryActions
-                          onQuick={() => setQuickExpenseOpen(true)}
-                          onUpload={openUploadReceiptsModal}
-                          onNewExpense={handleNew}
-                          className="justify-center"
-                        />
-                      </div>
-                    ) : inboxMode &&
-                      !hasNarrowingFilters &&
-                      expensesForListing.length > 0 &&
-                      summary.inboxQueueCount === 0 ? (
-                      <div className="mt-4">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="h-8 rounded-sm border border-gray-100 bg-white text-gray-700 shadow-none hover:bg-gray-50 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted/50"
-                          onClick={() => router.push("/financial/expenses")}
-                        >
-                          View Expenses
-                        </Button>
-                      </div>
-                    ) : archiveMode && !hasNarrowingFilters && summary.archivedCount === 0 ? (
-                      <div className="mt-4">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="h-8 rounded-sm border border-gray-100 bg-white text-gray-700 shadow-none hover:bg-gray-50 dark:border-border dark:bg-background dark:text-foreground dark:hover:bg-muted/50"
-                          onClick={() => router.push("/financial/inbox")}
-                        >
-                          Open Inbox
-                        </Button>
-                      </div>
-                    ) : null}
+                    <div className="mx-auto flex max-w-md flex-col items-center rounded-xl border border-dashed border-zinc-200/80 bg-zinc-50/50 px-8 py-10 dark:border-border/60 dark:bg-muted/20">
+                      <p className="text-sm font-semibold tracking-tight text-zinc-900 dark:text-foreground">
+                        No transactions found
+                      </p>
+                      <p className="mt-1.5 text-sm text-muted-foreground">
+                        {inboxMode
+                          ? hasNarrowingFilters
+                            ? "Try clearing filters or search."
+                            : expensesForListing.length === 0
+                              ? "Add an expense to get started."
+                              : summary.inboxQueueCount === 0
+                                ? "Nothing needs attention. Open Expenses to see archived costs."
+                                : "No matching items."
+                          : hasNarrowingFilters
+                            ? "Adjust filters or search."
+                            : expensesForListing.length === 0
+                              ? "Add an expense to get started."
+                              : summary.archivedCount === 0
+                                ? "No archived expenses yet. Mark items done from Inbox."
+                                : "No matching archived expenses."}
+                      </p>
+                      {showEmptyOnboardingCtas ? (
+                        <div className="mt-6 flex justify-center">
+                          <TransactionInboxEntryActions
+                            onQuick={() => setQuickExpenseOpen(true)}
+                            onUpload={openUploadReceiptsModal}
+                            onNewExpense={handleNew}
+                            className="justify-center"
+                          />
+                        </div>
+                      ) : inboxMode &&
+                        !hasNarrowingFilters &&
+                        expensesForListing.length > 0 &&
+                        summary.inboxQueueCount === 0 ? (
+                        <div className="mt-5">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-9 rounded-lg border-zinc-200/90 bg-white shadow-none transition-colors duration-200 hover:bg-zinc-100/80 dark:border-border dark:bg-card dark:hover:bg-muted/40"
+                            onClick={() => router.push("/financial/expenses")}
+                          >
+                            View Expenses
+                          </Button>
+                        </div>
+                      ) : archiveMode && !hasNarrowingFilters && summary.archivedCount === 0 ? (
+                        <div className="mt-5">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-9 rounded-lg border-zinc-200/90 bg-white shadow-none transition-colors duration-200 hover:bg-zinc-100/80 dark:border-border dark:bg-card dark:hover:bg-muted/40"
+                            onClick={() => router.push("/financial/inbox")}
+                          >
+                            Open Inbox
+                          </Button>
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                   <div
-                    className="flex flex-col items-center border-b border-gray-100/80 py-6 md:hidden dark:border-border/60"
+                    className="mx-2 mb-2 flex flex-col items-center rounded-xl border border-dashed border-zinc-200/80 bg-zinc-50/50 px-4 py-10 dark:border-border/60 dark:bg-muted/15 md:hidden"
                     tabIndex={-1}
                     data-expenses-empty-mobile
                   >
-                    <Upload
-                      className="h-8 w-8 text-text-secondary dark:text-muted-foreground"
-                      aria-hidden
-                    />
-                    <p className="mt-3 text-center text-sm font-semibold text-gray-900 dark:text-foreground">
+                    <Upload className="h-7 w-7 text-muted-foreground" aria-hidden />
+                    <p className="mt-3 text-center text-sm font-semibold tracking-tight text-foreground">
                       No transactions found
                     </p>
-                    <p className="mt-1 max-w-xs text-center text-xs text-text-secondary dark:text-muted-foreground">
+                    <p className="mt-1 max-w-xs text-center text-xs leading-relaxed text-muted-foreground">
                       {inboxMode
                         ? hasNarrowingFilters
                           ? "Try filters or search."
@@ -2227,7 +2260,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                 </>
               ) : (
                 <>
-                  <div className="w-full overflow-hidden bg-background md:bg-white dark:md:bg-gray-950">
+                  <div className="w-full overflow-hidden bg-white dark:bg-card/80 md:bg-white">
                     <ExpenseInboxTransactionList
                       dateChunks={visibleDateGroups}
                       possibleDuplicateIds={possibleDuplicateIds}
@@ -2251,7 +2284,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                       }}
                     />
                   </div>
-                  <div className="flex flex-col gap-2 border-t border-gray-100 bg-white px-4 py-3 text-xs text-gray-600 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-400 md:flex-row md:items-center md:justify-between">
+                  <div className="flex flex-col gap-3 border-t border-zinc-100 bg-zinc-50/35 px-4 py-3 text-xs text-muted-foreground dark:border-border/60 dark:bg-muted/10 md:flex-row md:items-center md:justify-between md:gap-4">
                     <p className="tabular-nums">
                       {total === 0
                         ? "Showing 0 results"
@@ -2263,21 +2296,21 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                           type="button"
                           variant="outline"
                           size="sm"
-                          className="h-7 w-7 shrink-0 border-gray-200 p-0 shadow-none dark:border-gray-700"
+                          className="h-11 min-h-11 w-11 min-w-11 shrink-0 border-zinc-200/90 p-0 shadow-none transition-colors duration-200 hover:bg-white dark:border-border md:h-7 md:min-h-0 md:w-7 md:min-w-0 md:hover:bg-muted/30"
                           disabled={curPage <= 1}
                           aria-label="Previous page"
                           onClick={() => setPage(curPage - 1)}
                         >
                           <ChevronLeft className="h-4 w-4" />
                         </Button>
-                        <span className="min-w-[2rem] text-center tabular-nums text-gray-900 dark:text-foreground">
+                        <span className="min-w-[2rem] text-center tabular-nums text-foreground">
                           {curPage}
                         </span>
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
-                          className="h-7 w-7 shrink-0 border-gray-200 p-0 shadow-none dark:border-gray-700"
+                          className="h-11 min-h-11 w-11 min-w-11 shrink-0 border-zinc-200/90 p-0 shadow-none transition-colors duration-200 hover:bg-white dark:border-border md:h-7 md:min-h-0 md:w-7 md:min-w-0 md:hover:bg-muted/30"
                           disabled={curPage >= totalPages}
                           aria-label="Next page"
                           onClick={() => setPage(curPage + 1)}
@@ -2286,14 +2319,14 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                         </Button>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="whitespace-nowrap text-gray-600 dark:text-gray-400">
+                        <span className="whitespace-nowrap text-muted-foreground">
                           Groups per page
                         </span>
                         <Select
                           value={String(pageSize)}
                           onValueChange={(v) => setPageSizeAndReset(Number(v))}
                         >
-                          <SelectTrigger className="h-7 w-[4.25rem] rounded-sm border-gray-200 text-xs shadow-none dark:border-gray-700">
+                          <SelectTrigger className="h-11 min-h-11 w-[4.25rem] rounded-lg border-zinc-200/90 text-xs shadow-none transition-colors duration-200 dark:border-border md:h-7 md:min-h-0">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
