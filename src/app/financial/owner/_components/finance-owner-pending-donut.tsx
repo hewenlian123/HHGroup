@@ -1,13 +1,6 @@
 import Link from "next/link";
-
-function fmtUsd(n: number): string {
-  return n.toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
+import { Wallet } from "lucide-react";
+import { fmtUsdAdaptive, fmtUsdFull } from "../_lib/format-owner-currency";
 
 type Breakdown = {
   apOutstanding: number;
@@ -66,6 +59,28 @@ export function FinanceOwnerPendingDonut({
     angle += sweep;
   }
 
+  const zeroTotal = Math.abs(total) < 0.005 && sumParts < 0.005;
+
+  if (zeroTotal) {
+    return (
+      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-zinc-200/90 bg-zinc-50/40 px-4 py-10 text-center transition-colors duration-200 ease-out dark:border-border/60 dark:bg-muted/15 max-md:py-12">
+        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-zinc-100 dark:bg-muted">
+          <Wallet className="h-5 w-5 text-zinc-400 dark:text-zinc-500" aria-hidden />
+        </div>
+        <p className="mt-3 text-sm font-semibold text-foreground">Nothing pending</p>
+        <p className="mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">
+          Outstanding AP and worker balances will aggregate here when they&apos;re non-zero.
+        </p>
+        <Link
+          href="/labor/worker-balances"
+          className="mt-5 inline-flex min-h-[44px] items-center text-[11px] font-semibold text-primary hover:underline"
+        >
+          View balances
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
       <div className="relative mx-auto shrink-0 sm:mx-0">
@@ -87,8 +102,11 @@ export function FinanceOwnerPendingDonut({
           <p className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground">
             Total
           </p>
-          <p className="mt-1 text-sm font-semibold tabular-nums tracking-tight text-foreground">
-            {fmtUsd(total)}
+          <p
+            className="mt-1 max-w-[92px] truncate text-sm font-semibold tracking-tight text-foreground tabular-nums"
+            title={fmtUsdFull(total)}
+          >
+            {fmtUsdAdaptive(total)}
           </p>
         </div>
       </div>
@@ -99,7 +117,7 @@ export function FinanceOwnerPendingDonut({
           return (
             <div
               key={p.key}
-              className="flex items-center justify-between gap-3 rounded-lg border border-zinc-100/90 bg-zinc-50/50 px-3 py-2 dark:border-border/40 dark:bg-muted/20"
+              className="flex items-center justify-between gap-3 rounded-lg border border-zinc-100/90 bg-zinc-50/50 px-3 py-2 transition-colors duration-200 ease-out hover:bg-zinc-100/60 dark:border-border/40 dark:bg-muted/20 dark:hover:bg-muted/35"
             >
               <div className="flex min-w-0 items-center gap-2">
                 <span
@@ -112,16 +130,18 @@ export function FinanceOwnerPendingDonut({
                 </div>
               </div>
               <div className="shrink-0 text-right leading-tight">
-                <p className="text-xs font-semibold tabular-nums">{fmtUsd(p.value)}</p>
+                <p className="text-xs font-semibold tabular-nums" title={fmtUsdFull(p.value)}>
+                  {fmtUsdAdaptive(p.value)}
+                </p>
                 <p className="text-[10px] tabular-nums text-muted-foreground">{pct}%</p>
               </div>
             </div>
           );
         })}
-        <div className="pt-1 text-right">
+        <div className="flex justify-end pt-1">
           <Link
             href="/labor/worker-balances"
-            className="text-[11px] font-semibold text-primary hover:underline"
+            className="inline-flex min-h-[44px] items-center text-[11px] font-semibold text-primary hover:underline sm:min-h-0"
           >
             View details
           </Link>
