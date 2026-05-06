@@ -48,24 +48,32 @@ export function ExpenseBulkActionBar({
 }: ExpenseBulkActionBarProps) {
   const inbox = pool === "inbox";
 
+  const controlSm = inbox
+    ? "h-10 min-h-10 rounded-md px-3 text-xs sm:h-8 sm:min-h-0"
+    : "h-7 rounded-sm text-xs";
+
   return (
     <div
       className={cn(
-        "sticky top-0 z-30 flex flex-wrap items-center gap-2 border-b border-border/60 px-3 py-2 text-sm",
-        "bg-background/95 backdrop-blur-sm supports-[backdrop-filter]:bg-background/90"
+        "sticky top-0 z-30 flex flex-wrap items-center gap-2 border-b px-3 py-2 text-sm",
+        inbox
+          ? "border-zinc-200/90 bg-zinc-50/98 shadow-[0_4px_24px_rgba(0,0,0,0.06)] backdrop-blur-md supports-[backdrop-filter]:bg-zinc-50/92 dark:border-border/55 dark:bg-muted/95 dark:shadow-[0_4px_24px_rgba(0,0,0,0.25)]"
+          : "border-border/60 bg-background/95 backdrop-blur-sm supports-[backdrop-filter]:bg-background/90"
       )}
       role="region"
       aria-label="Bulk actions"
     >
-      <span className="text-muted-foreground">
-        Selected: <span className="font-medium tabular-nums text-foreground">{selectedCount}</span>{" "}
-        items
+      <span className="min-h-9 text-muted-foreground sm:min-h-0">
+        <span className="font-medium text-foreground">{selectedCount}</span> selected
       </span>
       <Button
         type="button"
         variant="ghost"
         size="sm"
-        className="h-7 shrink-0 text-xs"
+        className={cn(
+          "shrink-0 text-xs",
+          inbox ? "h-10 min-h-10 min-w-10 sm:h-8 sm:min-h-0 sm:min-w-0" : "h-7"
+        )}
         disabled={busy}
         onClick={onClear}
       >
@@ -80,7 +88,7 @@ export function ExpenseBulkActionBar({
             type="button"
             variant="outline"
             size="sm"
-            className="h-7 shrink-0 rounded-sm text-xs shadow-none"
+            className={cn("shrink-0 shadow-none", controlSm)}
             disabled={busy || selectedCount === 0}
             onClick={onMarkDone}
           >
@@ -92,7 +100,7 @@ export function ExpenseBulkActionBar({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-7 gap-1 rounded-sm text-xs shadow-none"
+                className={cn("gap-1 shadow-none", controlSm)}
                 disabled={busy || selectedCount === 0}
               >
                 Assign Project
@@ -123,7 +131,7 @@ export function ExpenseBulkActionBar({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-7 gap-1 rounded-sm text-xs shadow-none"
+                className={cn("gap-1 shadow-none", controlSm)}
                 disabled={busy || selectedCount === 0 || categories.length === 0}
               >
                 Set Category
@@ -148,7 +156,7 @@ export function ExpenseBulkActionBar({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-7 gap-1 rounded-sm text-xs shadow-none"
+                className={cn("gap-1 shadow-none", controlSm)}
                 disabled={busy || selectedCount === 0 || paymentAccounts.length === 0}
               >
                 Payment
