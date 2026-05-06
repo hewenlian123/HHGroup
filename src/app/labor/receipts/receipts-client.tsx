@@ -41,6 +41,7 @@ import {
 import type { WorkerReceipt, WorkerReceiptStatus } from "@/lib/worker-receipts-db";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
+import { TYPO } from "@/lib/typography";
 
 function fmtUsd(n: number) {
   return new Intl.NumberFormat("en-US", {
@@ -456,10 +457,8 @@ export function ReceiptsClient({
     </div>
   );
 
-  const thClass =
-    "px-3 py-2 text-left text-[10px] font-medium uppercase leading-none tracking-[0.08em] text-muted-foreground";
-  const thRight =
-    "px-3 py-2 text-right text-[10px] font-medium uppercase leading-none tracking-[0.08em] text-muted-foreground tabular-nums";
+  const thClass = cn("px-3 py-2 text-left", TYPO.tableHeader);
+  const thRight = cn("px-3 py-2 text-right tabular-nums", TYPO.tableHeader);
 
   const filterControls = (
     <>
@@ -536,14 +535,14 @@ export function ReceiptsClient({
       >
         <div className="hidden md:block">
           <PageHeader
-            className="gap-1 border-b border-zinc-200/70 pb-1.5 dark:border-border/60 lg:items-baseline lg:gap-x-4 [&_h1]:text-lg [&_h1]:font-semibold [&_h1]:tracking-tight [&_h1]:text-zinc-900 [&_p]:mt-0 [&_p]:text-[13px] [&_p]:leading-snug [&_p]:text-muted-foreground dark:[&_h1]:text-foreground"
+            className="gap-1 border-b border-zinc-200/70 pb-2 dark:border-border/60 lg:items-baseline lg:gap-x-4 [&_p]:mt-0"
             title="Worker Receipt Uploads"
             subtitle="Approve or reject uploaded receipts; approved items become reimbursements."
             actions={
               <Button
                 variant="outline"
                 size="sm"
-                className="h-9 shrink-0 gap-1.5 shadow-none"
+                className={cn("h-9 shrink-0 gap-1.5 shadow-none", TYPO.button)}
                 asChild
               >
                 <Link href="/upload-receipt">
@@ -862,10 +861,15 @@ export function ReceiptsClient({
                           {workerInitials(r.workerName)}
                         </span>
                         <div className="min-w-0 flex-1">
-                          <p className="line-clamp-2 text-[13px] font-medium leading-snug tracking-tight text-zinc-900 dark:text-foreground">
+                          <p className={cn("line-clamp-2 leading-snug", TYPO.primaryName)}>
                             {r.workerName}
                           </p>
-                          <p className="mt-0.5 max-w-[11rem] truncate font-mono text-[9px] leading-none tabular-nums text-zinc-500/75 dark:text-zinc-400/85">
+                          <p
+                            className={cn(
+                              "mt-0.5 max-w-[11rem] truncate leading-none",
+                              TYPO.secondaryId
+                            )}
+                          >
                             {truncateId(r.workerId ?? r.id)}
                           </p>
                         </div>
@@ -879,26 +883,20 @@ export function ReceiptsClient({
                       </div>
                     </div>
                     <div className="flex flex-wrap items-end justify-between gap-2 border-b border-zinc-100/70 pb-2 dark:border-border/40">
-                      <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                        Amount
-                      </span>
-                      <span className="max-w-full min-w-0 text-right text-xl font-semibold tabular-nums tracking-tight text-zinc-800 dark:text-zinc-100">
+                      <span className={TYPO.sectionLabel}>Amount</span>
+                      <span className={cn("max-w-full min-w-0 text-right text-xl", TYPO.amount)}>
                         {fmtUsd(r.amount)}
                       </span>
                     </div>
                     <dl className="grid grid-cols-1 gap-x-3 gap-y-2 text-xs sm:grid-cols-2">
                       <div className="min-w-0 sm:col-span-2">
-                        <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                          Vendor
-                        </dt>
-                        <dd className="truncate pt-0.5 text-sm font-medium text-zinc-800 dark:text-zinc-100">
+                        <dt className={TYPO.tableHeader}>Vendor</dt>
+                        <dd className={cn("truncate pt-0.5", TYPO.primaryName)}>
                           {r.vendor?.trim() ? r.vendor : "—"}
                         </dd>
                       </div>
                       <div className="min-w-0">
-                        <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                          Project
-                        </dt>
+                        <dt className={TYPO.tableHeader}>Project</dt>
                         <dd
                           className={cn(
                             "truncate pt-0.5 text-sm",
@@ -911,9 +909,7 @@ export function ReceiptsClient({
                         </dd>
                       </div>
                       <div className="min-w-0">
-                        <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                          Expense type
-                        </dt>
+                        <dt className={TYPO.tableHeader}>Expense type</dt>
                         <dd className="pt-0.5">
                           <span className="inline-flex max-w-full rounded-md border border-zinc-200/70 bg-zinc-50/80 px-1.5 py-px text-[10px] font-normal text-zinc-500 dark:border-border/60 dark:bg-muted/25 dark:text-zinc-400">
                             {r.expenseType || "—"}
@@ -921,17 +917,13 @@ export function ReceiptsClient({
                         </dd>
                       </div>
                       <div className="min-w-0">
-                        <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                          Date
-                        </dt>
-                        <dd className="truncate pt-0.5 font-mono text-sm tabular-nums text-zinc-500 dark:text-zinc-400">
+                        <dt className={TYPO.tableHeader}>Date</dt>
+                        <dd className={cn("truncate pt-0.5", TYPO.date)}>
                           {r.createdAt.slice(0, 10)}
                         </dd>
                       </div>
                       <div className="min-w-0 sm:col-span-2">
-                        <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                          Receipt
-                        </dt>
+                        <dt className={TYPO.tableHeader}>Receipt</dt>
                         <dd className="pt-1">
                           {r.receiptUrl ? (
                             <button
@@ -1075,7 +1067,12 @@ export function ReceiptsClient({
                         <td className="max-w-[160px] truncate px-3 py-2.5 align-middle text-sm font-medium text-zinc-800 dark:text-zinc-100">
                           {r.vendor?.trim() ? r.vendor : "—"}
                         </td>
-                        <td className="whitespace-nowrap px-3 py-2.5 text-right align-middle text-base font-semibold tabular-nums tracking-tight text-zinc-800 dark:text-zinc-100">
+                        <td
+                          className={cn(
+                            "whitespace-nowrap px-3 py-2.5 text-right align-middle text-base",
+                            TYPO.amount
+                          )}
+                        >
                           {fmtUsd(r.amount)}
                         </td>
                         <td className="px-3 py-2.5 align-middle">
@@ -1106,7 +1103,12 @@ export function ReceiptsClient({
                             </span>
                           ) : null}
                         </td>
-                        <td className="whitespace-nowrap px-3 py-2.5 text-right align-middle font-mono text-sm tabular-nums text-zinc-500 dark:text-zinc-400">
+                        <td
+                          className={cn(
+                            "whitespace-nowrap px-3 py-2.5 text-right align-middle",
+                            TYPO.date
+                          )}
+                        >
                           {r.createdAt.slice(0, 10)}
                         </td>
                         <td

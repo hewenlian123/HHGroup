@@ -8,6 +8,11 @@ import { Select } from "@/components/ui/native-select";
 import { FilterBar } from "@/components/filter-bar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
+  MobileFabPlus,
+  MobileListHeader,
+  mobileListPagePaddingClass,
+} from "@/components/mobile/mobile-list-chrome";
+import {
   clearLaborEntry,
   getProjects,
   getLaborEntriesWithJoins,
@@ -23,13 +28,22 @@ import { useToast } from "@/components/toast/toast-provider";
 import { AddDailyEntryModal as QuickTimesheetModal } from "./add-daily-entry-modal";
 import { EditEntryModal, sessionLabel } from "./edit-entry-modal";
 import type { LaborSession } from "./edit-entry-modal";
-import { Pencil, Trash2 } from "lucide-react";
+import { CalendarDays, Clock, DollarSign, ListOrdered, Pencil, Plus, Trash2 } from "lucide-react";
 
 function sessionBadgeClass(session: LaborSession): string {
   if (session === "morning") return "bg-amber-50 text-amber-800 ring-1 ring-amber-200/60";
   if (session === "afternoon") return "bg-blue-50 text-blue-800 ring-1 ring-blue-200/60";
   return "bg-[#DCFCE7] text-[#166534] ring-1 ring-[#DCFCE7]";
 }
+
+const timeShell =
+  "rounded-xl border border-zinc-200/70 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_4px_24px_rgba(0,0,0,0.045)] dark:border-border/50 dark:bg-card/80 dark:shadow-none md:rounded-2xl";
+
+const timeKpiTile =
+  "rounded-xl border border-zinc-200/40 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.028),0_1px_12px_rgba(0,0,0,0.028)] dark:border-border/35 dark:bg-card/80 dark:shadow-none md:rounded-xl";
+
+const timeKpiIcon =
+  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-100/45 text-zinc-400 md:h-8 md:w-8 dark:bg-muted/45 dark:text-muted-foreground";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const HIGH_COST_THRESHOLD = 1000;
@@ -354,546 +368,631 @@ export default function LaborPageClient() {
   }, [monthEntries]);
 
   return (
-    <div className="page-container page-stack py-6">
-      <PageHeader title="Labor" subtitle="Daily labor entries by worker and project." />
-      <FilterBar className="!flex-col !items-stretch gap-4 border-0 bg-transparent p-0 shadow-none dark:bg-transparent">
-        <div className="flex w-full flex-wrap items-end gap-4">
-          <div className="flex min-w-[140px] flex-1 flex-col gap-1 sm:min-w-[160px] sm:flex-initial">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-              Month
-            </label>
-            <Select
-              value={selectedMonth}
-              onChange={(e) => {
-                setSelectedMonth(e.target.value);
-                setExpandedDate(null);
-                setSelectedDayForDetail(null);
-              }}
-              className="h-9 min-h-[44px] min-w-0 sm:min-h-9 sm:w-[200px]"
-            >
-              {MONTH_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div className="flex min-w-[140px] flex-1 flex-col gap-1 sm:min-w-[180px] sm:flex-initial">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-              Project
-            </label>
-            <Select
-              value={projectFilter}
-              onChange={(e) => {
-                setProjectFilter(e.target.value);
-                setExpandedDate(null);
-              }}
-              className="h-9 min-h-[44px] min-w-0 sm:min-h-9 sm:w-[220px]"
-            >
-              <option value="">All Projects</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div className="flex min-w-[140px] flex-1 flex-col gap-1 sm:min-w-[180px] sm:flex-initial">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-              Worker
-            </label>
-            <Select
-              value={workerFilter}
-              onChange={(e) => {
-                setWorkerFilter(e.target.value);
-                setExpandedDate(null);
-              }}
-              className="h-9 min-h-[44px] min-w-0 sm:min-h-9 sm:w-[220px]"
-            >
-              <option value="">All Workers</option>
-              {workers.map((w) => (
-                <option key={w.id} value={w.id}>
-                  {w.name}
-                </option>
-              ))}
-            </Select>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-3 border-t border-gray-100 pt-3 dark:border-border">
-          <Button
-            size="sm"
-            className="rounded-sm h-9"
-            onClick={() => setModalOpen(true)}
-            disabled={loadingProjects}
-          >
-            + Add Entry
-          </Button>
-          <div className="flex h-9 shrink-0 overflow-hidden rounded-lg border border-gray-100 shadow-sm dark:border-border">
-            <button
-              type="button"
-              onClick={() => setView("list")}
-              className={cn(
-                "h-full px-3 text-xs font-medium transition-all duration-150",
-                view === "list"
-                  ? "bg-[#111827] text-white dark:bg-foreground dark:text-background"
-                  : "bg-white text-text-secondary hover:bg-[#F9FAFB] hover:text-text-primary dark:bg-card dark:hover:bg-muted"
-              )}
-            >
-              List View
-            </button>
-            <button
-              type="button"
-              onClick={() => setView("calendar")}
-              className={cn(
-                "h-full border-l border-gray-100 px-3 text-xs font-medium transition-all duration-150 dark:border-border",
-                view === "calendar"
-                  ? "bg-[#111827] text-white dark:bg-foreground dark:text-background"
-                  : "bg-white text-text-secondary hover:bg-[#F9FAFB] hover:text-text-primary dark:bg-card dark:hover:bg-muted"
-              )}
-            >
-              Calendar View
-            </button>
-          </div>
-        </div>
-      </FilterBar>
-
-      {error ? <p className="py-3 text-sm text-red-600">{error}</p> : null}
-      {message ? <p className="py-3 text-sm text-muted-foreground">{message}</p> : null}
-
-      {/* Monthly Summary */}
-      <section className="border-b border-border/60 pb-4">
-        <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-          Monthly Summary · {formatMonthLabel(selectedMonth)}
-        </p>
-        <div className="overflow-hidden rounded-lg border border-gray-100 bg-white shadow-sm dark:border-border dark:bg-card dark:shadow-none">
-          <div className="grid grid-cols-1 sm:grid-cols-3">
-            <div className="border-b border-gray-100 px-3 py-2.5 sm:border-b-0 sm:border-r sm:border-gray-100 dark:border-border">
-              <p className="text-[11px] text-muted-foreground/70 uppercase tracking-widest">
-                Total Labor Cost
-              </p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums">
-                $
-                {summary.totalLaborCost.toLocaleString("en-US", {
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 0,
-                })}
-              </p>
-            </div>
-            <div className="border-b border-gray-100 px-3 py-2.5 sm:border-b-0 sm:border-r sm:border-gray-100 dark:border-border">
-              <p className="text-[11px] text-muted-foreground/70 uppercase tracking-widest">
-                Work Days
-              </p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums">
-                {summary.totalWorkDays.toLocaleString("en-US")}
-              </p>
-            </div>
-            <div className="px-3 py-2.5">
-              <p className="text-[11px] text-muted-foreground/70 uppercase tracking-widest">
-                Entries
-              </p>
-              <p className="mt-1 text-2xl font-semibold tabular-nums">
-                {summary.totalEntries.toLocaleString("en-US")}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* PROJECT LABOR COST — labor cost per project for selected month, sorted by highest */}
-        {projectLaborCost.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-border/60">
-            <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-              PROJECT LABOR COST
-            </p>
-            <div className="overflow-hidden rounded-lg border border-gray-100 bg-white shadow-sm dark:border-border dark:bg-card dark:shadow-none">
-              {projectLaborCost.map(({ id, name, total }) => (
-                <div
-                  key={id}
-                  className="flex items-center justify-between gap-3 border-b border-gray-100 px-2.5 py-2.5 last:border-b-0 hover:bg-[#F9FAFB] dark:border-border dark:hover:bg-muted/40"
-                >
-                  <span className="text-sm font-medium text-foreground truncate">{name}</span>
-                  <span className="text-sm tabular-nums font-medium text-foreground shrink-0">
-                    $
-                    {total.toLocaleString("en-US", {
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 0,
-                    })}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </section>
-
-      {/* List View */}
-      {view === "list" && (
-        <section className="mt-4 border-b border-border/60 pb-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">
-            Daily entries · {formatMonthLabel(selectedMonth)}
-          </p>
-          {loadingEntries ? (
-            <p className="py-4 text-sm text-muted-foreground">Loading…</p>
-          ) : datesInMonth.length === 0 ? (
-            <p className="py-4 text-sm text-muted-foreground">No dates.</p>
-          ) : datesInMonth.filter((d) => (entriesByDate.get(d) ?? []).length > 0).length === 0 ? (
-            <p className="py-2 text-sm text-muted-foreground/70">No entries for this month.</p>
-          ) : (
-            <div className="flex flex-col divide-y divide-border/60 rounded-sm border border-border/70 overflow-hidden">
-              {datesInMonth
-                .filter((d) => (entriesByDate.get(d) ?? []).length > 0)
-                .map((date) => {
-                  const entries = entriesByDate.get(date) ?? [];
-                  const totalPay = entries.reduce((s, e) => s + (e.cost_amount ?? 0), 0);
-                  const isHighCost = totalPay > HIGH_COST_THRESHOLD;
-                  const isExpanded = expandedDate === date;
-                  return (
-                    <div key={date}>
-                      <button
-                        type="button"
-                        onClick={() => setExpandedDate((prev) => (prev === date ? null : date))}
-                        className={cn(
-                          "flex w-full items-center justify-between gap-3 rounded-none px-3 py-2 text-left transition-all duration-150 ease-out hover:-translate-y-px bg-gray-50 hover:bg-gray-100 active:scale-[0.99] active:duration-100 dark:bg-muted/20 dark:hover:bg-muted/40",
-                          isExpanded && "bg-gray-100 dark:bg-muted/40"
-                        )}
-                      >
-                        <div className="flex items-baseline gap-3 min-w-0">
-                          <span className="text-[15px] font-semibold text-foreground shrink-0">
-                            {formatShortDate(date)}
-                          </span>
-                          <span className="text-xs text-muted-foreground/80 truncate">
-                            {entries.length} entries
-                          </span>
-                          <span
-                            className={cn(
-                              "ml-auto text-sm font-semibold tabular-nums shrink-0",
-                              isHighCost ? "text-amber-700" : "text-hh-profit-positive"
-                            )}
-                          >
-                            $
-                            {totalPay.toLocaleString("en-US", {
-                              minimumFractionDigits: 0,
-                              maximumFractionDigits: 0,
-                            })}
-                          </span>
-                        </div>
-                        <span
-                          className={cn(
-                            "shrink-0 text-muted-foreground transition-transform duration-200 text-xs",
-                            isExpanded && "rotate-90"
-                          )}
-                          aria-hidden
-                        >
-                          ▶
-                        </span>
-                      </button>
-                      <div
-                        className={cn(
-                          "overflow-hidden transition-[max-height] duration-200 ease-out",
-                          isExpanded ? "max-h-[2000px]" : "max-h-0"
-                        )}
-                      >
-                        <div className="border-t border-border/60 bg-background">
-                          <div className="overflow-x-auto">
-                            <table className="w-full min-w-[480px] border-collapse text-sm">
-                              <thead>
-                                <tr className="border-b border-border/60">
-                                  <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
-                                    Worker
-                                  </th>
-                                  <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
-                                    Project
-                                  </th>
-                                  <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
-                                    Session
-                                  </th>
-                                  <th className="text-right py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70 tabular-nums">
-                                    Total Pay
-                                  </th>
-                                  <th className="w-[84px] py-2 px-3" />
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {entries.map((e) => {
-                                  const pay = e.cost_amount != null ? Number(e.cost_amount) : 0;
-                                  const session = sessionFromFlags(e);
-                                  return (
-                                    <tr
-                                      key={e.id}
-                                      className={cn(
-                                        listTableRowStaticClassName,
-                                        "border-b border-border/30 last:border-b-0"
-                                      )}
-                                    >
-                                      <td className="py-2 px-3 font-semibold text-foreground">
-                                        {e.worker_name ?? "—"}
-                                      </td>
-                                      <td className="py-2 px-3 text-muted-foreground/80">
-                                        {e.project_name ?? "—"}
-                                      </td>
-                                      <td className="py-2 px-3">
-                                        <span
-                                          className={cn(
-                                            "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
-                                            sessionBadgeClass(session)
-                                          )}
-                                        >
-                                          {sessionLabel(session)}
-                                        </span>
-                                      </td>
-                                      <td className="py-2 px-3 text-right tabular-nums font-semibold">
-                                        {pay > 0 ? `$${pay.toFixed(2)}` : "—"}
-                                      </td>
-                                      <td className="py-2 px-3 text-right">
-                                        <div className="flex items-center justify-end gap-2">
-                                          <button
-                                            type="button"
-                                            className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50/60"
-                                            onClick={() => openEdit(e)}
-                                            aria-label="Edit"
-                                          >
-                                            <Pencil className="h-4 w-4" />
-                                          </button>
-                                          <button
-                                            type="button"
-                                            className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-red-600 hover:text-red-700 hover:bg-red-50/60"
-                                            onClick={() => void handleDelete(e)}
-                                            aria-label="Delete"
-                                            disabled={workerMode}
-                                            title={
-                                              workerMode
-                                                ? "Delete is available only on the main Labor page."
-                                                : "Delete entry"
-                                            }
-                                          >
-                                            <Trash2 className="h-4 w-4" />
-                                          </button>
-                                        </div>
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
-          )}
-        </section>
+    <div
+      className={cn(
+        "min-w-0 overflow-x-hidden bg-zinc-50 pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] dark:bg-background",
+        "flex flex-col"
       )}
+    >
+      <div
+        className={cn(
+          "mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-2 px-4 py-2 pb-4 dark:bg-background sm:max-w-[460px] md:max-w-6xl md:gap-2 md:px-6 md:pb-6 md:pt-3",
+          mobileListPagePaddingClass,
+          "max-md:!gap-2"
+        )}
+      >
+        <div className="hidden md:block">
+          <PageHeader
+            className="gap-1 border-b border-zinc-200/70 pb-2 dark:border-border/60 lg:items-baseline lg:gap-x-4 [&_p]:mt-0"
+            title="Labor"
+            subtitle="Daily labor entries by worker and project."
+            actions={
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-9 shrink-0 gap-1.5 shadow-none"
+                onClick={() => setModalOpen(true)}
+                disabled={loadingProjects}
+              >
+                <Plus className="h-3.5 w-3.5" aria-hidden />
+                Add Entry
+              </Button>
+            }
+          />
+        </div>
 
-      {/* Calendar View */}
-      {view === "calendar" && (
-        <section className="mt-4 border-b border-border/60 pb-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">
-            {formatMonthLabel(selectedMonth)}
+        <MobileListHeader
+          title="Labor"
+          fab={<MobileFabPlus href="/labor?addDaily=1" ariaLabel="Add entry" />}
+        />
+
+        <div className={cn(timeShell, "p-3 md:p-3")}>
+          <FilterBar className="!flex-col !items-stretch gap-3 border-0 bg-transparent p-0 shadow-none dark:bg-transparent">
+            <div className="flex w-full flex-wrap items-end gap-3 md:flex-nowrap">
+              <div className="flex min-w-[160px] flex-1 flex-col gap-1 sm:flex-initial">
+                <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+                  Month
+                </label>
+                <Select
+                  value={selectedMonth}
+                  onChange={(e) => {
+                    setSelectedMonth(e.target.value);
+                    setExpandedDate(null);
+                    setSelectedDayForDetail(null);
+                  }}
+                  className="h-10 min-h-[44px] min-w-0 sm:min-h-10 sm:w-[200px]"
+                >
+                  {MONTH_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div className="flex min-w-[180px] flex-1 flex-col gap-1 sm:flex-initial">
+                <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+                  Project
+                </label>
+                <Select
+                  value={projectFilter}
+                  onChange={(e) => {
+                    setProjectFilter(e.target.value);
+                    setExpandedDate(null);
+                  }}
+                  className="h-10 min-h-[44px] min-w-0 sm:min-h-10 sm:w-[220px]"
+                >
+                  <option value="">All Projects</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div className="flex min-w-[180px] flex-1 flex-col gap-1 sm:flex-initial">
+                <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+                  Worker
+                </label>
+                <Select
+                  value={workerFilter}
+                  onChange={(e) => {
+                    setWorkerFilter(e.target.value);
+                    setExpandedDate(null);
+                  }}
+                  className="h-10 min-h-[44px] min-w-0 sm:min-h-10 sm:w-[220px]"
+                >
+                  <option value="">All Workers</option>
+                  {workers.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-100/80 pt-3 dark:border-border/60">
+              <div className="flex h-9 shrink-0 overflow-hidden rounded-md border border-zinc-200/80 bg-white shadow-none dark:border-border/60 dark:bg-card">
+                <button
+                  type="button"
+                  onClick={() => setView("list")}
+                  className={cn(
+                    "h-full px-3 text-xs font-medium transition-colors",
+                    view === "list"
+                      ? "bg-zinc-900 text-white dark:bg-foreground dark:text-background"
+                      : "bg-transparent text-muted-foreground hover:bg-zinc-50 hover:text-foreground dark:hover:bg-muted/35"
+                  )}
+                >
+                  List View
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setView("calendar")}
+                  className={cn(
+                    "h-full border-l border-zinc-200/80 px-3 text-xs font-medium transition-colors dark:border-border/60",
+                    view === "calendar"
+                      ? "bg-zinc-900 text-white dark:bg-foreground dark:text-background"
+                      : "bg-transparent text-muted-foreground hover:bg-zinc-50 hover:text-foreground dark:hover:bg-muted/35"
+                  )}
+                >
+                  Calendar View
+                </button>
+              </div>
+            </div>
+          </FilterBar>
+        </div>
+
+        {error ? <p className="py-3 text-sm text-red-600">{error}</p> : null}
+        {message ? <p className="py-3 text-sm text-muted-foreground">{message}</p> : null}
+
+        {/* Monthly Summary */}
+        <section className="border-b border-border/60 pb-4">
+          <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+            Monthly Summary · {formatMonthLabel(selectedMonth)}
           </p>
-          {loadingEntries ? (
-            <p className="py-4 text-sm text-muted-foreground">Loading…</p>
-          ) : (
-            <div className="rounded-sm border border-border/60 overflow-hidden">
-              <div className="grid grid-cols-7 text-sm">
-                {WEEKDAYS.map((wd) => (
+          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:gap-2">
+            <div
+              className={cn(
+                timeKpiTile,
+                "flex min-h-[48px] items-start gap-1.5 px-2 py-2 md:h-[62px] md:items-center md:gap-2 md:px-3 md:py-1.5"
+              )}
+            >
+              <span className={cn(timeKpiIcon, "mt-0.5 md:mt-0")}>
+                <DollarSign className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+                  Total labor cost
+                </p>
+                <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
+                  {summary.totalLaborCost.toLocaleString("en-US", {
+                    style: "currency",
+                    currency: "USD",
+                    maximumFractionDigits: 0,
+                  })}
+                </p>
+                <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">This month</p>
+              </div>
+            </div>
+            <div
+              className={cn(
+                timeKpiTile,
+                "flex min-h-[48px] items-start gap-1.5 px-2 py-2 md:h-[62px] md:items-center md:gap-2 md:px-3 md:py-1.5"
+              )}
+            >
+              <span className={cn(timeKpiIcon, "mt-0.5 md:mt-0")}>
+                <CalendarDays
+                  className="h-3 w-3 md:h-3.5 md:w-3.5"
+                  strokeWidth={1.75}
+                  aria-hidden
+                />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+                  Work days
+                </p>
+                <p className="mt-0.5 text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
+                  {summary.totalWorkDays.toLocaleString("en-US")}
+                </p>
+                <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">Unique dates</p>
+              </div>
+            </div>
+            <div
+              className={cn(
+                timeKpiTile,
+                "col-span-2 flex min-h-[48px] items-start gap-1.5 px-2 py-2 sm:col-span-1 md:h-[62px] md:items-center md:gap-2 md:px-3 md:py-1.5"
+              )}
+            >
+              <span className={cn(timeKpiIcon, "mt-0.5 md:mt-0")}>
+                <ListOrdered className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
+                  Entries
+                </p>
+                <p className="mt-0.5 text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
+                  {summary.totalEntries.toLocaleString("en-US")}
+                </p>
+                <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">Recorded</p>
+              </div>
+            </div>
+          </div>
+
+          {/* PROJECT LABOR COST — labor cost per project for selected month, sorted by highest */}
+          {projectLaborCost.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-border/60">
+              <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+                PROJECT LABOR COST
+              </p>
+              <div className="overflow-hidden rounded-lg border border-gray-100 bg-white shadow-sm dark:border-border dark:bg-card dark:shadow-none">
+                {projectLaborCost.map(({ id, name, total }) => (
                   <div
-                    key={wd}
-                    className="border-b border-r border-border/60 py-2 px-1 text-center text-xs font-medium text-muted-foreground last:border-r-0"
+                    key={id}
+                    className="flex items-center justify-between gap-3 border-b border-gray-100 px-2.5 py-2.5 last:border-b-0 hover:bg-[#F9FAFB] dark:border-border dark:hover:bg-muted/40"
                   >
-                    {wd}
+                    <span className="text-sm font-medium text-foreground truncate">{name}</span>
+                    <span className="text-sm tabular-nums font-medium text-foreground shrink-0">
+                      $
+                      {total.toLocaleString("en-US", {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 0,
+                      })}
+                    </span>
                   </div>
                 ))}
-                {getCalendarGrid(selectedMonth)
-                  .flat()
-                  .map((day, idx) => (
-                    <div
-                      key={idx}
-                      className={cn(
-                        "min-h-[4rem] border-b border-r border-border/60 p-1 last:border-r-0 flex flex-col",
-                        day === null && "border-border/30"
-                      )}
-                    >
-                      {day === null ? (
-                        <span className="invisible">0</span>
-                      ) : (
-                        (() => {
-                          const dateStr = `${selectedMonth}-${String(day).padStart(2, "0")}`;
-                          const entries = entriesByDate.get(dateStr) ?? [];
-                          const hasEntries = entries.length > 0;
-                          const workerCount = entries.length;
-                          const totalPay = entries.reduce((s, e) => s + (e.cost_amount ?? 0), 0);
-                          const isHighCost = totalPay > HIGH_COST_THRESHOLD;
-                          return (
-                            <button
-                              type="button"
-                              onClick={() => setSelectedDayForDetail(dateStr)}
-                              className={cn(
-                                "w-full h-full min-h-[4rem] rounded-sm flex flex-col items-center justify-center gap-0.5 text-left py-1.5 px-1 transition-colors",
-                                hasEntries
-                                  ? isHighCost
-                                    ? "bg-amber-50 dark:bg-amber-950/30 text-foreground hover:bg-amber-100 dark:hover:bg-amber-950/50"
-                                    : "bg-background text-foreground hover:bg-muted/30"
-                                  : "bg-muted/40 text-muted-foreground hover:bg-muted/60"
-                              )}
-                            >
-                              <span className="font-medium tabular-nums">{day}</span>
-                              {hasEntries ? (
-                                <>
-                                  <span className="text-xs tabular-nums">
-                                    {workerCount} worker{workerCount !== 1 ? "s" : ""}
-                                  </span>
-                                  <span className="text-xs font-medium tabular-nums">
-                                    $
-                                    {totalPay.toLocaleString("en-US", {
-                                      minimumFractionDigits: 0,
-                                      maximumFractionDigits: 0,
-                                    })}
-                                  </span>
-                                </>
-                              ) : (
-                                <span className="text-xs">No entries</span>
-                              )}
-                            </button>
-                          );
-                        })()
-                      )}
-                    </div>
-                  ))}
               </div>
             </div>
           )}
         </section>
-      )}
 
-      <QuickTimesheetModal open={modalOpen} onOpenChange={setModalOpen} onSuccess={handleSaved} />
-
-      <EditEntryModal
-        open={editOpen}
-        onOpenChange={(open) => {
-          setEditOpen(open);
-          if (!open) setEditing(null);
-        }}
-        entry={editing}
-        projects={projects}
-        onSaved={handleSaved}
-      />
-
-      {/* Day detail (Calendar View) */}
-      <Dialog
-        open={!!selectedDayForDetail}
-        onOpenChange={(open) => !open && setSelectedDayForDetail(null)}
-      >
-        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col border-border/60 rounded-sm">
-          <DialogHeader>
-            <DialogTitle className="text-base font-semibold">
-              {selectedDayForDetail ? formatShortDate(selectedDayForDetail) : ""}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="overflow-auto min-h-0 -mx-6 px-6">
-            {selectedDayForDetail &&
-              (() => {
-                const dayEntries = entriesByDate.get(selectedDayForDetail) ?? [];
-                if (dayEntries.length === 0) {
-                  return (
-                    <p className="py-4 text-sm text-muted-foreground">No entries for this day.</p>
-                  );
-                }
-                return (
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[480px] border-collapse text-sm">
-                      <thead>
-                        <tr className="border-b border-border/60">
-                          <th className="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
-                            Worker
-                          </th>
-                          <th className="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
-                            Project
-                          </th>
-                          <th className="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
-                            Session
-                          </th>
-                          <th className="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70 tabular-nums">
-                            OT
-                          </th>
-                          <th className="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70 tabular-nums">
-                            Total Pay
-                          </th>
-                          <th className="w-[84px] px-3 py-2" />
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {dayEntries.map((e) => {
-                          const { otHours } = parseDayTypeAndOt(e.notes);
-                          const pay = e.cost_amount != null ? Number(e.cost_amount) : 0;
-                          const session = sessionFromFlags(e);
-                          return (
-                            <tr
-                              key={e.id}
+        {/* List View */}
+        {view === "list" && (
+          <section className="mt-4 border-b border-border/60 pb-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">
+              Daily entries · {formatMonthLabel(selectedMonth)}
+            </p>
+            {loadingEntries ? (
+              <p className="py-4 text-sm text-muted-foreground">Loading…</p>
+            ) : datesInMonth.length === 0 ? (
+              <p className="py-4 text-sm text-muted-foreground">No dates.</p>
+            ) : datesInMonth.filter((d) => (entriesByDate.get(d) ?? []).length > 0).length === 0 ? (
+              <div className={cn(timeShell, "px-4 py-8 text-center")}>
+                <span className="mx-auto mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full border border-zinc-200/70 bg-zinc-50/80 text-zinc-600 dark:border-border/60 dark:bg-muted/25 dark:text-zinc-300">
+                  <Clock className="h-5 w-5" aria-hidden />
+                </span>
+                <p className="text-sm font-medium text-zinc-900 dark:text-foreground">
+                  No labor entries this month
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Add a labor entry to track worker time and project labor cost.
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-4 h-9 rounded-sm shadow-none"
+                  onClick={() => setModalOpen(true)}
+                >
+                  <Plus className="mr-2 h-3.5 w-3.5" aria-hidden />
+                  Add entry
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-col divide-y divide-border/60 rounded-sm border border-border/70 overflow-hidden">
+                {datesInMonth
+                  .filter((d) => (entriesByDate.get(d) ?? []).length > 0)
+                  .map((date) => {
+                    const entries = entriesByDate.get(date) ?? [];
+                    const totalPay = entries.reduce((s, e) => s + (e.cost_amount ?? 0), 0);
+                    const isHighCost = totalPay > HIGH_COST_THRESHOLD;
+                    const isExpanded = expandedDate === date;
+                    return (
+                      <div key={date}>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedDate((prev) => (prev === date ? null : date))}
+                          className={cn(
+                            "flex w-full items-center justify-between gap-3 rounded-none px-3 py-2 text-left transition-all duration-150 ease-out hover:-translate-y-px bg-gray-50 hover:bg-gray-100 active:scale-[0.99] active:duration-100 dark:bg-muted/20 dark:hover:bg-muted/40",
+                            isExpanded && "bg-gray-100 dark:bg-muted/40"
+                          )}
+                        >
+                          <div className="flex items-baseline gap-3 min-w-0">
+                            <span className="text-[15px] font-semibold text-foreground shrink-0">
+                              {formatShortDate(date)}
+                            </span>
+                            <span className="text-xs text-muted-foreground/80 truncate">
+                              {entries.length} entries
+                            </span>
+                            <span
                               className={cn(
-                                listTableRowStaticClassName,
-                                "border-b border-border/60 last:border-b-0"
+                                "ml-auto text-sm font-semibold tabular-nums shrink-0",
+                                isHighCost ? "text-amber-700" : "text-hh-profit-positive"
                               )}
                             >
-                              <td className="py-2 px-3 font-semibold text-foreground">
-                                {e.worker_name ?? "—"}
-                              </td>
-                              <td className="py-2 px-3 text-muted-foreground/80">
-                                {e.project_name ?? "—"}
-                              </td>
-                              <td className="py-2 px-3">
-                                <span
-                                  className={cn(
-                                    "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
-                                    sessionBadgeClass(session)
-                                  )}
-                                >
-                                  {sessionLabel(session)}
-                                </span>
-                              </td>
-                              <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">
-                                {otHours}
-                              </td>
-                              <td className="py-2 px-3 text-right tabular-nums font-semibold">
-                                {pay > 0 ? `$${pay.toFixed(2)}` : "—"}
-                              </td>
-                              <td className="py-2 px-3 text-right">
-                                <div className="flex items-center justify-end gap-2">
-                                  <button
-                                    type="button"
-                                    className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50/60"
-                                    onClick={() => openEdit(e)}
-                                    aria-label="Edit"
+                              $
+                              {totalPay.toLocaleString("en-US", {
+                                minimumFractionDigits: 0,
+                                maximumFractionDigits: 0,
+                              })}
+                            </span>
+                          </div>
+                          <span
+                            className={cn(
+                              "shrink-0 text-muted-foreground transition-transform duration-200 text-xs",
+                              isExpanded && "rotate-90"
+                            )}
+                            aria-hidden
+                          >
+                            ▶
+                          </span>
+                        </button>
+                        <div
+                          className={cn(
+                            "overflow-hidden transition-[max-height] duration-200 ease-out",
+                            isExpanded ? "max-h-[2000px]" : "max-h-0"
+                          )}
+                        >
+                          <div className="border-t border-border/60 bg-background">
+                            <div className="overflow-x-auto">
+                              <table className="w-full min-w-[480px] border-collapse text-sm">
+                                <thead>
+                                  <tr className="border-b border-border/60">
+                                    <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
+                                      Worker
+                                    </th>
+                                    <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
+                                      Project
+                                    </th>
+                                    <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
+                                      Session
+                                    </th>
+                                    <th className="text-right py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70 tabular-nums">
+                                      Total Pay
+                                    </th>
+                                    <th className="w-[84px] py-2 px-3" />
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {entries.map((e) => {
+                                    const pay = e.cost_amount != null ? Number(e.cost_amount) : 0;
+                                    const session = sessionFromFlags(e);
+                                    return (
+                                      <tr
+                                        key={e.id}
+                                        className={cn(
+                                          listTableRowStaticClassName,
+                                          "border-b border-border/30 last:border-b-0"
+                                        )}
+                                      >
+                                        <td className="py-2 px-3 font-semibold text-foreground">
+                                          {e.worker_name ?? "—"}
+                                        </td>
+                                        <td className="py-2 px-3 text-muted-foreground/80">
+                                          {e.project_name ?? "—"}
+                                        </td>
+                                        <td className="py-2 px-3">
+                                          <span
+                                            className={cn(
+                                              "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+                                              sessionBadgeClass(session)
+                                            )}
+                                          >
+                                            {sessionLabel(session)}
+                                          </span>
+                                        </td>
+                                        <td className="py-2 px-3 text-right tabular-nums font-semibold">
+                                          {pay > 0 ? `$${pay.toFixed(2)}` : "—"}
+                                        </td>
+                                        <td className="py-2 px-3 text-right">
+                                          <div className="flex items-center justify-end gap-2">
+                                            <button
+                                              type="button"
+                                              className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50/60"
+                                              onClick={() => openEdit(e)}
+                                              aria-label="Edit"
+                                            >
+                                              <Pencil className="h-4 w-4" />
+                                            </button>
+                                            <button
+                                              type="button"
+                                              className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-red-600 hover:text-red-700 hover:bg-red-50/60"
+                                              onClick={() => void handleDelete(e)}
+                                              aria-label="Delete"
+                                              disabled={workerMode}
+                                              title={
+                                                workerMode
+                                                  ? "Delete is available only on the main Labor page."
+                                                  : "Delete entry"
+                                              }
+                                            >
+                                              <Trash2 className="h-4 w-4" />
+                                            </button>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Calendar View */}
+        {view === "calendar" && (
+          <section className="mt-4 border-b border-border/60 pb-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">
+              {formatMonthLabel(selectedMonth)}
+            </p>
+            {loadingEntries ? (
+              <p className="py-4 text-sm text-muted-foreground">Loading…</p>
+            ) : (
+              <div className="rounded-sm border border-border/60 overflow-hidden">
+                <div className="grid grid-cols-7 text-sm">
+                  {WEEKDAYS.map((wd) => (
+                    <div
+                      key={wd}
+                      className="border-b border-r border-border/60 py-2 px-1 text-center text-xs font-medium text-muted-foreground last:border-r-0"
+                    >
+                      {wd}
+                    </div>
+                  ))}
+                  {getCalendarGrid(selectedMonth)
+                    .flat()
+                    .map((day, idx) => (
+                      <div
+                        key={idx}
+                        className={cn(
+                          "min-h-[4rem] border-b border-r border-border/60 p-1 last:border-r-0 flex flex-col",
+                          day === null && "border-border/30"
+                        )}
+                      >
+                        {day === null ? (
+                          <span className="invisible">0</span>
+                        ) : (
+                          (() => {
+                            const dateStr = `${selectedMonth}-${String(day).padStart(2, "0")}`;
+                            const entries = entriesByDate.get(dateStr) ?? [];
+                            const hasEntries = entries.length > 0;
+                            const workerCount = entries.length;
+                            const totalPay = entries.reduce((s, e) => s + (e.cost_amount ?? 0), 0);
+                            const isHighCost = totalPay > HIGH_COST_THRESHOLD;
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedDayForDetail(dateStr)}
+                                className={cn(
+                                  "w-full h-full min-h-[4rem] rounded-sm flex flex-col items-center justify-center gap-0.5 text-left py-1.5 px-1 transition-colors",
+                                  hasEntries
+                                    ? isHighCost
+                                      ? "bg-amber-50 dark:bg-amber-950/30 text-foreground hover:bg-amber-100 dark:hover:bg-amber-950/50"
+                                      : "bg-background text-foreground hover:bg-muted/30"
+                                    : "bg-muted/40 text-muted-foreground hover:bg-muted/60"
+                                )}
+                              >
+                                <span className="font-medium tabular-nums">{day}</span>
+                                {hasEntries ? (
+                                  <>
+                                    <span className="text-xs tabular-nums">
+                                      {workerCount} worker{workerCount !== 1 ? "s" : ""}
+                                    </span>
+                                    <span className="text-xs font-medium tabular-nums">
+                                      $
+                                      {totalPay.toLocaleString("en-US", {
+                                        minimumFractionDigits: 0,
+                                        maximumFractionDigits: 0,
+                                      })}
+                                    </span>
+                                  </>
+                                ) : (
+                                  <span className="text-xs">No entries</span>
+                                )}
+                              </button>
+                            );
+                          })()
+                        )}
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        <QuickTimesheetModal open={modalOpen} onOpenChange={setModalOpen} onSuccess={handleSaved} />
+
+        <EditEntryModal
+          open={editOpen}
+          onOpenChange={(open) => {
+            setEditOpen(open);
+            if (!open) setEditing(null);
+          }}
+          entry={editing}
+          projects={projects}
+          onSaved={handleSaved}
+        />
+
+        {/* Day detail (Calendar View) */}
+        <Dialog
+          open={!!selectedDayForDetail}
+          onOpenChange={(open) => !open && setSelectedDayForDetail(null)}
+        >
+          <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col border-border/60 rounded-sm">
+            <DialogHeader>
+              <DialogTitle className="text-base font-semibold">
+                {selectedDayForDetail ? formatShortDate(selectedDayForDetail) : ""}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="overflow-auto min-h-0 -mx-6 px-6">
+              {selectedDayForDetail &&
+                (() => {
+                  const dayEntries = entriesByDate.get(selectedDayForDetail) ?? [];
+                  if (dayEntries.length === 0) {
+                    return (
+                      <p className="py-4 text-sm text-muted-foreground">No entries for this day.</p>
+                    );
+                  }
+                  return (
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[480px] border-collapse text-sm">
+                        <thead>
+                          <tr className="border-b border-border/60">
+                            <th className="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
+                              Worker
+                            </th>
+                            <th className="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
+                              Project
+                            </th>
+                            <th className="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
+                              Session
+                            </th>
+                            <th className="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70 tabular-nums">
+                              OT
+                            </th>
+                            <th className="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70 tabular-nums">
+                              Total Pay
+                            </th>
+                            <th className="w-[84px] px-3 py-2" />
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {dayEntries.map((e) => {
+                            const { otHours } = parseDayTypeAndOt(e.notes);
+                            const pay = e.cost_amount != null ? Number(e.cost_amount) : 0;
+                            const session = sessionFromFlags(e);
+                            return (
+                              <tr
+                                key={e.id}
+                                className={cn(
+                                  listTableRowStaticClassName,
+                                  "border-b border-border/60 last:border-b-0"
+                                )}
+                              >
+                                <td className="py-2 px-3 font-semibold text-foreground">
+                                  {e.worker_name ?? "—"}
+                                </td>
+                                <td className="py-2 px-3 text-muted-foreground/80">
+                                  {e.project_name ?? "—"}
+                                </td>
+                                <td className="py-2 px-3">
+                                  <span
+                                    className={cn(
+                                      "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+                                      sessionBadgeClass(session)
+                                    )}
                                   >
-                                    <Pencil className="h-4 w-4" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-red-600 hover:text-red-700 hover:bg-red-50/60"
-                                    onClick={() => void handleDelete(e)}
-                                    aria-label="Delete"
-                                    disabled={workerMode}
-                                    title={
-                                      workerMode
-                                        ? "Delete is available only on the main Labor page."
-                                        : "Delete entry"
-                                    }
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                );
-              })()}
-          </div>
-        </DialogContent>
-      </Dialog>
+                                    {sessionLabel(session)}
+                                  </span>
+                                </td>
+                                <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">
+                                  {otHours}
+                                </td>
+                                <td className="py-2 px-3 text-right tabular-nums font-semibold">
+                                  {pay > 0 ? `$${pay.toFixed(2)}` : "—"}
+                                </td>
+                                <td className="py-2 px-3 text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <button
+                                      type="button"
+                                      className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50/60"
+                                      onClick={() => openEdit(e)}
+                                      aria-label="Edit"
+                                    >
+                                      <Pencil className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-red-600 hover:text-red-700 hover:bg-red-50/60"
+                                      onClick={() => void handleDelete(e)}
+                                      aria-label="Delete"
+                                      disabled={workerMode}
+                                      title={
+                                        workerMode
+                                          ? "Delete is available only on the main Labor page."
+                                          : "Delete entry"
+                                      }
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                })()}
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   );
 }

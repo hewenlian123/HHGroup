@@ -3,6 +3,8 @@ import { PageLayout, PageHeader, Divider } from "@/components/base";
 import { getFinanceOverviewStats, getRecentTransactions } from "@/lib/data";
 import { DollarSign, Banknote, ShoppingCart, Clock, TrendingUp, Activity } from "lucide-react";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
+import { TYPO } from "@/lib/typography";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -72,9 +74,7 @@ export default async function FinanceOverviewPage() {
           const content = (
             <div className="flex flex-col gap-1 border-b border-border/60 pb-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  {label}
-                </span>
+                <span className={TYPO.sectionLabel}>{label}</span>
                 {href ? (
                   <Icon className="h-4 w-4 text-muted-foreground" />
                 ) : (
@@ -82,13 +82,15 @@ export default async function FinanceOverviewPage() {
                 )}
               </div>
               <p
-                className={`text-xl font-semibold tabular-nums ${
+                className={cn(
+                  TYPO.amount,
+                  "text-[20px] md:text-[22px]",
                   label === "Profit"
                     ? value >= 0
                       ? "text-hh-profit-positive dark:text-hh-profit-positive"
                       : "text-red-600 dark:text-red-400"
-                    : "text-foreground"
-                }`}
+                    : ""
+                )}
               >
                 {fmtUsd(value)}
               </p>
@@ -109,9 +111,7 @@ export default async function FinanceOverviewPage() {
       <section>
         <div className="flex items-center gap-2 pb-2">
           <Activity className="h-4 w-4 text-muted-foreground" />
-          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Recent financial activity
-          </span>
+          <span className={TYPO.sectionLabel}>Recent financial activity</span>
         </div>
         <div className="border-b border-border/60" />
         {recent.length === 0 ? (

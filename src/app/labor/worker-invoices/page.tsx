@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/native-select";
 import { cn } from "@/lib/utils";
+import { TYPO } from "@/lib/typography";
 import {
   CalendarDays,
   DollarSign,
@@ -355,10 +356,8 @@ export default function WorkerInvoicesPage() {
     </div>
   );
 
-  const thClass =
-    "px-3 py-2 text-left text-[10px] font-medium uppercase leading-none tracking-[0.08em] text-muted-foreground";
-  const thRight =
-    "px-3 py-2 text-right text-[10px] font-medium uppercase leading-none tracking-[0.08em] text-muted-foreground tabular-nums";
+  const thClass = cn("px-3 py-2 text-left", TYPO.tableHeader);
+  const thRight = cn("px-3 py-2 text-right tabular-nums", TYPO.tableHeader);
 
   return (
     <div
@@ -376,14 +375,17 @@ export default function WorkerInvoicesPage() {
       >
         <div className="hidden md:block">
           <PageHeader
-            className="gap-1 border-b border-zinc-200/70 pb-1.5 dark:border-border/60 lg:items-baseline lg:gap-x-4 [&_h1]:text-lg [&_h1]:font-semibold [&_h1]:tracking-tight [&_h1]:text-zinc-900 [&_p]:mt-0 [&_p]:text-[13px] [&_p]:leading-snug [&_p]:text-muted-foreground dark:[&_h1]:text-foreground"
+            className="gap-1 border-b border-zinc-200/70 pb-2 dark:border-border/60 lg:items-baseline lg:gap-x-4 [&_p]:mt-0"
             title="Worker Invoices"
             subtitle="Track worker invoices, billed labor, payment status, and related projects."
             actions={
               <Button
                 variant="outline"
                 size="sm"
-                className="h-9 shrink-0 gap-1.5 border-zinc-200/90 bg-white font-medium text-zinc-800 shadow-none hover:bg-zinc-50 hover:text-zinc-950 dark:border-border dark:bg-transparent dark:text-foreground dark:hover:bg-muted/35"
+                className={cn(
+                  "h-9 shrink-0 gap-1.5 border-zinc-200/90 bg-white shadow-none hover:bg-zinc-50 hover:text-zinc-950 dark:border-border dark:bg-transparent dark:text-foreground dark:hover:bg-muted/35",
+                  TYPO.button
+                )}
                 onClick={openNewInvoice}
               >
                 <Plus

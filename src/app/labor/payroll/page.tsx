@@ -31,6 +31,7 @@ import { WorkerPaymentReceiptPreviewModal } from "@/components/labor/worker-paym
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { deleteWorkerAction } from "@/app/workers/actions";
 import { cn } from "@/lib/utils";
+import { TYPO } from "@/lib/typography";
 import {
   listTableAmountCellClassName,
   listTablePrimaryCellClassName,
@@ -313,7 +314,7 @@ export default function PayrollSummaryPage() {
       >
         <div className="hidden md:block">
           <PageHeader
-            className="gap-1 border-b border-zinc-200/70 pb-1.5 dark:border-border/60 lg:items-baseline lg:gap-x-4 [&_h1]:text-lg [&_h1]:font-semibold [&_h1]:tracking-tight [&_h1]:text-zinc-900 [&_p]:mt-0 [&_p]:text-[13px] [&_p]:leading-snug [&_p]:text-muted-foreground dark:[&_h1]:text-foreground"
+            className="gap-1 border-b border-zinc-200/70 pb-2 dark:border-border/60 lg:items-baseline lg:gap-x-4 [&_p]:mt-0"
             title="Payroll Summary"
             subtitle="Labor cost, reimbursements, payments, and worker balance overview."
             actions={
@@ -734,45 +735,61 @@ export default function PayrollSummaryPage() {
               <thead>
                 <tr className="border-b border-zinc-100/90 bg-zinc-50/90 dark:border-border/60 dark:bg-muted/20">
                   <th
-                    className="min-w-[240px] px-3 py-2 text-left text-[10px] font-medium uppercase leading-none tracking-[0.08em] text-muted-foreground cursor-pointer select-none"
+                    className={cn(
+                      "min-w-[240px] px-3 py-2 text-left cursor-pointer select-none",
+                      TYPO.tableHeader
+                    )}
                     onClick={() => toggleSort("workerName")}
                   >
                     Worker
                   </th>
                   <th
-                    className="whitespace-nowrap px-3 py-2 text-right text-[10px] font-medium uppercase leading-none tracking-[0.08em] text-muted-foreground tabular-nums cursor-pointer select-none"
+                    className={cn(
+                      "whitespace-nowrap px-3 py-2 text-right tabular-nums cursor-pointer select-none",
+                      TYPO.tableHeader
+                    )}
                     onClick={() => toggleSort("earned")}
                   >
                     Earned
                   </th>
                   <th
-                    className="whitespace-nowrap px-3 py-2 text-right text-[10px] font-medium uppercase leading-none tracking-[0.08em] text-muted-foreground tabular-nums cursor-pointer select-none"
+                    className={cn(
+                      "whitespace-nowrap px-3 py-2 text-right tabular-nums cursor-pointer select-none",
+                      TYPO.tableHeader
+                    )}
                     onClick={() => toggleSort("reimbursements")}
                   >
                     Reimb.
                   </th>
                   <th
-                    className="whitespace-nowrap px-3 py-2 text-right text-[10px] font-medium uppercase leading-none tracking-[0.08em] text-muted-foreground tabular-nums cursor-pointer select-none"
+                    className={cn(
+                      "whitespace-nowrap px-3 py-2 text-right tabular-nums cursor-pointer select-none",
+                      TYPO.tableHeader
+                    )}
                     onClick={() => toggleSort("shouldPay")}
                   >
                     Should Pay
                   </th>
                   <th
-                    className="whitespace-nowrap px-3 py-2 text-right text-[10px] font-medium uppercase leading-none tracking-[0.08em] text-muted-foreground tabular-nums cursor-pointer select-none"
+                    className={cn(
+                      "whitespace-nowrap px-3 py-2 text-right tabular-nums cursor-pointer select-none",
+                      TYPO.tableHeader
+                    )}
                     onClick={() => toggleSort("paid")}
                   >
                     Paid
                   </th>
                   <th
-                    className="whitespace-nowrap px-3 py-2 text-right text-[10px] font-medium uppercase leading-none tracking-[0.08em] text-muted-foreground tabular-nums cursor-pointer select-none"
+                    className={cn(
+                      "whitespace-nowrap px-3 py-2 text-right tabular-nums cursor-pointer select-none",
+                      TYPO.tableHeader
+                    )}
                     onClick={() => toggleSort("balance")}
                   >
                     Balance
                   </th>
-                  <th className="w-[120px] px-3 py-2 text-right text-[10px] font-medium uppercase leading-none tracking-[0.08em] text-muted-foreground">
-                    Pay
-                  </th>
-                  <th className="w-[220px] px-3 py-2 text-right text-[10px] font-medium uppercase leading-none tracking-[0.08em] text-muted-foreground">
+                  <th className={cn("w-[120px] px-3 py-2 text-right", TYPO.tableHeader)}>Pay</th>
+                  <th className={cn("w-[220px] px-3 py-2 text-right", TYPO.tableHeader)}>
                     Actions
                   </th>
                 </tr>
