@@ -146,7 +146,8 @@ test.describe("Worker payment full flow: pay → receipt → delete → rollback
       (r) => r.request().method() === "DELETE" && /\/api\/labor\/worker-payments\//.test(r.url()),
       { timeout: 45_000 }
     );
-    await rowToDelete.getByRole("button", { name: /^Delete$/ }).click();
+    await rowToDelete.getByRole("button", { name: /Actions for payment/i }).click();
+    await page.getByRole("menuitem", { name: /^Delete$/ }).click();
     await deleteDone;
 
     // Rollback: balance page should offer unpaid labor again (checkboxes in Pay Worker modal)
