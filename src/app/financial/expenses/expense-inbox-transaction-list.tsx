@@ -44,6 +44,12 @@ import { ExpenseBulkActionBar } from "./expense-bulk-action-bar";
 /**
  * Under description: receipt preview or missing receipt (own line, aligned with text block); other signals below.
  */
+const chipWarn =
+  "inline-flex items-center rounded-md border border-amber-500/18 bg-amber-500/[0.07] px-1.5 py-0.5 text-[10px] font-medium leading-tight text-amber-950/78 dark:border-amber-500/14 dark:bg-amber-500/[0.09] dark:text-amber-100/78";
+
+const chipDup =
+  "inline-flex items-center gap-0.5 rounded-md border border-violet-400/15 bg-violet-500/[0.06] px-1.5 py-0.5 text-[10px] font-medium leading-tight text-violet-800/75 dark:border-violet-500/12 dark:bg-violet-500/[0.08] dark:text-violet-200/75";
+
 function InboxDescriptionSignals({
   row,
   onReceiptPreview,
@@ -51,6 +57,7 @@ function InboxDescriptionSignals({
   missingProject,
   missingCategory,
   duplicate,
+  triageLayout,
 }: {
   row: Expense;
   /** Same handler as historically wired: resolves URLs and opens global attachment preview. */
@@ -60,6 +67,8 @@ function InboxDescriptionSignals({
   missingProject: boolean;
   missingCategory: boolean;
   duplicate: boolean;
+  /** `/financial/inbox` review queue — Linear-style chips + clearer receipt signal. */
+  triageLayout?: boolean;
 }) {
   const items = React.useMemo(() => getExpenseReceiptItems(row), [row]);
   const hasReceipt = items.length > 0;
@@ -69,13 +78,84 @@ function InboxDescriptionSignals({
     touchPrimedRef.current = false;
   }, [row.id]);
 
+  const receiptBtnShared =
+    "inline-flex min-h-[36px] cursor-pointer items-center gap-1.5 rounded-md border border-transparent px-1.5 py-1 font-medium transition-colors duration-200 focus-visible:outline focus-visible:ring-1 focus-visible:ring-ring md:min-h-[32px]";
+
+  if (triageLayout) {
+    const chipRow = missingProject || missingCategory || duplicate;
+    return (
+      <div className="mt-2 min-w-0 space-y-2">
+        <div className="text-[11px] leading-snug">
+          {hasReceipt ? (
+            <button
+              type="button"
+              className={cn(
+                receiptBtnShared,
+                "bg-emerald-500/[0.08] text-emerald-900 hover:border-emerald-500/22 hover:bg-emerald-500/[0.12] dark:text-emerald-200/95 dark:hover:border-emerald-500/28 dark:hover:bg-emerald-500/[0.15]"
+              )}
+              onMouseEnter={() => onReceiptPrefetch?.()}
+              onTouchStart={() => {
+                if (touchPrimedRef.current) return;
+                touchPrimedRef.current = true;
+                onReceiptPrefetch?.();
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onReceiptPreview();
+              }}
+              aria-label={
+                items.length > 1 ? `Preview receipts, ${items.length} attached` : "Preview receipt"
+              }
+              title="Preview receipt"
+            >
+              <Paperclip className="h-3.5 w-3.5 shrink-0 opacity-90" strokeWidth={2} aria-hidden />
+              <span>
+                Receipt attached
+                {items.length > 1 ? (
+                  <span className="ml-1 tabular-nums font-semibold opacity-90">
+                    ({items.length})
+                  </span>
+                ) : null}
+              </span>
+            </button>
+          ) : (
+            <span className="inline-flex min-h-[36px] items-center gap-1.5 rounded-md border border-amber-500/14 bg-amber-500/[0.05] px-1.5 py-1 text-muted-foreground dark:border-amber-500/12 dark:bg-amber-500/[0.07] md:min-h-[32px]">
+              <span
+                className="inline-flex h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500/65 dark:bg-amber-400/65"
+                aria-hidden
+              />
+              <span className="font-medium text-amber-950/72 dark:text-amber-100/72">
+                No receipt
+              </span>
+            </span>
+          )}
+        </div>
+        {chipRow ? (
+          <div className="flex flex-wrap gap-1.5">
+            {missingProject ? <span className={chipWarn}>Missing project</span> : null}
+            {missingCategory ? <span className={chipWarn}>Missing category</span> : null}
+            {duplicate ? (
+              <span className={chipDup}>
+                <Copy className="h-2.5 w-2.5 shrink-0 opacity-70" strokeWidth={2} aria-hidden />
+                Duplicate
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div className="mt-1.5 min-w-0 space-y-1">
       <div className="text-[11px] leading-snug">
         {hasReceipt ? (
           <button
             type="button"
-            className="inline-flex min-h-[32px] cursor-pointer items-center gap-1.5 rounded-md border border-transparent bg-emerald-500/[0.07] px-1.5 py-1 font-medium text-emerald-800 transition-colors duration-200 hover:border-emerald-500/20 hover:bg-emerald-500/[0.11] focus-visible:outline focus-visible:ring-1 focus-visible:ring-ring dark:text-emerald-300/95 dark:hover:border-emerald-500/25 dark:hover:bg-emerald-500/[0.14]"
+            className={cn(
+              receiptBtnShared,
+              "bg-emerald-500/[0.07] text-emerald-800 hover:border-emerald-500/20 hover:bg-emerald-500/[0.11] dark:text-emerald-300/95 dark:hover:border-emerald-500/25 dark:hover:bg-emerald-500/[0.14]"
+            )}
             onMouseEnter={() => onReceiptPrefetch?.()}
             onTouchStart={() => {
               if (touchPrimedRef.current) return;
@@ -550,6 +630,7 @@ function DesktopRows({
   onToggleDateGroupRows: (rowIds: string[]) => void;
 }) {
   const a = useInbox();
+  const triageLayout = a.dateGroupPool === "inbox";
   const dupIds = possibleDuplicateIds;
 
   const projectBadgeClass =
@@ -622,7 +703,9 @@ function DesktopRows({
                           a.activeExpenseId === row.id &&
                           "ring-1 ring-inset ring-orange-400/35 dark:ring-orange-500/30",
                         rowSelected &&
-                          "bg-zinc-100/95 ring-1 ring-inset ring-zinc-300/65 dark:bg-zinc-900/50 dark:ring-zinc-600/55"
+                          (triageLayout
+                            ? "bg-zinc-100 shadow-[inset_3px_0_0_0_rgba(113,113,122,0.65)] ring-1 ring-inset ring-zinc-400/50 dark:bg-zinc-900/60 dark:shadow-[inset_3px_0_0_0_rgba(161,161,170,0.45)] dark:ring-zinc-600/55"
+                            : "bg-zinc-100/95 ring-1 ring-inset ring-zinc-300/65 dark:bg-zinc-900/50 dark:ring-zinc-600/55")
                       )}
                       onClick={(e) => {
                         if (selectionEnabled && (e.metaKey || e.ctrlKey || e.shiftKey)) {
@@ -679,6 +762,7 @@ function DesktopRows({
                               missingProject={missingProject}
                               missingCategory={missingCategory}
                               duplicate={showDupHint}
+                              triageLayout={triageLayout}
                             />
                           </div>
                         </div>
@@ -711,7 +795,12 @@ function DesktopRows({
                         </span>
                       </td>
                       <td className="w-[96px] shrink-0 whitespace-nowrap text-right tabular-nums">
-                        <span className="text-sm font-semibold text-red-600 dark:text-red-500/90">
+                        <span
+                          className={cn(
+                            "font-semibold text-red-600 dark:text-red-500/90",
+                            triageLayout ? "text-[15px] leading-none tracking-tight" : "text-sm"
+                          )}
+                        >
                           −$
                           {rowTotal.toLocaleString(undefined, {
                             minimumFractionDigits: 2,
@@ -850,6 +939,7 @@ function MobileRows({
   };
 }) {
   const a = useInbox();
+  const triageLayout = a.dateGroupPool === "inbox";
   const dupIds = possibleDuplicateIds;
   const projectBadgeClass =
     "inline-flex h-6 max-h-6 max-w-full items-center truncate rounded-md border border-zinc-200/85 bg-zinc-50/95 px-1.5 py-0 text-[11px] font-medium text-zinc-800 shadow-none transition-colors duration-200 dark:border-border/55 dark:bg-muted/30 dark:text-zinc-200";
@@ -923,7 +1013,9 @@ function MobileRows({
                           a.activeExpenseId === row.id &&
                           "ring-1 ring-inset ring-orange-400/35 dark:ring-orange-500/30",
                         rowSelected &&
-                          "bg-zinc-100/95 ring-1 ring-inset ring-zinc-300/65 dark:bg-zinc-900/50 dark:ring-zinc-600/55"
+                          (triageLayout
+                            ? "bg-zinc-100 shadow-[inset_3px_0_0_0_rgba(113,113,122,0.65)] ring-1 ring-inset ring-zinc-400/50 dark:bg-zinc-900/60 dark:shadow-[inset_3px_0_0_0_rgba(161,161,170,0.45)] dark:ring-zinc-600/55"
+                            : "bg-zinc-100/95 ring-1 ring-inset ring-zinc-300/65 dark:bg-zinc-900/50 dark:ring-zinc-600/55")
                       )}
                       onTouchStart={
                         selectionEnabled && !showSelectionUi ? lp.onTouchStart : undefined
@@ -991,10 +1083,16 @@ function MobileRows({
                                 missingProject={missingProject}
                                 missingCategory={missingCategory}
                                 duplicate={showDupHint}
+                                triageLayout={triageLayout}
                               />
                             </div>
                             <div className="flex max-w-[42%] shrink-0 flex-col items-end gap-1">
-                              <span className="text-sm font-semibold tabular-nums text-red-600 dark:text-red-500/90">
+                              <span
+                                className={cn(
+                                  "font-semibold tabular-nums text-red-600 dark:text-red-500/90",
+                                  triageLayout ? "text-base leading-none tracking-tight" : "text-sm"
+                                )}
+                              >
                                 −$
                                 {rowTotal.toLocaleString(undefined, {
                                   minimumFractionDigits: 2,
@@ -1215,7 +1313,7 @@ export function ExpenseInboxTransactionList({
 
   return (
     <InboxCtx.Provider value={api}>
-      <div className="flex min-w-0 flex-col">
+      <div className="flex min-w-0 flex-col pb-[max(0.35rem,env(safe-area-inset-bottom,0px))]">
         {bulkActions && showSelectionUi ? (
           <ExpenseBulkActionBar
             selectedCount={selectedIds.size}
@@ -1245,7 +1343,7 @@ export function ExpenseInboxTransactionList({
               <thead>
                 <tr className="border-b border-zinc-100 bg-zinc-50/55 dark:border-border/50 dark:bg-muted/15">
                   <th className="h-9 px-3 align-middle text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                    Description
+                    {api.dateGroupPool === "inbox" ? "Review item" : "Description"}
                   </th>
                   <th className="h-9 w-[148px] shrink-0 px-3 align-middle text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                     Project

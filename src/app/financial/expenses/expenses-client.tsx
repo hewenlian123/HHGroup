@@ -92,9 +92,12 @@ import {
 import { buildExpenseDateGroups } from "@/lib/expense-list-date-groups";
 import { expenseInboxDuplicateIdSet } from "@/lib/expense-inbox-dup";
 import {
+  expenseHasCategoryForWorkflow,
+  expenseHasProjectForWorkflow,
   expenseMatchesExpensesArchivePool,
   countExpensesMatchingInboxPool,
   expenseMatchesInboxPool,
+  expenseMissingReceiptForInbox,
   expenseNeedsReviewFromDb,
   validateApproveInboxUploadDraft,
   validateMarkDoneRequiresProjectAndCategory,
@@ -630,6 +633,21 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     () => countExpensesMatchingInboxPool(expensesForListing),
     [expensesForListing]
   );
+
+  /** Inbox triage summary from the same client-side list as the sidebar badge (no extra fetch). */
+  const inboxReviewStats = React.useMemo(() => {
+    const dup = expenseInboxDuplicateIdSet(expensesForListing, getExpenseTotal);
+    let pending = 0;
+    let missingReceipt = 0;
+    let missingInfo = 0;
+    for (const e of expensesForListing) {
+      if (!expenseMatchesInboxPool(e, dup.has(e.id))) continue;
+      pending += 1;
+      if (expenseMissingReceiptForInbox(e)) missingReceipt += 1;
+      if (!expenseHasProjectForWorkflow(e) || !expenseHasCategoryForWorkflow(e)) missingInfo += 1;
+    }
+    return { pending, missingReceipt, missingInfo };
+  }, [expensesForListing]);
   const archivedExpenses = React.useMemo(
     () => expensesForListing.filter(expenseMatchesExpensesArchivePool),
     [expensesForListing]
@@ -1761,16 +1779,31 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
   const previewPossibleDuplicate =
     previewExpenseLive != null && possibleDuplicateIds.has(previewExpenseLive.id);
 
-  const pageTitle = inboxMode ? "Inbox draft" : "Expenses";
+  const pageTitle = inboxMode ? "Inbox" : "Expenses";
   const pageDescription = inboxMode
-    ? "Review and process incoming transactions"
+    ? "Review uploaded receipts and draft expenses"
     : "Tracked project costs and completed expenses";
 
   return (
     <div className={financeOsPageWrap} data-expenses-query-status={expensesQueryStatus}>
-      <div className="expenses-ui-content mx-auto w-full min-w-0 max-w-[430px] px-3 py-3 sm:max-w-[460px] md:max-w-[1280px] md:px-8 md:py-8">
-        <div className="space-y-4 max-md:pb-1 md:space-y-6">
-          <div className="flex items-start justify-between gap-3 border-b border-zinc-200/80 pb-3 dark:border-border/60 md:hidden">
+      <div
+        className={cn(
+          "expenses-ui-content mx-auto w-full min-w-0 max-w-[430px] px-3 py-3 sm:max-w-[460px] md:max-w-[1280px] md:px-8",
+          inboxMode ? "md:pb-7 md:pt-3" : "md:py-8"
+        )}
+      >
+        <div
+          className={cn(
+            "max-md:pb-1",
+            inboxMode ? "space-y-2 md:space-y-2.5" : "space-y-4 md:space-y-6"
+          )}
+        >
+          <div
+            className={cn(
+              "flex items-start justify-between gap-3 border-b border-zinc-200/80 dark:border-border/60 md:hidden",
+              inboxMode ? "pb-2" : "pb-3"
+            )}
+          >
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <h1 className="text-[17px] font-semibold leading-tight tracking-tight text-zinc-900 dark:text-foreground">
@@ -1787,10 +1820,15 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                     )
                   }
                 >
-                  {inboxMode ? "Expenses" : "Inbox draft"}
+                  {inboxMode ? "Expenses" : "Inbox"}
                 </Button>
               </div>
-              <p className="mt-1 hidden text-[11px] leading-snug text-muted-foreground sm:line-clamp-2">
+              <p
+                className={cn(
+                  "text-[11px] leading-snug text-muted-foreground",
+                  inboxMode ? "mt-0.5 line-clamp-2" : "mt-1 hidden sm:line-clamp-2"
+                )}
+              >
                 {pageDescription}
               </p>
             </div>
@@ -1803,9 +1841,40 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
             />
           </div>
 
-          <div className="hidden md:block">
+          {inboxMode ? (
+            <div
+              className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-zinc-100/90 pb-2 dark:border-border/50 md:-mt-1 md:pb-2"
+              aria-label="Inbox queue summary"
+            >
+              <span className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-zinc-200/85 bg-white px-2.5 py-1.5 text-[11px] text-muted-foreground shadow-sm dark:border-border/55 dark:bg-card">
+                <span className="font-semibold tabular-nums text-foreground">
+                  {inboxReviewStats.pending}
+                </span>
+                pending
+              </span>
+              <span className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-zinc-200/85 bg-white px-2.5 py-1.5 text-[11px] text-muted-foreground shadow-sm dark:border-border/55 dark:bg-card">
+                <span className="font-semibold tabular-nums text-foreground">
+                  {inboxReviewStats.missingInfo}
+                </span>
+                missing info
+              </span>
+              <span className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-amber-500/15 bg-amber-500/[0.05] px-2.5 py-1.5 text-[11px] text-amber-950/75 dark:border-amber-500/12 dark:bg-amber-500/[0.07] dark:text-amber-100/80">
+                <span className="font-semibold tabular-nums text-amber-950 dark:text-amber-50">
+                  {inboxReviewStats.missingReceipt}
+                </span>
+                no receipt
+              </span>
+            </div>
+          ) : null}
+
+          <div className={cn("hidden md:block", inboxMode && "-mt-0.5")}>
             <PageHeader
-              className="border-b border-zinc-200/70 pb-5 dark:border-border/60 [&_h1]:font-semibold [&_h1]:text-lg [&_h1]:tracking-tight [&_h1]:text-zinc-900 [&_p]:text-sm [&_p]:text-muted-foreground dark:[&_h1]:text-foreground"
+              className={cn(
+                "border-b border-zinc-200/70 dark:border-border/60 [&_h1]:font-semibold [&_h1]:text-lg [&_h1]:tracking-tight [&_h1]:text-zinc-900 [&_p]:text-sm [&_p]:text-muted-foreground dark:[&_h1]:text-foreground",
+                inboxMode
+                  ? "gap-2 pb-2 lg:items-baseline lg:gap-x-4 lg:gap-y-2 [&_p]:mt-0 [&_p]:leading-snug"
+                  : "pb-5"
+              )}
               title={pageTitle}
               description={pageDescription}
               actions={
@@ -1819,7 +1888,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                       router.push(inboxMode ? "/financial/expenses" : "/financial/inbox")
                     }
                   >
-                    {inboxMode ? "Expenses" : "Inbox draft"}
+                    {inboxMode ? "Expenses" : "Inbox"}
                   </Button>
                   <TransactionInboxEntryActions
                     onQuick={() => setQuickExpenseOpen(true)}
@@ -1831,7 +1900,12 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-3">
+          <div
+            className={cn(
+              "grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-3",
+              inboxMode && "-mt-0.5 md:-mt-1"
+            )}
+          >
             <div
               className={cn(
                 financeOsCard,
@@ -2138,7 +2212,12 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                   >
                     <div className="mx-auto flex max-w-md flex-col items-center rounded-xl border border-dashed border-zinc-200/80 bg-zinc-50/50 px-8 py-10 dark:border-border/60 dark:bg-muted/20">
                       <p className="text-sm font-semibold tracking-tight text-zinc-900 dark:text-foreground">
-                        No transactions found
+                        {inboxMode &&
+                        !hasNarrowingFilters &&
+                        expensesForListing.length > 0 &&
+                        summary.inboxQueueCount === 0
+                          ? "Inbox clear — all drafts reviewed"
+                          : "No transactions found"}
                       </p>
                       <p className="mt-1.5 text-sm text-muted-foreground">
                         {inboxMode
@@ -2147,7 +2226,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                             : expensesForListing.length === 0
                               ? "Add an expense to get started."
                               : summary.inboxQueueCount === 0
-                                ? "Nothing needs attention. Open Expenses to see archived costs."
+                                ? "Open Expenses to view archived costs."
                                 : "No matching items."
                           : hasNarrowingFilters
                             ? "Adjust filters or search."
@@ -2202,8 +2281,13 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                     data-expenses-empty-mobile
                   >
                     <Upload className="h-7 w-7 text-muted-foreground" aria-hidden />
-                    <p className="mt-3 text-center text-sm font-semibold tracking-tight text-foreground">
-                      No transactions found
+                    <p className="mt-3 max-w-sm text-center text-sm font-semibold tracking-tight text-foreground">
+                      {inboxMode &&
+                      !hasNarrowingFilters &&
+                      expensesForListing.length > 0 &&
+                      summary.inboxQueueCount === 0
+                        ? "Inbox clear — all drafts reviewed"
+                        : "No transactions found"}
                     </p>
                     <p className="mt-1 max-w-xs text-center text-xs leading-relaxed text-muted-foreground">
                       {inboxMode
@@ -2212,7 +2296,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                           : expensesForListing.length === 0
                             ? "Add an expense to get started."
                             : summary.inboxQueueCount === 0
-                              ? "Nothing needs attention."
+                              ? "Open Expenses for archived costs."
                               : "No matching items."
                         : hasNarrowingFilters
                           ? "Adjust filters or search."
