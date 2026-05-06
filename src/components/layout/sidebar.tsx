@@ -311,16 +311,18 @@ export function Sidebar({
         ? "min-h-[44px] justify-center px-2 py-1.5 lg:min-h-0"
         : "max-lg:min-h-[44px] min-h-0 gap-2.5 px-2 py-1.5 lg:min-h-0",
       active
-        ? "bg-gray-100 font-medium text-text-primary dark:bg-muted/60 dark:text-foreground"
-        : "font-normal text-text-primary hover:bg-gray-50 active:bg-gray-100 dark:text-foreground/90 dark:hover:bg-muted/40 dark:active:bg-muted/50"
+        ? cn(
+            "font-medium text-zinc-50",
+            "bg-white/[0.07] hover:bg-white/[0.085]",
+            "before:absolute before:inset-y-1.5 before:left-0 before:w-px before:rounded-full before:bg-indigo-400/80 before:content-['']"
+          )
+        : "font-normal text-zinc-100/90 hover:bg-white/[0.05] hover:text-zinc-50 active:bg-white/[0.07]"
     );
 
   const navIconClass = (active: boolean, extra?: string) =>
     cn(
       "h-[16px] w-[16px] shrink-0 transition-colors duration-nav ease-out",
-      active
-        ? "text-brand-primary dark:text-blue-400"
-        : "text-text-secondary group-hover:text-text-primary dark:group-hover:text-foreground",
+      active ? "text-zinc-50" : "text-zinc-300/80 group-hover:text-zinc-100",
       extra
     );
 
@@ -328,36 +330,46 @@ export function Sidebar({
     <aside
       data-app-sidebar
       className={cn(
-        "flex h-full shrink-0 flex-col border-r border-gray-100 bg-white dark:border-border dark:bg-background",
+        "relative flex h-full shrink-0 flex-col overflow-hidden border-r border-white/10",
+        "bg-[linear-gradient(180deg,#0B1020_0%,#111827_100%)]",
+        "before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(900px_circle_at_20%_-10%,rgba(99,102,241,0.18),transparent_55%)] before:opacity-80 before:content-['']",
+        "after:pointer-events-none after:absolute after:inset-0 after:bg-[radial-gradient(600px_circle_at_110%_40%,rgba(255,255,255,0.06),transparent_50%)] after:content-['']",
         collapsed ? "w-[72px]" : "w-[210px]",
         className
       )}
     >
       <div
         className={cn(
-          "flex h-12 items-center gap-2 border-b border-gray-100 dark:border-border",
+          "relative z-[1] flex h-12 items-center gap-2 border-b border-white/10 bg-white/[0.03] backdrop-blur-md",
           collapsed ? "px-3" : "px-3"
         )}
       >
-        <Avatar className="h-7 w-7 rounded-md">
+        <Avatar className="h-7 w-7 rounded-md ring-1 ring-inset ring-white/10">
           {logoUrl ? <AvatarImage src={logoUrl} alt={orgName} className="object-contain" /> : null}
-          <AvatarFallback className="rounded-md bg-primary/10 text-[11px] font-semibold text-primary">
+          <AvatarFallback className="rounded-md bg-white/[0.08] text-[11px] font-semibold text-zinc-100">
             {getCompanyInitials(orgName)}
           </AvatarFallback>
         </Avatar>
         {!collapsed && (
           <div className="min-w-0">
-            <p className="truncate text-xs font-medium uppercase tracking-wide text-text-secondary">
+            <p className="truncate text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-400">
               HH Unified
             </p>
-            <p className="truncate text-sm font-medium text-text-primary dark:text-foreground">
+            <p className="truncate text-[13px] font-medium tracking-tight text-zinc-100">
               {orgName}
             </p>
           </div>
         )}
       </div>
 
-      <nav className={cn("flex-1 overflow-y-auto", collapsed ? "px-2 py-3" : "px-2 py-3")}>
+      <nav
+        className={cn(
+          "relative z-[1] flex-1 overflow-y-auto",
+          // Hide scrollbar chrome (keep scroll) for a cleaner SaaS feel
+          "[-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+          collapsed ? "px-2 py-3" : "px-2 py-3"
+        )}
+      >
         {/* Dashboard */}
         <div className="flex flex-col gap-1">
           <Link
@@ -442,7 +454,7 @@ export function Sidebar({
                 <button
                   type="button"
                   onClick={() => setSectionOpen(section.key, !isOpen)}
-                  className="flex min-h-[44px] w-full items-center gap-2 rounded-md px-2 py-2 text-left text-xs font-medium uppercase tracking-wide text-text-secondary transition-colors duration-150 ease-out hover:bg-gray-50 active:bg-gray-100 dark:text-muted-foreground dark:hover:bg-muted/40 dark:active:bg-muted/50 lg:min-h-0"
+                  className="flex min-h-[44px] w-full items-center gap-2 rounded-md px-2 py-2 text-left text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-400 transition-colors duration-150 ease-out hover:bg-white/[0.045] hover:text-zinc-200 active:bg-white/[0.06] lg:min-h-0"
                   aria-expanded={isOpen}
                 >
                   {isOpen ? (
@@ -565,18 +577,16 @@ export function Sidebar({
 
       {/* User footer */}
       {!collapsed && (
-        <div className="border-t border-gray-100 px-3 py-3 dark:border-border">
-          <div className="flex items-center gap-2.5">
-            <Avatar className="h-8 w-8 shrink-0 rounded-md">
-              <AvatarFallback className="rounded-md bg-gray-100 text-[11px] font-medium text-text-secondary dark:bg-muted/50">
+        <div className="relative z-[1] border-t border-white/10 px-3 py-3">
+          <div className="flex items-center gap-2.5 rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-2 backdrop-blur-md">
+            <Avatar className="h-8 w-8 shrink-0 rounded-md ring-1 ring-inset ring-white/10">
+              <AvatarFallback className="rounded-md bg-white/[0.06] text-[11px] font-medium text-zinc-200">
                 U
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] font-medium leading-tight text-text-primary dark:text-foreground">
-                User
-              </p>
-              <p className="truncate text-[11px] text-[#9CA3AF] dark:text-muted-foreground">
+              <p className="truncate text-[13px] font-medium leading-tight text-zinc-100">User</p>
+              <p className="truncate text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-400">
                 Admin
               </p>
             </div>
@@ -585,12 +595,12 @@ export function Sidebar({
       )}
 
       {/* Collapse button at bottom */}
-      <div className="border-t border-gray-100 p-2 dark:border-border">
+      <div className="relative z-[1] border-t border-white/10 p-2">
         <button
           type="button"
           onClick={onToggleCollapsed}
           className={cn(
-            "flex w-full items-center rounded-md text-sm font-medium text-text-secondary transition-colors duration-150 ease-out hover:bg-gray-50 hover:text-text-primary dark:text-muted-foreground dark:hover:bg-muted/40 dark:hover:text-foreground",
+            "flex w-full items-center rounded-md text-sm font-medium text-zinc-300/90 transition-colors duration-150 ease-out hover:bg-white/[0.05] hover:text-zinc-100",
             collapsed ? "min-h-[44px] justify-center px-2 py-2 sm:min-h-8" : "gap-2 px-2 py-1.5"
           )}
           aria-label="Collapse sidebar"
