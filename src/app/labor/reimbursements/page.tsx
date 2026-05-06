@@ -623,7 +623,7 @@ export default function WorkerReimbursementsPage() {
     >
       <div className="hidden md:block">
         <PageHeader
-          className="gap-1 border-b border-zinc-200/70 pb-1 dark:border-border/60 lg:items-baseline lg:gap-x-4 [&_h1]:text-lg [&_h1]:font-semibold [&_h1]:tracking-tight [&_h1]:text-zinc-900 [&_p]:mt-0 [&_p]:text-[13px] [&_p]:leading-snug [&_p]:text-muted-foreground dark:[&_h1]:text-foreground"
+          className="gap-1 border-b border-zinc-200/70 pb-2 dark:border-border/60 lg:items-baseline lg:gap-x-4 [&_p]:mt-0"
           title="Worker Reimbursements"
           subtitle="Review pending reimbursements, receipts, and payouts before marking paid."
           actions={

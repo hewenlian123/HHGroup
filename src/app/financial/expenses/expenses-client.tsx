@@ -1870,7 +1870,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
           <div className={cn("hidden md:block", inboxMode && "-mt-0.5")}>
             <PageHeader
               className={cn(
-                "border-b border-zinc-200/70 dark:border-border/60 [&_h1]:font-semibold [&_h1]:text-lg [&_h1]:tracking-tight [&_h1]:text-zinc-900 [&_p]:text-sm [&_p]:text-muted-foreground dark:[&_h1]:text-foreground",
+                "border-b border-zinc-200/70 dark:border-border/60",
                 inboxMode
                   ? "gap-2 pb-2 lg:items-baseline lg:gap-x-4 lg:gap-y-2 [&_p]:mt-0 [&_p]:leading-snug"
                   : "pb-5"

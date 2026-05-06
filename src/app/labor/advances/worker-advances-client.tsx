@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/native-select";
 import { cn } from "@/lib/utils";
+import { TYPO } from "@/lib/typography";
 import {
   ArrowLeftRight,
   CalendarDays,
@@ -428,10 +429,8 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
     </div>
   );
 
-  const thClass =
-    "px-3 py-2 text-left text-[10px] font-medium uppercase leading-none tracking-[0.08em] text-muted-foreground";
-  const thRight =
-    "px-3 py-2 text-right text-[10px] font-medium uppercase leading-none tracking-[0.08em] text-muted-foreground tabular-nums";
+  const thClass = cn("px-3 py-2 text-left", TYPO.tableHeader);
+  const thRight = cn("px-3 py-2 text-right tabular-nums", TYPO.tableHeader);
 
   const filterControls = (
     <>
@@ -505,14 +504,17 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
       >
         <div className="hidden md:block">
           <PageHeader
-            className="gap-1 border-b border-zinc-200/70 pb-1.5 dark:border-border/60 lg:items-baseline lg:gap-x-4 [&_h1]:text-lg [&_h1]:font-semibold [&_h1]:tracking-tight [&_h1]:text-zinc-900 [&_p]:mt-0 [&_p]:text-[13px] [&_p]:leading-snug [&_p]:text-muted-foreground dark:[&_h1]:text-foreground"
+            className="gap-1 border-b border-zinc-200/70 pb-2 dark:border-border/60 lg:items-baseline lg:gap-x-4 [&_p]:mt-0"
             title="Worker Advances"
             subtitle="Track salary advances and deductions for workers."
             actions={
               <Button
                 variant="outline"
                 size="sm"
-                className="h-9 shrink-0 gap-1.5 border-zinc-200/90 bg-white font-medium text-zinc-800 shadow-none hover:bg-zinc-50 hover:text-zinc-950 dark:border-border dark:bg-transparent dark:text-foreground dark:hover:bg-muted/35"
+                className={cn(
+                  "h-9 shrink-0 gap-1.5 border-zinc-200/90 bg-white shadow-none hover:bg-zinc-50 hover:text-zinc-950 dark:border-border dark:bg-transparent dark:text-foreground dark:hover:bg-muted/35",
+                  TYPO.button
+                )}
                 onClick={openCreate}
               >
                 <Plus
@@ -842,10 +844,15 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                         {workerInitials(row.workerName)}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <p className="line-clamp-2 text-[13px] font-medium leading-snug tracking-tight text-zinc-900 dark:text-foreground">
+                        <p className={cn("line-clamp-2 leading-snug", TYPO.primaryName)}>
                           {row.workerName}
                         </p>
-                        <p className="mt-0.5 max-w-[11rem] truncate font-mono text-[9px] leading-none tabular-nums text-zinc-500/75 dark:text-zinc-400/85">
+                        <p
+                          className={cn(
+                            "mt-0.5 max-w-[11rem] truncate leading-none",
+                            TYPO.secondaryId
+                          )}
+                        >
                           {truncateId(row.workerId)}
                         </p>
                       </div>
@@ -865,7 +872,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                     <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                       Amount
                     </span>
-                    <span className="max-w-full min-w-0 text-right text-xl font-semibold tabular-nums tracking-tight text-zinc-800 dark:text-zinc-100">
+                    <span className={cn("max-w-full min-w-0 text-right text-xl", TYPO.amount)}>
                       {fmtUsd(row.amount)}
                     </span>
                   </div>
@@ -874,9 +881,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                       <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                         Date
                       </dt>
-                      <dd className="truncate pt-0.5 font-mono text-sm tabular-nums text-zinc-500 dark:text-zinc-400">
-                        {row.advanceDate}
-                      </dd>
+                      <dd className={cn("truncate pt-0.5", TYPO.date)}>{row.advanceDate}</dd>
                     </div>
                     <div className="min-w-0">
                       <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -890,7 +895,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                       <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                         Notes
                       </dt>
-                      <dd className="line-clamp-2 break-words pt-0.5 text-sm leading-snug text-zinc-600/90 dark:text-zinc-400">
+                      <dd className={cn("line-clamp-2 break-words pt-0.5", TYPO.pageSubtitle)}>
                         {row.notes?.trim() ? row.notes : "—"}
                       </dd>
                     </div>
@@ -1008,10 +1013,15 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                             {workerInitials(row.workerName)}
                           </span>
                           <div className="min-w-0">
-                            <p className="line-clamp-2 text-[13px] font-medium leading-snug tracking-tight text-zinc-900 dark:text-foreground">
+                            <p className={cn("line-clamp-2 leading-snug", TYPO.primaryName)}>
                               {row.workerName}
                             </p>
-                            <p className="max-w-[11rem] truncate font-mono text-[9px] leading-none tabular-nums text-zinc-500/75 dark:text-zinc-400/85">
+                            <p
+                              className={cn(
+                                "max-w-[11rem] truncate leading-none",
+                                TYPO.secondaryId
+                              )}
+                            >
                               {truncateId(row.workerId)}
                             </p>
                           </div>
@@ -1023,7 +1033,12 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                       <td className="whitespace-nowrap px-3 py-2.5 text-right align-middle text-base font-semibold tabular-nums tracking-tight text-zinc-800 dark:text-zinc-100">
                         {fmtUsd(row.amount)}
                       </td>
-                      <td className="whitespace-nowrap px-3 py-2.5 text-right align-middle font-mono text-sm tabular-nums text-zinc-500 dark:text-zinc-400">
+                      <td
+                        className={cn(
+                          "whitespace-nowrap px-3 py-2.5 text-right align-middle",
+                          TYPO.date
+                        )}
+                      >
                         {row.advanceDate}
                       </td>
                       <td className="px-3 py-2.5 align-middle">
