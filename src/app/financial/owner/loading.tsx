@@ -23,15 +23,12 @@ export default function FinanceOwnerDashboardLoading() {
         />
       }
     >
-      <div className="flex flex-col gap-10 pb-10 pt-2 lg:gap-12 lg:pb-12 lg:pt-4">
-        <div className="-mx-1 flex gap-3 overflow-x-auto pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:gap-4 md:grid-cols-3 xl:grid-cols-6">
+      <div className="flex flex-col gap-10 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-[max(0.5rem,env(safe-area-inset-top,0px))] lg:gap-12 lg:pb-[max(3rem,env(safe-area-inset-bottom))] lg:pt-4">
+        <div className="grid grid-cols-2 gap-3 pb-2 md:grid-cols-3 xl:grid-cols-6 xl:gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <div
               key={i}
-              className={cn(
-                "kpi-metric min-w-[156px] shrink-0 px-5 pb-5 pt-5 sm:min-w-0",
-                cardSkeleton
-              )}
+              className={cn("kpi-metric px-4 pb-4 pt-4 sm:px-5 sm:pb-5 sm:pt-5", cardSkeleton)}
             >
               <Skeleton className="h-4 w-28" />
               <Skeleton className="mt-5 h-10 w-full max-w-[10rem]" />
@@ -42,7 +39,7 @@ export default function FinanceOwnerDashboardLoading() {
         </div>
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-12 xl:gap-8">
-          <div className={cn("xl:col-span-8 p-6 sm:p-8 lg:p-10", cardSkeleton)}>
+          <div className={cn("xl:col-span-8 p-4 sm:p-8 lg:p-10", cardSkeleton)}>
             <Skeleton className="h-3 w-20" />
             <Skeleton className="mt-3 h-7 w-48 max-w-full" />
             <Skeleton className="mt-2 h-4 w-full max-w-md" />
