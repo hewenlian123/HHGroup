@@ -265,8 +265,11 @@ test.describe("Delete surface catalog (read-only)", () => {
     const rowText = (await row.innerText()).trim();
     test.skip(/\bloading\b/i.test(rowText), "Payments table still loading.");
     test.skip(/no payments yet/i.test(rowText), "No worker payment rows.");
-    const del = row.getByRole("button", { name: /^Delete$/ });
-    await expectDeleteControlVisibleWithoutHover(page, del, 4000);
+    const actions = row.getByRole("button", { name: /Actions for payment/i });
+    await expectDeleteControlVisibleWithoutHover(page, actions, 4000);
+    await actions.click();
+    await expect(page.getByRole("menuitem", { name: /^Delete$/ })).toBeVisible({ timeout: 5000 });
+    await page.keyboard.press("Escape");
   });
 
   test("site-photos: first card overflow has Delete", async ({ page }) => {
