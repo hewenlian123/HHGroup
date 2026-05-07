@@ -29,6 +29,22 @@ import { AddDailyEntryModal as QuickTimesheetModal } from "./add-daily-entry-mod
 import { EditEntryModal, sessionLabel } from "./edit-entry-modal";
 import type { LaborSession } from "./edit-entry-modal";
 import { CalendarDays, Clock, DollarSign, ListOrdered, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+
+function monthAdd(ym: string, deltaMonths: number): string {
+  const [y, m] = ym.split("-").map(Number);
+  const d = new Date(y, (m ?? 1) - 1 + deltaMonths, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function initials(name: string | null | undefined): string {
+  const n = (name ?? "").trim();
+  if (!n) return "—";
+  const parts = n.split(/\s+/).filter(Boolean);
+  const a = parts[0]?.[0] ?? "";
+  const b = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? "") : "";
+  return (a + b).toUpperCase() || "—";
+}
 
 function sessionBadgeClass(session: LaborSession): string {
   if (session === "morning") return "bg-amber-50 text-amber-800 ring-1 ring-amber-200/60";
@@ -44,6 +60,15 @@ const timeKpiTile =
 
 const timeKpiIcon =
   "flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-100/45 text-zinc-400 md:h-8 md:w-8 dark:bg-muted/45 dark:text-muted-foreground";
+
+const timeSegmentedShell =
+  "relative flex h-10 min-h-[44px] shrink-0 items-center rounded-md border border-zinc-200/80 bg-white/80 p-0.5 shadow-[0_1px_0_rgba(0,0,0,0.04)] backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:border-border/60 dark:bg-card/80 dark:shadow-none";
+
+const timeSegmentedPill =
+  "absolute inset-y-0.5 left-0.5 w-[calc(50%-2px)] rounded-[6px] bg-[#0B1220] shadow-[0_6px_18px_rgba(2,6,23,0.16)] transition-transform duration-200 ease-out dark:bg-emerald-500/90 dark:shadow-none";
+
+const timeSegmentedButton =
+  "relative z-10 flex h-full w-1/2 items-center justify-center gap-1.5 rounded-[6px] px-3 text-xs font-medium transition-colors duration-200";
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const HIGH_COST_THRESHOLD = 1000;
@@ -212,6 +237,7 @@ export default function LaborPageClient() {
   const [selectedDayForDetail, setSelectedDayForDetail] = React.useState<string | null>(null);
   const [editOpen, setEditOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<LaborEntryWithJoins | null>(null);
+  const todayYmd = React.useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   const sessionFromFlags = React.useCallback((e: LaborEntryWithJoins): LaborSession => {
     const flags = e as LaborEntryWithJoins & { morning?: unknown; afternoon?: unknown };
@@ -384,13 +410,12 @@ export default function LaborPageClient() {
         <div className="hidden md:block">
           <PageHeader
             className="gap-1 border-b border-zinc-200/70 pb-2 dark:border-border/60 lg:items-baseline lg:gap-x-4 [&_p]:mt-0"
-            title="Labor"
-            subtitle="Daily labor entries by worker and project."
+            title="Daily Labor"
+            subtitle="Track and manage daily labor entries by worker and project."
             actions={
               <Button
                 size="sm"
-                variant="outline"
-                className="h-9 shrink-0 gap-1.5 shadow-none"
+                className="h-9 shrink-0 gap-1.5 shadow-none bg-[#0B1220] text-white hover:bg-[#0B1220]/92 dark:bg-emerald-500/90 dark:text-black dark:hover:bg-emerald-500"
                 onClick={() => setModalOpen(true)}
                 disabled={loadingProjects}
               >
@@ -471,30 +496,39 @@ export default function LaborPageClient() {
               </div>
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-100/80 pt-3 dark:border-border/60">
-              <div className="flex h-9 shrink-0 overflow-hidden rounded-md border border-zinc-200/80 bg-white shadow-none dark:border-border/60 dark:bg-card">
+              <div className={cn(timeSegmentedShell, "w-full sm:w-[260px]")}>
+                <span
+                  aria-hidden
+                  className={cn(
+                    timeSegmentedPill,
+                    view === "calendar" && "translate-x-[calc(100%+2px)]"
+                  )}
+                />
                 <button
                   type="button"
                   onClick={() => setView("list")}
                   className={cn(
-                    "h-full px-3 text-xs font-medium transition-colors",
+                    timeSegmentedButton,
                     view === "list"
-                      ? "bg-zinc-900 text-white dark:bg-foreground dark:text-background"
-                      : "bg-transparent text-muted-foreground hover:bg-zinc-50 hover:text-foreground dark:hover:bg-muted/35"
+                      ? "text-white dark:text-black"
+                      : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  List View
+                  <ListOrdered className="h-3.5 w-3.5" aria-hidden />
+                  List
                 </button>
                 <button
                   type="button"
                   onClick={() => setView("calendar")}
                   className={cn(
-                    "h-full border-l border-zinc-200/80 px-3 text-xs font-medium transition-colors dark:border-border/60",
+                    timeSegmentedButton,
                     view === "calendar"
-                      ? "bg-zinc-900 text-white dark:bg-foreground dark:text-background"
-                      : "bg-transparent text-muted-foreground hover:bg-zinc-50 hover:text-foreground dark:hover:bg-muted/35"
+                      ? "text-white dark:text-black"
+                      : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  Calendar View
+                  <CalendarDays className="h-3.5 w-3.5" aria-hidden />
+                  Calendar
                 </button>
               </div>
             </div>
@@ -650,8 +684,8 @@ export default function LaborPageClient() {
                           type="button"
                           onClick={() => setExpandedDate((prev) => (prev === date ? null : date))}
                           className={cn(
-                            "flex w-full items-center justify-between gap-3 rounded-none px-3 py-2 text-left transition-all duration-150 ease-out hover:-translate-y-px bg-gray-50 hover:bg-gray-100 active:scale-[0.99] active:duration-100 dark:bg-muted/20 dark:hover:bg-muted/40",
-                            isExpanded && "bg-gray-100 dark:bg-muted/40"
+                            "flex w-full items-center justify-between gap-3 rounded-none px-3 py-2 text-left transition-colors duration-150 ease-out hover:bg-muted/25 active:bg-muted/40 dark:hover:bg-muted/25",
+                            isExpanded && "bg-muted/25"
                           )}
                         >
                           <div className="flex items-baseline gap-3 min-w-0">
@@ -692,7 +726,7 @@ export default function LaborPageClient() {
                         >
                           <div className="border-t border-border/60 bg-background">
                             <div className="overflow-x-auto">
-                              <table className="w-full min-w-[480px] border-collapse text-sm">
+                              <table className="hidden w-full min-w-[480px] border-collapse text-sm md:table">
                                 <thead>
                                   <tr className="border-b border-border/60">
                                     <th className="text-left py-2 px-3 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
@@ -772,6 +806,66 @@ export default function LaborPageClient() {
                                   })}
                                 </tbody>
                               </table>
+
+                              <div className="flex flex-col divide-y divide-border/60 md:hidden">
+                                {entries.map((e) => {
+                                  const pay = e.cost_amount != null ? Number(e.cost_amount) : 0;
+                                  const session = sessionFromFlags(e);
+                                  return (
+                                    <div key={e.id} className="px-3 py-3">
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-sm font-semibold text-foreground truncate">
+                                              {e.worker_name ?? "—"}
+                                            </span>
+                                            <span
+                                              className={cn(
+                                                "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
+                                                sessionBadgeClass(session)
+                                              )}
+                                            >
+                                              {sessionLabel(session)}
+                                            </span>
+                                          </div>
+                                          <div className="mt-0.5 text-xs text-muted-foreground truncate">
+                                            {e.project_name ?? "—"}
+                                          </div>
+                                        </div>
+                                        <div className="shrink-0 text-right">
+                                          <div className="text-sm font-semibold tabular-nums text-foreground">
+                                            {pay > 0 ? `$${pay.toFixed(2)}` : "—"}
+                                          </div>
+                                          <div className="mt-1 flex items-center justify-end gap-2">
+                                            <button
+                                              type="button"
+                                              className="inline-flex h-11 w-11 items-center justify-center rounded-sm border border-border/70 text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground active:scale-[0.98]"
+                                              onClick={() => openEdit(e)}
+                                              aria-label="Edit"
+                                            >
+                                              <Pencil className="h-4 w-4" />
+                                            </button>
+                                            <button
+                                              type="button"
+                                              className="inline-flex h-11 w-11 items-center justify-center rounded-sm border border-border/70 text-muted-foreground transition-colors hover:bg-muted/40 hover:text-destructive active:scale-[0.98]"
+                                              onClick={() => void handleDelete(e)}
+                                              aria-label="Delete"
+                                              disabled={workerMode}
+                                              title={
+                                                workerMode
+                                                  ? "Delete is available only on the main Labor page."
+                                                  : "Delete entry"
+                                              }
+                                            >
+                                              <Trash2 className="h-4 w-4" />
+                                            </button>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -786,18 +880,61 @@ export default function LaborPageClient() {
         {/* Calendar View */}
         {view === "calendar" && (
           <section className="mt-4 border-b border-border/60 pb-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-2">
-              {formatMonthLabel(selectedMonth)}
-            </p>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                {formatMonthLabel(selectedMonth)}
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-9 rounded-sm shadow-none"
+                  onClick={() => {
+                    setSelectedMonth(initialMonth);
+                    setExpandedDate(null);
+                    setSelectedDayForDetail(null);
+                  }}
+                >
+                  Today
+                </Button>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-sm border border-border/70 bg-transparent text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground active:scale-[0.98]"
+                    onClick={() => {
+                      setSelectedMonth((m) => monthAdd(m, -1));
+                      setExpandedDate(null);
+                      setSelectedDayForDetail(null);
+                    }}
+                    aria-label="Previous month"
+                  >
+                    <ChevronLeft className="h-4 w-4" aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-sm border border-border/70 bg-transparent text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground active:scale-[0.98]"
+                    onClick={() => {
+                      setSelectedMonth((m) => monthAdd(m, 1));
+                      setExpandedDate(null);
+                      setSelectedDayForDetail(null);
+                    }}
+                    aria-label="Next month"
+                  >
+                    <ChevronRight className="h-4 w-4" aria-hidden />
+                  </button>
+                </div>
+              </div>
+            </div>
             {loadingEntries ? (
               <p className="py-4 text-sm text-muted-foreground">Loading…</p>
             ) : (
-              <div className="rounded-sm border border-border/60 overflow-hidden">
+              <div className={cn(timeShell, "overflow-hidden p-0")}>
                 <div className="grid grid-cols-7 text-sm">
                   {WEEKDAYS.map((wd) => (
                     <div
                       key={wd}
-                      className="border-b border-r border-border/60 py-2 px-1 text-center text-xs font-medium text-muted-foreground last:border-r-0"
+                      className="border-b border-r border-border/40 py-2 px-1 text-center text-[11px] font-medium tracking-wide text-muted-foreground/80 last:border-r-0"
                     >
                       {wd}
                     </div>
@@ -808,8 +945,8 @@ export default function LaborPageClient() {
                       <div
                         key={idx}
                         className={cn(
-                          "min-h-[4rem] border-b border-r border-border/60 p-1 last:border-r-0 flex flex-col",
-                          day === null && "border-border/30"
+                          "min-h-[4.5rem] border-b border-r border-border/40 p-1 last:border-r-0 flex flex-col sm:min-h-[5.25rem] md:min-h-[6.25rem]",
+                          day === null && "border-border/25"
                         )}
                       >
                         {day === null ? (
@@ -822,35 +959,81 @@ export default function LaborPageClient() {
                             const workerCount = entries.length;
                             const totalPay = entries.reduce((s, e) => s + (e.cost_amount ?? 0), 0);
                             const isHighCost = totalPay > HIGH_COST_THRESHOLD;
+                            const totalHours = entries.reduce(
+                              (s, e) => s + (Number(e.hours) || 0),
+                              0
+                            );
+                            const isToday = dateStr === todayYmd;
+                            const topWorkers = entries
+                              .map((e) => initials(e.worker_name))
+                              .filter((v) => v !== "—")
+                              .slice(0, 3);
                             return (
                               <button
                                 type="button"
                                 onClick={() => setSelectedDayForDetail(dateStr)}
                                 className={cn(
-                                  "w-full h-full min-h-[4rem] rounded-sm flex flex-col items-center justify-center gap-0.5 text-left py-1.5 px-1 transition-colors",
+                                  "group w-full h-full min-h-[4.5rem] rounded-sm px-1.5 py-1.5 text-left transition-colors sm:min-h-[5.25rem] md:min-h-[6.25rem]",
                                   hasEntries
                                     ? isHighCost
-                                      ? "bg-amber-50 dark:bg-amber-950/30 text-foreground hover:bg-amber-100 dark:hover:bg-amber-950/50"
-                                      : "bg-background text-foreground hover:bg-muted/30"
-                                    : "bg-muted/40 text-muted-foreground hover:bg-muted/60"
+                                      ? "bg-amber-50/70 text-foreground hover:bg-amber-50 dark:bg-amber-950/25 dark:hover:bg-amber-950/40"
+                                      : "bg-background text-foreground hover:bg-muted/25 dark:hover:bg-muted/25"
+                                    : "bg-transparent text-muted-foreground hover:bg-muted/15 dark:hover:bg-muted/20",
+                                  isToday &&
+                                    "ring-1 ring-emerald-500/35 ring-inset bg-emerald-50/30 dark:bg-emerald-950/10"
                                 )}
                               >
-                                <span className="font-medium tabular-nums">{day}</span>
-                                {hasEntries ? (
-                                  <>
-                                    <span className="text-xs tabular-nums">
-                                      {workerCount} worker{workerCount !== 1 ? "s" : ""}
-                                    </span>
-                                    <span className="text-xs font-medium tabular-nums">
-                                      $
+                                <div className="flex items-start justify-between gap-2">
+                                  <span className="text-[12px] font-medium tabular-nums text-foreground/90">
+                                    {day}
+                                  </span>
+                                  {hasEntries ? (
+                                    <span
+                                      className={cn(
+                                        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium tabular-nums",
+                                        isHighCost
+                                          ? "bg-amber-100/70 text-amber-800 dark:bg-amber-900/25 dark:text-amber-200"
+                                          : "bg-emerald-50/80 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-200"
+                                      )}
+                                    >
+                                      {totalHours.toLocaleString("en-US", {
+                                        minimumFractionDigits: 0,
+                                        maximumFractionDigits: 1,
+                                      })}
+                                      h · $
                                       {totalPay.toLocaleString("en-US", {
                                         minimumFractionDigits: 0,
                                         maximumFractionDigits: 0,
                                       })}
                                     </span>
-                                  </>
+                                  ) : null}
+                                </div>
+
+                                {hasEntries ? (
+                                  <div className="mt-2 flex items-center gap-2">
+                                    <div className="flex -space-x-1">
+                                      {topWorkers.map((v, i) => (
+                                        <span
+                                          key={`${v}-${i}`}
+                                          className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-white bg-zinc-900/90 text-[10px] font-semibold text-white dark:border-background"
+                                          aria-hidden
+                                          title={v}
+                                        >
+                                          {v}
+                                        </span>
+                                      ))}
+                                      {workerCount > topWorkers.length ? (
+                                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-white bg-zinc-100 text-[10px] font-semibold text-zinc-700 dark:border-background dark:bg-muted/40 dark:text-muted-foreground">
+                                          +{workerCount - topWorkers.length}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                    <span className="text-[11px] text-muted-foreground">
+                                      {workerCount} worker{workerCount !== 1 ? "s" : ""}
+                                    </span>
+                                  </div>
                                 ) : (
-                                  <span className="text-xs">No entries</span>
+                                  <div className="mt-3 h-2 w-2 rounded-full bg-muted/50 opacity-0 transition-opacity group-hover:opacity-100" />
                                 )}
                               </button>
                             );
