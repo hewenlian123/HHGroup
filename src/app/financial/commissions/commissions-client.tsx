@@ -20,12 +20,12 @@ import {
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { PageHeader } from "@/components/page-header";
 import {
-  MobileEmptyState,
   MobileFilterSheet,
   MobileListHeader,
   MobileSearchFiltersRow,
   mobileListPagePaddingClass,
 } from "@/components/mobile/mobile-list-chrome";
+import { EmptyState } from "@/components/empty-state";
 import { Button } from "@/components/ui/button";
 import { InlineLoading } from "@/components/ui/skeleton";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
@@ -51,6 +51,7 @@ import {
 } from "@/lib/commission-payment-receipt-pdf";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import { useToast } from "@/components/toast/toast-provider";
+import { RowActionsMenu } from "@/components/base/row-actions-menu";
 
 const PAYMENT_METHODS = ["Check", "Bank Transfer", "Cash", "Zelle", "Other"] as const;
 
@@ -84,26 +85,47 @@ async function postCommissionReceiptWithProgress(
   });
 }
 
-const COMMISSION_PAGE_BG = "bg-page";
+const COMMISSION_PAGE_BG = "bg-zinc-50 dark:bg-background";
 const COMMISSION_MODAL =
   "max-w-[480px] w-full gap-0 border-0 p-8 shadow-[0_8px_30px_rgba(0_0_0_0.08)] rounded-xl sm:rounded-xl sm:max-w-[480px]";
 const COMMISSION_LABEL = "mb-1.5 block text-[12px] font-medium text-text-secondary";
 const COMMISSION_FIELD =
   "h-10 rounded-lg border border-gray-100 bg-white text-[14px] focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black";
 
+const commissionsShell =
+  "rounded-xl border border-zinc-200/70 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_4px_24px_rgba(0,0,0,0.045)] dark:border-border/50 dark:bg-card/80 dark:shadow-none md:rounded-2xl";
+
+const kpiTile =
+  "rounded-xl border border-zinc-200/40 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.028),0_1px_12px_rgba(0,0,0,0.028)] dark:border-border/35 dark:bg-card/80 dark:shadow-none";
+
+const kpiIcon =
+  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-100/45 text-zinc-400 dark:bg-muted/45 dark:text-muted-foreground";
+
 const RECEIPT_UPLOAD_MODAL =
   "max-w-[480px] w-full gap-0 rounded-[14px] border-[0.5px] border-gray-100 bg-white p-8 shadow-[0_8px_30px_rgba(0_0_0_0.12)] sm:max-w-[480px]";
 function PaymentStatusPill({ status }: { status: CommissionPaymentStatus }) {
   const map = {
-    unpaid: { bg: "bg-[#F3F4F6]", text: "text-text-secondary", label: "Unpaid" },
-    partial: { bg: "bg-[#FEF9C3]", text: "text-[#854D0E]", label: "Partial" },
-    paid: { bg: "bg-[#DCFCE7]", text: "text-[#166534]", label: "Paid" },
+    unpaid: {
+      bg: "bg-zinc-100/80 ring-1 ring-zinc-200/70 dark:bg-muted/35 dark:ring-border/40",
+      text: "text-muted-foreground",
+      label: "Outstanding",
+    },
+    partial: {
+      bg: "bg-amber-50 ring-1 ring-amber-200/60 dark:bg-amber-900/20 dark:ring-amber-900/30",
+      text: "text-amber-800 dark:text-amber-200",
+      label: "Partial",
+    },
+    paid: {
+      bg: "bg-emerald-50 ring-1 ring-emerald-200/60 dark:bg-emerald-900/20 dark:ring-emerald-900/30",
+      text: "text-emerald-800 dark:text-emerald-200",
+      label: "Paid",
+    },
   } as const;
   const c = map[status];
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-md px-2 py-0.5 text-[12px] font-medium leading-tight",
+        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium leading-tight",
         c.bg,
         c.text
       )}
@@ -114,6 +136,17 @@ function PaymentStatusPill({ status }: { status: CommissionPaymentStatus }) {
 }
 
 type Row = CommissionWithPaid & { project_name: string };
+
+function CommissionStatusChip({ row }: { row: Row }) {
+  if ((Number(row.commission_amount) || 0) <= 0) {
+    return (
+      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium bg-zinc-100/80 text-muted-foreground ring-1 ring-zinc-200/70 dark:bg-muted/35 dark:ring-border/40">
+        No commission
+      </span>
+    );
+  }
+  return <PaymentStatusPill status={row.payment_status} />;
+}
 
 export function CommissionsClient({
   summary,
@@ -986,979 +1019,1013 @@ export function CommissionsClient({
   return (
     <div
       className={cn(
-        "page-container page-stack py-8 text-[14px] leading-normal",
+        "min-w-0 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[14px] leading-normal",
         COMMISSION_PAGE_BG,
         mobileListPagePaddingClass,
-        "max-md:!gap-3 max-md:!py-4"
+        "flex flex-col"
       )}
     >
-      <div className="hidden md:block">
-        <PageHeader
-          className="text-text-primary"
-          title="Commission Payments"
-          description="Track commissions and record payments."
-        />
-      </div>
-      <MobileListHeader
-        title="Commissions"
-        fab={<span className="inline-block h-10 w-10 shrink-0" aria-hidden />}
-      />
-      <MobileSearchFiltersRow
-        filterSheetOpen={filtersOpen}
-        onOpenFilters={() => setFiltersOpen(true)}
-        activeFilterCount={activeDrawerFilterCount}
-        searchSlot={
-          <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9CA3AF]" />
-            <Input
-              value={filterSearch}
-              onChange={(e) => setFilterSearch(e.target.value)}
-              placeholder="Search project, person, role…"
-              className={cn("h-10 pl-8 text-sm", COMMISSION_FIELD)}
-              aria-label="Search commissions"
-            />
-          </div>
-        }
-      />
-      <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
-        <div className="space-y-2">
-          <p className="text-xs font-medium text-text-secondary">Status</p>
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value as typeof filterStatus)}
-            className={cn("w-full px-3", COMMISSION_FIELD)}
-            aria-label="Filter by status"
-          >
-            <option value="all">All statuses</option>
-            <option value="unpaid">Unpaid</option>
-            <option value="partial">Partial</option>
-            <option value="paid">Paid</option>
-          </select>
-        </div>
-        <div className="space-y-2">
-          <p className="text-xs font-medium text-text-secondary">Person</p>
-          <select
-            value={filterPerson}
-            onChange={(e) => setFilterPerson(e.target.value)}
-            className={cn("w-full px-3", COMMISSION_FIELD)}
-            aria-label="Filter by person"
-          >
-            <option value="all">All people</option>
-            {personOptions.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
-          Done
-        </Button>
-      </MobileFilterSheet>
-
-      {loadError ? (
-        <p className="border-b border-gray-100 pb-3 text-sm text-destructive" role="alert">
-          {loadError}
-        </p>
-      ) : null}
-
-      <div className="hidden gap-4 md:grid md:grid-cols-2 lg:grid-cols-4">
-        {(
-          [
-            ["TOTAL COMMISSION", summary.totalCommission],
-            ["PAID COMMISSION", summary.paidCommission],
-            ["OUTSTANDING", summary.outstandingCommission],
-            ["THIS MONTH PAID", summary.thisMonthPaid],
-          ] as const
-        ).map(([label, value]) => (
-          <div key={label} className="rounded-lg bg-white p-5 shadow-[0_1px_3px_rgba(0_0_0_0.06)]">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
-              {label}
-            </p>
-            <p className="mt-2 font-mono text-2xl font-bold tabular-nums text-text-primary">
-              ${fmtUsd(value)}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      <div className="hidden md:flex md:flex-row md:flex-wrap md:items-center md:gap-3">
-        <div className="relative min-w-0 flex-1 sm:min-w-[200px]">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9CA3AF]" />
-          <Input
-            value={filterSearch}
-            onChange={(e) => setFilterSearch(e.target.value)}
-            placeholder="Search project, person, role…"
-            className={cn("max-md:min-h-11 pl-9", COMMISSION_FIELD)}
-            aria-label="Search commissions"
+      <div
+        className={cn(
+          "mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-3 px-4 py-2 pb-4 sm:max-w-[460px] md:max-w-6xl md:gap-4 md:px-6 md:pb-6 md:pt-3"
+        )}
+      >
+        <div className="hidden md:block">
+          <PageHeader
+            className="gap-1 border-b border-zinc-200/70 pb-2 dark:border-border/60 lg:items-baseline lg:gap-x-4 [&_p]:mt-0"
+            title="Commission Payments"
+            subtitle="Commission tracking and payout history by project, person, and role."
           />
         </div>
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value as typeof filterStatus)}
-          className={cn("w-full max-md:min-h-11 px-3 sm:w-auto sm:min-w-[140px]", COMMISSION_FIELD)}
-          aria-label="Filter by status"
-        >
-          <option value="all">All statuses</option>
-          <option value="unpaid">Unpaid</option>
-          <option value="partial">Partial</option>
-          <option value="paid">Paid</option>
-        </select>
-        <select
-          value={filterPerson}
-          onChange={(e) => setFilterPerson(e.target.value)}
-          className={cn("w-full max-md:min-h-11 px-3 sm:w-auto sm:min-w-[160px]", COMMISSION_FIELD)}
-          aria-label="Filter by person"
-        >
-          <option value="all">All people</option>
-          {personOptions.map((name) => (
-            <option key={name} value={name}>
-              {name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {!loadError && rows.length === 0 ? (
-        <MobileEmptyState
-          icon={<FileText className="h-8 w-8 opacity-80" aria-hidden />}
-          message="No commissions."
+        <MobileListHeader
+          title="Commissions"
+          fab={<span className="inline-block h-10 w-10 shrink-0" aria-hidden />}
         />
-      ) : null}
-      {!loadError && rows.length > 0 && filteredRows.length === 0 ? (
-        <MobileEmptyState
-          icon={<Search className="h-8 w-8 opacity-80" aria-hidden />}
-          message="No rows match your filters."
+        <MobileSearchFiltersRow
+          filterSheetOpen={filtersOpen}
+          onOpenFilters={() => setFiltersOpen(true)}
+          activeFilterCount={activeDrawerFilterCount}
+          searchSlot={
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9CA3AF]" />
+              <Input
+                value={filterSearch}
+                onChange={(e) => setFilterSearch(e.target.value)}
+                placeholder="Search project, person, role…"
+                className={cn("h-10 pl-8 text-sm", COMMISSION_FIELD)}
+                aria-label="Search commissions"
+              />
+            </div>
+          }
         />
-      ) : null}
+        <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-text-secondary">Status</p>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value as typeof filterStatus)}
+              className={cn("w-full px-3", COMMISSION_FIELD)}
+              aria-label="Filter by status"
+            >
+              <option value="all">All statuses</option>
+              <option value="unpaid">Outstanding</option>
+              <option value="partial">Partial</option>
+              <option value="paid">Paid</option>
+            </select>
+          </div>
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-text-secondary">Person</p>
+            <select
+              value={filterPerson}
+              onChange={(e) => setFilterPerson(e.target.value)}
+              className={cn("w-full px-3", COMMISSION_FIELD)}
+              aria-label="Filter by person"
+            >
+              <option value="all">All people</option>
+              {personOptions.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
+            Done
+          </Button>
+        </MobileFilterSheet>
 
-      <div className="md:hidden">
-        {!loadError && filteredRows.length > 0 ? (
-          <div className="divide-y divide-gray-100 dark:divide-border/60">
-            {filteredRows.map((r) => (
-              <div key={r.id} className="py-2.5">
-                <div className="flex min-h-[48px] items-start gap-2">
-                  <button
-                    type="button"
-                    className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-text-secondary hover:bg-[#F3F4F6]"
-                    data-testid={`financial-commission-expand-${r.id}`}
-                    aria-expanded={expandedIds.has(r.id)}
-                    aria-label={expandedIds.has(r.id) ? "Collapse payments" : "Expand payments"}
-                    onClick={(e) => toggleExpanded(r, e)}
-                  >
-                    {expandedIds.has(r.id) ? (
-                      <ChevronDown className="h-4 w-4" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4" />
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    className="min-w-0 flex-1 text-left"
-                    data-testid={`financial-commission-row-${r.id}`}
-                    onClick={() => router.push(`/projects/${r.project_id}`)}
-                  >
-                    <p className="truncate text-sm font-medium text-text-primary">
-                      {r.project_name || "—"}
-                    </p>
-                    <p className="truncate text-xs text-text-secondary">
-                      {r.person_name || "—"} · {r.role}
-                    </p>
-                    <p className="mt-1 text-xs font-mono tabular-nums text-text-secondary">
-                      Out ${fmtUsd(r.outstanding_amount)} · Paid ${fmtUsd(r.paid_amount)}
-                    </p>
-                  </button>
-                  <div className="shrink-0 pt-0.5">
-                    <PaymentStatusPill status={r.payment_status} />
-                  </div>
+        {loadError ? (
+          <p className="border-b border-gray-100 pb-3 text-sm text-destructive" role="alert">
+            {loadError}
+          </p>
+        ) : null}
+
+        <section className="border-b border-border/60 pb-4">
+          <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+            Summary
+          </p>
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+            <div className={cn(kpiTile, "flex items-center gap-2 px-3 py-2.5")}>
+              <span className={kpiIcon}>
+                <FileText className="h-4 w-4" aria-hidden />
+              </span>
+              <div className="min-w-0">
+                <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Total commission
                 </div>
-                <div
-                  className="mt-2 flex flex-wrap justify-end gap-2 border-t border-gray-100/80 pt-2 dark:border-border/40"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {r.payment_status !== "paid" ? (
-                    <button
-                      type="button"
-                      className="text-[13px] font-medium text-text-primary hover:underline"
-                      data-testid={`financial-commission-record-payment-${r.id}`}
-                      onClick={() => openPaymentModal(r)}
-                    >
-                      Pay
-                    </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    className="text-[13px] font-medium text-text-secondary hover:underline"
-                    data-testid={`financial-commission-view-pdf-${r.id}`}
-                    onClick={() => setCommissionPdfOpenId(r.id)}
-                  >
-                    View
-                  </button>
-                  <button
-                    type="button"
-                    className="text-[13px] font-medium text-text-secondary hover:underline"
-                    data-testid={`financial-commission-edit-${r.id}`}
-                    onClick={() => openEditModal(r)}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="text-[13px] font-medium text-red-600 hover:underline"
-                    onClick={() => setCommissionDeleteTarget(r)}
-                  >
-                    Delete
-                  </button>
+                <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
+                  ${fmtUsd(summary.totalCommission)}
                 </div>
-                {expandedIds.has(r.id) ? (
-                  <div className="mt-2 border-t border-gray-100 bg-[#EDE9E1]/50 px-2 py-3 dark:border-border/40">
-                    <CommissionPaymentDetailsPanel r={r} />
-                  </div>
-                ) : null}
               </div>
-            ))}
+            </div>
+            <div className={cn(kpiTile, "flex items-center gap-2 px-3 py-2.5")}>
+              <span className={kpiIcon}>
+                <Eye className="h-4 w-4" aria-hidden />
+              </span>
+              <div className="min-w-0">
+                <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Paid commission
+                </div>
+                <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
+                  ${fmtUsd(summary.paidCommission)}
+                </div>
+              </div>
+            </div>
+            <div className={cn(kpiTile, "flex items-center gap-2 px-3 py-2.5")}>
+              <span className={kpiIcon}>
+                <ChevronRight className="h-4 w-4" aria-hidden />
+              </span>
+              <div className="min-w-0">
+                <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Outstanding
+                </div>
+                <div className="mt-0.5 text-xl font-semibold tabular-nums text-foreground">
+                  ${fmtUsd(summary.outstandingCommission)}
+                </div>
+              </div>
+            </div>
+            <div className={cn(kpiTile, "flex items-center gap-2 px-3 py-2.5")}>
+              <span className={kpiIcon}>
+                <Paperclip className="h-4 w-4" aria-hidden />
+              </span>
+              <div className="min-w-0">
+                <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  This month paid
+                </div>
+                <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
+                  ${fmtUsd(summary.thisMonthPaid)}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div className={cn(commissionsShell, "hidden md:block p-3")}>
+          <div className="flex w-full flex-wrap items-end gap-3 md:flex-nowrap">
+            <div className="flex min-w-[240px] flex-1 flex-col gap-1">
+              <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+                Search
+              </label>
+              <div className="relative w-full">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={filterSearch}
+                  onChange={(e) => setFilterSearch(e.target.value)}
+                  placeholder="Search project, person, role…"
+                  className={cn("h-10 min-h-[44px] pl-8 text-sm", COMMISSION_FIELD)}
+                  aria-label="Search commissions"
+                />
+              </div>
+            </div>
+            <div className="flex min-w-[180px] flex-1 flex-col gap-1 sm:flex-initial">
+              <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+                Status
+              </label>
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value as typeof filterStatus)}
+                className={cn("h-10 min-h-[44px] w-full px-3 sm:w-[180px]", COMMISSION_FIELD)}
+                aria-label="Filter by status"
+              >
+                <option value="all">All</option>
+                <option value="unpaid">Outstanding</option>
+                <option value="partial">Partial</option>
+                <option value="paid">Paid</option>
+              </select>
+            </div>
+            <div className="flex min-w-[180px] flex-1 flex-col gap-1 sm:flex-initial">
+              <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+                Person
+              </label>
+              <select
+                value={filterPerson}
+                onChange={(e) => setFilterPerson(e.target.value)}
+                className={cn("h-10 min-h-[44px] w-full px-3 sm:w-[220px]", COMMISSION_FIELD)}
+                aria-label="Filter by person"
+              >
+                <option value="all">All people</option>
+                {personOptions.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {!loadError && rows.length === 0 ? (
+          <div className={cn(commissionsShell, "px-4 py-10 text-center")}>
+            <span className="mx-auto mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full border border-zinc-200/70 bg-zinc-50/80 text-zinc-600 dark:border-border/60 dark:bg-muted/25 dark:text-zinc-300">
+              <FileText className="h-5 w-5" aria-hidden />
+            </span>
+            <p className="text-sm font-medium text-foreground">No commissions yet</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Commission records will appear here when project commissions are created.
+            </p>
           </div>
         ) : null}
-      </div>
+        {!loadError && rows.length > 0 && filteredRows.length === 0 ? (
+          <EmptyState
+            title="No commissions match your filters"
+            description="Try adjusting your search, status, or person filter."
+            icon={null}
+          />
+        ) : null}
 
-      <div className="hidden overflow-hidden rounded-lg bg-white shadow-[0_1px_3px_rgba(0_0_0_0.06)] md:block">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] border-collapse text-[14px] lg:min-w-0">
-            <thead>
-              <tr className="border-b-2 border-gray-100">
-                <th className="w-10 px-3 py-3" aria-label="Expand" />
-                <th className="px-3 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
-                  Project
-                </th>
-                <th className="px-3 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
-                  Person
-                </th>
-                <th className="px-3 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
-                  Role
-                </th>
-                <th className="px-3 py-3 text-right text-[12px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
-                  Commission
-                </th>
-                <th className="px-3 py-3 text-right text-[12px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
-                  Paid
-                </th>
-                <th className="px-3 py-3 text-right text-[12px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
-                  Outstanding
-                </th>
-                <th className="px-3 py-3 text-left text-[12px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
-                  Status
-                </th>
-                <th className="w-[11rem] px-3 py-3 text-right text-[12px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="py-10 text-center text-[14px] text-text-secondary">
-                    No commissions.
-                  </td>
-                </tr>
-              ) : filteredRows.length === 0 ? (
-                <tr>
-                  <td colSpan={9} className="py-10 text-center text-[14px] text-text-secondary">
-                    No rows match your filters.
-                  </td>
-                </tr>
-              ) : (
-                filteredRows.map((r) => (
-                  <React.Fragment key={r.id}>
-                    <tr
-                      className="cursor-pointer border-b border-[#E8E4DD] transition-shadow duration-150 hover:bg-white hover:shadow-[0_2px_12px_rgba(0_0_0_0.06)]"
+        <div className="md:hidden">
+          {!loadError && filteredRows.length > 0 ? (
+            <div className="divide-y divide-gray-100 dark:divide-border/60">
+              {filteredRows.map((r) => (
+                <div key={r.id} className="py-2.5">
+                  <div className="flex min-h-[48px] items-start gap-2">
+                    <button
+                      type="button"
+                      className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-text-secondary hover:bg-[#F3F4F6]"
+                      data-testid={`financial-commission-expand-${r.id}`}
+                      aria-expanded={expandedIds.has(r.id)}
+                      aria-label={expandedIds.has(r.id) ? "Collapse payments" : "Expand payments"}
+                      onClick={(e) => toggleExpanded(r, e)}
+                    >
+                      {expandedIds.has(r.id) ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      className="min-w-0 flex-1 text-left"
                       data-testid={`financial-commission-row-${r.id}`}
                       onClick={() => router.push(`/projects/${r.project_id}`)}
                     >
-                      <td className="px-3 py-4 align-middle" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          type="button"
-                          className="flex h-8 w-8 max-md:h-11 max-md:w-11 items-center justify-center rounded-lg text-text-secondary hover:bg-[#F3F4F6]"
-                          data-testid={`financial-commission-expand-${r.id}`}
-                          aria-expanded={expandedIds.has(r.id)}
-                          aria-label={
-                            expandedIds.has(r.id) ? "Collapse payments" : "Expand payments"
-                          }
-                          onClick={(e) => toggleExpanded(r, e)}
-                        >
-                          {expandedIds.has(r.id) ? (
-                            <ChevronDown className="h-4 w-4" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4" />
-                          )}
-                        </button>
-                      </td>
-                      <td className="px-3 py-4 font-medium text-text-primary hover:underline">
+                      <p className="truncate text-sm font-medium text-text-primary">
                         {r.project_name || "—"}
-                      </td>
-                      <td className="px-3 py-4 text-[#374151]">{r.person_name || "—"}</td>
-                      <td className="px-3 py-4 text-text-secondary">{r.role}</td>
-                      <td className="px-3 py-4 text-right font-mono tabular-nums text-text-primary">
-                        ${fmtUsd(r.commission_amount)}
-                      </td>
-                      <td className="px-3 py-4 text-right font-mono tabular-nums text-text-secondary">
-                        ${fmtUsd(r.paid_amount)}
-                      </td>
-                      <td className="px-3 py-4 text-right font-mono tabular-nums font-medium text-text-primary">
-                        ${fmtUsd(r.outstanding_amount)}
-                      </td>
-                      <td className="px-3 py-4">
-                        <PaymentStatusPill status={r.payment_status} />
-                      </td>
-                      <td className="px-3 py-4 text-right" onClick={(e) => e.stopPropagation()}>
-                        <div className="inline-flex flex-wrap items-center justify-end gap-3">
-                          {r.payment_status !== "paid" ? (
-                            <button
-                              type="button"
-                              className="text-[14px] font-medium text-text-primary hover:underline"
-                              data-testid={`financial-commission-record-payment-${r.id}`}
-                              aria-label="Record payment"
-                              onClick={() => openPaymentModal(r)}
-                            >
-                              Pay
-                            </button>
-                          ) : null}
-                          <button
-                            type="button"
-                            className="text-[14px] font-medium text-text-secondary hover:text-text-primary hover:underline"
-                            data-testid={`financial-commission-view-pdf-${r.id}`}
-                            aria-label="View commission summary PDF"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setCommissionPdfOpenId(r.id);
-                            }}
-                          >
-                            View
-                          </button>
-                          <button
-                            type="button"
-                            className="text-[14px] font-medium text-text-secondary hover:text-text-primary hover:underline"
-                            data-testid={`financial-commission-edit-${r.id}`}
-                            onClick={() => openEditModal(r)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            className="text-[14px] font-medium text-red-600 hover:text-red-700 hover:underline"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setCommissionDeleteTarget(r);
-                            }}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                    {expandedIds.has(r.id) ? (
-                      <tr className="border-b border-[#E8E4DD]">
-                        <td colSpan={9} className="bg-[#EDE9E1]/90 p-0">
-                          <div className="px-6 py-4 pl-14">
-                            <CommissionPaymentDetailsPanel r={r} />
-                          </div>
-                        </td>
-                      </tr>
-                    ) : null}
-                  </React.Fragment>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <Dialog
-        open={editModalOpen}
-        onOpenChange={(open) => {
-          setEditModalOpen(open);
-          if (!open) setEditRow(null);
-        }}
-      >
-        <DialogContent className={COMMISSION_MODAL}>
-          <DialogHeader className="space-y-1 text-left">
-            <DialogTitle className="text-xl font-bold text-text-primary">
-              Edit Commission
-            </DialogTitle>
-          </DialogHeader>
-          {editRow && (
-            <p className="text-[13px] leading-snug text-text-secondary">
-              {editRow.project_name || "Project"} · Paid ${fmtUsd(editRow.paid_amount)}
-            </p>
-          )}
-          <form onSubmit={handleEditCommission} className="mt-4 flex flex-col gap-4">
-            <div>
-              <label className={COMMISSION_LABEL}>Person</label>
-              <Input
-                value={editForm.person_name}
-                onChange={(e) => setEditForm((p) => ({ ...p, person_name: e.target.value }))}
-                className={COMMISSION_FIELD}
-                required
-                autoComplete="off"
-                data-testid="financial-commission-edit-person"
-              />
-            </div>
-            <div>
-              <label className={COMMISSION_LABEL}>Role</label>
-              <Select
-                value={editForm.role}
-                onChange={(e) => setEditForm((p) => ({ ...p, role: e.target.value }))}
-                className={cn("w-full", COMMISSION_FIELD)}
-                data-testid="financial-commission-edit-role"
-              >
-                {COMMISSION_ROLES.map((role) => (
-                  <option key={role} value={role}>
-                    {role}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div>
-              <label className={COMMISSION_LABEL}>Commission Amount</label>
-              <Input
-                type="number"
-                min={0}
-                step={0.01}
-                value={editForm.commission_amount}
-                onChange={(e) => setEditForm((p) => ({ ...p, commission_amount: e.target.value }))}
-                className={COMMISSION_FIELD}
-                required
-                data-testid="financial-commission-edit-amount"
-              />
-            </div>
-            {editError && <p className="text-sm text-destructive">{editError}</p>}
-            <DialogFooter className="mt-6 border-t border-[#F0EDE8] bg-transparent pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                className="h-10 rounded-lg border-gray-100 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
-                data-testid="financial-commission-edit-cancel"
-                onClick={() => setEditModalOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                className="h-10 rounded-lg bg-[#111827] text-[14px] font-medium text-white hover:bg-black/90"
-                disabled={editSubmitting}
-                data-testid="financial-commission-edit-save"
-              >
-                <SubmitSpinner loading={editSubmitting} className="mr-2" />
-                {editSubmitting ? "Saving…" : "Save"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={paymentEditOpen}
-        onOpenChange={(open) => {
-          setPaymentEditOpen(open);
-          if (!open) {
-            setPaymentEditRecord(null);
-            setPaymentEditParent(null);
-          }
-        }}
-      >
-        <DialogContent className={COMMISSION_MODAL}>
-          <DialogHeader className="space-y-1 text-left">
-            <DialogTitle className="text-xl font-bold text-text-primary">Edit Payment</DialogTitle>
-          </DialogHeader>
-          {paymentEditParent && paymentEditRecord && (
-            <p className="text-[13px] leading-snug text-text-secondary">
-              {paymentEditParent.person_name} · {paymentEditParent.project_name}
-            </p>
-          )}
-          <form onSubmit={handlePaymentRecordEdit} className="mt-4 flex flex-col gap-4">
-            <div>
-              <label className={COMMISSION_LABEL}>Amount</label>
-              <Input
-                type="number"
-                min={0}
-                step={0.01}
-                value={paymentEditForm.amount}
-                onChange={(e) => setPaymentEditForm((p) => ({ ...p, amount: e.target.value }))}
-                className={COMMISSION_FIELD}
-                required
-                data-testid="financial-payment-edit-amount"
-              />
-            </div>
-            <div>
-              <label className={COMMISSION_LABEL}>Payment Date</label>
-              <Input
-                type="date"
-                value={paymentEditForm.payment_date}
-                onChange={(e) =>
-                  setPaymentEditForm((p) => ({ ...p, payment_date: e.target.value }))
-                }
-                className={COMMISSION_FIELD}
-                required
-                data-testid="financial-payment-edit-date"
-              />
-            </div>
-            <div>
-              <label className={COMMISSION_LABEL}>Payment Method</label>
-              <Select
-                value={paymentEditForm.payment_method}
-                onChange={(e) =>
-                  setPaymentEditForm((p) => ({ ...p, payment_method: e.target.value }))
-                }
-                className={cn("w-full", COMMISSION_FIELD)}
-                data-testid="financial-payment-edit-method"
-              >
-                {PAYMENT_METHODS.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div>
-              <label className={COMMISSION_LABEL}>Note</label>
-              <Input
-                value={paymentEditForm.note}
-                onChange={(e) => setPaymentEditForm((p) => ({ ...p, note: e.target.value }))}
-                placeholder="Optional"
-                className={COMMISSION_FIELD}
-                data-testid="financial-payment-edit-note"
-              />
-            </div>
-            {paymentEditError && <p className="text-sm text-destructive">{paymentEditError}</p>}
-            <DialogFooter className="mt-6 border-t border-[#F0EDE8] bg-transparent pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                className="h-10 rounded-lg border-gray-100 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
-                data-testid="financial-payment-edit-cancel"
-                onClick={() => setPaymentEditOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                className="h-10 rounded-lg bg-[#111827] text-[14px] font-medium text-white hover:bg-black/90"
-                disabled={paymentEditSubmitting}
-                data-testid="financial-payment-edit-save"
-              >
-                <SubmitSpinner loading={paymentEditSubmitting} className="mr-2" />
-                {paymentEditSubmitting ? "Saving…" : "Save"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={paymentModalOpen}
-        onOpenChange={(open) => {
-          setPaymentModalOpen(open);
-          if (!open) setSelectedCommission(null);
-        }}
-      >
-        <DialogContent className={COMMISSION_MODAL}>
-          <DialogHeader className="space-y-1 text-left">
-            <DialogTitle className="text-xl font-bold text-text-primary">
-              Record Payment
-            </DialogTitle>
-          </DialogHeader>
-          {selectedCommission && (
-            <p className="text-[13px] leading-snug text-text-secondary">
-              {selectedCommission.person_name} · {selectedCommission.project_name} · Outstanding: $
-              {fmtUsd(selectedCommission.outstanding_amount)}
-            </p>
-          )}
-          <form onSubmit={handleRecordPayment} className="mt-4 flex flex-col gap-4">
-            <div>
-              <label className={COMMISSION_LABEL}>Amount</label>
-              <Input
-                type="number"
-                min={0}
-                step={0.01}
-                value={paymentForm.amount}
-                onChange={(e) => setPaymentForm((p) => ({ ...p, amount: e.target.value }))}
-                className={COMMISSION_FIELD}
-                required
-                data-testid="financial-record-payment-amount"
-              />
-            </div>
-            <div>
-              <label className={COMMISSION_LABEL}>Payment Date</label>
-              <Input
-                type="date"
-                value={paymentForm.payment_date}
-                onChange={(e) => setPaymentForm((p) => ({ ...p, payment_date: e.target.value }))}
-                className={COMMISSION_FIELD}
-                required
-                data-testid="financial-record-payment-date"
-              />
-            </div>
-            <div>
-              <label className={COMMISSION_LABEL}>Payment Method</label>
-              <Select
-                value={paymentForm.payment_method}
-                onChange={(e) => setPaymentForm((p) => ({ ...p, payment_method: e.target.value }))}
-                className={cn("w-full", COMMISSION_FIELD)}
-                data-testid="financial-record-payment-method"
-              >
-                {PAYMENT_METHODS.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div>
-              <label className={COMMISSION_LABEL}>Note</label>
-              <Input
-                value={paymentForm.note}
-                onChange={(e) => setPaymentForm((p) => ({ ...p, note: e.target.value }))}
-                placeholder="Optional"
-                className={COMMISSION_FIELD}
-                data-testid="financial-record-payment-note"
-              />
-            </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <DialogFooter className="mt-6 border-t border-[#F0EDE8] bg-transparent pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                className="h-10 rounded-lg border-gray-100 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
-                data-testid="financial-record-payment-cancel"
-                onClick={() => setPaymentModalOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                className="h-10 rounded-lg bg-[#111827] text-[14px] font-medium text-white hover:bg-black/90"
-                disabled={submitting}
-                data-testid="financial-record-payment-save"
-              >
-                <SubmitSpinner loading={submitting} className="mr-2" />
-                {submitting ? "Saving…" : "Save"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={paymentDeleteTarget != null}
-        onOpenChange={(open) => {
-          if (!open) setPaymentDeleteTarget(null);
-        }}
-      >
-        <DialogContent className={COMMISSION_MODAL}>
-          <DialogHeader className="text-left">
-            <DialogTitle className="text-xl font-bold text-text-primary">
-              Delete payment
-            </DialogTitle>
-          </DialogHeader>
-          <p className="text-[13px] leading-relaxed text-text-secondary">
-            Remove this payment record? This cannot be undone.
-          </p>
-          <DialogFooter className="mt-6 border-t border-[#F0EDE8] bg-transparent pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              className="h-10 rounded-lg border-gray-100 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
-              onClick={() => setPaymentDeleteTarget(null)}
-              disabled={paymentDeleteSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              className="h-10 rounded-lg bg-red-600 text-[14px] font-medium text-white hover:bg-red-700"
-              disabled={paymentDeleteSubmitting}
-              onClick={() => void confirmDeletePaymentRecord()}
-            >
-              {paymentDeleteSubmitting ? "Deleting…" : "Delete"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={commissionDeleteTarget != null}
-        onOpenChange={(open) => {
-          if (!open) setCommissionDeleteTarget(null);
-        }}
-      >
-        <DialogContent className={COMMISSION_MODAL}>
-          <DialogHeader className="text-left">
-            <DialogTitle className="text-xl font-bold text-text-primary">
-              Delete commission
-            </DialogTitle>
-          </DialogHeader>
-          <p className="text-[13px] leading-relaxed text-text-secondary">
-            Remove commission for{" "}
-            <span className="font-medium text-text-primary">
-              {commissionDeleteTarget?.person_name?.trim() || "this person"}
-            </span>
-            ? This cannot be undone.
-          </p>
-          <DialogFooter className="mt-6 border-t border-[#F0EDE8] bg-transparent pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              className="h-10 rounded-lg border-gray-100 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
-              onClick={() => setCommissionDeleteTarget(null)}
-              disabled={commissionDeleteSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              className="h-10 rounded-lg bg-red-600 text-[14px] font-medium text-white hover:bg-red-700"
-              disabled={commissionDeleteSubmitting}
-              onClick={() => void confirmDeleteCommission()}
-            >
-              {commissionDeleteSubmitting ? "Deleting…" : "Delete"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={receiptUploadModal != null}
-        onOpenChange={(open) => {
-          if (!open) resetReceiptUploadModal();
-        }}
-      >
-        <DialogContent className={RECEIPT_UPLOAD_MODAL}>
-          {receiptUploadModal ? (
-            <>
-              <DialogHeader className="space-y-2 text-left">
-                <DialogTitle className="text-lg font-semibold text-text-primary">
-                  Upload Receipt
-                </DialogTitle>
-                <DialogDescription className="text-[13px] text-text-secondary">
-                  {receiptUploadModal.payment.payment_date || "—"} · $
-                  {fmtUsd(receiptUploadModal.payment.amount)}
-                </DialogDescription>
-              </DialogHeader>
-              <input
-                ref={receiptUploadInputRef}
-                type="file"
-                accept="image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf"
-                className="sr-only"
-                tabIndex={-1}
-                aria-hidden
-                onChange={onReceiptUploadInputChange}
-              />
-              <div
-                role="button"
-                tabIndex={0}
-                className={cn(
-                  "mt-4 flex cursor-pointer flex-col items-center justify-center rounded-[10px] border-2 border-dashed px-6 py-10 transition-colors outline-none",
-                  receiptUploadDragging
-                    ? "border-[#2563EB] bg-[#EFF6FF]"
-                    : "border-[#D1D5DB] bg-[#F9FAFB]",
-                  receiptUploadSubmitting && "pointer-events-none opacity-70"
-                )}
-                onClick={() => !receiptUploadSubmitting && receiptUploadInputRef.current?.click()}
-                onKeyDown={(ev) => {
-                  if (receiptUploadSubmitting) return;
-                  if (ev.key === "Enter" || ev.key === " ") {
-                    ev.preventDefault();
-                    receiptUploadInputRef.current?.click();
-                  }
-                }}
-                onDragEnter={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setReceiptUploadDragging(true);
-                }}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setReceiptUploadDragging(true);
-                }}
-                onDragLeave={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setReceiptUploadDragging(false);
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setReceiptUploadDragging(false);
-                  if (receiptUploadSubmitting) return;
-                  const f = e.dataTransfer.files?.[0];
-                  if (f) void submitReceiptFile(f);
-                }}
-              >
-                <Upload className="mb-3 h-8 w-8 text-[#9CA3AF]" aria-hidden />
-                <p className="text-center text-[14px] font-medium text-[#374151]">
-                  Drag &amp; drop or click to upload
-                </p>
-                <p className="mt-1 text-center text-[12px] text-[#9CA3AF]">JPG, PNG, or PDF</p>
-              </div>
-              {receiptUploadSubmitting ? (
-                <div className="mt-4 space-y-2">
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
-                    <div
-                      className="h-full rounded-full bg-[#2563EB] transition-[width] duration-150"
-                      style={{ width: `${Math.max(0, Math.min(100, receiptUploadProgress))}%` }}
+                      </p>
+                      <p className="truncate text-xs text-text-secondary">
+                        {r.person_name || "—"} · {r.role}
+                      </p>
+                      <p className="mt-1 text-xs font-mono tabular-nums text-text-secondary">
+                        Out ${fmtUsd(r.outstanding_amount)} · Paid ${fmtUsd(r.paid_amount)}
+                      </p>
+                    </button>
+                    <div className="shrink-0 pt-0.5">
+                      <CommissionStatusChip row={r} />
+                    </div>
+                  </div>
+                  <div
+                    className="mt-2 flex flex-wrap justify-end gap-2 border-t border-gray-100/80 pt-2 dark:border-border/40"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <RowActionsMenu
+                      appearance="list"
+                      ariaLabel={`Actions for ${r.project_name || "commission"}`}
+                      actions={[
+                        ...(r.payment_status !== "paid"
+                          ? [{ label: "Pay", onClick: () => openPaymentModal(r) }]
+                          : []),
+                        { label: "View", onClick: () => setCommissionPdfOpenId(r.id) },
+                        { label: "Edit", onClick: () => openEditModal(r) },
+                        {
+                          label: "Delete",
+                          destructive: true,
+                          onClick: () => setCommissionDeleteTarget(r),
+                        },
+                      ]}
+                      touchFriendly
                     />
                   </div>
-                  <p className="text-center text-[12px] text-text-secondary">Uploading…</p>
+                  {expandedIds.has(r.id) ? (
+                    <div className="mt-2 border-t border-gray-100 bg-[#EDE9E1]/50 px-2 py-3 dark:border-border/40">
+                      <CommissionPaymentDetailsPanel r={r} />
+                    </div>
+                  ) : null}
                 </div>
-              ) : null}
-              {receiptUploadError ? (
-                <p className="mt-3 text-[13px] text-red-600" role="alert">
-                  {receiptUploadError}
-                </p>
-              ) : null}
+              ))}
+            </div>
+          ) : null}
+        </div>
+
+        <div className={cn(commissionsShell, "hidden md:block")}>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[780px] border-collapse text-[13px] lg:min-w-0">
+              <thead>
+                <tr className="border-b border-border/60">
+                  <th className="w-10 px-3 py-3" aria-label="Expand" />
+                  <th className="px-3 py-3 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Project
+                  </th>
+                  <th className="px-3 py-3 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Person
+                  </th>
+                  <th className="px-3 py-3 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Role
+                  </th>
+                  <th className="px-3 py-3 text-right text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Commission
+                  </th>
+                  <th className="px-3 py-3 text-right text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Paid
+                  </th>
+                  <th className="px-3 py-3 text-right text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Outstanding
+                  </th>
+                  <th className="px-3 py-3 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Status
+                  </th>
+                  <th className="w-[11rem] px-3 py-3 text-right text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="py-10 text-center text-[14px] text-text-secondary">
+                      No commissions.
+                    </td>
+                  </tr>
+                ) : filteredRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="py-10 text-center text-[14px] text-text-secondary">
+                      No rows match your filters.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredRows.map((r) => (
+                    <React.Fragment key={r.id}>
+                      <tr
+                        className="cursor-pointer border-b border-border/60 transition-colors hover:bg-muted/25"
+                        data-testid={`financial-commission-row-${r.id}`}
+                        onClick={() => router.push(`/projects/${r.project_id}`)}
+                      >
+                        <td className="px-3 py-4 align-middle" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            className="flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted/40"
+                            data-testid={`financial-commission-expand-${r.id}`}
+                            aria-expanded={expandedIds.has(r.id)}
+                            aria-label={
+                              expandedIds.has(r.id) ? "Collapse payments" : "Expand payments"
+                            }
+                            onClick={(e) => toggleExpanded(r, e)}
+                          >
+                            {expandedIds.has(r.id) ? (
+                              <ChevronDown className="h-4 w-4" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4" />
+                            )}
+                          </button>
+                        </td>
+                        <td className="px-3 py-4 font-medium text-foreground hover:underline">
+                          {r.project_name || "—"}
+                        </td>
+                        <td className="px-3 py-4 text-foreground/80">{r.person_name || "—"}</td>
+                        <td className="px-3 py-4 text-muted-foreground">{r.role}</td>
+                        <td className="px-3 py-4 text-right tabular-nums text-foreground">
+                          ${fmtUsd(r.commission_amount)}
+                        </td>
+                        <td className="px-3 py-4 text-right tabular-nums text-muted-foreground">
+                          ${fmtUsd(r.paid_amount)}
+                        </td>
+                        <td className="px-3 py-4 text-right tabular-nums font-semibold text-foreground">
+                          ${fmtUsd(r.outstanding_amount)}
+                        </td>
+                        <td className="px-3 py-4">
+                          <CommissionStatusChip row={r} />
+                        </td>
+                        <td className="px-3 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                          <RowActionsMenu
+                            appearance="list"
+                            ariaLabel={`Actions for ${r.project_name || "commission"}`}
+                            actions={[
+                              ...(r.payment_status !== "paid"
+                                ? [{ label: "Pay", onClick: () => openPaymentModal(r) }]
+                                : []),
+                              { label: "View", onClick: () => setCommissionPdfOpenId(r.id) },
+                              { label: "Edit", onClick: () => openEditModal(r) },
+                              {
+                                label: "Delete",
+                                destructive: true,
+                                onClick: () => setCommissionDeleteTarget(r),
+                              },
+                            ]}
+                          />
+                        </td>
+                      </tr>
+                      {expandedIds.has(r.id) ? (
+                        <tr className="border-b border-[#E8E4DD]">
+                          <td colSpan={9} className="bg-[#EDE9E1]/90 p-0">
+                            <div className="px-6 py-4 pl-14">
+                              <CommissionPaymentDetailsPanel r={r} />
+                            </div>
+                          </td>
+                        </tr>
+                      ) : null}
+                    </React.Fragment>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <Dialog
+          open={editModalOpen}
+          onOpenChange={(open) => {
+            setEditModalOpen(open);
+            if (!open) setEditRow(null);
+          }}
+        >
+          <DialogContent className={COMMISSION_MODAL}>
+            <DialogHeader className="space-y-1 text-left">
+              <DialogTitle className="text-xl font-bold text-text-primary">
+                Edit Commission
+              </DialogTitle>
+            </DialogHeader>
+            {editRow && (
+              <p className="text-[13px] leading-snug text-text-secondary">
+                {editRow.project_name || "Project"} · Paid ${fmtUsd(editRow.paid_amount)}
+              </p>
+            )}
+            <form onSubmit={handleEditCommission} className="mt-4 flex flex-col gap-4">
+              <div>
+                <label className={COMMISSION_LABEL}>Person</label>
+                <Input
+                  value={editForm.person_name}
+                  onChange={(e) => setEditForm((p) => ({ ...p, person_name: e.target.value }))}
+                  className={COMMISSION_FIELD}
+                  required
+                  autoComplete="off"
+                  data-testid="financial-commission-edit-person"
+                />
+              </div>
+              <div>
+                <label className={COMMISSION_LABEL}>Role</label>
+                <Select
+                  value={editForm.role}
+                  onChange={(e) => setEditForm((p) => ({ ...p, role: e.target.value }))}
+                  className={cn("w-full", COMMISSION_FIELD)}
+                  data-testid="financial-commission-edit-role"
+                >
+                  {COMMISSION_ROLES.map((role) => (
+                    <option key={role} value={role}>
+                      {role}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <label className={COMMISSION_LABEL}>Commission Amount</label>
+                <Input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={editForm.commission_amount}
+                  onChange={(e) =>
+                    setEditForm((p) => ({ ...p, commission_amount: e.target.value }))
+                  }
+                  className={COMMISSION_FIELD}
+                  required
+                  data-testid="financial-commission-edit-amount"
+                />
+              </div>
+              {editError && <p className="text-sm text-destructive">{editError}</p>}
               <DialogFooter className="mt-6 border-t border-[#F0EDE8] bg-transparent pt-4">
                 <Button
                   type="button"
                   variant="outline"
                   className="h-10 rounded-lg border-gray-100 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
-                  disabled={receiptUploadSubmitting}
-                  onClick={() => resetReceiptUploadModal()}
+                  data-testid="financial-commission-edit-cancel"
+                  onClick={() => setEditModalOpen(false)}
                 >
                   Cancel
                 </Button>
+                <Button
+                  type="submit"
+                  className="h-10 rounded-lg bg-[#111827] text-[14px] font-medium text-white hover:bg-black/90"
+                  disabled={editSubmitting}
+                  data-testid="financial-commission-edit-save"
+                >
+                  <SubmitSpinner loading={editSubmitting} className="mr-2" />
+                  {editSubmitting ? "Saving…" : "Save"}
+                </Button>
               </DialogFooter>
-            </>
-          ) : null}
-        </DialogContent>
-      </Dialog>
+            </form>
+          </DialogContent>
+        </Dialog>
 
-      <Dialog
-        open={commissionPdfOpenId != null}
-        onOpenChange={(open) => {
-          if (!open) setCommissionPdfOpenId(null);
-        }}
-      >
-        <DialogContent className="flex max-h-[90vh] max-w-[920px] flex-col gap-0 overflow-hidden p-0 sm:max-w-[920px]">
-          <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border/60 px-4 py-3 pr-14">
-            <DialogTitle className="text-left text-base font-semibold text-text-primary">
-              Commission summary
-            </DialogTitle>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" className="h-8" asChild>
-                <a
-                  href={
-                    commissionPdfOpenId ? `/commission/${commissionPdfOpenId}/pdf?download=1` : "#"
+        <Dialog
+          open={paymentEditOpen}
+          onOpenChange={(open) => {
+            setPaymentEditOpen(open);
+            if (!open) {
+              setPaymentEditRecord(null);
+              setPaymentEditParent(null);
+            }
+          }}
+        >
+          <DialogContent className={COMMISSION_MODAL}>
+            <DialogHeader className="space-y-1 text-left">
+              <DialogTitle className="text-xl font-bold text-text-primary">
+                Edit Payment
+              </DialogTitle>
+            </DialogHeader>
+            {paymentEditParent && paymentEditRecord && (
+              <p className="text-[13px] leading-snug text-text-secondary">
+                {paymentEditParent.person_name} · {paymentEditParent.project_name}
+              </p>
+            )}
+            <form onSubmit={handlePaymentRecordEdit} className="mt-4 flex flex-col gap-4">
+              <div>
+                <label className={COMMISSION_LABEL}>Amount</label>
+                <Input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={paymentEditForm.amount}
+                  onChange={(e) => setPaymentEditForm((p) => ({ ...p, amount: e.target.value }))}
+                  className={COMMISSION_FIELD}
+                  required
+                  data-testid="financial-payment-edit-amount"
+                />
+              </div>
+              <div>
+                <label className={COMMISSION_LABEL}>Payment Date</label>
+                <Input
+                  type="date"
+                  value={paymentEditForm.payment_date}
+                  onChange={(e) =>
+                    setPaymentEditForm((p) => ({ ...p, payment_date: e.target.value }))
                   }
-                  download
+                  className={COMMISSION_FIELD}
+                  required
+                  data-testid="financial-payment-edit-date"
+                />
+              </div>
+              <div>
+                <label className={COMMISSION_LABEL}>Payment Method</label>
+                <Select
+                  value={paymentEditForm.payment_method}
+                  onChange={(e) =>
+                    setPaymentEditForm((p) => ({ ...p, payment_method: e.target.value }))
+                  }
+                  className={cn("w-full", COMMISSION_FIELD)}
+                  data-testid="financial-payment-edit-method"
                 >
-                  Download PDF
-                </a>
-              </Button>
+                  {PAYMENT_METHODS.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <label className={COMMISSION_LABEL}>Note</label>
+                <Input
+                  value={paymentEditForm.note}
+                  onChange={(e) => setPaymentEditForm((p) => ({ ...p, note: e.target.value }))}
+                  placeholder="Optional"
+                  className={COMMISSION_FIELD}
+                  data-testid="financial-payment-edit-note"
+                />
+              </div>
+              {paymentEditError && <p className="text-sm text-destructive">{paymentEditError}</p>}
+              <DialogFooter className="mt-6 border-t border-[#F0EDE8] bg-transparent pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-10 rounded-lg border-gray-100 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
+                  data-testid="financial-payment-edit-cancel"
+                  onClick={() => setPaymentEditOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="h-10 rounded-lg bg-[#111827] text-[14px] font-medium text-white hover:bg-black/90"
+                  disabled={paymentEditSubmitting}
+                  data-testid="financial-payment-edit-save"
+                >
+                  <SubmitSpinner loading={paymentEditSubmitting} className="mr-2" />
+                  {paymentEditSubmitting ? "Saving…" : "Save"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={paymentModalOpen}
+          onOpenChange={(open) => {
+            setPaymentModalOpen(open);
+            if (!open) setSelectedCommission(null);
+          }}
+        >
+          <DialogContent className={COMMISSION_MODAL}>
+            <DialogHeader className="space-y-1 text-left">
+              <DialogTitle className="text-xl font-bold text-text-primary">
+                Record Payment
+              </DialogTitle>
+            </DialogHeader>
+            {selectedCommission && (
+              <p className="text-[13px] leading-snug text-text-secondary">
+                {selectedCommission.person_name} · {selectedCommission.project_name} · Outstanding:
+                ${fmtUsd(selectedCommission.outstanding_amount)}
+              </p>
+            )}
+            <form onSubmit={handleRecordPayment} className="mt-4 flex flex-col gap-4">
+              <div>
+                <label className={COMMISSION_LABEL}>Amount</label>
+                <Input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={paymentForm.amount}
+                  onChange={(e) => setPaymentForm((p) => ({ ...p, amount: e.target.value }))}
+                  className={COMMISSION_FIELD}
+                  required
+                  data-testid="financial-record-payment-amount"
+                />
+              </div>
+              <div>
+                <label className={COMMISSION_LABEL}>Payment Date</label>
+                <Input
+                  type="date"
+                  value={paymentForm.payment_date}
+                  onChange={(e) => setPaymentForm((p) => ({ ...p, payment_date: e.target.value }))}
+                  className={COMMISSION_FIELD}
+                  required
+                  data-testid="financial-record-payment-date"
+                />
+              </div>
+              <div>
+                <label className={COMMISSION_LABEL}>Payment Method</label>
+                <Select
+                  value={paymentForm.payment_method}
+                  onChange={(e) =>
+                    setPaymentForm((p) => ({ ...p, payment_method: e.target.value }))
+                  }
+                  className={cn("w-full", COMMISSION_FIELD)}
+                  data-testid="financial-record-payment-method"
+                >
+                  {PAYMENT_METHODS.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <label className={COMMISSION_LABEL}>Note</label>
+                <Input
+                  value={paymentForm.note}
+                  onChange={(e) => setPaymentForm((p) => ({ ...p, note: e.target.value }))}
+                  placeholder="Optional"
+                  className={COMMISSION_FIELD}
+                  data-testid="financial-record-payment-note"
+                />
+              </div>
+              {error && <p className="text-sm text-destructive">{error}</p>}
+              <DialogFooter className="mt-6 border-t border-[#F0EDE8] bg-transparent pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-10 rounded-lg border-gray-100 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
+                  data-testid="financial-record-payment-cancel"
+                  onClick={() => setPaymentModalOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="h-10 rounded-lg bg-[#111827] text-[14px] font-medium text-white hover:bg-black/90"
+                  disabled={submitting}
+                  data-testid="financial-record-payment-save"
+                >
+                  <SubmitSpinner loading={submitting} className="mr-2" />
+                  {submitting ? "Saving…" : "Save"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={paymentDeleteTarget != null}
+          onOpenChange={(open) => {
+            if (!open) setPaymentDeleteTarget(null);
+          }}
+        >
+          <DialogContent className={COMMISSION_MODAL}>
+            <DialogHeader className="text-left">
+              <DialogTitle className="text-xl font-bold text-text-primary">
+                Delete payment
+              </DialogTitle>
+            </DialogHeader>
+            <p className="text-[13px] leading-relaxed text-text-secondary">
+              Remove this payment record? This cannot be undone.
+            </p>
+            <DialogFooter className="mt-6 border-t border-[#F0EDE8] bg-transparent pt-4">
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
-                className="h-8"
-                onClick={() => {
-                  const el = document.getElementById(
-                    "commission-summary-pdf-frame"
-                  ) as HTMLIFrameElement | null;
-                  try {
-                    el?.contentWindow?.focus();
-                    el?.contentWindow?.print();
-                  } catch {
-                    if (commissionPdfOpenId) {
-                      window.open(
-                        `/commission/${commissionPdfOpenId}/pdf`,
-                        "_blank",
-                        "noopener,noreferrer"
-                      );
-                    }
-                  }
-                }}
+                className="h-10 rounded-lg border-gray-100 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
+                onClick={() => setPaymentDeleteTarget(null)}
+                disabled={paymentDeleteSubmitting}
               >
-                Print PDF
-              </Button>
-            </div>
-          </div>
-          <div className="min-h-0 flex-1 p-3">
-            {commissionPdfOpenId ? (
-              <iframe
-                id="commission-summary-pdf-frame"
-                key={commissionPdfOpenId}
-                title="Commission summary PDF"
-                src={`/commission/${commissionPdfOpenId}/pdf`}
-                className="h-[min(72vh_640px)] w-full rounded-sm border border-border/60 bg-white"
-              />
-            ) : null}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={paymentReceiptPdfOpenId != null}
-        onOpenChange={(open) => {
-          if (!open) setPaymentReceiptPdfOpenId(null);
-        }}
-      >
-        <DialogContent className="flex max-h-[90vh] max-w-[920px] flex-col gap-0 overflow-hidden p-0 sm:max-w-[920px]">
-          <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border/60 px-4 py-3 pr-14">
-            <DialogTitle className="text-left text-base font-semibold text-text-primary">
-              Payment Receipt
-            </DialogTitle>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" className="h-8" asChild>
-                <a
-                  href={
-                    paymentReceiptPdfOpenId
-                      ? `/commission-payment/${paymentReceiptPdfOpenId}/pdf?download=1`
-                      : "#"
-                  }
-                  download
-                >
-                  Download PDF
-                </a>
+                Cancel
               </Button>
               <Button
                 type="button"
-                variant="outline"
-                size="sm"
-                className="h-8"
-                onClick={() => {
-                  const el = document.getElementById(
-                    "commission-payment-pdf-frame"
-                  ) as HTMLIFrameElement | null;
-                  try {
-                    el?.contentWindow?.focus();
-                    el?.contentWindow?.print();
-                  } catch {
-                    if (paymentReceiptPdfOpenId) {
-                      window.open(
-                        `/commission-payment/${paymentReceiptPdfOpenId}/pdf`,
-                        "_blank",
-                        "noopener,noreferrer"
-                      );
-                    }
-                  }
-                }}
+                className="h-10 rounded-lg bg-red-600 text-[14px] font-medium text-white hover:bg-red-700"
+                disabled={paymentDeleteSubmitting}
+                onClick={() => void confirmDeletePaymentRecord()}
               >
-                Print PDF
+                {paymentDeleteSubmitting ? "Deleting…" : "Delete"}
               </Button>
-            </div>
-          </div>
-          <div className="min-h-0 flex-1 p-3">
-            {paymentReceiptPdfOpenId ? (
-              <iframe
-                id="commission-payment-pdf-frame"
-                key={paymentReceiptPdfOpenId}
-                title="Payment Receipt PDF"
-                src={`/commission-payment/${paymentReceiptPdfOpenId}/pdf`}
-                className="h-[min(72vh_640px)] w-full rounded-sm border border-border/60 bg-white"
-              />
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={commissionDeleteTarget != null}
+          onOpenChange={(open) => {
+            if (!open) setCommissionDeleteTarget(null);
+          }}
+        >
+          <DialogContent className={COMMISSION_MODAL}>
+            <DialogHeader className="text-left">
+              <DialogTitle className="text-xl font-bold text-text-primary">
+                Delete commission
+              </DialogTitle>
+            </DialogHeader>
+            <p className="text-[13px] leading-relaxed text-text-secondary">
+              Remove commission for{" "}
+              <span className="font-medium text-text-primary">
+                {commissionDeleteTarget?.person_name?.trim() || "this person"}
+              </span>
+              ? This cannot be undone.
+            </p>
+            <DialogFooter className="mt-6 border-t border-[#F0EDE8] bg-transparent pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 rounded-lg border-gray-100 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
+                onClick={() => setCommissionDeleteTarget(null)}
+                disabled={commissionDeleteSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                className="h-10 rounded-lg bg-red-600 text-[14px] font-medium text-white hover:bg-red-700"
+                disabled={commissionDeleteSubmitting}
+                onClick={() => void confirmDeleteCommission()}
+              >
+                {commissionDeleteSubmitting ? "Deleting…" : "Delete"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={receiptUploadModal != null}
+          onOpenChange={(open) => {
+            if (!open) resetReceiptUploadModal();
+          }}
+        >
+          <DialogContent className={RECEIPT_UPLOAD_MODAL}>
+            {receiptUploadModal ? (
+              <>
+                <DialogHeader className="space-y-2 text-left">
+                  <DialogTitle className="text-lg font-semibold text-text-primary">
+                    Upload Receipt
+                  </DialogTitle>
+                  <DialogDescription className="text-[13px] text-text-secondary">
+                    {receiptUploadModal.payment.payment_date || "—"} · $
+                    {fmtUsd(receiptUploadModal.payment.amount)}
+                  </DialogDescription>
+                </DialogHeader>
+                <input
+                  ref={receiptUploadInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf"
+                  className="sr-only"
+                  tabIndex={-1}
+                  aria-hidden
+                  onChange={onReceiptUploadInputChange}
+                />
+                <div
+                  role="button"
+                  tabIndex={0}
+                  className={cn(
+                    "mt-4 flex cursor-pointer flex-col items-center justify-center rounded-[10px] border-2 border-dashed px-6 py-10 transition-colors outline-none",
+                    receiptUploadDragging
+                      ? "border-[#2563EB] bg-[#EFF6FF]"
+                      : "border-[#D1D5DB] bg-[#F9FAFB]",
+                    receiptUploadSubmitting && "pointer-events-none opacity-70"
+                  )}
+                  onClick={() => !receiptUploadSubmitting && receiptUploadInputRef.current?.click()}
+                  onKeyDown={(ev) => {
+                    if (receiptUploadSubmitting) return;
+                    if (ev.key === "Enter" || ev.key === " ") {
+                      ev.preventDefault();
+                      receiptUploadInputRef.current?.click();
+                    }
+                  }}
+                  onDragEnter={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setReceiptUploadDragging(true);
+                  }}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setReceiptUploadDragging(true);
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setReceiptUploadDragging(false);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setReceiptUploadDragging(false);
+                    if (receiptUploadSubmitting) return;
+                    const f = e.dataTransfer.files?.[0];
+                    if (f) void submitReceiptFile(f);
+                  }}
+                >
+                  <Upload className="mb-3 h-8 w-8 text-[#9CA3AF]" aria-hidden />
+                  <p className="text-center text-[14px] font-medium text-[#374151]">
+                    Drag &amp; drop or click to upload
+                  </p>
+                  <p className="mt-1 text-center text-[12px] text-[#9CA3AF]">JPG, PNG, or PDF</p>
+                </div>
+                {receiptUploadSubmitting ? (
+                  <div className="mt-4 space-y-2">
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
+                      <div
+                        className="h-full rounded-full bg-[#2563EB] transition-[width] duration-150"
+                        style={{ width: `${Math.max(0, Math.min(100, receiptUploadProgress))}%` }}
+                      />
+                    </div>
+                    <p className="text-center text-[12px] text-text-secondary">Uploading…</p>
+                  </div>
+                ) : null}
+                {receiptUploadError ? (
+                  <p className="mt-3 text-[13px] text-red-600" role="alert">
+                    {receiptUploadError}
+                  </p>
+                ) : null}
+                <DialogFooter className="mt-6 border-t border-[#F0EDE8] bg-transparent pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-10 rounded-lg border-gray-100 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
+                    disabled={receiptUploadSubmitting}
+                    onClick={() => resetReceiptUploadModal()}
+                  >
+                    Cancel
+                  </Button>
+                </DialogFooter>
+              </>
             ) : null}
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={commissionPdfOpenId != null}
+          onOpenChange={(open) => {
+            if (!open) setCommissionPdfOpenId(null);
+          }}
+        >
+          <DialogContent className="flex max-h-[90vh] max-w-[920px] flex-col gap-0 overflow-hidden p-0 sm:max-w-[920px]">
+            <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border/60 px-4 py-3 pr-14">
+              <DialogTitle className="text-left text-base font-semibold text-text-primary">
+                Commission summary
+              </DialogTitle>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" className="h-8" asChild>
+                  <a
+                    href={
+                      commissionPdfOpenId
+                        ? `/commission/${commissionPdfOpenId}/pdf?download=1`
+                        : "#"
+                    }
+                    download
+                  >
+                    Download PDF
+                  </a>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  onClick={() => {
+                    const el = document.getElementById(
+                      "commission-summary-pdf-frame"
+                    ) as HTMLIFrameElement | null;
+                    try {
+                      el?.contentWindow?.focus();
+                      el?.contentWindow?.print();
+                    } catch {
+                      if (commissionPdfOpenId) {
+                        window.open(
+                          `/commission/${commissionPdfOpenId}/pdf`,
+                          "_blank",
+                          "noopener,noreferrer"
+                        );
+                      }
+                    }
+                  }}
+                >
+                  Print PDF
+                </Button>
+              </div>
+            </div>
+            <div className="min-h-0 flex-1 p-3">
+              {commissionPdfOpenId ? (
+                <iframe
+                  id="commission-summary-pdf-frame"
+                  key={commissionPdfOpenId}
+                  title="Commission summary PDF"
+                  src={`/commission/${commissionPdfOpenId}/pdf`}
+                  className="h-[min(72vh_640px)] w-full rounded-sm border border-border/60 bg-white"
+                />
+              ) : null}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={paymentReceiptPdfOpenId != null}
+          onOpenChange={(open) => {
+            if (!open) setPaymentReceiptPdfOpenId(null);
+          }}
+        >
+          <DialogContent className="flex max-h-[90vh] max-w-[920px] flex-col gap-0 overflow-hidden p-0 sm:max-w-[920px]">
+            <div className="flex flex-shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border/60 px-4 py-3 pr-14">
+              <DialogTitle className="text-left text-base font-semibold text-text-primary">
+                Payment Receipt
+              </DialogTitle>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" className="h-8" asChild>
+                  <a
+                    href={
+                      paymentReceiptPdfOpenId
+                        ? `/commission-payment/${paymentReceiptPdfOpenId}/pdf?download=1`
+                        : "#"
+                    }
+                    download
+                  >
+                    Download PDF
+                  </a>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  onClick={() => {
+                    const el = document.getElementById(
+                      "commission-payment-pdf-frame"
+                    ) as HTMLIFrameElement | null;
+                    try {
+                      el?.contentWindow?.focus();
+                      el?.contentWindow?.print();
+                    } catch {
+                      if (paymentReceiptPdfOpenId) {
+                        window.open(
+                          `/commission-payment/${paymentReceiptPdfOpenId}/pdf`,
+                          "_blank",
+                          "noopener,noreferrer"
+                        );
+                      }
+                    }
+                  }}
+                >
+                  Print PDF
+                </Button>
+              </div>
+            </div>
+            <div className="min-h-0 flex-1 p-3">
+              {paymentReceiptPdfOpenId ? (
+                <iframe
+                  id="commission-payment-pdf-frame"
+                  key={paymentReceiptPdfOpenId}
+                  title="Payment Receipt PDF"
+                  src={`/commission-payment/${paymentReceiptPdfOpenId}/pdf`}
+                  className="h-[min(72vh_640px)] w-full rounded-sm border border-border/60 bg-white"
+                />
+              ) : null}
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   );
 }
