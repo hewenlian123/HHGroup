@@ -13,6 +13,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/components/toast/toast-provider";
 import { createInvoiceDraftAction } from "./actions";
 import { getCompanyProfile } from "@/lib/company-profile";
+import { formatCurrency } from "@/lib/formatters";
 
 type ProjectOption = { id: string; name: string };
 type CustomerOption = { id: string; name: string | null };
@@ -401,7 +402,7 @@ export default function NewInvoiceClient() {
                       />
                     </td>
                     <td className="py-2 px-4 text-right tabular-nums font-medium">
-                      ${amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      {formatCurrency(amount)}
                     </td>
                     <td className="py-2 px-2 text-right">
                       <Button
@@ -429,23 +430,17 @@ export default function NewInvoiceClient() {
           <div className="w-full max-w-sm text-sm space-y-1">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Subtotal</span>
-              <span className="tabular-nums">
-                ${computedSubtotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-              </span>
+              <span className="tabular-nums">{formatCurrency(computedSubtotal)}</span>
             </div>
             {computedTax > 0 ? (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Tax ({taxPct || 0}%)</span>
-                <span className="tabular-nums">
-                  ${computedTax.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                </span>
+                <span className="tabular-nums">{formatCurrency(computedTax)}</span>
               </div>
             ) : null}
             <div className="flex justify-between font-medium pt-2 border-t border-zinc-200/60">
               <span>Total</span>
-              <span className="tabular-nums">
-                ${computedTotal.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-              </span>
+              <span className="tabular-nums">{formatCurrency(computedTotal)}</span>
             </div>
           </div>
         </div>

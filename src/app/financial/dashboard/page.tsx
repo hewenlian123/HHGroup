@@ -3,6 +3,7 @@ import { getCompanyFinancialDashboard } from "@/lib/data";
 import { PageLayout, PageHeader, SectionHeader } from "@/components/base";
 import { cn } from "@/lib/utils";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
+import { formatCurrency } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
 
@@ -14,10 +15,6 @@ const EMPTY_DASHBOARD = {
   profit: 0,
   cashflow: 0,
 } as const;
-
-function fmtUsd(n: number): string {
-  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 
 export default async function CompanyFinancialDashboardPage() {
   let d: Awaited<ReturnType<typeof getCompanyFinancialDashboard>> = { ...EMPTY_DASHBOARD };
@@ -69,10 +66,12 @@ export default async function CompanyFinancialDashboardPage() {
               className={cn(
                 "kpi-metric-value mt-0.5 block",
                 m.positiveGood !== undefined &&
-                  (m.value >= 0 ? "text-hh-profit-positive" : "text-red-600")
+                  (m.value >= 0
+                    ? "text-emerald-700 dark:text-emerald-400"
+                    : "text-rose-600 dark:text-rose-400")
               )}
             >
-              {m.value >= 0 ? "" : "−"}${fmtUsd(Math.abs(m.value))}
+              {formatCurrency(m.value)}
             </span>
           </div>
         ))}

@@ -2,10 +2,7 @@ import Link from "next/link";
 import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
 import { getLaborEntriesWithJoins, getLaborPaymentsByDateRange, getWorkers } from "@/lib/data";
 import { MonthlyLaborMonthSelect } from "./monthly-month-select";
-
-function fmtUsd(n: number): string {
-  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+import { formatCurrency } from "@/lib/formatters";
 
 function getDefaultMonth(): string {
   const d = new Date();
@@ -117,11 +114,11 @@ export default async function MonthlyLaborPage({ searchParams }: Props) {
       <div className="space-y-0 border-b border-border/60">
         <div className="flex items-baseline justify-between py-3 border-b border-border/40">
           <span className="text-sm text-muted-foreground">Total Earned</span>
-          <span className="text-xl font-medium tabular-nums">${fmtUsd(totalEarned)}</span>
+          <span className="text-xl font-medium tabular-nums">{formatCurrency(totalEarned)}</span>
         </div>
         <div className="flex items-baseline justify-between py-3 border-b border-border/40">
           <span className="text-sm text-muted-foreground">Total Paid</span>
-          <span className="text-xl font-medium tabular-nums">${fmtUsd(totalPaid)}</span>
+          <span className="text-xl font-medium tabular-nums">{formatCurrency(totalPaid)}</span>
         </div>
         <div className="flex items-baseline justify-between py-3 border-b border-border/40">
           <span className="text-sm text-muted-foreground">Outstanding</span>
@@ -130,7 +127,7 @@ export default async function MonthlyLaborPage({ searchParams }: Props) {
               outstanding > 0 ? "text-red-600 dark:text-red-400" : "text-foreground"
             }`}
           >
-            ${fmtUsd(outstanding)}
+            {formatCurrency(outstanding)}
           </span>
         </div>
       </div>
@@ -167,9 +164,13 @@ export default async function MonthlyLaborPage({ searchParams }: Props) {
               byWorkerRows.map((r) => (
                 <tr key={r.worker_id} className="border-b border-border/40">
                   <td className="py-1.5 px-3">{r.worker_name}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.earned)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.paid)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.balance)}</td>
+                  <td className="py-1.5 px-3 text-right tabular-nums">
+                    {formatCurrency(r.earned)}
+                  </td>
+                  <td className="py-1.5 px-3 text-right tabular-nums">{formatCurrency(r.paid)}</td>
+                  <td className="py-1.5 px-3 text-right tabular-nums">
+                    {formatCurrency(r.balance)}
+                  </td>
                 </tr>
               ))
             )}
@@ -203,7 +204,7 @@ export default async function MonthlyLaborPage({ searchParams }: Props) {
               byProjectRows.map((r) => (
                 <tr key={r.project_id} className="border-b border-border/40">
                   <td className="py-1.5 px-3">{r.project_name}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.total)}</td>
+                  <td className="py-1.5 px-3 text-right tabular-nums">{formatCurrency(r.total)}</td>
                 </tr>
               ))
             )}

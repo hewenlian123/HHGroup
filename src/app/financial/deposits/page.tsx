@@ -17,18 +17,8 @@ import {
   mobileListPagePaddingClass,
 } from "@/components/mobile/mobile-list-chrome";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
-
-function money(n: number): string {
-  return `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-function formatReadableDate(dateStr: string | null | undefined): string {
-  const s = (dateStr ?? "").slice(0, 10);
-  const [y, m, d] = s.split("-").map(Number);
-  if (!y || !m || !d) return s || "—";
-  const dt = new Date(y, m - 1, d);
-  return dt.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
-}
+import { formatCurrency, formatDate, formatInteger } from "@/lib/formatters";
+import { TYPO } from "@/lib/typography";
 
 const depositsShell =
   "rounded-xl border border-zinc-200/70 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_4px_24px_rgba(0,0,0,0.045)] dark:border-border/50 dark:bg-card/80 dark:shadow-none md:rounded-2xl";
@@ -251,7 +241,7 @@ function DepositsPageInner() {
                   Total deposited
                 </div>
                 <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
-                  {money(summary.totalDeposited)}
+                  {formatCurrency(summary.totalDeposited)}
                 </div>
               </div>
             </div>
@@ -264,7 +254,7 @@ function DepositsPageInner() {
                   Deposit count
                 </div>
                 <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
-                  {summary.depositCount.toLocaleString("en-US")}
+                  {formatInteger(summary.depositCount)}
                 </div>
               </div>
             </div>
@@ -277,7 +267,7 @@ function DepositsPageInner() {
                   This month
                 </div>
                 <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
-                  {money(summary.thisMonthTotal)}
+                  {formatCurrency(summary.thisMonthTotal)}
                 </div>
               </div>
             </div>
@@ -290,7 +280,7 @@ function DepositsPageInner() {
                   Linked payments
                 </div>
                 <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
-                  {summary.linkedPayments.toLocaleString("en-US")}
+                  {formatInteger(summary.linkedPayments)}
                 </div>
               </div>
             </div>
@@ -443,7 +433,7 @@ function DepositsPageInner() {
                   className="group px-3 py-3 transition-colors hover:bg-muted/25 md:grid md:grid-cols-[minmax(120px,0.7fr)_minmax(180px,1.1fr)_minmax(180px,1fr)_minmax(120px,0.75fr)_minmax(160px,0.9fr)_minmax(120px,0.7fr)_minmax(110px,0.6fr)_44px] md:items-center md:gap-3"
                 >
                   <div className="font-mono text-sm tabular-nums text-muted-foreground md:text-sm">
-                    {formatReadableDate(row.date)}
+                    {formatDate(row.date)}
                   </div>
                   <div className="min-w-0">
                     <div className="truncate text-sm font-semibold text-foreground">
@@ -468,8 +458,10 @@ function DepositsPageInner() {
                     <div className="md:hidden text-xs text-muted-foreground">
                       {(row.payment_method ?? "—") + " · " + (row.account ?? "—")}
                     </div>
-                    <div className="text-sm font-semibold tabular-nums text-hh-profit-positive dark:text-hh-profit-positive">
-                      {money(row.amount)}
+                    <div
+                      className={cn(TYPO.amount, "text-sm text-emerald-700 dark:text-emerald-400")}
+                    >
+                      {formatCurrency(row.amount)}
                     </div>
                   </div>
                   <div>

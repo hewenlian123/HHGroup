@@ -40,6 +40,7 @@ import {
   type ExpenseDateGroup,
 } from "@/lib/expense-list-date-groups";
 import { ExpenseBulkActionBar } from "./expense-bulk-action-bar";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 /**
  * Under description: receipt preview or missing receipt (own line, aligned with text block); other signals below.
@@ -48,7 +49,7 @@ const chipWarn =
   "inline-flex items-center rounded-md border border-amber-500/18 bg-amber-500/[0.07] px-1.5 py-0.5 text-[10px] font-medium leading-tight text-amber-950/78 dark:border-amber-500/14 dark:bg-amber-500/[0.09] dark:text-amber-100/78";
 
 const chipDup =
-  "inline-flex items-center gap-0.5 rounded-md border border-violet-400/15 bg-violet-500/[0.06] px-1.5 py-0.5 text-[10px] font-medium leading-tight text-violet-800/75 dark:border-violet-500/12 dark:bg-violet-500/[0.08] dark:text-violet-200/75";
+  "inline-flex items-center gap-0.5 rounded-md border border-zinc-400/15 bg-zinc-500/[0.06] px-1.5 py-0.5 text-[10px] font-medium leading-tight text-zinc-700/75 dark:border-zinc-500/12 dark:bg-zinc-500/[0.08] dark:text-zinc-200/75";
 
 function InboxDescriptionSignals({
   row,
@@ -210,7 +211,7 @@ function InboxDescriptionSignals({
             </span>
           ) : null}
           {duplicate ? (
-            <span className="inline-flex items-center gap-1 text-violet-700/80 dark:text-violet-300/85">
+            <span className="inline-flex items-center gap-1 text-zinc-600/85 dark:text-zinc-300/85">
               <Copy className="h-3 w-3 shrink-0 opacity-75" strokeWidth={2} aria-hidden />
               Duplicate
             </span>
@@ -301,16 +302,7 @@ function primaryCategory(e: Expense): string {
 }
 
 function inboxSubtitleDate(iso: string | undefined): string {
-  if (!iso) return "—";
-  const d = new Date(`${iso.slice(0, 10)}T12:00:00`);
-  if (Number.isNaN(d.getTime())) return iso.slice(0, 10);
-  const now = new Date();
-  const sameYear = d.getFullYear() === now.getFullYear();
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    ...(sameYear ? {} : { year: "numeric" }),
-  }).format(d);
+  return formatDate(iso, "compact");
 }
 
 type AvatarKind = "unknown" | "amazon" | "gas" | "cash" | "hardware" | "default";
@@ -398,7 +390,7 @@ function inboxStatusBadgeStyle(status: string | undefined): { dot: string; label
   }
   if (expenseNeedsReviewFromDb(status)) {
     return {
-      dot: "bg-orange-500",
+      dot: "bg-amber-500",
       label: "Needs Review",
     };
   }
@@ -516,10 +508,6 @@ function RowActionsMenu({ row }: { row: Expense }) {
 
 const COL_COUNT = 6;
 
-function formatGroupMoney(n: number): string {
-  return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
 function DateGroupDesktopHeader({
   chunk,
   expanded,
@@ -583,7 +571,7 @@ function DateGroupDesktopHeader({
               <span className="tabular-nums">{chunk.itemCount}</span>
               <span aria-hidden>·</span>
               <span className="tabular-nums text-red-600 dark:text-red-500/90">
-                −${formatGroupMoney(chunk.totalAmount)}
+                {formatCurrency(-chunk.totalAmount)}
               </span>
               {chunk.missingReceiptCount > 0 ? (
                 <>
@@ -701,7 +689,7 @@ function DesktopRows({
                           "bg-emerald-500/[0.06] shadow-[inset_0_0_0_1px_rgba(16,185,129,0.28)] dark:bg-emerald-500/[0.08] dark:shadow-[inset_0_0_0_1px_rgba(16,185,129,0.22)]",
                         a.listView === "unreviewed" &&
                           a.activeExpenseId === row.id &&
-                          "ring-1 ring-inset ring-orange-400/35 dark:ring-orange-500/30",
+                          "ring-1 ring-inset ring-amber-400/35 dark:ring-amber-500/30",
                         rowSelected &&
                           (triageLayout
                             ? "bg-zinc-100 shadow-[inset_3px_0_0_0_rgba(113,113,122,0.65)] ring-1 ring-inset ring-zinc-400/50 dark:bg-zinc-900/60 dark:shadow-[inset_3px_0_0_0_rgba(161,161,170,0.45)] dark:ring-zinc-600/55"
@@ -783,7 +771,7 @@ function DesktopRows({
                           className={cn(
                             "inline-flex h-6 max-h-6 items-center gap-1 rounded-full border px-2 py-0 text-[11px] font-medium shadow-none",
                             expenseNeedsReviewFromDb(status)
-                              ? "border-orange-200/60 bg-orange-50/80 text-orange-900/90 dark:border-orange-500/20 dark:bg-orange-950/30 dark:text-orange-100"
+                              ? "border-amber-200/60 bg-amber-50/80 text-amber-900/90 dark:border-amber-500/20 dark:bg-amber-950/30 dark:text-amber-100"
                               : "border-emerald-200/60 bg-emerald-50/80 text-emerald-900/90 dark:border-emerald-500/20 dark:bg-emerald-950/30 dark:text-emerald-100"
                           )}
                         >
@@ -801,11 +789,7 @@ function DesktopRows({
                             triageLayout ? "text-[15px] leading-none tracking-tight" : "text-sm"
                           )}
                         >
-                          −$
-                          {rowTotal.toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}
+                          {formatCurrency(-rowTotal)}
                         </span>
                       </td>
                       <td className="w-10 shrink-0 text-right">
@@ -885,7 +869,7 @@ function DateGroupMobileHeader({
               <span className="tabular-nums">{chunk.itemCount} items</span>
               <span aria-hidden>·</span>
               <span className="tabular-nums text-red-600 dark:text-red-500/90">
-                −${formatGroupMoney(chunk.totalAmount)}
+                {formatCurrency(-chunk.totalAmount)}
               </span>
               {chunk.missingReceiptCount > 0 ? (
                 <>
@@ -1011,7 +995,7 @@ function MobileRows({
                           "bg-emerald-500/[0.06] shadow-[inset_0_0_0_1px_rgba(16,185,129,0.28)] dark:bg-emerald-500/[0.08] dark:shadow-[inset_0_0_0_1px_rgba(16,185,129,0.22)]",
                         a.listView === "unreviewed" &&
                           a.activeExpenseId === row.id &&
-                          "ring-1 ring-inset ring-orange-400/35 dark:ring-orange-500/30",
+                          "ring-1 ring-inset ring-amber-400/35 dark:ring-amber-500/30",
                         rowSelected &&
                           (triageLayout
                             ? "bg-zinc-100 shadow-[inset_3px_0_0_0_rgba(113,113,122,0.65)] ring-1 ring-inset ring-zinc-400/50 dark:bg-zinc-900/60 dark:shadow-[inset_3px_0_0_0_rgba(161,161,170,0.45)] dark:ring-zinc-600/55"
@@ -1093,11 +1077,7 @@ function MobileRows({
                                   triageLayout ? "text-base leading-none tracking-tight" : "text-sm"
                                 )}
                               >
-                                −$
-                                {rowTotal.toLocaleString(undefined, {
-                                  minimumFractionDigits: 2,
-                                  maximumFractionDigits: 2,
-                                })}
+                                {formatCurrency(-rowTotal)}
                               </span>
                             </div>
                           </div>
@@ -1108,7 +1088,7 @@ function MobileRows({
                               className={cn(
                                 "inline-flex h-6 max-h-6 items-center gap-1 rounded-full border px-2 py-0 text-[11px] font-medium shadow-none",
                                 expenseNeedsReviewFromDb(status)
-                                  ? "border-orange-200/60 bg-orange-50/80 text-orange-900/90 dark:border-orange-500/20 dark:bg-orange-950/30 dark:text-orange-100"
+                                  ? "border-amber-200/60 bg-amber-50/80 text-amber-900/90 dark:border-amber-500/20 dark:bg-amber-950/30 dark:text-amber-100"
                                   : "border-emerald-200/60 bg-emerald-50/80 text-emerald-900/90 dark:border-emerald-500/20 dark:bg-emerald-950/30 dark:text-emerald-100"
                               )}
                             >

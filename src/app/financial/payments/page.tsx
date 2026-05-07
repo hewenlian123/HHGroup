@@ -20,18 +20,8 @@ import {
 } from "@/components/mobile/mobile-list-chrome";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { ConfirmDialog } from "@/components/base";
-
-function money(n: number): string {
-  return `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-function formatReadableDate(dateStr: string | null | undefined): string {
-  const s = (dateStr ?? "").slice(0, 10);
-  const [y, m, d] = s.split("-").map(Number);
-  if (!y || !m || !d) return s || "—";
-  const dt = new Date(y, m - 1, d);
-  return dt.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
-}
+import { formatCurrency, formatDate, formatInteger } from "@/lib/formatters";
+import { TYPO } from "@/lib/typography";
 
 const paymentsShell =
   "rounded-xl border border-zinc-200/70 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_4px_24px_rgba(0,0,0,0.045)] dark:border-border/50 dark:bg-card/80 dark:shadow-none md:rounded-2xl";
@@ -216,7 +206,7 @@ function PaymentsReceivedPageInner() {
                   Total received
                 </div>
                 <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
-                  {money(summary.totalReceived)}
+                  {formatCurrency(summary.totalReceived)}
                 </div>
               </div>
             </div>
@@ -229,7 +219,7 @@ function PaymentsReceivedPageInner() {
                   Payments
                 </div>
                 <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
-                  {summary.paymentsCount.toLocaleString("en-US")}
+                  {formatInteger(summary.paymentsCount)}
                 </div>
               </div>
             </div>
@@ -242,7 +232,7 @@ function PaymentsReceivedPageInner() {
                   This month
                 </div>
                 <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
-                  {money(summary.thisMonthTotal)}
+                  {formatCurrency(summary.thisMonthTotal)}
                 </div>
               </div>
             </div>
@@ -255,7 +245,7 @@ function PaymentsReceivedPageInner() {
                   Linked invoices
                 </div>
                 <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
-                  {summary.linkedInvoices.toLocaleString("en-US")}
+                  {formatInteger(summary.linkedInvoices)}
                 </div>
               </div>
             </div>
@@ -268,7 +258,7 @@ function PaymentsReceivedPageInner() {
                   Unapplied/unknown
                 </div>
                 <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
-                  {summary.unknownOrUnapplied.toLocaleString("en-US")}
+                  {formatInteger(summary.unknownOrUnapplied)}
                 </div>
               </div>
             </div>
@@ -454,10 +444,12 @@ function PaymentsReceivedPageInner() {
 
                   <div className="mt-2 flex items-center justify-between gap-3 md:mt-0 md:block md:text-right">
                     <div className="md:hidden text-xs text-muted-foreground">
-                      {formatReadableDate(row.payment_date)}
+                      {formatDate(row.payment_date)}
                     </div>
-                    <div className="text-sm font-semibold tabular-nums text-hh-profit-positive dark:text-hh-profit-positive">
-                      {money(row.amount)}
+                    <div
+                      className={cn(TYPO.amount, "text-sm text-emerald-700 dark:text-emerald-400")}
+                    >
+                      {formatCurrency(row.amount)}
                     </div>
                   </div>
 
@@ -470,7 +462,7 @@ function PaymentsReceivedPageInner() {
                   </div>
 
                   <div className="hidden md:block text-sm font-mono tabular-nums text-muted-foreground">
-                    {formatReadableDate(row.payment_date)}
+                    {formatDate(row.payment_date)}
                   </div>
 
                   <div className="mt-2 flex items-center justify-between gap-2 md:mt-0 md:block">
@@ -509,7 +501,7 @@ function PaymentsReceivedPageInner() {
           title="Void payment?"
           description={
             deleteTarget
-              ? `This will void the payment for ${deleteTarget.customer_name || "customer"} on ${formatReadableDate(
+              ? `This will void the payment for ${deleteTarget.customer_name || "customer"} on ${formatDate(
                   deleteTarget.payment_date
                 )}. This cannot be undone.`
               : undefined

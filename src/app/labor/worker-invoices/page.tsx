@@ -40,15 +40,7 @@ import {
 } from "@/lib/data";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
-
-function fmtUsd(n: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(n);
-}
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 const invShell =
   "rounded-xl border border-zinc-200/70 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_4px_24px_rgba(0,0,0,0.045)] dark:border-border/50 dark:bg-card/80 dark:shadow-none md:rounded-2xl";
@@ -102,7 +94,7 @@ function thisMonthPrefix(): string {
 }
 
 function thisMonthLabel(): string {
-  return new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(new Date());
+  return formatDate(new Date(), "month");
 }
 
 function InvoiceStatusChip({ status }: { status: WorkerInvoiceStatus }) {
@@ -434,7 +426,7 @@ export default function WorkerInvoicesPage() {
                   Total invoiced
                 </p>
                 <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                  {fmtUsd(summary.totalInvoiced)}
+                  {formatCurrency(summary.totalInvoiced)}
                 </p>
                 <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">All time</p>
               </div>
@@ -491,7 +483,7 @@ export default function WorkerInvoicesPage() {
                   Outstanding
                 </p>
                 <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                  {fmtUsd(summary.outstanding)}
+                  {formatCurrency(summary.outstanding)}
                 </p>
                 <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">Open balance</p>
               </div>
@@ -514,7 +506,7 @@ export default function WorkerInvoicesPage() {
                   This month
                 </p>
                 <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                  {fmtUsd(summary.thisMonth)}
+                  {formatCurrency(summary.thisMonth)}
                 </p>
                 <p className="mt-0.5 truncate text-[9px] leading-none text-muted-foreground">
                   {thisMonthLabel()}
@@ -850,7 +842,7 @@ export default function WorkerInvoicesPage() {
                         Amount
                       </span>
                       <span className="max-w-full min-w-0 text-right text-xl font-semibold tabular-nums tracking-tight text-zinc-800 dark:text-zinc-100">
-                        {fmtUsd(r.amount)}
+                        {formatCurrency(r.amount)}
                       </span>
                     </div>
                     <dl className="grid grid-cols-1 gap-x-3 gap-y-2 text-xs sm:grid-cols-2">
@@ -867,7 +859,7 @@ export default function WorkerInvoicesPage() {
                           Date
                         </dt>
                         <dd className="truncate pt-0.5 font-mono text-sm tabular-nums text-zinc-500 dark:text-zinc-400">
-                          {r.createdAt.slice(0, 10)}
+                          {formatDate(r.createdAt)}
                         </dd>
                       </div>
                       <div className="min-w-0 sm:col-span-2">
@@ -1038,13 +1030,13 @@ export default function WorkerInvoicesPage() {
                           {invNo}
                         </td>
                         <td className="whitespace-nowrap px-3 py-2.5 text-right align-middle text-base font-semibold tabular-nums tracking-tight text-zinc-800 dark:text-zinc-100">
-                          {fmtUsd(r.amount)}
+                          {formatCurrency(r.amount)}
                         </td>
                         <td className="px-3 py-2.5 align-middle">
                           <InvoiceStatusChip status={r.status} />
                         </td>
                         <td className="whitespace-nowrap px-3 py-2.5 text-right align-middle font-mono text-sm tabular-nums text-zinc-500 dark:text-zinc-400">
-                          {r.createdAt.slice(0, 10)}
+                          {formatDate(r.createdAt)}
                         </td>
                         <td
                           className="whitespace-nowrap px-2 py-2.5 text-right align-middle"

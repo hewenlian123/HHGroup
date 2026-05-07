@@ -15,6 +15,7 @@ import { ArrowLeft, Send, CreditCard, FileText, Trash2 } from "lucide-react";
 import { deleteInvoiceAction } from "../actions";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/status-badge";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 type InvoiceStatus = "Draft" | "Sent" | "Partially Paid" | "Paid" | "Void";
 
@@ -60,10 +61,6 @@ const DEFAULT_METHODS = ["ACH", "Check", "Cash", "Zelle", "Card"];
 function safeNumber(v: unknown): number {
   const n = typeof v === "number" ? v : Number(v);
   return Number.isFinite(n) ? n : 0;
-}
-
-function money(n: number): string {
-  return `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 }
 
 function isMissingTableError(error: unknown): boolean {
@@ -610,7 +607,7 @@ export default function InvoiceDetailClient() {
           {projectName ?? "—"}
         </p>
         <p className="text-xs text-muted-foreground mt-1">
-          Issue: {invoice.issue_date} · Due: {invoice.due_date}
+          Issue: {formatDate(invoice.issue_date)} · Due: {formatDate(invoice.due_date)}
         </p>
       </Card>
 
@@ -649,10 +646,10 @@ export default function InvoiceDetailClient() {
                       {safeNumber(line.qty)}
                     </td>
                     <td className="py-3 px-4 text-right tabular-nums text-muted-foreground">
-                      {money(safeNumber(line.unit_price))}
+                      {formatCurrency(safeNumber(line.unit_price))}
                     </td>
                     <td className="py-3 px-4 text-right tabular-nums font-medium">
-                      {money(safeNumber(line.amount))}
+                      {formatCurrency(safeNumber(line.amount))}
                     </td>
                   </tr>
                 ))
@@ -672,27 +669,27 @@ export default function InvoiceDetailClient() {
         <div className="space-y-1 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Subtotal</span>
-            <span className="tabular-nums">{money(safeNumber(invoice.subtotal))}</span>
+            <span className="tabular-nums">{formatCurrency(safeNumber(invoice.subtotal))}</span>
           </div>
           {safeNumber(invoice.tax_amount) > 0 ? (
             <div className="flex justify-between">
               <span className="text-muted-foreground">
                 Tax {invoice.tax_pct != null ? `(${invoice.tax_pct}%)` : ""}
               </span>
-              <span className="tabular-nums">{money(safeNumber(invoice.tax_amount))}</span>
+              <span className="tabular-nums">{formatCurrency(safeNumber(invoice.tax_amount))}</span>
             </div>
           ) : null}
           <div className="flex justify-between font-medium pt-2 border-t border-zinc-200/60 dark:border-border">
             <span>Total</span>
-            <span className="tabular-nums">{money(safeNumber(invoice.total))}</span>
+            <span className="tabular-nums">{formatCurrency(safeNumber(invoice.total))}</span>
           </div>
           <div className="flex justify-between text-hh-profit-positive dark:text-hh-profit-positive">
             <span>Paid</span>
-            <span className="tabular-nums">{money(safeNumber(invoice.paidTotal))}</span>
+            <span className="tabular-nums">{formatCurrency(safeNumber(invoice.paidTotal))}</span>
           </div>
           <div className="flex justify-between font-medium">
             <span>Balance due</span>
-            <span className="tabular-nums">{money(safeNumber(invoice.balanceDue))}</span>
+            <span className="tabular-nums">{formatCurrency(safeNumber(invoice.balanceDue))}</span>
           </div>
         </div>
       </Card>
@@ -736,7 +733,9 @@ export default function InvoiceDetailClient() {
               <tbody>
                 {payments.map((p) => (
                   <tr key={p.id} className="border-b border-zinc-100/50 dark:border-border/30">
-                    <td className="py-3 px-4 tabular-nums">{p.paid_at}</td>
+                    <td className="py-3 px-4 font-mono tabular-nums tracking-tight text-zinc-500">
+                      {formatDate(p.paid_at)}
+                    </td>
                     <td
                       className={cn(
                         "py-3 px-4 text-right tabular-nums font-medium",
@@ -745,7 +744,7 @@ export default function InvoiceDetailClient() {
                           : "text-muted-foreground line-through"
                       )}
                     >
-                      {money(safeNumber(p.amount))}
+                      {formatCurrency(safeNumber(p.amount))}
                     </td>
                     <td className="py-3 px-4 text-muted-foreground">{p.method ?? "—"}</td>
                     <td className="py-3 px-4 text-muted-foreground">{p.memo ?? "—"}</td>

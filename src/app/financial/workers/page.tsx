@@ -8,10 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { WorkerBalanceRow } from "@/lib/data";
 import type { WorkerReimbursement } from "@/lib/worker-reimbursements-db";
-
-function fmtUsd(n: number): string {
-  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 export default function FinancialWorkersPage() {
   const [balances, setBalances] = React.useState<WorkerBalanceRow[]>([]);
@@ -104,11 +101,13 @@ export default function FinancialWorkersPage() {
                 >
                   {row.workerName ?? row.workerId}
                 </button>
-                <span className="text-sm font-medium tabular-nums">${fmtUsd(row.balance)}</span>
+                <span className="text-sm font-semibold tabular-nums tracking-tight">
+                  {formatCurrency(row.balance)}
+                </span>
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                <span>Pending ${fmtUsd(row.pendingAmount)}</span>
-                <span>Paid ${fmtUsd(row.paidAmount)}</span>
+                <span>Pending {formatCurrency(row.pendingAmount)}</span>
+                <span>Paid {formatCurrency(row.paidAmount)}</span>
               </div>
               <Button
                 size="sm"
@@ -168,14 +167,14 @@ export default function FinancialWorkersPage() {
                       {row.workerName ?? row.workerId}
                     </button>
                   </td>
-                  <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">
-                    ${fmtUsd(row.pendingAmount)}
+                  <td className="py-2 px-3 text-right font-semibold tabular-nums tracking-tight text-zinc-950">
+                    {formatCurrency(row.pendingAmount)}
                   </td>
-                  <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">
-                    ${fmtUsd(row.paidAmount)}
+                  <td className="py-2 px-3 text-right font-semibold tabular-nums tracking-tight text-zinc-950">
+                    {formatCurrency(row.paidAmount)}
                   </td>
-                  <td className="py-2 px-3 text-right tabular-nums font-medium">
-                    ${fmtUsd(row.balance)}
+                  <td className="py-2 px-3 text-right font-semibold tabular-nums tracking-tight text-zinc-950">
+                    {formatCurrency(row.balance)}
                   </td>
                   <td className="py-2 px-3">
                     <Button
@@ -239,8 +238,8 @@ export default function FinancialWorkersPage() {
                   ) : (
                     ledgerRows.map((r) => (
                       <tr key={r.id} className="border-b border-border/40">
-                        <td className="py-2 px-3 text-muted-foreground tabular-nums">
-                          {(r.createdAt ?? "").slice(0, 10)}
+                        <td className="py-2 px-3 font-mono tabular-nums tracking-tight text-zinc-500">
+                          {formatDate(r.createdAt)}
                         </td>
                         <td className="py-2 px-3 text-muted-foreground">
                           {r.projectName ?? r.projectId ?? "—"}
@@ -248,8 +247,8 @@ export default function FinancialWorkersPage() {
                         <td className="py-2 px-3 text-muted-foreground max-w-[120px] truncate">
                           {r.vendor ?? "—"}
                         </td>
-                        <td className="py-2 px-3 text-right tabular-nums font-medium">
-                          ${fmtUsd(r.amount)}
+                        <td className="py-2 px-3 text-right font-semibold tabular-nums tracking-tight text-zinc-950">
+                          {formatCurrency(r.amount)}
                         </td>
                         <td className="py-2 px-3 text-muted-foreground">{r.status}</td>
                       </tr>

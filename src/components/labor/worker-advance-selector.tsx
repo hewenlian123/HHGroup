@@ -1,6 +1,8 @@
 "use client";
 
 import * as React from "react";
+import { formatCurrency, formatDate } from "@/lib/formatters";
+import { TYPO } from "@/lib/typography";
 
 export type WorkerAdvanceOption = {
   id: string;
@@ -60,10 +62,8 @@ export function WorkerAdvanceSelector({
               />
               <div className="flex-1 space-y-0.5">
                 <div className="flex items-center justify-between">
-                  <span className="font-medium">${a.amount.toFixed(2)}</span>
-                  <span className="tabular-nums text-[11px] text-muted-foreground">
-                    {a.advanceDate}
-                  </span>
+                  <span className={TYPO.amount}>{formatCurrency(a.amount)}</span>
+                  <span className={TYPO.date}>{formatDate(a.advanceDate)}</span>
                 </div>
                 <div className="flex items-center justify-between text-[11px] text-muted-foreground">
                   <span className="truncate max-w-[160px]">{a.projectName ?? "No project"}</span>
@@ -76,7 +76,7 @@ export function WorkerAdvanceSelector({
       </div>
       <div className="flex items-center justify-between text-xs">
         <span className="text-muted-foreground">Total to deduct</span>
-        <span className="font-medium tabular-nums">${totalSelected.toFixed(2)}</span>
+        <span className={TYPO.amount}>{formatCurrency(totalSelected)}</span>
       </div>
     </div>
   );

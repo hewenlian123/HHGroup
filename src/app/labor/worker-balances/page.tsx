@@ -36,15 +36,7 @@ import {
 } from "@/components/mobile/mobile-list-chrome";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
-
-function fmtUsd(n: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(n);
-}
+import { formatCurrency } from "@/lib/formatters";
 
 type WorkerBalanceRow = {
   workerId: string;
@@ -68,12 +60,12 @@ const wbKpiIcon =
   "flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-100/90 text-zinc-500 md:h-8 md:w-8 dark:bg-muted dark:text-muted-foreground";
 
 const AVATAR_RING = [
-  "bg-sky-500/[0.09] text-sky-900 dark:text-sky-100",
-  "bg-violet-500/[0.09] text-violet-900 dark:text-violet-100",
+  "bg-slate-500/[0.08] text-slate-900 dark:text-slate-100",
+  "bg-zinc-500/[0.08] text-zinc-900 dark:text-zinc-100",
   "bg-emerald-500/[0.09] text-emerald-900 dark:text-emerald-100",
   "bg-amber-500/[0.09] text-amber-950 dark:text-amber-100",
   "bg-rose-500/[0.09] text-rose-900 dark:text-rose-100",
-  "bg-cyan-500/[0.09] text-cyan-900 dark:text-cyan-100",
+  "bg-slate-600/[0.08] text-slate-900 dark:text-slate-100",
 ];
 
 const workerAvatarRing =
@@ -312,7 +304,7 @@ export default function WorkerBalancesPage() {
                   Total balance
                 </p>
                 <p className="mt-0.5 truncate text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                  {fmtUsd(summary.totalBalance)}
+                  {formatCurrency(summary.totalBalance)}
                 </p>
               </div>
             </div>
@@ -330,7 +322,7 @@ export default function WorkerBalancesPage() {
                   Labor owed
                 </p>
                 <p className="mt-0.5 truncate text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                  {fmtUsd(summary.laborOwed)}
+                  {formatCurrency(summary.laborOwed)}
                 </p>
               </div>
             </div>
@@ -348,7 +340,7 @@ export default function WorkerBalancesPage() {
                   Reimbursements
                 </p>
                 <p className="mt-0.5 truncate text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                  {fmtUsd(summary.reimbursements)}
+                  {formatCurrency(summary.reimbursements)}
                 </p>
               </div>
             </div>
@@ -370,7 +362,7 @@ export default function WorkerBalancesPage() {
                   Advances
                 </p>
                 <p className="mt-0.5 truncate text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                  {fmtUsd(summary.advances)}
+                  {formatCurrency(summary.advances)}
                 </p>
               </div>
             </div>
@@ -528,7 +520,7 @@ export default function WorkerBalancesPage() {
                     </span>
                     <div className="flex flex-wrap items-center justify-end gap-2">
                       <span className="text-xl font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-foreground">
-                        {fmtUsd(r.balance)}
+                        {formatCurrency(r.balance)}
                       </span>
                       <BalanceStatusChip balance={r.balance} />
                     </div>
@@ -539,7 +531,7 @@ export default function WorkerBalancesPage() {
                         Labor
                       </dt>
                       <dd className="truncate tabular-nums text-zinc-800 dark:text-zinc-100">
-                        {fmtUsd(r.laborOwed)}
+                        {formatCurrency(r.laborOwed)}
                       </dd>
                     </div>
                     <div className="min-w-0">
@@ -547,7 +539,7 @@ export default function WorkerBalancesPage() {
                         Reimb.
                       </dt>
                       <dd className="truncate tabular-nums text-zinc-800 dark:text-zinc-100">
-                        {fmtUsd(r.reimbursements)}
+                        {formatCurrency(r.reimbursements)}
                       </dd>
                     </div>
                     <div className="min-w-0">
@@ -555,7 +547,7 @@ export default function WorkerBalancesPage() {
                         Payments
                       </dt>
                       <dd className="truncate tabular-nums text-zinc-800 dark:text-zinc-100">
-                        {fmtUsd(r.payments)}
+                        {formatCurrency(r.payments)}
                       </dd>
                     </div>
                     <div className="min-w-0">
@@ -563,7 +555,7 @@ export default function WorkerBalancesPage() {
                         Advances
                       </dt>
                       <dd className="truncate tabular-nums text-zinc-800 dark:text-zinc-100">
-                        {fmtUsd(r.advances)}
+                        {formatCurrency(r.advances)}
                       </dd>
                     </div>
                   </dl>
@@ -720,21 +712,21 @@ export default function WorkerBalancesPage() {
                         </div>
                       </td>
                       <td className="px-3 py-2.5 text-right align-middle text-[13px] tabular-nums text-zinc-600 dark:text-zinc-300">
-                        {fmtUsd(r.laborOwed)}
+                        {formatCurrency(r.laborOwed)}
                       </td>
                       <td className="px-3 py-2.5 text-right align-middle text-[13px] tabular-nums text-zinc-600 dark:text-zinc-300">
-                        {fmtUsd(r.reimbursements)}
+                        {formatCurrency(r.reimbursements)}
                       </td>
                       <td className="px-3 py-2.5 text-right align-middle text-[13px] tabular-nums text-zinc-600 dark:text-zinc-300">
-                        {fmtUsd(r.payments)}
+                        {formatCurrency(r.payments)}
                       </td>
                       <td className="px-3 py-2.5 text-right align-middle text-[13px] tabular-nums text-zinc-600 dark:text-zinc-300">
-                        {fmtUsd(r.advances)}
+                        {formatCurrency(r.advances)}
                       </td>
                       <td className="px-3 py-2.5 text-right align-middle">
                         <div className="flex flex-wrap items-center justify-end gap-2">
                           <span className="text-base font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-foreground">
-                            {fmtUsd(r.balance)}
+                            {formatCurrency(r.balance)}
                           </span>
                           <BalanceStatusChip balance={r.balance} />
                         </div>

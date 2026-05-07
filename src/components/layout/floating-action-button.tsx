@@ -40,12 +40,6 @@ const LINK_ACTIONS_REST = [
   { label: "New Expense", href: "/financial/expenses/new", icon: DollarSign },
 ] as const;
 
-function logQuickAction(label: string, detail?: string) {
-  if (process.env.NODE_ENV === "development") {
-    console.log("[QuickActions] click:", label, detail ?? "");
-  }
-}
-
 const FAB_SPRING = { type: "spring" as const, stiffness: 260, damping: 20 };
 
 const quickActionRowClass = cn(
@@ -73,7 +67,6 @@ function QuickActionNavButton({
       className={quickActionRowClass}
       onPointerDown={() => router.prefetch(href)}
       onClick={() => {
-        logQuickAction(label, href);
         onClose();
         requestAnimationFrame(() => {
           router.push(href);
@@ -119,7 +112,6 @@ export function FloatingActionButton() {
         <motion.button
           type="button"
           onClick={() => {
-            logQuickAction("FAB open sheet");
             setOpen(true);
           }}
           whileTap={{ scale: 0.9 }}
@@ -173,7 +165,6 @@ export function FloatingActionButton() {
                 className={quickActionRowClass}
                 onPointerDown={() => router.prefetch("/labor")}
                 onClick={() => {
-                  logQuickAction("Add Labor Entry", "/labor?addDaily=1");
                   const handled = laborAddEntry?.triggerOpenDailyEntry() ?? false;
                   setOpen(false);
                   if (!handled) {

@@ -5,25 +5,14 @@ import type {
 } from "@/lib/worker-payment-receipt-data";
 import type { DocumentCompanyProfileDTO } from "@/lib/document-company-profile";
 import { DocumentCompanyHeader } from "@/components/documents/document-company-header";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 function fmtUsd(n: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(n);
+  return formatCurrency(n);
 }
 
 function fmtDate(iso: string): string {
-  const s = iso.slice(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return iso;
-  const [y, m, d] = s.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  return formatDate(iso);
 }
 
 function sessionReceiptLabel(session: string): string {

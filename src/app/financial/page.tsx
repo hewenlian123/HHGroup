@@ -12,13 +12,10 @@ import { Button } from "@/components/ui/button";
 import { getCashOverview, getARSummary } from "@/lib/data";
 import { Banknote, Receipt, CheckCircle, AlertCircle, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/formatters";
+import { TYPO } from "@/lib/typography";
 
 export const dynamic = "force-dynamic";
-
-function formatMoney(amount: number): string {
-  const formatted = `$${Math.abs(amount).toLocaleString()}`;
-  return amount < 0 ? `−${formatted}` : formatted;
-}
 
 export default async function FinancialPage() {
   const [cash, ar] = await Promise.all([getCashOverview(), getARSummary()]);
@@ -46,7 +43,7 @@ export default async function FinancialPage() {
       </div>
 
       <section>
-        <h2 className="mb-4 text-lg font-semibold text-foreground">CASH OVERVIEW</h2>
+        <h2 className={cn("mb-4", TYPO.sectionLabel)}>Cash overview</h2>
         <div className="grid gap-4 border-b border-gray-100 pb-6 sm:grid-cols-2 lg:grid-cols-5 dark:border-border">
           {kpis.map(({ label, value, icon: Icon }) => (
             <div key={label}>
@@ -62,7 +59,7 @@ export default async function FinancialPage() {
                   value < 0 ? "text-red-600/90 dark:text-red-400/90" : "text-foreground"
                 )}
               >
-                {formatMoney(value)}
+                {formatCurrency(value)}
               </p>
             </div>
           ))}
@@ -108,18 +105,17 @@ export default async function FinancialPage() {
                       key={tx.id}
                       className="border-b border-gray-100/80 transition-colors hover:bg-[#F9FAFB] dark:border-border/40 dark:hover:bg-muted/20"
                     >
-                      <TableCell className="tabular-nums">{tx.date}</TableCell>
+                      <TableCell className={TYPO.date}>{formatDate(tx.date)}</TableCell>
                       <TableCell>{tx.description}</TableCell>
                       <TableCell
                         className={cn(
                           "text-right font-medium tabular-nums",
                           tx.amount >= 0
-                            ? "text-hh-profit-positive dark:text-hh-profit-positive"
-                            : "text-red-600/90 dark:text-red-400/90"
+                            ? "text-emerald-700 dark:text-emerald-400"
+                            : "text-rose-600 dark:text-rose-400"
                         )}
                       >
-                        {tx.amount >= 0 ? "+" : ""}
-                        {formatMoney(tx.amount)}
+                        {formatCurrency(tx.amount)}
                       </TableCell>
                     </TableRow>
                   ))

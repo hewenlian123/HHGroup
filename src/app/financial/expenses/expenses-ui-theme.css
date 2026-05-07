@@ -1,13 +1,13 @@
-/* Expenses route: HH Finance OS — page tint aligns with Finance Owner (zinc-50); shell bg from Tailwind */
+/* Expenses route: HH Finance OS — page tint aligns with the app workspace; shell bg from Tailwind */
 .expenses-ui {
   --exp-page-bg: transparent;
   --exp-content-bg: transparent;
-  --exp-primary: #111827;
-  --exp-secondary: #4b5563;
-  --exp-negative: #d92d20;
-  --exp-positive: #22c55e;
+  --exp-primary: #081225;
+  --exp-secondary: #52525b;
+  --exp-negative: #e11d48;
+  --exp-positive: #059669;
   --exp-row-hover: #ffffff;
-  --exp-border: rgb(0 0 0 / 0.08);
+  --exp-border: rgb(15 23 42 / 0.06);
   --exp-icon: #9ca3af;
   --exp-icon-hover: #374151;
   background-color: var(--exp-page-bg);
@@ -73,10 +73,10 @@
 
 /* Dialog when using expenses palette */
 .expenses-ui-dialog {
-  --exp-primary: #111827;
-  --exp-secondary: #4b5563;
-  --exp-border: #e5e7eb;
-  --exp-row-hover: #f9fafb;
+  --exp-primary: #081225;
+  --exp-secondary: #52525b;
+  --exp-border: rgb(15 23 42 / 0.06);
+  --exp-row-hover: #f8fafc;
   background-color: #ffffff !important;
   color: var(--exp-primary) !important;
   border-color: var(--exp-border) !important;
@@ -87,19 +87,19 @@
 }
 
 .expenses-ui-dialog .exp-btn-primary {
-  background-color: #111827 !important;
+  background-color: #081225 !important;
   color: #ffffff !important;
   border-color: transparent !important;
 }
 
 .expenses-ui-dialog .exp-btn-secondary {
   background-color: #ffffff !important;
-  color: #111827 !important;
-  border-color: #e5e7eb !important;
+  color: #081225 !important;
+  border-color: rgb(15 23 42 / 0.08) !important;
 }
 
 .expenses-ui-dialog .exp-btn-secondary:hover {
-  background-color: #f9fafb !important;
+  background-color: #f8fafc !important;
 }
 
 /* Portal content lives under <body>, so these mobile safety rules are intentionally global. */

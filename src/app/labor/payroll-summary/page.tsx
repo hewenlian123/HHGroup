@@ -23,10 +23,7 @@ import {
   type PayrollSummaryRow,
   type DailyWorkEntry,
 } from "@/lib/data";
-
-function fmtUsd(n: number): string {
-  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 function getDefaultRange(): { from: string; to: string } {
   const d = new Date();
@@ -225,11 +222,11 @@ export default function PayrollSummaryPage() {
                     </div>
                     <div>
                       <dt className="text-muted-foreground">OT</dt>
-                      <dd>${fmtUsd(r.otTotal)}</dd>
+                      <dd>{formatCurrency(r.otTotal)}</dd>
                     </div>
                     <div>
                       <dt className="text-muted-foreground">Pay</dt>
-                      <dd className="font-medium">${fmtUsd(r.totalPay)}</dd>
+                      <dd className="font-medium">{formatCurrency(r.totalPay)}</dd>
                     </div>
                   </dl>
                 </div>
@@ -242,11 +239,11 @@ export default function PayrollSummaryPage() {
               </div>
               <div className="flex justify-between py-2">
                 <span>Total OT</span>
-                <span>${fmtUsd(mobileTotalOt)}</span>
+                <span>{formatCurrency(mobileTotalOt)}</span>
               </div>
               <div className="flex justify-between border-t border-border/60 pt-2">
                 <span>Total pay</span>
-                <span>${fmtUsd(mobileTotalPay)}</span>
+                <span>{formatCurrency(mobileTotalPay)}</span>
               </div>
             </div>
           </>
@@ -298,9 +295,9 @@ export default function PayrollSummaryPage() {
                     </Button>
                   </td>
                   <td className="py-2 px-4 text-right tabular-nums">{r.daysWorked}</td>
-                  <td className="py-2 px-4 text-right tabular-nums">${fmtUsd(r.otTotal)}</td>
+                  <td className="py-2 px-4 text-right tabular-nums">{formatCurrency(r.otTotal)}</td>
                   <td className="py-2 px-4 text-right tabular-nums font-medium">
-                    ${fmtUsd(r.totalPay)}
+                    {formatCurrency(r.totalPay)}
                   </td>
                 </tr>
               ))
@@ -310,8 +307,8 @@ export default function PayrollSummaryPage() {
             <tr className="border-t border-border/60 font-medium">
               <td className="py-2 px-4">Total</td>
               <td className="py-2 px-4 text-right tabular-nums">{totalDays}</td>
-              <td className="py-2 px-4 text-right tabular-nums">${fmtUsd(totalOt)}</td>
-              <td className="py-2 px-4 text-right tabular-nums">${fmtUsd(totalPay)}</td>
+              <td className="py-2 px-4 text-right tabular-nums">{formatCurrency(totalOt)}</td>
+              <td className="py-2 px-4 text-right tabular-nums">{formatCurrency(totalPay)}</td>
             </tr>
           </tfoot>
         </table>
@@ -363,14 +360,18 @@ export default function PayrollSummaryPage() {
                 ) : (
                   detailEntries.map((e) => (
                     <tr key={e.id} className="border-b border-border/40">
-                      <td className="py-2 px-4 tabular-nums">{e.workDate}</td>
+                      <td className="py-2 px-4 font-mono tabular-nums tracking-tight text-zinc-500">
+                        {formatDate(e.workDate)}
+                      </td>
                       <td className="py-2 px-4 text-muted-foreground">
                         {e.projectName ?? e.projectId ?? "—"}
                       </td>
                       <td className="py-2 px-4 capitalize">{e.dayType.replace("_", " ")}</td>
-                      <td className="py-2 px-4 text-right tabular-nums">${fmtUsd(e.otAmount)}</td>
+                      <td className="py-2 px-4 text-right tabular-nums">
+                        {formatCurrency(e.otAmount)}
+                      </td>
                       <td className="py-2 px-4 text-right tabular-nums font-medium">
-                        ${fmtUsd(totalPayForEntry(e))}
+                        {formatCurrency(totalPayForEntry(e))}
                       </td>
                     </tr>
                   ))

@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { Button as UiButton } from "@/components/ui/button";
 import { VirtualScrollList } from "@/components/ui/virtual-scroll-list";
 import { Pencil, Trash2 } from "lucide-react";
+import { formatDate } from "@/lib/formatters";
 
 const QUICK_TIMESHEET_VIRTUAL_THRESHOLD = 32;
 
@@ -286,7 +287,7 @@ export default function DailyLaborLogPage() {
 
       <div className="space-y-2">
         <p className="text-xs font-medium uppercase tracking-wide text-text-secondary">
-          Entries for {workDate}
+          Entries for {formatDate(workDate)}
         </p>
         {entriesLoading ? (
           <p className="py-4 text-sm text-text-secondary">Loading…</p>
@@ -526,7 +527,7 @@ const QuickTimesheetWorkerRow = React.memo(function QuickTimesheetWorkerRow({
     <label
       className={cn(
         "flex cursor-pointer items-center gap-3 px-3 py-2.5 transition-colors",
-        checked ? "bg-blue-50 border-l-4 border-blue-300" : "border-l-4 border-l-transparent",
+        checked ? "border-l-4 border-emerald-400 bg-emerald-50" : "border-l-4 border-l-transparent",
         disabled && "cursor-not-allowed opacity-60"
       )}
     >

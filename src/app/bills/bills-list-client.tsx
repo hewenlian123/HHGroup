@@ -36,15 +36,7 @@ import {
   MobileSearchFiltersRow,
   mobileListPagePaddingClass,
 } from "@/components/mobile/mobile-list-chrome";
-
-function fmtUsd(n: number): string {
-  return `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-function formatDate(s: string | null): string {
-  if (!s) return "—";
-  return s.slice(0, 10);
-}
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 function startOfToday(): Date {
   const d = new Date();
@@ -259,7 +251,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
               Outstanding
             </p>
             <p className="mt-1 text-lg font-semibold tabular-nums text-text-primary dark:text-foreground">
-              {fmtUsd(summary.totalOutstanding)}
+              {formatCurrency(summary.totalOutstanding)}
             </p>
           </div>
           <div className="p-4">
@@ -267,7 +259,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
               Overdue
             </p>
             <p className="mt-1 text-lg font-semibold tabular-nums text-text-primary dark:text-foreground">
-              {fmtUsd(summary.overdueAmount)}
+              {formatCurrency(summary.overdueAmount)}
             </p>
           </div>
           <div className="p-4">
@@ -275,7 +267,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
               Due This Week
             </p>
             <p className="mt-1 text-lg font-semibold tabular-nums text-text-primary dark:text-foreground">
-              {fmtUsd(summary.dueThisWeekAmount)}
+              {formatCurrency(summary.dueThisWeekAmount)}
             </p>
           </div>
           <div className="p-4">
@@ -283,7 +275,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
               Paid This Month
             </p>
             <p className="mt-1 text-lg font-semibold tabular-nums text-hh-profit-positive dark:text-hh-profit-positive">
-              {fmtUsd(summary.paidThisMonthAmount)}
+              {formatCurrency(summary.paidThisMonthAmount)}
             </p>
           </div>
         </div>
@@ -424,7 +416,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-1">
                       <span className="text-sm font-medium tabular-nums">
-                        {fmtUsd(bill.amount)}
+                        {formatCurrency(bill.amount)}
                       </span>
                       <StatusBadge label={s.label} variant={s.variant} />
                     </div>
@@ -496,7 +488,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                           listTableAmountCellClassName
                         )}
                       >
-                        {fmtUsd(bill.amount)}
+                        {formatCurrency(bill.amount)}
                       </td>
                       <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] tabular-nums whitespace-nowrap text-muted-foreground">
                         {formatDate(bill.due_date)}

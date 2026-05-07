@@ -52,6 +52,7 @@ import { InvoiceStatusBadge } from "@/components/invoice-status-badge";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
 import { useToast } from "@/components/toast/toast-provider";
 import { voidInvoiceFromClient } from "@/lib/invoice-void-client";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 export default function InvoiceDetailPage() {
   const params = useParams();
@@ -400,7 +401,7 @@ export default function InvoiceDetailPage() {
               invoice.computedStatus === "Overdue" && "text-red-600 dark:text-red-400"
             )}
           >
-            {invoice.dueDate}
+            {formatDate(invoice.dueDate)}
           </span>
           {invoice.daysOverdue > 0 && (
             <>
@@ -411,7 +412,7 @@ export default function InvoiceDetailPage() {
             </>
           )}
         </div>
-        <p className="mt-1 text-xs text-muted-foreground">Issue: {invoice.issueDate}</p>
+        <p className="mt-1 text-xs text-muted-foreground">Issue: {formatDate(invoice.issueDate)}</p>
       </section>
 
       <div className="overflow-hidden rounded-sm border border-gray-100 dark:border-border">
@@ -445,10 +446,10 @@ export default function InvoiceDetailPage() {
                     {line.qty}
                   </td>
                   <td className="py-3 px-4 text-right tabular-nums text-muted-foreground">
-                    ${line.unitPrice.toLocaleString()}
+                    {formatCurrency(line.unitPrice)}
                   </td>
                   <td className="py-3 px-4 text-right tabular-nums font-medium">
-                    ${line.amount.toLocaleString()}
+                    {formatCurrency(line.amount)}
                   </td>
                 </tr>
               ))}
@@ -462,27 +463,27 @@ export default function InvoiceDetailPage() {
         <div className="space-y-1 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Subtotal</span>
-            <span className="tabular-nums">${invoice.subtotal.toLocaleString()}</span>
+            <span className="tabular-nums">{formatCurrency(invoice.subtotal)}</span>
           </div>
           {invoice.taxAmount != null && invoice.taxAmount > 0 && (
             <div className="flex justify-between">
               <span className="text-muted-foreground">
                 Tax {invoice.taxPct != null ? `(${invoice.taxPct}%)` : ""}
               </span>
-              <span className="tabular-nums">${invoice.taxAmount.toLocaleString()}</span>
+              <span className="tabular-nums">{formatCurrency(invoice.taxAmount)}</span>
             </div>
           )}
           <div className="flex justify-between border-t border-gray-100 pt-2 font-medium dark:border-border">
             <span>Total</span>
-            <span className="tabular-nums">${invoice.total.toLocaleString()}</span>
+            <span className="tabular-nums">{formatCurrency(invoice.total)}</span>
           </div>
           <div className="flex justify-between text-hh-profit-positive dark:text-hh-profit-positive">
             <span>Paid</span>
-            <span className="tabular-nums">${invoice.paidTotal.toLocaleString()}</span>
+            <span className="tabular-nums">{formatCurrency(invoice.paidTotal)}</span>
           </div>
           <div className="flex justify-between font-medium">
             <span>Balance due</span>
-            <span className="tabular-nums">${invoice.balanceDue.toLocaleString()}</span>
+            <span className="tabular-nums">{formatCurrency(invoice.balanceDue)}</span>
           </div>
         </div>
       </section>
@@ -519,9 +520,11 @@ export default function InvoiceDetailPage() {
                     key={p.id}
                     className="border-b border-gray-100/80 transition-colors hover:bg-[#F9FAFB] dark:border-border/40 dark:hover:bg-muted/20"
                   >
-                    <td className="py-3 px-4 tabular-nums">{p.date}</td>
+                    <td className="py-3 px-4 font-mono tabular-nums tracking-tight text-zinc-500">
+                      {formatDate(p.date)}
+                    </td>
                     <td className="py-3 px-4 text-right tabular-nums font-medium text-hh-profit-positive dark:text-hh-profit-positive">
-                      ${p.amount.toLocaleString()}
+                      {formatCurrency(p.amount)}
                     </td>
                     <td className="py-3 px-4 text-muted-foreground">{p.method}</td>
                     <td className="py-3 px-4 text-muted-foreground">{p.memo ?? "—"}</td>
@@ -577,9 +580,11 @@ export default function InvoiceDetailPage() {
                     key={p.id}
                     className="border-b border-gray-100/80 transition-colors hover:bg-[#F9FAFB] dark:border-border/40 dark:hover:bg-muted/20"
                   >
-                    <td className="py-3 px-4 tabular-nums">{p.payment_date}</td>
+                    <td className="py-3 px-4 font-mono tabular-nums tracking-tight text-zinc-500">
+                      {formatDate(p.payment_date)}
+                    </td>
                     <td className="py-3 px-4 text-right tabular-nums font-medium text-hh-profit-positive dark:text-hh-profit-positive">
-                      ${p.amount.toLocaleString()}
+                      {formatCurrency(p.amount)}
                     </td>
                     <td className="py-3 px-4 text-muted-foreground">{p.payment_method ?? "—"}</td>
                     <td className="py-3 px-4 text-muted-foreground">{p.deposit_account ?? "—"}</td>
@@ -629,10 +634,10 @@ export default function InvoiceDetailPage() {
                     className="border-b border-gray-100/80 transition-colors hover:bg-[#F9FAFB] dark:border-border/40 dark:hover:bg-muted/20"
                   >
                     <td className="py-3 px-4 tabular-nums">
-                      {(d as { date?: string }).date ?? "—"}
+                      {formatDate((d as { date?: string }).date)}
                     </td>
                     <td className="py-3 px-4 text-right tabular-nums font-medium text-hh-profit-positive dark:text-hh-profit-positive">
-                      ${d.amount.toLocaleString()}
+                      {formatCurrency(d.amount)}
                     </td>
                     <td className="py-3 px-4 text-muted-foreground">—</td>
                     <td className="py-3 px-4 text-muted-foreground">

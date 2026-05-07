@@ -34,6 +34,7 @@ import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 import { WorkerAdvanceFormDialog } from "./worker-advance-form-dialog";
 import { WorkerAdvanceActionsMenu } from "./worker-advance-actions-menu";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 type WorkerOption = { id: string; name: string };
 type ProjectOption = { id: string; name: string };
@@ -75,15 +76,6 @@ const AVATAR_RING = [
 
 const workerAvatarRing = "ring-1 ring-inset ring-zinc-950/[0.055] dark:ring-white/[0.08]";
 
-function fmtUsd(n: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(n);
-}
-
 function workerInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (parts.length >= 2)
@@ -111,7 +103,7 @@ function thisMonthPrefix(): string {
 }
 
 function thisMonthLabel(): string {
-  return new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(new Date());
+  return formatDate(new Date(), "month");
 }
 
 function AdvanceStatusChip({ status }: { status: AdvanceRow["status"] }) {
@@ -580,7 +572,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                   Total advanced
                 </p>
                 <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                  {fmtUsd(summary.totalAdvanced)}
+                  {formatCurrency(summary.totalAdvanced)}
                 </p>
                 <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">All time</p>
               </div>
@@ -643,7 +635,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                   Avg advance
                 </p>
                 <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                  {fmtUsd(summary.avgAdvance)}
+                  {formatCurrency(summary.avgAdvance)}
                 </p>
                 <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">Per advance</p>
               </div>
@@ -666,7 +658,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                   This month
                 </p>
                 <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                  {fmtUsd(summary.thisMonth)}
+                  {formatCurrency(summary.thisMonth)}
                 </p>
                 <p className="mt-0.5 truncate text-[9px] leading-none text-muted-foreground">
                   {thisMonthLabel()}
@@ -906,7 +898,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                       Amount
                     </span>
                     <span className={cn("max-w-full min-w-0 text-right text-xl", TYPO.amount)}>
-                      {fmtUsd(row.amount)}
+                      {formatCurrency(row.amount)}
                     </span>
                   </div>
                   <dl className="grid grid-cols-1 gap-x-3 gap-y-2 text-xs sm:grid-cols-2">
@@ -914,7 +906,9 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                       <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                         Date
                       </dt>
-                      <dd className={cn("truncate pt-0.5", TYPO.date)}>{row.advanceDate}</dd>
+                      <dd className={cn("truncate pt-0.5", TYPO.date)}>
+                        {formatDate(row.advanceDate)}
+                      </dd>
                     </div>
                     <div className="min-w-0">
                       <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -1064,7 +1058,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                         {row.projectName ?? "—"}
                       </td>
                       <td className="whitespace-nowrap px-3 py-2.5 text-right align-middle text-base font-semibold tabular-nums tracking-tight text-zinc-800 dark:text-zinc-100">
-                        {fmtUsd(row.amount)}
+                        {formatCurrency(row.amount)}
                       </td>
                       <td
                         className={cn(
@@ -1072,7 +1066,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                           TYPO.date
                         )}
                       >
-                        {row.advanceDate}
+                        {formatDate(row.advanceDate)}
                       </td>
                       <td className="px-3 py-2.5 align-middle">
                         <AdvanceStatusChip status={row.status} />

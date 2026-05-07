@@ -14,6 +14,7 @@ import { CreatableSelect } from "@/components/ui/creatable-select";
 import { SplitLinesEditor, type SplitLineRow } from "@/components/split-lines-editor";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import { createBrowserClient } from "@/lib/supabase";
+import { formatCurrency } from "@/lib/formatters";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 
@@ -52,10 +53,6 @@ type AttachmentRow = {
 
 function safeNumber(n: number | null | undefined): number {
   return Number.isFinite(n as number) ? (n as number) : 0;
-}
-
-function money(n: number): string {
-  return `$${Math.round(n).toLocaleString()}`;
 }
 
 function toNullable(value: string): string | null {
@@ -394,14 +391,6 @@ export function ExpenseDetailClient({ id }: { id: string }) {
 
   const uploadAttachment = async (file: File) => {
     if (!supabase) return;
-    // Debug: expense receipt upload start
-    // eslint-disable-next-line no-console
-    console.log("[ExpenseDetail] uploadAttachment start", {
-      expenseId: id,
-      name: file.name,
-      size: file.size,
-      type: file.type,
-    });
     setSaving(true);
     setError(null);
     setMessage(null);
@@ -413,13 +402,6 @@ export function ExpenseDetailClient({ id }: { id: string }) {
         upsert: false,
       });
       if (uploadRes.error) throw uploadRes.error;
-      // Debug: storage upload success
-      // eslint-disable-next-line no-console
-      console.log("[ExpenseDetail] storage upload success", {
-        expenseId: id,
-        filePath,
-        bucket: "attachments",
-      });
       const insertRes = await supabase.from("attachments").insert([
         {
           entity_type: "expense",
@@ -433,14 +415,9 @@ export function ExpenseDetailClient({ id }: { id: string }) {
       if (insertRes.error) throw insertRes.error;
       await refresh();
       setMessage("Attachment uploaded.");
-      // Debug: attachment row insert + refresh success
-      // eslint-disable-next-line no-console
-      console.log("[ExpenseDetail] attachment insert success", { expenseId: id, filePath });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       setError(msg || "Upload failed.");
-      // Debug: upload error
-      // eslint-disable-next-line no-console
       console.error("[ExpenseDetail] uploadAttachment error", e);
     } finally {
       setSaving(false);
@@ -758,7 +735,7 @@ export function ExpenseDetailClient({ id }: { id: string }) {
               Lines total
             </p>
             <p className="mt-1 text-xl font-semibold tabular-nums text-red-600">
-              −{money(linesTotal)}
+              {formatCurrency(-linesTotal)}
             </p>
           </div>
           <div className="rounded-[12px] border border-gray-100 bg-white p-4">
@@ -776,7 +753,7 @@ export function ExpenseDetailClient({ id }: { id: string }) {
                       ? "Overhead"
                       : (projects.find((p) => p.id === projectId)?.name ?? projectId)}
                   </span>
-                  <span className="text-foreground">−{money(amount)}</span>
+                  <span className="text-foreground">{formatCurrency(-amount)}</span>
                 </li>
               ))}
               {byProject.size === 0 ? (

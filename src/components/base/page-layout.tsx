@@ -2,6 +2,7 @@
 
 import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { TYPO } from "@/lib/typography";
 
 /** Page-level title and optional description. */
 export function PageHeader({
@@ -23,8 +24,10 @@ export function PageHeader({
     <header className={cn("flex flex-col gap-1", className)}>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-4">
         <div className="min-w-0">
-          <h1 className="text-xl font-medium tracking-tight text-text-primary">{title}</h1>
-          {description ? <p className="mt-0.5 text-sm text-text-secondary">{description}</p> : null}
+          <h1 className={TYPO.pageTitle}>{title}</h1>
+          {description ? (
+            <p className={cn("mt-1 max-w-2xl", TYPO.pageSubtitle)}>{description}</p>
+          ) : null}
         </div>
         {rightContent ? (
           <div className="flex w-full flex-col gap-2 lg:w-auto lg:flex-row lg:flex-wrap lg:items-center lg:justify-end [&_a]:w-full [&_button]:w-full lg:[&_a]:w-auto lg:[&_button]:w-auto">

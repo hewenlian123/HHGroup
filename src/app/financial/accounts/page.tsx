@@ -28,6 +28,7 @@ import { useToast } from "@/components/toast/toast-provider";
 import { EmptyState } from "@/components/empty-state";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { ConfirmDialog } from "@/components/base";
+import { formatInteger } from "@/lib/formatters";
 
 const ACCOUNT_TYPES: AccountType[] = ["Credit Card", "Debit Card", "Bank", "Cash", "Other"];
 
@@ -41,7 +42,7 @@ const kpiIcon =
   "flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-100/45 text-zinc-400 dark:bg-muted/45 dark:text-muted-foreground";
 
 function typeChipClass(t: AccountType): string {
-  if (t === "Bank") return "bg-blue-50 text-blue-800 ring-1 ring-blue-200/60";
+  if (t === "Bank") return "bg-slate-100 text-slate-700 ring-1 ring-slate-200/70";
   if (t === "Cash") return "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/60";
   if (t === "Credit Card" || t === "Debit Card")
     return "bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200/60";
@@ -308,7 +309,7 @@ function AccountsPageInner() {
                   Total accounts
                 </div>
                 <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
-                  {summary.total.toLocaleString("en-US")}
+                  {formatInteger(summary.total)}
                 </div>
               </div>
             </div>
@@ -321,7 +322,7 @@ function AccountsPageInner() {
                   Bank accounts
                 </div>
                 <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
-                  {summary.bank.toLocaleString("en-US")}
+                  {formatInteger(summary.bank)}
                 </div>
               </div>
             </div>
@@ -334,7 +335,7 @@ function AccountsPageInner() {
                   Cards
                 </div>
                 <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
-                  {summary.cards.toLocaleString("en-US")}
+                  {formatInteger(summary.cards)}
                 </div>
               </div>
             </div>
@@ -347,7 +348,7 @@ function AccountsPageInner() {
                   Cash accounts
                 </div>
                 <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
-                  {summary.cash.toLocaleString("en-US")}
+                  {formatInteger(summary.cash)}
                 </div>
               </div>
             </div>

@@ -28,6 +28,7 @@ import {
   listTableRowClassName,
 } from "@/lib/list-table-interaction";
 import { cn } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 type LaborInvoiceStatus = "draft" | "reviewed" | "confirmed" | "void";
 
@@ -341,7 +342,7 @@ export default function LaborInvoicesListClient() {
                         {workersMap.get(row.worker_id) ?? "Unknown worker"}
                       </td>
                       <td className="py-3 px-4 tabular-nums text-muted-foreground">
-                        {row.invoice_date}
+                        {formatDate(row.invoice_date)}
                       </td>
                       <td
                         className={cn(
@@ -349,11 +350,7 @@ export default function LaborInvoicesListClient() {
                           listTableAmountCellClassName
                         )}
                       >
-                        {new Intl.NumberFormat("en-US", {
-                          style: "currency",
-                          currency: "USD",
-                          maximumFractionDigits: 2,
-                        }).format(row.amount)}
+                        {formatCurrency(row.amount)}
                       </td>
                       <td
                         className={cn(

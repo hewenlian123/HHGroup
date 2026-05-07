@@ -23,6 +23,7 @@ import {
 } from "@/lib/data";
 import { ArrowLeft, Download, Eye, Plus, Trash2 } from "lucide-react";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
+import { formatCurrency } from "@/lib/formatters";
 
 function makeAttachment(file: File): Attachment {
   return {
@@ -454,12 +455,7 @@ export default function LaborInvoiceDetailPage() {
           ))}
         </div>
         <p className="mt-3 text-sm text-muted-foreground">
-          Split Total:{" "}
-          {new Intl.NumberFormat("en-US", {
-            style: "currency",
-            currency: "USD",
-            maximumFractionDigits: 2,
-          }).format(splitTotal)}
+          Split Total: {formatCurrency(splitTotal)}
         </p>
         <p className="mt-4 text-sm text-muted-foreground">
           Remaining:{" "}
@@ -470,11 +466,7 @@ export default function LaborInvoiceDetailPage() {
                 : "font-medium text-amber-600 dark:text-amber-400"
             }
           >
-            {new Intl.NumberFormat("en-US", {
-              style: "currency",
-              currency: "USD",
-              maximumFractionDigits: 2,
-            }).format(remaining)}
+            {formatCurrency(remaining)}
           </span>
         </p>
       </section>

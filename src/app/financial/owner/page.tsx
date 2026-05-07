@@ -24,6 +24,7 @@ import { FinanceOwnerCashFlowChart } from "./_components/finance-owner-cash-flow
 import { FinanceOwnerHeaderActions } from "./_components/finance-owner-header-actions";
 import { FinanceOwnerPendingDonut } from "./_components/finance-owner-pending-donut";
 import { fmtUsdAdaptive, fmtUsdFull, fmtUsdSignedFull } from "./_lib/format-owner-currency";
+import { formatDate, formatInteger, formatPercent } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
 
@@ -63,7 +64,7 @@ const cardHover =
   "hover:-translate-y-px hover:border-zinc-300/90 hover:shadow-[0_8px_32px_rgba(0,0,0,0.07)] dark:hover:border-border";
 
 function fmtCount(n: number): string {
-  return n.toLocaleString("en-US");
+  return formatInteger(n);
 }
 
 /** Margin profile shown only as UI labeling from existing profitPct (presentation only). */
@@ -136,7 +137,7 @@ function formatPctDisplay(pct: number): string {
 
 function pctFullTooltip(pct: number): string {
   if (!Number.isFinite(pct)) return "Margin —";
-  return `Margin ${pct.toLocaleString("en-US", { maximumFractionDigits: 8 })}%`;
+  return `Margin ${formatPercent(pct, { maximumFractionDigits: 8 })}`;
 }
 
 function ProfitMarginTrack({ row }: { row: FinanceOwnerProjectRow }) {
@@ -322,10 +323,7 @@ export default async function FinanceOwnerDashboardPage() {
   }
 
   const reportingMonth = new Date();
-  const monthLabel = reportingMonth.toLocaleDateString("en-US", {
-    month: "long",
-    year: "numeric",
-  });
+  const monthLabel = formatDate(reportingMonth, "month");
 
   type KpiKey = "neutral" | "expense" | "profit" | "pending" | "warning";
 
@@ -357,7 +355,7 @@ export default async function FinanceOwnerDashboardPage() {
       label: "Invoiced",
       value: data.kpis.invoicedThisMonth,
       icon: FileText,
-      iconWrap: "bg-blue-500/10 text-blue-700 dark:text-blue-400",
+      iconWrap: "bg-zinc-500/10 text-zinc-700 dark:text-zinc-300",
       accent: "neutral",
     },
     {
@@ -389,7 +387,7 @@ export default async function FinanceOwnerDashboardPage() {
       label: "Pending payments",
       value: data.kpis.pendingPayments,
       icon: Wallet,
-      iconWrap: "bg-violet-500/12 text-violet-800 dark:text-violet-300",
+      iconWrap: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
       accent: "pending",
       sub: pendingSubCompact,
       subTitle: pendingSubFull,
@@ -402,7 +400,7 @@ export default async function FinanceOwnerDashboardPage() {
       return data.kpis.profitThisMonth >= 0
         ? "shadow-[inset_0_0_0_1px_rgba(52,211,153,0.18)] dark:shadow-none"
         : "shadow-[inset_0_0_0_1px_rgba(248,113,113,0.22)] dark:shadow-none";
-    if (a === "pending") return "shadow-[inset_0_0_0_1px_rgba(167,139,250,0.2)] dark:shadow-none";
+    if (a === "pending") return "shadow-[inset_0_0_0_1px_rgba(16,185,129,0.16)] dark:shadow-none";
     if (a === "warning") return "shadow-[inset_0_0_0_1px_rgba(251,191,36,0.18)] dark:shadow-none";
     return "";
   };
@@ -415,7 +413,7 @@ export default async function FinanceOwnerDashboardPage() {
     href: string;
     active: boolean;
     Icon: LucideIcon;
-    tone: "rose" | "amber" | "slate" | "orange";
+    tone: "rose" | "amber" | "slate";
   }[] = [
     {
       key: "overdue",
@@ -479,7 +477,7 @@ export default async function FinanceOwnerDashboardPage() {
       href: "/projects",
       active: data.alerts.projectsInLossCount > 0,
       Icon: TrendingDown,
-      tone: "orange",
+      tone: "amber",
     },
   ];
 
@@ -495,9 +493,6 @@ export default async function FinanceOwnerDashboardPage() {
         : "bg-zinc-100 text-zinc-400 dark:bg-muted",
       slate: active
         ? "bg-zinc-200/80 text-zinc-800 dark:text-zinc-300"
-        : "bg-zinc-100 text-zinc-400 dark:bg-muted",
-      orange: active
-        ? "bg-orange-500/12 text-orange-800 dark:text-orange-400"
         : "bg-zinc-100 text-zinc-400 dark:bg-muted",
     };
     return cn(
@@ -561,7 +556,7 @@ export default async function FinanceOwnerDashboardPage() {
                       ? "text-emerald-800 dark:text-emerald-400"
                       : "text-red-600 dark:text-red-400"
                     : k.accent === "pending"
-                      ? "text-violet-900 dark:text-violet-300"
+                      ? "text-emerald-800 dark:text-emerald-400"
                       : k.accent === "warning"
                         ? "text-amber-900 dark:text-amber-300"
                         : "text-zinc-900 dark:text-zinc-100";
@@ -574,7 +569,7 @@ export default async function FinanceOwnerDashboardPage() {
                       ? { outer: "bg-emerald-400/40", inner: "bg-emerald-500/90" }
                       : { outer: "bg-red-400/35", inner: "bg-red-500/90" }
                     : k.accent === "pending"
-                      ? { outer: "bg-violet-400/35", inner: "bg-violet-600/90" }
+                      ? { outer: "bg-emerald-400/35", inner: "bg-emerald-600/90" }
                       : k.accent === "warning"
                         ? { outer: "bg-amber-400/35", inner: "bg-amber-500/90" }
                         : { outer: "bg-zinc-300/50", inner: "bg-zinc-500/80" };
